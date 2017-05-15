@@ -2037,7 +2037,9 @@ postgres_reserve_get (void *cls,
  * @param session the database connection
  * @param reserve the reserve structure whose data will be used to update the
  *          corresponding record in the database.
- * @return #GNUNET_OK upon successful update; #GNUNET_SYSERR upon any error
+ * @return #GNUNET_OK upon successful update;
+ *         #GNUNET_NO if we failed but should retry the transaction
+ *         #GNUNET_SYSERR upon any error
  */
 static int
 reserves_update (void *cls,
@@ -2046,21 +2048,21 @@ reserves_update (void *cls,
 {
   PGresult *result;
   int ret;
-
-  if (NULL == reserve)
-    return GNUNET_SYSERR;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&reserve->expiry),
     TALER_PQ_query_param_amount (&reserve->balance),
     GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
     GNUNET_PQ_query_param_end
   };
+
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "reserve_update",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
+                                    "reserve_update",
+                                    params);
+  /* FIXME: properly distinguish between hard and soft (retry-able) failures here! */
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result, session->conn);
+    QUERY_ERR (result,
+               session->conn);
     ret = GNUNET_SYSERR;
   }
   else
@@ -2236,9 +2238,10 @@ postgres_reserves_in_insert (void *cls,
     }
     updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                                        reserve.expiry);
-    if (GNUNET_OK != reserves_update (cls,
-                                      session,
-                                      &updated_reserve))
+    if (GNUNET_OK !=
+        reserves_update (cls,
+                         session,
+                         &updated_reserve))
       goto rollback;
   }
   if (GNUNET_OK != postgres_commit (cls,
@@ -2429,6 +2432,7 @@ postgres_insert_withdraw_info (void *cls,
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     GNUNET_PQ_query_param_end
   };
+  int ret;
 
   now = GNUNET_TIME_absolute_get ();
   GNUNET_CRYPTO_rsa_public_key_hash (collectable->denom_pub.rsa_public_key,
@@ -2471,14 +2475,15 @@ postgres_insert_withdraw_info (void *cls,
                                      pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
-  if (GNUNET_OK != reserves_update (cls,
-                                    session,
-                                    &reserve))
+  ret = reserves_update (cls,
+                         session,
+                         &reserve);
+  if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -5212,14 +5217,15 @@ postgres_insert_reserve_closed (void *cls,
     return GNUNET_NO;
   }
   GNUNET_break (GNUNET_NO == ret);
-  if (GNUNET_OK != reserves_update (cls,
-                                    session,
-                                    &reserve))
+  ret = reserves_update (cls,
+                         session,
+                         &reserve);
+  if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -6456,14 +6462,15 @@ postgres_insert_payback_request (void *cls,
                                      pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
-  if (GNUNET_OK != reserves_update (cls,
-                                    session,
-                                    &reserve))
+  ret = reserves_update (cls,
+                         session,
+                         &reserve);
+  if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  return GNUNET_OK;
+  return ret;
 }
 
 
