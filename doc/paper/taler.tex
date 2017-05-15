@@ -1498,7 +1498,33 @@ any PPT adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{proposition}
 
-We now apply \cite[??]{??} to deduce : 
+% TODO: Is independence here too strong?
+
+We may now remove the encrpytion by appealing to the random oracle model
+\cite{BR-RandomOracles}.
+
+\begin{lemma}[\cite[??]{??}]
+Consider a protocol that commits to random data by encrypting it
+using a secret derived from a Diffe-Hellman key exchange.
+In the random oracle model, we may replace this encryption with
+a hash function derives the random data by applying hash functions
+to the same secret.
+\end{lemma}
+
+\begin{proof}
+We work with the usual instantiation of the random oracle model as
+returning a random string and placing it into a database for future
+queries.  
+
+We take the random number generator that drives this random oracle
+to be the random number generator used to produce the random data
+that we encrypt in the old encryption based version of Taler.  
+Now our random oracle scheme gives the same result as our scheme
+that encrypts random data, so the encryption becomes superfluous
+and may be omitted.
+\end{proof}
+
+We may now conclude that Taler remains unlinkable even with the refresh protocol.
 
 \begin{theorem}
 In the random oracle model, any PPT adversary with an advantage
@@ -1512,7 +1538,7 @@ proves that out linking protocol \S\ref{subsec:linking} does not
 degrade privacy.
 
 
-
+\end{document}
 
 
 
