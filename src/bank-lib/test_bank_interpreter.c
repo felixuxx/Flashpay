@@ -290,7 +290,7 @@ build_history (struct InterpreterState *is,
                      "type",
                      "test",
                      "bank_uri",
-                     "http://localhost:8081",
+                     "http://localhost:8080",
                      "account_number",
                      (json_int_t) pos->details.admin_add_incoming.debit_account_no);
       GNUNET_assert (NULL != h[total].details.account_details);
@@ -305,7 +305,7 @@ build_history (struct InterpreterState *is,
                      "type",
                      "test",
                      "bank_uri",
-                     "http://localhost:8081",
+                     "http://localhost:8080",
                      "account_number",
                      (json_int_t) pos->details.admin_add_incoming.credit_account_no);
       GNUNET_assert (NULL != h[total].details.account_details);
@@ -853,7 +853,7 @@ TBI_run_interpreter (int *resultp,
 
   is = GNUNET_new (struct InterpreterState);
   if (GNUNET_YES == run_bank)
-    is->fakebank = TALER_FAKEBANK_start (8081);
+    is->fakebank = TALER_FAKEBANK_start (8080);
   is->resultp = resultp;
   is->commands = commands;
   is->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,

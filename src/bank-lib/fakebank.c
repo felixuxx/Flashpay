@@ -411,6 +411,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   enum TALER_BANK_Direction direction;
   struct Transaction *pos;
   json_t *history;
+  json_t *jresponse;
   int ret;
 
   auth = MHD_lookup_connection_value (connection,
@@ -536,7 +537,6 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       count++;
     }
   }
-
   if (0 == json_array_size (history))
   {
     struct MHD_Response *resp;
@@ -552,14 +552,23 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     return ret;
   }
 
+  jresponse = json_pack ("{s:o}",
+                         "data", history);
+  if (NULL == jresponse)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
   /* Finally build response object */
   {
     struct MHD_Response *resp;
     void *json_str;
     size_t json_len;
 
-    json_str = json_dumps (history,
+    json_str = json_dumps (jresponse,
                            JSON_INDENT(2));
+    json_decref (jresponse);
     if (NULL == json_str)
     {
       GNUNET_break (0);
