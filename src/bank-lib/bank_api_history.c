@@ -273,13 +273,13 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   {
     if (TALER_BANK_DIRECTION_BOTH == direction)
       GNUNET_asprintf (&url,
-                       "/history?auth=basic&account_number=%llu&delta=%lld&start_row=%llu",
+                       "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu",
                        (unsigned long long) account_number,
                        (long long) num_results,
                        (unsigned long long) start_row);
     else
       GNUNET_asprintf (&url,
-                       "/history?auth=basic&account_number=%llu&delta=%lld&start_row=%llu&direction=%s",
+                       "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu&direction=%s",
                        (unsigned long long) account_number,
                        (long long) num_results,
                        (unsigned long long) start_row,

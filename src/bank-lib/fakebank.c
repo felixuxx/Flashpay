@@ -425,7 +425,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                                      "direction");
   start = MHD_lookup_connection_value (connection,
                                        MHD_GET_ARGUMENT_KIND,
-                                       "start_row");
+                                       "start");
   acc = MHD_lookup_connection_value (connection,
                                      MHD_GET_ARGUMENT_KIND,
                                      "account_number");
