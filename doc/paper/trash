@@ -1,0 +1,90 @@
+
+
+
+\begin{proposition}
+If there are no refresh operations, then any adversary who links
+coins can recognize blinding factors.
+\end{proposition}
+
+\begin{proof}
+In effect, coin withdrawal transcripts consist of numbers $b m^d \mod n$
+
+The blinding factor is created with a full domain hash 
+\end{proof}
+
+
+We say a blind signature 
+linkable if some probabilistic polynomial 
+time (PPT) adversary has a non-negligible advantage indentifying
+the 
+
+
+, given some withdrawal and refresh
+transcripts
+
+ 
+
+
+
+We say a coin $C_0$ is {\em linkable} to the withdrawal or refresh
+operation in which it was created if some probabilistic polynomial 
+time (PPT) adversary has a non-negligible advantage in guessing
+which of $\{ C_0, C_1 \}$ were created in that operation,
+ where $C_1$ is an unrelated third coin.
+
+% TODO: Compare this definition with some from the literature
+% TODO: Should this definition be broadened?
+
+.. reference literate about withdrawal ..
+
+\begin{proposition}
+In the random oracle model, 
+if a coin created by refresh is linkable to the refresh operation
+that created it, then some PPT adversary has a non-negligible
+advantage in determining the shared secret of an eliptic curve 
+Diffie-Hellman key exchange on curve25519.
+\end{proposition}
+
+% Intuitively this follows from \cite{Rudich88}[Theorem 4.1], but
+% we provide slightly more formality.
+
+\begin{proof}
+Assume a PPT adversary $A$ has a non-negligible advantage in solving
+the linking problem.
+
+We have two curve points $C = c G$ and $T = t G$ for which
+we wish to compute the shared secret $c t G$.
+
+We make $C$ into a coin by singing it with a denomination key
+invented for this purpose.  We let $T^{(1)}$ denote $T$ and
+invent $\kappa-1$ linking keys $T^{(2)},\ldots,T^{(\kappa)}$.
+
+We shall extract the shared secret by constructing an algorithm
+that runs the refresh protocol and then runs $A$ using the natural
+simulation of a random oracle, namely answering new queries with
+random bits, yet recording the answers in a database so as to
+provide idendical answers to identical queries.
+
+We may take $\gamma=1$ by restarting the exchange with a clean
+database.  As a result, the exchange never checks the commitment
+covering $T^{(1)}$, but this alone does not suffice to discount
+the any information contained in the commitment.  
+
+Instead, we observe that our commitments consist of random oracle
+queries distinct from anything else in the protocol, so they contain
+no information of use to $A$, and can safely be omitted.
+
+We do not know $c t G$ so our simulation cannot run the KDF to
+derive the new coin that $A$ can link.  
+
+
+... random oracle ..
+\end{proof}
+
+In principle, one might worry if coins created in the same withdrawal
+or refresh opeartion might be linkable to one another without being
+linkable to the operation, but addressing this concern would take us
+somewhat far afield and require similar methods.
+
+
+
