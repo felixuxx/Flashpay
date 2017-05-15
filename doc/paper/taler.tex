@@ -1377,8 +1377,8 @@ data being persisted are represented in between $\langle\rangle$.
 \section{Taxability arguments}
 
 We assume the exchange operates honestly when discussing taxability.
-We feel this assumption is warratned mostly because a Taler exchange
-requires liscenses to operate as a financial institution, which it
+We feel this assumption is warranted mostly because a Taler exchange
+requires licenses to operate as a financial institution, which it
 risks loosing if it knowingly facilitates tax evasion.  
 We also expect an auditor monitors the exchange similarly to how
 government regulators monitor financial institutions.
@@ -1389,15 +1389,15 @@ which expands its power over conventional auditors.
 \begin{proposition}
 Assuming the exchange operates the refresh protocol honestly,
 a customer operating the refresh protocol dishonestly expects to
-loose $1 - {1 \over \kappa}$ of the value of thei coins.
+loose $1 - {1 \over \kappa}$ of the value of their coins.
 \end{proposition}
 
 \begin{proof}
-An honest esxchange keeps any funds being refreshed if the reveal
+An honest exchange keeps any funds being refreshed if the reveal
 phase is never carried out, does not match the commitment, or shows
 an incorrect commitment.  As a result, a customer dishonestly
 refreshing a coin looses their money if they have more than one
-dishonet commitment.  They have a $1 \over \kappa$ chance of their
+dishonest commitment.  They have a $1 \over \kappa$ chance of their
 dishonest commitment being selected for the refresh.
 \end{proof}
 
@@ -1428,7 +1428,7 @@ then Alice can gain control of $C'$ using the linking protocol.
 
 \begin{proof}
 Alice may run the linking protocol to obtain all transfer keys $T^i$,
-blindings $B^i$ associated to $C$, and those coins denominations,
+bindings $B^i$ associated to $C$, and those coins denominations,
 including the $T'$ for $C'$. 
 
 We assumed both the exchange and Bob operated the refresh protocol
@@ -1445,26 +1445,26 @@ At a result, there is no way for a user to loose control over a coin,
 \section{Privacy arguments}
 
 The {\em linking problem} for blind signature is,
-if given coin creation transcrips and possibly fewer
+if given coin creation transcripts and possibly fewer
 coin deposit transcripts for coins from the creation transcripts,
 then produce a corresponding creation and deposit transcript.
 
 We say a probabilistic polynomial time (PPT) adversary $A$
-{\em links} coins if it has a non-negligable advantage in
+{\em links} coins if it has a non-negligible advantage in
 solving the linking problem, when given the private keys
 of the exchange.
 
-In Taler, there are two forms of coin creation transcrips,
+In Taler, there are two forms of coin creation transcripts,
 withdrawal and refresh.
 
 \begin{lemma}
 If there are no refresh operations, any adversary with an
-advantage in linking coins is polynomially equivelent to an
+advantage in linking coins is polynomially equivalent to an
 advantage with the same advantage in recognizing blinding factors.
 \end{lemma}
 
 \begin{proof}
-Let $n$ denote the RSA modulous of the denomination key.
+Let $n$ denote the RSA modulus of the denomination key.
 Also let $d$ and $e$ denote the private and public exponents, respectively.
 In effect, coin withdrawal transcripts consist of numbers
 $b m^d \mod n$ where $m$ is the FDH of the coin's public key
@@ -1478,10 +1478,10 @@ first computing $b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
 \end{proof}
 
 We now know the following because Taler used SHA512 adopted to be
- a FDH to breat the blinding factor.
+ a FDH to be the blinding factor.
 
 \begin{corollary}
-Assuming no refresh opeeration, 
+Assuming no refresh operation, 
 any PPT adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{corollary}
@@ -1507,11 +1507,10 @@ Diffie-Hellman key exchange on curve25519.
 \end{theorem}
 
 We do not distinguish between information known by the exchange and
-information known by the merchant in the abose.  As a result, this
+information known by the merchant in the above.  As a result, this
 proves that out linking protocol \S\ref{subsec:linking} does not
 degrade privacy.
 
-\end{document}
 
 
 
