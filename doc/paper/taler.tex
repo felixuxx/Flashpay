@@ -1335,7 +1335,7 @@ exchange can even invent coins whole cloth.
 We may now remove the encrpytion by appealing to the random oracle
 model~\cite{BR-RandomOracles}.
 
-\begin{lemma}[\cite{??}]
+\begin{lemma}%[\cite{??}]
 Consider a protocol that commits to random data by encrypting it
 using a secret derived from a Diffe-Hellman key exchange.
 In the random oracle model, we may replace this encryption with
@@ -1344,6 +1344,11 @@ functions to the same secret.
 \end{lemma}
 % TODO: Too general probably?
 % TODO: IND-CPA again?
+
+Indeed, we expect doing so to increase practical security as in
+\cite{Abdalla2000}, and adding the random oracle assumption need not
+reduce security if it focuses more attention on the usage of hash
+functions throughout the protocol.
 
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
@@ -1356,6 +1361,10 @@ that we encrypt in the old encryption based version of Taler.
 Now our random oracle scheme with $R$ gives the same result as our
 scheme that encrypts random data, so the encryption becomes
 superfluous and may be omitted.
+
+We require the security of the original encryption operation reduced
+to the security of the Diffe-Hellman key exchange, which remains a
+requirement of the derived protocol.
 \end{proof}
 
 We may now conclude that Taler remains unlinkable even with the refresh protocol.
