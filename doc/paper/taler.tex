@@ -1450,23 +1450,23 @@ FDH operations we used~\cite{rfc5869} with SHA-512 as XTR and SHA-256
 for PRF as suggested in~\cite{rfc5869}.  Using 16
 concurrent clients performing withdraw, deposit and refresh operations
 we then pushed the t2.micro instance to the resource limit
-(Figure~\ref{fig:cpu})
+%(Figure~\ref{fig:cpu})
 from a network with $\approx$ 160 ms latency to
 the EC2 instance.  At that point, the instance managed about 8 HTTP
 requests per second, which roughly corresponds to one full business
 transaction (as a full business transaction is expected to involve
 withdrawing and depositing several coins).  The network traffic was
 modest at approximately 50 kbit/sec from the exchange
-(Figure~\ref{fig:out})
+%(Figure~\ref{fig:out})
 and 160 kbit/sec to the exchange.
-(Figure~\ref{fig:in}).
+%(Figure~\ref{fig:in}).
 At network latencies above 10 ms, the delay
 for executing a transaction is dominated by the network latency, as
 local processing virtually always takes less than 10 ms.
 
 Database transactions are dominated by writes%
-(Figure~\ref{fig:read} vs.  Figure~\ref{fig:write}), as
-Taler mostly needs to log
+%(Figure~\ref{fig:read} vs.  Figure~\ref{fig:write})
+, as Taler mostly needs to log
 transactions and occasionally needs to read to guard against
 double-spending.  Given a database capacity of 2 TB---which should
 suffice for more than one year of full transaction logs---the
