@@ -1285,7 +1285,7 @@ We thank people (anonymized).
 \newpage
 
 \bibliographystyle{alpha}
-\bibliography{taler,rfc}
+\bibliography{taler,rfc,ro}
 
 %\vfill
 %\begin{center}
@@ -1455,10 +1455,9 @@ if given coin creation transcripts and possibly fewer
 coin deposit transcripts for coins from the creation transcripts,
 then produce a corresponding creation and deposit transcript.
 
-We say a probabilistic polynomial time (PPT) adversary
-{\em links} coins if it has a non-negligible advantage in
-solving the linking problem, when given the private keys
-of the exchange.
+We say an adversary {\em links} coins if it has a non-negligible
+advantage in solving the linking problem, when given the private
+keys of the exchange.
 
 In Taler, there are two forms of coin creation transcripts,
 withdrawal and refresh.
@@ -1466,7 +1465,7 @@ withdrawal and refresh.
 \begin{lemma}
 If there are no refresh operations, any adversary with an
 advantage in linking coins is polynomially equivalent to an
-advantage with the same advantage in recognizing blinding factors.
+adversary with the same advantage in recognizing blinding factors.
 \end{lemma}
 
 \begin{proof}
@@ -1488,7 +1487,7 @@ We now know the following because Taler uses SHA512 adopted to be
 
 \begin{corollary}
 Assuming no refresh operation,
-any PPT adversary with an advantage for linking Taler coins gives
+any adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{corollary}
 
@@ -1498,11 +1497,21 @@ encrypted using the secret $t^{(i)} C$ where $C = c G$ is the coin being
 refreshed and $T^{(i)} = t^{(i)} G$ is the transfer key.
 
 \begin{proposition}
-Assuming the encryption used is ??? secure, and that
- the independence of $c$, $t$, and the new coins key materials, then
-any PPT adversary with an advantage for linking Taler coins gives
-rise to an adversary with an advantage for recognizing SHA512 output.
+Assuming the encryption used is semantically (IND-CPA) secure, and
+that the independence of $c$, $t$, and the new coins key materials, 
+then any probabilistic polynomial time (PPT) adversary with an
+advantage for linking Taler coins gives rise to an adversary with
+ an advantage for recognizing SHA512 output.
 \end{proposition}
+
+In fact, the exchange can launch an chosen cphertext attack against
+the customer by providing different ciphertexts.  Yet, the resulting
+plaintext is implicitly authenticated becuase after decryption
+the customer unblinds and checks the signature by the denomination
+key.  
+
+If this check does not check out, then the wallet must abandon
+this coin and report the exchange's fraudulent activity.
 
 % TODO: Is independence here too strong?
 
@@ -1516,18 +1525,19 @@ In the random oracle model, we may replace this encryption with
 a hash function derives the random data by applying hash functions
 to the same secret.
 \end{lemma}
+% TODO: IND-CPA again?  Anything else?
 
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
 returning a random string and placing it into a database for future
 queries.
 
-We take the random number generator that drives this random oracle
+We take the random number generator that drives one random oracle $R$
 to be the random number generator used to produce the random data
 that we encrypt in the old encryption based version of Taler.
-Now our random oracle scheme gives the same result as our scheme
-that encrypts random data, so the encryption becomes superfluous
-and may be omitted.
+Now our random oracle scheme with $R$ gives the same result as our
+scheme that encrypts random data, so the encryption becomes
+superfluous and may be omitted.
 \end{proof}
 
 We may now conclude that Taler remains unlinkable even with the refresh protocol.
