@@ -1256,7 +1256,7 @@ advantage in solving the linking problem, when given the private
 keys of the exchange.
 
 In Taler, there are two forms of coin creation transcripts,
-withdrawal and refresh.  
+withdrawal and refresh.
 
 \begin{lemma}
 If there are no refresh operations, any adversary with an
@@ -1288,7 +1288,7 @@ rise to an adversary with an advantage for recognizing SHA512 output.
 \end{corollary}
 
 Importantly, we do not consider coins about which wallet learns
-through the linking protocol given in \S\ref{subsec:linking}.  
+through the linking protocol given in \S\ref{subsec:linking}.
 An honest participant never needs to run the linking protocol,
 so these coins should not appear, and we do not count them in
 the adversary's advantage.    If linked coins do appear, then
@@ -1304,7 +1304,7 @@ other users.
 
 \smallskip
 
-We will now consider the impact of the refresh operation.  
+We will now consider the impact of the refresh operation.
 For the sake of the argument, we will first consider an earlier
 encryption-based version of the protocol in which a refresh operated
 consisted of $\kappa$ normal coin withdrawals and the commitment
@@ -1343,7 +1343,7 @@ a hash function which derives the random data by applying hash
 functions to the same secret.
 \end{lemma}
 % TODO: Too general probably?
-% TODO: IND-CPA again?  
+% TODO: IND-CPA again?
 
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
@@ -1388,7 +1388,7 @@ obtains either a deposit-permission or a refresh-record, both of which
 contain a signature made with the public key of coin to authorizing the
 respective operation.  If the exchange has a set of refresh-records and
 deposit-permissions whose total value exceed the value of the coin, the
-exchange can show this set to prove that a coin was double-spend.
+exchange can show this set to prove that double-spending was attempted.
 \end{proof}
 
 \begin{corollary}
@@ -1404,29 +1404,31 @@ when the merchant is faulty.
 \end{lemma}
 
 \begin{proof}
-When the customer sends the deposit-permission for a coin
-to a correct merchant, the merchant will pass it on to the
-exchange, and pass the exchange's response, a deposit-confirmation, on
-to the customer.  If a faulty merchant deposits the coin
-but does not pass the deposit-confirmation to the customer,
-the customer will receive the deposit-confirmation as an error
-response from the refreshing protocol.  Otherwise if the merchant
-doesn't deposit the coin, the customer can get a new, unlinkable
-coin by running the refresh protocol.
+When the customer sends the deposit-permission for a coin to a correct
+merchant, the merchant will pass it on to the exchange, and pass the
+exchange's response, a deposit-confirmation, on to the customer.  If
+the customer does not receive a deposit-confirmation from the
+merchant, it will run the refresh protocol.  If the faulty merchant
+did deposit the coin, the customer will receive the
+deposit-confirmation as part of the double-spending proof from the
+refreshing protocol.  If the merchant did not deposit the coin, the
+customer receives a new, unlinkable coin.
 \end{proof}
 
 \begin{corollary}
-If a customer paid for a contract, they can prove it by showing
-the deposit permissions for all coins.
+If a customer paid for a contract signed by a merchant,
+they can prove it by showing the deposit permissions for all coins.
 \end{corollary}
 
 \begin{lemma}
-The merchant can issue refunds, and only to the original customer.
+Only the merchant can issue refunds, and only to the original customer.
 \end{lemma}
 
 \begin{proof}
+The refund protocol requires a signature matching the merchant's public
+key, which had to be included in the original contract.
 Since the refund only increases the balance of a coin that the original
-customer owns, only the original customer can spend the refunded coin again.
+customer owns, only the original customer can use the increased balance.
 \end{proof}
 
 
@@ -1434,9 +1436,9 @@ customer owns, only the original customer can spend the refunded coin again.
   The protocol prevents double-spending and provides exculpability.
 \end{theorem}
 \begin{proof}
-  Follows from Lemma \ref{lemma:double-spending} and the assumption
-  that the exchange can't forge signatures to obtain an incriminating
-  set of deposit-permissions and/or refresh-records.
+  Follows from Lemma~\ref{lemma:double-spending} and the assumption
+  that the exchange cannot forge signatures to obtain an fake
+  set of deposit-permissions or refresh-records.
 \end{proof}
 
 
