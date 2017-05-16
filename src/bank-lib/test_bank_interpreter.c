@@ -374,7 +374,8 @@ print_expected (struct History *h,
                 (unsigned long long) h[i].serial_id,
                 h[i].details.wire_transfer_subject,
                 acc);
-    GNUNET_free_non_null (acc);
+    if (NULL != acc)
+      free (acc);
   }
 }
 
@@ -563,8 +564,8 @@ history_cb (void *cls,
     {
       uint64_t total;
       struct History *h;
-      GNUNET_break (0);
 
+      GNUNET_break (0);
       total = build_history (is,
                              &h);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -579,7 +580,7 @@ history_cb (void *cls,
     }
     is->ip++;
     is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+                                         is);
     return;
   }
   if (GNUNET_OK !=
@@ -589,6 +590,19 @@ history_cb (void *cls,
                     details))
   {
     GNUNET_break (0);
+    {
+      char *acc;
+
+      acc = json_dumps (json,
+                        JSON_COMPACT);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Result %u was `%s'\n",
+                  (unsigned int) cmd->details.history.results_obtained,
+                  acc);
+      if (NULL != acc)
+        free (acc);
+    }
+
     cmd->details.history.failed = GNUNET_YES;
     return;
   }
