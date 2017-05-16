@@ -871,7 +871,9 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   public key.
 \item
   The merchant creates a signed contract
-    $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
+  \begin{equation*}
+    \mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})
+  \end{equation*}
   where $m$ is an identifier for this transaction, $f$ is the price of the offer,
   and $a$ is data relevant
   to the contract indicating which services or goods the merchant will
@@ -1564,6 +1566,24 @@ upholds the core principles described in~\cite{fc2014murdoch}.  In
 particular, in providing the cryptographic proofs as evidence none of
 the participants have to disclose their core secrets.
 
+\subsection{Business concerns}
+
+The Taler system implementation includes additional protocol elements
+to address real-world concerns.  To begin with, the exchange
+automatically transfers any funds that have been left for an extended
+amount of time in a customer's reserve back to the customer's bank
+account.  Furthermore, we allow the exchange to revoke denomination
+keys, and wallets periodically check for such revocations.  If a
+denomination key has been revoked, the wallets use the {\em payback}
+protocol to deposit funds back to the customer's reserve, from where
+they are either withdrawn with a new denomination key or sent back to
+the customer's bank account.  Unlike ordinary deposits, the payback
+protocol does not incur any transaction fees. The primary use of the
+protocol is to limit the financial loss in cases where an audit
+reveals that the exchange's private keys were compromised, and to
+automatically pay back balances held in a customers' wallet if an
+exchange ever goes out of business.
+
 
 %\subsection{System Performance}
 %
@@ -1782,7 +1802,10 @@ coin first.
   the exchange persists $\langle \mathcal{L} \rangle$
   and notifies the merchant that locking was successful.
 \item\label{contract2} The merchant creates a digitally signed contract
-  $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
+  \begin{equation*}
+    \mathcal{A} := S_M(m, f, a, H(p, r))
+  \end{equation*}
+  where $a$ is data relevant to the contract
   indicating which services or goods the merchant will deliver to the customer, and $p$ is the
   merchant's payment information (e.g. his IBAN number) and $r$ is an random nonce.
   The merchant persists $\langle \mathcal{A} \rangle$ and sends it to the customer.
