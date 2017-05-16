@@ -1,9 +1,11 @@
 *~
 *Makefile.in
 *Makefile
+*app.info
 *.gcno
 *.gcda
 doc/coverage/
+doc/taler-exchange.cps
 aclocal.m4
 autom4te.cache
 autoscan.log
@@ -36,6 +38,9 @@ src/bank-lib/test_bank_api_with_fakebank
 src/exchange-lib/test_exchange_api
 src/exchange-lib/test_exchange_api_home/.local/share/taler/exchange/live-keys/
 src/exchange-lib/test_exchange_api_home/.local/share/taler/exchange/wirefees/
+src/exchange-lib/test_exchange_api_home/.local/share/taler/auditor/
+src/exchange-lib/test_exchange_api_home/.local/share/taler/auditors/
+src/exchange-lib/auditor.in
 src/exchange/taler-exchange-aggregator
 src/exchange/test_taler_exchange_aggregator-postgres
 src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
@@ -52,6 +57,7 @@ src/benchmark/test_benchmark_home/.local/share/taler/exchange/live-keys/
 src/json/test_json
 src/wire/test_sepa_wireformat
 src/wire/test_wire_plugin
+src/wire/test_wire_plugin_transactions_test
 src/pq/test_pq
 src/util/test_amount
 src/util/test_crypto
