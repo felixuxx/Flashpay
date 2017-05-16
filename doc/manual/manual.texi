@@ -1,0 +1,237 @@
+\input texinfo @c -*-texinfo-*-
+@c %**start of header
+@setfilename manual.info
+@include version.texi
+@settitle The GNU Taler exchange operator tutorial @value{VERSION}
+
+@c Define a new index for options.
+@defcodeindex op
+@c Combine everything into one index (arbitrarily chosen to be the
+@c concept index).
+@syncodeindex op cp
+@c %**end of header
+
+@copying
+This manual is for the GNU Taler exchange (version @value{VERSION}, @value{UPDATED}),
+
+Copyright @copyright{} 2017 INRIA
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled
+``GNU Free Documentation License''.
+@end quotation
+@end copying
+@c If your manual is published on paper by the FSF, it should include
+@c The standard FSF Front-Cover and Back-Cover Texts, as given in
+@c maintain.texi.
+@c
+@c Titlepage
+@c
+@titlepage
+@title The GNU Taler merchant backend operator tutorial
+@subtitle Version @value{VERSION}
+@subtitle @value{UPDATED}
+@author Marcello Stanisci (@email{marcello.stanisci@@inria.fr})
+@author Christian Grothoff (@email{christian.grothoff@@inria.fr})
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@summarycontents
+@contents
+
+@ifnottex
+@node Top
+@top The GNU Taler manual for Web shops
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::            Whom this manual is addressed to
+* Installation::            Installing the Merchant backend
+* Configuration::           How to set up the Merchant backend
+
+
+Appendices
+
+* GNU-LGPL::                     The GNU Lesser General Public License says how you
+                                 can use the code of libtalermerchant.so in your own projects.
+* GNU Affero GPL::               The Affero GNU General Public License says how you
+                                 can copy and share the Taler merchant backend.
+* GNU-FDL::                      The GNU Free Documentation License says how you
+                                 can copy and share the documentation of GNU Taler.
+
+Indices
+
+* Concept Index::               Index of concepts and programs.
+
+@end menu
+
+
+@node Introduction
+@chapter Introduction
+
+@section About GNU Taler
+
+GNU Taler is an open protocol for an electronic payment system with a
+free software reference implementation.  GNU Taler offers secure, fast
+and easy payment processing using well understood cryptographic
+techniques.  GNU Taler allows customers to remain anonymous, while
+ensuring that merchants can be held accountable by governments.
+Hence, GNU Taler is compatible with anti-money-laundering (AML) and
+know-your-customer (KYC) regulation, as well as data protection
+regulation (such as GDPR).
+
+GNU Taler is not yet production-ready, after following this manual
+you will have a working Taler exchange installed and configured.
+
+@section About this manual
+
+This tutorial targets system administrators who want to install a GNU Taler exchange.
+
+We expect some moderate familiarity with the compilation and installation
+of free software packages. An understanding of cryptography is not required.
+
+@section Architecture overview
+
+@node Installation
+@menu
+* generic-instructions:: Generic installation guidelines
+@end menu
+
+@chapter Installation
+
+This chapter describes how to install the GNU Taler exchange.
+
+@node generic-instructions
+@section Generic instructions
+
+This section provides generic instructions for the exchange
+installation independent of any particular operating system.
+Operating system specific instructions are provided in the following
+sections.  You should follow the operating system specific
+instructions if those are available, and only consult the generic
+instructions if no system-specific instructions are provided for your
+specific operating system.
+
+@subsection Installation of dependencies
+
+The following packages need to be installed before we can compile the
+backend:
+
+@itemize
+@item autoconf @math{\ge 2.69}
+@item automake @math{\ge 1.14}
+@item libtool @math{\ge 2.4}
+@item autopoint @math{\ge 0.19}
+@item libltdl @math{\ge 2.4}
+@item libunistring @math{\ge 0.9.3}
+@item libcurl @math{\ge 7.26} (or libgnurl @math{\ge 7.26})
+@item GNU libmicrohttpd @math{\ge 0.9.39}
+@item GNU libgcrypt @math{\ge 1.6}
+@item libjansson @math{\ge 2.7}
+@item Postgres @math{\ge 9.4}, including libpq
+@item libgnunetutil (from Git)
+@item GNU Taler exchange (from Git)
+@end itemize
+
+Except for the last two, these are available in most GNU/Linux
+distributions and should just be installed using the respective
+package manager.
+
+The following sections will provide detailed instructions for
+installing the libgnunetutil and GNU Taler exchange dependencies.
+
+
+@subsection Installing libgnunetutil
+
+@cindex GNUnet
+Before you install libgnunetutil, you must download and install the
+dependencies mentioned in the previous section, otherwise the build
+may succeed but fail to export some of the tooling required by Taler.
+
+To download and install libgnunetutil, proceed as follows:
+
+@example
+$ git clone https://gnunet.org/git/gnunet/
+$ cd gnunet/
+$ ./bootstrap
+$ ./configure [--prefix=GNUNETPFX]
+$ # Each dependency can be fetched from non standard locations via
+$ # the '--with-<LIBNAME>' option. See './configure --help'.
+$ make
+# make install
+@end example
+
+If you did not specify a prefix, GNUnet will install to
+@code{/usr/local}, which requires you to run the last step as
+@code{root}.
+
+@subsection Installing the GNU Taler exchange
+
+@cindex exchange
+After installing GNUnet, you can download and install
+the exchange as follows:
+
+@example
+$ git clone git://taler.net/exchange
+$ cd exchange
+$ ./bootstrap
+$ ./configure [--prefix=EXCHANGEPFX] \
+              [--with-gnunet=GNUNETPFX]
+$ # Each dependency can be fetched from non standard locations via
+$ # the '--with-<LIBNAME>' option. See './configure --help'.
+$ make
+# make install
+@end example
+
+If you did not specify a prefix, the exchange will install to
+@code{/usr/local}, which requires you to run the last step as
+@code{root}.  Note that you have to specify
+@code{--with-gnunet=/usr/local} if you installed GNUnet to
+@code{/usr/local} in the previous step.
+
+@node Configuration
+@chapter How to configure the exchange
+
+@cindex taler-config
+@cindex taler.conf
+The installation already provides reasonable defaults.  The file
+@code{$HOME/.config/taler.conf} is responsible of overriding defaults
+values, or add new ones.  The format of the configuration file is
+the well-known INI file format.
+
+
+@c **********************************************************
+@c *******************  Appendices  *************************
+@c **********************************************************
+
+@node GNU-LGPL
+@unnumbered GNU-LGPL
+@cindex license
+@cindex LGPL
+@include lgpl.texi
+
+@node GNU Affero GPL
+@unnumbered GNU Affero GPL
+@cindex license
+@cindex Affero GPL
+@include agpl.texi
+
+@node GNU-FDL
+@unnumbered GNU-FDL
+@cindex license
+@cindex GNU Free Documentation License
+@include fdl-1.3.texi
+
+@node Concept Index
+@unnumbered Concept Index
+
+@printindex cp
+
+@bye
