@@ -16,7 +16,8 @@ pkgcfg_DATA = \
 EXTRA_DIST = \
   wire-sepa.conf \
   wire-test.conf \
-  test_wire_plugin.conf
+  test_wire_plugin.conf \
+  test_wire_plugin_transactions_test.conf
 
 plugindir = $(libdir)/taler
 
@@ -83,8 +84,8 @@ TESTS = \
 
 check_PROGRAMS= \
  test_sepa_wireformat \
- test_wire_plugin
-
+ test_wire_plugin \
+ test_wire_plugin_transactions_test
 
 
 test_sepa_wireformat_SOURCES = \
@@ -103,4 +104,15 @@ test_wire_plugin_LDADD = \
   -lgnunetutil \
   -ljansson \
   libtalerwire.la \
+  $(top_builddir)/src/util/libtalerutil.la
+
+
+test_wire_plugin_transactions_test_SOURCES = \
+  test_wire_plugin_transactions_test.c
+test_wire_plugin_transactions_test_LDADD = \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
+  libtalerwire.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/util/libtalerutil.la
