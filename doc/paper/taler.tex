@@ -1422,10 +1422,10 @@ exchange.
 
 \begin{theorem}
 Let $C$ denote a coin controlled by users Alice and Bob.
-Suppose Bob creates a coin $C'$ from $C$ using the refresh protocol.
+Suppose Bob creates a coin $C'$ from $C$ following the refresh protocol.
 Assuming the exchange and Bob operated the refresh protocol correctly,
-and that they continue to operate the linking protocol
- \S\ref{subsec:linking} correctly,
+and that the exchange continues to operate the linking protocol
+(\S\ref{subsec:linking}) correctly,
 then Alice can gain control of $C'$ using the linking protocol.
 \end{theorem}
 
@@ -1442,7 +1442,10 @@ for the residual value on $C'$ and runs the linking protocol to
 determine if it was refreshed too.
 \end{proof}
 
-At a result, there is no way for a user to loose control over a coin,
+\begin{corollary}
+  Abusing the refresh protocol to transfer ownership has an
+  expected loss of $1 - \frac{1}{\kappa}$ of the transaction value.
+\end{corollary}
 
 
 \section{Privacy arguments}
