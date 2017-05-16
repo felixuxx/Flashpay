@@ -1029,14 +1029,14 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     the commitments; specifically, it computes for $i \not= \gamma$:
 
     \vspace{-2ex}
-    \begin{minipage}{5cm}
+    \begin{minipage}{3.5cm}
     \begin{align*}
       \overline{L^{(i)}} :&= H(t_s^{(i)} C_p') \\
       \overline{c_s^{(i)}} :&= \KDF_{\textrm{Ed25519}}(\overline{L^{(i)}}) \\
       \overline{C^{(i)}_p} :&= \overline{c_s^{(i)}} G
      \end{align*}
     \end{minipage}
-    \begin{minipage}{5cm}
+    \begin{minipage}{3cm}
      \begin{align*}
        \overline{T_p^{(i)}} :&= t_s^{(i)} G \\
        \overline{b^{(i)}} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L^{(i)}})) \\
