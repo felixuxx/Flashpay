@@ -1216,7 +1216,7 @@ Let $C$ denote a coin controlled by users Alice and Bob.
 Suppose Bob creates a coin $C'$ from $C$ following the refresh protocol.
 Assuming the exchange and Bob operated the refresh protocol correctly,
 and that the exchange continues to operate the linking protocol
-(\S\ref{subsec:linking}) correctly,
+in \S\ref{subsec:linking} correctly,
 then Alice can gain control of $C'$ using the linking protocol.
 \end{theorem}
 
@@ -1251,7 +1251,7 @@ advantage in solving the linking problem, when given the private
 keys of the exchange.
 
 In Taler, there are two forms of coin creation transcripts,
-withdrawal and refresh.
+withdrawal and refresh.  
 
 \begin{lemma}
 If there are no refresh operations, any adversary with an
@@ -1282,35 +1282,50 @@ any adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{corollary}
 
-We will now consider the impact of the refresh operation.  For the
-sake of the argument, we will first consider an earlier
-encryption-based version of the protocol in which refresh operated
-consisted of $\kappa$ normal coin withdrawals where the commitment
+Importantly, we do not consider coins about which wallet learns
+through the linking protocol given in \S\ref{subsec:linking}.  
+An honest participant never needs to run the linking protocol,
+so these coins should not appear, and we do not count them in
+the adversary's advantage.    If linked coins do appear, then
+they cannot be spent anonymously because the other user controlling
+the coin can learn about any transactions involving these coins.
+Worse still, the exchange itself could issue tagged coins through
+the linking protocol.  As a result, we limit the refresh protocol to
+a feature offered by the exchange, and test it from the auditor, but
+do not use it in any real Taler protocols and do not implement it in
+the wallet.  A user who modified their wallet to operate dishonestly
+could similarly modify it to use the linking protocol to cheat
+other users.
+
+\smallskip
+
+We will now consider the impact of the refresh operation.  
+For the sake of the argument, we will first consider an earlier
+encryption-based version of the protocol in which a refresh operated
+consisted of $\kappa$ normal coin withdrawals and the commitment
 consisted of the blinding factors and private keys of the fresh coins
 encrypted using the secret $t^{(i)} C_s$ where $C_s = c_s G$ of the
 dirty coin $C$ being refreshed and $T^{(i)} = t^{(i)} G$ is the
-transfer key.\footnote{We abandoned that version as it required
-  slightly more storage space and the additional encryption
-  primitive.}
+transfer key.
+%
+In Taler, we replaced this encryption-based schem with the current
+KDF-based scheme as it required slightly more storage space, the
+additional, encryption primitive, and exposed more random number
+generator output from the wallet.
 
 \begin{proposition}
 Assuming the encryption used is semantically (IND-CPA) secure, and
-that the independence of $c_s$, $t$, and the new coins' key materials,
+ the independence of $c_s$, $t$, and the new coins' key materials,
 then any probabilistic polynomial time (PPT) adversary with an
 advantage for linking Taler coins gives rise to an adversary with
  an advantage for recognizing SHA512 output.
 \end{proposition}
+% TODO: Is independence here too strong?
 
 In fact, the exchange can launch an chosen cphertext attack against
-the customer by providing different ciphertexts.  Yet, the resulting
-plaintext is implicitly authenticated becuase after decryption
-the customer unblinds and checks the signature by the denomination
-key.
-
-If this check does not check out, then the wallet must abandon
-this coin and report the exchange's fraudulent activity.
-
-% TODO: Is independence here too strong?
+a dishonest customer who uses the linking protocol.  We ignore this
+because we exclude such coins from our privacy garentees and the
+exchange can even invent coins whole cloth.
 
 We may now remove the encrpytion by appealing to the random oracle
 model~\cite{BR-RandomOracles}.
@@ -1322,7 +1337,8 @@ In the random oracle model, we may replace this encryption with
 a hash function which derives the random data by applying hash
 functions to the same secret.
 \end{lemma}
-% TODO: IND-CPA again?  Anything else?
+% TODO: Too general probably?
+% TODO: IND-CPA again?  
 
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
