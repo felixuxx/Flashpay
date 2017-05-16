@@ -1361,16 +1361,16 @@ protocol is never used.
 
 \subsection{Exculpability arguments}
 
-\begin{lemma}
+\begin{lemma}\label{lemma:double-spending}
 The exchange can detect and prove double-spending.
 \end{lemma}
 
 \begin{proof}
-A coin can only be spent by either running the deposit protocol or the refresh
+A coin can only be spent by running the deposit protocol or the refresh
 protocol with the exchange.  Thus every time a coin is spent, the exchange
 obtains either a deposit-permission or a refresh-record, both of which
 contain a signature made with the public key of coin to authorizing the
-respective operation.  If the exchange as a set of refresh-records and
+respective operation.  If the exchange has a set of refresh-records and
 deposit-permissions whose total value exceed the value of the coin, the
 exchange can show this set to prove that a coin was double-spend.
 \end{proof}
@@ -1383,33 +1383,45 @@ that the total value exceeds the coin's value.
 
 \begin{lemma}
 % only holds given sufficient time
-Customers can either obtain proof-of-payment or their money back.
+Customers can either obtain proof-of-payment or their money back, even
+when the merchant is faulty.
 \end{lemma}
 
 \begin{proof}
-
-
+When the customer sends the deposit-permission for a coin
+to a correct merchant, the merchant will pass it on to the
+exchange, and pass the exchange's response, a deposit-confirmation, on
+to the customer.  If a faulty merchant deposits the coin
+but does not pass the deposit-confirmation to the customer,
+the customer will receive the deposit-confirmation as an error
+response from the refreshing protocol.  Otherwise if the merchant
+doesn't deposit the coin, the customer can get a new, unlinkable
+coin by running the refresh protocol.
 \end{proof}
 
-\begin{lemma}
-If a customer paid for a contract, they can prove it.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
+\begin{corollary}
+If a customer paid for a contract, they can prove it by showing
+the deposit permissions for all coins.
+\end{corollary}
 
 \begin{lemma}
 The merchant can issue refunds, and only to the original customer.
 \end{lemma}
 
 \begin{proof}
+Since the refund only increases the balance of a coin that the original
+customer owns, only the original customer can spend the refunded coin again.
 \end{proof}
-
 
 
 \begin{theorem}
   The protocol prevents double-spending and provides exculpability.
 \end{theorem}
+\begin{proof}
+  Follows from Lemma \ref{lemma:double-spending} and the assumption
+  that the exchange can't forge signatures to obtain an incriminating
+  set of deposit-permissions and/or refresh-records.
+\end{proof}
 
 
 
