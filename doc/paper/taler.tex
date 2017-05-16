@@ -1492,29 +1492,35 @@ any PPT adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{corollary}
 
-There was an earlier encryption-based version of the Taler protocol
-in which refresh operated consisted of $\kappa$ normal coin withdrawals
-encrypted using the secret $t^{(i)} C$ where $C = c G$ is the coin being
-refreshed and $T^{(i)} = t^{(i)} G$ is the transfer key.
+We will now consider the impact of the refresh operation.  For the
+sake of the argument, we will first consider an earlier
+encryption-based version of the protocol in which refresh operated
+consisted of $\kappa$ normal coin withdrawals where the commitment
+consisted of the blinding factors and private keys of the fresh coins
+encrypted using the secret $t^{(i)} C_s$ where $C_s = c_s G$ of the
+dirty coin $C$ being refreshed and $T^{(i)} = t^{(i)} G$ is the
+transfer key.\footnote{We abandoned that version as it required
+  slightly more storage space and the additional encryption
+  primitive.}
 
 \begin{proposition}
 Assuming the encryption used is ??? secure, and that
- the independence of $c$, $t$, and the new coins key materials, then
+ the independence of $c_s$, $t$, and the new coins' key materials, then
 any PPT adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{proposition}
 
 % TODO: Is independence here too strong?
 
-We may now remove the encrpytion by appealing to the random oracle model
-\cite{BR-RandomOracles}.
+We may now remove the encrpytion by appealing to the random oracle
+model~\cite{BR-RandomOracles}.
 
 \begin{lemma}[\cite{??}]
 Consider a protocol that commits to random data by encrypting it
 using a secret derived from a Diffe-Hellman key exchange.
 In the random oracle model, we may replace this encryption with
-a hash function derives the random data by applying hash functions
-to the same secret.
+a hash function which derives the random data by applying hash
+functions to the same secret.
 \end{lemma}
 
 \begin{proof}
@@ -1541,7 +1547,13 @@ Diffie-Hellman key exchange on Curve25519.
 We do not distinguish between information known by the exchange and
 information known by the merchant in the above.  As a result, this
 proves that out linking protocol \S\ref{subsec:linking} does not
-degrade privacy.
+degrade privacy.  We note that the exchange could lie in the linking
+protocol about the transfer public key to generate coins that it can
+link (at a financial loss to the exchange that it would have to square
+with its auditor).  However, in the normal course of payments the link
+protocol is never used.  Furthermore, if a customer needs to recover
+control over a coin using the linking protocol, they can use the
+refresh protocol on the result to again obtain an unlinkable coin.
 
 
 
