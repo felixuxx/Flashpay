@@ -1455,7 +1455,7 @@ if given coin creation transcripts and possibly fewer
 coin deposit transcripts for coins from the creation transcripts,
 then produce a corresponding creation and deposit transcript.
 
-We say a probabilistic polynomial time (PPT) adversary $A$
+We say a probabilistic polynomial time (PPT) adversary
 {\em links} coins if it has a non-negligible advantage in
 solving the linking problem, when given the private keys
 of the exchange.
@@ -1483,7 +1483,7 @@ adversary can recognize blinding factors then they link coins after
 first computing $b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
 \end{proof}
 
-We now know the following because Taler used SHA512 adopted to be
+We now know the following because Taler uses SHA512 adopted to be
  a FDH to be the blinding factor.
 
 \begin{corollary}
@@ -1535,7 +1535,7 @@ We may now conclude that Taler remains unlinkable even with the refresh protocol
 \begin{theorem}
 In the random oracle model, any PPT adversary with an advantage
 in linking Taler coins has an advantage in breaking elliptic curve
-Diffie-Hellman key exchange on curve25519.
+Diffie-Hellman key exchange on Curve25519.
 \end{theorem}
 
 We do not distinguish between information known by the exchange and
