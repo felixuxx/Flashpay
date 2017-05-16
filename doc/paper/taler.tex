@@ -1013,7 +1013,10 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     for $i \in \{1,\ldots,\kappa\}$ and sends a signed commitment
      $S_{C'}(\vec{B}, \vec{T_p})$ to the exchange.
   \item % [200 OK / 409 CONFLICT]
-    The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
+    The exchange checks that $C'_p$ is a valid coin of sufficient balance
+    to cover the value of the fresh coins to be generated and prevent
+    double-spending.  Then,
+    the exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by persisting
     $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$.
     Auditing processes should assure that $\gamma$ is unpredictable until
