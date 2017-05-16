@@ -665,6 +665,8 @@ spending operation as the owner of a coin should not have to pay
 not used for money laundering or tax evasion, the refreshing protocol
 assures that the owner stays the same.
 
+% FIXME: This paragraph could likely be removed and be replaced
+% by the proof if we have space.
 The refresh protocol has two key properties: First, the exchange is
 unable to link the fresh coin's public key to the public key of the
 dirty coin.  Second, it is assured that the owner of the dirty coin
@@ -696,8 +698,7 @@ customers and merchants and is certified by the auditors.
 
 We avoid asking either customers or merchants to make trust decisions
 about individual exchanges.  Instead, they need only select the auditors.
-Auditors must sign all the exchange's keys including, the individual
-denomination keys.
+Auditors must sign all the exchange's public keys.
 
 As we are dealing with financial transactions, we explicitly describe
 whenever entities need to safely write data to persistent storage.
@@ -886,7 +887,8 @@ We now describe the refresh protocol whereby a dirty coin $C'$ of
 denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$.  To
 simplify the description, this section describes the case where one
 {\em unspent} dirty coin (for example, from an aborted transaction) is
-exchanged for a fresh coin of the same denomination.  In practice,
+exchanged for a fresh coin of the same denomination.  We have again
+simplified the exposition by creating only one fresh coin.  In practice,
 Taler uses a natural extension where multiple fresh coins of possibly
 many different denominations are generated at the same time. For this,
 the wallet simply specifies an array of coins wherever the protocol
@@ -1029,6 +1031,25 @@ devolve into a payment system where both sides can be anonymous, and
 thus no longer provide taxability.
 
 
+\subsection{Refunds}
+
+The refresh protocol offers an easy way to enable refunds to
+customers, even if they are anonymous.  Refunds are supported
+by including a public signing key of the merchant in the transaction
+details, and having the customer keep the private key of the spent
+coins on file.
+
+Given this, the merchant can simply sign a {\em refund confirmation}
+and share it with the exchange and the customer.  Assuming the
+exchange has a way to recover the funds from the merchant, or has not
+yet performed the wire transfer, the exchange can simply add the value
+of the refunded transaction back to the original coin, re-enabling
+those funds to be spent again by the original customer.  This customer
+can then use the refresh protocol to anonymously melt the refunded
+coin and create a fresh coin that is unlinkable to the refunded
+transaction.
+
+
 \subsection{Error handling}
 
 During operation, there are three main types of errors that are
@@ -1054,21 +1075,20 @@ response to the client or take appropriate legal action against the
 faulty exchange.
 
 The third case are transient failures, such as network failures or
-temporary hardware failures at the exchange service provider.  Here, the
-client may receive an explicit protocol indication, such as an HTTP
-response code ``500 INTERNAL SERVER ERROR'' or simply no response.
-The appropriate behavior for the client is to automatically retry
-after 1s, and twice more at randomized times within 1 minute.
-If those three attempts fail, the user should be informed about the
-delay.  The client should then retry another three times within the
-next 24h, and after that time the auditor should be informed about the outage.
-Using this process, short term failures should be effectively obscured
-from the user, while malicious behavior is reported to the auditor who
-can then presumably rectify the situation, using methods such as
-shutting down the operator and helping customers to regain refunds for
-coins in their wallets.  To ensure that such refunds are possible, the
-operator is expected to always provide adequate securities for the
-amount of coins in circulation as part of the certification process.
+temporary hardware failures at the exchange service provider.  Here,
+the client may receive an explicit protocol indication, or simply no
+response.  The appropriate behavior for the client is to automatically
+retry a few times with back-off.  If this still fails, the user can,
+depending on the type of operation, either attempt to recover the now
+dirty coin using the refresh protocol, or notify the auditor about the
+outage.  Using this process, short term failures should be effectively
+obscured from the user, while malicious behavior is reported to the
+auditor who can then presumably rectify the situation, using methods
+such as shutting down the operator and helping customers to regain
+refunds for coins in their wallets.  To ensure that such refunds are
+possible, the operator is expected to always provide adequate
+securities for the amount of coins in circulation as part of the
+certification process.
 
 
 %As with support for fractional payments, Taler addresses these
@@ -1076,24 +1096,6 @@ amount of coins in circulation as part of the certification process.
 %destroying the link between the refunded or aborted transaction and
 %the new coin.
 
-
-\subsection{Refunds}
-
-The refresh protocol offers an easy way to enable refunds to
-customers, even if they are anonymous.  Refunds are supported
-by including a public signing key of the merchant in the transaction
-details, and having the customer keep the private key of the spent
-coins on file.
-
-Given this, the merchant can simply sign a {\em refund confirmation}
-and share it with the exchange and the customer.  Assuming the
-exchange has a way to recover the funds from the merchant, or has not
-yet performed the wire transfer, the exchange can simply add the value
-of the refunded transaction back to the original coin, re-enabling
-those funds to be spent again by the original customer.  This customer
-can then use the refresh protocol to anonymously melt the refunded
-coin and create a fresh coin that is unlinkable to the refunded
-transaction.
 
 \section{Experimental results}
 
@@ -1373,13 +1375,13 @@ data being persisted are represented in between $\langle\rangle$.
   \item[$\overline{C^{(i)}_p}$]{Public coin keys computed from $\overline{c_s^{(i)}}$ by the verifier}
 \end{description}
 
-
+\newpage
 \section{Taxability arguments}
 
 We assume the exchange operates honestly when discussing taxability.
 We feel this assumption is warranted mostly because a Taler exchange
 requires licenses to operate as a financial institution, which it
-risks loosing if it knowingly facilitates tax evasion.  
+risks loosing if it knowingly facilitates tax evasion.
 We also expect an auditor monitors the exchange similarly to how
 government regulators monitor financial institutions.
 In fact, our auditor software component gives the auditor read access
@@ -1397,13 +1399,14 @@ An honest exchange keeps any funds being refreshed if the reveal
 phase is never carried out, does not match the commitment, or shows
 an incorrect commitment.  As a result, a customer dishonestly
 refreshing a coin looses their money if they have more than one
-dishonest commitment.  They have a $1 \over \kappa$ chance of their
+dishonest commitment.  If they make exactly one dishonest
+commitment, they have a $1 \over \kappa$ chance of their
 dishonest commitment being selected for the refresh.
 \end{proof}
 
-We say a coin is {\em controlled} by a user if the user's wallet knows
+We say a coin $C$ is {\em controlled} by a user if the user's wallet knows
 its secret scalar $c_s$, the signature $S$ of the appropriate denomination
-key on its public key $C_s$, and the residual value of the coin. 
+key on its public key $C_s$, and the residual value of the coin.
 
 We assume the wallet cannot loose knowledge of a particular coin's
 key material, and the wallet can query the exchange to learn the
@@ -1412,13 +1415,13 @@ a coin.  A wallet may loose the monetary value associated with a coin
 if another wallet spends it however.
 
 We say a user Alice {\em owns} a coin $C$ if only Alice's wallets can
-gain control of $C$ using standard interactions with the exchange. 
+gain control of $C$ using standard interactions with the exchange.
 In other words, ownership means exclusive control not just in the
 present, but in the future even if another user interacts with the
 exchange.
 
 \begin{theorem}
-Let $C$ denote a coin controlled by users Alice and Bob. 
+Let $C$ denote a coin controlled by users Alice and Bob.
 Suppose Bob creates a coin $C'$ from $C$ using the refresh protocol.
 Assuming the exchange and Bob operated the refresh protocol correctly,
 and that they continue to operate the linking protocol
@@ -1429,7 +1432,7 @@ then Alice can gain control of $C'$ using the linking protocol.
 \begin{proof}
 Alice may run the linking protocol to obtain all transfer keys $T^i$,
 bindings $B^i$ associated to $C$, and those coins denominations,
-including the $T'$ for $C'$. 
+including the $T'$ for $C'$.
 
 We assumed both the exchange and Bob operated the refresh protocol
 correctly, so now $c_s T'$ is the seed from which $C'$ was generated.
@@ -1469,7 +1472,7 @@ Also let $d$ and $e$ denote the private and public exponents, respectively.
 In effect, coin withdrawal transcripts consist of numbers
 $b m^d \mod n$ where $m$ is the FDH of the coin's public key
 and $b$ is the blinding factor, while coin deposits transcripts
-consist of only $m^d \mon n$. 
+consist of only $m^d \mod n$.
 
 Of course, if the adversary can link coins then they can compute
 the blinding factors as $b m^d / m^d \mod n$.  Conversely, if the
@@ -1481,7 +1484,7 @@ We now know the following because Taler used SHA512 adopted to be
  a FDH to be the blinding factor.
 
 \begin{corollary}
-Assuming no refresh operation, 
+Assuming no refresh operation,
 any PPT adversary with an advantage for linking Taler coins gives
 rise to an adversary with an advantage for recognizing SHA512 output.
 \end{corollary}
@@ -1503,7 +1506,7 @@ rise to an adversary with an advantage for recognizing SHA512 output.
 We may now remove the encrpytion by appealing to the random oracle model
 \cite{BR-RandomOracles}.
 
-\begin{lemma}[\cite[??]{??}]
+\begin{lemma}[\cite{??}]
 Consider a protocol that commits to random data by encrypting it
 using a secret derived from a Diffe-Hellman key exchange.
 In the random oracle model, we may replace this encryption with
@@ -1514,11 +1517,11 @@ to the same secret.
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
 returning a random string and placing it into a database for future
-queries.  
+queries.
 
 We take the random number generator that drives this random oracle
 to be the random number generator used to produce the random data
-that we encrypt in the old encryption based version of Taler.  
+that we encrypt in the old encryption based version of Taler.
 Now our random oracle scheme gives the same result as our scheme
 that encrypts random data, so the encryption becomes superfluous
 and may be omitted.
@@ -1536,6 +1539,7 @@ We do not distinguish between information known by the exchange and
 information known by the merchant in the above.  As a result, this
 proves that out linking protocol \S\ref{subsec:linking} does not
 degrade privacy.
+
 
 
 \end{document}
