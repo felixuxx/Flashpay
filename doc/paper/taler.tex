@@ -1017,8 +1017,8 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     to cover the value of the fresh coins to be generated and prevent
     double-spending.  Then,
     the exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
-    marks $C'_p$ as spent by persisting
-    $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$.
+    marks $C'_p$ as spent by persisting the \emph{refresh-record}
+    $\mathcal{F} = \langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$.
     Auditing processes should assure that $\gamma$ is unpredictable until
     this time to prevent the exchange from assisting tax evasion. \\
     %
@@ -1366,21 +1366,29 @@ The exchange can detect and prove double-spending.
 \end{lemma}
 
 \begin{proof}
+A coin can only be spent by either running the deposit protocol or the refresh
+protocol with the exchange.  Thus every time a coin is spent, the exchange
+obtains either a deposit-permission or a refresh-record, both of which
+contain a signature made with the public key of coin to authorizing the
+respective operation.  If the exchange as a set of refresh-records and
+deposit-permissions whose total value exceed the value of the coin, the
+exchange can show this set to prove that a coin was double-spend.
 \end{proof}
 
-\begin{lemma}
-Merchants and customers can verify double-spending proofs.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
-
+\begin{corollary}
+Merchants and customers can verify double-spending proofs by verifying that the
+signatures in the set of refresh-records and deposit-permissions are correct and
+that the total value exceeds the coin's value.
+\end{corollary}
 
 \begin{lemma}
+% only holds given sufficient time
 Customers can either obtain proof-of-payment or their money back.
 \end{lemma}
 
 \begin{proof}
+
+
 \end{proof}
 
 \begin{lemma}
