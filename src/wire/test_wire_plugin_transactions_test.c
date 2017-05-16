@@ -34,8 +34,11 @@
 #define TIMEOUT GNUNET_TIME_UNIT_SECONDS
 
 
-const char *json_proto
-= "{  \"type\":\"test\", \"bank_uri\":\"http://localhost:8088/\", \"account_number\":42 }";
+/**
+ * Input for the wire transfer details.
+ */
+static const char *json_proto =
+  "{  \"type\":\"test\", \"bank_uri\":\"http://localhost:8088/\", \"account_number\":42 }";
 
 
 /**
@@ -88,6 +91,16 @@ static struct TALER_WIRE_HistoryHandle *hh;
  */
 static struct GNUNET_SCHEDULER_Task *tt;
 
+/**
+ * Which serial ID do we expect to get from /history?
+ */
+static uint64_t serial_target;
+
+/**
+ * Wire transfer identifier we are using.
+ */
+static struct TALER_WireTransferIdentifierRawP wtid;
+
 
 /**
  * Function called on shutdown (regular, error or CTRL-C).
@@ -122,6 +135,7 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (tt);
     tt = NULL;
   }
+  TALER_WIRE_plugin_unload (plugin);
 }
 
 
@@ -158,9 +172,55 @@ history_result_cb (void *cls,
                    size_t row_off_size,
                    const struct TALER_WIRE_TransferDetails *details)
 {
-  // FIXME: check result!
+  uint64_t *serialp;
+  uint64_t serialh;
+  struct TALER_Amount amount;
+
+  hh = NULL;
+  if ( (TALER_BANK_DIRECTION_NONE == dir) &&
+       (GNUNET_OK == global_ret) )
+  {
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_OK;
+  }
+  if (sizeof (uint64_t) != row_off_size)
+  {
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_SYSERR;
+  }
+  serialp = (uint64_t *) row_off;
+  serialh = GNUNET_ntohll (*serialp);
+  if (serialh != serial_target)
+  {
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("KUDOS:5.01",
+                                         &amount));
+  if (0 != TALER_amount_cmp (&amount,
+                             &details->amount))
+  {
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_SYSERR;
+  }
+  if (0 != memcmp (&wtid,
+                   &details->reserve_pub,
+                   GNUNET_MIN (sizeof (struct TALER_ReservePublicKeyP),
+                               sizeof (wtid))))
+  {
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_SYSERR;
+  }
   global_ret = GNUNET_OK;
-  GNUNET_SCHEDULER_shutdown ();
   return GNUNET_OK;
 }
 
@@ -187,6 +247,7 @@ confirmation_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  serial_target = serial_id;
   hh = plugin->get_history (plugin->cls,
                             TALER_BANK_DIRECTION_BOTH,
                             NULL, 0,
@@ -233,7 +294,6 @@ static void
 run (void *cls)
 {
   json_t *wire;
-  struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount;
 
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -241,6 +301,15 @@ run (void *cls)
   tt = GNUNET_SCHEDULER_add_delayed (TIMEOUT,
                                      &timeout_cb,
                                      NULL);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &wtid,
+                              sizeof (wtid));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("KUDOS:5.01",
+                                         &amount));
+  wire = json_loads (json_proto,
+                     0,
+                     NULL);
   fb = TALER_FAKEBANK_start (8088);
   ph = plugin->prepare_wire_transfer (plugin->cls,
                                       wire,
@@ -249,6 +318,7 @@ run (void *cls)
                                       &wtid,
                                       &prepare_cb,
                                       NULL);
+  json_decref (wire);
 }
 
 
@@ -276,7 +346,6 @@ main (int argc,
   GNUNET_assert (NULL != plugin);
   GNUNET_SCHEDULER_run (&run,
                         NULL);
-  TALER_WIRE_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (cfg);
   if (GNUNET_OK != global_ret)
     return 1;

@@ -866,11 +866,12 @@ bhist_cb (void *cls,
   }
   else
   {
-    (void) whh->hres_cb (whh->hres_cb_cls,
-			 TALER_BANK_DIRECTION_NONE,
-			 NULL,
-			 0,
-			 NULL);
+    if (NULL != whh->hres_cb)
+      (void) whh->hres_cb (whh->hres_cb_cls,
+                           TALER_BANK_DIRECTION_NONE,
+                           NULL,
+                           0,
+                           NULL);
     whh->hh = NULL;
     GNUNET_free (whh);
   }
@@ -929,7 +930,7 @@ test_get_history (void *cls,
   }
   if (NULL == start_off)
   {
-    start_row = (num_results > 0) ? 0 : UINT64_MAX;
+    start_row = UINT64_MAX; /* no start row */
   }
   else
   {
