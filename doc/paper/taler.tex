@@ -1634,7 +1634,7 @@ data being persisted are represented in between $\langle\rangle$.
   \item[$K_s$]{Denomination private (RSA) key of the exchange used for coin signing}
   \item[$K_p$]{Denomination public (RSA) key corresponding to $K_s$}
   \item[$K$]{Public-priate (RSA) denomination key pair $K := (K_s, K_p)$}
-  \item[$\FDH_K$]{Full domain hash over the modulus of the public key of $K$}
+  \item[$\FDH_K$]{Full domain hash over the modulus of $K_p$}
   \item[$b$]{RSA blinding factor for RSA-style blind signatures}
   \item[$B_b()$]{RSA blinding over the argument using blinding factor $b$}
   \item[$U_b()$]{RSA unblinding of the argument using blinding factor $b$}
