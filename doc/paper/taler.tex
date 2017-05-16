@@ -795,7 +795,7 @@ To withdraw anonymous digital coins, the customer first selects an
 exchange and one of its public denomination public keys $K_p$ whose
 value $K_v$ corresponds to an amount the customer wishes to withdraw.
 We let $K_s$ denote the exchange's private key corresponding to $K_p$.
-We use $FDH_K$ to denote a full-domain hash where the domain is the
+We use $\FDH_K$ to denote a full-domain hash where the domain is the
 public key $K_p$.  Now the customer carries out the following
 interaction with the exchange:
 
@@ -1402,6 +1402,14 @@ The merchant can issue refunds, and only to the original customer.
 
 \section{Implementation}
 
+\begin{figure}
+  \includegraphics[width=\columnwidth]{taler-arch-full.pdf}
+  \caption{The different components of the Taler system in the
+    context of a banking system providing money creation,
+    wire transfers and authentication. (Auditor omitted.)}
+\end{figure}
+
+
 \section{Experimental results}
 
 %\begin{figure}[b!]
@@ -1626,6 +1634,7 @@ data being persisted are represented in between $\langle\rangle$.
   \item[$K_s$]{Denomination private (RSA) key of the exchange used for coin signing}
   \item[$K_p$]{Denomination public (RSA) key corresponding to $K_s$}
   \item[$K$]{Public-priate (RSA) denomination key pair $K := (K_s, K_p)$}
+  \item[$\FDH_K$]{Full domain hash over the modulus of the public key of $K$}
   \item[$b$]{RSA blinding factor for RSA-style blind signatures}
   \item[$B_b()$]{RSA blinding over the argument using blinding factor $b$}
   \item[$U_b()$]{RSA unblinding of the argument using blinding factor $b$}
