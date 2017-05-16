@@ -1167,6 +1167,236 @@ certification process.
 
 \section{Correctness}
 
+\subsection{Taxability arguments}
+
+We assume the exchange operates honestly when discussing taxability.
+We feel this assumption is warranted mostly because a Taler exchange
+requires licenses to operate as a financial institution, which it
+risks loosing if it knowingly facilitates tax evasion.
+We also expect an auditor monitors the exchange similarly to how
+government regulators monitor financial institutions.
+In fact, our auditor software component gives the auditor read access
+to the exchange's database, and carries out test operations anonymously,
+which expands its power over conventional auditors.
+
+\begin{proposition}
+Assuming the exchange operates the refresh protocol honestly,
+a customer operating the refresh protocol dishonestly expects to
+loose $1 - {1 \over \kappa}$ of the value of their coins.
+\end{proposition}
+
+\begin{proof}
+An honest exchange keeps any funds being refreshed if the reveal
+phase is never carried out, does not match the commitment, or shows
+an incorrect commitment.  As a result, a customer dishonestly
+refreshing a coin looses their money if they have more than one
+dishonest commitment.  If they make exactly one dishonest
+commitment, they have a $1 \over \kappa$ chance of their
+dishonest commitment being selected for the refresh.
+\end{proof}
+
+We say a coin $C$ is {\em controlled} by a user if the user's wallet knows
+its secret scalar $c_s$, the signature $S$ of the appropriate denomination
+key on its public key $C_s$, and the residual value of the coin.
+
+We assume the wallet cannot loose knowledge of a particular coin's
+key material, and the wallet can query the exchange to learn the
+residual value of the coin, so a wallet cannot loose control of
+a coin.  A wallet may loose the monetary value associated with a coin
+if another wallet spends it however.
+
+We say a user Alice {\em owns} a coin $C$ if only Alice's wallets can
+gain control of $C$ using standard interactions with the exchange.
+In other words, ownership means exclusive control not just in the
+present, but in the future even if another user interacts with the
+exchange.
+
+\begin{theorem}
+Let $C$ denote a coin controlled by users Alice and Bob.
+Suppose Bob creates a coin $C'$ from $C$ following the refresh protocol.
+Assuming the exchange and Bob operated the refresh protocol correctly,
+and that the exchange continues to operate the linking protocol
+(\S\ref{subsec:linking}) correctly,
+then Alice can gain control of $C'$ using the linking protocol.
+\end{theorem}
+
+\begin{proof}
+Alice may run the linking protocol to obtain all transfer keys $T^i$,
+bindings $B^i$ associated to $C$, and those coins denominations,
+including the $T'$ for $C'$.
+
+We assumed both the exchange and Bob operated the refresh protocol
+correctly, so now $c_s T'$ is the seed from which $C'$ was generated.
+Alice rederives both $c_s$ and the blinding factor to unblind the
+denomination key signature on $C'$.  Alice finally asks the exchange
+for the residual value on $C'$ and runs the linking protocol to
+determine if it was refreshed too.
+\end{proof}
+
+\begin{corollary}
+  Abusing the refresh protocol to transfer ownership has an
+  expected loss of $1 - \frac{1}{\kappa}$ of the transaction value.
+\end{corollary}
+
+
+\subsection{Privacy arguments}
+
+The {\em linking problem} for blind signature is,
+if given coin creation transcripts and possibly fewer
+coin deposit transcripts for coins from the creation transcripts,
+then produce a corresponding creation and deposit transcript.
+
+We say an adversary {\em links} coins if it has a non-negligible
+advantage in solving the linking problem, when given the private
+keys of the exchange.
+
+In Taler, there are two forms of coin creation transcripts,
+withdrawal and refresh.
+
+\begin{lemma}
+If there are no refresh operations, any adversary with an
+advantage in linking coins is polynomially equivalent to an
+adversary with the same advantage in recognizing blinding factors.
+\end{lemma}
+
+\begin{proof}
+Let $n$ denote the RSA modulus of the denomination key.
+Also let $d$ and $e$ denote the private and public exponents, respectively.
+In effect, coin withdrawal transcripts consist of numbers
+$b m^d \mod n$ where $m$ is the FDH of the coin's public key
+and $b$ is the blinding factor, while coin deposits transcripts
+consist of only $m^d \mod n$.
+
+Of course, if the adversary can link coins then they can compute
+the blinding factors as $b m^d / m^d \mod n$.  Conversely, if the
+adversary can recognize blinding factors then they link coins after
+first computing $b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
+\end{proof}
+
+We now know the following because Taler uses SHA512 adopted to be
+ a FDH to be the blinding factor.
+
+\begin{corollary}
+Assuming no refresh operation,
+any adversary with an advantage for linking Taler coins gives
+rise to an adversary with an advantage for recognizing SHA512 output.
+\end{corollary}
+
+We will now consider the impact of the refresh operation.  For the
+sake of the argument, we will first consider an earlier
+encryption-based version of the protocol in which refresh operated
+consisted of $\kappa$ normal coin withdrawals where the commitment
+consisted of the blinding factors and private keys of the fresh coins
+encrypted using the secret $t^{(i)} C_s$ where $C_s = c_s G$ of the
+dirty coin $C$ being refreshed and $T^{(i)} = t^{(i)} G$ is the
+transfer key.\footnote{We abandoned that version as it required
+  slightly more storage space and the additional encryption
+  primitive.}
+
+\begin{proposition}
+Assuming the encryption used is semantically (IND-CPA) secure, and
+that the independence of $c_s$, $t$, and the new coins' key materials,
+then any probabilistic polynomial time (PPT) adversary with an
+advantage for linking Taler coins gives rise to an adversary with
+ an advantage for recognizing SHA512 output.
+\end{proposition}
+
+In fact, the exchange can launch an chosen cphertext attack against
+the customer by providing different ciphertexts.  Yet, the resulting
+plaintext is implicitly authenticated becuase after decryption
+the customer unblinds and checks the signature by the denomination
+key.
+
+If this check does not check out, then the wallet must abandon
+this coin and report the exchange's fraudulent activity.
+
+% TODO: Is independence here too strong?
+
+We may now remove the encrpytion by appealing to the random oracle
+model~\cite{BR-RandomOracles}.
+
+\begin{lemma}[\cite{??}]
+Consider a protocol that commits to random data by encrypting it
+using a secret derived from a Diffe-Hellman key exchange.
+In the random oracle model, we may replace this encryption with
+a hash function which derives the random data by applying hash
+functions to the same secret.
+\end{lemma}
+% TODO: IND-CPA again?  Anything else?
+
+\begin{proof}
+We work with the usual instantiation of the random oracle model as
+returning a random string and placing it into a database for future
+queries.
+
+We take the random number generator that drives one random oracle $R$
+to be the random number generator used to produce the random data
+that we encrypt in the old encryption based version of Taler.
+Now our random oracle scheme with $R$ gives the same result as our
+scheme that encrypts random data, so the encryption becomes
+superfluous and may be omitted.
+\end{proof}
+
+We may now conclude that Taler remains unlinkable even with the refresh protocol.
+
+\begin{theorem}
+In the random oracle model, any PPT adversary with an advantage
+in linking Taler coins has an advantage in breaking elliptic curve
+Diffie-Hellman key exchange on Curve25519.
+\end{theorem}
+
+We do not distinguish between information known by the exchange and
+information known by the merchant in the above.  As a result, this
+proves that out linking protocol \S\ref{subsec:linking} does not
+degrade privacy.  We note that the exchange could lie in the linking
+protocol about the transfer public key to generate coins that it can
+link (at a financial loss to the exchange that it would have to square
+with its auditor).  However, in the normal course of payments the link
+protocol is never used.
+
+\subsection{Exculpability arguments}
+
+\begin{lemma}
+The exchange can detect and prove double-spending.
+\end{lemma}
+
+\begin{proof}
+\end{proof}
+
+\begin{lemma}
+Merchants and customers can verify double-spending proofs.
+\end{lemma}
+
+\begin{proof}
+\end{proof}
+
+
+\begin{lemma}
+Customers can either obtain proof-of-payment or their money back.
+\end{lemma}
+
+\begin{proof}
+\end{proof}
+
+\begin{lemma}
+If a customer paid for a contract, they can prove it.
+\end{lemma}
+
+\begin{proof}
+\end{proof}
+
+\begin{lemma}
+The merchant can issue refunds, and only to the original customer.
+\end{lemma}
+
+\begin{proof}
+\end{proof}
+
+
+
+\begin{theorem}
+  The protocol prevents double-spending and provides exculpability.
+\end{theorem}
 
 
 
@@ -1184,32 +1414,32 @@ certification process.
     \caption{Outgoing traffic from the exchange, in bytes per 5 minutes.}
     \label{fig:out}
   \end{figure}
-  \begin{subfigure}{0.45\columnwidth}
+  \begin{figure}[b!]
     \includegraphics[width=\columnwidth]{db_read.png}
     \caption{DB read operations per second.}
     \label{fig:read}
-  \end{subfigure}
-  \begin{subfigure}{0.45\columnwidth}
+  \end{figure}
+  \begin{figure}[b!]
     \includegraphics[width=\columnwidth]{db_write.png}
     \caption{DB write operations per second.}
     \label{fig:write}
-   \end{subfigure}
-  \begin{subfigure}{0.45\columnwidth}
+   \end{figure}
+  \begin{figure}[b!]
     \includegraphics[width=\columnwidth]{cpu_balance.png}
     \caption{CPU credit balance. Hitting a balance of 0 shows the CPU is
        the limiting factor.}
     \label{fig:cpu}
-  \end{subfigure}\hfill
-  \begin{subfigure}{0.45\columnwidth}
+  \end{figure}
+  \begin{figure}[b!]
     \includegraphics[width=\columnwidth]{cpu_usage.png}
     \caption{CPU utilization. The t2.micro instance is allowed to use 10\% of
        one CPU.}
     \label{fig:usage}
-  \end{subfigure}
-  \caption{Selected EC2 performance monitors for the experiment in the EC2
-           (after several hours, once the system was ``warm'').}
-  \label{fig:ec2}
-\end{figure}
+  \end{figure}
+%  \caption{Selected EC2 performance monitors for the experiment in the EC2
+%           (after several hours, once the system was ``warm'').}
+%  \label{fig:ec2}
+%\end{figure}
 
 We ran the Taler exchange v0.0.2 on an Amazon EC2 t2.micro instance
 (10\% of a Xeon E5-2676 at 2.4 GHz) based on Ubuntu 14.04.4 LTS, using
@@ -1359,7 +1589,7 @@ We thank people (anonymized).
 \newpage
 
 \bibliographystyle{ACM-Reference-Format}
-\bibliography{taler}
+\bibliography{taler,rfc,ro}
 
 %\end{document}
 
@@ -1450,228 +1680,6 @@ data being persisted are represented in between $\langle\rangle$.
   \item[$\overline{b_s^{(i)}}$]{Blinding factors obtained from decryption by the verifier}
   \item[$\overline{C^{(i)}_p}$]{Public coin keys computed from $\overline{c_s^{(i)}}$ by the verifier}
 \end{description}
-
-\newpage
-\section{Taxability arguments}
-
-We assume the exchange operates honestly when discussing taxability.
-We feel this assumption is warranted mostly because a Taler exchange
-requires licenses to operate as a financial institution, which it
-risks loosing if it knowingly facilitates tax evasion.
-We also expect an auditor monitors the exchange similarly to how
-government regulators monitor financial institutions.
-In fact, our auditor software component gives the auditor read access
-to the exchange's database, and carries out test operations anonymously,
-which expands its power over conventional auditors.
-
-\begin{proposition}
-Assuming the exchange operates the refresh protocol honestly,
-a customer operating the refresh protocol dishonestly expects to
-loose $1 - {1 \over \kappa}$ of the value of their coins.
-\end{proposition}
-
-\begin{proof}
-An honest exchange keeps any funds being refreshed if the reveal
-phase is never carried out, does not match the commitment, or shows
-an incorrect commitment.  As a result, a customer dishonestly
-refreshing a coin looses their money if they have more than one
-dishonest commitment.  If they make exactly one dishonest
-commitment, they have a $1 \over \kappa$ chance of their
-dishonest commitment being selected for the refresh.
-\end{proof}
-
-We say a coin $C$ is {\em controlled} by a user if the user's wallet knows
-its secret scalar $c_s$, the signature $S$ of the appropriate denomination
-key on its public key $C_s$, and the residual value of the coin.
-
-We assume the wallet cannot loose knowledge of a particular coin's
-key material, and the wallet can query the exchange to learn the
-residual value of the coin, so a wallet cannot loose control of
-a coin.  A wallet may loose the monetary value associated with a coin
-if another wallet spends it however.
-
-We say a user Alice {\em owns} a coin $C$ if only Alice's wallets can
-gain control of $C$ using standard interactions with the exchange.
-In other words, ownership means exclusive control not just in the
-present, but in the future even if another user interacts with the
-exchange.
-
-\begin{theorem}
-Let $C$ denote a coin controlled by users Alice and Bob.
-Suppose Bob creates a coin $C'$ from $C$ following the refresh protocol.
-Assuming the exchange and Bob operated the refresh protocol correctly,
-and that the exchange continues to operate the linking protocol
-(\S\ref{subsec:linking}) correctly,
-then Alice can gain control of $C'$ using the linking protocol.
-\end{theorem}
-
-\begin{proof}
-Alice may run the linking protocol to obtain all transfer keys $T^i$,
-bindings $B^i$ associated to $C$, and those coins denominations,
-including the $T'$ for $C'$.
-
-We assumed both the exchange and Bob operated the refresh protocol
-correctly, so now $c_s T'$ is the seed from which $C'$ was generated.
-Alice rederives both $c_s$ and the blinding factor to unblind the
-denomination key signature on $C'$.  Alice finally asks the exchange
-for the residual value on $C'$ and runs the linking protocol to
-determine if it was refreshed too.
-\end{proof}
-
-\begin{corollary}
-  Abusing the refresh protocol to transfer ownership has an
-  expected loss of $1 - \frac{1}{\kappa}$ of the transaction value.
-\end{corollary}
-
-
-\section{Privacy arguments}
-
-The {\em linking problem} for blind signature is,
-if given coin creation transcripts and possibly fewer
-coin deposit transcripts for coins from the creation transcripts,
-then produce a corresponding creation and deposit transcript.
-
-We say a probabilistic polynomial time (PPT) adversary
-{\em links} coins if it has a non-negligible advantage in
-solving the linking problem, when given the private keys
-of the exchange.
-
-In Taler, there are two forms of coin creation transcripts,
-withdrawal and refresh.
-
-\begin{lemma}
-If there are no refresh operations, any adversary with an
-advantage in linking coins is polynomially equivalent to an
-advantage with the same advantage in recognizing blinding factors.
-\end{lemma}
-
-\begin{proof}
-Let $n$ denote the RSA modulus of the denomination key.
-Also let $d$ and $e$ denote the private and public exponents, respectively.
-In effect, coin withdrawal transcripts consist of numbers
-$b m^d \mod n$ where $m$ is the FDH of the coin's public key
-and $b$ is the blinding factor, while coin deposits transcripts
-consist of only $m^d \mod n$.
-
-Of course, if the adversary can link coins then they can compute
-the blinding factors as $b m^d / m^d \mod n$.  Conversely, if the
-adversary can recognize blinding factors then they link coins after
-first computing $b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
-\end{proof}
-
-We now know the following because Taler uses SHA512 adopted to be
- a FDH to be the blinding factor.
-
-\begin{corollary}
-Assuming no refresh operation,
-any PPT adversary with an advantage for linking Taler coins gives
-rise to an adversary with an advantage for recognizing SHA512 output.
-\end{corollary}
-
-We will now consider the impact of the refresh operation.  For the
-sake of the argument, we will first consider an earlier
-encryption-based version of the protocol in which refresh operated
-consisted of $\kappa$ normal coin withdrawals where the commitment
-consisted of the blinding factors and private keys of the fresh coins
-encrypted using the secret $t^{(i)} C_s$ where $C_s = c_s G$ of the
-dirty coin $C$ being refreshed and $T^{(i)} = t^{(i)} G$ is the
-transfer key.\footnote{We abandoned that version as it required
-  slightly more storage space and the additional encryption
-  primitive.}
-
-\begin{proposition}
-Assuming the encryption used is ??? secure, and that
- the independence of $c_s$, $t$, and the new coins' key materials, then
-any PPT adversary with an advantage for linking Taler coins gives
-rise to an adversary with an advantage for recognizing SHA512 output.
-\end{proposition}
-
-% TODO: Is independence here too strong?
-
-We may now remove the encrpytion by appealing to the random oracle
-model~\cite{BR-RandomOracles}.
-
-\begin{lemma}[\cite{??}]
-Consider a protocol that commits to random data by encrypting it
-using a secret derived from a Diffe-Hellman key exchange.
-In the random oracle model, we may replace this encryption with
-a hash function which derives the random data by applying hash
-functions to the same secret.
-\end{lemma}
-
-\begin{proof}
-We work with the usual instantiation of the random oracle model as
-returning a random string and placing it into a database for future
-queries.
-
-We take the random number generator that drives this random oracle
-to be the random number generator used to produce the random data
-that we encrypt in the old encryption based version of Taler.
-Now our random oracle scheme gives the same result as our scheme
-that encrypts random data, so the encryption becomes superfluous
-and may be omitted.
-\end{proof}
-
-We may now conclude that Taler remains unlinkable even with the refresh protocol.
-
-\begin{theorem}
-In the random oracle model, any PPT adversary with an advantage
-in linking Taler coins has an advantage in breaking elliptic curve
-Diffie-Hellman key exchange on Curve25519.
-\end{theorem}
-
-We do not distinguish between information known by the exchange and
-information known by the merchant in the above.  As a result, this
-proves that out linking protocol \S\ref{subsec:linking} does not
-degrade privacy.  We note that the exchange could lie in the linking
-protocol about the transfer public key to generate coins that it can
-link (at a financial loss to the exchange that it would have to square
-with its auditor).  However, in the normal course of payments the link
-protocol is never used.
-
-\section{Exculpability arguments}
-
-\begin{lemma}
-The exchange can detect and prove double-spending.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
-
-\begin{lemma}
-Merchants and customers can verify double-spending proofs.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
-
-
-\begin{lemma}
-Customers can either obtain proof-of-payment or their money back.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
-
-\begin{lemma}
-If a customer paid for a contract, they can prove it.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
-
-\begin{lemma}
-The merchant can issue refunds, and only to the original customer.
-\end{lemma}
-
-\begin{proof}
-\end{proof}
-
-
-
-\begin{theorem}
-  The protocol prevents double-spending and provides exculpability.
-\end{theorem}
 
 \end{document}
 
