@@ -1485,6 +1485,13 @@ these experimental results show that computing-related business costs
 will only marginally contribute to the operational costs of the Taler
 payment system.
 
+Scalability of the design is also not a concern, as the exchange's
+database can be easily shareded over the different public keys as
+desired.  Similar to the RSCoin~\cite{danezis2016rscoin} design, this
+ensures that conflicting transactions end up in the same shard,
+enabling linear scalability of the database operations.  Similarly,
+the cryptographic verification in the frontend can be distributed over
+as many compute nodes as required.
 
 \section{Discussion}
 
