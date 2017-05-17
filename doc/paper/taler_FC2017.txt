@@ -35,10 +35,21 @@ unlinkable to the original coin.
 
 The implementation of Taler in this paper is
 unclear. For example!  , the security level, the RSA modulus, and the elliptic
-curve etc. are not described.  Moreover, the average time of the withdrawal,
-spending, refreshing protocols are not provided. The authors also do not
-compare Taler with other known anonymous payment systems. Thus, the efficiency
-of Taler is unclear.     
+curve etc. are not described.
+
+> The RSA modulus depends on the denomination, for higher denominations
+> with a longer lifetime it makes sense to use a larger key size.
+> The elliptic curves are given and referenced in the paper, namely Ed25519 and
+> Curve25519
+
+Moreover, the average time of the withdrawal, spending, refreshing protocols
+are not provided. The authors also do not compare Taler with other known
+anonymous payment systems. Thus, the efficiency of Taler is unclear.     
+
+> In our "Experimental Results" section we mention that local processing
+> of requests happens in the order of a few milliseconds.
+> Comparing Taler to other e-cash systems experimentally is impossible,
+> since their implementation is not available.
 
 Additional Comment: The description of the protocols of Taler omits many
 details. In particular, the authors should describe in detail how the refunds

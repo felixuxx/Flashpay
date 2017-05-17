@@ -1589,6 +1589,19 @@ enabling linear scalability of the database operations.  Similarly,
 the cryptographic verification in the frontend can be distributed over
 as many compute nodes as required.
 
+Unfortunately it was not possible to experimentally compare the performance of
+Taler directly to other e-cash systems, since to our best knowledge there
+is no working and publicly available implementation of any of them.
+
+When compared with the current average confirmation time for Bitcoin payments,
+Taler is many orders of magnitude faster.  While a confirmation time of Taler
+is in the order of a few hundered milliseconds (including database access and
+network latency), the time to mine even one block in Bitcoin is around ten
+minutes \footnote{Data retrieved in May 2017 from
+\url{https://blockchain.info/stats}}.  Very conservative Bitcoin merchants,
+such as exchanges, wait up to six blocks until they consider a transaction
+confirmed.
+
 \section{Discussion}
 
 \subsection{Well-known attacks}
