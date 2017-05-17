@@ -111,6 +111,8 @@ main (int argc,
   struct GNUNET_OS_Process *bankd;
   unsigned int cnt;
   int result;
+  char *defaultdb = "postgres:///talercheck";
+  char *dbconn;
 
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
@@ -125,7 +127,12 @@ main (int argc,
                     "WARNING",
                     NULL);
 
-  if (0 != system ("taler-bank-manage --with-db=postgres:///talercheck django flush --no-input"))
+  if (NULL == (dbconn = getenv ("TALER_EXCHANGEDB_POSTGRES_CONFIG")))
+    dbconn = defaultdb;
+  char *purgedb_cmd;
+  GNUNET_asprintf (&purgedb_cmd, "taler-bank-manage --with-db=%s django flush --no-input",
+                   dbconn);
+  if (0 != system (purgedb_cmd))
   {
       fprintf (stderr,
                "Could not purge database 'talercheck'\n");
@@ -137,7 +144,7 @@ main (int argc,
                                    NULL, NULL, NULL,
                                    "taler-bank-manage",
                                    "taler-bank-manage",
-                                   "--with-db", "postgres:///talercheck",
+                                   "--with-db", dbconn,
                                    "serve-http",
                                    "--port", "8080",
                                    NULL);
