@@ -32,11 +32,10 @@ Texts.  A copy of the license is included in the section entitled
 @c Titlepage
 @c
 @titlepage
-@title The GNU Taler merchant backend operator tutorial
+@title The GNU Taler exchange operator tutorial
 @subtitle Version @value{VERSION}
 @subtitle @value{UPDATED}
 @author Marcello Stanisci (@email{marcello.stanisci@@inria.fr})
-@author Christian Grothoff (@email{christian.grothoff@@inria.fr})
 @page
 @vskip 0pt plus 1filll
 @insertcopying
@@ -53,8 +52,8 @@ Texts.  A copy of the license is included in the section entitled
 
 @menu
 * Introduction::            Whom this manual is addressed to
-* Installation::            Installing the Merchant backend
-* Configuration::           How to set up the Merchant backend
+* Installation::            Installing the exchange
+* Configuration::           How to set up the exchange
 
 
 Appendices
@@ -199,12 +198,79 @@ If you did not specify a prefix, the exchange will install to
 @node Configuration
 @chapter How to configure the exchange
 
+@section The configuration file
 @cindex taler-config
 @cindex taler.conf
 The installation already provides reasonable defaults.  The file
 @code{$HOME/.config/taler.conf} is responsible of overriding defaults
 values, or add new ones.  The format of the configuration file is
-the well-known INI file format.
+the well-known INI file format.  Nonetheless, the exchange takes a
+@code{-c CONFIG} option that makes the file @code{CONFIG} ovveride
+the defaults.
+
+@cindex keys
+@cindex denomination keys
+@cindex auditor
+@section Configuring keys
+
+@subsection Denomination keys
+@c FIXME TBD - NOTE, docs.taler.net contains already some text on this
+
+@subsection Master key
+@c FIXME TBD - NOTE, docs.taler.net contains already some text on this
+
+@subsection Specifying auditors
+
+In order to "add" any auditor to the list of the auditors accepted by
+the exchange, it's required to (1) generate a cryptographic blob containing
+metadata about the denomination keys, (2) ask the auditor to sign this blob,
+and (3) copy the auditor signed blob to a exchange's dedicated directory.
+
+The following command accomplishes step (1).
+
+@example
+taler-exchange-keyup -o blob
+@end example
+
+In production, step (2) is accomplished thanks to each auditor providing a RESTful
+service that lets the exchange administrator upload the @code{blob} and get a signed
+version of it.
+
+Nonetheless, for testing purposes, the following command emulates a auditor's
+signature that a exchange administrator can run locally.
+
+@example
+taler-auditor-sign -m EXCHANGE_MASTER_PUB -r BLOB -u AUDITOR_URI -o OUTPUT_FILE
+@end example
+
+The shown arguments are all mandatory.
+
+@itemize
+@item @code{EXCHANGE_MASTER_PUB} the base32 Crockford-encoded exchange's master
+public key.  Tipically, this value lies in the configuration option
+@code{[exchange]/master_public_key}.
+@item @code{BLOB} the blob generated in step (1).
+@item @code{AUDITOR_URI} the URI that identifies the auditor.
+@item @code{OUTPUT_FILE} where on the disk the signed blob is to be saved.
+@end itemize
+
+As of step (3), the signed blob must be copied into the dorectory specified
+by the option @code{AUDITOR_BASE_DIR} under the section @code{[exchangedb]}.
+Assuming @code{AUDITOR_BASE_DIR = $@{HOME@}/.local/share/taler/auditors}, the
+following command will "add" a auditor to the exchange.
+
+@example
+# assuming that the file 'blob' is in the CWD
+cp blob $@{HOME@}/.local/share/taler/auditors
+@end example
+
+If the auditor has been correctly added, the exchange's @code{/keys} response
+must contain an entry in the @code{auditors} array mentioning the auditor's URI
+specified at step (2) in the @code{-u} argument.
+
+
+@section Wire formats
+@c FIXME TBD - NOTE, docs.taler.net _might_ contain already some text on this
 
 
 @c **********************************************************
