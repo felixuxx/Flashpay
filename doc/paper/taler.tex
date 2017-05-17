@@ -1474,38 +1474,39 @@ customer owns, only the original customer can use the increased balance.
 
 \section{Implementation}
 
-We implemented the Taler protocol in the context of a payment system for the
-Web, as shown in Figure~\ref{fig:taler-arch}.  The system was designed for real-world usage with
-current Web technology and within the existing financial system.
+We implemented the Taler protocol in the context of a payment system
+for the Web, as shown in Figure~\ref{fig:taler-arch}.  The system was
+designed for real-world usage with current Web technology and within
+the existing financial system.
 
-By instructing their bank to send money to an exchange, the customer creates a
-(non-anonymous) balance, called a \emph{reserve}, at the exchange.  The
-customer can subsequently withdraw coins from this \emph{reserve} into their
-\emph{wallet}, which stores and manages coins.
+By instructing their bank to send money to an exchange, the customer
+creates a (non-anonymous) balance, called a \emph{reserve}, at the
+exchange.  The customer can subsequently withdraw coins from this
+reserve into their \emph{wallet}, which stores and manages coins.
 
-
-Upon withdrawal of coins from the exchange, the user authenticates themselves
-using an Ed25519 private key, where the corresponding public key needs to be
-included in the payment instruction from the customer's bank to the exchange's
-bank.  With a bank that directly supports Taler on their online banking website,
-this process is streamlined for the user, since the wallet automatically
-creates the key pair for the reserve and adds the public key to the
-payment instruction.
+To withdrawal of coins from the exchange, the customer's wallet authenticates
+itself using an Ed25519 private key for the customer's reserve.  
+The customer must include the corresponding reserve public key in the
+payment instruction from the customer's bank to the exchange's bank
+that funded their reserve.  With a bank that directly supports Taler
+on their online banking website, this process is streamlined for the
+user, since the wallet automatically creates the key pair for the
+reserve and adds the public key to the payment instruction.
 
 While browsing a merchant's website, the website can signal the wallet
 to request a payment from a user.  The user is then asked to confirm
 or reject this proposal.  The merchant deposits coins received from
 the customer's wallet at the exchange.  Since bank transfers are
 usually costly, the exchange delays and aggregates multiple deposits
-into a bigger wire transfer.  This allows our system to be used even
-for microtransactions of amounts smaller than usually handled by the
+into a bigger wire transfer.  This allows Taler to be used even for
+microtransactions of amounts smaller than usually handled by the
 underlying banking system.
 
-As shown in Figure~\ref{fig:taler-arch}, the merchant is internally split into
-multiple components.  The implementation of the Taler prococol and
-cryptographic operations is isolated into a separate component (called the
-\emph{merchant backend}), which the merchant accesses through an API or software
-development kit (SDK) of their choice.
+As shown in Figure~\ref{fig:taler-arch}, the merchant is internally split
+into multiple components.  The implementation of the Taler prococol and
+cryptographic operations is isolated into a separate component, called
+the \emph{merchant backend}, which the merchant accesses through an API
+or software development kit (SDK) of their choice.
 
 Our implementations of the exchange (70,000 LOC) and merchant backend
 (20,000 LOC) are written in C using PostgreSQL as the database and
