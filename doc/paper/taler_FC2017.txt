@@ -150,6 +150,9 @@ Specific comments:
   point: 2nd line also reads as “if the same withdrawal request was issued before
   the exchange will send S_K(B)”
 
+> We added some clarification that the exchange looks up if the request
+> already exists in their database.
+
 - Section 4.2, it seems that a customer can use a coin of value say $10 to
   multiple transactions of <= $10 in total. I.e. it can first a pay a merchant
   M1 $2 and then a merchant M2 another $5 dollars. In that case the exchange can

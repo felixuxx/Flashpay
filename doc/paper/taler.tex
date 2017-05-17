@@ -838,10 +838,9 @@ interaction with the exchange:
     the exchange to request withdrawal of $C$; here, $B_b$ denotes
     Chaum-style blinding with blinding factor $b$.
   \item
-    The exchange checks if the same withdrawal request was issued before;
-    in this case, it sends a Chaum-style blind signature $S_K(B)$ with
-    private key $K_s$ to the customer. \\
-    If this is a fresh withdrawal request, the exchange performs the following transaction:
+    The exchange checks its database if there is an existing withdraw record $\langle S_W(B), x \rangle$
+    with existing withdraw response $x$; in this case it sends back $x$.\\
+    Otherwise if this is a fresh withdrawal request, the exchange performs the following transaction:
     \begin{enumerate}
       \item checks if the reserve $W_p$ has sufficient funds
             for a coin of value corresponding to $K$,
@@ -850,7 +849,7 @@ interaction with the exchange:
             for future reference,
       \item deducts the amount corresponding to $K$ from the reserve,
     \end{enumerate}
-    and then sends $S_K(B)$ to the customer.
+    and then sends Chaum-style blind signature $S_K(B)$ to the customer.
     If the guards for the transaction fail, the exchange sends a descriptive
     error back to the customer, with proof that it operated correctly.
     Assuming the signature was valid, this would involve showing the transaction
