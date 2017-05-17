@@ -145,6 +145,7 @@ main (int argc,
                                    "taler-bank-manage",
                                    "taler-bank-manage",
                                    "--with-db", dbconn,
+                                   "-c", "bank.conf",
                                    "serve-http",
                                    "--port", "8080",
                                    NULL);
