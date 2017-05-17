@@ -133,6 +133,14 @@ Specific comments:
   selected from? What does it mean to “commit to disk”? The customer commits
   and keeps the commitment local? Where is this used?
 
+> Yes, juxtaposition denotes multiplication.  "commit to disk" has been
+> changed to "persist", the customer must persis the value before making the
+> bank transaction, so that they don't lose their reserve key should the system
+> crash.  It is used to restart the operation in case of a crash.
+> Where the blinding factor "b" is selected from depends on the instantiation
+> of the protocol, it's simply a fresh blinding factor in the blind signature
+> scheme.
+
 - Section 4.1, step 3, what is the key K used in FDH? Also is S_w(B) a standard
   signature?
 

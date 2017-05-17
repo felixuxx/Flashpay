@@ -821,9 +821,13 @@ interaction with the exchange:
     \begin{itemize}
       \item reserve key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p := w_sG$,
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
-      \item blinding factor $b$, and persists $\langle W, C, b \rangle$.
+      \item blinding factor $b$
     \end{itemize}
-    The customer then transfers an amount of money corresponding to
+    The customer first persists\footnote{When we say ``persist'', we mean that the value
+    is stored in such a way that it can be recovered after a system crash, and
+    the protocol execution can be re-tried from a checkpoint
+    without losing money sent in the next step.} $\langle W, C, b \rangle$.
+    Then the customer transfers an amount of money corresponding to
     at least $K_v$ to the exchange, with $W_p$ in the subject line
     of the transaction.
   \item
