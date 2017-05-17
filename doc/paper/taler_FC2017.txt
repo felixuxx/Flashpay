@@ -54,11 +54,16 @@ anonymous payment systems. Thus, the efficiency of Taler is unclear.
 Additional Comment: The description of the protocols of Taler omits many
 details. In particular, the authors should describe in detail how the refunds
 are executed using the refresh protocol, as the authors claim that the refresh
-protocol allows refunds as a contribution. Furthermore, the authors should
-interpret the notation FDHK, and cite the reference for EdDSA. The title of
-Subsection 3.1 may be misleading, as this subsection does not describe the
-security model. The authors should rename the title. The “We have computed Li…”
-in Subsection 4.3 should be L(i).
+protocol allows refunds as a contribution.
+
+> We added more material on refunds
+
+Furthermore, the authors should interpret the notation FDHK, and cite the
+reference for EdDSA. The title of Subsection 3.1 may be misleading, as this
+subsection does not describe the security model. The authors should rename the
+title. The “We have computed Li…” in Subsection 4.3 should be L(i).
+
+> FIXME: can/should we address this?
 
 
 ----------------------- REVIEW 2 ---------------------
