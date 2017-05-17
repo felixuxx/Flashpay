@@ -3,12 +3,51 @@ TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous P
 Overall evaluation: -2
 
 ----------- Overall evaluation -----------
-This paper proposes an anonymous payment system called Taler, based on the Chaum’s blind signature scheme. Taler employs a new refresh protocol that allows fractional payments and refunds while providing the unlinkability and untraceability. The refresh protocol uses the cut-and-choose technique to assure that the protocol is not abused for evading taxation. 
+This paper proposes an anonymous payment system called Taler, based on the
+Chaum’s blind signature scheme. Taler employs a new refresh protocol that
+allows fractional payments and refunds while providing the unlinkability and
+untraceability. The refresh protocol uses the cut-and-choose technique to
+assure that the protocol is not abused for evading taxation. 
 
-Comment: The correctness of the refresh protocol does not hold. The \bar{B(i)} computed by the exchange is not equal to B(i) computed by the honest customer, as \bar{Cp(i)} is not equal to FDHK(Cp(i)). This paper does not provide a security proof or even an informal security analysis for the proposed anonymous payment system Taler, such that Taler may be insecure. I find two (possible) attacks against the refresh protocol. As the exchange does not check the validity of the public key Cp′ , the attacker can send an arbitrary public key to the exchange that will accept, and obtain a fresh coin. The attacker can spend partially a coin multiple times via refreshing the coin and obtaining a fresh coin in turn, as the refresh protocol only transforms a dirty coin into a fresh coin with the same denomination. The misbehavior will not be detected by the exchange, as the fresh coin is unlinkable to the original coin. The implementation of Taler in this paper is unclear. For example!
- , the security level, the RSA modulus, and the elliptic curve etc. are not described. Moreover, the average time of the withdrawal, spending, refreshing protocols are not provided. The authors also do not compare Taler with other known anonymous payment systems. Thus, the efficiency of Taler is unclear.     
+Comment: The correctness of the refresh protocol does not hold. The \bar{B(i)}
+computed by the exchange is not equal to B(i) computed by the honest customer,
+as \bar{Cp(i)} is not equal to FDHK(Cp(i)).
 
-Additional Comment: The description of the protocols of Taler omits many details. In particular, the authors should describe in detail how the refunds are executed using the refresh protocol, as the authors claim that the refresh protocol allows refunds as a contribution. Furthermore, the authors should interpret the notation FDHK, and cite the reference for EdDSA. The title of Subsection 3.1 may be misleading, as this subsection does not describe the security model. The authors should rename the title. The “We have computed Li…” in Subsection 4.3 should be L(i).
+> This was a simple typo that is fixed now
+
+This paper does not provide a security proof or even an informal security
+analysis for the proposed anonymous payment system Taler, such that Taler may
+be insecure.
+
+> We added a section with proofs
+
+I find two (possible) attacks against the refresh protocol. As the
+exchange does not check the validity of the public key Cp′ , the attacker can
+send an arbitrary public key to the exchange that will accept, and obtain a
+fresh coin. The attacker can spend partially a coin multiple times via
+refreshing the coin and obtaining a fresh coin in turn, as the refresh protocol
+only transforms a dirty coin into a fresh coin with the same denomination. The
+misbehavior will not be detected by the exchange, as the fresh coin is
+unlinkable to the original coin.
+
+> When refreshing a coin, the old coin is obviously marked as spend.
+> This attack is based on a misunderstanding of refreshing.
+
+The implementation of Taler in this paper is
+unclear. For example!  , the security level, the RSA modulus, and the elliptic
+curve etc. are not described.  Moreover, the average time of the withdrawal,
+spending, refreshing protocols are not provided. The authors also do not
+compare Taler with other known anonymous payment systems. Thus, the efficiency
+of Taler is unclear.     
+
+Additional Comment: The description of the protocols of Taler omits many
+details. In particular, the authors should describe in detail how the refunds
+are executed using the refresh protocol, as the authors claim that the refresh
+protocol allows refunds as a contribution. Furthermore, the authors should
+interpret the notation FDHK, and cite the reference for EdDSA. The title of
+Subsection 3.1 may be misleading, as this subsection does not describe the
+security model. The authors should rename the title. The “We have computed Li…”
+in Subsection 4.3 should be L(i).
 
 
 ----------------------- REVIEW 2 ---------------------
@@ -16,11 +55,27 @@ TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous P
 Overall evaluation: -2
 
 ----------- Overall evaluation -----------
-This paper proposes a new e-cash, named Taler, where the bank (or else called exchange) is online during the spending protocol to allow for double-spending detection. Taler allows for spending coins of various denominations by allowing a user to only spend a value v1<V (where V is the value of the withdrawn coin) and then exchange the remaining value for a new, fresh coin, of value V-v1. The proposed scheme is different compared to Chaum e-cash: in Taler coins are pairs of pk/sk keys where the public key has been signed by the bank/exchange while in typical Chaum e-cash coins are represented by unique serial numbers.
+This paper proposes a new e-cash, named Taler, where the bank (or else called
+exchange) is online during the spending protocol to allow for double-spending
+detection. Taler allows for spending coins of various denominations by allowing
+a user to only spend a value v1<V (where V is the value of the withdrawn coin)
+and then exchange the remaining value for a new, fresh coin, of value V-v1. The
+proposed scheme is different compared to Chaum e-cash: in Taler coins are pairs
+of pk/sk keys where the public key has been signed by the bank/exchange while
+in typical Chaum e-cash coins are represented by unique serial numbers.
 
 
-Although the proposed system is hiding some interesting ideas, I think it cannot be accepted for publication at the moment. First and most importantly the current version of the paper lacks any level of analysis (not even informal) of the security level that system achieves. In fact, what security means has not been defined even in an informal lever. Moreover, as I better explain in my specific comments below there seem to be some issues with both security and anonymity (linking different uses of same coin, ensuring coin refreshing happens for the correct value).
-Finally, the description of the protocols has quite a few inconsistencies (details below): there are parts that seem unnecessary and others that are not properly defined/explained, notation is also very overloaded (there is a 2 page notation table!).
+Although the proposed system is hiding some interesting ideas, I think it
+cannot be accepted for publication at the moment. First and most importantly
+the current version of the paper lacks any level of analysis (not even
+informal) of the security level that system achieves. In fact, what security
+means has not been defined even in an informal lever. Moreover, as I better
+explain in my specific comments below there seem to be some issues with both
+security and anonymity (linking different uses of same coin, ensuring coin
+refreshing happens for the correct value).  Finally, the description of the
+protocols has quite a few inconsistencies (details below): there are parts that
+seem unnecessary and others that are not properly defined/explained, notation
+is also very overloaded (there is a 2 page notation table!).
 
 
 Specific comments:
