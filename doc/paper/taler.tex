@@ -1407,7 +1407,7 @@ protocol is never used.
 \subsection{Exculpability arguments}
 
 \begin{lemma}\label{lemma:double-spending}
-The exchange can detect and prove double-spending.
+The exchange can detect, prevent, and prove double-spending.
 \end{lemma}
 
 \begin{proof}
@@ -1417,13 +1417,15 @@ obtains either a deposit-permission or a refresh-record, both of which
 contain a signature made with the public key of coin to authorizing the
 respective operation.  If the exchange has a set of refresh-records and
 deposit-permissions whose total value exceed the value of the coin, the
-exchange can show this set to prove that double-spending was attempted.
+exchange can show this set to prove that double-spending is being
+attempted and justify rejecting the operation.
 \end{proof}
 
 \begin{corollary}
-Merchants and customers can verify double-spending proofs by verifying that the
-signatures in the set of refresh-records and deposit-permissions are correct and
-that the total value exceeds the coin's value.
+Merchants and customers can verify proofs of double-spending attempts
+by verifying that the signatures in the set of refresh-records and
+deposit-permissions are correct and that the total value would exceed
+the coin's value.
 \end{corollary}
 
 \begin{lemma}
