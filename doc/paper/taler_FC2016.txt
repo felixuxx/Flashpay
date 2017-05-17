@@ -11,11 +11,31 @@ oracle.
 
 The problem is that I think the paper fails on both (i) and (ii), but
 mostly on (ii). A simple way to do (i) is requiring the user to go to
-the mint first to make change (as per DigiCash). You might argue that
+the mint first to make change (as per DigiCash).
+
+> Withdrawing change matching the next transaction is both highly
+> inconvenient for the user and more importantly likely to assist
+> in deanonymizing the user as it makes it easy to link the withdrawal
+> to the deposit by the amount and the proximity in time.  With
+> Taler, withdrawals can be always the same amount (i.e. 20 USD)
+> regardless of the specific transaction amounts (i.e. 3.1415 USD).
+
+You might argue that
 with Taler, the user can be offline even if the merchant is online: I
-might buy this, but this argument isn’t made in the paper. Now this
+might buy this, but this argument isn’t made in the paper.
+
+> Yes, this is also true. In fact, in practice it might even be the
+> reverse: the merchant is offline but the user is online (this is
+> a deployment scenario common in India).  But, as either party can
+> obviously proxy the traffic for the other, this is not relevant to
+> the paper as the paper is not about network architecture.
+
+Now this
 arguably still requires linkability between the whole coin and the two
 split coins however…
+
+> Not sure we understand, the goal of the refresh protocol is to
+> provide unlinkable change.
 
 Regarding (ii): while Taler does prevent coin refreshes from being
 abused, it does not seem to me to prevent the original withdrawal
@@ -29,21 +49,41 @@ services let you return an unspent coin at any time and credit your
 account, which Bob could do. But even if he can’t, at least one payment
 can be laundered in this way.
 
+> That is correct, and we never claimed that it does.  In fact,
+> we described the loophole in the paper, and have tried to
+> further clarify the description in the revision.  Also, in theory
+> the refresh procedure could be used during withdrawals once a
+> customer has established a "meta-coin" first that is used for
+> all withdrawals, but the risks from such a meta-coin compromise
+> vs. the (acceptable) withdrawal loophole make this option
+> unattractive in the real world.
+
 Finally, I think the contribution here is somewhat narrow. Linkable
 refreshing is done with a cut-and-choose and is not particularly
 challenging once you know what you want to do (I suppose the
 contribution is partly in developing the requirement, based on real
 world requirements).
 
+> Afterwards protocols are often obvious.  The community has
+> for years failed to address the challenge of efficiently
+> providing unlinkability for change and protocol aborts.  The
+> fact that the solution is comprehensible is an advantage.
+
+
 Other comments:
 
 [1] I didn’t understand why ZeroCoin is particularly suited for
 developing nations?
 
+> Us neither, we did not claim this.
+
 [1] Taxability: with reference to income tax, if Alice works at Acme Inc
 and is paid her salary, in this case Acme Inc is the “customer” and
 Alice is the “merchant”? Is that the idea? Otherwise it seems, the
 taxability property should apply equally to customers and merchants.
+
+> Yes. If Alice works, she is selling her labor and thus a merchant,
+> while her employer is the customer.
 
 [1] The change protocol sounds like it solving the same problem as
 HINDE. While HINDE isn’t well documented, the authors should attempt to
@@ -51,9 +91,17 @@ contrast their approach with it. In HINDE, the customer creates coins to
 withdraw (so only they can spend them) but the merchant pays for the
 withdraw. These can be used as change. It is compatible with DigiCash.
 
+> We tracked down Ian Goldberg (author of HINDE, which was never
+> published), asked him about the system, compared it in the paper,
+> and were told the year afterwards by reviewers from the same
+> conference (see FC 2017 reviews) that putting a HINDE reference was
+> inappropriate. We have left the discussion for now.
+
 [2.1] “easily taxable” -> this concept paints a picture of the tax
 agency proactively looking at transactions. A better way of describing
 it might be that it leaves an audit trail for tax agencies.
+
+> We have stressed the fact that the system produces evidence.
 
 [2.1] There is no casual relationship that can be proven between
 Bitcoin’s independence as a currency and its volatility. All you can
@@ -61,31 +109,54 @@ really say is that today, Bitcoin is more volatile than certain
 currencies (and less so than others) but we have no idea why and if that
 might change in the future.
 
+> Economists have a pretty good idea as to the causes of volatility.
+> The relatively small size of the Bitcoin "economy" is such an
+> indisputable reason.
+
 [2.1] I don’t see AltCoins as a “problem.” You are correct that Bitcoin
 is less a currency and more an open protocol for creating new
 currencies. So what? And why do altcoins become a ponzi scheme? (Noting
 that you do not say that they might become one, rather that they do).
 
+> JEFF: want to add your Ponzi reference here?
+
 [2.2] How does Taler avoid Chaum’s patent on his blind signature scheme?
 It seems to be built on it. (Could you use Lucre instead?) (Or is it
 that Chaum’s patent has expired?)
+
+> The patents have expired.
 
 [2.2] I thought DigiCash used the Chaum-Fiat-Naor (or variant) scheme
 for offline detection of double-spending? Even if it didn’t, you should
 mention the possibility of using this kind of detection mechanism (and
 variations from Ferguson, etc)
 
+> There are different versions of the DigiCash protocol, some suitable
+> for offline detection of double-spending.  But any such scheme
+> creates the deanonymization risk we mention in the paper.
+
 [2.2] Divisible e-cash is a subject with many publications beyond
 Brands’ work. The authors should include a broader survey of this as it
 seems pertinent. They should also consider anonymized change protocols,
 as mentioned above, such as HINDE.
 
+> We have expanded our discussion here.  None of the other systems
+> achieves expected O(log n) performance (the best are still O(n)).
+
 [3.1] To be clear, the anonymous channel only hides the customer’s
 identity, not that of the merchant or mint? (Which is obviously what Tor
 provides in its base form, without hidden services)
 
+> Correct.
+
 [3.1] Why does the customer need an anonymous channel when interacting
 with the mint?
+
+> An anonymous channel is strictly needed only during refresh,
+> to provide unlinkability vs. the transaction at the merchant.
+> However, for location privacy it is generally still advisable
+> to always use an anonymous channel, as the exchange should
+> not learn more information than necessary.
 
 [3.2] The discussion of copying private keys is informative but I’m not
 sure it is sufficient. If the signature scheme is one that admits
@@ -96,11 +167,17 @@ key. In this case, they do not have to worry about the other party
 absolving with the funds (but they do have to worry about the other
 party cooperating when one party wants to use the funds).
 
+> We do not use threshold signing.
+
 [3.3] I think you understate the benefits of the mint knowing the
 identity of the customer: many countries have Know Your Customer (KYC)
 laws for organizations like your mint—as many Bitcoin business are now
 finding out about :) I would explicitly add KYC to your list of
 requirements.
+
+> We are aware of this requirement and its importance (and that we
+> satisfy it). But, as it is not a contribution, we did not stress it
+> in the paper.
 
 [3.4] In case of a loss mint private key, you say customers can exchange
 their unspent coins. I think you either mean (i) their potentially
@@ -111,6 +188,14 @@ prove it is unspent) and provide the blinding factor (to prove it was
 issued and not made up with the leaked key). In either case, this needs
 much more explanation (or a forward pointer if it is explained later).
 
+> We have added a section about the payback protocol. Note that when
+> the exchange is asked for payback of a coin, it CAN check whether that
+> coin has been spent already (after all, that's the table it has for
+> double-spending detection).  Only the party that has stolen the private
+> key could now mint "fake" coins and claim those. This is prevented
+> by payback asking for the blinding factors and only refunding to
+> the original reserves, thereby limiting the damage.
+
 [3.5] Is there any real difference between spending a fraction of a coin
 a refreshing it, or going to the mint and exchanging a whole coin for
 two new coins (one worth the value of the transaction and the other
@@ -118,15 +203,29 @@ worth the difference)? This is effectively how Digicash works. To link
 the old (whole) coin to the new issuance, the customer could be required
 to provide the blinding factors.
 
+> Exchanging a whole coin for two new coins would allow a conspiracy
+> between customer and merchant to launder money. The refresh protocol
+> prevents this.
+
 [4.1] IIRC Chaumian blind signatures are based on RSA. You are using
 discrete logarithms (presumedly if you are using elliptic curves). Blind
 sigs in the DL setting exist of course, but you should specify and cite
 an appropriate one.
 
+> We don't use blind sigs in the DL setting. We use RSA blind signatures
+> and Ed25519 for all _other_ signatures. (Taler has about 30 places
+> in the protocol where different parties sign different types of
+> messages.)  Only the validity of coins is attested with RSA signatures,
+> the rest uses EdDSA.  ECDH(E) is used for the refresh protocol.
+
 [4.6] If Alice pays $75 to Bob using a $100 coin, is there any technical
 difference between (a) Bob limiting the coin to $75 and Alice refreshing
 the coin and (b) Bob taking the $100 but issuing a $25 refund to Alice,
 who then refreshes the refund?
+
+> For the refund case, Bob needs to interact again with the exchange,
+> and Alice has to worry about Bob not providing the refund.   Thus it
+> is more efficient and for Alice more secure to directly only pay $75.
 
 
 ----------------------- REVIEW 2 ---------------------
@@ -152,21 +251,52 @@ At the same time, the paper also has some serious issues, that prevent
 me from wholeheartedly supporting its acceptance: first, it reads a
 little like a white paper. The details of the crypto are a bit thin, and
 it is not clear how to instantiate specifically the blind signatures and
-other primitives proposed. Following from this, there is no evidence any
+other primitives proposed.
+
+> We have now been very specific about our instantiations, forsaking
+> the previous generality of the description.
+
+Following from this, there is no evidence any
 part of it has been implemented and evaluated for any system aspect --
-performance, latency. This is a missed opportunity, as such an
+performance, latency.
+
+> The implementation has existed for a while, we have since added
+> a performance evaluation.  However, CPU for the cryptographic
+> primitives (EdDSA, RSA) and network latency dominate the performance
+> characteristics, so they are not terribly interesting.
+
+This is a missed opportunity, as such an
 implementation -- and its evaluation -- would provide a good reference
 point to compare with the more expensive crypto-currency designs;
+
+> We're like 10,000,000x more efficient than Z-Cash.
+> But Taler is not a crypto-currency, so this is comparing apples and oranges.
+
 finally, the paper makes reference to blind signatures from Chaum, but
 of course a number of constructions -- allowing for efficient proofs --
 have been proposed since. It is not clear the authors appreciate their
 importance or even existence.
 
+> We considered various blind signature schemes and left the original
+> protocol description ambivalent as to which instantiation is used.
+> Above, you criticized us for leaving it open.  Regardless, the RSA
+> scheme still seems to offer the best security/performance trade-off,
+> and we also value simplicity and extensive peer-review of the
+> cryptographic primitives used for production systems.  So far, none
+> of the schemes compete.  For example, Bernstein recently proposed an
+> interesting PostQuantum blind-signature scheme, but the keys are too
+> large to be useful in practice.
+
 However, providing proofs of the statement to be signed is important,
 and a potential attack on the presented scheme may illustrate this. The
 scheme suggests that a any transfers of value should be taxed. However,
 the issuing protocol in 4.1 can be abused to transfer a coin, without
-paying tax, and in an unlikable manner. The party withdrawing the coin
+paying tax, and in an unlikable manner.
+
+> Technically 4.1 is not transfering a coin, as it is issuing a coin.
+> Again, the loophole is/was discussed in the paper.
+
+The party withdrawing the coin
 may chose to use a public key belonging to someone else in step 4 --
 thus asking for a coin controlled by another entity to be signed by the
 issuer. As a result, the coin can be directly used by the other party,
@@ -176,10 +306,23 @@ ensures the party withdrawing a coin, knows the secret associated with
 the coin -- something that traditional chaum blind signatures can only
 achieve with a cut-and-chose technique, which is very expensive.
 
+> Any such credential issuing protocol could still be defeated trivially
+> by Alice sharing her credential with Bob.  We also note that the
+> refresh protocol provides exactly this mechanism, with the original
+> coin serving as this credential.  The problem is that there is no
+> credential we could anchor the initial withdrawal to, without
+> risking catastrophic failure in case the credential is compromised.
+
 So my advice would be to chose a modern credential scheme to instantiate
 the protocol, such as the anonymous credential light (Baldimtsi et al)
 protocols, actually implement the protocol, and then provide a thorough
 security and performance evaluations.
+
+> Single-use credentials as proposed by Baldimtsi are inherently
+> dangerous as users can accidentally deanonymize themselves
+> (i.e. by paying from a wallet restored from backup).  This is
+> basically the same problem with offline payments that we discuss
+> in the paper.
 
 
 ----------------------- REVIEW 3 ---------------------
@@ -205,12 +348,26 @@ But, this paper is rather weighed down by a lot of other stuff which is
 not novel and/or of questionable value. DigiCash Ecash as deployed (not
 as described in the original paper) already did on-line verification.
 
+> Yes, but Ecash did not provide unlinkable change with taxability / income
+> auditability / whatever you want to call it.
+
 I object to the headlining motivation of "taxable". The scheme is
 neither necessary nor sufficient for taxation, and should instead be
 called something like "payer-anonymous, payee-auditable". As far as I
 understand, there's nothing in TALER that makes it more amenable to
 tracing/auditing (or as they call it "taxability") than Ecash. Both
 DigiCash Ecash and TALER seem to be less traceable/auditable than Bitcoin.
+
+> Bitcoin does not require users to identify themselves to open a bank
+> account before they can receive funds.  The reason that criminals
+> can extort money this way is one of the reasons for the rise of
+> cryptolocker malware.  Ecash and Taler do not suffer from this problem
+> because the state can (via the existing banking system customer
+> identification processes) establish the owner of a bank account.
+> Auditable is too neutral as a term; Bitcoin is auditable: anyone can
+> check that it operates "correctly", but it is not taxable by our
+> definition as the state cannot apply a 100% crime tax to the cryptolocker
+> criminals. With Taler or Ecash, this would be possible.
 
 A few positive comments:
 
@@ -223,6 +380,3 @@ and about resumption
 Positive: explicitness about expiration/garbage-collection
 
 Positive: explicitness about multiple mints
-
-
-
