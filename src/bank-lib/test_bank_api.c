@@ -135,7 +135,7 @@ main (int argc,
   if (0 != system (purgedb_cmd))
   {
       fprintf (stderr,
-               "Could not purge database 'talercheck'\n");
+               "Could not purge database\n");
       return 77;
   }
 
