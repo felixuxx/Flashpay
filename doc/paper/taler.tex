@@ -768,7 +768,7 @@ is valid.  Furthermore, the receiver of a signed message is either
 told the respective public key, or knows it from the context.  Also,
 all signatures contain additional identification as to the purpose of
 the signature, making it impossible to use a signature in a different
-context.
+context.  A summary of the notation used is in Appendix~\ref{sec:notation}.
 
 An exchange has a long-term offline key which is used to certify
 denomination keys and {\em online message signing keys} of the
@@ -1468,16 +1468,16 @@ customer owns, only the original customer can use the increased balance.
 
 
 \section{Implementation}
+
 We implemented the Taler protocol in the context of a payment system for the
 Web, as shown in Figure~\ref{fig:taler-arch}.  The system was designed for real-world usage with
-current Web technology and the within the existing financial system.
+current Web technology and within the existing financial system.
 
 By instructing their bank to send money to an exchange, the customer creates a
 (non-anonymous) balance, called a \emph{reserve}, at the exchange.  The
 customer can subsequently withdraw coins from this \emph{reserve} into their
-\emph{wallet}, which stores and manages coins.  The \emph{wallet} was
-implemented as a cross-browser extension, available for a majority of widely
-used browsers.
+\emph{wallet}, which stores and manages coins.
+
 
 Upon withdrawal of coins from the exchange, the user authenticates themselves
 using an Ed25519 private key, where the corresponding public key needs to be
@@ -1487,35 +1487,42 @@ this process is streamlined for the user, since the wallet automatically
 creates the key pair for the reserve and adds the public key to the
 payment instruction.
 
-While browsing a merchant's website, the website can signal the wallet to
-request a payment from a user.  The user is then asked to confirm or reject
-this proposal.  The merchant deposits coins received from the customer's wallet
-at the exchange.  Since bank transfers are usually costly, the exchange
-aggregates multiple deposits into a bigger, delayed transaction.  This allows
-our system to be used even for microtransactions of amounts smaller than
-usually handled by the existing financial system.
+While browsing a merchant's website, the website can signal the wallet
+to request a payment from a user.  The user is then asked to confirm
+or reject this proposal.  The merchant deposits coins received from
+the customer's wallet at the exchange.  Since bank transfers are
+usually costly, the exchange delays and aggregates multiple deposits
+into a bigger wire transfer.  This allows our system to be used even
+for microtransactions of amounts smaller than usually handled by the
+underlying banking system.
 
 As shown in Figure~\ref{fig:taler-arch}, the merchant is internally split into
 multiple components.  The implementation of the Taler prococol and
 cryptographic operations is isolated into a separate component (called the
-\emph{merchant backend}), which the merchant accesses through an API or Software
-Development Kit (SDK) of their choice.
+\emph{merchant backend}), which the merchant accesses through an API or software
+development kit (SDK) of their choice.
 
-Our implementation of the exchange and merchant backend is written in C and
-uses PostgreSQL as a database and libgcrypt for cryptographic operations.
-The demo merchants and example bank with tight Taler integration are written in Python.
-The browser extension is written in TypeScript against the cross-browser
-WebExtension API.
+Our implementations of the exchange (70,000 LOC) and merchant backend
+(20,000 LOC) are written in C using PostgreSQL as the database and
+libgcrypt for cryptographic operations.  The \emph{wallet} (10,000
+LOC) is implemented in TypeScript as a cross-browser extension using
+the WebExtensions API, which is available for a majority of widely
+used browsers.  It also uses libgcrypt (compiled to JavaScript) for
+cryptographic operations as the required primitives are not yet
+natively supported by Web browsers.  Sample merchant websites (1,000
+LOC) and an example bank (2,000 LOC) with tight Taler integration are
+provided in Python.
 
-The code is available at \url{https://git.taler.net} and a demo
-is available at \url{https://demo.taler.net}.
+The code is available at \url{https://git.taler.net/} and a demo
+is publicly available at \url{https://demo.taler.net/}.
 
 
-\begin{figure}\label{fig:taler-arch}
+\begin{figure}
   \includegraphics[width=\columnwidth]{taler-arch-full.pdf}
   \caption{The different components of the Taler system in the
     context of a banking system providing money creation,
     wire transfers and authentication. (Auditor omitted.)}
+  \label{fig:taler-arch}
 \end{figure}
 
 
@@ -1741,7 +1748,8 @@ We thank people (anonymized).
 %version of this paper, Nicolas Fournier for implementing and running
 %some performance benchmarks, and Richard Stallman, Hellekin Wolf,
 %Jacob Appelbaum for productive discussions and support.
-\newpage
+
+%\newpage
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{taler,rfc,rom}
@@ -1757,7 +1765,7 @@ We thank people (anonymized).
 \newpage
 \appendix
 
-\section{Notation summary}
+\section{Notation summary} \label{sec:notation}
 
 The paper uses the subscript $p$ to indicate public keys and $s$ to
 indicate secret (private) keys.  For keys, we also use small letters
