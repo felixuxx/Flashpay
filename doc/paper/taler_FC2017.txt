@@ -1,8 +1,5 @@
 ----------------------- REVIEW 1 ---------------------
-PAPER: 46
 TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous Payment Systems
-AUTHORS: Florian Dold, Sree Harsha Totakura, Benedikt Müller, Jeff Burdges and Christian Grothoff
-
 Overall evaluation: -2
 
 ----------- Overall evaluation -----------
@@ -15,10 +12,7 @@ Additional Comment: The description of the protocols of Taler omits many details
 
 
 ----------------------- REVIEW 2 ---------------------
-PAPER: 46
 TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous Payment Systems
-AUTHORS: Florian Dold, Sree Harsha Totakura, Benedikt Müller, Jeff Burdges and Christian Grothoff
-
 Overall evaluation: -2
 
 ----------- Overall evaluation -----------
@@ -64,8 +58,6 @@ Sec 4.3, 3rd line should be -> at the same time
 ----------------------- REVIEW 3 ---------------------
 PAPER: 46
 TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous Payment Systems
-AUTHORS: Florian Dold, Sree Harsha Totakura, Benedikt Müller, Jeff Burdges and Christian Grothoff
-
 Overall evaluation: -1
 
 ----------- Overall evaluation -----------

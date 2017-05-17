@@ -1,30 +1,5 @@
-
--------- Forwarded Message --------
-Subject: FC 2016 reviews for paper 10
-Date: Wed, 2 Dec 2015 11:19:05 +0100
-From: FC 2016 <fc2016@easychair.org>
-To: Christian Grothoff <grothoff@net.in.tum.de>
-
-Dear Christian Grothoff,
-
-Please find below the reviews for your paper
-10 Taler: Taxable Anonymous Libre Electronic Reserves
-that was not accepted to Financial Crypto 2016.
-
-We hope that these comments are useful for your research and that you
-can join us in Barbados in February.
-
-Best regards,
-Bart & Jens
-Program co-chairs FC 2016
-
-
 ----------------------- REVIEW 1 ---------------------
-PAPER: 10
 TITLE: Taler: Taxable Anonymous Libre Electronic Reserves
-AUTHORS: Florian Dold, Christian Grothoff, Benedikt Müller and Sree
-Harsha Totakura
-
 
 ----------- REVIEW -----------
 Positives: This paper is interesting, well-written, and accessible.
@@ -155,13 +130,9 @@ who then refreshes the refund?
 
 
 ----------------------- REVIEW 2 ---------------------
-PAPER: 10
 TITLE: Taler: Taxable Anonymous Libre Electronic Reserves
-AUTHORS: Florian Dold, Christian Grothoff, Benedikt Müller and Sree
-Harsha Totakura
-
-
 ----------- REVIEW -----------
+
 This paper presents a number of important design ideas: it adapts
 chaums' e-cash ideas to the modern settings, and augments it with modern
 notions of anonymity for the spenders, traceability and accountability
@@ -212,11 +183,7 @@ security and performance evaluations.
 
 
 ----------------------- REVIEW 3 ---------------------
-PAPER: 10
 TITLE: Taler: Taxable Anonymous Libre Electronic Reserves
-AUTHORS: Florian Dold, Christian Grothoff, Benedikt Müller and Sree
-Harsha Totakura
-
 
 ----------- REVIEW -----------
 It seems like the only novelty here has to do with the mechanism to
