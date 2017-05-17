@@ -105,17 +105,29 @@ Specific comments:
   it just mentions some of the tools used in the proposed scheme (i.e. FDH
   signatures, cut-and-choose and what kind of security they offer).
 
+> We added a section with that goes deeper into properties and proofs
+
 - Related work missing: there has been previous work in “payments with
   refunds”. Please look at Rupp et al “P4R: Privacy-Preserving Pre-Payments
   with Refunds for Transportation Systems” where instead of refreshing coins, the
   unused amount is accumulated in some token that can later be used. How would
   you compare with that system?
 
+> We added this to the related work, main problem with this work is that it is
+> meant for public transportation systems.  For general payments,
+> their refund can be abused to create transactions that are not
+> taxable.
+
 - Found the discussion on Bitcoin too long and unnecessary - the proposed
   system is not decentralized anyway
 
+> FIXME: maybe remove some of the bitcoin stuff?
+
 - Referencing a system (Goldberg’s HINDE) that is not published makes
   impossible for the reviewer to check any arguments. 
+
+> In an earlier submission, a reviever insisted that this reference
+> be added.
 
 - Section 4.1, step 1: is W_p = w_s * G? Also where is blinding factor b
   selected from? What does it mean to “commit to disk”? The customer commits
@@ -140,6 +152,8 @@ Specific comments:
 - Section 4.3, doesn’t seem very fair to compare with Zcash or at least it
   should be highlighted that a quite weaker level of anonymity is achieved.
 
+> We added a remark on the high level of anonymity that Zerocash achieves
+
 - Section 4.3, step 1, where is the key t_s^(i) selected from? What does S_{C’}
   denotes? Is that a commitment (as noted in the text) or a signature (as noted
   in notation table?). 
@@ -148,6 +162,12 @@ Specific comments:
   to the exchange what is the remaining value of the dirty coin. I do not see
   this happening. How does this part of the protocol ensure that a user cannot
   just refresh a coin for one of a much bigger value than the remaining one?
+
+> The exchange records spent coins (with the amount spent) in it's database.
+> When refreshing a coin, the customer must reveal the coin's (unblinded)
+> public key to the exchange, which will then set the remaining value
+> of the coin to zero in it's database.  The new coin is now allowed
+> to exceed the old coin in value.
 
 
 ----------------------- REVIEW 3 ---------------------
@@ -171,3 +191,5 @@ actually is acheived. Furthermore, no proofs of security are given,
 and even the protocol is hard to fully understand. As such, I would
 suggest the authors to first formalize their approach and
 resubmitting.
+
+> We added a section with proofs

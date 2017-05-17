@@ -441,6 +441,18 @@ deanonymization risk (see Section~\ref{sec:offline}).
 %macropayment.  It is therefore unclear how Peppercoin would actually
 %reduce the computational burden on the exchange.
 
+The use of refunds for fractional payments has been suggested in the context of
+payment systems for public transit fees \cite{rupp2013p4r}.  This approach
+relies on 2-showable coins that can be used one time for fractional spending
+and another time for refunding the remaining amount without losing anonymity.
+Unfortunately this approach cannot be used for a general-purpose payment
+system, since the refund operation of Rupp et al. allows transfeing money
+in a way that hides income from taxation.  Refunding a coin into a wallet that
+didn't withdraw the coin is possible in their system, but consitutes a
+transaction between two parties that is not recognized by the system for the
+purpose of income taxation.
+
+
 %\vspace{-0.3cm}
 \section{Design}
 %\vspace{-0.3cm}
