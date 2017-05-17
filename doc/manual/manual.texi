@@ -254,6 +254,21 @@ public key.  Tipically, this value lies in the configuration option
 @item @code{OUTPUT_FILE} where on the disk the signed blob is to be saved.
 @end itemize
 
+As of step (3), the signed blob must be copied into the dorectory specified
+by the option @code{AUDITOR_BASE_DIR} under the section @code{[exchangedb]}.
+Assuming @code{AUDITOR_BASE_DIR = $@{HOME@}/.local/share/taler/auditors}, the
+following command will "add" a auditor to the exchange.
+
+@example
+# assuming that the file 'blob' is in the CWD
+cp blob $@{HOME@}/.local/share/taler/auditors
+@end example
+
+If the auditor has been correctly added, the exchange's @code{/keys} response
+must contain an entry in the @code{auditors} array mentioning the auditor's URI
+specified at step (2) in the @code{-u} argument.
+
+
 @section Wire formats
 @c FIXME TBD - NOTE, docs.taler.net _might_ contain already some text on this
 
