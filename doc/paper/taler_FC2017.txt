@@ -144,6 +144,9 @@ Specific comments:
 - Section 4.1, step 3, what is the key K used in FDH? Also is S_w(B) a standard
   signature?
 
+> The "K" here means that the domain of the full domain hash is the
+> modulus of the public key K_v of the key pair K.
+
 - Section 4.1, step 4, How can the exchange know that this was indeed a new
   withdrawal request? If a new blinding factor b is used, then a customer can
   create multiple “freshly” looking requests for the same C_p.  (Also a minor
@@ -160,6 +163,9 @@ Specific comments:
   the coin (i.e. cannot link with withdrawal) but this is still an anonymity
   problem.
 
+> Yes, this is why the user has to refresh a partially spend coin
+> before reusing it, unless they don't care about their anonymity.
+
 - Section 4.3, doesn’t seem very fair to compare with Zcash or at least it
   should be highlighted that a quite weaker level of anonymity is achieved.
 
@@ -168,6 +174,11 @@ Specific comments:
 - Section 4.3, step 1, where is the key t_s^(i) selected from? What does S_{C’}
   denotes? Is that a commitment (as noted in the text) or a signature (as noted
   in notation table?). 
+
+> We multiply t_s^(i) with G, so the only reasonable domain is
+> [1,n] where n is the order of the elliptic curve we use.
+> S_{C’} is a signature made with private key C’_p, what we sign
+> over is the commitment.
 
 - Section 4.3 In this protocol I would expect the customer to somehow “prove”
   to the exchange what is the remaining value of the dirty coin. I do not see
