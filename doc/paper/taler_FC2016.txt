@@ -156,10 +156,10 @@ provides in its base form, without hidden services)
 [3.1] Why does the customer need an anonymous channel when interacting
 with the mint?
 
-> An anonymous channel is strictly needed only during refresh,
-> to provide unlinkability vs. the transaction at the merchant.
-> However, for location privacy it is generally still advisable
-> to always use an anonymous channel, as the exchange should
+> An anonymous channel is needed only when fetching /keys and during
+> refresh, for unlinkability vs. the transaction with the merchant.
+> However, for location privacy it is generally still advisable to
+> always use an anonymous channel, as the exchange should
 > not learn more information than necessary.
 
 [3.2] The discussion of copying private keys is informative but I’m not
@@ -171,7 +171,18 @@ key. In this case, they do not have to worry about the other party
 absolving with the funds (but they do have to worry about the other
 party cooperating when one party wants to use the funds).
 
-> We do not use threshold signing.
+> Right now, we discuss coping coins only in the context of its 
+> inevitability  and its relationship to taxability. In future, we do
+> envision wallets supporting the transfer of coins between friends
+> and family, with the refresh protocol used to recover from problems.
+>
+> There are interesting things one could do with threshold signing
+> and even group signatures of course, but these seems like niche use
+> cases that do not warrant the protocol complexity.  We have not
+> evaluated if a simple change like using a BLS signature scheme
+> might support such use cases at the exchange level, but doing so
+> might make the refresh protocol subject to the ever improving attacks
+> on pairings, so again the complexity seems unwarranted for now.
 
 [3.3] I think you understate the benefits of the mint knowing the
 identity of the customer: many countries have Know Your Customer (KYC)
@@ -217,10 +228,10 @@ sigs in the DL setting exist of course, but you should specify and cite
 an appropriate one.
 
 > We don't use blind sigs in the DL setting. We use RSA blind signatures
-> and Ed25519 for all _other_ signatures. (Taler has about 30 places
+> and Ed25519 for all _other_ signatures.  Taler has about 30 places
 > in the protocol where different parties sign different types of
-> messages.)  Only the validity of coins is attested with RSA signatures,
-> the rest uses EdDSA.  ECDH(E) is used for the refresh protocol.
+> messages.  Only the validity of coins is attested with RSA signatures,
+> the rest uses Ed25519.  ECDH(E) is used for the refresh protocol.
 
 [4.6] If Alice pays $75 to Bob using a $100 coin, is there any technical
 difference between (a) Bob limiting the coin to $75 and Alice refreshing
