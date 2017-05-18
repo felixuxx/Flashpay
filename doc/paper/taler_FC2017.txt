@@ -150,10 +150,8 @@ Specific comments:
 > Yes, juxtaposition denotes multiplication.  "commit to disk" has been
 > changed to "persist", the customer must persis the value before making the
 > bank transaction, so that they don't lose their reserve key should the system
-> crash.  It is used to restart the operation in case of a crash.
-> Where the blinding factor "b" is selected from depends on the instantiation
-> of the protocol, it's simply a fresh blinding factor in the blind signature
-> scheme.
+> crash.
+> We added some clarification about to where random values are selected from.
 
 - Section 4.1, step 3, what is the key K used in FDH? Also is S_w(B) a standard
   signature?
@@ -189,8 +187,7 @@ Specific comments:
   denotes? Is that a commitment (as noted in the text) or a signature (as noted
   in notation table?).
 
-> We multiply t_s^(i) with G, so the only reasonable domain is
-> [1,n] where n is the order of the elliptic curve we use.
+> We clarified what t_s^(i) is.
 > S_{C’} is a signature made with private key C’_p, what we sign
 > over is the commitment.
 
