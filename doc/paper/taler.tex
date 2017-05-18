@@ -70,6 +70,9 @@
 %\setcopyright{cagovmixed}
 
 
+\newcommand\inecc{\in \mathbb{Z}_{|\mathbb{E}|}}
+\newcommand\inept{\in {\mathbb{E}}}
+\newcommand\inrsa{\in \mathbb{Z}_{|\mathrm{dom}(\FDH_K)|}}
 % DOI
 \acmDOI{10.475/123_4}
 
@@ -813,8 +816,8 @@ exchange and one of its public denomination public keys $K_p$ whose
 value $K_v$ corresponds to an amount the customer wishes to withdraw.
 We let $K_s$ denote the exchange's private key corresponding to $K_p$.
 We use $\FDH_K$ to denote a full-domain hash where the domain is the
-public key $K_p$.  Now the customer carries out the following
-interaction with the exchange:
+modulos of the public key $K_p$.  Now the customer carries out the
+following interaction with the exchange:
 
 % FIXME: These steps occur at very different points in time, so probably
 % they should be restructured into more of a protocol description.
@@ -824,9 +827,9 @@ interaction with the exchange:
 \begin{enumerate}
   \item The customer randomly generates:
     \begin{itemize}
-      \item reserve key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p := w_sG$,
-      \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
-      \item blinding factor $b$
+      \item reserve key $W := (w_s,W_p)$ with private key $w_s \inecc$ and public key $W_p := w_sG \inept$,
+      \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G \inept$,
+      \item RSA blinding factor $b \inrsa$.
     \end{itemize}
     The customer first persists\footnote{When we say ``persist'', we mean that the value
     is stored in such a way that it can be recovered after a system crash, and
@@ -1005,9 +1008,9 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
 \begin{enumerate}
 \item %[POST {\tt /refresh/melt}]
     For each $i = 1,\ldots,\kappa$, the customer randomly generates
-    a transfer private key $t^{(i)}_s$ and computes
+    a transfer private key $t^{(i)}_s \inecc$ and computes
     \begin{enumerate}
-    \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
+    \item the transfer public key $T^{(i)}_p := t^{(i)}_s G \inept$ and
     \item the new coin secret seed $L^{(i)} := H(c'_s T_p^{(i)})$.
     \end{enumerate}
     We have computed $L^{(i)}$ as a Diffie-Hellman shared secret between
