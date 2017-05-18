@@ -298,9 +298,8 @@ importance or even existence.
 > scheme still seems to offer the best security/performance trade-off,
 > and we also value simplicity and extensive peer-review of the
 > cryptographic primitives used for production systems.  So far, none
-> of the schemes compete.  For example, Bernstein recently proposed an
-> interesting PostQuantum blind-signature scheme, but the keys are too
-> large to be useful in practice.
+> of the schemes compete.  In particular, the elliptic curve blind
+> signatures mostly require extra round trips. 
 
 However, providing proofs of the statement to be signed is important,
 and a potential attack on the presented scheme may illustrate this. The
