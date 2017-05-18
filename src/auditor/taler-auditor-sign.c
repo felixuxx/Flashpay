@@ -271,6 +271,15 @@ main (int argc,
     return 1;
   }
   dks_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
+  if (0 == dks_len)
+  {
+    fprintf (stderr,
+             "Denomination list has length zero, signature not produced.\n");
+    GNUNET_DISK_file_close (fh);
+    GNUNET_free (eddsa_priv);
+    return 2;
+  
+  }
   kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS);
   kv.purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS));
   GNUNET_CRYPTO_hash (auditor_url,
