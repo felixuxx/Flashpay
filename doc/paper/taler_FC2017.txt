@@ -29,7 +29,7 @@ only transforms a dirty coin into a fresh coin with the same denomination. The
 misbehavior will not be detected by the exchange, as the fresh coin is
 unlinkable to the original coin.
 
-> When refreshing a coin, the old coin is obviously marked as spend.
+> When refreshing a coin, the old coin is obviously marked as spent.
 > This attack is based on a misunderstanding of refreshing.
 
 The implementation of Taler in this paper is
@@ -157,7 +157,7 @@ Specific comments:
   signature?
 
 > The "K" here means that the domain of the full domain hash is the
-> modulus of the public key K_v of the key pair K.
+> modulus of the RSA public key K_v of the key pair K.
 
 - Section 4.1, step 4, How can the exchange know that this was indeed a new
   withdrawal request? If a new blinding factor b is used, then a customer can
@@ -175,13 +175,18 @@ Specific comments:
   the coin (i.e. cannot link with withdrawal) but this is still an anonymity
   problem.
 
-> Yes, this is why the user has to refresh a partially spend coin
-> before reusing it, unless they don't care about their anonymity.
+> Yes, this is why the wallet refreshes a partially spend coin before
+> reusing it, although a user who did not care about their anonymity
+> could change that.
 
 - Section 4.3, doesn’t seem very fair to compare with Zcash or at least it
   should be highlighted that a quite weaker level of anonymity is achieved.
 
-> We added a remark on the high level of anonymity that Zerocash achieves
+> We added remarks on the level of anonymity that Zerocash achieves.
+> We suspect Zerocash's inherent scaling issues limit its anonymity
+> for normal purchases, as compaired to that a large Taler exchange
+> provides.  We mention that Zerocash is likely to provide better
+> anonymtiy for large transactions that do not need to be cashed out.
 
 - Section 4.3, step 1, where is the key t_s^(i) selected from? What does S_{C’}
   denotes? Is that a commitment (as noted in the text) or a signature (as noted
