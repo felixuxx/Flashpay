@@ -58,7 +58,8 @@
 \usetikzlibrary{calc}
 \usepackage{eurosym}
 \usepackage[T1]{fontenc}
-
+\usepackage{verbatim}
+\usepackage[utf8]{inputenc}
 
 % Copyright
 %\setcopyright{none}
@@ -1867,6 +1868,16 @@ data being persisted are represented in between $\langle\rangle$.
   \item[$\overline{b_s^{(i)}}$]{Blinding factors obtained from decryption by the verifier}
   \item[$\overline{C^{(i)}_p}$]{Public coin keys computed from $\overline{c_s^{(i)}}$ by the verifier}
 \end{description}
+
+\newpage
+\onecolumn
+\section{Supplemental: Reviews and Responses from Financial Cryptography}
+
+\subsection{FC 2016}
+\verbatiminput{taler_FC2016.txt}
+
+\subsection{FC 2017}
+\verbatiminput{taler_FC2017.txt}
 
 \end{document}
 

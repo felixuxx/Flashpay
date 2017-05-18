@@ -21,7 +21,7 @@ be insecure.
 > We added a section with proofs
 
 I find two (possible) attacks against the refresh protocol. As the
-exchange does not check the validity of the public key Cp′ , the attacker can
+exchange does not check the validity of the public key Cp', the attacker can
 send an arbitrary public key to the exchange that will accept, and obtain a
 fresh coin. The attacker can spend partially a coin multiple times via
 refreshing the coin and obtaining a fresh coin in turn, as the refresh protocol
