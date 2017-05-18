@@ -476,7 +476,7 @@ financial reserve.  In addition, Taler includes an \emph{auditor} who
 assures customers and merchants that the exchange operates correctly.
 
 %\vspace{-0.3cm}
-\subsection{Security model}
+\subsection{Security considerations}
 %\vspace{-0.3cm}
 
 As a payment system, Taler naturally needs to make sure that coins are
@@ -802,7 +802,7 @@ purposes.  The exchange's bank transfers dealing in traditional currency
 are expected to be recorded for tax authorities to ensure taxability.
 % FIXME: Auditor?
 
-$S_K$ denotes RSA signing with denomination key $K$ and EdDSA
+$S_K$ denotes RSA signing with denomination key $K$ and EdDSA~\cite{eddsa,rfc8032}
 over elliptic curve $\mathbb{E}$ for other types of keys.
 $G$ denotes the generator of elliptic curve $\mathbb{E}$.
 
@@ -1487,7 +1487,7 @@ exchange.  The customer can subsequently withdraw coins from this
 reserve into their \emph{wallet}, which stores and manages coins.
 
 To withdrawal of coins from the exchange, the customer's wallet authenticates
-itself using an Ed25519 private key for the customer's reserve.  
+itself using an Ed25519 private key for the customer's reserve.
 The customer must include the corresponding reserve public key in the
 payment instruction from the customer's bank to the exchange's bank
 that funded their reserve.  With a bank that directly supports Taler

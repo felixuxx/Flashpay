@@ -1,13 +1,12 @@
 ----------------------- REVIEW 1 ---------------------
 TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous Payment Systems
-Overall evaluation: -2
 
 ----------- Overall evaluation -----------
 This paper proposes an anonymous payment system called Taler, based on the
 Chaum’s blind signature scheme. Taler employs a new refresh protocol that
 allows fractional payments and refunds while providing the unlinkability and
 untraceability. The refresh protocol uses the cut-and-choose technique to
-assure that the protocol is not abused for evading taxation. 
+assure that the protocol is not abused for evading taxation.
 
 Comment: The correctness of the refresh protocol does not hold. The \bar{B(i)}
 computed by the exchange is not equal to B(i) computed by the honest customer,
@@ -37,19 +36,24 @@ The implementation of Taler in this paper is
 unclear. For example!  , the security level, the RSA modulus, and the elliptic
 curve etc. are not described.
 
-> The RSA modulus depends on the denomination, for higher denominations
-> with a longer lifetime it makes sense to use a larger key size.
-> The elliptic curves are given and referenced in the paper, namely Ed25519 and
-> Curve25519
+> The RSA modulus length is freely configurable, the specific RSA modulus
+> (n) will change between different denominations. For the experiments
+> we used RSA 1024, but there keys only live for like a week; for deployments
+> with a longer lifetime, it likely makes sense to use a larger key size.
+> The elliptic curves are given and referenced in the paper, namely Ed25519
+> (used for all signatures) and Curve25519 (ECDHE, in refreshing).
 
 Moreover, the average time of the withdrawal, spending, refreshing protocols
 are not provided. The authors also do not compare Taler with other known
-anonymous payment systems. Thus, the efficiency of Taler is unclear.     
+anonymous payment systems. Thus, the efficiency of Taler is unclear.
 
 > In our "Experimental Results" section we mention that local processing
 > of requests happens in the order of a few milliseconds.
 > Comparing Taler to other e-cash systems experimentally is impossible,
 > since their implementation is not available.
+> Comparing Taler to blockchain-based solutions is comparing apples and
+> oranges, and blockchain-based solutions are many (10^8?) orders of magnitude
+> slower.
 
 Additional Comment: The description of the protocols of Taler omits many
 details. In particular, the authors should describe in detail how the refunds
@@ -59,16 +63,24 @@ protocol allows refunds as a contribution.
 > We added more material on refunds
 
 Furthermore, the authors should interpret the notation FDHK, and cite the
-reference for EdDSA. The title of Subsection 3.1 may be misleading, as this
-subsection does not describe the security model. The authors should rename the
-title. The “We have computed Li…” in Subsection 4.3 should be L(i).
+reference for EdDSA.
 
-> FIXME: can/should we address this?
+> We added FDH_K to the notation list.
+> We added citations for EdDSA.
+
+The title of Subsection 3.1 may be misleading, as this
+subsection does not describe the security model. The authors should rename the
+title.
+
+> We changed the title.
+
+The “We have computed Li…” in Subsection 4.3 should be L(i).
+
+> Li-typo was fixed.
 
 
 ----------------------- REVIEW 2 ---------------------
 TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous Payment Systems
-Overall evaluation: -2
 
 ----------- Overall evaluation -----------
 This paper proposes a new e-cash, named Taler, where the bank (or else called
@@ -114,17 +126,19 @@ Specific comments:
   you compare with that system?
 
 > We added this to the related work, main problem with this work is that it is
-> meant for public transportation systems.  For general payments,
+> limited to/meant for public transportation systems.  For general payments,
 > their refund can be abused to create transactions that are not
 > taxable.
 
 - Found the discussion on Bitcoin too long and unnecessary - the proposed
   system is not decentralized anyway
 
-> FIXME: maybe remove some of the bitcoin stuff?
+> Correct, but we constantly find people thinking Taler is a crypto-currency,
+> so for some readers it is important to point out the differences.
+> We have tried to keep the discussion short.
 
 - Referencing a system (Goldberg’s HINDE) that is not published makes
-  impossible for the reviewer to check any arguments. 
+  impossible for the reviewer to check any arguments.
 
 > In an earlier submission, a reviever insisted that this reference
 > be added.
@@ -173,7 +187,7 @@ Specific comments:
 
 - Section 4.3, step 1, where is the key t_s^(i) selected from? What does S_{C’}
   denotes? Is that a commitment (as noted in the text) or a signature (as noted
-  in notation table?). 
+  in notation table?).
 
 > We multiply t_s^(i) with G, so the only reasonable domain is
 > [1,n] where n is the order of the elliptic curve we use.
@@ -195,7 +209,6 @@ Specific comments:
 ----------------------- REVIEW 3 ---------------------
 PAPER: 46
 TITLE: Refreshing Coins for Giving Change and Refunds in Chaum-style Anonymous Payment Systems
-Overall evaluation: -1
 
 ----------- Overall evaluation -----------
 The paper introduces a variant's of Chaum's e-cash scheme (with an
