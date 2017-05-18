@@ -118,7 +118,11 @@ is less a currency and more an open protocol for creating new
 currencies. So what? And why do altcoins become a ponzi scheme? (Noting
 that you do not say that they might become one, rather that they do).
 
-> JEFF: want to add your Ponzi reference here?
+> We have adjusted that langauge, as some like Dogecoin have removed
+> the 21 billion BTC cap to reduce the ponzi-like tendencies.  
+> There remains a large trend towards ponzi schemes in the altcoin
+> world however, amusingly noted by https://ponzico.win/ and 
+> https://www.reddit.com/r/Bitcoin/comments/1zzzq0/ponzicoin_operator_steals_money_investors_get/
 
 [2.2] How does Taler avoid Chaum’s patent on his blind signature scheme?
 It seems to be built on it. (Could you use Lucre instead?) (Or is it
