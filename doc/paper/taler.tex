@@ -1629,14 +1629,22 @@ Unfortunately it was not possible to experimentally compare the performance of
 Taler directly to other e-cash systems, since to our best knowledge there
 is no working and publicly available implementation of any of them.
 
-When compared with the current average confirmation time for Bitcoin payments,
-Taler is many orders of magnitude faster.  While a confirmation time of Taler
-is in the order of a few hundered milliseconds (including database access and
-network latency), the time to mine even one block in Bitcoin is around ten
+When compared with the current average confirmation time for Bitcoin
+payments, Taler is many orders of magnitude faster.  In a LAN, Taler
+transactions taking about ten milliseconds are doable, given the speed
+of modern SSD drives and RSA/EdDSA signature verification
+algorithms.\footnote{We refer to \url{https://bench.cr.yp.to/} for
+  detailed benchmarks of cryptographic primitives.}  In practice, a
+few network round trips for the TCP/HTTPS handshakes and the HTTP
+request dominate overall latency.  While the confirmation time of
+Taler is thus typically in the order of a few hundered milliseconds,
+the time to mine even one block in Bitcoin is around ten
 minutes \footnote{Data retrieved in May 2017 from
-\url{https://blockchain.info/stats}}.  Very conservative Bitcoin merchants,
-such as exchanges, wait up to six blocks until they consider a transaction
-confirmed.
+  \url{https://blockchain.info/stats}}.  Bitcoin merchants following
+the Bitcoin specification must wait for six such blocks until they
+consider a transaction confirmed.  Thus latency for durable
+transactions in Bitcoin is about three to four orders of magnitude
+lower.
 
 \section{Discussion}
 
