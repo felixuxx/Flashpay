@@ -317,6 +317,26 @@ never get cashed out into another currency.
 In addition, Zerocash's anonymity for the receiver facilitates illegal
 activities like extortion, money laundering, and tax evasion.
 
+BOLT~\cite{BOLT} is a proposed off-chain payment channel inspired by
+the Lightning Network \cite{LightningNetwork}.  In essence, BOLT is
+an e-cash system designed to operate in parallel with Zerocash, along
+with a second similar system.  Aside from using Zerocash for resolving
+disputes, and ultimately transferring coins, BOLT sacrifices some of
+the customer anonymity provided by the e-cash primitives so that the
+party acting as the exchange can be an arbitrary miner but cannot
+defraud the customer.  BOLT asserts that sacrificing customer anonymity
+in this way is acceptable given Zerocash's strong anonymity properties,
+but the authors do propose using it outside Zerocash.
+
+In general, these off-chain payment channels, like BOLT and the
+Lightning Network, improve the blockchain based payment schemes by
+centralizing payment processing, but they remain orders of magnitude
+more costly than Taler with the same degree of centralization.
+In addition, they require that miners act far more like traditional
+payment processors than conventional cryptocurrencies, exposing miners
+to legal risks.  Taler is explicitly designed to help a Taler exchange
+navigate these legal risks.
+
 GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
 recent AltCoin where the company promises to identify the owner of
 each coin via e-mail addresses and phone numbers.  While it is unclear
