@@ -94,7 +94,6 @@ auditor_iter (void *cls,
   const char *auditor_url;
   unsigned int dki_len;
   size_t url_len;
-  int ret;
 
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
                                           &size,
@@ -104,7 +103,7 @@ auditor_iter (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping inaccessable auditor information file `%s'\n",
                 filename);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   if (size < sizeof (struct AuditorFileHeaderP))
   {
@@ -121,7 +120,7 @@ auditor_iter (void *cls,
                               "read",
                               filename);
     GNUNET_free (af);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   dki_len = ntohl (af->dki_len);
   if (0 == dki_len)
@@ -131,7 +130,7 @@ auditor_iter (void *cls,
                 "No signed keys in %s\n",
                 filename);
     GNUNET_free (af);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   if ( (size - sizeof (struct AuditorFileHeaderP)) / dki_len <
        (sizeof (struct TALER_DenominationKeyValidityPS) +
@@ -142,7 +141,7 @@ auditor_iter (void *cls,
                 "Malformed key file %s\n",
                 filename);
     GNUNET_free (af);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   url_len = size
     - sizeof (struct AuditorFileHeaderP)
@@ -159,17 +158,18 @@ auditor_iter (void *cls,
                 "Malformed key file %s\n",
                 filename);
     GNUNET_free (af);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
-  ret = aic->it (aic->it_cls,
-                 &af->apub,
-                 auditor_url,
-                 &af->mpub,
-                 dki_len,
-                 sigs,
-                 dki);
+  /*Ignoring return value to not interrupt the iteration*/
+  aic->it (aic->it_cls,
+           &af->apub,
+           auditor_url,
+           &af->mpub,
+           dki_len,
+           sigs,
+           dki);
   GNUNET_free (af);
-  return ret;
+  return GNUNET_OK;
 }
 
 
