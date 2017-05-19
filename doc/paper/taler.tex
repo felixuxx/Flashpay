@@ -799,7 +799,7 @@ the refresh protocol from being used to transfer ownership.
 \def\KDF{\textrm{KDF}}
 \def\FDH{\textrm{FDH}}
 
-% In this section, we describe the protocols for Taler in detail.
+In this section, we describe the protocols for Taler in detail.
 
 For the sake of brevity we omit explicitly saying each time that a
 recipient of a signed message always first checks that the signature
@@ -903,12 +903,11 @@ following interaction with the exchange:
 \subsection{Exact and partial spending}
 
 A customer can spend coins at a merchant, under the condition that the
-merchant trusts the exchange that issued the coin.
-% FIXME: Auditor here?
+merchant trusts the exchange that issued the coin, usually because
+the exchange is audited by an auditor that is trusted by the merchant.
 Merchants are identified by their public key $M_p$ which the
 customer's wallet learns through the merchant's Web page, which itself
 should be authenticated with X.509c.
-% FIXME: Is this correct?
 
 We now describe the protocol between the customer, merchant, and exchange
 for a transaction in which the customer spends a coin $C := (c_s, C_p)$
