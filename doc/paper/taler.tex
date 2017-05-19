@@ -703,7 +703,8 @@ than the total that was signed into existence using that denomination
 key.  In this case, the exchange can allow authentic customers to
 redeem their unspent coins that were signed with the compromised
 private key, while refusing further deposits involving coins signed by
-the compromised denomination key.  As a result, the financial damage
+the compromised denomination key (see Section~\ref{sec:payback}).
+As a result, the financial damage
 of losing a private signing key is limited to at most the amount
 originally signed with that key, and denomination key rotation can be
 used to bound that risk.
@@ -1744,7 +1745,7 @@ upholds the core principles described in~\cite{fc2014murdoch}.  In
 particular, in providing the cryptographic proofs as evidence none of
 the participants have to disclose their core secrets.
 
-\subsection{Business concerns}
+\subsection{Business concerns} \label{sec:payback}
 
 The Taler system implementation includes additional protocol elements
 to address real-world concerns.  To begin with, the exchange
