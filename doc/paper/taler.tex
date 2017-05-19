@@ -1428,8 +1428,8 @@ information known by the merchant in the above.  As a result, this
 proves that our linking protocol \S\ref{subsec:linking} does not
 degrade privacy.  We note that the exchange could lie in the linking
 protocol about the transfer public key to generate coins that it can
-link (at a financial loss to the exchange that it would have to share
-with its auditor).  However, in the normal course of payments the link
+link, at a financial loss to the exchange that it would have to share
+with its auditor.  However, in the normal course of payments the link
 protocol is never used.
 
 \subsection{Exculpability arguments}
@@ -1614,9 +1614,9 @@ we then pushed the t2.micro instance to the resource limit
 from a network with $\approx$ 160 ms latency to
 the EC2 instance.  At that point, the instance managed about 8 HTTP
 requests per second, which roughly corresponds to one full business
-transaction (as a full business transaction is expected to involve
-withdrawing and depositing several coins).  The network traffic was
-modest at approximately 50 kbit/sec from the exchange
+transaction, given that a full business transaction is expected to
+involve withdrawing and depositing several coins.  The network traffic
+was modest at approximately 50 kbit/sec from the exchange
 %(Figure~\ref{fig:out})
 and 160 kbit/sec to the exchange.
 %(Figure~\ref{fig:in}).
