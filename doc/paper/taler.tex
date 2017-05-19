@@ -1354,17 +1354,17 @@ other users.
 
 We will now consider the impact of the refresh operation.
 For the sake of the argument, we will first consider an earlier
-encryption-based version of the protocol in which a refresh operated
+encryption-based version of the protocol in which a refresh operation
 consisted of $\kappa$ normal coin withdrawals and the commitment
 consisted of the blinding factors and private keys of the fresh coins
 encrypted using the secret $t^{(i)} C_s$ where $C_s = c_s G$ of the
 dirty coin $C$ being refreshed and $T^{(i)} = t^{(i)} G$ is the
 transfer key.
 %
-In Taler, we replaced this encryption-based schem with the current
-KDF-based scheme as it required slightly more storage space, the
-additional, encryption primitive, and exposed more random number
-generator output from the wallet.
+In Taler, we replaced this encryption-based scheme with the current KDF-based
+scheme, as the earlier scheme required slightly more storage space, an
+additional encryption primitive, and exposed more random number generator
+output from the wallet.
 
 \begin{proposition}
 Assuming the encryption used is semantically (IND-CPA) secure, and
