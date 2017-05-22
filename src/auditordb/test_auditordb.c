@@ -107,7 +107,7 @@ run (void *cls)
       plugin->create_tables (plugin->cls))
   {
     result = 77;
-    goto drop;
+    goto unload;
   }
   if (NULL ==
       (session = plugin->get_session (plugin->cls)))
@@ -717,10 +717,12 @@ run (void *cls)
   result = 0;
 
 drop:
-  plugin->rollback (plugin->cls,
-                    session);
+  if (NULL != session)
+    plugin->rollback (plugin->cls,
+                      session);
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls));
+ unload:
   TALER_AUDITORDB_plugin_unload (plugin);
   plugin = NULL;
 }
