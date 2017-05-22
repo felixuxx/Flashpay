@@ -1375,9 +1375,11 @@ additional encryption primitive, and exposed more random number generator
 output from the wallet.
 
 \begin{proposition}
-Assuming the encryption used is semantically (IND-CPA) secure, and
- the independence of $c_s$, $t$, and the new coins' key materials,
-then any probabilistic polynomial time (PPT) adversary with an
+Assume the encryption used is semantically (IND-CPA) secure,
+given the security of a Diffie-Hellman key exchange over curve25519.
+Assume also the independence of $c_s$, $t$, and the new coins' key
+materials.
+Then any probabilistic polynomial time (PPT) adversary with an
 advantage for linking Taler coins gives rise to an adversary with
  an advantage for recognizing SHA512 output.
 \end{proposition}
@@ -1388,48 +1390,48 @@ a dishonest customer who uses the linking protocol.  We ignore this
 because we exclude such coins from our privacy garentees and the
 exchange can even invent coins whole cloth.
 
-We may now remove the encrpytion by appealing to the random oracle
-model~\cite{BR-RandomOracles}.
-
-\begin{lemma}%[\cite{??}]
-Consider a protocol that commits to random data by encrypting it
-using a secret derived from a Diffe-Hellman key exchange.
-In the random oracle model, we may replace this encryption with
-a hash function which derives the random data by applying hash
-functions to the same secret.
-\end{lemma}
-% TODO: Too general probably?
-% TODO: IND-CPA again?
-
-Indeed, we expect doing so to increase practical security as in
+We shall now replace the encrpytion phase with a KDF as in our actual
+protocol, except we treat the KDF as a random oracle~\cite{BR-RandomOracles}.
+%
+In fact, we expect doing so to increase practical security as in
 \cite{Abdalla2000}, and adding the random oracle assumption need not
 reduce security if it focuses more attention on the usage of hash
 functions throughout the protocol.
+
+\begin{theorem}
+In the random oracle model, any PPT adversary with an advantage
+in linking Taler coins has an advantage in breaking elliptic curve
+Diffie-Hellman key exchange on curve25519.
+\end{theorem}
+% TODO: IND-CPA again anywhere?
 
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
 returning a random string and placing it into a database for future
 queries.
 
-We take the random number generator that drives one random oracle $R$
-to be the random number generator used to produce the random data
-that we encrypt in the old encryption based version of Taler.
-Now our random oracle scheme with $R$ gives the same result as our
-scheme that encrypts random data, so the encryption becomes
-superfluous and may be omitted.
+We have a shared secret $k$ derived from an ECDH from which we derive
+the encryption key used in the old protocol to encrypt the new coin's
+blinding factor and private key.  We now choose to generate the new
+coin's blinding factor and private key using a random oracle $R$
+keyed by $k$.  We can do this because first the data is encrypted and
+second revealing the new coin's blinding factor or public or private
+keys later reveals nothing about $k$, thanks to \cite[Theorem 4.1]{Rudich88}.
 
-We require the security of the original encryption operation reduced
-to the security of the Diffe-Hellman key exchange, which remains a
-requirement of the derived protocol.
+After this modfication, our real KDF scheme with the KDF instantiated
+by the random oracle $R$ gives the same result as our scheme that
+encrypts data produced by $R$.  We now observe the encryption has
+becomes superfluous and may be omitted, as another party who learns 
+$t$ also learns $k$.
 \end{proof}
 
-We may now conclude that Taler remains unlinkable even with the refresh protocol.
-
-\begin{theorem}
-In the random oracle model, any PPT adversary with an advantage
-in linking Taler coins has an advantage in breaking elliptic curve
-Diffie-Hellman key exchange on Curve25519.
-\end{theorem}
+We may now conclude that Taler remains unlinkable even with the
+refresh protocol, assuming the security of elliptic curve Diffie-Hellman
+key exchange on curve25519 and that SHA512 remains strong enough.  
+We have lost our clean assumption on merely the hardness of
+recognizing SHA512 output, due to using the random oracle model,
+but recognizing has output remains the most realistic attack. 
+We use an HMAC in our implementation to make this part more robust.
 
 We do not distinguish between information known by the exchange and
 information known by the merchant in the above.  As a result, this
