@@ -1408,7 +1408,9 @@ Diffie-Hellman key exchange on curve25519.
 \begin{proof}
 We work with the usual instantiation of the random oracle model as
 returning a random string and placing it into a database for future
-queries.
+queries.  
+% TODO: this paragraph seems superfluous since its kinda sucked into
+% the reference.
 
 We have a shared secret $k$ derived from an ECDH from which we derive
 the encryption key used in the old protocol to encrypt the new coin's
@@ -1418,7 +1420,7 @@ keyed by $k$.  We can do this because first the data is encrypted and
 second revealing the new coin's blinding factor or public or private
 keys later reveals nothing about $k$, thanks to \cite[Theorem 4.1]{Rudich88}.
 
-After this modfication, our real KDF scheme with the KDF instantiated
+After this modification, our real KDF scheme with the KDF instantiated
 by the random oracle $R$ gives the same result as our scheme that
 encrypts data produced by $R$.  We now observe the encryption has
 becomes superfluous and may be omitted, as another party who learns 
