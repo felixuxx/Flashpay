@@ -130,7 +130,7 @@ main (int argc,
   if (NULL == (dbconn = getenv ("TALER_EXCHANGEDB_POSTGRES_CONFIG")))
     dbconn = defaultdb;
   char *purgedb_cmd;
-  GNUNET_asprintf (&purgedb_cmd, "taler-bank-manage --with-db=%s django flush --no-input",
+  GNUNET_asprintf (&purgedb_cmd, "taler-bank-manage -c bank.conf --with-db=%s django flush --no-input",
                    dbconn);
   if (0 != system (purgedb_cmd))
   {
