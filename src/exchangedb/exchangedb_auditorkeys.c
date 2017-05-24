@@ -108,7 +108,7 @@ auditor_iter (void *cls,
   if (size < sizeof (struct AuditorFileHeaderP))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   af = GNUNET_malloc (size);
   if (size !=
