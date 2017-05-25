@@ -1168,7 +1168,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_NO !=
+  if (GNUNET_OK !=
       plugin->insert_wire_fee (plugin->cls,
                                session,
                                "wire-method",

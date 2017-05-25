@@ -1308,7 +1308,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param deposit deposit information to store
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO on transient error
+   *         #GNUNET_SYSERR on error
    */
   int
   (*insert_deposit) (void *cls,
@@ -1322,7 +1324,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param refund refund information to store
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO on transient error
+   *         #GNUNET_SYSERR on error
    */
   int
   (*insert_refund) (void *cls,
@@ -1338,7 +1342,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param deposit_rowid identifies the deposit row to modify
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   * @return #GNUNET_OK on success
+   *         #GNUNET_NO on transient error
+   *         #GNUNET_SYSERR on error
    */
   int
   (*mark_deposit_tiny) (void *cls,
@@ -1370,7 +1376,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param deposit_rowid identifies the deposit row to modify
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO on transient error
+   *         #GNUNET_SYSERR on error
    */
   int
   (*mark_deposit_done) (void *cls,
@@ -1460,6 +1468,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash over the melt to use to locate the session
    * @param refresh_session session data to store
    * @return #GNUNET_YES on success,
+   *         #GNUNET_NO on transient error
    *         #GNUNET_SYSERR on DB failure
    */
   int
@@ -1570,7 +1579,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param tp public key to store
-   * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
+   * @return #GNUNET_SYSERR on internal error
+   *         #GNUNET_NO on transient errors
+   *         #GNUNET_OK on success
    */
   int
   (*insert_refresh_transfer_public_key) (void *cls,
@@ -1769,7 +1780,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param deposit_serial_id row in the deposits table for which this is aggregation data
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   * @return #GNUNET_OK on success
+   *         #GNUNET_NO on transient errors
+   *         #GNUNET_SYSERR on DB errors
    */
   int
   (*insert_aggregation_tracking)(void *cls,
@@ -1788,7 +1801,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param end_date when does the fee end being valid
    * @param wire_fee how high is the wire transfer fee
    * @param master_sig signature over the above by the exchange master key
-   * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+   * @return #GNUNET_OK on success or if the record exists,
+   *         #GNUNET_NO on transient errors,
    *         #GNUNET_SYSERR on failure
    */
   int
@@ -2160,6 +2174,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
    * @param now timestamp to store
    * @return #GNUNET_OK on success,
+   *         #GNUNET_NO on transient error
    *         #GNUNET_SYSERR on DB errors
    */
   int

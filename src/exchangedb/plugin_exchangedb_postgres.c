@@ -31,20 +31,31 @@
 #include "plugin_exchangedb_common.c"
 
 /**
+ * Error code returned by Postgres for deadlock.
+ */
+#define PQ_DIAG_SQLSTATE_DEADLOCK "40P01"
+
+/**
+ * Error code returned by Postgres on serialization failure.
+ */
+#define PQ_DIAG_SQLSTATE_SERIALIZATION_FAILURE "40001"
+
+
+/**
  * Log a query error.
  *
  * @param result PQ result object of the query that failed
  * @param conn SQL connection that was used
  */
 #define QUERY_ERR(result,conn)                         \
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,             \
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,             \
               "Query failed at %s:%u: %s/%s/%s/%s/%s\n", \
               __FILE__, __LINE__, \
               PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY), \
               PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL), \
               PQresultErrorMessage (result), \
               PQresStatus (PQresultStatus (result)), \
-              PQerrorMessage(conn));
+              PQerrorMessage (conn));
 
 
 /**
@@ -61,7 +72,7 @@
                 PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL), \
                 PQresultErrorMessage (result), \
                 PQresStatus (PQresultStatus (result)), \
-                PQerrorMessage(conn)); \
+                PQerrorMessage (conn)); \
   } while (0)
 
 
@@ -111,6 +122,7 @@
   } while (0)
 
 
+
 /**
  * Handle for a database session (per-thread, for transactions).
  */
@@ -120,6 +132,25 @@ struct TALER_EXCHANGEDB_Session
    * Postgres connection handle.
    */
   PGconn *conn;
+
+  /**
+   * Transaction state.  Set to #GNUNET_OK by #postgres_start().
+   * Set to #GNUNET_NO if any part of the transaction failed in a
+   * transient way (i.e. #PG_DIAG_SQLSTATE_DEADLOCK or
+   * #PG_DIAG_SQLSTATE_SERIALIZATION_FAILURE).  Set to
+   * #GNUNET_SYSERR if any part of the transaction failed in a
+   * hard way or if we are not within a transaction scope.
+   *
+   * If #GNUNET_NO, #postgres_commit() will always just do a
+   * rollback and return #GNUNET_NO as well (to retry).
+   *
+   * If #GNUNET_SYSERR, #postgres_commit() will always just do a
+   * rollback and return #GNUNET_SYSERR as well.
+   *
+   * If #GNUNET_OK, #postgres_commit() will try to commit and
+   * return the result from the commit operation.
+   */
+  int state;
 };
 
 
@@ -1700,6 +1731,7 @@ postgres_get_session (void *cls)
     return NULL;
   }
   session = GNUNET_new (struct TALER_EXCHANGEDB_Session);
+  session->state = GNUNET_SYSERR;
   session->conn = db_conn;
   if (0 != pthread_setspecific (pc->db_conn_threadlocal,
                                 session))
@@ -1737,10 +1769,11 @@ postgres_start (void *cls,
                      PQerrorMessage (session->conn));
     GNUNET_break (0);
     PQclear (result);
+    session->state = GNUNET_SYSERR;
     return GNUNET_SYSERR;
   }
-
   PQclear (result);
+  session->state = GNUNET_OK;
   return GNUNET_OK;
 }
 
@@ -1763,24 +1796,24 @@ postgres_rollback (void *cls,
   GNUNET_break (PGRES_COMMAND_OK ==
                 PQresultStatus (result));
   PQclear (result);
+  session->state = GNUNET_SYSERR;
 }
 
 
 /**
- * Commit the current transaction of a database connection.
+ * Check the @a result's error code to see what happened.
+ * Also logs errors.
  *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
- * @return #GNUNET_OK on success
+ * @param session session used
+ * @param result result to check
+ * @return #GNUNET_OK if the request/transaction succeeded
+ *         #GNUNET_NO if it failed but could succeed if retried
+ *         #GNUNET_SYSERR on hard errors
  */
 static int
-postgres_commit (void *cls,
-                 struct TALER_EXCHANGEDB_Session *session)
+evaluate_pq_result (struct TALER_EXCHANGEDB_Session *session,
+                    PGresult *result)
 {
-  PGresult *result;
-
-  result = PQexec (session->conn,
-                   "COMMIT");
   if (PGRES_COMMAND_OK !=
       PQresultStatus (result))
   {
@@ -1792,28 +1825,137 @@ postgres_commit (void *cls,
     {
       /* very unexpected... */
       GNUNET_break (0);
-      PQclear (result);
       return GNUNET_SYSERR;
     }
-    /* 40P01: deadlock, 40001: serialization failure */
     if ( (0 == strcmp (sqlstate,
-                       "40P01")) ||
+                       PQ_DIAG_SQLSTATE_DEADLOCK)) ||
          (0 == strcmp (sqlstate,
-                       "40001")) )
+                       PQ_DIAG_SQLSTATE_SERIALIZATION_FAILURE)) )
     {
       /* These two can be retried and have a fair chance of working
          the next time */
-      PQclear (result);
+      QUERY_ERR (result, session->conn);
       return GNUNET_NO;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Database commit failure: %s\n",
-                sqlstate);
-    PQclear (result);
+    BREAK_DB_ERR(result, session->conn);
     return GNUNET_SYSERR;
   }
-  PQclear (result);
   return GNUNET_OK;
+}
+
+
+/**
+ * Commit the current transaction of a database connection.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session the database connection
+ * @return #GNUNET_SYSERR on hard error,
+ *         #GNUNET_NO if commit failed but retry may work,
+ *         #GNUNET_OK on success
+ */
+static int
+postgres_commit (void *cls,
+                 struct TALER_EXCHANGEDB_Session *session)
+{
+  PGresult *result;
+  int ret;
+  int state;
+
+  state = session->state;
+  if (GNUNET_OK != state)
+  {
+    postgres_rollback (cls,
+                       session);
+    return state;
+  }
+  result = PQexec (session->conn,
+                   "COMMIT");
+  ret = evaluate_pq_result (session,
+                            result);
+  GNUNET_break (GNUNET_SYSERR != ret);
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Update the @a session state based on the latest @a result from
+ * the database.  Checks the status code of @a result and possibly
+ * sets the state to failed (#GNUNET_SYSERR) or transiently failed
+ * (#GNUNET_NO).
+ *
+ * @param session the session in which the transaction is running
+ * @param statement name of the statement we were executing (for logging)
+ * @param result the result we got from Postgres
+ * @return current session state, i.e.
+ *         #GNUNET_OK on success
+ *         #GNUNET_NO if the transaction had a transient failure
+ *         #GNUNET_SYSERR if the transaction had a hard failure
+ */
+static int
+update_session_from_result (struct TALER_EXCHANGEDB_Session *session,
+                            const char *statement,
+                            PGresult *result)
+{
+  int ret;
+
+  if (GNUNET_OK != session->state)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR; /* we already failed, why do we keep going? */
+  }
+  ret = evaluate_pq_result (session,
+                            result);
+  if (GNUNET_OK == ret)
+    return ret;
+  GNUNET_log ((GNUNET_NO == ret)
+              ? GNUNET_ERROR_TYPE_INFO
+              : GNUNET_ERROR_TYPE_ERROR,
+              "Statement `%s' failed: %s/%s/%s/%s/%s",
+              statement,
+              PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),
+              PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),
+              PQresultErrorMessage (result),
+              PQresStatus (PQresultStatus (result)),
+              PQerrorMessage (session->conn));
+  session->state = ret;
+  return ret;
+}
+
+
+/**
+ * Execute a named prepared @a statement that is NOT a SELECT statement
+ * in @a session using the given @a params.  Returns the resulting session
+ * state.
+ *
+ * @param session session to execute the statement in
+ * @param statement name of the statement
+ * @param params parameters to give to the statement (#GNUNET_PQ_query_param_end-terminated)
+ * @return #GNUNET_OK on success
+ *         #GNUNET_NO if the transaction had a transient failure
+ *         #GNUNET_SYSERR if the transaction had a hard failure
+ */
+static int
+execute_prepared_non_select (struct TALER_EXCHANGEDB_Session *session,
+                             const char *statement,
+                             const struct GNUNET_PQ_QueryParam *params)
+{
+  PGresult *result;
+  int ret;
+
+  if (GNUNET_OK != session->state)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR; /* we already failed, why keep going? */
+  }
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    statement,
+                                    params);
+  ret = update_session_from_result (session,
+                                    statement,
+                                    result);
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1833,8 +1975,6 @@ postgres_insert_denomination_info (void *cls,
                                    const struct TALER_DenominationPublicKey *denom_pub,
                                    const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
-  PGresult *result;
-  int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
@@ -1866,20 +2006,9 @@ postgres_insert_denomination_info (void *cls,
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
                                                &issue->properties.fee_refund));
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "denomination_insert",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    ret = GNUNET_SYSERR;
-    BREAK_DB_ERR (result, session->conn);
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
+  return execute_prepared_non_select (session,
+                                      "denomination_insert",
+                                      params);
 }
 
 
@@ -1905,11 +2034,12 @@ postgres_get_denomination_info (void *cls,
   };
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "denomination_get",
-                                   params);
+                                    "denomination_get",
+                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result, session->conn);
+    QUERY_ERR (result,
+               session->conn);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -2046,8 +2176,6 @@ reserves_update (void *cls,
                  struct TALER_EXCHANGEDB_Session *session,
                  const struct TALER_EXCHANGEDB_Reserve *reserve)
 {
-  PGresult *result;
-  int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&reserve->expiry),
     TALER_PQ_query_param_amount (&reserve->balance),
@@ -2055,22 +2183,9 @@ reserves_update (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "reserve_update",
-                                    params);
-  /* FIXME: properly distinguish between hard and soft (retry-able) failures here! */
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    QUERY_ERR (result,
-               session->conn);
-    ret = GNUNET_SYSERR;
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
+  return execute_prepared_non_select (session,
+                                      "reserve_update",
+                                      params);
 }
 
 
@@ -2881,7 +2996,9 @@ postgres_have_deposit (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param rowid identifies the deposit row to modify
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on transient error
+ *         #GNUNET_SYSERR on error
  */
 static int
 postgres_mark_deposit_tiny (void *cls,
@@ -2892,20 +3009,10 @@ postgres_mark_deposit_tiny (void *cls,
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "mark_deposit_tiny",
-                                   params);
-  if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "mark_deposit_tiny",
+                                      params);
 }
 
 
@@ -2986,7 +3093,9 @@ postgres_test_deposit_done (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param rowid identifies the deposit row to modify
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on transient error,
+ *         #GNUNET_SYSERR on error
  */
 static int
 postgres_mark_deposit_done (void *cls,
@@ -2997,20 +3106,10 @@ postgres_mark_deposit_done (void *cls,
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "mark_deposit_done",
-                                   params);
-  if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "mark_deposit_done",
+                                      params);
 }
 
 
@@ -3289,14 +3388,15 @@ get_known_coin (void *cls,
  * @param cls plugin closure
  * @param session the shared database session
  * @param coin_info the public coin info
- * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
+ * @return #GNUNET_SYSERR upon error;
+ *         #GNUNET_NO on transient error
+ *         #GNUNET_OK upon success
  */
 static int
 insert_known_coin (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_CoinPublicInfo *coin_info)
 {
-  PGresult *result;
   struct GNUNET_HashCode denom_pub_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
@@ -3307,17 +3407,9 @@ insert_known_coin (void *cls,
 
   GNUNET_CRYPTO_rsa_public_key_hash (coin_info->denom_pub.rsa_public_key,
 				     &denom_pub_hash);
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_known_coin",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "insert_known_coin",
+                                      params);
 }
 
 
@@ -3327,14 +3419,15 @@ insert_known_coin (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session connection to the database
  * @param deposit deposit information to store
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on transient error
+ *         #GNUNET_SYSERR on error
  */
 static int
 postgres_insert_deposit (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
-  PGresult *result;
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
@@ -3362,30 +3455,19 @@ postgres_insert_deposit (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    if (GNUNET_SYSERR ==
-        insert_known_coin (cls,
-                           session,
-                           &deposit->coin))
+    if (GNUNET_OK !=
+        (ret = insert_known_coin (cls,
+                                  session,
+                                  &deposit->coin)))
     {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
+      GNUNET_break (GNUNET_NO == ret);
+      return ret;
     }
   }
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "insert_deposit",
-                                    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    ret = GNUNET_SYSERR;
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
+  return execute_prepared_non_select (session,
+                                      "insert_deposit",
+                                      params);
 }
 
 
@@ -3395,15 +3477,15 @@ postgres_insert_deposit (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param refund refund information to store
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success
+ *         #GNUNET_NO on transient error
+ *         #GNUNET_SYSERR on error
  */
 static int
 postgres_insert_refund (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_Refund *refund)
 {
-  PGresult *result;
-  int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&refund->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refund->merchant_pub),
@@ -3413,23 +3495,13 @@ postgres_insert_refund (void *cls,
     TALER_PQ_query_param_amount (&refund->refund_amount),
     GNUNET_PQ_query_param_end
   };
+
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&refund->refund_amount,
                                             &refund->refund_fee));
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "insert_refund",
-                                    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    ret = GNUNET_SYSERR;
-    BREAK_DB_ERR (result, session->conn);
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
+  return execute_prepared_non_select (session,
+                                      "insert_refund",
+                                      params);
 }
 
 
@@ -3532,6 +3604,7 @@ postgres_get_refresh_session (void *cls,
  * @param session_hash hash over the melt to use to locate the session
  * @param refresh_session session data to store
  * @return #GNUNET_YES on success,
+ *         #GNUNET_NO on transient error
  *         #GNUNET_SYSERR on DB failure
  */
 static int
@@ -3540,7 +3613,6 @@ postgres_create_refresh_session (void *cls,
                                  const struct GNUNET_HashCode *session_hash,
                                  const struct TALER_EXCHANGEDB_RefreshSession *refresh_session)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->melt.coin.coin_pub),
@@ -3564,27 +3636,19 @@ postgres_create_refresh_session (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    if (GNUNET_SYSERR ==
-        insert_known_coin (cls,
-                           session,
-                           &refresh_session->melt.coin))
+    if (GNUNET_OK !=
+        (ret = insert_known_coin (cls,
+                                  session,
+                                  &refresh_session->melt.coin)))
     {
-      GNUNET_break (0);
+      GNUNET_break (GNUNET_NO == ret);
       return GNUNET_SYSERR;
     }
   }
-  /* insert session */
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_refresh_session",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+
+  return execute_prepared_non_select (session,
+                                      "insert_refresh_session",
+                                      params);
 }
 
 
@@ -3809,9 +3873,7 @@ postgres_free_refresh_commit_coins (void *cls,
                                     unsigned int commit_coins_len,
                                     struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins)
 {
-  unsigned int i;
-
-  for (i=0;i<commit_coins_len;i++)
+  for (unsigned int i=0;i<commit_coins_len;i++)
   {
     GNUNET_free (commit_coins[i].coin_ev);
     commit_coins[i].coin_ev = NULL;
@@ -3840,9 +3902,7 @@ postgres_get_refresh_commit_coins (void *cls,
                                    uint16_t num_newcoins,
                                    struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins)
 {
-  unsigned int i;
-
-  for (i=0;i<(unsigned int) num_newcoins;i++)
+  for (unsigned int i=0;i<(unsigned int) num_newcoins;i++)
   {
     uint16_t newcoin_off = (uint16_t) i;
     struct GNUNET_PQ_QueryParam params[] = {
@@ -3910,7 +3970,9 @@ postgres_get_refresh_commit_coins (void *cls,
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
  * @param tp transfer public key to store
- * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
+ * @return #GNUNET_SYSERR on internal error,
+ *         #GNUNET_NO on transient errors
+ *         #GNUNET_OK on success
  */
 static int
 postgres_insert_refresh_transfer_public_key (void *cls,
@@ -3924,25 +3986,9 @@ postgres_insert_refresh_transfer_public_key (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  PGresult *result;
-
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "insert_transfer_public_key",
-                                    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "insert_transfer_public_key",
+                                      params);
 }
 
 
@@ -4077,6 +4123,7 @@ postgres_get_refresh_out (void *cls,
  * @param newcoin_index coin index
  * @param ev_sig coin signature
  * @return #GNUNET_OK on success
+ *         #GNUNET_NO on transient error
  *         #GNUNET_SYSERR on error
  */
 static int
@@ -4086,7 +4133,6 @@ postgres_insert_refresh_out (void *cls,
                              uint16_t newcoin_index,
                              const struct TALER_DenominationSignature *ev_sig)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
     GNUNET_PQ_query_param_uint16 (&newcoin_index),
@@ -4094,17 +4140,9 @@ postgres_insert_refresh_out (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "insert_refresh_out",
-                                    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "insert_refresh_out",
+                                      params);
 }
 
 
@@ -4123,7 +4161,6 @@ postgres_get_link_data_list (void *cls,
                              const struct GNUNET_HashCode *session_hash)
 {
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
-  int i;
   int nrows;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
@@ -4148,7 +4185,7 @@ postgres_get_link_data_list (void *cls,
     return NULL;
   }
 
-  for (i = nrows-1; i >= 0; i--)
+  for (int i = nrows-1; i >= 0; i--)
   {
     struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
     struct GNUNET_CRYPTO_RsaSignature *sig;
@@ -4215,7 +4252,6 @@ postgres_get_transfer (void *cls,
   };
   PGresult *result;
   int nrows;
-  int i;
 
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_transfer",
@@ -4234,7 +4270,7 @@ postgres_get_transfer (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
     struct GNUNET_HashCode session_hash;
     struct TALER_TransferPublicKeyP transfer_pub;
@@ -4286,7 +4322,6 @@ postgres_get_coin_transactions (void *cls,
       GNUNET_PQ_query_param_end
     };
     int nrows;
-    int i;
     PGresult *result;
     struct TALER_EXCHANGEDB_TransactionList *tl;
 
@@ -4300,7 +4335,7 @@ postgres_get_coin_transactions (void *cls,
       goto cleanup;
     }
     nrows = PQntuples (result);
-    for (i = 0; i < nrows; i++)
+    for (int i = 0; i < nrows; i++)
     {
       struct TALER_EXCHANGEDB_Deposit *deposit;
 
@@ -4366,7 +4401,6 @@ postgres_get_coin_transactions (void *cls,
       GNUNET_PQ_query_param_end
     };
     int nrows;
-    int i;
     PGresult *result;
     struct TALER_EXCHANGEDB_TransactionList *tl;
 
@@ -4381,7 +4415,7 @@ postgres_get_coin_transactions (void *cls,
       goto cleanup;
     }
     nrows = PQntuples (result);
-    for (i=0;i<nrows;i++)
+    for (int i=0;i<nrows;i++)
     {
       struct TALER_EXCHANGEDB_RefreshMelt *melt;
 
@@ -4437,7 +4471,6 @@ postgres_get_coin_transactions (void *cls,
       GNUNET_PQ_query_param_end
     };
     int nrows;
-    int i;
     PGresult *result;
     struct TALER_EXCHANGEDB_TransactionList *tl;
 
@@ -4452,7 +4485,7 @@ postgres_get_coin_transactions (void *cls,
       goto cleanup;
     }
     nrows = PQntuples (result);
-    for (i=0;i<nrows;i++)
+    for (int i=0;i<nrows;i++)
     {
       struct TALER_EXCHANGEDB_Refund *refund;
 
@@ -4512,7 +4545,6 @@ postgres_get_coin_transactions (void *cls,
       GNUNET_PQ_query_param_end
     };
     int nrows;
-    int i;
     PGresult *result;
     struct TALER_EXCHANGEDB_TransactionList *tl;
 
@@ -4527,7 +4559,7 @@ postgres_get_coin_transactions (void *cls,
       goto cleanup;
     }
     nrows = PQntuples (result);
-    for (i=0;i<nrows;i++)
+    for (int i=0;i<nrows;i++)
     {
       struct TALER_EXCHANGEDB_Payback *payback;
 
@@ -4606,7 +4638,6 @@ postgres_lookup_wire_transfer (void *cls,
     GNUNET_PQ_query_param_end
   };
   int nrows;
-  int i;
 
   /* check if the melt record exists and get it */
   result = GNUNET_PQ_exec_prepared (session->conn,
@@ -4626,7 +4657,7 @@ postgres_lookup_wire_transfer (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
     uint64_t rowid;
     struct GNUNET_HashCode h_proposal_data;
@@ -4852,7 +4883,9 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on transient errors
+ *         #GNUNET_SYSERR on DB errors
  */
 static int
 postgres_insert_aggregation_tracking (void *cls,
@@ -4866,25 +4899,10 @@ postgres_insert_aggregation_tracking (void *cls,
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_aggregation_tracking",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "insert_aggregation_tracking",
+                                      params);
 }
 
 
@@ -4973,7 +4991,8 @@ postgres_get_wire_fee (void *cls,
  * @param end_date when does the fee end being valid
  * @param wire_fee how high is the wire transfer fee
  * @param master_sig signature over the above by the exchange master key
- * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+ * @return #GNUNET_OK on success or if the record exists,
+ *         #GNUNET_NO on transient errors
  *         #GNUNET_SYSERR on failure
  */
 static int
@@ -4993,7 +5012,6 @@ postgres_insert_wire_fee (void *cls,
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
   struct TALER_Amount wf;
   struct TALER_MasterSignatureP sig;
   struct GNUNET_TIME_Absolute sd;
@@ -5029,26 +5047,12 @@ postgres_insert_wire_fee (void *cls,
       return GNUNET_SYSERR;
     }
     /* equal record already exists */
-    return GNUNET_NO;
+    return GNUNET_OK;
   }
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_wire_fee",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "insert_wire_fee",
+                                      params);
 }
 
 
@@ -5424,6 +5428,7 @@ postgres_start_deferred_wire_out (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
+  session->state = GNUNET_OK;
   return GNUNET_OK;
 }
 
@@ -6377,6 +6382,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
  * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
  * @param timestamp current time (rounded)
  * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on transient error
  *         #GNUNET_SYSERR on DB errors
  */
 static int
@@ -6418,13 +6424,13 @@ postgres_insert_payback_request (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    if (GNUNET_SYSERR ==
-        insert_known_coin (cls,
-                           session,
-                           coin))
+    if (GNUNET_OK !=
+        (ret = insert_known_coin (cls,
+                                  session,
+                                  coin)))
     {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
+      GNUNET_break (GNUNET_NO == ret);
+      return ret;
     }
   }
 
