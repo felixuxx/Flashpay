@@ -36,6 +36,11 @@
 #define PQ_DIAG_SQLSTATE_DEADLOCK "40P01"
 
 /**
+ * Error code returned by Postgres for uniqueness violation.
+ */
+#define PQ_DIAG_SQLSTATE_UNIQUE_VIOLATION "23505"
+
+/**
  * Error code returned by Postgres on serialization failure.
  */
 #define PQ_DIAG_SQLSTATE_SERIALIZATION_FAILURE "40001"
@@ -3662,6 +3667,7 @@ postgres_create_refresh_session (void *cls,
  * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
  * @param denom_pubs array denominations of the coins to create
  * @return #GNUNET_OK on success
+ *         #GNUNET_NO on transient error
  *         #GNUNET_SYSERR on internal error
  */
 static int
@@ -3671,12 +3677,9 @@ postgres_insert_refresh_order (void *cls,
                                uint16_t num_newcoins,
                                const struct TALER_DenominationPublicKey *denom_pubs)
 {
-  unsigned int i;
-
-  for (i=0;i<(unsigned int) num_newcoins;i++)
+  for (unsigned int i=0;i<(unsigned int) num_newcoins;i++)
   {
     uint16_t newcoin_off = (uint16_t) i;
-    PGresult *result;
 
     {
       struct GNUNET_HashCode denom_pub_hash;
@@ -3686,25 +3689,16 @@ postgres_insert_refresh_order (void *cls,
         GNUNET_PQ_query_param_auto_from_type (&denom_pub_hash),
         GNUNET_PQ_query_param_end
       };
+      int ret;
 
       GNUNET_CRYPTO_rsa_public_key_hash (denom_pubs[i].rsa_public_key,
 					 &denom_pub_hash);
-      result = GNUNET_PQ_exec_prepared (session->conn,
-                                       "insert_refresh_order",
-                                       params);
+      ret = execute_prepared_non_select (session,
+                                         "insert_refresh_order",
+                                         params);
+      if (GNUNET_OK != ret)
+        return ret;
     }
-    if (PGRES_COMMAND_OK != PQresultStatus (result))
-    {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    if (0 != strcmp ("1", PQcmdTuples (result)))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    PQclear (result);
   }
   return GNUNET_OK;
 }
@@ -3814,6 +3808,7 @@ postgres_get_refresh_order (void *cls,
  * @param num_newcoins coin index size of the @a commit_coins array
  * @param commit_coins array of coin commitments to store
  * @return #GNUNET_OK on success
+ *         #GNUNET_NO on transient error
  *         #GNUNET_SYSERR on error
  */
 static int
@@ -3823,38 +3818,22 @@ postgres_insert_refresh_commit_coins (void *cls,
                                       uint16_t num_newcoins,
                                       const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins)
 {
-  PGresult *result;
-  unsigned int i;
-  uint16_t coin_off;
-
-  for (i=0;i<(unsigned int) num_newcoins;i++)
+  for (uint16_t coin_off=0;coin_off<num_newcoins;coin_off++)
   {
-    coin_off = (uint16_t) i;
-    {
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (session_hash),
-        GNUNET_PQ_query_param_uint16 (&coin_off),
-        GNUNET_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
-					  commit_coins[i].coin_ev_size),
-        GNUNET_PQ_query_param_end
-      };
-      result = GNUNET_PQ_exec_prepared (session->conn,
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (session_hash),
+      GNUNET_PQ_query_param_uint16 (&coin_off),
+      GNUNET_PQ_query_param_fixed_size (commit_coins[coin_off].coin_ev,
+                                        commit_coins[coin_off].coin_ev_size),
+      GNUNET_PQ_query_param_end
+    };
+    int ret;
+
+    ret = execute_prepared_non_select (session,
                                        "insert_refresh_commit_coin",
                                        params);
-    }
-    if (PGRES_COMMAND_OK != PQresultStatus (result))
-    {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    if (0 != strcmp ("1", PQcmdTuples (result)))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    PQclear (result);
+    if (GNUNET_OK != ret)
+      return ret;
   }
   return GNUNET_OK;
 }
@@ -5154,7 +5133,8 @@ postgres_get_expired_reserves (void *cls,
  * @param wtid wire transfer details
  * @param amount_with_fee amount we charged to the reserve
  * @param closing_fee how high is the closing fee
- * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if the record exists or on transient errors
  *         #GNUNET_SYSERR on failure
  */
 static int
@@ -5177,35 +5157,24 @@ postgres_insert_reserve_closed (void *cls,
     TALER_PQ_query_param_amount (closing_fee),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
   int ret;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-				    "reserves_close_insert",
-				    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
+  ret = execute_prepared_non_select (session,
+                                     "reserves_close_insert",
+                                     params);
+  if (GNUNET_OK != ret)
+    return ret;
 
   /* update reserve balance */
   reserve.pub = *reserve_pub;
-  if (GNUNET_OK != postgres_reserve_get (cls,
-                                         session,
-                                         &reserve))
+  if (GNUNET_OK !=
+      (ret = postgres_reserve_get (cls,
+                                   session,
+                                   &reserve)))
   {
-    /* Should have been checked before we got here... */
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    /* Existence should have been checked before we got here... */
+    GNUNET_break (GNUNET_NO == ret);
+    return ret;
   }
   ret = TALER_amount_subtract (&reserve.balance,
 			       &reserve.balance,
@@ -5250,24 +5219,15 @@ postgres_wire_prepare_data_insert (void *cls,
                                    const char *buf,
                                    size_t buf_size)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_fixed_size (buf, buf_size),
     GNUNET_PQ_query_param_end
   };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "wire_prepare_data_insert",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "wire_prepare_data_insert",
+                                      params);
 }
 
 
@@ -5288,20 +5248,10 @@ postgres_wire_prepare_data_mark_finished (void *cls,
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "wire_prepare_data_mark_done",
-                                   params);
-  if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "wire_prepare_data_mark_done",
+                                      params);
 }
 
 
@@ -5453,7 +5403,6 @@ postgres_store_wire_transfer_out (void *cls,
                                   const json_t *wire_account,
                                   const struct TALER_Amount *amount)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
@@ -5462,17 +5411,9 @@ postgres_store_wire_transfer_out (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "insert_wire_out",
-                                    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return execute_prepared_non_select (session,
+                                      "insert_wire_out",
+                                      params);
 }
 
 
@@ -6397,7 +6338,6 @@ postgres_insert_payback_request (void *cls,
                                  struct GNUNET_TIME_Absolute timestamp)
 {
   struct PostgresClosure *pg = cls;
-  PGresult *result;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6435,16 +6375,14 @@ postgres_insert_payback_request (void *cls,
   }
 
   /* now store actual payback information */
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "payback_insert",
-                                    params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  if (GNUNET_OK !=
+      (ret = execute_prepared_non_select (session,
+                                          "payback_insert",
+                                          params)))
   {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    GNUNET_break (GNUNET_NO == ret);
+    return ret;
   }
-  PQclear (result);
 
   /* Update reserve balance */
   reserve.pub = *reserve_pub;
@@ -6581,8 +6519,9 @@ postgres_insert_denomination_revocation (void *cls,
 
     efield = PQresultErrorField (result,
 				 PG_DIAG_SQLSTATE);
+    /* FIXME: what about serialization errors? */
     if ( (PGRES_FATAL_ERROR == PQresultStatus(result)) &&
-	 (NULL != strstr ("23505", /* unique violation */
+	 (NULL != strstr (PQ_DIAG_SQLSTATE_UNIQUE_VIOLATION,
 			  efield)) )
     {
       /* This means we had the same reserve/justification/details

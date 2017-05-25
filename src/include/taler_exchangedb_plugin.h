@@ -1488,6 +1488,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
    * @param denom_pubs array denominations of the coins to create
    * @return #GNUNET_OK on success
+   *         #GNUNET_NO on transient error
    *         #GNUNET_SYSERR on internal error
    */
   int
@@ -1528,6 +1529,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param num_newcoins coin index size of the @a commit_coins array
    * @param commit_coin array of coin commitments to store
    * @return #GNUNET_OK on success
+   *         #GNUNET_NO on transient error
    *         #GNUNET_SYSERR on error
    */
   int
