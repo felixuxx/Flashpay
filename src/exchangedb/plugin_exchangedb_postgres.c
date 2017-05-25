@@ -1965,6 +1965,145 @@ execute_prepared_non_select (struct TALER_EXCHANGEDB_Session *session,
 
 
 /**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+typedef void
+(*PostgresResultHandler)(void *cls,
+                         PGresult *result,
+                         unsigned int num_results);
+
+
+/**
+ * Return value to indicate that there were no results but also
+ * no hard failure.  Must be different from #GNUNET_OK, #GNUNET_NO
+ * and #GNUNET_SYSERR.
+ */
+#define NO_RESULTS 2
+
+
+/**
+ * Execute a named prepared @a statement that is a SELECT statement
+ * which may return multiple results in @a session using the given @a
+ * params.  Returns the resulting session state.
+ *
+ * @param session session to execute the statement in
+ * @param statement name of the statement
+ * @param params parameters to give to the statement (#GNUNET_PQ_query_param_end-terminated)
+ * @param rh function to call with the result set, NULL to ignore
+ * @param rh_cls closure to pass to @a rh
+ * @return #GNUNET_OK on success (@a rh was called, but possibly with 0 results)
+ *         #GNUNET_NO if the transaction had a transient failure
+ *         #GNUNET_SYSERR if the transaction had a hard failure
+ */
+int
+execute_prepared_multi_select (struct TALER_EXCHANGEDB_Session *session,
+                               const char *statement,
+                               const struct GNUNET_PQ_QueryParam *params,
+                               PostgresResultHandler rh,
+                               void *rh_cls)
+{
+  PGresult *result;
+  int ret;
+
+  if (GNUNET_OK != session->state)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR; /* we already failed, why keep going? */
+  }
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    statement,
+                                    params);
+  ret = update_session_from_result (session,
+                                    statement,
+                                    result);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (GNUNET_NO == ret);
+    PQclear (result);
+    return ret;
+  }
+  if (NULL != rh)
+    rh (rh_cls,
+        result,
+        PQntuples (result));
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Execute a named prepared @a statement that is a SELECT statement
+ * which must return a single result in @a session using the given @a
+ * params.  Stores the result (if any) in @a rs, which the caller
+ * must then clean up.  Returns the resulting session state.
+ *
+ * @param session session to execute the statement in
+ * @param statement name of the statement
+ * @param params parameters to give to the statement (#GNUNET_PQ_query_param_end-terminated)
+ * @param[in,out] rs result specification to use for storing the result of the query
+ * @return #NO_RESULTS if there were zero results but the query succeeded,
+ *         #GNUNET_OK on success (exactly one result was successfully stored in @a rs)
+ *         #GNUNET_NO if the transaction had a transient failure
+ *         #GNUNET_SYSERR if the transaction had a hard failure
+ */
+int
+execute_prepared_singleton_select (struct TALER_EXCHANGEDB_Session *session,
+                                   const char *statement,
+                                   const struct GNUNET_PQ_QueryParam *params,
+                                   struct GNUNET_PQ_ResultSpec *rs)
+{
+  PGresult *result;
+  int ret;
+
+  if (GNUNET_OK != session->state)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR; /* we already failed, why keep going? */
+  }
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    statement,
+                                    params);
+  ret = update_session_from_result (session,
+                                    statement,
+                                    result);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (GNUNET_NO == ret);
+    PQclear (result);
+    return ret;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return NO_RESULTS;
+  }
+  if (1 != PQntuples (result))
+  {
+    /* more than one result, but there must be at most one */
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result,
+                                rs,
+                                0))
+  {
+    session->state = GNUNET_SYSERR;
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+
+/**
  * Insert a denomination key's public information into the database for
  * reference by auditors and other consistency checks.
  *
@@ -2067,17 +2206,17 @@ postgres_get_denomination_info (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("master_pub",
-                                           &issue->properties.master),
+                                            &issue->properties.master),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                           &issue->signature),
+                                            &issue->signature),
       GNUNET_PQ_result_spec_absolute_time_nbo ("valid_from",
-                                              &issue->properties.start),
+                                               &issue->properties.start),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
-                                              &issue->properties.expire_withdraw),
+                                               &issue->properties.expire_withdraw),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_deposit",
-                                              &issue->properties.expire_deposit),
+                                               &issue->properties.expire_deposit),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
-                                              &issue->properties.expire_legal),
+                                               &issue->properties.expire_legal),
       TALER_PQ_result_spec_amount_nbo ("coin",
                                        &issue->properties.value),
       TALER_PQ_result_spec_amount_nbo ("fee_withdraw",
@@ -2117,7 +2256,9 @@ postgres_get_denomination_info (void *cls,
  * @param[in,out] reserve the reserve data.  The public key of the reserve should be
  *          set in this structure; it is used to query the database.  The balance
  *          and expiration are then filled accordingly.
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ * @return #GNUNET_OK upon success;
+ *         #GNUNET_NO if there were no results (but no hard failure)
+ *         #GNUNET_SYSERR upon failure
  */
 static int
 postgres_reserve_get (void *cls,
