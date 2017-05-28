@@ -247,7 +247,7 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_deposit_success (connection,
                                                &deposit->coin.coin_pub,
                                                &deposit->h_wire,
-                                               &deposit->h_proposal_data,
+                                               &deposit->h_contract_terms,
                                                deposit->timestamp,
                                                deposit->refund_deadline,
                                                &deposit->merchant_pub,
@@ -325,7 +325,7 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
   return TEH_RESPONSE_reply_deposit_success (connection,
                                              &deposit->coin.coin_pub,
                                              &deposit->h_wire,
-                                             &deposit->h_proposal_data,
+                                             &deposit->h_contract_terms,
                                              deposit->timestamp,
                                              deposit->refund_deadline,
                                              &deposit->merchant_pub,
@@ -392,8 +392,8 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
         if ( (0 == memcmp (&tlp->details.deposit->merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.deposit->h_proposal_data,
-                           &refund->h_proposal_data,
+             (0 == memcmp (&tlp->details.deposit->h_contract_terms,
+                           &refund->h_contract_terms,
                            sizeof (struct GNUNET_HashCode))) )
         {
           dep = tlp->details.deposit;
@@ -412,8 +412,8 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
         if ( (0 == memcmp (&tlp->details.refund->merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.refund->h_proposal_data,
-                           &refund->h_proposal_data,
+             (0 == memcmp (&tlp->details.refund->h_contract_terms,
+                           &refund->h_contract_terms,
                            sizeof (struct GNUNET_HashCode))) &&
              (tlp->details.refund->rtransaction_id == refund->rtransaction_id) )
         {
@@ -425,8 +425,8 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
         if ( (0 == memcmp (&tlp->details.refund->merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.refund->h_proposal_data,
-                           &refund->h_proposal_data,
+             (0 == memcmp (&tlp->details.refund->h_contract_terms,
+                           &refund->h_contract_terms,
                            sizeof (struct GNUNET_HashCode))) &&
              (tlp->details.refund->rtransaction_id != refund->rtransaction_id) )
         {
@@ -1981,7 +1981,7 @@ struct WtidTransactionContext
  * @param wire_method which wire plugin was used
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
- * @param h_proposal_data which proposal was this payment about
+ * @param h_contract_terms which proposal was this payment about
  * @param coin_pub which public key was this payment about
  * @param deposit_value amount contributed by this coin in total
  * @param deposit_fee deposit fee charged by exchange for this coin
@@ -1993,7 +1993,7 @@ handle_transaction_data (void *cls,
                          const char *wire_method,
                          const struct GNUNET_HashCode *h_wire,
                          struct GNUNET_TIME_Absolute exec_time,
-                         const struct GNUNET_HashCode *h_proposal_data,
+                         const struct GNUNET_HashCode *h_contract_terms,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          const struct TALER_Amount *deposit_value,
                          const struct TALER_Amount *deposit_fee)
@@ -2058,7 +2058,7 @@ handle_transaction_data (void *cls,
   wdd = GNUNET_new (struct TEH_TrackTransferDetail);
   wdd->deposit_value = *deposit_value;
   wdd->deposit_fee = *deposit_fee;
-  wdd->h_proposal_data = *h_proposal_data;
+  wdd->h_contract_terms = *h_contract_terms;
   wdd->coin_pub = *coin_pub;
   GNUNET_CONTAINER_DLL_insert (ctx->wdd_head,
                                ctx->wdd_tail,
@@ -2182,7 +2182,7 @@ struct DepositWtidContext
   /**
    * Hash of the proposal data we are looking up.
    */
-  struct GNUNET_HashCode h_proposal_data;
+  struct GNUNET_HashCode h_contract_terms;
 
   /**
    * Hash of the wire transfer details we are looking up.
@@ -2245,7 +2245,7 @@ handle_wtid_data (void *cls,
     else
     {
       ctx->res = TEH_RESPONSE_reply_track_transaction (ctx->connection,
-                                                       &ctx->h_proposal_data,
+                                                       &ctx->h_contract_terms,
                                                        &ctx->h_wire,
                                                        &ctx->coin_pub,
                                                        &coin_delta,
@@ -2261,7 +2261,7 @@ handle_wtid_data (void *cls,
  * associated with the given deposit.
  *
  * @param connection the MHD connection to handle
- * @param h_proposal_data hash of the proposal data
+ * @param h_contract_terms hash of the proposal data
  * @param h_wire hash of the wire details
  * @param coin_pub public key of the coin to link
  * @param merchant_pub public key of the merchant
@@ -2269,7 +2269,7 @@ handle_wtid_data (void *cls,
  */
 int
 TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
-                                  const struct GNUNET_HashCode *h_proposal_data,
+                                  const struct GNUNET_HashCode *h_contract_terms,
                                   const struct GNUNET_HashCode *h_wire,
                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                   const struct TALER_MerchantPublicKeyP *merchant_pub)
@@ -2285,13 +2285,13 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
 						 TALER_EC_DB_SETUP_FAILED);
   }
   ctx.connection = connection;
-  ctx.h_proposal_data = *h_proposal_data;
+  ctx.h_contract_terms = *h_contract_terms;
   ctx.h_wire = *h_wire;
   ctx.coin_pub = *coin_pub;
   ctx.res = GNUNET_SYSERR;
   ret = TEH_plugin->wire_lookup_deposit_wtid (TEH_plugin->cls,
                                               session,
-					      h_proposal_data,
+					      h_contract_terms,
 					      h_wire,
 					      coin_pub,
 					      merchant_pub,

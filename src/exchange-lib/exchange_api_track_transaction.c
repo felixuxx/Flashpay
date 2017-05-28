@@ -254,7 +254,7 @@ handle_deposit_wtid_finished (void *cls,
  * @param exchange the exchange to query
  * @param merchant_priv the merchant's private key
  * @param h_wire hash of merchant's wire transfer details
- * @param h_proposal_data hash of the proposal data from the contract
+ * @param h_contract_terms hash of the proposal data from the contract
  *                        between merchant and customer
  * @param coin_pub public key of the coin
  * @param cb function to call with the result
@@ -265,7 +265,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle *
 TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                              const struct TALER_MerchantPrivateKeyP *merchant_priv,
                              const struct GNUNET_HashCode *h_wire,
-                             const struct GNUNET_HashCode *h_proposal_data,
+                             const struct GNUNET_HashCode *h_contract_terms,
                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
                              TALER_EXCHANGE_TrackTransactionCallback cb,
                              void *cb_cls)
@@ -285,7 +285,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   }
   dtp.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
   dtp.purpose.size = htonl (sizeof (dtp));
-  dtp.h_proposal_data = *h_proposal_data;
+  dtp.h_contract_terms = *h_contract_terms;
   dtp.h_wire = *h_wire;
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &dtp.merchant.eddsa_pub);
@@ -295,11 +295,11 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                                            &dtp.purpose,
                                            &merchant_sig.eddsa_sig));
-  deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, h_proposal_data */
+  deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, h_contract_terms */
                                 " s:o," /* coin_pub */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */
                                 "H_wire", GNUNET_JSON_from_data_auto (h_wire),
-                                "h_proposal_data", GNUNET_JSON_from_data_auto (h_proposal_data),
+                                "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
                                 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                                 "merchant_pub", GNUNET_JSON_from_data_auto (&dtp.merchant),
                                 "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig));
@@ -317,7 +317,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   dwh->depconf.h_wire = *h_wire;
-  dwh->depconf.h_proposal_data = *h_proposal_data;
+  dwh->depconf.h_contract_terms = *h_contract_terms;
   dwh->depconf.coin_pub = *coin_pub;
 
   eh = curl_easy_init ();

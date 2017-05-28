@@ -93,8 +93,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
-        GNUNET_JSON_spec_fixed_auto ("h_proposal_data",
-                                     &dr.h_proposal_data),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &dr.h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &dr.h_wire),
         GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
@@ -183,8 +183,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("merchant_sig",
                                      &sig),
-        GNUNET_JSON_spec_fixed_auto ("h_proposal_data",
-                                     &rr.h_proposal_data),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &rr.h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &rr.merchant),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
@@ -217,7 +217,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         return GNUNET_SYSERR;
       }
       /* NOTE: theoretically, we could also check that the given
-         merchant_pub and h_proposal_data appear in the
+         merchant_pub and h_contract_terms appear in the
          history under deposits.  However, there is really no benefit
          for the exchange to lie here, so not checking is probably OK
          (an auditor ought to check, though). Then again, we similarly

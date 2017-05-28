@@ -90,7 +90,7 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
 						 "merchant_sig");
   }
   return TEH_DB_execute_track_transaction (connection,
-                                           &tps->h_proposal_data,
+                                           &tps->h_contract_terms,
                                            &tps->h_wire,
                                            &tps->coin_pub,
                                            merchant_pub);
@@ -120,7 +120,7 @@ TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
   struct TALER_MerchantSignatureP merchant_sig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("H_wire", &tps.h_wire),
-    GNUNET_JSON_spec_fixed_auto ("h_proposal_data", &tps.h_proposal_data),
+    GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &tps.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &tps.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &tps.merchant),
     GNUNET_JSON_spec_fixed_auto ("merchant_sig", &merchant_sig),

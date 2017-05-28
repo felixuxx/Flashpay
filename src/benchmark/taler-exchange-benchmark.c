@@ -826,7 +826,7 @@ spend_coin (struct Coin *coin,
   struct GNUNET_TIME_Absolute wire_deadline;
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
-  struct GNUNET_HashCode h_proposal_data;
+  struct GNUNET_HashCode h_contract_terms;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_DepositRequestPS dr;
   struct TALER_MerchantPublicKeyP merchant_pub;
@@ -835,8 +835,8 @@ spend_coin (struct Coin *coin,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin->coin_priv.eddsa_priv,
 				      &coin_pub.eddsa_pub);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-			      &h_proposal_data,
-			      sizeof (h_proposal_data));
+			      &h_contract_terms,
+			      sizeof (h_contract_terms));
   timestamp = GNUNET_TIME_absolute_get ();
   wire_deadline = GNUNET_TIME_absolute_add (timestamp,
 					    GNUNET_TIME_UNIT_WEEKS);
@@ -882,7 +882,7 @@ spend_coin (struct Coin *coin,
   memset (&dr, 0, sizeof (dr));
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-  dr.h_proposal_data = h_proposal_data;
+  dr.h_contract_terms = h_contract_terms;
   TALER_JSON_hash (merchant_details,
 		   &dr.h_wire);
 
@@ -908,7 +908,7 @@ spend_coin (struct Coin *coin,
 				     &amount,
 				     wire_deadline,
 				     merchant_details,
-				     &h_proposal_data,
+				     &h_contract_terms,
 				     &coin_pub,
 				     &coin->sig,
 				     &coin->pk->key,

@@ -285,7 +285,7 @@ struct TALER_DepositRequestPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
+  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -363,7 +363,7 @@ struct TALER_DepositConfirmationPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
+  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -421,7 +421,7 @@ struct TALER_RefundRequestPS
    * Hash over the proposal data to identify the contract
    * which is being refunded.
    */
-  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
+  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -475,7 +475,7 @@ struct TALER_RefundConfirmationPS
    * Hash over the proposal data to identify the contract
    * which is being refunded.
    */
-  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
+  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -973,7 +973,7 @@ struct TALER_DepositTrackPS
   /**
    * Hash over the proposal data of the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
+  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -1005,7 +1005,7 @@ struct TALER_WireDepositDetailP
   /**
    * Hash of the contract
    */
-  struct GNUNET_HashCode h_proposal_data;
+  struct GNUNET_HashCode h_contract_terms;
 
   /**
    * Time when the wire transfer was performed by the exchange.
@@ -1105,7 +1105,7 @@ struct PaymentResponsePS
   /**
    * Hash of the proposal data associated with this confirmation
    */
-  struct GNUNET_HashCode h_proposal_data;
+  struct GNUNET_HashCode h_contract_terms;
 };
 
 
@@ -1129,7 +1129,7 @@ struct TALER_ConfirmWirePS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
+  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
 
   /**
    * Raw value (binary encoding) of the wire transfer subject.

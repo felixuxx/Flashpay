@@ -254,7 +254,7 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
  * @param connection connection to the client
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
- * @param h_proposal_data hash of proposal data
+ * @param h_contract_terms hash of proposal data
  * @param timestamp client's timestamp
  * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
@@ -265,7 +265,7 @@ int
 TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
-                                    const struct GNUNET_HashCode *h_proposal_data,
+                                    const struct GNUNET_HashCode *h_contract_terms,
                                     struct GNUNET_TIME_Absolute timestamp,
                                     struct GNUNET_TIME_Absolute refund_deadline,
                                     const struct TALER_MerchantPublicKeyP *merchant,
@@ -361,7 +361,7 @@ TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param h_proposal_data hash of the proposal data
+ * @param h_contract_terms hash of the proposal data
  * @param h_wire hash of wire account details
  * @param coin_pub public key of the coin
  * @param coin_contribution contribution of this coin to the total amount transferred
@@ -371,7 +371,7 @@ TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
-                                      const struct GNUNET_HashCode *h_proposal_data,
+                                      const struct GNUNET_HashCode *h_contract_terms,
                                       const struct GNUNET_HashCode *h_wire,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                       const struct TALER_Amount *coin_contribution,
@@ -398,7 +398,7 @@ struct TEH_TrackTransferDetail
   /**
    * Hash of the proposal data.
    */
-  struct GNUNET_HashCode h_proposal_data;
+  struct GNUNET_HashCode h_contract_terms;
 
   /**
    * Coin's public key.

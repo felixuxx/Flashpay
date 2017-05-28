@@ -274,7 +274,7 @@ handle_deposit_finished (void *cls,
  * @param dki public key information
  * @param amount the amount to be deposited
  * @param h_wire hash of the merchant’s account details
- * @param h_proposal_data hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_sig exchange’s unblinded signature of the coin
@@ -288,7 +288,7 @@ static int
 verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_Amount *amount,
                    const struct GNUNET_HashCode *h_wire,
-                   const struct GNUNET_HashCode *h_proposal_data,
+                   const struct GNUNET_HashCode *h_contract_terms,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
@@ -302,7 +302,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
-  dr.h_proposal_data = *h_proposal_data;
+  dr.h_contract_terms = *h_contract_terms;
   dr.h_wire = *h_wire;
   dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
@@ -371,7 +371,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
  * @param wire_deadline date until which the merchant would like the exchange to settle the balance (advisory, the exchange cannot be
  *        forced to settle in the past or upon very short notice, but of course a well-behaved exchange will limit aggregation based on the advice received)
  * @param wire_details the merchant’s account details, in a format supported by the exchange
- * @param h_proposal_data hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_sig exchange’s unblinded signature of the coin
@@ -389,7 +389,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_Amount *amount,
                         struct GNUNET_TIME_Absolute wire_deadline,
                         json_t *wire_details,
-                        const struct GNUNET_HashCode *h_proposal_data,
+                        const struct GNUNET_HashCode *h_contract_terms,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_DenominationPublicKey *denom_pub,
@@ -430,7 +430,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
       verify_signatures (dki,
                          amount,
                          &h_wire,
-                         h_proposal_data,
+                         h_contract_terms,
                          coin_pub,
                          denom_sig,
                          denom_pub,
@@ -444,7 +444,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   deposit_obj = json_pack ("{s:o, s:O," /* f/wire */
-                           " s:o, s:o," /* H_wire, h_proposal_data */
+                           " s:o, s:o," /* H_wire, h_contract_terms */
                            " s:o, s:o," /* coin_pub, denom_pub */
                            " s:o, s:o," /* ub_sig, timestamp */
                            " s:o," /* merchant_pub */
@@ -453,7 +453,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "f", TALER_JSON_from_amount (amount),
                            "wire", wire_details,
                            "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
-                           "h_proposal_data", GNUNET_JSON_from_data_auto (h_proposal_data),
+                           "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
                            "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                            "denom_pub", GNUNET_JSON_from_rsa_public_key (denom_pub->rsa_public_key),
                            "ub_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
@@ -476,7 +476,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->url = MAH_path_to_url (exchange, "/deposit");
   dh->depconf.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
   dh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
-  dh->depconf.h_proposal_data = *h_proposal_data;
+  dh->depconf.h_contract_terms = *h_contract_terms;
   dh->depconf.h_wire = h_wire;
   dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);

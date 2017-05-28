@@ -363,7 +363,7 @@ struct TALER_TrackTransferDetails
   /**
    * Hash of the proposal data.
    */
-  struct GNUNET_HashCode h_proposal_data;
+  struct GNUNET_HashCode h_contract_terms;
 
   /**
    * Which coin was deposited?

@@ -1564,7 +1564,7 @@ struct WireCheckContext
  * claimed coin value is within the value of the coin's denomination.
  *
  * @param coin_pub public key of the coin (for reporting)
- * @param h_proposal_data hash of the proposal for which we calculate the amount
+ * @param h_contract_terms hash of the proposal for which we calculate the amount
  * @param merchant_pub public key of the merchant (who is allowed to issue refunds)
  * @param dki denomination information about the coin
  * @param tl_head head of transaction history to verify
@@ -1574,7 +1574,7 @@ struct WireCheckContext
  */
 static int
 check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           const struct GNUNET_HashCode *h_proposal_data,
+                           const struct GNUNET_HashCode *h_contract_terms,
                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                            const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
                            const struct TALER_EXCHANGEDB_TransactionList *tl_head,
@@ -1631,8 +1631,8 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       if ( (0 == memcmp (merchant_pub,
                          &tl->details.deposit->merchant_pub,
                          sizeof (struct TALER_MerchantPublicKeyP))) &&
-           (0 == memcmp (h_proposal_data,
-                         &tl->details.deposit->h_proposal_data,
+           (0 == memcmp (h_contract_terms,
+                         &tl->details.deposit->h_contract_terms,
                          sizeof (struct GNUNET_HashCode))) )
       {
         struct TALER_Amount amount_without_fee;
@@ -1726,8 +1726,8 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       if ( (0 == memcmp (merchant_pub,
                          &tl->details.refund->merchant_pub,
                          sizeof (struct TALER_MerchantPublicKeyP))) &&
-           (0 == memcmp (h_proposal_data,
-                         &tl->details.refund->h_proposal_data,
+           (0 == memcmp (h_contract_terms,
+                         &tl->details.refund->h_contract_terms,
                          sizeof (struct GNUNET_HashCode))) )
       {
         if (GNUNET_OK !=
@@ -1822,7 +1822,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
               "Coin %s contributes %s to contract %s\n",
               TALER_B2S (coin_pub),
               TALER_amount2s (merchant_gain),
-              GNUNET_h2s (h_proposal_data));
+              GNUNET_h2s (h_contract_terms));
   return GNUNET_OK;
 }
 
@@ -1837,7 +1837,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param wire_method which wire plugin was used for the transfer?
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
- * @param h_proposal_data which proposal was this payment about
+ * @param h_contract_terms which proposal was this payment about
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total (with fee)
  * @param coin_fee applicable fee for this coin
@@ -1849,7 +1849,7 @@ wire_transfer_information_cb (void *cls,
                               const char *wire_method,
                               const struct GNUNET_HashCode *h_wire,
                               struct GNUNET_TIME_Absolute exec_time,
-                              const struct GNUNET_HashCode *h_proposal_data,
+                              const struct GNUNET_HashCode *h_contract_terms,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct TALER_Amount *coin_value,
                               const struct TALER_Amount *coin_fee)
@@ -1912,7 +1912,7 @@ wire_transfer_information_cb (void *cls,
 
   /* Check transaction history to see if it supports aggregate valuation */
   check_transaction_history (coin_pub,
-                             h_proposal_data,
+                             h_contract_terms,
                              merchant_pub,
                              dki,
                              tl,
@@ -2991,7 +2991,7 @@ refresh_session_cb (void *cls,
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
- * @param h_proposal_data hash of the proposal data known to merchant and customer
+ * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param refund_deadline by which the merchant adviced that he might want
  *        to get a refund
  * @param wire_deadline by which the merchant adviced that he would like the
@@ -3009,7 +3009,7 @@ deposit_cb (void *cls,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_CoinSpendSignatureP *coin_sig,
             const struct TALER_Amount *amount_with_fee,
-            const struct GNUNET_HashCode *h_proposal_data,
+            const struct GNUNET_HashCode *h_contract_terms,
             struct GNUNET_TIME_Absolute refund_deadline,
             struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *receiver_wire_account,
@@ -3036,7 +3036,7 @@ deposit_cb (void *cls,
   /* Verify deposit signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (dr));
-  dr.h_proposal_data = *h_proposal_data;
+  dr.h_contract_terms = *h_contract_terms;
   if (GNUNET_OK !=
       TALER_JSON_hash (receiver_wire_account,
                        &dr.h_wire))
@@ -3129,7 +3129,7 @@ deposit_cb (void *cls,
  * @param coin_pub public key of the coin
  * @param merchant_pub public key of the merchant
  * @param merchant_sig signature of the merchant
- * @param h_proposal_data hash of the proposal data known to merchant and customer
+ * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param rtransaction_id refund transaction ID chosen by the merchant
  * @param amount_with_fee amount that was deposited including fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -3141,7 +3141,7 @@ refund_cb (void *cls,
            const struct TALER_CoinSpendPublicKeyP *coin_pub,
            const struct TALER_MerchantPublicKeyP *merchant_pub,
            const struct TALER_MerchantSignatureP *merchant_sig,
-           const struct GNUNET_HashCode *h_proposal_data,
+           const struct GNUNET_HashCode *h_contract_terms,
            uint64_t rtransaction_id,
            const struct TALER_Amount *amount_with_fee)
 {
@@ -3167,7 +3167,7 @@ refund_cb (void *cls,
   /* verify refund signature */
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
   rr.purpose.size = htonl (sizeof (rr));
-  rr.h_proposal_data = *h_proposal_data;
+  rr.h_contract_terms = *h_contract_terms;
   rr.coin_pub = *coin_pub;
   rr.merchant = *merchant_pub;
   rr.rtransaction_id = GNUNET_htonll (rtransaction_id);

@@ -531,7 +531,7 @@ exchange_serve_process_config ()
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
- * @param h_proposal_data hash of the proposal data known to merchant and customer
+ * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant
@@ -544,7 +544,7 @@ deposit_cb (void *cls,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
-            const struct GNUNET_HashCode *h_proposal_data,
+            const struct GNUNET_HashCode *h_contract_terms,
             struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *wire)
 {
@@ -617,7 +617,7 @@ deposit_cb (void *cls,
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
- * @param h_proposal_data hash of the proposal data known to merchant and customer
+ * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant
@@ -630,7 +630,7 @@ aggregate_cb (void *cls,
               const struct TALER_CoinSpendPublicKeyP *coin_pub,
               const struct TALER_Amount *amount_with_fee,
               const struct TALER_Amount *deposit_fee,
-              const struct GNUNET_HashCode *h_proposal_data,
+              const struct GNUNET_HashCode *h_contract_terms,
               struct GNUNET_TIME_Absolute wire_deadline,
               const json_t *wire)
 {

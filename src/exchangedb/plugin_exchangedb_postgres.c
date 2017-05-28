@@ -529,17 +529,17 @@ postgres_create_tables (void *cls)
           ",refund_deadline INT8 NOT NULL"
           ",wire_deadline INT8 NOT NULL"
           ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
-          ",h_proposal_data BYTEA NOT NULL CHECK (LENGTH(h_proposal_data)=64)"
+          ",h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)"
           ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
           ",coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)"
           ",wire TEXT NOT NULL"
           ",tiny BOOLEAN NOT NULL DEFAULT false"
           ",done BOOLEAN NOT NULL DEFAULT false"
-          ",UNIQUE (coin_pub, h_proposal_data, merchant_pub)"
+          ",UNIQUE (coin_pub, h_contract_terms, merchant_pub)"
           ")");
-  /* Index for get_deposit statement on coin_pub, h_proposal_data and merchant_pub */
+  /* Index for get_deposit statement on coin_pub, h_contract_terms and merchant_pub */
   SQLEXEC_INDEX("CREATE INDEX deposits_coin_pub_index "
-                "ON deposits(coin_pub, h_proposal_data, merchant_pub)");
+                "ON deposits(coin_pub, h_contract_terms, merchant_pub)");
 
   /* Table with information about coins that have been refunded. (Technically
      one of the deposit operations that a coin was involved with is refunded.)*/
@@ -548,12 +548,12 @@ postgres_create_tables (void *cls)
 	  ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
           ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
-          ",h_proposal_data BYTEA NOT NULL CHECK(LENGTH(h_proposal_data)=64)"
+          ",h_contract_terms BYTEA NOT NULL CHECK(LENGTH(h_contract_terms)=64)"
           ",rtransaction_id INT8 NOT NULL"
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",PRIMARY KEY (coin_pub, merchant_pub, h_proposal_data, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
+          ",PRIMARY KEY (coin_pub, merchant_pub, h_contract_terms, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
           ") ");
 
   /* This table contains the data for
@@ -1055,7 +1055,7 @@ postgres_prepare (PGconn *db_conn)
            "SELECT"
            " merchant_pub"
            ",merchant_sig"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",rtransaction_id"
            ",denom.denom_pub"
            ",coin_pub"
@@ -1075,7 +1075,7 @@ postgres_prepare (PGconn *db_conn)
            "SELECT"
            " merchant_pub"
            ",merchant_sig"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",rtransaction_id"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
@@ -1141,7 +1141,7 @@ postgres_prepare (PGconn *db_conn)
            ",refund_deadline"
            ",wire_deadline"
            ",merchant_pub"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",h_wire"
            ",coin_sig"
            ",wire"
@@ -1156,7 +1156,7 @@ postgres_prepare (PGconn *db_conn)
            "(coin_pub "
            ",merchant_pub "
            ",merchant_sig "
-           ",h_proposal_data "
+           ",h_contract_terms "
            ",rtransaction_id "
            ",amount_with_fee_val "
            ",amount_with_fee_frac "
@@ -1175,12 +1175,12 @@ postgres_prepare (PGconn *db_conn)
            ",timestamp"
            ",refund_deadline"
            ",wire_deadline"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",h_wire"
            " FROM deposits"
            " WHERE ("
            "  (coin_pub=$1) AND"
-           "  (h_proposal_data=$2) AND"
+           "  (h_contract_terms=$2) AND"
            "  (merchant_pub=$3)"
            " )",
            3, NULL);
@@ -1198,7 +1198,7 @@ postgres_prepare (PGconn *db_conn)
 	   ",coin_sig"
            ",refund_deadline"
            ",wire_deadline"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",wire"
            ",done"
            ",deposit_serial_id"
@@ -1228,7 +1228,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE ("
            "  (coin_pub=$1) AND"
            "  (merchant_pub=$2) AND"
-           "  (h_proposal_data=$3) AND"
+           "  (h_contract_terms=$3) AND"
            "  (h_wire=$4)"
            " )",
            4, NULL);
@@ -1244,7 +1244,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_deposit_frac"
            ",denom.fee_deposit_curr"
            ",wire_deadline"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",wire"
            ",merchant_pub"
            ",coin_pub"
@@ -1271,7 +1271,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_deposit_frac"
            ",denom.fee_deposit_curr"
            ",wire_deadline"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",coin_pub"
            " FROM deposits"
            "    JOIN known_coins USING (coin_pub)"
@@ -1304,7 +1304,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM deposits"
            " WHERE coin_pub=$1"
            " AND merchant_pub=$2"
-           " AND h_proposal_data=$3"
+           " AND h_contract_terms=$3"
            " AND h_wire=$4",
            5, NULL);
 
@@ -1321,7 +1321,7 @@ postgres_prepare (PGconn *db_conn)
            ",timestamp"
            ",refund_deadline"
            ",merchant_pub"
-           ",h_proposal_data"
+           ",h_contract_terms"
            ",h_wire"
            ",wire"
            ",coin_sig"
@@ -1395,7 +1395,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("lookup_transactions",
            "SELECT"
            " aggregation_serial_id"
-           ",deposits.h_proposal_data"
+           ",deposits.h_contract_terms"
            ",deposits.wire"
            ",deposits.h_wire"
            ",deposits.coin_pub"
@@ -1432,7 +1432,7 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN denominations denom USING (denom_pub_hash)"
            "    JOIN wire_out USING (wtid_raw)"
            " WHERE coin_pub=$1"
-           "  AND h_proposal_data=$2"
+           "  AND h_contract_terms=$2"
            "  AND h_wire=$3"
            "  AND merchant_pub=$4",
            4, NULL);
@@ -3060,7 +3060,7 @@ postgres_have_deposit (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->h_proposal_data),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
     GNUNET_PQ_query_param_end
   };
@@ -3095,8 +3095,8 @@ postgres_have_deposit (void *cls,
                                           &deposit2.refund_deadline),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                           &deposit2.wire_deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                           &deposit2.h_proposal_data),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                           &deposit2.h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                            &deposit2.h_wire),
       GNUNET_PQ_result_spec_end
@@ -3116,8 +3116,8 @@ postgres_have_deposit (void *cls,
           deposit2.timestamp.abs_value_us) ||
          (deposit->refund_deadline.abs_value_us !=
           deposit2.refund_deadline.abs_value_us) ||
-         (0 != memcmp (&deposit->h_proposal_data,
-                       &deposit2.h_proposal_data,
+         (0 != memcmp (&deposit->h_contract_terms,
+                       &deposit2.h_contract_terms,
                        sizeof (struct GNUNET_HashCode))) ||
          (0 != memcmp (&deposit->h_wire,
                        &deposit2.h_wire,
@@ -3182,7 +3182,7 @@ postgres_test_deposit_done (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->h_proposal_data),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
     GNUNET_PQ_query_param_end
   };
@@ -3308,7 +3308,7 @@ postgres_get_ready_deposit (void *cls,
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
     struct GNUNET_TIME_Absolute wire_deadline;
-    struct GNUNET_HashCode h_proposal_data;
+    struct GNUNET_HashCode h_contract_terms;
     struct TALER_MerchantPublicKeyP merchant_pub;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t serial_id;
@@ -3322,8 +3322,8 @@ postgres_get_ready_deposit (void *cls,
                                    &deposit_fee),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                           &wire_deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                           &h_proposal_data),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                           &h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                            &merchant_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
@@ -3348,7 +3348,7 @@ postgres_get_ready_deposit (void *cls,
                       &coin_pub,
                       &amount_with_fee,
                       &deposit_fee,
-                      &h_proposal_data,
+                      &h_contract_terms,
                       wire_deadline,
                       wire);
     GNUNET_PQ_cleanup_result (rs);
@@ -3412,7 +3412,7 @@ postgres_iterate_matching_deposits (void *cls,
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
     struct GNUNET_TIME_Absolute wire_deadline;
-    struct GNUNET_HashCode h_proposal_data;
+    struct GNUNET_HashCode h_contract_terms;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t serial_id;
     int ret;
@@ -3425,8 +3425,8 @@ postgres_iterate_matching_deposits (void *cls,
                                    &deposit_fee),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                            &wire_deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                            &h_proposal_data),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                            &h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &coin_pub),
       GNUNET_PQ_result_spec_end
@@ -3446,7 +3446,7 @@ postgres_iterate_matching_deposits (void *cls,
                       &coin_pub,
                       &amount_with_fee,
                       &deposit_fee,
-                      &h_proposal_data,
+                      &h_contract_terms,
                       wire_deadline,
                       NULL);
     GNUNET_PQ_cleanup_result (rs);
@@ -3584,7 +3584,7 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_absolute_time (&deposit->refund_deadline),
     GNUNET_PQ_query_param_absolute_time (&deposit->wire_deadline),
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->h_proposal_data),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
     GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
     TALER_PQ_query_param_json (deposit->receiver_wire_account),
@@ -3638,7 +3638,7 @@ postgres_insert_refund (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&refund->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refund->merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (&refund->merchant_sig),
-    GNUNET_PQ_query_param_auto_from_type (&refund->h_proposal_data),
+    GNUNET_PQ_query_param_auto_from_type (&refund->h_contract_terms),
     GNUNET_PQ_query_param_uint64 (&refund->rtransaction_id),
     TALER_PQ_query_param_amount (&refund->refund_amount),
     GNUNET_PQ_query_param_end
@@ -4474,8 +4474,8 @@ postgres_get_coin_transactions (void *cls,
                                                &deposit->refund_deadline),
           GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                                 &deposit->merchant_pub),
-          GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                                &deposit->h_proposal_data),
+          GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                                &deposit->h_contract_terms),
           GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                                 &deposit->h_wire),
           TALER_PQ_result_spec_json ("wire",
@@ -4618,8 +4618,8 @@ postgres_get_coin_transactions (void *cls,
                                                 &refund->merchant_pub),
           GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
                                                 &refund->merchant_sig),
-          GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                                &refund->h_proposal_data),
+          GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                                &refund->h_contract_terms),
           GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
                                         &refund->rtransaction_id),
           TALER_PQ_result_spec_amount ("amount_with_fee",
@@ -4782,7 +4782,7 @@ postgres_lookup_wire_transfer (void *cls,
   for (int i=0;i<nrows;i++)
   {
     uint64_t rowid;
-    struct GNUNET_HashCode h_proposal_data;
+    struct GNUNET_HashCode h_contract_terms;
     struct GNUNET_HashCode h_wire;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_MerchantPublicKeyP merchant_pub;
@@ -4794,7 +4794,7 @@ postgres_lookup_wire_transfer (void *cls,
     const char *wire_method;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id", &rowid),
-      GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data", &h_proposal_data),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms", &h_contract_terms),
       TALER_PQ_result_spec_json ("wire", &wire),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
@@ -4834,7 +4834,7 @@ postgres_lookup_wire_transfer (void *cls,
         wire_method,
         &h_wire,
         exec_time,
-        &h_proposal_data,
+        &h_contract_terms,
         &coin_pub,
         &amount_with_fee,
         &deposit_fee);
@@ -4852,7 +4852,7 @@ postgres_lookup_wire_transfer (void *cls,
  *
  * @param cls closure
  * @param session database connection
- * @param h_proposal_data hash of the proposal data
+ * @param h_contract_terms hash of the proposal data
  * @param h_wire hash of merchant wire details
  * @param coin_pub public key of deposited coin
  * @param merchant_pub merchant public key
@@ -4864,7 +4864,7 @@ postgres_lookup_wire_transfer (void *cls,
 static int
 postgres_wire_lookup_deposit_wtid (void *cls,
                                    struct TALER_EXCHANGEDB_Session *session,
-				   const struct GNUNET_HashCode *h_proposal_data,
+				   const struct GNUNET_HashCode *h_contract_terms,
 				   const struct GNUNET_HashCode *h_wire,
 				   const struct TALER_CoinSpendPublicKeyP *coin_pub,
 				   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -4874,7 +4874,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
   PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_auto_from_type (h_proposal_data),
+    GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (h_wire),
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_end
@@ -4905,7 +4905,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       struct GNUNET_PQ_QueryParam params2[] = {
         GNUNET_PQ_query_param_auto_from_type (coin_pub),
         GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-        GNUNET_PQ_query_param_auto_from_type (h_proposal_data),
+        GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
         GNUNET_PQ_query_param_auto_from_type (h_wire),
         GNUNET_PQ_query_param_end
       };
@@ -5699,8 +5699,8 @@ postgres_select_deposits_above_serial_id (void *cls,
                                            &deposit.refund_deadline),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                            &deposit.wire_deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                           &deposit.h_proposal_data),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                           &deposit.h_contract_terms),
       TALER_PQ_result_spec_json ("wire",
                                  &deposit.receiver_wire_account),
       GNUNET_PQ_result_spec_auto_from_type ("done",
@@ -5726,7 +5726,7 @@ postgres_select_deposits_above_serial_id (void *cls,
               &deposit.coin.coin_pub,
               &deposit.csig,
               &deposit.amount_with_fee,
-              &deposit.h_proposal_data,
+              &deposit.h_contract_terms,
               deposit.refund_deadline,
               deposit.wire_deadline,
               deposit.receiver_wire_account,
@@ -5903,8 +5903,8 @@ postgres_select_refunds_above_serial_id (void *cls,
                                             &refund.merchant_pub),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
                                            &refund.merchant_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data",
-                                           &refund.h_proposal_data),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                           &refund.h_contract_terms),
       GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
                                     &refund.rtransaction_id),
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
@@ -5932,7 +5932,7 @@ postgres_select_refunds_above_serial_id (void *cls,
               &refund.coin.coin_pub,
               &refund.merchant_pub,
               &refund.merchant_sig,
-              &refund.h_proposal_data,
+              &refund.h_contract_terms,
               refund.rtransaction_id,
               &refund.refund_amount);
     GNUNET_PQ_cleanup_result (rs);

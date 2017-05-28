@@ -472,7 +472,7 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * @param connection connection to the client
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
- * @param h_proposal_data hash of contract details
+ * @param h_contract_terms hash of contract details
  * @param timestamp client's timestamp
  * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
@@ -483,7 +483,7 @@ int
 TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
-                                    const struct GNUNET_HashCode *h_proposal_data,
+                                    const struct GNUNET_HashCode *h_contract_terms,
                                     struct GNUNET_TIME_Absolute timestamp,
                                     struct GNUNET_TIME_Absolute refund_deadline,
                                     const struct TALER_MerchantPublicKeyP *merchant,
@@ -495,7 +495,7 @@ TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
 
   dc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
-  dc.h_proposal_data = *h_proposal_data;
+  dc.h_contract_terms = *h_contract_terms;
   dc.h_wire = *h_wire;
   dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
@@ -543,7 +543,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
-        dr.h_proposal_data = deposit->h_proposal_data;
+        dr.h_contract_terms = deposit->h_contract_terms;
         dr.h_wire = deposit->h_wire;
         dr.timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp);
         dr.refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline);
@@ -574,7 +574,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 							 "timestamp", GNUNET_JSON_from_time_abs (deposit->timestamp),
 							 "refund_deadline", GNUNET_JSON_from_time_abs (deposit->refund_deadline),
 							 "merchant_pub", GNUNET_JSON_from_data_auto (&deposit->merchant_pub),
-							 "h_proposal_data", GNUNET_JSON_from_data_auto (&deposit->h_proposal_data),
+							 "h_contract_terms", GNUNET_JSON_from_data_auto (&deposit->h_contract_terms),
 							 "h_wire", GNUNET_JSON_from_data_auto (&deposit->h_wire),
 							 "coin_sig", GNUNET_JSON_from_data_auto (&deposit->csig))));
 	break;
@@ -631,7 +631,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
         }
         rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
         rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
-        rr.h_proposal_data = refund->h_proposal_data;
+        rr.h_contract_terms = refund->h_contract_terms;
         rr.coin_pub = refund->coin.coin_pub;
         rr.merchant = refund->merchant_pub;
         rr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
@@ -657,7 +657,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 							 "type", "REFUND",
 							 "amount", TALER_JSON_from_amount (&value),
 							 "refund_fee", TALER_JSON_from_amount (&refund->refund_fee),
-							 "h_proposal_data", GNUNET_JSON_from_data_auto (&refund->h_proposal_data),
+							 "h_contract_terms", GNUNET_JSON_from_data_auto (&refund->h_contract_terms),
 							 "merchant_pub", GNUNET_JSON_from_data_auto (&refund->merchant_pub),
 							 "rtransaction_id", (json_int_t) refund->rtransaction_id,
 							 "merchant_sig", GNUNET_JSON_from_data_auto (&refund->merchant_sig))));
@@ -992,7 +992,7 @@ TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
 
   rc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
   rc.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
-  rc.h_proposal_data = refund->h_proposal_data;
+  rc.h_contract_terms = refund->h_contract_terms;
   rc.coin_pub = refund->coin.coin_pub;
   rc.merchant = refund->merchant_pub;
   rc.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
@@ -1387,7 +1387,7 @@ TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param h_proposal_data hash of the contract
+ * @param h_contract_terms hash of the contract
  * @param h_wire hash of wire account details
  * @param coin_pub public key of the coin
  * @param coin_contribution how much did the coin we asked about
@@ -1398,7 +1398,7 @@ TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
-                                      const struct GNUNET_HashCode *h_proposal_data,
+                                      const struct GNUNET_HashCode *h_contract_terms,
                                       const struct GNUNET_HashCode *h_wire,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                       const struct TALER_Amount *coin_contribution,
@@ -1412,7 +1412,7 @@ TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
   cw.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   cw.h_wire = *h_wire;
-  cw.h_proposal_data = *h_proposal_data;
+  cw.h_contract_terms = *h_contract_terms;
   cw.wtid = *wtid;
   cw.coin_pub = *coin_pub;
   cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
@@ -1467,7 +1467,7 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   for (wdd_pos = wdd_head; NULL != wdd_pos; wdd_pos = wdd_pos->next)
   {
-    dd.h_proposal_data = wdd_pos->h_proposal_data;
+    dd.h_contract_terms = wdd_pos->h_contract_terms;
     dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
     dd.coin_pub = wdd_pos->coin_pub;
     TALER_amount_hton (&dd.deposit_value,
@@ -1480,7 +1480,7 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
     GNUNET_assert (0 ==
                    json_array_append_new (deposits,
                                           json_pack ("{s:o, s:o, s:o, s:o}",
-                                                     "h_proposal_data", GNUNET_JSON_from_data_auto (&wdd_pos->h_proposal_data),
+                                                     "h_contract_terms", GNUNET_JSON_from_data_auto (&wdd_pos->h_contract_terms),
                                                      "coin_pub", GNUNET_JSON_from_data_auto (&wdd_pos->coin_pub),
                                                      "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
                                                      "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee))));

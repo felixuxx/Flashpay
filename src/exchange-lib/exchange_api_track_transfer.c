@@ -134,7 +134,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       struct TALER_TrackTransferDetails *detail = &details[i];
       struct json_t *detail_j = json_array_get (details_j, i);
       struct GNUNET_JSON_Specification spec_detail[] = {
-        GNUNET_JSON_spec_fixed_auto ("h_proposal_data", &detail->h_proposal_data),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &detail->h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
         TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
         TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
@@ -152,7 +152,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
         return GNUNET_SYSERR;
       }
       /* build up big hash for signature checking later */
-      dd.h_proposal_data = detail->h_proposal_data;
+      dd.h_contract_terms = detail->h_contract_terms;
       dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
       dd.coin_pub = detail->coin_pub;
       TALER_amount_hton (&dd.deposit_value,

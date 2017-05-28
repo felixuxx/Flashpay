@@ -54,7 +54,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
 
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
   rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
-  rr.h_proposal_data = refund->h_proposal_data;
+  rr.h_contract_terms = refund->h_contract_terms;
   rr.coin_pub = refund->coin.coin_pub;
   rr.merchant = refund->merchant_pub;
   rr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
@@ -122,7 +122,7 @@ TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("refund_amount", &refund.refund_amount),
     TALER_JSON_spec_amount ("refund_fee", &refund.refund_fee),
-    GNUNET_JSON_spec_fixed_auto ("h_proposal_data", &refund.h_proposal_data),
+    GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &refund.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &refund.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &refund.merchant_pub),
     GNUNET_JSON_spec_uint64 ("rtransaction_id", &refund.rtransaction_id),
