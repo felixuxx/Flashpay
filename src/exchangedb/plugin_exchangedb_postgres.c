@@ -294,6 +294,8 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS known_coins CASCADE;");
   SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS reserves_close CASCADE;");
+  SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS reserves_out CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS reserves_in CASCADE;");
