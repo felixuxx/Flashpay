@@ -142,6 +142,12 @@ shutdown_task (void *cls)
 static int
 exchange_serve_process_config ()
 {
+  if (NULL == type)
+  {
+    fprintf (stderr,
+             "Option `-t' to specify wire plugin is mandatory.\n");
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -169,7 +175,6 @@ exchange_serve_process_config ()
              "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
-
   if (NULL ==
       (wire_plugin = TALER_WIRE_plugin_load (cfg,
 					     type)))
@@ -219,6 +224,8 @@ history_cb (void *cls,
   {
     hh = NULL;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "End of list. Committing progress!\n");
     ret = db_plugin->commit (db_plugin->cls,
 			     session);
     if (GNUNET_OK == ret)
@@ -236,6 +243,10 @@ history_cb (void *cls,
 				       NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Adding wire transfer over %s with subject `%s'\n",
+              TALER_amount2s (&details->amount),
+              TALER_B2S (&details->reserve_pub));
   ret = db_plugin->reserves_in_insert (db_plugin->cls,
 				       session,
 				       &details->reserve_pub,
