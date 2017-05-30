@@ -1277,8 +1277,8 @@ Let $C$ denote a coin controlled by users Alice and Bob.
 Suppose Bob creates a fresh coin $C'$ from $C$ following the refresh protocol.
 Assuming the exchange and Bob operated the refresh protocol correctly,
 and that the exchange continues to operate the linking protocol
-in \S\ref{subsec:linking} correctly,
-then Alice can gain control of $C'$ using the linking protocol.
+in \S\ref{subsec:linking} correctly, then
+ Alice can gain control of $C'$ using the linking protocol.
 \end{theorem}
 
 \begin{proof}
@@ -1294,9 +1294,24 @@ for the residual value on $C'$ and runs the linking protocol to
 determine if it was refreshed too.
 \end{proof}
 
+As discussed in the next subsection, there are serious privacy risks
+from coins obtained through the linking protocol, so we must not
+implement the linking protocol in the wallet ourselves.
+We assert that Taler is taxable on the grounds that any user who
+modified their wallet to operate dishonestly could similarly modify
+it to use the linking protocol to cheat other users. 
+
+Although this claims holds broadly, one could envision violating it
+with advanced forms of Digital Restrictions Management (DRM) that
+exploited trusted code execution.  We discount this threat as being
+similar to the withdrawal loophole, but we recommend that hardware
+DRM be outlawed for posing a threat to the state's tax base, along
+with more serious concerns.
+
 \begin{corollary}
-  Abusing the refresh protocol to transfer ownership has an
-  expected loss of $1 - \frac{1}{\kappa}$ of the transaction value.
+Assuming the user can operate their computer freely,
+abusing the refresh protocol to transfer ownership has an
+expected loss of $1 - \frac{1}{\kappa}$ of the transaction value.
 \end{corollary}
 
 
@@ -1328,35 +1343,39 @@ $b m^d \mod n$ where $m$ is the FDH of the coin's public key
 and $b$ is the blinding factor, while coin deposits transcripts
 consist of only $m^d \mod n$.
 
-Of course, if the adversary can link coins then they can compute
-the blinding factors as $b m^d / m^d \mod n$.  Conversely, if the
-adversary can recognize blinding factors then they link coins after
-first computing $b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
+If the adversary can link coins then they can compute the blinding
+factors as $b m^d / m^d \mod n$.  Conversely, if the adversary can
+recognize blinding factors then they link coins after first computing
+$b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
 \end{proof}
 
-We now know the following because Taler uses SHA512 adopted to be
- a FDH to be the blinding factor.
+% As a corollary, Taler would have information theoretic privacy 
+% if the blinding factors were truly random and
+%  refresh operations were disallowed.
+
+We actually generate blinding factors using an FDH built by
+running HMAC-SHA512 on a secret 256 bit seed and a count until
+it outputs a number $b$ less than $n$ satisfying $\gcd(b,n) = 1$.
 
 \begin{corollary}
 Assuming no refresh operation,
-any adversary with an advantage for linking Taler coins gives
-rise to an adversary with an advantage for recognizing SHA512 output.
+any adversary with an advantage for linking Taler coins gives rise
+to an adversary with an advantage for recognizing our SHA512 output.
 \end{corollary}
 
 Importantly, we do not consider coins about which wallet learns
 through the linking protocol given in \S\ref{subsec:linking}.
 An honest participant never needs to run the linking protocol,
 so these coins should not appear, and we do not count them in
-the adversary's advantage.    If linked coins do appear, then
+the adversary's advantage.   If linked coins do appear, then
 they cannot be spent anonymously because the other user controlling
 the coin can learn about any transactions involving these coins.
 Worse still, the exchange itself could issue tagged coins through
 the linking protocol.  As a result, we limit the refresh protocol to
 a feature offered by the exchange, and test it from the auditor, but
 do not use it in any real Taler protocols and do not implement it in
-the wallet.  A user who modified their wallet to operate dishonestly
-could similarly modify it to use the linking protocol to cheat
-other users.
+the wallet.  We observed in the previous subsection that merely
+the threat of the linking protocol suffices for taxability.
 
 \smallskip
 
@@ -1369,10 +1388,10 @@ encrypted using the secret $t^{(i)} C_s$ where $C_s = c_s G$ of the
 dirty coin $C$ being refreshed and $T^{(i)} = t^{(i)} G$ is the
 transfer key.
 %
-In Taler, we replaced this encryption-based scheme with the current KDF-based
-scheme, as the earlier scheme required slightly more storage space, an
-additional encryption primitive, and exposed more random number generator
-output from the wallet.
+In Taler, we replaced this encryption-based scheme with the current
+KDF-based scheme, as the earlier scheme required more storage space,
+an additional encryption primitive, and exposed more random number
+generator output from the wallet.
 
 \begin{proposition}
 Assume the encryption used is semantically (IND-CPA) secure,
@@ -1381,7 +1400,7 @@ Assume also the independence of $c_s$, $t$, and the new coins' key
 materials.
 Then any probabilistic polynomial time (PPT) adversary with an
 advantage for linking Taler coins gives rise to an adversary with
- an advantage for recognizing SHA512 output.
+ an advantage for recognizing our SHA512 output.
 \end{proposition}
 % TODO: Is independence here too strong?
 
@@ -1429,9 +1448,9 @@ $t$ also learns $k$.
 
 We may now conclude that Taler remains unlinkable even with the
 refresh protocol, assuming the security of elliptic curve Diffie-Hellman
-key exchange on curve25519 and that SHA512 remains strong enough.  
-We have lost our clean assumption on merely the hardness of
-recognizing SHA512 output, due to using the random oracle model,
+key exchange on curve25519 and that our SHA512 HMAC construction remains
+strong enough.  We have lost our clean assumption on merely the hardness
+of recognizing our SHA512 output, due to using the random oracle model,
 but recognizing has output remains the most realistic attack. 
 We use an HMAC in our implementation to make this part more robust.
 
