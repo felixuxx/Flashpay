@@ -649,8 +649,14 @@ the starting time of the @cite{(j-1)}-th key.
 
 
 @menu
+* Keys generation::
 * Database upgrades::
 @end menu
+
+@node Keys generation
+@section Keys generation
+
+@c say where in the config lies the output directory of denom/signkeys.
 
 @node Database upgrades
 @section Database upgrades
