@@ -656,7 +656,51 @@ the starting time of the @cite{(j-1)}-th key.
 @node Keys generation
 @section Keys generation
 
-@c say where in the config lies the output directory of denom/signkeys.
+Once the configuration is properly set up, all the keys can be generated
+by the tool @code{taler-exchange-keyup}.  The following command generates denomkeys
+and signkeys, plus the "blob" that is to be signed by the auditor.
+
+@example
+taler-exchange-keyup -o blob
+@end example
+
+@emph{blob} contains data about denomkeys that the exchange operator needs to
+get signed by every auditor he wishes (or is forced to) work with.
+
+In a normal scenario, an auditor must have some way of receiving the blob to
+sign (Website, manual delivery, ..).  Nonetheless, the exchange admin can fake
+an auditor signature - for testing purposes - by running the following command
+
+@example
+taler-auditor-sign -m EXCHANGE_MASTER_PUB -r BLOB -u AUDITOR_URI -o OUTPUT_FILE
+@end example
+
+Those arguments are all mandatory.
+
+@itemize
+@item @code{EXCHANGE_MASTER_PUB} the base32 Crockford-encoded exchange's master
+public key.  Tipically, this value lies in the configuration option
+@code{[exchange]/master_public_key}.
+@item @code{BLOB} the blob generated in the previous step.
+@item @code{AUDITOR_URI} the URI that identifies the auditor.
+@item @code{OUTPUT_FILE} where on the disk the signed blob is to be saved.
+@end itemize
+
+@code{OUTPUT_FILE} must then be copied into the directory specified
+by the option @code{AUDITOR_BASE_DIR} under the section @code{[exchangedb]}.
+Assuming @code{AUDITOR_BASE_DIR = $@{HOME@}/.local/share/taler/auditors}, the
+following command will "add" the auditor identified by @code{AUDITOR_URI} to
+the exchange.
+
+@example
+cp OUTPUT_FILE $@{HOME@}/.local/share/taler/auditors
+@end example
+
+If the auditor has been correctly added, the exchange's @code{/keys} response
+must contain an entry in the @code{auditors} array mentioning the auditor's URI.
+
+
+@c FIXME: reference section about where keys are stored.
 
 @node Database upgrades
 @section Database upgrades
