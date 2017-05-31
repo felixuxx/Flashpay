@@ -450,7 +450,6 @@ AC_CHECK_FUNCS([strdup])
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  doc/doxygen/Makefile
-                 doc/manual/Makefile
                  src/Makefile
                  src/auditor/Makefile
                  src/auditordb/Makefile
