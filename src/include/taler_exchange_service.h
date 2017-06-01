@@ -198,6 +198,14 @@ struct TALER_EXCHANGE_Keys
   struct TALER_EXCHANGE_AuditorInformation *auditors;
 
   /**
+   * Supported Taler protocol version by the exchange.
+   * String in the format current:revision:age using the
+   * semantics of GNU libtool.  See
+   * https://www.gnu.org/software/libtool/manual/html_node/Versioning.html#Versioning
+   */
+  char *version;
+
+  /**
    * Length of the @e sign_keys array.
    */
   unsigned int num_sign_keys;

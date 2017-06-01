@@ -503,7 +503,10 @@ decode_keys_json (const json_t *resp_obj,
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   /* parse the master public key and issue date of the response */
   {
+    const char *ver;
     struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_string ("version",
+                               &ver),
       GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                    &key_data->master_pub),
       GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
@@ -519,6 +522,7 @@ decode_keys_json (const json_t *resp_obj,
             GNUNET_JSON_parse (resp_obj,
                                spec,
                                NULL, NULL));
+    key_data->version = GNUNET_strdup (ver);
   }
 
   /* parse the signing keys */
@@ -643,6 +647,8 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
   GNUNET_array_grow (key_data->auditors,
                      key_data->num_auditors,
                      0);
+  GNUNET_free_non_null (key_data->version);
+  key_data->version = NULL;
 }
 
 
