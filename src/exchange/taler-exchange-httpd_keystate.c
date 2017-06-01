@@ -29,6 +29,20 @@
 
 
 /**
+ * Taler protocol version in the format CURRENT:REVISION:AGE
+ * as used by GNU libtool.  See
+ * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
+ *
+ * Please be very careful when updating and follow
+ * https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html#Updating-version-info
+ * precisely.  Note that this version has NOTHING to do with the
+ * release version, and the format is NOT the same that semantic
+ * versioning uses either.
+ */
+#define TALER_PROTOCOL_VERSION "0:0:0"
+
+
+/**
  * Snapshot of the (coin and signing) keys (including private keys) of
  * the exchange.  There can be multiple instances of this struct, as it is
  * reference counted and only destroyed once the last user is done
@@ -882,7 +896,8 @@ TEH_KS_acquire_ (const char *location)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+                      "version", TALER_PROTOCOL_VERSION,
                       "master_public_key",
                       GNUNET_JSON_from_data_auto (&TEH_master_public_key),
                       "signkeys", key_state->sign_keys_array,
