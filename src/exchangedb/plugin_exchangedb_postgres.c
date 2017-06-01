@@ -186,71 +186,6 @@ struct PostgresClosure
 
 
 /**
- * Function called by libpq whenever it wants to log something.
- * We already log whenever we care, so this function does nothing
- * and merely exists to silence the libpq logging.
- *
- * @param arg the SQL connection that was used
- * @param res information about some libpq event
- */
-static void
-pq_notice_receiver_cb (void *arg,
-                       const PGresult *res)
-{
-  /* do nothing, intentionally */
-}
-
-
-/**
- * Function called by libpq whenever it wants to log something.
- * We log those using the Taler logger.
- *
- * @param arg the SQL connection that was used
- * @param message information about some libpq event
- */
-static void
-pq_notice_processor_cb (void *arg,
-                        const char *message)
-{
-  GNUNET_log_from (GNUNET_ERROR_TYPE_INFO,
-                   "pq",
-                   "%s",
-                   message);
-}
-
-
-/**
- * Establish connection to the Postgres database
- * and initialize callbacks for logging.
- *
- * @param pc configuration to use
- * @return NULL on error
- */
-static PGconn *
-connect_to_postgres (struct PostgresClosure *pc)
-{
-  PGconn *conn;
-
-  conn = PQconnectdb (pc->connection_cfg_str);
-  if (CONNECTION_OK !=
-      PQstatus (conn))
-  {
-    TALER_LOG_ERROR ("Database connection to '%s' failed: %s\n",
-                     pc->connection_cfg_str,
-                     PQerrorMessage (conn));
-    return NULL;
-  }
-  PQsetNoticeReceiver (conn,
-                       &pq_notice_receiver_cb,
-                       conn);
-  PQsetNoticeProcessor (conn,
-                        &pq_notice_processor_cb,
-                        conn);
-  return conn;
-}
-
-
-/**
  * Drop all Taler tables.  This should only be used by testcases.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -260,56 +195,40 @@ static int
 postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS prewire CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS payback CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS aggregation_tracking CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_out CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_fee CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS deposits CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refresh_out CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refresh_commit_coin CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refresh_transfer_public_key CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refunds CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refresh_order CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refresh_sessions CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS known_coins CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves_close CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves_out CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves_in CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS denomination_revocations CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS denominations CASCADE;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
   PGconn *conn;
+  int ret;
 
-  conn = connect_to_postgres (pc);
+  conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Dropping ALL tables\n");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS prewire CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS payback CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS aggregation_tracking CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS wire_out CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS wire_fee CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS deposits CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_out CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_commit_coin CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_transfer_public_key CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refunds CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_order CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_sessions CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS known_coins CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves_close CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves_out CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves_in CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS denomination_revocations CASCADE;");
-  SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS denominations CASCADE;");
+  ret = GNUNET_PQ_exec_statements (conn,
+                                   es);
   PQfinish (conn);
-  return GNUNET_OK;
- SQLEXEC_fail:
-  PQfinish (conn);
-  return GNUNET_SYSERR;
+  return ret;
 }
 
 
@@ -325,7 +244,7 @@ postgres_create_tables (void *cls)
   struct PostgresClosure *pc = cls;
   PGconn *conn;
 
-  conn = connect_to_postgres (pc);
+  conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == conn)
     return GNUNET_SYSERR;
 #define SQLEXEC(sql) SQLEXEC_(conn, sql);
@@ -1727,7 +1646,7 @@ postgres_get_session (void *cls)
 
   if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
     return session;
-  db_conn = connect_to_postgres (pc);
+  db_conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == db_conn)
     return NULL;
   if (GNUNET_OK !=
@@ -1964,145 +1883,6 @@ execute_prepared_non_select (struct TALER_EXCHANGEDB_Session *session,
   PQclear (result);
   return ret;
 }
-
-
-/**
- * Function to be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure
- * @param result the postgres result
- * @param num_result the number of results in @a result
- */
-typedef void
-(*PostgresResultHandler)(void *cls,
-                         PGresult *result,
-                         unsigned int num_results);
-
-
-/**
- * Return value to indicate that there were no results but also
- * no hard failure.  Must be different from #GNUNET_OK, #GNUNET_NO
- * and #GNUNET_SYSERR.
- */
-#define NO_RESULTS 2
-
-
-/**
- * Execute a named prepared @a statement that is a SELECT statement
- * which may return multiple results in @a session using the given @a
- * params.  Returns the resulting session state.
- *
- * @param session session to execute the statement in
- * @param statement name of the statement
- * @param params parameters to give to the statement (#GNUNET_PQ_query_param_end-terminated)
- * @param rh function to call with the result set, NULL to ignore
- * @param rh_cls closure to pass to @a rh
- * @return #GNUNET_OK on success (@a rh was called, but possibly with 0 results)
- *         #GNUNET_NO if the transaction had a transient failure
- *         #GNUNET_SYSERR if the transaction had a hard failure
- */
-int
-execute_prepared_multi_select (struct TALER_EXCHANGEDB_Session *session,
-                               const char *statement,
-                               const struct GNUNET_PQ_QueryParam *params,
-                               PostgresResultHandler rh,
-                               void *rh_cls)
-{
-  PGresult *result;
-  int ret;
-
-  if (GNUNET_OK != session->state)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR; /* we already failed, why keep going? */
-  }
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    statement,
-                                    params);
-  ret = update_session_from_result (session,
-                                    statement,
-                                    result);
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (GNUNET_NO == ret);
-    PQclear (result);
-    return ret;
-  }
-  if (NULL != rh)
-    rh (rh_cls,
-        result,
-        PQntuples (result));
-  PQclear (result);
-  return ret;
-}
-
-
-/**
- * Execute a named prepared @a statement that is a SELECT statement
- * which must return a single result in @a session using the given @a
- * params.  Stores the result (if any) in @a rs, which the caller
- * must then clean up.  Returns the resulting session state.
- *
- * @param session session to execute the statement in
- * @param statement name of the statement
- * @param params parameters to give to the statement (#GNUNET_PQ_query_param_end-terminated)
- * @param[in,out] rs result specification to use for storing the result of the query
- * @return #NO_RESULTS if there were zero results but the query succeeded,
- *         #GNUNET_OK on success (exactly one result was successfully stored in @a rs)
- *         #GNUNET_NO if the transaction had a transient failure
- *         #GNUNET_SYSERR if the transaction had a hard failure
- */
-int
-execute_prepared_singleton_select (struct TALER_EXCHANGEDB_Session *session,
-                                   const char *statement,
-                                   const struct GNUNET_PQ_QueryParam *params,
-                                   struct GNUNET_PQ_ResultSpec *rs)
-{
-  PGresult *result;
-  int ret;
-
-  if (GNUNET_OK != session->state)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR; /* we already failed, why keep going? */
-  }
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    statement,
-                                    params);
-  ret = update_session_from_result (session,
-                                    statement,
-                                    result);
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (GNUNET_NO == ret);
-    PQclear (result);
-    return ret;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return NO_RESULTS;
-  }
-  if (1 != PQntuples (result))
-  {
-    /* more than one result, but there must be at most one */
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_PQ_extract_result (result,
-                                rs,
-                                0))
-  {
-    session->state = GNUNET_SYSERR;
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
-}
-
 
 
 /**
@@ -5584,7 +5364,7 @@ postgres_gc (void *cls)
   PGresult *result;
 
   now = GNUNET_TIME_absolute_get ();
-  conn = connect_to_postgres (pc);
+  conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == conn)
     return GNUNET_SYSERR;
   if (GNUNET_OK !=
