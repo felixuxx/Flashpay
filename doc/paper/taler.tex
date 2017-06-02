@@ -509,7 +509,7 @@ financial reserve.  In addition, Taler includes an \emph{auditor} who
 assures customers and merchants that the exchange operates correctly.
 
 %\vspace{-0.3cm}
-\subsection{Security considerations}
+\subsection{Security considerations}\label{subsec:security_rough}
 %\vspace{-0.3cm}
 
 As a payment system, Taler naturally needs to make sure that coins are
@@ -559,7 +559,7 @@ limiting the exchange's financial liability.
 On the cryptographic side, a Taler exchange demands that coins use a
 full domain hash (FDH) to make so-called ``one-more forgery'' attacks
 provably hard, assuming the RSA known-target inversion problem is
-hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.  For a withdrawn coin,
+hard~\cite[Theorem 12]{RSA-FDH-KTIvCTI}.  For a withdrawn coin,
 violating the customers anonymity cryptographically requires recognizing
 a random blinding factor from a random element of the group of
 integers modulo the denomination key's RSA modulus, which appears
@@ -1465,6 +1465,14 @@ with its auditor.  However, in the normal course of payments the link
 protocol is never used.
 
 \subsection{Exculpability arguments}
+
+In \S\ref{subsec:security_rough},
+we quoted \cite[Theorem 12]{RSA-FDH-KTIvCTI} that RSA-FDH blind
+signatures are secure against ``one-more forgery'' attacks, assuming
+ the RSA known-target inversion problem is hard.
+We note as well that ``one-more forgery'' attacks cover both the
+refresh operation as well as the withdrawal operarion
+ \cite[Definition 12]{RSA-FDH-KTIvCTI,OneMoreInversion}.
 
 \begin{lemma}\label{lemma:double-spending}
 The exchange can detect, prevent, and prove double-spending.
