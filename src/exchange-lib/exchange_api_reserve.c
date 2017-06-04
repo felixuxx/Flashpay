@@ -894,7 +894,7 @@ handle_reserve_withdraw_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         reserve_withdraw_ok (wsh,
-                          json))
+                             json))
     {
       GNUNET_break_op (0);
       response_code = 0;
