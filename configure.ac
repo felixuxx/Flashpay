@@ -30,9 +30,29 @@ AC_CONFIG_MACRO_DIR([m4])
 
 LT_INIT
 
+DX_INIT_DOXYGEN([taler-exchange],,,
+DX_PS_FEATURE(OFF),
+DX_PDF_FEATURE(OFF),
+DX_RTF_FEATURE(OFF),
+DX_CHI_FEATURE(OFF),
+DX_XML_FEATURE(OFF))
+
+AC_MSG_CHECKING([whether to compile documentation ONLY])
+AC_ARG_ENABLE([only-doc],
+  [AS_HELP_STRING([--enable-only-doc], [only compile Taler documentation])],
+  [doc_only=${enableval}],
+  [doc_only=no])
+AC_MSG_RESULT($doc_only)
+AM_CONDITIONAL([DOC_ONLY], [test "$doc_only" = "yes"])
+
+if test "$doc_only" != yes
+then
+
 # Checks for programs.
+
 AC_PROG_CC
 AC_PROG_CC_C99
+
 
 CFLAGS="-Wall $CFLAGS"
 
@@ -42,7 +62,7 @@ AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h])
 
 # should the build process be restricted to the code required
 # for GNU Taler wallets?
-AC_MSG_CHECKING(whether to compile GNU Taler Wallet library ONLY)
+AC_MSG_CHECKING([whether to compile GNU Taler Wallet library ONLY])
 AC_ARG_ENABLE([wallet],
    [AS_HELP_STRING([--enable-wallet], [only compile for Taler wallet])],
    [wallet_only=${enableval}],
@@ -276,6 +296,7 @@ LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
 
 
+# end of wallet/no-wallet specific logic
 fi
 
 TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
@@ -296,10 +317,10 @@ AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
 if test "$gnurl" = 1
 then
-	AM_CONDITIONAL(HAVE_LIBGNURL, true)
+	AM_CONDITIONAL(HAVE_LIBGNURL, [true])
 	AC_DEFINE([HAVE_LIBGNURL],[1],[Have libgnurl])
 else
-	AM_CONDITIONAL(HAVE_LIBGNURL, false)
+	AM_CONDITIONAL(HAVE_LIBGNURL, [false])
 fi
 
 # libcurl-gnutls
@@ -447,9 +468,23 @@ AC_TYPE_UINTMAX_T
 # Checks for library functions.
 AC_CHECK_FUNCS([strdup])
 
+else
+
+# logic if doc_only is set, make sure conditionals are still defined
+AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
+AM_CONDITIONAL([WALLET_ONLY], [false])
+AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
+AM_CONDITIONAL([HAVE_LIBCURL], [false])
+AM_CONDITIONAL([HAVE_LIBGNURL], [false])
+AM_CONDITIONAL([HAVE_DEVELOPER], [false])
+AM_CONDITIONAL([USE_COVERAGE], [false])
+
+
+# end of 'doc_only'
+fi
+
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
-                 doc/doxygen/Makefile
                  src/Makefile
                  src/auditor/Makefile
                  src/auditordb/Makefile

@@ -1,10 +1,19 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include
-SUBDIRS = src doc
+
+if DOC_ONLY
+  SUBDIRS = . doc
+else
+  SUBDIRS = . src doc
+endif
+
+@DX_RULES@
+
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = \
   AUTHORS \
-  contrib/coverage.sh
+  contrib/coverage.sh \
+  Doxyfile
 
 app:
 	mkdir -p $(PACKAGE)-$(VERSION)-app
