@@ -690,7 +690,7 @@ deserialize_melt_data (const char *buf,
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         Otherwise, pointer to a buffer of @a res_size to store persistently
  *         before proceeding to #TALER_EXCHANGE_refresh_melt().
- *         Non-null results should be freed using #GNUNET_free().
+ *         Non-null results should be freed using GNUNET_free().
  */
 char *
 TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_priv,

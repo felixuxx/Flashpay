@@ -84,7 +84,7 @@ TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
  *
  * @param[in,out] buf pointer to body to compress
  * @param[in,out] buf_size pointer to initial size of @a buf
- * @return #MHD_TES if @a buf was compressed
+ * @return #MHD_YES if @a buf was compressed
  */
 int
 TEH_RESPONSE_body_compress (void **buf,

@@ -393,6 +393,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
  *
  * @param h the fakebank handle
  * @param connection the connection
+ * @param con_cls place to store state, not used
  * @return MHD result code
  */
 static int

@@ -36,7 +36,7 @@
  * @param[out] param_lengths SQL length data to set
  * @param[out] param_formats SQL format data to set
  * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
- * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
  * @param scratch_length number of entries left in @a scratch
  * @return -1 on error, number of offsets used in @a scratch otherwise
  */
@@ -98,7 +98,7 @@ TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
  * @param[out] param_lengths SQL length data to set
  * @param[out] param_formats SQL format data to set
  * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
- * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
  * @param scratch_length number of entries left in @a scratch
  * @return -1 on error, number of offsets used in @a scratch otherwise
  */
@@ -161,7 +161,7 @@ TALER_PQ_query_param_amount (const struct TALER_Amount *x)
  * @param[out] param_lengths SQL length data to set
  * @param[out] param_formats SQL format data to set
  * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
- * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param[out] scratch buffer for dynamic allocations (to be done via GNUNET_malloc()
  * @param scratch_length number of entries left in @a scratch
  * @return -1 on error, number of offsets used in @a scratch otherwise
  */
@@ -178,7 +178,7 @@ qconv_json (void *cls,
 {
   const json_t *json = data;
   char *str;
-  
+
   str = json_dumps (json, JSON_COMPACT);
   if (NULL == str)
     return -1;

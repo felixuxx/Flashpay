@@ -82,7 +82,7 @@ TEH_PARSE_post_cleanup_callback (void *con_cls);
  * @return
  *    #GNUNET_YES if navigation was successful (caller is responsible
  *                for freeing allocated variable-size data using
- *                #GNUNET_JSON_parse_free() when done)
+ *                GNUNET_JSON_parse_free() when done)
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */
@@ -103,7 +103,7 @@ TEH_PARSE_json_data (struct MHD_Connection *connection,
  * @return
  *    #GNUNET_YES if navigation was successful (caller is responsible
  *                for freeing allocated variable-size data using
- *                #GNUNET_JSON_parse_free() when done)
+ *                GNUNET_JSON_parse_free() when done)
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */

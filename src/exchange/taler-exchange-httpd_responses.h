@@ -50,14 +50,14 @@ TEH_RESPONSE_add_global_headers (struct MHD_Response *response);
  *
  * @param[in,out] buf pointer to body to compress
  * @param[in,out] buf_size pointer to initial size of @a buf
- * @return #MHD_TES if @a buf was compressed
+ * @return #MHD_YES if @a buf was compressed
  */
 int
 TEH_RESPONSE_body_compress (void **buf,
 			    size_t *buf_size);
 
 
-/** 
+/**
  * Is HTTP body deflate compression supported by the client?
  *
  * @param connection connection to check

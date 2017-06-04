@@ -390,7 +390,7 @@ struct TALER_TrackTransferDetails
  * @param coin_public_info the coin public info to check for validity
  * @return #GNUNET_YES if the coin is valid,
  *         #GNUNET_NO if it is invalid
- *         #GNUNET_SYSERROR if an internal error occured
+ *         #GNUNET_SYSERR if an internal error occured
  */
 int
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
@@ -409,7 +409,7 @@ struct TALER_TransferSecretP
   /**
    * Secret used to derive private inputs for refreshed coins.
    * Must be (currently) a hash as this is what
-   * #GNUNET_CRYPTO_ecc_ecdh() returns to us.
+   * GNUNET_CRYPTO_ecc_ecdh() returns to us.
    */
   struct GNUNET_HashCode key;
 };
