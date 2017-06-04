@@ -413,8 +413,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     struct TALER_AuditorSignatureP auditor_sig;
     struct GNUNET_HashCode denom_h;
     const struct TALER_EXCHANGE_DenomPublicKey *dk;
-    unsigned int j;
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification kspec[] = {
       GNUNET_JSON_spec_fixed_auto ("denom_pub_h",
                                    &denom_h),
       GNUNET_JSON_spec_fixed_auto ("auditor_sig",
@@ -424,14 +423,14 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (key,
-                           spec,
+                           kspec,
                            NULL, NULL))
       {
       GNUNET_break_op (0);
       continue;
     }
     dk = NULL;
-    for (j=0;j<key_data->num_denom_keys;j++)
+    for (unsigned int j=0;j<key_data->num_denom_keys;j++)
     {
       if (0 == memcmp (&denom_h,
                        &key_data->denom_keys[j].h_key,
@@ -468,12 +467,14 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                                     &auditor->auditor_pub.eddsa_pub))
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     auditor->denom_keys[off] = dk;
     off++;
   }
   auditor->num_denom_keys = off;
+  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 
