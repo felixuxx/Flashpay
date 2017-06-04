@@ -982,6 +982,7 @@ create_wire_fee_for_method (void *cls,
       break;
     }
     GNUNET_free (amounts);
+    GNUNET_free (opt);
 
     /* handle closing fee */
     GNUNET_asprintf (&opt,

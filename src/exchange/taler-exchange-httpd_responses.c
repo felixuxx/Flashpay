@@ -769,7 +769,7 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
       ret |= 1;
       GNUNET_assert (0 ==
                      json_array_append_new (json_history,
-                                            json_pack ("{s:s, s:O, s:O, s:o}",
+                                            json_pack ("{s:s, s:O, s:o, s:o}",
                                                        "type", "DEPOSIT",
                                                        "sender_account_details", pos->details.bank->sender_account_details,
                                                        "wire_reference", GNUNET_JSON_from_data (pos->details.bank->wire_reference,
