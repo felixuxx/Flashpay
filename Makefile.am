@@ -13,6 +13,8 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = \
   AUTHORS \
   contrib/coverage.sh \
+  contrib/gnunet.tag \
+  contrib/microhttpd.tag \
   Doxyfile
 
 app:

@@ -409,8 +409,39 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
   return GNUNET_OK;
+}
+
+
+/**
+ * Free memory (potentially) allocated by #parse_reserve_history().
+ *
+ * @param rhistory result to free
+ * @param len number of entries in @a rhistory
+ */
+static void
+free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
+               unsigned int len)
+{
+  for (unsigned int i=0;i<len;i++)
+  {
+    switch (rhistory[i].type)
+    {
+    case TALER_EXCHANGE_RTT_DEPOSIT:
+      GNUNET_free_non_null (rhistory[i].details.in_details.wire_reference);
+      if (NULL != rhistory[i].details.in_details.sender_account_details)
+        json_decref (rhistory[i].details.in_details.sender_account_details);
+      break;
+    case TALER_EXCHANGE_RTT_WITHDRAWAL:
+      break;
+    case TALER_EXCHANGE_RTT_PAYBACK:
+      break;
+    case TALER_EXCHANGE_RTT_CLOSE:
+      if (NULL != rhistory[i].details.close_details.receiver_account_details)
+        json_decref (rhistory[i].details.close_details.receiver_account_details);
+      break;
+    }
+  }
 }
 
 
@@ -468,6 +499,7 @@ handle_reserve_status_finished (void *cls,
       {
         struct TALER_EXCHANGE_ReserveHistory rhistory[len];
 
+        memset (rhistory, 0, sizeof (rhistory));
         if (GNUNET_OK !=
             parse_reserve_history (rsh->exchange,
                                    history,
@@ -479,25 +511,29 @@ handle_reserve_status_finished (void *cls,
         {
           GNUNET_break_op (0);
           response_code = 0;
-          break;
         }
-        if (0 !=
-            TALER_amount_cmp (&balance_from_history,
-                              &balance))
+        if ( (0 != response_code) &&
+             (0 !=
+              TALER_amount_cmp (&balance_from_history,
+                                &balance)) )
         {
           /* exchange cannot add up balances!? */
           GNUNET_break_op (0);
           response_code = 0;
-          break;
         }
-        rsh->cb (rsh->cb_cls,
-                 response_code,
-		 TALER_EC_NONE,
-                 json,
-                 &balance,
-                 len,
-                 rhistory);
-        rsh->cb = NULL;
+        if (0 != response_code)
+        {
+          rsh->cb (rsh->cb_cls,
+                   response_code,
+                   TALER_EC_NONE,
+                   json,
+                   &balance,
+                   len,
+                   rhistory);
+          rsh->cb = NULL;
+        }
+        free_rhistory (rhistory,
+                       len);
       }
     }
     break;
@@ -796,8 +832,12 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
                                rhistory))
     {
       GNUNET_break_op (0);
+      free_rhistory (rhistory,
+                     len);
       return GNUNET_SYSERR;
     }
+    free_rhistory (rhistory,
+                   len);
   }
 
   if (0 !=

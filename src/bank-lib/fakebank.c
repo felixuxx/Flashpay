@@ -361,6 +361,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                       (json_int_t) t->serial_id);
     json_str = json_dumps (json,
                            JSON_INDENT(2));
+    json_decref (json);
     if (NULL == json_str)
     {
       GNUNET_break (0);

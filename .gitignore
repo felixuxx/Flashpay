@@ -84,3 +84,4 @@ doc/manual/manual.toc
 doc/manual/manual.tp
 doc/manual/manual.vr
 contrib/taler-exchange.tag
+doxygen-doc/
