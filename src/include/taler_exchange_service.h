@@ -154,7 +154,7 @@ struct TALER_EXCHANGE_AuditorInformation
    * should also be an auditor API for automated submission about
    * claims of misbehaving exchange providers.
    */
-  const char *auditor_url;
+  char *auditor_url;
 
   /**
    * Number of denomination keys audited by this auditor.

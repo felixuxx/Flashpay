@@ -634,16 +634,21 @@ decode_keys_json (const json_t *resp_obj,
 static void
 free_key_data (struct TALER_EXCHANGE_Keys *key_data)
 {
-  unsigned int i;
-
   GNUNET_array_grow (key_data->sign_keys,
                      key_data->num_sign_keys,
                      0);
-  for (i=0;i<key_data->num_denom_keys;i++)
+  for (unsigned int i=0;i<key_data->num_denom_keys;i++)
     GNUNET_CRYPTO_rsa_public_key_free (key_data->denom_keys[i].key.rsa_public_key);
   GNUNET_array_grow (key_data->denom_keys,
                      key_data->num_denom_keys,
                      0);
+  for (unsigned int i=0;i<key_data->num_auditors;i++)
+  {
+    GNUNET_array_grow (key_data->auditors[i].denom_keys,
+                       key_data->auditors[i].num_denom_keys,
+                       0);
+    GNUNET_free (key_data->auditors[i].auditor_url);
+  }
   GNUNET_array_grow (key_data->auditors,
                      key_data->num_auditors,
                      0);
