@@ -1043,6 +1043,7 @@ reserve_status_cb (void *cls,
       case OC_PAYBACK:
         xrel = find_command (is,
                              rel->details.payback.ref);
+        GNUNET_assert (NULL != xrel);
         if (0 == strcmp (cmd->details.reserve_status.reserve_reference,
                          xrel->details.reserve_withdraw.reserve_reference))
         {
@@ -1917,8 +1918,10 @@ payback_cb (void *cls,
   }
   withdraw = find_command (is,
                            cmd->details.payback.ref);
+  GNUNET_assert (NULL != withdraw);
   reserve = find_command (is,
                           withdraw->details.reserve_withdraw.reserve_reference);
+  GNUNET_assert (NULL != reserve);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve->details.admin_add_incoming.reserve_priv.eddsa_priv,
                                       &rp.eddsa_pub);
   switch (http_status)
