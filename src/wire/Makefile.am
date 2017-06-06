@@ -17,7 +17,10 @@ EXTRA_DIST = \
   wire-sepa.conf \
   wire-test.conf \
   test_wire_plugin.conf \
-  test_wire_plugin_transactions_test.conf
+  test_wire_plugin_transactions_test.conf \
+  test_wire_plugin_key.priv \
+  test_wire_plugin_test.json \
+  test_wire_plugin_sepa.json 
 
 plugindir = $(libdir)/taler
 
