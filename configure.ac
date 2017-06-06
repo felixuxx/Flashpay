@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 #
 #  This file is part of TALER
-#  Copyright (C) 2014, 2015, 2016 GNUnet e.V. and Inria
+#  Copyright (C) 2014, 2015, 2016, 2017 GNUnet e.V. and Inria
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -17,7 +17,7 @@
 #
 #
 AC_PREREQ([2.69])
-AC_INIT([taler-exchange], [0.2.0], [taler-bug@gnunet.org])
+AC_INIT([taler-exchange], [0.3.0], [taler-bug@gnunet.org])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
 # support for non-recursive builds

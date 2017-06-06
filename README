@@ -17,11 +17,14 @@ Taler is currently developed by a worldwide group of independent free
 software developers and the DECENTRALISE team at Inria Rennes.  Taler
 is free software and a GNU package (http://www.gnu.org/).
 
-This is not even a release yet, but some raw development prototype
-that does not work yet.  This package also only includes the Taler
-exchange, not the other components of the system.
+This is an alpha release with a few known bugs, lacking a few
+important features, documentation, testing, performance tuning and an
+external security audit.  However, you can run the code and it largely
+works fine.  that does not work yet.  This package also only includes
+the Taler exchange, not the other components of the system.
 
 Documentation about Taler can be found at http://taler.net/.
+Our bug tracker is at https://gnunet.org/bugs/.
 
 
 Dependencies:
@@ -30,8 +33,8 @@ Dependencies:
 These are the direct dependencies for running a Taler exchange:
 
 - GNUnet            >= 0.10.2
-- GNU libmicrohttpd >= 0.9.38
-- Postgres          >= 9.3
+- GNU libmicrohttpd >= 0.9.55
+- Postgres          >= 9.5
 
 
 

@@ -37,7 +37,7 @@ libtalerutil_wallet_la_LIBADD = \
   $(XLIB)
 
 libtalerutil_wallet_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:1 \
   -export-dynamic -no-undefined
 
 libtalerutil_la_SOURCES = \

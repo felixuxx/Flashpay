@@ -13,7 +13,7 @@ libtalerjson_la_SOURCES = \
   json.c \
   json_helper.c
 libtalerjson_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:1 \
   -export-dynamic -no-undefined
 libtalerjson_la_LIBADD = \
   -lgnunetjson \

@@ -11,7 +11,7 @@ lib_LTLIBRARIES = \
   libtalerfakebank.la
 
 libtalerbank_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:0 \
   -no-undefined
 
 libtalerbank_la_SOURCES = \
