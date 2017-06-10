@@ -1292,13 +1292,16 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
         break;
 
       case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
-        state->plugin->start (state->plugin->cls, state->session);
+        GNUNET_break (GNUNET_OK ==
+                      state->plugin->start (state->plugin->cls,
+                                            state->session));
         break;
 
       case PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION:
-        state->plugin->commit (state->plugin->cls, state->session);
+        GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS ==
+                      state->plugin->commit (state->plugin->cls,
+                                             state->session));
         break;
-
       case PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION:
         state->plugin->rollback (state->plugin->cls,
                                  state->session);

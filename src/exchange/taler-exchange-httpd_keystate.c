@@ -331,7 +331,9 @@ reload_keys_denom_iter (void *cls,
   struct GNUNET_TIME_Absolute expire_deposit;
   struct GNUNET_HashCode denom_key_hash;
   struct TALER_EXCHANGEDB_Session *session;
+  unsigned int thresh;
   int res;
+  enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Loading denomination key `%s'\n",
@@ -361,8 +363,6 @@ reload_keys_denom_iter (void *cls,
 
   if (NULL != revocation_master_sig)
   {
-    unsigned int thresh = 0;
-
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Adding denomination key `%s' to revokation set\n",
                 alias);
@@ -373,11 +373,13 @@ reload_keys_denom_iter (void *cls,
     /* Try to insert DKI into DB until we succeed; note that if the DB
        failure is persistent, we need to die, as we cannot continue
        without the DKI being in the DB). */
-    res = GNUNET_SYSERR;
-    while (GNUNET_OK != res)
+    thresh = 0;
+    qs = GNUNET_DB_STATUS_SOFT_ERROR;
+    while (0 > qs)
     {
       thresh++;
-      if (thresh > 16)
+      if ( (thresh > 16) ||
+           (GNUNET_DB_STATUS_HARD_ERROR == qs) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
@@ -409,8 +411,8 @@ reload_keys_denom_iter (void *cls,
                               session);
         break; /* already in is also OK! */
       }
-      res = TEH_plugin->commit (TEH_plugin->cls,
-                                session);
+      qs = TEH_plugin->commit (TEH_plugin->cls,
+                               session);
     }
     GNUNET_assert (0 ==
                    json_array_append_new (ctx->payback_array,
@@ -440,12 +442,22 @@ reload_keys_denom_iter (void *cls,
   if (NULL == session)
     return GNUNET_SYSERR;
   /* Try to insert DKI into DB until we succeed; note that if the DB
-     failure is persistent, this code may loop forever (as there is no
-     sane alternative, we cannot continue without the DKI being in the
-     DB). */
-  res = GNUNET_SYSERR;
-  while (GNUNET_OK != res)
+     failure is persistent, we die, as we cannot continue without the
+     DKI being in the DB). */
+  qs = GNUNET_DB_STATUS_SOFT_ERROR;
+  thresh = 0;
+  while (0 > qs)
   {
+    thresh++;
+    if ( (thresh > 16) ||
+         (GNUNET_DB_STATUS_HARD_ERROR == qs) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+      handle_signal (SIGTERM);
+      return GNUNET_SYSERR;
+    }
+
     res = TEH_plugin->start (TEH_plugin->cls,
                              session);
     if (GNUNET_OK != res)
@@ -485,8 +497,8 @@ reload_keys_denom_iter (void *cls,
                             session);
       continue;
     }
-    res = TEH_plugin->commit (TEH_plugin->cls,
-                              session);
+    qs = TEH_plugin->commit (TEH_plugin->cls,
+                             session);
     /* If commit succeeded, we're done, otherwise we retry; this
        time without logging, as theroetically commits can fail
        in a transactional DB due to concurrent activities that

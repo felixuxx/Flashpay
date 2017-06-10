@@ -46,7 +46,7 @@
 #define START_TRANSACTION(session,connection)                 \
 { /* start new scope, will be ended by COMMIT_TRANSACTION() */\
   unsigned int transaction_retries = 0;                       \
-  int transaction_commit_result;                              \
+  enum GNUNET_DB_QueryStatus transaction_commit_result;       \
 transaction_start_label: /* we will use goto for retries */   \
   if (GNUNET_OK !=                                            \
       TEH_plugin->start (TEH_plugin->cls,                     \
@@ -71,13 +71,13 @@ transaction_start_label: /* we will use goto for retries */   \
   transaction_commit_result =                                              \
     TEH_plugin->commit (TEH_plugin->cls,                                   \
                         session);                                          \
-  if (GNUNET_SYSERR == transaction_commit_result)                          \
+  if (GNUNET_DB_STATUS_HARD_ERROR == transaction_commit_result)            \
   {                                                                        \
     TALER_LOG_WARNING ("Transaction commit failed in %s\n", __FUNCTION__); \
     return TEH_RESPONSE_reply_commit_error (connection, \
 					    TALER_EC_DB_COMMIT_FAILED_HARD); \
   }                                                       \
-  if (GNUNET_NO == transaction_commit_result)                              \
+  if (GNUNET_DB_STATUS_SOFT_ERROR == transaction_commit_result)            \
   {                                                                        \
     TALER_LOG_WARNING ("Transaction commit failed in %s\n", __FUNCTION__); \
     if (transaction_retries++ <= MAX_TRANSACTION_COMMIT_RETRIES)           \

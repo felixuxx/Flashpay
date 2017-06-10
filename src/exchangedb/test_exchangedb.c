@@ -1337,7 +1337,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                            wire_out_account,
                                            &wire_out_amount));
   /* And now the commit should still succeed! */
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls,
                           session));
 
@@ -1828,7 +1828,7 @@ run (void *cls)
           plugin->mark_deposit_done (plugin->cls,
                                      session,
                                      deposit_rowid));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls,
                           session));
   FAILIF (GNUNET_YES !=
@@ -1873,7 +1873,7 @@ run (void *cls)
                                                   session,
                                                   &dkp_pub_hash,
                                                   &master_sig));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls,
                           session));
   FAILIF (GNUNET_OK !=

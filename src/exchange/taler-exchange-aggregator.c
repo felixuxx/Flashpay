@@ -733,6 +733,29 @@ run_aggregation (void *cls);
 
 
 /**
+ * Perform a database commit. If it fails, print a warning.
+ *
+ * @param session session to perform the commit for.
+ * @return status of commit
+ */
+static enum GNUNET_DB_QueryStatus
+commit_or_warn (struct TALER_EXCHANGEDB_Session *session)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = db_plugin->commit (db_plugin->cls,
+                          session);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return qs;
+  GNUNET_log ((GNUNET_DB_STATUS_SOFT_ERROR == qs)
+              ? GNUNET_ERROR_TYPE_INFO
+              : GNUNET_ERROR_TYPE_ERROR,
+              "Failed to commit database transaction!\n");
+  return qs;
+}
+
+
+/**
  * Function to be called with the prepared transfer data
  * when closing a reserve.
  *
@@ -782,13 +805,7 @@ prepare_close_cb (void *cls,
   }
 
   /* finally commit */
-  if (GNUNET_OK !=
-      db_plugin->commit (db_plugin->cls,
-			 ctc->session))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-		"Failed to commit database transaction!\n");
-  }
+  (void) commit_or_warn (ctc->session);
   GNUNET_free (ctc->type);
   GNUNET_free (ctc);
   ctc = NULL;
@@ -948,13 +965,7 @@ expired_reserve_cb (void *cls,
     return GNUNET_SYSERR;
   }
   /* Reserve balance was almost zero; just commit */
-  if (GNUNET_OK !=
-      db_plugin->commit (db_plugin->cls,
-			 session))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-		"Failed to commit database transaction!\n");
-  }
+  (void) commit_or_warn (session);
   task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
 				   NULL);
   return GNUNET_SYSERR;
@@ -1191,13 +1202,7 @@ run_aggregation (void *cls)
                                           au->additional_rows[i]))
           ret = GNUNET_SYSERR;
     /* commit */
-    if (GNUNET_OK !=
-        db_plugin->commit (db_plugin->cls,
-                           session))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Failed to commit database transaction!\n");
-    }
+    (void) commit_or_warn (session);
     GNUNET_free_non_null (au->additional_rows);
     if (NULL != au->wire)
       json_decref (au->wire);
@@ -1336,6 +1341,8 @@ prepare_cb (void *cls,
     au = NULL;
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Stored wire transfer out instructions\n");
   if (NULL != au->wire)
   {
     json_decref (au->wire);
@@ -1346,22 +1353,31 @@ prepare_cb (void *cls,
 
   /* Now we can finally commit the overall transaction, as we are
      again consistent if all of this passes. */
-  if (GNUNET_OK !=
-      db_plugin->commit (db_plugin->cls,
-                         session))
+  switch (commit_or_warn (session))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Failed to commit database transaction!\n");
+  case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Preparation complete, switching to transfer mode\n");
+    /* run alternative task: actually do wire transfer! */
+    task = GNUNET_SCHEDULER_add_now (&run_transfers,
+                                     NULL);
+    return;
+  default:
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Preparation complete, switching to transfer mode\n");
-  /* run alternative task: actually do wire transfer! */
-  task = GNUNET_SCHEDULER_add_now (&run_transfers,
-                                   NULL);
 }
 
 
@@ -1411,24 +1427,32 @@ wire_confirm_cb (void *cls,
   }
   GNUNET_free (wpd);
   wpd = NULL;
-  if (GNUNET_OK !=
-      db_plugin->commit (db_plugin->cls,
-                         session))
+  switch (commit_or_warn (session))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Failed to commit database transaction!\n");
+  case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Wire transfer complete\n");
+    /* continue with #run_transfers(), just to guard
+       against the unlikely case that there are more. */
+    task = GNUNET_SCHEDULER_add_now (&run_transfers,
+                                     NULL);
+    return;
+  default:
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Wire transfer complete\n");
-  /* continue with #run_transfers(), just to guard
-     against the unlikely case that there are more. */
-  task = GNUNET_SCHEDULER_add_now (&run_transfers,
-                                   NULL);
-
 }
 
 

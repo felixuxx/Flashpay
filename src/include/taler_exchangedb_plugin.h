@@ -24,6 +24,7 @@
 
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_db_lib.h>
 #include "taler_exchangedb_lib.h"
 
 
@@ -1109,7 +1110,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @return #GNUNET_OK on success, #GNUNET_NO if the transaction
    *         can be retried, #GNUNET_SYSERR on hard failures
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*commit) (void *cls,
              struct TALER_EXCHANGEDB_Session *session);
 

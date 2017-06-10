@@ -450,7 +450,7 @@ do_deposit (struct Command *cmd)
         plugin->insert_deposit (plugin->cls,
                                 session,
                                 &deposit)) ||
-       (GNUNET_OK !=
+       (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
         plugin->commit (plugin->cls,
                         session)) )
     ret = GNUNET_SYSERR;
@@ -1148,7 +1148,7 @@ run (void *cls)
                                           session,
                                           &dpk,
                                           &issue)) ||
-       (GNUNET_OK !=
+       (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
         plugin->commit (plugin->cls,
                         session)) )
     {
