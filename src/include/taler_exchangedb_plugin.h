@@ -1168,9 +1168,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[in,out] reserve the reserve data.  The public key of the reserve should be set
    *          in this structure; it is used to query the database.  The balance
    *          and expiration are then filled accordingly.
-   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+   * @return transaction status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*reserve_get) (void *cls,
                   struct TALER_EXCHANGEDB_Session *db,
                   struct TALER_EXCHANGEDB_Reserve *reserve);

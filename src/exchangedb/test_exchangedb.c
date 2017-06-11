@@ -163,7 +163,7 @@ check_reserve (struct TALER_EXCHANGEDB_Session *session,
 
   reserve.pub = *pub;
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserve_get (plugin->cls,
                                session,
                                &reserve));

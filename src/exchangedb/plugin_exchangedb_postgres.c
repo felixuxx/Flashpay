@@ -1967,53 +1967,27 @@ postgres_get_denomination_info (void *cls,
  * @param[in,out] reserve the reserve data.  The public key of the reserve should be
  *          set in this structure; it is used to query the database.  The balance
  *          and expiration are then filled accordingly.
- * @return #GNUNET_OK upon success;
- *         #GNUNET_NO if there were no results (but no hard failure)
- *         #GNUNET_SYSERR upon failure
+ * @return transaction status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_reserve_get (void *cls,
                       struct TALER_EXCHANGEDB_Session *session,
                       struct TALER_EXCHANGEDB_Reserve *reserve)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type(&reserve->pub),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
+    GNUNET_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
+    GNUNET_PQ_result_spec_end
+  };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "reserve_get",
-                                   params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    QUERY_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
-      GNUNET_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
-      GNUNET_PQ_result_spec_end
-    };
-
-    EXITIF (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      0));
-  }
-  PQclear (result);
-  return GNUNET_OK;
-
- EXITIF_exit:
-  PQclear (result);
-  return GNUNET_SYSERR;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "reserve_get",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2075,7 +2049,7 @@ postgres_reserves_in_insert (void *cls,
 {
   struct PostgresClosure *pg = cls;
   PGresult *result;
-  int reserve_exists;
+  enum GNUNET_DB_QueryStatus reserve_exists;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
 
@@ -2090,7 +2064,7 @@ postgres_reserves_in_insert (void *cls,
   reserve_exists = postgres_reserve_get (cls,
                                          session,
                                          &reserve);
-  if (GNUNET_SYSERR == reserve_exists)
+  if (0 > reserve_exists)
   {
     GNUNET_break (0);
     goto rollback;
@@ -2115,7 +2089,7 @@ postgres_reserves_in_insert (void *cls,
 
   expiry = GNUNET_TIME_absolute_add (execution_time,
                                      pg->idle_reserve_expiration_time);
-  if (GNUNET_NO == reserve_exists)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == reserve_exists)
   {
     /* New reserve, create balance for the first time; we do this
        before adding the actual transaction to "reserves_in", as
@@ -2188,7 +2162,7 @@ postgres_reserves_in_insert (void *cls,
   }
   PQclear (result);
 
-  if (GNUNET_YES == reserve_exists)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == reserve_exists)
   {
     /* If the reserve already existed, we need to still update the
        balance; we do this after checking for duplication, as
@@ -2423,10 +2397,12 @@ postgres_insert_withdraw_info (void *cls,
 
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
-  if (GNUNET_OK != postgres_reserve_get (cls,
-                                         session,
-                                         &reserve))
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+      postgres_reserve_get (cls,
+                            session,
+                            &reserve))
   {
+    /* FIXME: #5010 */
     /* Should have been checked before we got here... */
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -5011,6 +4987,7 @@ postgres_insert_reserve_closed (void *cls,
     GNUNET_PQ_query_param_end
   };
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   ret = execute_prepared_non_select (session,
                                      "reserves_close_insert",
@@ -5020,14 +4997,15 @@ postgres_insert_reserve_closed (void *cls,
 
   /* update reserve balance */
   reserve.pub = *reserve_pub;
-  if (GNUNET_OK !=
-      (ret = postgres_reserve_get (cls,
-                                   session,
-                                   &reserve)))
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+      (qs = postgres_reserve_get (cls,
+                                  session,
+                                  &reserve)))
   {
+    /* FIXME: #5010 */
     /* Existence should have been checked before we got here... */
-    GNUNET_break (GNUNET_NO == ret);
-    return ret;
+    GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
+    return (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ? GNUNET_NO : GNUNET_SYSERR;
   }
   ret = TALER_amount_subtract (&reserve.balance,
 			       &reserve.balance,
@@ -6239,10 +6217,12 @@ postgres_insert_payback_request (void *cls,
 
   /* Update reserve balance */
   reserve.pub = *reserve_pub;
-  if (GNUNET_OK != postgres_reserve_get (cls,
-                                         session,
-                                         &reserve))
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+      postgres_reserve_get (cls,
+                            session,
+                            &reserve))
   {
+    /* FIXME: #5010 */
     /* Should have been checked before we got here... */
     GNUNET_break (0);
     return GNUNET_SYSERR;

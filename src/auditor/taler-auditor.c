@@ -1085,15 +1085,17 @@ verify_reserve_balance (void *cls,
   struct ReserveSummary *rs = value;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
+  enum GNUNET_DB_QueryStatus qs;
   int ret;
 
   ret = GNUNET_OK;
   reserve.pub = rs->reserve_pub;
-  if (GNUNET_OK !=
-      edb->reserve_get (edb->cls,
-                        esession,
-                        &reserve))
+  qs = edb->reserve_get (edb->cls,
+                         esession,
+                         &reserve);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
+    /* FIXME: may we have to deal with soft errors here? */
     char *diag;
 
     GNUNET_asprintf (&diag,
