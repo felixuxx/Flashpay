@@ -389,7 +389,6 @@ main (int argc,
 				 "PLUGINNAME",
 				 "which wire plugin to use",
 				 &type),
-    GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
 

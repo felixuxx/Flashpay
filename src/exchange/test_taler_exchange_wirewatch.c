@@ -485,7 +485,7 @@ interpreter (void *cls)
                                  "taler-exchange-wirewatch",
                                  "taler-exchange-wirewatch",
                                  "-c", config_filename,
-                                 "-t", /* enable temporary tables */
+                                 "-t", "test",
                                  NULL);
     if (NULL == cmd->details.wirewatch.wirewatch_proc)
     {
@@ -555,19 +555,25 @@ run (void *cls)
   static struct Command commands[] = {
     /* test running with empty DB */
     {
-      .opcode = OPCODE_RUN_AGGREGATOR,
-      .label = "run-aggregator-on-empty-db"
-    },
-    {
       .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
       .label = "expect-empty-transactions-on-start"
     },
-
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
-      .label = "run-aggregator-deposit-1"
+      .label = "run-aggregator-on-empty"
     },
-
+    {
+      .opcode = OPCODE_RUN_WIREWATCH,
+      .label = "run-wirewatch-on-empty"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
+      .label = "expect-empty-transactions-after-dry-run"
+    },
+    {
+      .opcode = OPCODE_TERMINATE_SUCCESS,
+      .label = "testcase-complete-terminating-with-success"
+    },
     {
       .opcode = OPCODE_EXPECT_TRANSFER,
       .label = "expect-deposit-1",
@@ -576,12 +582,10 @@ run (void *cls)
       .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
       .details.expect_transfer.amount = "EUR:0.89"
     },
-
     {
       .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
       .label = "expect-empty-transactions-on-start"
     },
-
     {
       .opcode = OPCODE_TERMINATE_SUCCESS,
       .label = "testcase-complete-terminating-with-success"
