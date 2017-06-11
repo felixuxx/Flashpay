@@ -486,6 +486,7 @@ interpreter (void *cls)
                                  "taler-exchange-wirewatch",
                                  "-c", config_filename,
                                  "-t", "test",
+                                 "-T", /* run in test mode, exit instead of looping */
                                  NULL);
     if (NULL == cmd->details.wirewatch.wirewatch_proc)
     {

@@ -95,6 +95,11 @@ static char *type;
 static int delay;
 
 /**
+ * Are we run in testing mode and should only do one pass?
+ */
+static int test_mode;
+
+/**
  * Next task to run, if any.
  */
 static struct GNUNET_SCHEDULER_Task *task;
@@ -234,6 +239,12 @@ history_cb (void *cls,
       start_off = last_row_off;
       start_off_size = last_row_off_size;
     }
+    if ( (GNUNET_YES == delay) &&
+         (test_mode) )
+    {
+      GNUNET_SCHEDULER_shutdown ();
+      return GNUNET_OK;
+    }
     if (GNUNET_YES == delay)
       task = GNUNET_SCHEDULER_add_delayed (DELAY,
 					   &find_transfers,
@@ -289,6 +300,7 @@ find_transfers (void *cls)
   struct TALER_EXCHANGEDB_Session *session;
   int ret;
 
+  task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for incoming wire transfers\n");
 
@@ -389,6 +401,10 @@ main (int argc,
 				 "PLUGINNAME",
 				 "which wire plugin to use",
 				 &type),
+    GNUNET_GETOPT_option_flag ('T',
+			       "test",
+			       "run in test mode and exit when idle",
+			       &test_mode),
     GNUNET_GETOPT_OPTION_END
   };
 
