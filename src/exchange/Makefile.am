@@ -97,8 +97,23 @@ test_taler_exchange_aggregator_postgres_LDADD = \
   -ljansson \
   -lpthread
 
+test_taler_exchange_wirewatch_postgres_SOURCES = \
+  test_taler_exchange_wirewatch.c
+test_taler_exchange_wirewatch_postgres_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lmicrohttpd \
+  -lgnunetutil \
+  -lgnunetjson \
+  -ljansson \
+  -lpthread
+
 check_PROGRAMS = \
-  test_taler_exchange_aggregator-postgres
+  test_taler_exchange_aggregator-postgres \
+  test_taler_exchange_wirewatch-postgres
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
@@ -109,6 +124,7 @@ TESTS = \
 
 EXTRA_DIST = \
   test-taler-exchange-aggregator-postgres.conf \
+  test-taler-exchange-wirewatch-postgres.conf \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_taler_exchange_httpd.conf \
   exchange.conf \

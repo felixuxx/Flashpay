@@ -516,6 +516,14 @@ exchange_serve_process_config ()
              "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      db_plugin->create_tables (db_plugin->cls))
+  {
+    fprintf (stderr,
+             "Failed to initialize DB tables\n");
+    TALER_EXCHANGEDB_plugin_unload (db_plugin);
+    return GNUNET_SYSERR;
+  }
 
   return GNUNET_OK;
 }
