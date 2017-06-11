@@ -155,7 +155,12 @@ struct Command
       /**
        * Subject of the transfer, set by the command.
        */
-      const char *wtid;
+      const char *subject;
+
+      /**
+       * Serial ID of the wire transfer as assigned by the bank.
+       */
+      uint64_t serial_id;
 
     } run_transfer;
 
@@ -262,7 +267,11 @@ interpreter (void *cls);
 static void
 next_command (struct State *state)
 {
+  GNUNET_assert (NULL == int_task);
   state->ioff++;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Advancing to command %s\n",
+              state->commands[state->ioff].label);
   int_task = GNUNET_SCHEDULER_add_now (&interpreter,
                                        state);
 }
@@ -274,6 +283,7 @@ next_command (struct State *state)
 static void
 fail (struct Command *cmd)
 {
+  GNUNET_assert (NULL == int_task);
   fprintf (stderr,
            "Testcase failed at command `%s'\n",
            cmd->label);
@@ -308,6 +318,8 @@ shutdown_action (void *cls)
 {
   struct State *state = cls;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Running shutdown\n");
   if (NULL != timeout_task)
   {
     GNUNET_SCHEDULER_cancel (timeout_task);
@@ -364,10 +376,6 @@ shutdown_action (void *cls)
     case OPCODE_RUN_TRANSFER:
       break;
     case OPCODE_WAIT:
-      state->ioff++;
-      int_task = GNUNET_SCHEDULER_add_delayed (cmd->details.wait_delay,
-                                               &interpreter,
-                                               state);
       break;
     case OPCODE_EXPECT_TRANSFER:
       GNUNET_free_non_null (cmd->details.expect_transfer.subject);
@@ -396,6 +404,9 @@ maint_child_death (void *cls)
   struct Command *cmd = &state->commands[state->ioff];
   char c[16];
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Child process died for command %s\n",
+              cmd->label);
   pr = GNUNET_DISK_pipe_handle (sigpipe,
                                 GNUNET_DISK_PIPE_END_READ);
   GNUNET_break (0 < GNUNET_DISK_file_read (pr,
@@ -404,12 +415,14 @@ maint_child_death (void *cls)
   switch (cmd->opcode)
   {
   case OPCODE_RUN_AGGREGATOR:
+    GNUNET_assert (NULL != cmd->details.aggregator.child_death_task);
     cmd->details.aggregator.child_death_task = NULL;
     GNUNET_OS_process_wait (cmd->details.aggregator.aggregator_proc);
     GNUNET_OS_process_destroy (cmd->details.aggregator.aggregator_proc);
     cmd->details.aggregator.aggregator_proc = NULL;
     break;
   case OPCODE_RUN_WIREWATCH:
+    GNUNET_assert (NULL != cmd->details.wirewatch.child_death_task);
     cmd->details.wirewatch.child_death_task = NULL;
     GNUNET_OS_process_wait (cmd->details.wirewatch.wirewatch_proc);
     GNUNET_OS_process_destroy (cmd->details.wirewatch.wirewatch_proc);
@@ -423,7 +436,6 @@ maint_child_death (void *cls)
 }
 
 
-
 /**
  * Interprets the commands from the test program.
  *
@@ -435,6 +447,7 @@ interpreter (void *cls)
   struct State *state = cls;
   struct Command *cmd = &state->commands[state->ioff];
 
+  GNUNET_assert (NULL != int_task);
   int_task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Running command %u (%s)\n",
@@ -499,10 +512,34 @@ interpreter (void *cls)
     }
     return;
   case OPCODE_RUN_TRANSFER:
-    GNUNET_break (0); // FIXME: not implemented!
-    return;
+    {
+      struct TALER_Amount amount;
+
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.run_transfer.amount,
+                                  &amount))
+      {
+        GNUNET_break (0);
+        fail (cmd);
+        return;
+      }
+      GNUNET_assert (NULL != cmd->details.run_transfer.subject);
+      cmd->details.run_transfer.serial_id
+        = TALER_FAKEBANK_make_transfer (fb,
+                                        cmd->details.run_transfer.debit_account,
+                                        cmd->details.run_transfer.credit_account,
+                                        &amount,
+                                        cmd->details.run_transfer.subject,
+                                        "https://exchange.taler.net/");
+      next_command (state);
+      return;
+    }
   case OPCODE_WAIT:
-    next_command (state);
+    state->ioff++;
+    GNUNET_assert (NULL == int_task);
+    int_task = GNUNET_SCHEDULER_add_delayed (cmd->details.wait_delay,
+                                             &interpreter,
+                                             state);
     return;
   case OPCODE_EXPECT_TRANSFER:
     {
@@ -537,7 +574,7 @@ interpreter (void *cls)
       return;
     }
     next_command (state);
-    break;
+    return;
   case OPCODE_TERMINATE_SUCCESS:
     result = 0;
     GNUNET_SCHEDULER_shutdown ();
@@ -572,22 +609,100 @@ run (void *cls)
       .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
       .label = "expect-empty-transactions-after-dry-run"
     },
+    /* fill exchange's reserve at bank */
     {
-      .opcode = OPCODE_TERMINATE_SUCCESS,
-      .label = "testcase-complete-terminating-with-success"
+      .opcode = OPCODE_RUN_TRANSFER,
+      .label = "run-transfer-good-to-exchange",
+      .details.run_transfer.debit_account = 4,
+      .details.run_transfer.credit_account = 3,
+      .details.run_transfer.subject = "SRB8VQHNTNJWSSG7BXT24Z063ZSXN7T0MHCQCBAFC1V17BZH10D0",
+      .details.run_transfer.amount = "EUR:5.00"
     },
+    /* creates reserve */
+    {
+      .opcode = OPCODE_RUN_WIREWATCH,
+      .label = "run-wirewatch-on-good-transfer"
+    },
+    /* clear first transfer from DLL */
     {
       .opcode = OPCODE_EXPECT_TRANSFER,
-      .label = "expect-deposit-1",
+      .label = "clear-good-transfer-to-exchange",
+      .details.expect_transfer.debit_account = 4,
+      .details.expect_transfer.credit_account = 3,
+      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.amount = "EUR:5.00"
+    },
+    /* should do NOTHING, it is too early... */
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-non-expired-reserve"
+    },
+    /* check nothing happened */
+    {
+      .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
+      .label = "expect-empty-transactions-1"
+    },
+    /* Configuration says reserves expire after 5s! */
+    {
+      .opcode = OPCODE_WAIT,
+      .label = "wait (5s)",
+      .details.wait_delay = { 1000LL * 1000 * 6 } /* 6s */
+    },
+    /* This time the reserve expired, so the money should go back... */
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-non-expired-reserve"
+    },
+    /* Check exchange sent money back, minus closing fee of EUR:0.01  */
+    {
+      .opcode = OPCODE_EXPECT_TRANSFER,
+      .label = "check-reserve-expiration-transfer",
       .details.expect_transfer.debit_account = 3,
       .details.expect_transfer.credit_account = 4,
       .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transfer.amount = "EUR:0.89"
+      .details.expect_transfer.amount = "EUR:4.99"
+    },
+    /* check nothing else happened */
+    {
+      .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
+      .label = "expect-empty-transactions-1"
+    },
+    /* This cannot work unless #5077 is implemented. */
+#if TEST_5077
+    {
+      .opcode = OPCODE_RUN_TRANSFER,
+      .label = "run-transfer-bad-to-exchange",
+      .details.run_transfer.debit_account = 4,
+      .details.run_transfer.credit_account = 3,
+      .details.run_transfer.subject = "random junk",
+      .details.run_transfer.amount = "EUR:5.00"
+    },
+    {
+      .opcode = OPCODE_RUN_WIREWATCH,
+      .label = "run-wirewatch-on-bad-transfer"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSFER,
+      .label = "expect-bad-transfer-to-exchange",
+      .details.expect_transfer.debit_account = 4,
+      .details.expect_transfer.credit_account = 3,
+      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.amount = "EUR:5.00"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSFER,
+      .label = "expect-rewire-transfer-from-exchange",
+      .details.expect_transfer.debit_account = 3,
+      .details.expect_transfer.credit_account = 4,
+      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.amount = "EUR:5.00"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSFERS_EMPTY,
-      .label = "expect-empty-transactions-on-start"
+      .label = "expect-empty-transactions-1"
     },
+#endif
+
     {
       .opcode = OPCODE_TERMINATE_SUCCESS,
       .label = "testcase-complete-terminating-with-success"
@@ -670,6 +785,22 @@ main (int argc,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
                                   "-c", config_filename,
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    return 77;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-dbinit",
+                                  "taler-exchange-dbinit",
+                                  "-c", config_filename,
+                                  "-r",
                                   NULL);
   if (NULL == proc)
   {

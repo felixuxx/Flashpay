@@ -507,6 +507,12 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_break (0);
     return MHD_NO;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Client asked for up to %lld results of type %s for account %llu starting at %s\n",
+              count,
+              dir,
+              (unsigned long long) account_number,
+              start);
   if (NULL == dir)
     direction = TALER_BANK_DIRECTION_BOTH;
   else if (0 == strcasecmp (dir,
@@ -544,12 +550,19 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     /* list is empty */
     pos = NULL;
   }
+
   history = json_array ();
   while ( (NULL != pos) &&
           (0 != count) )
   {
     json_t *trans;
     char *subject;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found transaction over %s from %llu to %llu\n",
+                TALER_amount2s (&pos->amount),
+                (unsigned long long) pos->debit_account,
+                (unsigned long long) pos->credit_account);
 
     if (! ( ( (account_number == pos->debit_account) &&
               (0 != (direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
@@ -595,6 +608,8 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     struct MHD_Response *resp;
 
     json_decref (history);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning empty transaction history\n");
     resp = MHD_create_response_from_buffer (0,
                                             "",
                                             MHD_RESPMEM_PERSISTENT);

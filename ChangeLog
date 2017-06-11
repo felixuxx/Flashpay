@@ -1,3 +1,7 @@
+Sun Jun 11 17:03:56 CEST 2017
+	Finish implementation and testing of automated refunding
+	of expired reserves (#4956). -CG
+
 Tue Jun  6 13:53:34 CEST 2017
 	Releasing taler-exchange 0.3.0. -CG
 

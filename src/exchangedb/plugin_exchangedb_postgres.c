@@ -2087,6 +2087,11 @@ postgres_reserves_in_insert (void *cls,
     */
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Creating reserve %s with expiration in %s\n",
+              TALER_B2S (reserve_pub),
+              GNUNET_STRINGS_relative_time_to_string (pg->idle_reserve_expiration_time,
+                                                      GNUNET_NO));
   expiry = GNUNET_TIME_absolute_add (execution_time,
                                      pg->idle_reserve_expiration_time);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == reserve_exists)

@@ -196,6 +196,11 @@ struct CloseTransferContext
    * Wire transfer method.
    */
   char *type;
+
+  /**
+   * Wire plugin used for closing the reserve.
+   */
+  struct WirePlugin *wp;
 };
 
 
@@ -428,8 +433,8 @@ find_plugin (const char *type)
 static void
 shutdown_task (void *cls)
 {
-  struct WirePlugin *wp;
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Running shutdown\n");
   if (NULL != task)
   {
     GNUNET_SCHEDULER_cancel (task);
@@ -464,16 +469,32 @@ shutdown_task (void *cls)
     au = NULL;
     GNUNET_free (au);
   }
-  TALER_EXCHANGEDB_plugin_unload (db_plugin);
-  while (NULL != (wp = wp_head))
+  if (NULL != ctc)
   {
-    GNUNET_CONTAINER_DLL_remove (wp_head,
-                                 wp_tail,
-                                 wp);
-    TALER_WIRE_plugin_unload (wp->wire_plugin);
-    TALER_EXCHANGEDB_fees_free (wp->af);
-    GNUNET_free (wp->type);
-    GNUNET_free (wp);
+    ctc->wp->wire_plugin->prepare_wire_transfer_cancel (ctc->wp->wire_plugin->cls,
+                                                        ctc->ph);
+    ctc->ph = NULL;
+    db_plugin->rollback (db_plugin->cls,
+                         ctc->session);
+    GNUNET_free (ctc->type);
+    GNUNET_free (ctc);
+    ctc = NULL;
+  }
+  TALER_EXCHANGEDB_plugin_unload (db_plugin);
+
+  {
+    struct WirePlugin *wp;
+
+    while (NULL != (wp = wp_head))
+    {
+      GNUNET_CONTAINER_DLL_remove (wp_head,
+                                   wp_tail,
+                                   wp);
+      TALER_WIRE_plugin_unload (wp->wire_plugin);
+      TALER_EXCHANGEDB_fees_free (wp->af);
+      GNUNET_free (wp->type);
+      GNUNET_free (wp);
+    }
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   cfg = NULL;
@@ -741,6 +762,16 @@ run_aggregation (void *cls);
 
 
 /**
+ * Execute the wire transfers that we have committed to
+ * do.
+ *
+ * @param cls pointer to an `int` which we will return from main()
+ */
+static void
+run_transfers (void *cls);
+
+
+/**
  * Perform a database commit. If it fails, print a warning.
  *
  * @param session session to perform the commit for.
@@ -777,6 +808,9 @@ prepare_close_cb (void *cls,
 		  size_t buf_size)
 {
   GNUNET_assert (cls == ctc);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Prepared for reserve closing\n");
   ctc->ph = NULL;
   if (NULL == buf)
   {
@@ -817,7 +851,9 @@ prepare_close_cb (void *cls,
   GNUNET_free (ctc->type);
   GNUNET_free (ctc);
   ctc = NULL;
-  task = GNUNET_SCHEDULER_add_now (&run_aggregation,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Reserve closure committed, running transfer\n");
+  task = GNUNET_SCHEDULER_add_now (&run_transfers,
 				   NULL);
 }
 
@@ -923,6 +959,12 @@ expired_reserve_cb (void *cls,
 					   &wtid,
 					   left,
 					   closing_fee);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Closing reserve %s over %s (%d, %d)\n",
+              TALER_B2S (reserve_pub),
+              TALER_amount2s (left),
+              ret,
+              iret);
   if ( (GNUNET_OK == ret) &&
        (GNUNET_OK == iret) )
   {
@@ -939,11 +981,12 @@ expired_reserve_cb (void *cls,
       return GNUNET_SYSERR;
     }
     ctc = GNUNET_new (struct CloseTransferContext);
+    ctc->wp = wp;
     ctc->session = session;
     ctc->type = GNUNET_strdup (type);
     ctc->ph
       = wp->wire_plugin->prepare_wire_transfer (wp->wire_plugin->cls,
-						au->wire,
+						account_details,
 						&amount_without_fee,
 						exchange_base_url,
 						&wtid,
@@ -973,6 +1016,8 @@ expired_reserve_cb (void *cls,
     return GNUNET_SYSERR;
   }
   /* Reserve balance was almost zero; just commit */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Reserve was virtually empty, moving on\n");
   (void) commit_or_warn (session);
   task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
 				   NULL);
@@ -998,7 +1043,7 @@ run_reserve_closures (void *cls)
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for reserves to close\n");
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
@@ -1034,6 +1079,8 @@ run_reserve_closures (void *cls)
   }
   if (GNUNET_NO == ret)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No more idle reserves, going back to aggregation\n");
     reserves_idle = GNUNET_YES;
     db_plugin->rollback (db_plugin->cls,
                          session);
@@ -1063,13 +1110,13 @@ run_aggregation (void *cls)
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
- if (0 == (++swap % 2))
+  if (0 == (++swap % 2))
   {
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
 				     NULL);
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for ready deposits to aggregate\n");
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
@@ -1111,9 +1158,10 @@ run_aggregation (void *cls)
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "No more ready deposits, going to sleep\n");
-    if (GNUNET_YES == test_mode)
+    if ( (GNUNET_YES == test_mode) &&
+         (swap >= 2) )
     {
       /* in test mode, shutdown if we end up being idle */
       GNUNET_SCHEDULER_shutdown ();
@@ -1121,7 +1169,8 @@ run_aggregation (void *cls)
     else
     {
       /* nothing to do, sleep for a minute and try again */
-      if (GNUNET_NO == reserves_idle)
+      if ( (GNUNET_NO == reserves_idle) ||
+           (GNUNET_YES == test_mode) )
 	task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
 					 NULL);
       else
@@ -1255,16 +1304,6 @@ run_aggregation (void *cls)
   }
   /* otherwise we continue with #prepare_cb(), see below */
 }
-
-
-/**
- * Execute the wire transfers that we have committed to
- * do.
- *
- * @param cls pointer to an `int` which we will return from main()
- */
-static void
-run_transfers (void *cls);
 
 
 /**
@@ -1518,7 +1557,7 @@ run_transfers (void *cls)
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   task = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for pending wire transfers\n");
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))

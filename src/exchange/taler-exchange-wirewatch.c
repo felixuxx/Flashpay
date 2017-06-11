@@ -229,7 +229,7 @@ history_cb (void *cls,
   {
     hh = NULL;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "End of list. Committing progress!\n");
     ret = db_plugin->commit (db_plugin->cls,
 			     session);
@@ -254,7 +254,7 @@ history_cb (void *cls,
 				       NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Adding wire transfer over %s with subject `%s'\n",
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->reserve_pub));
@@ -301,7 +301,7 @@ find_transfers (void *cls)
   int ret;
 
   task = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for incoming wire transfers\n");
 
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
