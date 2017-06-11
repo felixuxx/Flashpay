@@ -65,7 +65,7 @@ struct Transaction
   /**
    * Subject of the transfer.
    */
-  struct TALER_WireTransferIdentifierRawP wtid;
+  char *subject;
 
   /**
    * Base URL of the exchange.
@@ -119,7 +119,7 @@ struct TALER_FAKEBANK_Handle
 /**
  * Check that the @a want_amount was transferred from
  * the @a want_debit to the @a want_credit account.  If
- * so, set the @a wtid to the transfer identifier.
+ * so, set the @a subject to the transfer identifier.
  * If not, return #GNUNET_SYSERR.
  *
  * @param h bank instance
@@ -137,11 +137,9 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
                       uint64_t want_debit,
                       uint64_t want_credit,
                       const char *exchange_base_url,
-                      struct TALER_WireTransferIdentifierRawP *wtid)
+                      char **subject)
 {
-  struct Transaction *t;
-
-  for (t = h->transactions_head; NULL != t; t = t->next)
+  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
   {
     if ( (want_debit == t->debit_account) &&
          (want_credit == t->credit_account) &&
@@ -153,7 +151,7 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
       GNUNET_CONTAINER_DLL_remove (h->transactions_head,
                                    h->transactions_tail,
                                    t);
-      *wtid = t->wtid;
+      *subject = t->subject;
       GNUNET_free (t->exchange_base_url);
       GNUNET_free (t);
       return GNUNET_OK;
@@ -161,7 +159,7 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
   }
   fprintf (stderr,
            "Did not find matching transaction!\nI have:\n");
-  for (t = h->transactions_head; NULL != t; t = t->next)
+  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
   {
     char *s;
 
@@ -175,6 +173,49 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
     GNUNET_free (s);
   }
   return GNUNET_SYSERR;
+}
+
+
+/**
+ * Tell the fakebank to create another wire transfer.
+ *
+ * @param h fake bank handle
+ * @param debit_account account to debit
+ * @param credit_account account to credit
+ * @param amount amount to transfer
+ * @param subject wire transfer subject to use
+ * @param exchange_base_url exchange URL
+ * @return serial_id of the transfer
+ */
+uint64_t
+TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
+                              uint64_t debit_account,
+                              uint64_t credit_account,
+                              const struct TALER_Amount *amount,
+                              const char *subject,
+                              const char *exchange_base_url)
+{
+  struct Transaction *t;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Making transfer from %llu to %llu over %s and subject %s\n",
+              (unsigned long long) debit_account,
+              (unsigned long long) credit_account,
+              TALER_amount2s (amount),
+              subject);
+  t = GNUNET_new (struct Transaction);
+  t->debit_account = debit_account;
+  t->credit_account = credit_account;
+  t->amount = *amount;
+  t->exchange_base_url = GNUNET_strdup (exchange_base_url);
+  t->serial_id = ++h->serial_counter;
+  t->date = GNUNET_TIME_absolute_get ();
+  t->subject = GNUNET_strdup (subject);
+  GNUNET_TIME_round_abs (&t->date);
+  GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
+                                    h->transactions_tail,
+                                    t);
+  return t->serial_id;
 }
 
 
@@ -228,6 +269,7 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     GNUNET_CONTAINER_DLL_remove (h->transactions_head,
                                  h->transactions_tail,
                                  t);
+    GNUNET_free (t->subject);
     GNUNET_free (t->exchange_base_url);
     GNUNET_free (t);
   }
@@ -291,9 +333,9 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
 {
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
-  struct Transaction *t;
   struct MHD_Response *resp;
   int ret;
+  uint64_t serial_id;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 con_cls,
@@ -316,14 +358,17 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   case GNUNET_JSON_PR_SUCCESS:
     break;
   }
-  t = GNUNET_new (struct Transaction);
   {
+    const char *wtid;
+    uint64_t debit_account;
+    uint64_t credit_account;
     const char *base_url;
+    struct TALER_Amount amount;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_fixed_auto ("wtid", &t->wtid),
-      GNUNET_JSON_spec_uint64 ("debit_account", &t->debit_account),
-      GNUNET_JSON_spec_uint64 ("credit_account", &t->credit_account),
-      TALER_JSON_spec_amount ("amount", &t->amount),
+      GNUNET_JSON_spec_string ("wtid", &wtid),
+      GNUNET_JSON_spec_uint64 ("debit_account", &debit_account),
+      GNUNET_JSON_spec_uint64 ("credit_account", &credit_account),
+      TALER_JSON_spec_amount ("amount", &amount),
       GNUNET_JSON_spec_string ("exchange_url", &base_url),
       GNUNET_JSON_spec_end ()
     };
@@ -336,19 +381,18 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       return MHD_NO;
     }
-    t->exchange_base_url = GNUNET_strdup (base_url);
-    t->serial_id = ++h->serial_counter;
-    t->date = GNUNET_TIME_absolute_get ();
-    GNUNET_TIME_round_abs (&t->date);
-    GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
-                                      h->transactions_tail,
-                                      t);
+    serial_id = TALER_FAKEBANK_make_transfer (h,
+                                              debit_account,
+                                              credit_account,
+                                              &amount,
+                                              wtid,
+                                              base_url);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Receiving incoming wire transfer: %llu->%llu from %s\n",
+                (unsigned long long) debit_account,
+                (unsigned long long) credit_account,
+                base_url);
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Receiving incoming wire transfer: %llu->%llu from %s\n",
-              (unsigned long long) t->debit_account,
-              (unsigned long long) t->credit_account,
-              t->exchange_base_url);
   json_decref (json);
 
   /* Finally build response object */
@@ -358,7 +402,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
 
     json = json_pack ("{s:I}",
                       "serial_id",
-                      (json_int_t) t->serial_id);
+                      (json_int_t) serial_id);
     json_str = json_dumps (json,
                            JSON_INDENT(2));
     json_decref (json);
@@ -514,17 +558,10 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       continue;
     }
 
-    {
-      char *ws;
-
-      ws = GNUNET_STRINGS_data_to_string_alloc (&pos->wtid,
-                                                sizeof (pos->wtid));
-      GNUNET_asprintf (&subject,
-                       "%s %s",
-                       ws,
-                       pos->exchange_base_url);
-      GNUNET_free (ws);
-    }
+    GNUNET_asprintf (&subject,
+                     "%s %s",
+                     pos->subject,
+                     pos->exchange_base_url);
     trans = json_pack ("{s:I, s:o, s:o, s:s, s:I, s:s}",
                        "row_id", (json_int_t) pos->serial_id,
                        "date", GNUNET_JSON_from_time_abs (pos->date),

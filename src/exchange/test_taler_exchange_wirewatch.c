@@ -31,7 +31,6 @@
 #include "taler_fakebank_lib.h"
 
 
-
 /**
  * Commands for the interpreter.
  */
@@ -127,7 +126,7 @@ struct Command
       /**
        * Subject of the transfer, set by the command.
        */
-      struct TALER_WireTransferIdentifierRawP wtid;
+      char *subject;
 
     } expect_transfer;
 
@@ -371,6 +370,8 @@ shutdown_action (void *cls)
                                                state);
       break;
     case OPCODE_EXPECT_TRANSFER:
+      GNUNET_free_non_null (cmd->details.expect_transfer.subject);
+      cmd->details.expect_transfer.subject = NULL;
       break;
     case OPCODE_EXPECT_TRANSFERS_EMPTY:
       break;
@@ -521,7 +522,7 @@ interpreter (void *cls)
                                 cmd->details.expect_transfer.debit_account,
                                 cmd->details.expect_transfer.credit_account,
                                 cmd->details.expect_transfer.exchange_base_url,
-                                &cmd->details.expect_transfer.wtid))
+                                &cmd->details.expect_transfer.subject))
       {
         fail (cmd);
         return;

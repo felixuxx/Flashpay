@@ -62,8 +62,29 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
 
 
 /**
+ * Tell the fakebank to create another wire transfer.
+ *
+ * @param h fake bank handle
+ * @param debit_account account to debit
+ * @param credit_account account to credit
+ * @param amount amount to transfer
+ * @param subject wire transfer subject to use
+ * @param exchange_base_url exchange URL
+ * @return serial_id of the transfer
+ */
+uint64_t
+TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
+                              uint64_t debit_account,
+                              uint64_t credit_account,
+                              const struct TALER_Amount *amount,
+                              const char *subject,
+                              const char *exchange_base_url);
+
+
+
+/**
  * Check that the @a want_amount was transferred from the @a
- * want_debit to the @a want_credit account.  If so, set the @a wtid
+ * want_debit to the @a want_credit account.  If so, set the @a subject
  * to the transfer identifier and remove the transaction from the
  * list.  If the transaction was not recorded, return #GNUNET_SYSERR.
  *
@@ -73,7 +94,7 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
  * @param want_debit account that should have been credited
  * @param exchange_base_url expected base URL of the exchange,
  *        i.e. "https://example.com/"; may include a port
- * @param[out] wtid set to the wire transfer identifier
+ * @param[out] subject set to the wire transfer identifier
  * @return #GNUNET_OK on success
  */
 int
@@ -82,7 +103,7 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
                       uint64_t want_debit,
                       uint64_t want_credit,
                       const char *exchange_base_url,
-                      struct TALER_WireTransferIdentifierRawP *wtid);
+                      char **subject);
 
 
 /**

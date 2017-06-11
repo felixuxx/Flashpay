@@ -636,9 +636,9 @@ struct Command
       const char *exchange_base_url;
 
       /**
-       * Set (!) to the wire transfer identifier observed.
+       * Set (!) to the wire transfer subject observed.
        */
-      struct TALER_WireTransferIdentifierRawP wtid;
+      char *subject;
 
     } check_bank_transfer;
 
@@ -1805,18 +1805,24 @@ deposit_wtid_cb (void *cls,
     if (NULL != cmd->details.deposit_wtid.bank_transfer_ref)
     {
       const struct Command *ref;
+      char *ws;
+
+      ws = GNUNET_STRINGS_data_to_string_alloc (wtid,
+                                                sizeof (*wtid));
+
 
       ref = find_command (is,
                           cmd->details.deposit_wtid.bank_transfer_ref);
       GNUNET_assert (NULL != ref);
-      if (0 != memcmp (wtid,
-                       &ref->details.check_bank_transfer.wtid,
-                       sizeof (struct TALER_WireTransferIdentifierRawP)))
+      if (0 != strcmp (ws,
+                       ref->details.check_bank_transfer.subject))
       {
         GNUNET_break (0);
+        GNUNET_free (ws);
         fail (is);
         return;
       }
+      GNUNET_free (ws);
     }
     break;
   case MHD_HTTP_ACCEPTED:
@@ -2496,7 +2502,11 @@ interpreter_run (void *cls)
         cmd->details.wire_deposits.wtid = ref->details.deposit_wtid.wtid;
         break;
       case OC_CHECK_BANK_TRANSFER:
-        cmd->details.wire_deposits.wtid = ref->details.check_bank_transfer.wtid;
+        GNUNET_assert (GNUNET_OK ==
+                       GNUNET_STRINGS_string_to_data (ref->details.check_bank_transfer.subject,
+                                                      strlen (ref->details.check_bank_transfer.subject),
+                                                      &cmd->details.wire_deposits.wtid,
+                                                      sizeof (cmd->details.wire_deposits.wtid)));
         break;
       default:
         GNUNET_break (0);
@@ -2597,7 +2607,7 @@ interpreter_run (void *cls)
                                 cmd->details.check_bank_transfer.account_debit,
                                 cmd->details.check_bank_transfer.account_credit,
                                 cmd->details.check_bank_transfer.exchange_base_url,
-                                &cmd->details.check_bank_transfer.wtid))
+                                &cmd->details.check_bank_transfer.subject))
       {
         GNUNET_break (0);
         fail (is);
@@ -2951,6 +2961,8 @@ do_shutdown (void *cls)
       }
       break;
     case OC_CHECK_BANK_TRANSFER:
+      GNUNET_free_non_null (cmd->details.check_bank_transfer.subject);
+      cmd->details.check_bank_transfer.subject = NULL;
       break;
     case OC_CHECK_BANK_TRANSFERS_EMPTY:
       break;

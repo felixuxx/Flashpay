@@ -118,7 +118,7 @@ struct Command
       /**
        * Subject of the transfer, set by the command.
        */
-      struct TALER_WireTransferIdentifierRawP wtid;
+      char *subject;
 
     } expect_transaction;
 
@@ -565,7 +565,7 @@ interpreter (void *cls)
                                   cmd->details.expect_transaction.debit_account,
                                   cmd->details.expect_transaction.credit_account,
                                   cmd->details.expect_transaction.exchange_base_url,
-                                  &cmd->details.expect_transaction.wtid))
+                                  &cmd->details.expect_transaction.subject))
         {
           fail (cmd);
           return;

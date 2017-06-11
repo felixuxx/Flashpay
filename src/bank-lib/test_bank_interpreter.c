@@ -572,7 +572,9 @@ history_cb (void *cls,
                   "Expected history of length %llu, got %llu\n",
                   (unsigned long long) total,
                   (unsigned long long) cmd->details.history.results_obtained);
-      print_expected (h, total, UINT_MAX);
+      print_expected (h,
+                      total,
+                      UINT_MAX);
       free_history (h,
                     total);
       fail (is);
@@ -621,7 +623,6 @@ interpreter_run (void *cls)
   struct InterpreterState *is = cls;
   struct TBI_Command *cmd = &is->commands[is->ip];
   const struct TBI_Command *ref;
-  struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
   struct TALER_BANK_AuthenticationData auth;
@@ -719,25 +720,34 @@ interpreter_run (void *cls)
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (ref->details.admin_add_incoming.amount,
                                            &amount));
-    if (GNUNET_OK !=
-        TALER_FAKEBANK_check (is->fakebank,
-                              &amount,
-                              ref->details.admin_add_incoming.debit_account_no,
-                              ref->details.admin_add_incoming.credit_account_no,
-                              ref->details.admin_add_incoming.exchange_base_url,
-                              &wtid))
     {
-      GNUNET_break (0);
-      fail (is);
-      return;
-    }
-    if (0 != memcmp (&wtid,
-                     &ref->details.admin_add_incoming.wtid,
-                     sizeof (wtid)))
-    {
-      GNUNET_break (0);
-      fail (is);
-      return;
+      char *subject;
+      char *expect;
+
+      if (GNUNET_OK !=
+          TALER_FAKEBANK_check (is->fakebank,
+                                &amount,
+                                ref->details.admin_add_incoming.debit_account_no,
+                                ref->details.admin_add_incoming.credit_account_no,
+                                ref->details.admin_add_incoming.exchange_base_url,
+                                &subject))
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      expect = GNUNET_STRINGS_data_to_string_alloc (&ref->details.admin_add_incoming.wtid,
+                                                    sizeof (ref->details.admin_add_incoming.wtid));
+      if (0 != strcmp (subject, expect))
+      {
+        GNUNET_free (expect);
+        GNUNET_free (subject);
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      GNUNET_free (subject);
+      GNUNET_free (expect);
     }
     is->ip++;
     is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
