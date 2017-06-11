@@ -5,3 +5,4 @@ taler-exchange-pursemod
 taler-exchange-reservemod
 taler-exchange-httpd
 taler-exchange-wirewatch
+test_taler_exchange_wirewatch-postgres
