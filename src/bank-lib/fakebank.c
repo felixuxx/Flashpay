@@ -128,7 +128,7 @@ struct TALER_FAKEBANK_Handle
  * @param want_credit account that should have been credited
  * @param exchange_base_url expected base URL of the exchange
  *        i.e. "https://example.com/"; may include a port
- * @param[out] wtid set to the wire transfer identifier
+ * @param[out] subject set to the wire transfer identifier
  * @return #GNUNET_OK on success
  */
 int
