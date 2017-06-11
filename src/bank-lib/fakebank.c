@@ -521,7 +521,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     else
       pos = h->transactions_tail;
   }
-  else
+  else if (NULL != h->transactions_head)
   {
     for (pos = h->transactions_head;
          NULL != pos;
@@ -538,6 +538,11 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       pos = pos->next;
     if (count < 0)
       pos = pos->prev;
+  }
+  else
+  {
+    /* list is empty */
+    pos = NULL;
   }
   history = json_array ();
   while ( (NULL != pos) &&
