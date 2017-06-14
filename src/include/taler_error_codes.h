@@ -1299,6 +1299,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFUND_INCONSISTENT_AMOUNT = 2602,
 
+  /**
+   * The hashed contract term doesn't have any refund associated yet.
+   */
+  TALER_EC_REFUND_H_CONTRACT_TERMS_UNKNOWN = 2603,
+
   /* ********** /test API error codes ************* */
 
   /**
