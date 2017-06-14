@@ -1282,6 +1282,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_PROPOSAL_LOOKUP_NOT_FOUND = 2503,
 
+  /**
+   * The client specified an unknown instance for any of the /refund operations
+   */
+  TALER_EC_REFUND_INSTANCE_UNKNOWN = 2600,
+
   /* ********** /test API error codes ************* */
 
   /**
