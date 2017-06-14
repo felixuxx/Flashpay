@@ -1292,6 +1292,13 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFUND_ORDER_ID_UNKNOWN = 2601,
 
+  /**
+   * The amount to be refunded is inconsistent: either is lower than
+   * the previous amount being awarded, or it is too big to be paid back.
+   * In this second case, the fault stays on the business dept. side.
+   */
+  TALER_EC_REFUND_INCONSISTENT_AMOUNT = 2602,
+
   /* ********** /test API error codes ************* */
 
   /**
