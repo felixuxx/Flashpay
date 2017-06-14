@@ -1287,6 +1287,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFUND_INSTANCE_UNKNOWN = 2600,
 
+  /**
+   * The frontend gave an unknown order id to issue the refund to.
+   */
+  TALER_EC_REFUND_ORDER_ID_UNKNOWN = 2601,
+
   /* ********** /test API error codes ************* */
 
   /**
