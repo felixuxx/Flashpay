@@ -80,11 +80,10 @@ TALER_BANK_make_auth_header_ (const struct TALER_BANK_AuthenticationData *auth)
     authh = append (authh,
                     "X-Taler-Bank-Password",
                     auth->details.basic.password);
-    break;
+    return authh;    
   }
-  return authh;
+  return NULL;
 }
-
 
 
 /**
