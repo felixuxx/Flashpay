@@ -1135,9 +1135,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session connection to use
    * @param denom_pub the public key used for signing coins of this denomination
    * @param issue issuing information with value, fees and other info about the denomination
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return status of the query
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_denomination_info) (void *cls,
                                struct TALER_EXCHANGEDB_Session *session,
                                const struct TALER_DenominationPublicKey *denom_pub,

@@ -485,11 +485,11 @@ reload_keys_denom_iter (void *cls,
                             session);
       break;
     }
-    res = TEH_plugin->insert_denomination_info (TEH_plugin->cls,
-                                                session,
-                                                &dki->denom_pub,
-                                                &dki->issue);
-    if (GNUNET_OK != res)
+    qs = TEH_plugin->insert_denomination_info (TEH_plugin->cls,
+					       session,
+					       &dki->denom_pub,
+					       &dki->issue);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       /* Insert failed!? Very bad error, log and retry */
       GNUNET_break (0);

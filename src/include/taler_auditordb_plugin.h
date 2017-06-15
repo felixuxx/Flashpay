@@ -275,9 +275,9 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param issue issuing information with value, fees and other info about the denomination
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return status of database operation
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_denomination_info)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_DenominationKeyValidityPS *issue);

@@ -1159,16 +1159,13 @@ postgres_gc (void *cls)
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param issue issuing information with value, fees and other info about the denomination
- * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ * @return operation status result
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_info (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_DenominationKeyValidityPS *issue)
 {
-  PGresult *result;
-  int ret;
-
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->denom_hash),
     GNUNET_PQ_query_param_auto_from_type (&issue->master),
@@ -1198,20 +1195,9 @@ postgres_insert_denomination_info (void *cls,
                  TALER_amount_cmp_currency_nbo (&issue->value,
                                                &issue->fee_refund));
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "auditor_denominations_insert",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    ret = GNUNET_SYSERR;
-    BREAK_DB_ERR (result);
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_denominations_insert",
+					     params);
 }
 
 
@@ -1237,6 +1223,7 @@ postgres_select_denomination_info (void *cls,
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
+
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "auditor_denominations_select",
                                     params);

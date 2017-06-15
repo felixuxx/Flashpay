@@ -1775,9 +1775,9 @@ execute_prepared_non_select (struct TALER_EXCHANGEDB_Session *session,
  * @param session connection to use
  * @param denom_pub the public key used for signing coins of this denomination
  * @param issue issuing information with value, fees and other info about the coin
- * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ * @return status of the query
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_info (void *cls,
                                    struct TALER_EXCHANGEDB_Session *session,
                                    const struct TALER_DenominationPublicKey *denom_pub,
@@ -1814,9 +1814,9 @@ postgres_insert_denomination_info (void *cls,
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
                                                &issue->properties.fee_refund));
 
-  return execute_prepared_non_select (session,
-                                      "denomination_insert",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "denomination_insert",
+					     params);
 }
 
 

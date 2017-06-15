@@ -1143,7 +1143,7 @@ run (void *cls)
   if ( (GNUNET_OK !=
         plugin->start (plugin->cls,
                        session)) ||
-       (GNUNET_OK !=
+       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         plugin->insert_denomination_info (plugin->cls,
                                           session,
                                           &dpk,

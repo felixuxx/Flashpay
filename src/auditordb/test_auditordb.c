@@ -19,6 +19,7 @@
  * @author Gabor X Toth
  */
 #include "platform.h"
+#include <gnunet/gnunet_db_lib.h>
 #include "taler_auditordb_lib.h"
 #include "taler_auditordb_plugin.h"
 
@@ -193,7 +194,7 @@ run (void *cls)
   TALER_amount_hton (&issue.fee_refresh, &fee_refresh);
   TALER_amount_hton (&issue.fee_refund, &fee_refund);
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_info (plugin->cls,
                                             session,
                                             &issue));

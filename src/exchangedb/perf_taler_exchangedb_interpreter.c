@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014, 2015 GNUnet e.V.
+   Copyright (C) 2014-2017 GNUnet e.V.
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -1446,7 +1446,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
       case PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION:
         {
           unsigned int denom_index;
-          int ret;
+          enum GNUNET_DB_QueryStatus ret;
           struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki ;
 
           denom_index = state->cmd[state->i].details.insert_denomination.index_denom;
@@ -1455,7 +1455,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                          state->session,
                                                          &dki->denom_pub,
                                                          &dki->issue);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == ret);
         }
         break;
 

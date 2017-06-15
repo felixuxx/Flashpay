@@ -259,7 +259,7 @@ create_denom_key_pair (unsigned int size,
 
   dki.issue.properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
   dki.issue.properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  if (GNUNET_OK !=
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->insert_denomination_info (plugin->cls,
                                         session,
                                         &dki.denom_pub,
