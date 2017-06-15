@@ -82,53 +82,6 @@
 
 
 /**
- * Shorthand for exit jumps.  Logs the current line number
- * and jumps to the "EXITIF_exit" label.
- *
- * @param cond condition that must be TRUE to exit with an error
- */
-#define EXITIF(cond)                                              \
-  do {                                                            \
-    if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
-  } while (0)
-
-
-/**
- * Execute an SQL statement and log errors on failure. Must be
- * run in a function that has an "SQLEXEC_fail" label to jump
- * to in case the SQL statement failed.
- *
- * @param conn database connection
- * @param sql SQL statement to run
- */
-#define SQLEXEC_(conn, sql)                                             \
-  do {                                                                  \
-    PGresult *result = PQexec (conn, sql);                              \
-    if (PGRES_COMMAND_OK != PQresultStatus (result))                    \
-    {                                                                   \
-      BREAK_DB_ERR (result, conn);                                      \
-      PQclear (result);                                                 \
-      goto SQLEXEC_fail;                                                \
-    }                                                                   \
-    PQclear (result);                                                   \
-  } while (0)
-
-
-/**
- * Run an SQL statement, ignoring errors and clearing the result.
- *
- * @param conn database connection
- * @param sql SQL statement to run
- */
-#define SQLEXEC_IGNORE_ERROR_(conn, sql)                                \
-  do {                                                                  \
-    PGresult *result = PQexec (conn, sql);                              \
-    PQclear (result);                                                   \
-  } while (0)
-
-
-
-/**
  * Handle for a database session (per-thread, for transactions).
  */
 struct TALER_EXCHANGEDB_Session
@@ -1941,10 +1894,14 @@ postgres_get_denomination_info (void *cls,
       GNUNET_PQ_result_spec_end
     };
 
-    EXITIF (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      0));
+    if (GNUNET_OK !=
+	GNUNET_PQ_extract_result (result,
+				  rs,
+				  0))
+    {
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
   }
   PQclear (result);
   issue->properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
@@ -1952,10 +1909,6 @@ postgres_get_denomination_info (void *cls,
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &issue->properties.denom_hash);
   return GNUNET_OK;
-
- EXITIF_exit:
-  PQclear (result);
-  return GNUNET_SYSERR;
 }
 
 
