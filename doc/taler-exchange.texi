@@ -6,6 +6,8 @@
 @paragraphindent 0
 @exampleindent 4
 
+@include syntax.texi
+
 @copying
 This manual is for the GNU Taler Exchange
 (version @value{VERSION}, @value{UPDATED}),
@@ -306,6 +308,7 @@ If you did not specify a prefix, GNUnet will install to
 
 To download and install the GNU Taler exchange, proceeds as follows:
 
+@setsyntax shell
 @example
 $ git clone git://taler.net/exchange
 $ cd exchange
@@ -555,6 +558,7 @@ via an environment variable: @cite{TALER_EXCHANGEDB_POSTGRES_CONFIG}.
 via configuration option @cite{db_conn_str}, under section @cite{[exchangedb-BACKEND]}. For example, the demo exchange is configured as follows:
 @end itemize
 
+@setsyntax ini
 @example
 [exchange]
 ...
