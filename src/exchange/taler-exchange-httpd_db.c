@@ -907,7 +907,7 @@ refresh_exchange_coin (struct MHD_Connection *connection,
                                    &ev_sig))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Returning cashed reply for /refresh/reveal signature\n");
+                "Returning cached reply for /refresh/reveal signature\n");
     return ev_sig;
   }
 

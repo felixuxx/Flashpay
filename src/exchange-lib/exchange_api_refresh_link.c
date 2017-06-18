@@ -372,9 +372,9 @@ handle_refresh_link_finished (void *cls,
  */
 struct TALER_EXCHANGE_RefreshLinkHandle *
 TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
-                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                         TALER_EXCHANGE_RefreshLinkCallback link_cb,
-                         void *link_cb_cls)
+			     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+			     TALER_EXCHANGE_RefreshLinkCallback link_cb,
+			     void *link_cb_cls)
 {
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
   CURL *eh;

@@ -408,6 +408,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     /* FIXME: #3887: if DK was revoked, we might want to give a 403 and not a 404! */
     TEH_KS_release (key_state);
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
+    GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_unknown (connection,
 					   TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN,
                                            "denom_pub");
@@ -420,6 +421,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   {
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
     TEH_KS_release (key_state);
+    GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_signature_invalid (connection,
 						 TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
                                                  "ub_sig");
@@ -432,6 +434,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                             &deposit.amount_with_fee))
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_external_error (connection,
 					      TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
                                               "deposited amount smaller than depositing fee");
