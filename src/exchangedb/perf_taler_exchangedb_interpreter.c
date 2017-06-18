@@ -1496,31 +1496,31 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
       case PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW:
         {
           unsigned int coin_index;
-          int ret;
+          enum GNUNET_DB_QueryStatus qs;
           struct PERF_TALER_EXCHANGEDB_Coin *coin;
 
           coin_index = state->cmd[state->i].details.insert_withdraw.index_coin;
           coin = state->cmd[coin_index].exposed.data.coin;
-          ret = state->plugin->insert_withdraw_info (state->plugin->cls,
+          qs = state->plugin->insert_withdraw_info (state->plugin->cls,
                                                      state->session,
                                                      &coin->blind);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
         }
         break;
 
       case PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW:
         {
           unsigned int source_index;
-          int ret;
+          enum GNUNET_DB_QueryStatus qs;
           struct PERF_TALER_EXCHANGEDB_Data *data;
 
           source_index = state->cmd[state->i].details.get_denomination.index_denom;
           data = &state->cmd[source_index].exposed;
-          ret = state->plugin->get_withdraw_info (state->plugin->cls,
-                                                  state->session,
-                                                  &data->data.coin->blind.h_coin_envelope,
-                                                  &data->data.coin->blind);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          qs = state->plugin->get_withdraw_info (state->plugin->cls,
+						 state->session,
+						 &data->data.coin->blind.h_coin_envelope,
+						 &data->data.coin->blind);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
         }
         break;
 

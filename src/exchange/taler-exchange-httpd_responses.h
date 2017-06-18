@@ -244,6 +244,19 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
 
 
 /**
+ * Compile the history of a reserve into a JSON object
+ * and calculate the total balance.
+ *
+ * @param rh reserve history to JSON-ify
+ * @param[out] balance set to current reserve balance
+ * @return json representation of the @a rh, NULL on error
+ */
+json_t *
+TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
+				      struct TALER_Amount *balance);
+
+
+/**
  * Send proof that a request is invalid to client because of
  * insufficient funds.  This function will create a message with all
  * of the operations affecting the coin that demonstrate that the coin
@@ -409,44 +422,6 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                            const struct TALER_Amount *wire_fee,
                                            struct GNUNET_TIME_Absolute exec_time,
                                            const struct TEH_TrackTransferDetail *wdd_head);
-
-
-/**
- * Send reserve status information to client.
- *
- * @param connection connection to the client
- * @param rh reserve history to return
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
-                                           const struct TALER_EXCHANGEDB_ReserveHistory *rh);
-
-
-/**
- * Send reserve status information to client with the
- * message that we have insufficient funds for the
- * requested /reserve/withdraw operation.
- *
- * @param connection connection to the client
- * @param rh reserve history to return
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
-                                                        const struct TALER_EXCHANGEDB_ReserveHistory *rh);
-
-
-/**
- * Send blinded coin information to client.
- *
- * @param connection connection to the client
- * @param collectable blinded coin to return
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
-                                             const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
 
 /**

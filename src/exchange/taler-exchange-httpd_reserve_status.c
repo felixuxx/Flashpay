@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -27,6 +27,36 @@
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+
+
+/**
+ * Send reserve status information to client.
+ *
+ * @param connection connection to the client
+ * @param rh reserve history to return
+ * @return MHD result code
+ */
+static int
+reply_reserve_status_success (struct MHD_Connection *connection,
+			      const struct TALER_EXCHANGEDB_ReserveHistory *rh)
+{
+  json_t *json_balance;
+  json_t *json_history;
+  struct TALER_Amount balance;
+
+  json_history = TEH_RESPONSE_compile_reserve_history (rh,
+						       &balance);
+  if (NULL == json_history)
+    return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_RESERVE_STATUS_DB_ERROR,
+                                              "balance calculation failure");
+  json_balance = TALER_JSON_from_amount (&balance);
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o}",
+                                       "balance", json_balance,
+                                       "history", json_history);
+}
 
 
 /**
@@ -126,8 +156,8 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
                                          "{s:s, s:s}",
                                          "error", "Reserve not found",
                                          "parameter", "withdraw_pub");
-  mhd_ret = TEH_RESPONSE_reply_reserve_status_success (connection,
-						       rsc.rh);
+  mhd_ret = reply_reserve_status_success (connection,
+					  rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rsc.rh);
   return mhd_ret;

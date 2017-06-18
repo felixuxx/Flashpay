@@ -3576,7 +3576,7 @@ run (void *cls)
   GNUNET_assert (NULL != exchange);
   timeout_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
-                                    (GNUNET_TIME_UNIT_SECONDS, 150),
+                                    (GNUNET_TIME_UNIT_SECONDS, 300),
                                     &do_timeout, NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
 }

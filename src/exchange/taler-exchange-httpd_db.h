@@ -98,29 +98,6 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/reserve/withdraw".  Given a reserve and a properly signed
- * request to withdraw a coin, check the balance of the reserve and
- * if it is sufficient, store the request and return the signed
- * blinded envelope.
- *
- * @param connection the MHD connection to handle
- * @param reserve public key of the reserve
- * @param denomination_pub public key of the denomination requested
- * @param blinded_msg blinded message to be signed
- * @param blinded_msg_len number of bytes in @a blinded_msg
- * @param signature signature over the withdraw request, to be stored in DB
- * @return MHD result code
- */
-int
-TEH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
-                                 const struct TALER_ReservePublicKeyP *reserve,
-                                 const struct TALER_DenominationPublicKey *denomination_pub,
-                                 const char *blinded_msg,
-                                 size_t blinded_msg_len,
-                                 const struct TALER_ReserveSignatureP *signature);
-
-
-/**
  * @brief Details about a melt operation of an individual coin.
  */
 struct TEH_DB_MeltDetails

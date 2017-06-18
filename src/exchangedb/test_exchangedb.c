@@ -1584,7 +1584,7 @@ run (void *cls)
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (CURRENCY, &cbc.withdraw_fee));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_withdraw_info (plugin->cls,
                                         session,
                                         &cbc));
@@ -1604,7 +1604,7 @@ run (void *cls)
                        &reserve_pub2,
                        sizeof (reserve_pub)));
 
-  FAILIF (GNUNET_YES !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_withdraw_info (plugin->cls,
                                      session,
                                      &cbc.h_coin_envelope,

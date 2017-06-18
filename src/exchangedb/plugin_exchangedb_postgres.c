@@ -2242,70 +2242,39 @@ postgres_get_latest_reserve_in_reference (void *cls,
  *                `h_coin_envelope` in the @a collectable to be returned)
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
- * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if the collectable was not found
- *         #GNUNET_YES on success
+ * @return statement execution status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_withdraw_info (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct GNUNET_HashCode *h_blind,
                             struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_blind),
     GNUNET_PQ_query_param_end
   };
-  int ret;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+					  &collectable->denom_pub.rsa_public_key),
+    GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
+					 &collectable->sig.rsa_signature),
+    GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+					  &collectable->reserve_sig),
+    GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+					  &collectable->reserve_pub),
+    TALER_PQ_result_spec_amount ("amount_with_fee",
+				 &collectable->amount_with_fee),
+    TALER_PQ_result_spec_amount ("fee_withdraw",
+				 &collectable->withdraw_fee),
+    GNUNET_PQ_result_spec_end
+  };
 
-  ret = GNUNET_SYSERR;
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_withdraw_info",
-                                   params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    QUERY_ERR (result, session->conn);
-    goto cleanup;
-  }
-  if (0 == PQntuples (result))
-  {
-    ret = GNUNET_NO;
-    goto cleanup;
-  }
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                           &collectable->denom_pub.rsa_public_key),
-      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                          &collectable->sig.rsa_signature),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
-                                           &collectable->reserve_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                           &collectable->reserve_pub),
-      TALER_PQ_result_spec_amount ("amount_with_fee",
-                                   &collectable->amount_with_fee),
-      TALER_PQ_result_spec_amount ("fee_withdraw",
-                                   &collectable->withdraw_fee),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      goto cleanup;
-    }
-  }
   collectable->h_coin_envelope = *h_blind;
-  ret = GNUNET_YES;
-
- cleanup:
-  PQclear (result);
-  return ret;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_withdraw_info",
+						   params,
+						   rs);
 }
 
 
@@ -2317,17 +2286,14 @@ postgres_get_withdraw_info (void *cls,
  * @param session database connection to use
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
- * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if we failed but should retry the transaction
- *         #GNUNET_YES on success
+ * @return query execution status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_withdraw_info (void *cls,
                                struct TALER_EXCHANGEDB_Session *session,
                                const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
-  PGresult *result;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_HashCode denom_pub_hash;
   struct GNUNET_TIME_Absolute now;
@@ -2347,28 +2313,27 @@ postgres_insert_withdraw_info (void *cls,
   now = GNUNET_TIME_absolute_get ();
   GNUNET_CRYPTO_rsa_public_key_hash (collectable->denom_pub.rsa_public_key,
 				     &denom_pub_hash);
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_withdraw_info",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+					   "insert_withdraw_info",
+					   params);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
-    QUERY_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  PQclear (result);
 
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      postgres_reserve_get (cls,
-                            session,
-                            &reserve))
+      (qs = postgres_reserve_get (cls,
+				  session,
+				  &reserve)))
   {
-    /* FIXME: #5010 */
     /* Should have been checked before we got here... */
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return qs;
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&reserve.balance,
@@ -2381,7 +2346,7 @@ postgres_insert_withdraw_info (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Withdrawal from reserve `%s' refused due to balance missmatch. Retrying.\n",
                 TALER_B2S (&collectable->reserve_pub));
-    return GNUNET_NO;
+    return GNUNET_DB_STATUS_SOFT_ERROR;
   }
   expiry = GNUNET_TIME_absolute_add (now,
                                      pg->idle_reserve_expiration_time);
@@ -2390,13 +2355,13 @@ postgres_insert_withdraw_info (void *cls,
   qs = reserves_update (cls,
 			session,
 			&reserve);
-  if (0 >= qs)
+  GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_break (0);
-
-    return GNUNET_SYSERR;
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
   }
-  return GNUNET_OK;
+  return qs;
 }
 
 

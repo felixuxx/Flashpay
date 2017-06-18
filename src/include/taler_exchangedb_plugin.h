@@ -1232,11 +1232,9 @@ struct TALER_EXCHANGEDB_Plugin
    *                `h_coin_envelope` in the @a collectable to be returned)
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
-   * @return #GNUNET_SYSERR on internal error
-   *         #GNUNET_NO if the collectable was not found
-   *         #GNUNET_YES on success
+   * @return statement execution status
    */
-  int
+  enum GNUNET_DB_QueryStatus 
   (*get_withdraw_info) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct GNUNET_HashCode *h_blind,
@@ -1251,11 +1249,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
-   * @return #GNUNET_SYSERR on internal error
-   *         #GNUNET_NO if the collectable was not found
-   *         #GNUNET_YES on success
+   * @return statement execution status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_withdraw_info) (void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);

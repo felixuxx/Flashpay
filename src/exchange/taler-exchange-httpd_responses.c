@@ -685,9 +685,9 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
  * @param[out] balance set to current reserve balance
  * @return json representation of the @a rh, NULL on error
  */
-static json_t *
-compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
-                         struct TALER_Amount *balance)
+json_t *
+TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
+				      struct TALER_Amount *balance)
 {
   struct TALER_Amount deposit_total;
   struct TALER_Amount withdraw_total;
@@ -955,91 +955,6 @@ TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
                                        "status", "REFUND_OK",
                                        "sig", GNUNET_JSON_from_data_auto (&sig),
                                        "pub", GNUNET_JSON_from_data_auto (&pub));
-}
-
-
-/**
- * Send reserve status information to client.
- *
- * @param connection connection to the client
- * @param rh reserve history to return
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
-                                           const struct TALER_EXCHANGEDB_ReserveHistory *rh)
-{
-  json_t *json_balance;
-  json_t *json_history;
-  struct TALER_Amount balance;
-
-  json_history = compile_reserve_history (rh,
-                                          &balance);
-  if (NULL == json_history)
-    return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_RESERVE_STATUS_DB_ERROR,
-                                              "balance calculation failure");
-  json_balance = TALER_JSON_from_amount (&balance);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o}",
-                                       "balance", json_balance,
-                                       "history", json_history);
-}
-
-
-/**
- * Send reserve status information to client with the
- * message that we have insufficient funds for the
- * requested /reserve/withdraw operation.
- *
- * @param connection connection to the client
- * @param rh reserve history to return
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
-                                                        const struct TALER_EXCHANGEDB_ReserveHistory *rh)
-{
-  json_t *json_balance;
-  json_t *json_history;
-  struct TALER_Amount balance;
-
-  json_history = compile_reserve_history (rh,
-                                          &balance);
-  if (NULL == json_history)
-    return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
-                                              "balance calculation failure");
-  json_balance = TALER_JSON_from_amount (&balance);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:I, s:o, s:o}",
-                                       "error", "Insufficient funds",
-				       "code", (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
-                                       "balance", json_balance,
-                                       "history", json_history);
-}
-
-
-/**
- * Send blinded coin information to client.
- *
- * @param connection connection to the client
- * @param collectable blinded coin to return
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
-					     const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
-{
-  json_t *sig_json;
-
-  sig_json = GNUNET_JSON_from_rsa_signature (collectable->sig.rsa_signature);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o}",
-                                       "ev_sig", sig_json);
 }
 
 
