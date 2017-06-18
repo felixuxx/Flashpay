@@ -1447,6 +1447,7 @@ run (void *cls)
   unsigned int cnt;
   void *rr;
   size_t rr_size;
+  enum GNUNET_DB_QueryStatus qs;
 
   dkp = NULL;
   rh = NULL;
@@ -1671,9 +1672,11 @@ run (void *cls)
 
   json_decref (sndr);
   result = 7;
-  rh = plugin->get_reserve_history (plugin->cls,
+  qs = plugin->get_reserve_history (plugin->cls,
                                     session,
-                                    &reserve_pub);
+                                    &reserve_pub,
+				    &rh);
+  FAILIF (0 > qs);
   FAILIF (NULL == rh);
   rh_head = rh;
   for (cnt=0; NULL != rh_head; rh_head=rh_head->next, cnt++)

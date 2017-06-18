@@ -1268,12 +1268,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param reserve_pub public key of the reserve
-   * @return known transaction history (NULL if reserve is unknown)
+   * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
+   * @return transaction status
    */
-  struct TALER_EXCHANGEDB_ReserveHistory *
+  enum GNUNET_DB_QueryStatus
   (*get_reserve_history) (void *cls,
                           struct TALER_EXCHANGEDB_Session *session,
-                          const struct TALER_ReservePublicKeyP *reserve_pub);
+                          const struct TALER_ReservePublicKeyP *reserve_pub,
+			  struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
 
   /**

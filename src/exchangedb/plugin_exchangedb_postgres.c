@@ -2393,9 +2393,288 @@ postgres_insert_withdraw_info (void *cls,
   if (0 >= qs)
   {
     GNUNET_break (0);
+
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
+}
+
+
+/**
+ * Closure for callbacks invoked via #postgres_get_reserve_history.
+ */
+struct ReserveHistoryContext
+{
+
+  /**
+   * Which reserve are we building the history for?
+   */ 
+  const struct TALER_ReservePublicKeyP *reserve_pub;
+  
+  /**
+   * Where we build the history.
+   */
+  struct TALER_EXCHANGEDB_ReserveHistory *rh;
+ 
+  /**
+   * Tail of @e rh list.
+   */
+  struct TALER_EXCHANGEDB_ReserveHistory *rh_tail;
+
+  /**
+   * Set to #GNUNET_SYSERR on serious internal errors during
+   * the callbacks.
+   */ 
+  int status;
+};
+
+
+/**
+ * Append and return a fresh element to the reserve
+ * history kept in @a rhc.
+ *
+ * @param rhc where the history is kept
+ * @return the fresh element that was added
+ */ 
+static struct TALER_EXCHANGEDB_ReserveHistory *
+append_rh (struct ReserveHistoryContext *rhc)
+{
+  struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+  tail = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
+  if (NULL != rhc->rh_tail)
+  {
+    rhc->rh_tail->next = tail;
+    rhc->rh_tail = tail;
+  }
+  else
+  {
+    rhc->rh_tail = tail;
+    rhc->rh = tail;
+  }
+  return tail;
+}
+
+
+/**
+ * Add bank transfers to result set for #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_bank_to_exchange (void *cls,
+		      PGresult *result,
+		      unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  
+  while (0 < num_results)
+  {
+    struct TALER_EXCHANGEDB_BankTransfer *bt;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    bt = GNUNET_new (struct TALER_EXCHANGEDB_BankTransfer);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	GNUNET_PQ_result_spec_variable_size ("wire_reference",
+					     &bt->wire_reference,
+					     &bt->wire_reference_size),
+	TALER_PQ_result_spec_amount ("credit",
+				     &bt->amount),
+	GNUNET_PQ_result_spec_absolute_time ("execution_date",
+					     &bt->execution_date),
+	TALER_PQ_result_spec_json ("sender_account_details",
+				   &bt->sender_account_details),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    --num_results))
+      {
+	GNUNET_break (0);
+	GNUNET_free (bt);
+	rhc->status = GNUNET_SYSERR;
+	return;
+      }
+    }
+    bt->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE;
+    tail->details.bank = bt;
+  } /* end of 'while (0 < rows)' */
+}
+
+
+/**
+ * Add coin withdrawals to result set for #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_withdraw_coin (void *cls,
+		   PGresult *result,
+		   unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  
+  while (0 < num_results)
+  {
+    struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    cbc = GNUNET_new (struct TALER_EXCHANGEDB_CollectableBlindcoin);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
+					      &cbc->h_coin_envelope),
+	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+					      &cbc->denom_pub.rsa_public_key),
+	GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
+					     &cbc->sig.rsa_signature),
+	GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+					      &cbc->reserve_sig),
+	TALER_PQ_result_spec_amount ("amount_with_fee",
+				     &cbc->amount_with_fee),
+	TALER_PQ_result_spec_amount ("fee_withdraw",
+				     &cbc->withdraw_fee),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    --num_results))
+      {
+	GNUNET_break (0);
+	GNUNET_free (cbc);
+	rhc->status = GNUNET_SYSERR;
+	return;
+      }
+    }
+    cbc->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_WITHDRAW_COIN;
+    tail->details.withdraw = cbc;
+  }
+}
+
+
+/**
+ * Add paybacks to result set for #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_payback (void *cls,
+		   PGresult *result,
+		   unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  
+  while (0 < num_results)
+  {
+    struct TALER_EXCHANGEDB_Payback *payback;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	TALER_PQ_result_spec_amount ("amount",
+				     &payback->value),
+	GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+					      &payback->coin.coin_pub),
+	GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
+					      &payback->coin_blind),
+	GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+					      &payback->coin_sig),
+	GNUNET_PQ_result_spec_absolute_time ("timestamp",
+					     &payback->timestamp),
+	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+					      &payback->coin.denom_pub.rsa_public_key),
+	GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
+					     &payback->coin.denom_sig.rsa_signature),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    --num_results))
+      {
+	GNUNET_break (0);
+	GNUNET_free (payback);
+	rhc->status = GNUNET_SYSERR;
+	return;
+      }
+    }
+    payback->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_PAYBACK_COIN;
+    tail->details.payback = payback;
+  } /* end of 'while (0 < rows)' */
+}
+
+
+/**
+ * Add exchange-to-bank transfers to result set for
+ * #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_exchange_to_bank (void *cls,
+		      PGresult *result,
+		      unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  
+  while (0 < num_results)
+  {
+    struct TALER_EXCHANGEDB_ClosingTransfer *closing;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+      
+    closing = GNUNET_new (struct TALER_EXCHANGEDB_ClosingTransfer);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	TALER_PQ_result_spec_amount ("amount",
+				     &closing->amount),
+	TALER_PQ_result_spec_amount ("closing_fee",
+				     &closing->closing_fee),
+	GNUNET_PQ_result_spec_absolute_time ("execution_date",
+					     &closing->execution_date),
+	TALER_PQ_result_spec_json ("receiver_account",
+				   &closing->receiver_account_details),
+	GNUNET_PQ_result_spec_auto_from_type ("wtid",
+					      &closing->wtid),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    --num_results))
+      {
+	GNUNET_break (0);
+	GNUNET_free (closing);
+	rhc->status = GNUNET_SYSERR;
+	return;
+      }
+    }
+    closing->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK;
+    tail->details.closing = closing;
+  } /* end of 'while (0 < rows)' */
 }
 
 
@@ -2406,289 +2685,77 @@ postgres_insert_withdraw_info (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session connection to use
  * @param reserve_pub public key of the reserve
- * @return known transaction history (NULL if reserve is unknown)
+ * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
+ * @return transaction status
  */
-static struct TALER_EXCHANGEDB_ReserveHistory *
+static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_history (void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
-                              const struct TALER_ReservePublicKeyP *reserve_pub)
+                              const struct TALER_ReservePublicKeyP *reserve_pub,
+			      struct TALER_EXCHANGEDB_ReserveHistory **rhp)
 {
-  PGresult *result;
-  struct TALER_EXCHANGEDB_ReserveHistory *rh;
-  struct TALER_EXCHANGEDB_ReserveHistory *rh_tail;
-  int rows;
-  int ret;
+  struct ReserveHistoryContext rhc;
+  struct {
+    /**
+     * Name of the prepared statement to run.
+     */
+    const char *statement;
+    /**
+     * Function to use to process the results.
+     */
+    GNUNET_PQ_PostgresResultHandler cb;
+  } work[] = {
+    /** #TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE */
+    { "reserves_in_get_transactions",
+      add_bank_to_exchange },
+    /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
+    { "get_reserves_out",
+      &add_withdraw_coin },
+    /** #TALER_EXCHANGEDB_RO_PAYBACK_COIN */
+    { "payback_by_reserve",
+      &add_payback },
+    /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
+    { "close_by_reserve",
+      &add_exchange_to_bank },
+    /* List terminator */
+    { NULL,
+      NULL }
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_end
+  };
 
-  rh = NULL;
-  rh_tail = NULL;
-  ret = GNUNET_SYSERR;
-  /** #TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE */
+  rhc.reserve_pub = reserve_pub;
+  rhc.rh = NULL;
+  rhc.rh_tail = NULL;
+  rhc.status = GNUNET_OK;
+  for (unsigned int i=0;NULL != work[i].cb;i++)
   {
-    struct TALER_EXCHANGEDB_BankTransfer *bt;
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-      GNUNET_PQ_query_param_end
-    };
-
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "reserves_in_get_transactions",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      QUERY_ERR (result, session->conn);
-      goto cleanup;
-    }
-    if (0 == (rows = PQntuples (result)))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Asked to fetch history for an unknown reserve.\n");
-      goto cleanup;
-    }
-    while (0 < rows)
-    {
-      bt = GNUNET_new (struct TALER_EXCHANGEDB_BankTransfer);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          GNUNET_PQ_result_spec_variable_size ("wire_reference",
-                                               &bt->wire_reference,
-                                               &bt->wire_reference_size),
-          TALER_PQ_result_spec_amount ("credit",
-                                       &bt->amount),
-          GNUNET_PQ_result_spec_absolute_time ("execution_date",
-                                              &bt->execution_date),
-          TALER_PQ_result_spec_json ("sender_account_details",
-                                     &bt->sender_account_details),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      --rows))
-        {
-          GNUNET_break (0);
-          GNUNET_free (bt);
-          PQclear (result);
-          goto cleanup;
-        }
-      }
-      bt->reserve_pub = *reserve_pub;
-      if (NULL != rh_tail)
-      {
-        rh_tail->next = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-        rh_tail = rh_tail->next;
-      }
-      else
-      {
-        rh_tail = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-        rh = rh_tail;
-      }
-      rh_tail->type = TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE;
-      rh_tail->details.bank = bt;
-    } /* end of 'while (0 < rows)' */
-    PQclear (result);
+    qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					       work[i].statement,
+					       params,
+					       work[i].cb,
+					       &rhc);
+    if ( (0 > qs) ||
+	 (GNUNET_OK != rhc.status) )
+      break;
   }
-  /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-      GNUNET_PQ_query_param_end
-    };
-
-    GNUNET_assert (NULL != rh);
-    GNUNET_assert (NULL != rh_tail);
-    GNUNET_assert (NULL == rh_tail->next);
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "get_reserves_out",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      QUERY_ERR (result, session->conn);
-      PQclear (result);
-      goto cleanup;
-    }
-    rows = PQntuples (result);
-    while (0 < rows)
-    {
-      struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
-
-      cbc = GNUNET_new (struct TALER_EXCHANGEDB_CollectableBlindcoin);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
-                                               &cbc->h_coin_envelope),
-          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                               &cbc->denom_pub.rsa_public_key),
-          GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                              &cbc->sig.rsa_signature),
-          GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
-                                               &cbc->reserve_sig),
-          TALER_PQ_result_spec_amount ("amount_with_fee",
-                                       &cbc->amount_with_fee),
-          TALER_PQ_result_spec_amount ("fee_withdraw",
-                                       &cbc->withdraw_fee),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      --rows))
-        {
-          GNUNET_break (0);
-          GNUNET_free (cbc);
-          PQclear (result);
-          goto cleanup;
-        }
-        cbc->reserve_pub = *reserve_pub;
-      }
-      rh_tail->next = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-      rh_tail = rh_tail->next;
-      rh_tail->type = TALER_EXCHANGEDB_RO_WITHDRAW_COIN;
-      rh_tail->details.withdraw = cbc;
-    } /* end of 'while (0 < rows)' */
-    ret = GNUNET_OK;
-    PQclear (result);
-  }
-
-  /** #TALER_EXCHANGEDB_RO_PAYBACK_COIN */
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-      GNUNET_PQ_query_param_end
-    };
-
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "payback_by_reserve",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      QUERY_ERR (result, session->conn);
-      goto cleanup;
-    }
-    rows = PQntuples (result);
-    while (0 < rows)
-    {
-      struct TALER_EXCHANGEDB_Payback *payback;
-
-      payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_amount ("amount",
-                                       &payback->value),
-          GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                                &payback->coin.coin_pub),
-          GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
-                                                &payback->coin_blind),
-          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                                &payback->coin_sig),
-          GNUNET_PQ_result_spec_absolute_time ("timestamp",
-                                               &payback->timestamp),
-          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-						&payback->coin.denom_pub.rsa_public_key),
-          GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                               &payback->coin.denom_sig.rsa_signature),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      --rows))
-        {
-          GNUNET_break (0);
-          GNUNET_free (payback);
-          PQclear (result);
-          goto cleanup;
-        }
-      }
-      payback->reserve_pub = *reserve_pub;
-      if (NULL != rh_tail)
-      {
-        rh_tail->next = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-        rh_tail = rh_tail->next;
-      }
-      else
-      {
-        rh_tail = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-        rh = rh_tail;
-      }
-      rh_tail->type = TALER_EXCHANGEDB_RO_PAYBACK_COIN;
-      rh_tail->details.payback = payback;
-    } /* end of 'while (0 < rows)' */
-    PQclear (result);
-  }
-
-
-  /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-      GNUNET_PQ_query_param_end
-    };
-
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "close_by_reserve",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      QUERY_ERR (result, session->conn);
-      goto cleanup;
-    }
-    rows = PQntuples (result);
-    while (0 < rows)
-    {
-      struct TALER_EXCHANGEDB_ClosingTransfer *closing;
-
-      closing = GNUNET_new (struct TALER_EXCHANGEDB_ClosingTransfer);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_amount ("amount",
-                                       &closing->amount),
-          TALER_PQ_result_spec_amount ("closing_fee",
-                                       &closing->closing_fee),
-          GNUNET_PQ_result_spec_absolute_time ("execution_date",
-                                               &closing->execution_date),
-          TALER_PQ_result_spec_json ("receiver_account",
-				     &closing->receiver_account_details),
-          GNUNET_PQ_result_spec_auto_from_type ("wtid",
-						&closing->wtid),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      --rows))
-        {
-          GNUNET_break (0);
-          GNUNET_free (closing);
-          PQclear (result);
-          goto cleanup;
-        }
-      }
-      closing->reserve_pub = *reserve_pub;
-      if (NULL != rh_tail)
-      {
-        rh_tail->next = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-        rh_tail = rh_tail->next;
-      }
-      else
-      {
-        rh_tail = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
-        rh = rh_tail;
-      }
-      rh_tail->type = TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK;
-      rh_tail->details.closing = closing;
-    } /* end of 'while (0 < rows)' */
-    PQclear (result);
-  }
-
-
- cleanup:
-  if (GNUNET_SYSERR == ret)
+  if ( (qs < 0) ||
+       (rhc.status != GNUNET_OK) )
   {
     common_free_reserve_history (cls,
-                                 rh);
-    rh = NULL;
+                                 rhc.rh);
+    rhc.rh = NULL;
+    if (qs >= 0)
+    {
+      /* status == SYSERR is a very hard error... */
+      qs = GNUNET_DB_STATUS_HARD_ERROR;
+    }
   }
-  return rh;
+  *rhp = rhc.rh;  
+  return qs;
 }
 
 

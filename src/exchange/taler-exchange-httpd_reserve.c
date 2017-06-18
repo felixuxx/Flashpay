@@ -30,42 +30,6 @@
 
 
 /**
- * Handle a "/reserve/status" request.  Parses the
- * given "reserve_pub" argument (which should contain the
- * EdDSA public key of a reserve) and then respond with the
- * status of the reserve.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
-int
-TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
-{
-  struct TALER_ReservePublicKeyP reserve_pub;
-  int res;
-
-  res = TEH_PARSE_mhd_request_arg_data (connection,
-                                        "reserve_pub",
-                                        &reserve_pub,
-                                        sizeof (struct TALER_ReservePublicKeyP));
-  if (GNUNET_SYSERR == res)
-    return MHD_NO; /* internal error */
-  if (GNUNET_NO == res)
-    return MHD_YES; /* parse error */
-  return TEH_DB_execute_reserve_status (connection,
-                                        &reserve_pub);
-}
-
-
-/**
  * Handle a "/reserve/withdraw" request.  Parses the "reserve_pub"
  * EdDSA key of the reserve and the requested "denom_pub" which
  * specifies the key/value of the coin to be withdrawn, and checks

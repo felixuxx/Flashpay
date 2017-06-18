@@ -553,47 +553,6 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /reserve/status.  Given the public key of a reserve,
- * return the associated transaction history.
- *
- * @param connection the MHD connection to handle
- * @param reserve_pub public key of the reserve to check
- * @return MHD result code
- */
-int
-TEH_DB_execute_reserve_status (struct MHD_Connection *connection,
-                               const struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  struct TALER_EXCHANGEDB_Session *session;
-  struct TALER_EXCHANGEDB_ReserveHistory *rh;
-  int res;
-
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
-  {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
-  }
-  START_TRANSACTION (session, connection);
-  rh = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                        session,
-                                        reserve_pub);
-  COMMIT_TRANSACTION (session, connection);
-  if (NULL == rh)
-    return TEH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         "{s:s, s:s}",
-                                         "error", "Reserve not found",
-                                         "parameter", "withdraw_pub");
-  res = TEH_RESPONSE_reply_reserve_status_success (connection,
-                                                   rh);
-  TEH_plugin->free_reserve_history (TEH_plugin->cls,
-                                    rh);
-  return res;
-}
-
-
-/**
  * Try to execute /reserve/withdraw transaction.
  *
  * @param connection request we are handling
@@ -635,12 +594,16 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
   struct TALER_Amount fee_withdraw;
   int res;
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* Check if balance is sufficient */
   START_TRANSACTION (session, connection);
-  rh = TEH_plugin->get_reserve_history (TEH_plugin->cls,
+  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                         session,
-                                        reserve);
+                                        reserve,
+					&rh);
+  (void) qs;
+  /* qs: #5010! */
   if (NULL == rh)
   {
     TEH_plugin->rollback (TEH_plugin->cls,

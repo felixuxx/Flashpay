@@ -1422,12 +1422,15 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           unsigned int reserve_index;
           struct TALER_EXCHANGEDB_ReserveHistory *history;
           struct PERF_TALER_EXCHANGEDB_Data *data;
+	  enum GNUNET_DB_QueryStatus qs;
 
           reserve_index = state->cmd[state->i].details.get_reserve_history.index_reserve;
           data = &state->cmd[reserve_index].exposed;
-          history = state->plugin->get_reserve_history (state->plugin->cls,
-                                                        state->session,
-                                                        &data->data.reserve->reserve.pub);
+          qs = state->plugin->get_reserve_history (state->plugin->cls,
+						   state->session,
+						   &data->data.reserve->reserve.pub,
+						   &history);
+	  GNUNET_assert (0 >= qs);
           GNUNET_assert (NULL != history);
           state->plugin->free_reserve_history (state->plugin->cls,
                                                history);

@@ -98,19 +98,6 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/reserve/status".  Given the public key of a reserve,
- * return the associated transaction history.
- *
- * @param connection the MHD connection to handle
- * @param reserve_pub public key of the reserve to check
- * @return MHD result code
- */
-int
-TEH_DB_execute_reserve_status (struct MHD_Connection *connection,
-                               const struct TALER_ReservePublicKeyP *reserve_pub);
-
-
-/**
  * Execute a "/reserve/withdraw".  Given a reserve and a properly signed
  * request to withdraw a coin, check the balance of the reserve and
  * if it is sufficient, store the request and return the signed
