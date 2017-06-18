@@ -1951,11 +1951,9 @@ postgres_reserve_get (void *cls,
  * @param session the database connection
  * @param reserve the reserve structure whose data will be used to update the
  *          corresponding record in the database.
- * @return #GNUNET_OK upon successful update;
- *         #GNUNET_NO if we failed but should retry the transaction
- *         #GNUNET_SYSERR upon any error
+ * @return transaction status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 reserves_update (void *cls,
                  struct TALER_EXCHANGEDB_Session *session,
                  const struct TALER_EXCHANGEDB_Reserve *reserve)
@@ -1967,9 +1965,9 @@ reserves_update (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "reserve_update",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "reserve_update",
+					     params);
 }
 
 
@@ -2128,7 +2126,8 @@ postgres_reserves_in_insert (void *cls,
        back for duplicate transactions; like this, we should virtually
        never actually have to rollback anything. */
     struct TALER_EXCHANGEDB_Reserve updated_reserve;
-
+    enum GNUNET_DB_QueryStatus qs;
+    
     updated_reserve.pub = reserve.pub;
     if (GNUNET_OK !=
         TALER_amount_add (&updated_reserve.balance,
@@ -2142,11 +2141,17 @@ postgres_reserves_in_insert (void *cls,
     }
     updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                                        reserve.expiry);
-    if (GNUNET_OK !=
-        reserves_update (cls,
-                         session,
-                         &updated_reserve))
-      goto rollback;
+    qs = reserves_update (cls,
+			  session,
+			  &updated_reserve);
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      goto rollback; /* FIXME: #5010 */
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    {
+      postgres_rollback (cls,
+			 session);
+      return GNUNET_SYSERR;
+    }
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       postgres_commit (cls,
@@ -2337,7 +2342,7 @@ postgres_insert_withdraw_info (void *cls,
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     GNUNET_PQ_query_param_end
   };
-  int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   now = GNUNET_TIME_absolute_get ();
   GNUNET_CRYPTO_rsa_public_key_hash (collectable->denom_pub.rsa_public_key,
@@ -2382,15 +2387,15 @@ postgres_insert_withdraw_info (void *cls,
                                      pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
-  ret = reserves_update (cls,
-                         session,
-                         &reserve);
-  if (GNUNET_SYSERR == ret)
+  qs = reserves_update (cls,
+			session,
+			&reserve);
+  if (0 >= qs)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  return ret;
+  return GNUNET_OK;
 }
 
 
@@ -4979,15 +4984,15 @@ postgres_insert_reserve_closed (void *cls,
     return GNUNET_NO;
   }
   GNUNET_break (GNUNET_NO == ret);
-  ret = reserves_update (cls,
-                         session,
-                         &reserve);
-  if (GNUNET_SYSERR == ret)
+  qs = reserves_update (cls,
+			session,
+			&reserve);
+  if (0 >= qs)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  return ret;
+  return GNUNET_OK;
 }
 
 
@@ -6140,6 +6145,7 @@ postgres_insert_payback_request (void *cls,
     GNUNET_PQ_query_param_end
   };
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* check if the coin is already known */
   ret = get_known_coin (cls,
@@ -6197,15 +6203,15 @@ postgres_insert_payback_request (void *cls,
                                      pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
-  ret = reserves_update (cls,
+  qs = reserves_update (cls,
                          session,
                          &reserve);
-  if (GNUNET_SYSERR == ret)
+  if (0 >= qs)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  return ret;
+  return GNUNET_OK;
 }
 
 
