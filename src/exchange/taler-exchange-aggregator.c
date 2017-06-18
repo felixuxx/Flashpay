@@ -577,6 +577,8 @@ deposit_cb (void *cls,
             struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *wire)
 {
+  enum GNUNET_DB_QueryStatus qs;
+  
   au->merchant_pub = *merchant_pub;
   if (GNUNET_OK !=
       TALER_amount_subtract (&au->total_amount,
@@ -623,11 +625,12 @@ deposit_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      db_plugin->mark_deposit_done (db_plugin->cls,
-                                    au->session,
-                                    row_id))
+  qs = db_plugin->mark_deposit_done (db_plugin->cls,
+				     au->session,
+				     row_id);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
+    /* FIXME #5010 */
     GNUNET_break (0);
     au->failed = GNUNET_YES;
     return GNUNET_SYSERR;
@@ -664,6 +667,7 @@ aggregate_cb (void *cls,
               const json_t *wire)
 {
   struct TALER_Amount delta;
+  enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_break (0 ==
                 memcmp (&au->merchant_pub,
@@ -714,11 +718,12 @@ aggregate_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      db_plugin->mark_deposit_done (db_plugin->cls,
-                                    au->session,
-                                    row_id))
+  qs = db_plugin->mark_deposit_done (db_plugin->cls,
+				     au->session,
+				     row_id);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
+    /* FIXME: #5010 */
     GNUNET_break (0);
     au->failed = GNUNET_YES;
     return GNUNET_SYSERR;
@@ -1102,7 +1107,7 @@ run_aggregation (void *cls)
 {
   static int swap;
   struct TALER_EXCHANGEDB_Session *session;
-  unsigned int i;
+  enum GNUNET_DB_QueryStatus qs;
   int ret;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
@@ -1246,18 +1251,46 @@ run_aggregation (void *cls)
     }
     /* Mark transactions by row_id as minor */
     ret = GNUNET_OK;
-    if (GNUNET_OK !=
-        db_plugin->mark_deposit_tiny (db_plugin->cls,
-                                      session,
-                                      au->row_id))
-      ret = GNUNET_SYSERR;
-    else
-      for (i=0;i<au->rows_offset;i++)
-        if (GNUNET_OK !=
-            db_plugin->mark_deposit_tiny (db_plugin->cls,
-                                          session,
-                                          au->additional_rows[i]))
-          ret = GNUNET_SYSERR;
+    qs = db_plugin->mark_deposit_tiny (db_plugin->cls,
+				       session,
+				       au->row_id);
+    if (0 <= qs)
+    {
+      for (unsigned int i=0;i<au->rows_offset;i++)
+      {
+        qs = db_plugin->mark_deposit_tiny (db_plugin->cls,
+					   session,
+					   au->additional_rows[i]);
+	if (0 > qs)
+	  break;
+      }
+    }
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    {
+      db_plugin->rollback (db_plugin->cls,
+			   session);
+      GNUNET_free_non_null (au->additional_rows);
+      if (NULL != au->wire)
+	json_decref (au->wire);
+      GNUNET_free (au);
+      au = NULL;
+      /* start again */
+      task = GNUNET_SCHEDULER_add_now (&run_aggregation,
+				       NULL);
+      return;
+    }
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      db_plugin->rollback (db_plugin->cls,
+			   session);
+      GNUNET_free_non_null (au->additional_rows);
+      if (NULL != au->wire)
+	json_decref (au->wire);
+      GNUNET_free (au);
+      au = NULL;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
     /* commit */
     (void) commit_or_warn (session);
     GNUNET_free_non_null (au->additional_rows);

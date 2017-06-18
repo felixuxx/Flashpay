@@ -1801,7 +1801,7 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          session));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_tiny (plugin->cls,
                                      session,
                                      deposit_rowid));

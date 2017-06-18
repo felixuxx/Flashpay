@@ -2793,11 +2793,9 @@ postgres_have_deposit (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param rowid identifies the deposit row to modify
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO on transient error
- *         #GNUNET_SYSERR on error
+ * @return query result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_tiny (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             uint64_t rowid)
@@ -2807,9 +2805,9 @@ postgres_mark_deposit_tiny (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "mark_deposit_tiny",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "mark_deposit_tiny",
+					     params);
 }
 
 
@@ -2890,11 +2888,9 @@ postgres_test_deposit_done (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param rowid identifies the deposit row to modify
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO on transient error,
- *         #GNUNET_SYSERR on error
+ * @return query result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_done (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             uint64_t rowid)
@@ -2904,9 +2900,9 @@ postgres_mark_deposit_done (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "mark_deposit_done",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "mark_deposit_done",
+					     params);
 }
 
 

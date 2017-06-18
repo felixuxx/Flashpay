@@ -1343,11 +1343,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param deposit_rowid identifies the deposit row to modify
-   * @return #GNUNET_OK on success
-   *         #GNUNET_NO on transient error
-   *         #GNUNET_SYSERR on error
+   * @return query result status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*mark_deposit_tiny) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         uint64_t rowid);
