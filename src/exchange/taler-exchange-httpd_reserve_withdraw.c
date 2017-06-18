@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_reserve.c
- * @brief Handle /reserve/ requests
+ * @file taler-exchange-httpd_reserve_withdraw.c
+ * @brief Handle /reserve/withdraw requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -23,7 +23,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
-#include "taler-exchange-httpd_reserve.h"
+#include "taler-exchange-httpd_reserve_withdraw.h"
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"

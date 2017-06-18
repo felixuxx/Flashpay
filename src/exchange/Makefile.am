@@ -52,8 +52,8 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_payback.c taler-exchange-httpd_payback.h \
   taler-exchange-httpd_refresh.c taler-exchange-httpd_refresh.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
-  taler-exchange-httpd_reserve.c taler-exchange-httpd_reserve.h \
   taler-exchange-httpd_reserve_status.c taler-exchange-httpd_reserve_status.h \
+  taler-exchange-httpd_reserve_withdraw.c taler-exchange-httpd_reserve_withdraw.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_tracking.c taler-exchange-httpd_tracking.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
