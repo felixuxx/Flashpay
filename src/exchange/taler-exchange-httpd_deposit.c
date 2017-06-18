@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
+  Copyright (C) 2014-2017 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -37,6 +37,174 @@
 
 
 /**
+ * Send confirmation of deposit success to client.  This function
+ * will create a signed message affirming the given information
+ * and return it to the client.  By this, the exchange affirms that
+ * the coin had sufficient (residual) value for the specified
+ * transaction and that it will execute the requested deposit
+ * operation with the given wiring details.
+ *
+ * @param connection connection to the client
+ * @param coin_pub public key of the coin
+ * @param h_wire hash of wire details
+ * @param h_contract_terms hash of contract details
+ * @param timestamp client's timestamp
+ * @param refund_deadline until when this deposit be refunded
+ * @param merchant merchant public key
+ * @param amount_without_fee fraction of coin value to deposit, without the fee
+ * @return MHD result code
+ */
+static int
+reply_deposit_success (struct MHD_Connection *connection,
+		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+		       const struct GNUNET_HashCode *h_wire,
+		       const struct GNUNET_HashCode *h_contract_terms,
+		       struct GNUNET_TIME_Absolute timestamp,
+		       struct GNUNET_TIME_Absolute refund_deadline,
+		       const struct TALER_MerchantPublicKeyP *merchant,
+		       const struct TALER_Amount *amount_without_fee)
+{
+  struct TALER_DepositConfirmationPS dc;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+
+  dc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
+  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
+  dc.h_contract_terms = *h_contract_terms;
+  dc.h_wire = *h_wire;
+  dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+  TALER_amount_hton (&dc.amount_without_fee,
+                     amount_without_fee);
+  dc.coin_pub = *coin_pub;
+  dc.merchant = *merchant;
+  TEH_KS_sign (&dc.purpose,
+               &pub,
+               &sig);
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s, s:o, s:o}",
+                                       "status", "DEPOSIT_OK",
+                                       "sig", GNUNET_JSON_from_data_auto (&sig),
+                                       "pub", GNUNET_JSON_from_data_auto (&pub));
+}
+
+
+/**
+ * Closure for #deposit_transaction.
+ */
+struct DepositContext
+{
+  /**
+   * Information about the deposit request.
+   */
+  const struct TALER_EXCHANGEDB_Deposit *deposit;
+
+  /**
+   * Value of the coin.
+   */
+  struct TALER_Amount value;
+  
+};
+
+
+/**
+ * Execute database transaction for /deposit.  Runs the transaction
+ * logic; IF it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
+ *
+ * @param cls a `struct DepositContext`
+ * @param connection MHD request context
+ * @param session database session and transaction to use
+ * @param[out] mhd_ret set to MHD status on error
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+deposit_transaction (void *cls,
+		     struct MHD_Connection *connection,
+		     struct TALER_EXCHANGEDB_Session *session,
+		     int *mhd_ret)
+{
+  struct DepositContext *dc = cls;
+  const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
+  struct TALER_EXCHANGEDB_TransactionList *tl;
+  struct TALER_Amount spent;
+  enum GNUNET_DB_QueryStatus qs;
+  
+  qs = TEH_plugin->have_deposit (TEH_plugin->cls,
+				 session,
+				 deposit);
+  if (qs < 0)
+    return qs;
+  if (1 == qs)
+  {
+    struct TALER_Amount amount_without_fee;
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&amount_without_fee,
+                                          &deposit->amount_with_fee,
+                                          &deposit->deposit_fee));
+    *mhd_ret = reply_deposit_success (connection,
+				      &deposit->coin.coin_pub,
+				      &deposit->h_wire,
+				      &deposit->h_contract_terms,
+				      deposit->timestamp,
+				      deposit->refund_deadline,
+				      &deposit->merchant_pub,
+				      &amount_without_fee);
+    /* Treat as 'hard' DB error as we want to rollback and
+       never try again. */
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
+  /* Start with fee for THIS transaction */
+  spent = deposit->amount_with_fee;
+  /* add cost of all previous transactions */
+  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                          session,
+                                          &deposit->coin.coin_pub);
+  if (GNUNET_OK !=
+      TEH_DB_calculate_transaction_list_totals (tl,
+						&spent,
+						&spent))
+  {
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  /* Check that cost of all transactions is smaller than
+     the value of the coin. */
+  if (0 < TALER_amount_cmp (&spent,
+                            &dc->value))
+  {
+    *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
+							   TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+							   tl);
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                          tl);
+  qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
+				   session,
+				   deposit);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_DEPOSIT_STORE_DB_ERROR);
+  }
+  return qs;
+}
+
+
+/**
  * We have parsed the JSON information about the deposit, do some
  * basic sanity checks (especially that the signature on the coin is
  * valid, and that this type of coin exists) and then execute the
@@ -51,7 +219,13 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 			    const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct TALER_DepositRequestPS dr;
+  int mhd_ret;
+  struct TALER_Amount amount_without_fee;
+  struct DepositContext dc;
+  struct TEH_KS_StateHandle *mks;
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
 
+  /* check signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
   dr.h_contract_terms = deposit->h_contract_terms;
@@ -76,8 +250,43 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                                  "coin_sig");
   }
 
-  return TEH_DB_execute_deposit (connection,
-                                 deposit);
+  /* check denomination */
+  mks = TEH_KS_acquire ();
+  dki = TEH_KS_denomination_key_lookup (mks,
+                                        &deposit->coin.denom_pub,
+					TEH_KS_DKU_DEPOSIT);
+  if (NULL == dki)
+  {
+    TEH_KS_release (mks);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
+  }
+  TALER_amount_ntoh (&dc.value,
+                     &dki->issue.properties.value);
+  TEH_KS_release (mks);
+
+  /* execute transaction */
+  dc.deposit = deposit;
+  if (GNUNET_OK !=
+      TEH_DB_run_transaction (connection,
+			      &mhd_ret,
+			      &deposit_transaction,
+			      &dc))
+    return mhd_ret;
+
+  /* generate regular response */
+  GNUNET_assert (GNUNET_SYSERR !=
+                 TALER_amount_subtract (&amount_without_fee,
+                                        &deposit->amount_with_fee,
+                                        &deposit->deposit_fee));
+  return reply_deposit_success (connection,
+				&deposit->coin.coin_pub,
+				&deposit->h_wire,
+				&deposit->h_contract_terms,
+				deposit->timestamp,
+				deposit->refund_deadline,
+				&deposit->merchant_pub,
+				&amount_without_fee);
 }
 
 

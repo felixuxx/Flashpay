@@ -113,19 +113,92 @@ transaction_start_label: /* we will use goto for retries */   \
 
 
 /**
+ * Run a database transaction for @a connection.
+ * Starts a transaction and calls @a cb.  Upon success,
+ * attempts to commit the transaction.  Upon soft failures,
+ * retries @a cb a few times.  Upon hard or persistent soft
+ * errors, generates an error message for @a connection.
+ * 
+ * @param connection MHD connection to run @a cb for
+ * @param[out] set to MHD response code, if transaction failed
+ * @param cb callback implementing transaction logic
+ * @param cb_cls closure for @a cb, must be read-only!
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+int
+TEH_DB_run_transaction (struct MHD_Connection *connection,
+			int *mhd_ret,
+			TEH_DB_TransactionCallback cb,
+			void *cb_cls)
+{
+  struct TALER_EXCHANGEDB_Session *session;
+
+  *mhd_ret = -1; /* invalid value */
+  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
+  {
+    GNUNET_break (0);
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_DB_SETUP_FAILED);
+    return GNUNET_SYSERR;
+  }
+  for (unsigned int retries = 0;retries < MAX_TRANSACTION_COMMIT_RETRIES; retries++)
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    if (GNUNET_OK !=                                            
+	TEH_plugin->start (TEH_plugin->cls,                     
+			   session))                            
+    {                                      
+      GNUNET_break (0);                                         
+      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection, 
+						       TALER_EC_DB_START_FAILED);
+      return GNUNET_SYSERR;
+    }
+    qs = cb (cb_cls,
+	     connection,
+	     session,
+	     mhd_ret);
+    if (0 > qs)
+      TEH_plugin->rollback (TEH_plugin->cls,
+			    session);      
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      return GNUNET_SYSERR;
+    if (0 <= qs)
+      qs = TEH_plugin->commit (TEH_plugin->cls,
+			       session);                              
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      *mhd_ret = TEH_RESPONSE_reply_commit_error (connection,
+						  TALER_EC_DB_COMMIT_FAILED_HARD);
+      return GNUNET_SYSERR;
+    }
+    /* make sure callback did not violate invariants! */
+    GNUNET_assert (-1 == *mhd_ret);
+    if (0 <= qs)
+      return GNUNET_OK;
+  }
+  TALER_LOG_WARNING ("Transaction commit failed %u times\n",
+		     MAX_TRANSACTION_COMMIT_RETRIES);
+  *mhd_ret = TEH_RESPONSE_reply_commit_error (connection,
+					      TALER_EC_DB_COMMIT_FAILED_ON_RETRY);
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Calculate the total value of all transactions performed.
  * Stores @a off plus the cost of all transactions in @a tl
  * in @a ret.
  *
  * @param tl transaction list to process
  * @param off offset to use as the starting value
- * @param ret where the resulting total is to be stored
+ * @param[out] ret where the resulting total is to be stored
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
-static int
-calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
-                                   const struct TALER_Amount *off,
-                                   struct TALER_Amount *ret)
+int
+TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
+					  const struct TALER_Amount *off,
+					  struct TALER_Amount *ret)
 {
   struct TALER_Amount spent = *off;
   struct TALER_EXCHANGEDB_TransactionList *pos;
@@ -207,146 +280,6 @@ calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
 
 
 /**
- * Execute a deposit.  The validity of the coin and signature
- * have already been checked.  The database must now check that
- * the coin is not (double or over) spent, and execute the
- * transaction (record details, generate success or failure response).
- *
- * @param connection the MHD connection to handle
- * @param deposit information about the deposit
- * @return MHD result code
- */
-int
-TEH_DB_execute_deposit (struct MHD_Connection *connection,
-                        const struct TALER_EXCHANGEDB_Deposit *deposit)
-{
-  struct TALER_EXCHANGEDB_Session *session;
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-  struct TALER_Amount spent;
-  struct TALER_Amount value;
-  struct TALER_Amount amount_without_fee;
-  struct TEH_KS_StateHandle *mks;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  int ret;
-  enum GNUNET_DB_QueryStatus qs;
-  unsigned int retries = 0;
-
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
-  {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
-  }
- again:
-  if (GNUNET_YES ==
-      TEH_plugin->have_deposit (TEH_plugin->cls,
-                                session,
-                                deposit))
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_subtract (&amount_without_fee,
-                                          &deposit->amount_with_fee,
-                                          &deposit->deposit_fee));
-    return TEH_RESPONSE_reply_deposit_success (connection,
-                                               &deposit->coin.coin_pub,
-                                               &deposit->h_wire,
-                                               &deposit->h_contract_terms,
-                                               deposit->timestamp,
-                                               deposit->refund_deadline,
-                                               &deposit->merchant_pub,
-                                               &amount_without_fee);
-  }
-
-  /* FIXME: move the 'mks'-logic outside of _db.c? */
-  mks = TEH_KS_acquire ();
-  dki = TEH_KS_denomination_key_lookup (mks,
-                                        &deposit->coin.denom_pub,
-					TEH_KS_DKU_DEPOSIT);
-  if (NULL == dki)
-  {
-    TEH_KS_release (mks);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-                                                 TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
-  }
-  TALER_amount_ntoh (&value,
-                     &dki->issue.properties.value);
-  TEH_KS_release (mks);
-
-  START_TRANSACTION (session, connection);
-
-  /* fee for THIS transaction */
-  spent = deposit->amount_with_fee;
-  /* add cost of all previous transactions */
-  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          session,
-                                          &deposit->coin.coin_pub);
-  if (GNUNET_OK !=
-      calculate_transaction_list_totals (tl,
-                                         &spent,
-                                         &spent))
-  {
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
-  }
-  /* Check that cost of all transactions is smaller than
-     the value of the coin. */
-  if (0 < TALER_amount_cmp (&spent,
-                            &value))
-  {
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-                                                      TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
-                                                      tl);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return ret;
-  }
-  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                          tl);
-  qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
-				   session,
-				   deposit);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DEPOSIT_STORE_DB_ERROR);
-  }
-  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-  {
-    retries++;
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    if (retries > 5)
-      return TEH_RESPONSE_reply_internal_db_error (connection,
-						   TALER_EC_DEPOSIT_STORE_DB_ERROR);
-    goto again;
-  }
-
-  COMMIT_TRANSACTION(session, connection);
-  GNUNET_assert (GNUNET_SYSERR !=
-                 TALER_amount_subtract (&amount_without_fee,
-                                        &deposit->amount_with_fee,
-                                        &deposit->deposit_fee));
-  return TEH_RESPONSE_reply_deposit_success (connection,
-                                             &deposit->coin.coin_pub,
-                                             &deposit->h_wire,
-                                             &deposit->h_contract_terms,
-                                             deposit->timestamp,
-                                             deposit->refund_deadline,
-                                             &deposit->merchant_pub,
-                                             &amount_without_fee);
-}
-
-
-/**
  * Execute a "/refund".  Returns a confirmation that the refund
  * was successful, or a failure if we are not aware of a matching
  * /deposit or if it is too late to do the refund.
@@ -367,6 +300,7 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
   struct TEH_KS_StateHandle *mks;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TALER_Amount expect_fee;
+  enum GNUNET_DB_QueryStatus qs;
   int ret;
   int deposit_found;
   int refund_found;
@@ -595,10 +529,10 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
                                           tl);
 
   /* Finally, store new refund data */
-  if (GNUNET_OK !=
-      TEH_plugin->insert_refund (TEH_plugin->cls,
-                                 session,
-                                 refund))
+  qs = TEH_plugin->insert_refund (TEH_plugin->cls,
+				  session,
+				  refund);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to store /refund information in database\n");
     TEH_plugin->rollback (TEH_plugin->cls,
@@ -606,6 +540,11 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_REFUND_STORE_DB_ERROR);
   }
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+  {
+    /* FIXME: #5010: retry! */
+  }
+  
   COMMIT_TRANSACTION (session, connection);
 
   return TEH_RESPONSE_reply_refund_success (connection,
@@ -1043,9 +982,9 @@ refresh_check_melt (struct MHD_Connection *connection,
                                           session,
                                           &coin_details->coin_info.coin_pub);
   if (GNUNET_OK !=
-      calculate_transaction_list_totals (tl,
-                                         &spent,
-                                         &spent))
+      TEH_DB_calculate_transaction_list_totals (tl,
+						&spent,
+						&spent))
   {
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
@@ -2403,9 +2342,9 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   TALER_amount_get_zero (value->currency,
                          &spent);
   if (GNUNET_OK !=
-      calculate_transaction_list_totals (tl,
-                                         &spent,
-                                         &spent))
+      TEH_DB_calculate_transaction_list_totals (tl,
+						&spent,
+						&spent))
   {
     GNUNET_break (0);
     TEH_plugin->rollback (TEH_plugin->cls,

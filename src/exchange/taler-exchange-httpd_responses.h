@@ -244,35 +244,6 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
 
 
 /**
- * Send confirmation of deposit success to client. This function
- * will create a signed message affirming the given information
- * and return it to the client.  By this, the exchange affirms that
- * the coin had sufficient (residual) value for the specified
- * transaction and that it will execute the requested deposit
- * operation with the given wiring details.
- *
- * @param connection connection to the client
- * @param coin_pub public key of the coin
- * @param h_wire hash of wire details
- * @param h_contract_terms hash of proposal data
- * @param timestamp client's timestamp
- * @param refund_deadline until when this deposit be refunded
- * @param merchant merchant public key
- * @param amount_without_fee fraction of coin value to deposit (without fee)
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
-                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct GNUNET_HashCode *h_wire,
-                                    const struct GNUNET_HashCode *h_contract_terms,
-                                    struct GNUNET_TIME_Absolute timestamp,
-                                    struct GNUNET_TIME_Absolute refund_deadline,
-                                    const struct TALER_MerchantPublicKeyP *merchant,
-                                    const struct TALER_Amount *amount_without_fee);
-
-
-/**
  * Send proof that a request is invalid to client because of
  * insufficient funds.  This function will create a message with all
  * of the operations affecting the coin that demonstrate that the coin

@@ -1772,7 +1772,7 @@ run (void *cls)
           plugin->insert_deposit (plugin->cls,
                                   session,
                                   &deposit));
-  FAILIF (GNUNET_YES !=
+  FAILIF (1 !=
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit));
@@ -1839,13 +1839,13 @@ run (void *cls)
   result = 10;
   deposit2 = deposit;
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
-  FAILIF (GNUNET_NO !=
+  FAILIF (0 !=
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
   deposit2.merchant_pub = deposit.merchant_pub;
   RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
-  FAILIF (GNUNET_NO !=
+  FAILIF (0 !=
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
@@ -1860,7 +1860,7 @@ run (void *cls)
   refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   refund.refund_amount = deposit.amount_with_fee;
   refund.refund_fee = fee_refund;
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refund (plugin->cls,
                                  session,
                                  &refund));

@@ -1293,11 +1293,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param deposit deposit to search for
-   * @return #GNUNET_YES if we know this operation,
-   *         #GNUNET_NO if this exact deposit is unknown to us,
-   *         #GNUNET_SYSERR on DB error
+   * @return 1 if we know this operation,
+   *         0 if this exact deposit is unknown to us,
+   *         otherwise transaction error status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*have_deposit) (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_EXCHANGEDB_Deposit *deposit);
@@ -1323,11 +1323,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param refund refund information to store
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO on transient error
-   *         #GNUNET_SYSERR on error
+   * @return query result status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_refund) (void *cls,
                     struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_EXCHANGEDB_Refund *refund);

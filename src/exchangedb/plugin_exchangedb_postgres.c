@@ -2698,11 +2698,11 @@ postgres_get_reserve_history (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param deposit deposit to search for
- * @return #GNUNET_YES if we know this operation,
- *         #GNUNET_NO if this exact deposit is unknown to us
- *         #GNUNET_SYSERR on DB error
+ * @return 1 if we know this operation,
+ *         0 if this exact deposit is unknown to us,
+ *         otherwise transaction error status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_have_deposit (void *cls,
                        struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_EXCHANGEDB_Deposit *deposit)
@@ -2713,75 +2713,52 @@ postgres_have_deposit (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
+  struct TALER_EXCHANGEDB_Deposit deposit2;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_amount ("amount_with_fee",
+				 &deposit2.amount_with_fee),
+    GNUNET_PQ_result_spec_absolute_time ("timestamp",
+					 &deposit2.timestamp),
+    GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+					 &deposit2.refund_deadline),
+    GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+					 &deposit2.wire_deadline),
+    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+					  &deposit2.h_contract_terms),
+    GNUNET_PQ_result_spec_auto_from_type ("h_wire",
+					  &deposit2.h_wire),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_deposit",
-                                   params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "get_deposit",
+						 params,
+						 rs);
+  if (0 >= qs)
+    return qs;
   /* Now we check that the other information in @a deposit
      also matches, and if not report inconsistencies. */
+  if ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
+			       &deposit2.amount_with_fee)) ||
+       (deposit->timestamp.abs_value_us !=
+	deposit2.timestamp.abs_value_us) ||
+       (deposit->refund_deadline.abs_value_us !=
+	deposit2.refund_deadline.abs_value_us) ||
+       (0 != memcmp (&deposit->h_contract_terms,
+		     &deposit2.h_contract_terms,
+		     sizeof (struct GNUNET_HashCode))) ||
+       (0 != memcmp (&deposit->h_wire,
+		     &deposit2.h_wire,
+		     sizeof (struct GNUNET_HashCode))) )
   {
-    struct TALER_EXCHANGEDB_Deposit deposit2;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_amount ("amount_with_fee",
-                                   &deposit2.amount_with_fee),
-      GNUNET_PQ_result_spec_absolute_time ("timestamp",
-                                          &deposit2.timestamp),
-      GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
-                                          &deposit2.refund_deadline),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
-                                          &deposit2.wire_deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                           &deposit2.h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type ("h_wire",
-                                           &deposit2.h_wire),
-      GNUNET_PQ_result_spec_end
-    };
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    if ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
-                                 &deposit2.amount_with_fee)) ||
-         (deposit->timestamp.abs_value_us !=
-          deposit2.timestamp.abs_value_us) ||
-         (deposit->refund_deadline.abs_value_us !=
-          deposit2.refund_deadline.abs_value_us) ||
-         (0 != memcmp (&deposit->h_contract_terms,
-                       &deposit2.h_contract_terms,
-                       sizeof (struct GNUNET_HashCode))) ||
-         (0 != memcmp (&deposit->h_wire,
-                       &deposit2.h_wire,
-                       sizeof (struct GNUNET_HashCode))) )
-    {
-      /* Inconsistencies detected! Does not match!  (We might want to
-         expand the API with a 'get_deposit' function to return the
-         original transaction details to be used for an error message
-         in the future!) #3838 */
-      PQclear (result);
-      return GNUNET_NO;
-    }
+    /* Inconsistencies detected! Does not match!  (We might want to
+       expand the API with a 'get_deposit' function to return the
+       original transaction details to be used for an error message
+       in the future!) #3838 */
+    return 0; /* Counts as if the transaction was not there */
   }
-  PQclear (result);
-  return GNUNET_YES;
+  return 1;
 }
 
 
@@ -3267,11 +3244,9 @@ postgres_insert_deposit (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param refund refund information to store
- * @return #GNUNET_OK on success
- *         #GNUNET_NO on transient error
- *         #GNUNET_SYSERR on error
+ * @return query result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_refund (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_Refund *refund)
@@ -3289,9 +3264,9 @@ postgres_insert_refund (void *cls,
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&refund->refund_amount,
                                             &refund->refund_fee));
-  return execute_prepared_non_select (session,
-                                      "insert_refund",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_refund",
+					     params);
 }
 
 

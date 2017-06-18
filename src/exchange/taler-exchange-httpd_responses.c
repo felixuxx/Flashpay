@@ -462,60 +462,6 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
 
 
 /**
- * Send confirmation of deposit success to client.  This function
- * will create a signed message affirming the given information
- * and return it to the client.  By this, the exchange affirms that
- * the coin had sufficient (residual) value for the specified
- * transaction and that it will execute the requested deposit
- * operation with the given wiring details.
- *
- * @param connection connection to the client
- * @param coin_pub public key of the coin
- * @param h_wire hash of wire details
- * @param h_contract_terms hash of contract details
- * @param timestamp client's timestamp
- * @param refund_deadline until when this deposit be refunded
- * @param merchant merchant public key
- * @param amount_without_fee fraction of coin value to deposit, without the fee
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
-                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct GNUNET_HashCode *h_wire,
-                                    const struct GNUNET_HashCode *h_contract_terms,
-                                    struct GNUNET_TIME_Absolute timestamp,
-                                    struct GNUNET_TIME_Absolute refund_deadline,
-                                    const struct TALER_MerchantPublicKeyP *merchant,
-                                    const struct TALER_Amount *amount_without_fee)
-{
-  struct TALER_DepositConfirmationPS dc;
-  struct TALER_ExchangePublicKeyP pub;
-  struct TALER_ExchangeSignatureP sig;
-
-  dc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
-  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
-  dc.h_contract_terms = *h_contract_terms;
-  dc.h_wire = *h_wire;
-  dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_hton (&dc.amount_without_fee,
-                     amount_without_fee);
-  dc.coin_pub = *coin_pub;
-  dc.merchant = *merchant;
-  TEH_KS_sign (&dc.purpose,
-               &pub,
-               &sig);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:s, s:o, s:o}",
-                                       "status", "DEPOSIT_OK",
-                                       "sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "pub", GNUNET_JSON_from_data_auto (&pub));
-}
-
-
-/**
  * Compile the transaction history of a coin into a JSON object.
  *
  * @param tl transaction history to JSON-ify

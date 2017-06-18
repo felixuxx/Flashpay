@@ -1350,7 +1350,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
       case PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT:
         {
           unsigned int source_index;
-          int ret;
+          enum GNUNET_DB_QueryStatus ret;
           struct PERF_TALER_EXCHANGEDB_Data *data;
 
           source_index = state->cmd[state->i].details.get_deposit.index_deposit;
@@ -1358,7 +1358,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           ret = state->plugin->have_deposit (state->plugin->cls,
                                              state->session,
                                              data->data.deposit);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          GNUNET_assert (0 >= ret);
         }
         break;
 
