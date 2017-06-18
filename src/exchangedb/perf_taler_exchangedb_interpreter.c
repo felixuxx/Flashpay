@@ -1334,15 +1334,15 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
       case PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT:
         {
           int deposit_index;
-          int ret;
+          enum GNUNET_DB_QueryStatus qs;
           struct TALER_EXCHANGEDB_Deposit *deposit;
 
           deposit_index = state->cmd[state->i].details.insert_deposit.index_deposit;
           deposit = state->cmd[deposit_index].exposed.data.deposit;
-          ret = state->plugin->insert_deposit (state->plugin->cls,
+          qs = state->plugin->insert_deposit (state->plugin->cls,
                                                         state->session,
                                                         deposit);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
           state->cmd[state->i].exposed.data.deposit = deposit;
         }
         break;

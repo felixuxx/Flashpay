@@ -228,6 +228,8 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
   struct TEH_KS_StateHandle *mks;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
+  unsigned int retries = 0;
 
   if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
   {
@@ -235,6 +237,7 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_DB_SETUP_FAILED);
   }
+ again:
   if (GNUNET_YES ==
       TEH_plugin->have_deposit (TEH_plugin->cls,
                                 session,
@@ -305,16 +308,26 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
   }
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
-  if (GNUNET_OK !=
-      TEH_plugin->insert_deposit (TEH_plugin->cls,
-                                  session,
-                                  deposit))
+  qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
+				   session,
+				   deposit);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_DEPOSIT_STORE_DB_ERROR);
+  }
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+  {
+    retries++;
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    if (retries > 5)
+      return TEH_RESPONSE_reply_internal_db_error (connection,
+						   TALER_EC_DEPOSIT_STORE_DB_ERROR);
+    goto again;
   }
 
   COMMIT_TRANSACTION(session, connection);

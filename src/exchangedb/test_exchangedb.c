@@ -1768,7 +1768,7 @@ run (void *cls)
   deposit.amount_with_fee = value;
   deposit.deposit_fee = fee_deposit;
   result = 8;
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_deposit (plugin->cls,
                                   session,
                                   &deposit));

@@ -3181,11 +3181,9 @@ get_known_coin (void *cls,
  * @param cls plugin closure
  * @param session the shared database session
  * @param coin_info the public coin info
- * @return #GNUNET_SYSERR upon error;
- *         #GNUNET_NO on transient error
- *         #GNUNET_OK upon success
+ * @return query result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 insert_known_coin (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_CoinPublicInfo *coin_info)
@@ -3200,9 +3198,9 @@ insert_known_coin (void *cls,
 
   GNUNET_CRYPTO_rsa_public_key_hash (coin_info->denom_pub.rsa_public_key,
 				     &denom_pub_hash);
-  return execute_prepared_non_select (session,
-                                      "insert_known_coin",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_known_coin",
+					     params);
 }
 
 
@@ -3212,16 +3210,15 @@ insert_known_coin (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session connection to the database
  * @param deposit deposit information to store
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO on transient error
- *         #GNUNET_SYSERR on error
+ * @return query result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_deposit (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     TALER_PQ_query_param_amount (&deposit->amount_with_fee),
@@ -3248,19 +3245,19 @@ postgres_insert_deposit (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    if (GNUNET_OK !=
-        (ret = insert_known_coin (cls,
-                                  session,
-                                  &deposit->coin)))
+    qs = insert_known_coin (cls,
+			    session,
+			    &deposit->coin);
+    if (0 > qs)
     {
-      GNUNET_break (GNUNET_NO == ret);
-      return ret;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
     }
   }
 
-  return execute_prepared_non_select (session,
-                                      "insert_deposit",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_deposit",
+					     params);
 }
 
 
@@ -3416,6 +3413,7 @@ postgres_create_refresh_session (void *cls,
     GNUNET_PQ_query_param_end
   };
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* check if the coin is already known */
   ret = get_known_coin (cls,
@@ -3429,12 +3427,12 @@ postgres_create_refresh_session (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    if (GNUNET_OK !=
-        (ret = insert_known_coin (cls,
-                                  session,
-                                  &refresh_session->melt.coin)))
+    qs = insert_known_coin (cls,
+			    session,
+			    &refresh_session->melt.coin);
+    if (0 > qs)
     {
-      GNUNET_break (GNUNET_NO == ret);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return GNUNET_SYSERR;
     }
   }
@@ -6155,12 +6153,12 @@ postgres_insert_payback_request (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    if (GNUNET_OK !=
-        (ret = insert_known_coin (cls,
-                                  session,
-                                  coin)))
+    qs = insert_known_coin (cls,
+			    session,
+			    coin);
+    if (0 > qs)
     {
-      GNUNET_break (GNUNET_NO == ret);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       return ret;
     }
   }
