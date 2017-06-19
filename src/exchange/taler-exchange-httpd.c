@@ -36,7 +36,8 @@
 #include "taler-exchange-httpd_payback.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler-exchange-httpd_refresh.h"
-#include "taler-exchange-httpd_tracking.h"
+#include "taler-exchange-httpd_track_transfer.h"
+#include "taler-exchange-httpd_track_transaction.h"
 #include "taler-exchange-httpd_keystate.h"
 #if HAVE_DEVELOPER
 #include "taler-exchange-httpd_test.h"

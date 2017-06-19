@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -14,12 +14,12 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_tracking.h
+ * @file taler-exchange-httpd_track_transfer.h
  * @brief Handle wire transfer tracking-related requests
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_TRACKING_H
-#define TALER_EXCHANGE_HTTPD_TRACKING_H
+#ifndef TALER_EXCHANGE_HTTPD_TRACK_TRANSFER_H
+#define TALER_EXCHANGE_HTTPD_TRACK_TRANSFER_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -42,24 +42,5 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
                                      void **connection_cls,
                                      const char *upload_data,
                                      size_t *upload_data_size);
-
-
-/**
- * Handle a "/track/transaction" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
-  */
-int
-TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
-                                        struct MHD_Connection *connection,
-                                        void **connection_cls,
-                                        const char *upload_data,
-                                        size_t *upload_data_size);
-
 
 #endif

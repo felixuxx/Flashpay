@@ -55,7 +55,8 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_reserve_status.c taler-exchange-httpd_reserve_status.h \
   taler-exchange-httpd_reserve_withdraw.c taler-exchange-httpd_reserve_withdraw.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
-  taler-exchange-httpd_tracking.c taler-exchange-httpd_tracking.h \
+  taler-exchange-httpd_track_transaction.c taler-exchange-httpd_track_transaction.h \
+  taler-exchange-httpd_track_transfer.c taler-exchange-httpd_track_transfer.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
   taler-exchange-httpd_validation.c taler-exchange-httpd_validation.h
 taler_exchange_httpd_LDADD = \
