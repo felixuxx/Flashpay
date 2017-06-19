@@ -44,14 +44,14 @@
  * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
-int
-TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
-                                      const struct GNUNET_HashCode *h_contract_terms,
-                                      const struct GNUNET_HashCode *h_wire,
-                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                      const struct TALER_Amount *coin_contribution,
-                                      const struct TALER_WireTransferIdentifierRawP *wtid,
-                                      struct GNUNET_TIME_Absolute exec_time)
+static int
+reply_track_transaction (struct MHD_Connection *connection,
+			 const struct GNUNET_HashCode *h_contract_terms,
+			 const struct GNUNET_HashCode *h_wire,
+			 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+			 const struct TALER_Amount *coin_contribution,
+			 const struct TALER_WireTransferIdentifierRawP *wtid,
+			 struct GNUNET_TIME_Absolute exec_time)
 {
   struct TALER_ConfirmWirePS cw;
   struct TALER_ExchangePublicKeyP pub;
@@ -87,29 +87,47 @@ struct DepositWtidContext
 {
 
   /**
-   * Where should we send the reply?
+   * Deposit details.
    */
-  struct MHD_Connection *connection;
+  const struct TALER_DepositTrackPS *tps;
 
   /**
-   * Hash of the proposal data we are looking up.
+   * Public key of the merchant.
    */
-  struct GNUNET_HashCode h_contract_terms;
+  const struct TALER_MerchantPublicKeyP *merchant_pub;
+  
+  /**
+   * Set by #handle_wtid data to the wire transfer ID.
+   */ 
+  struct TALER_WireTransferIdentifierRawP wtid;
+  
+  /**
+   * Set by #handle_wtid data to the coin's contribution to the wire transfer.
+   */ 
+  struct TALER_Amount coin_contribution;
+  
+  /**
+   * Set by #handle_wtid data to the fee charged to the coin.
+   */ 
+  struct TALER_Amount coin_fee;
 
   /**
-   * Hash of the wire transfer details we are looking up.
-   */
-  struct GNUNET_HashCode h_wire;
+   * Set by #handle_wtid data to the wire transfer execution time.
+   */ 
+  struct GNUNET_TIME_Absolute execution_time;
 
   /**
-   * Public key we are looking up.
+   * Set by #handle_wtid to the coin contribution to the transaction
+   * (that is, @e coin_contribution minus @e coin_fee).
    */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_Amount coin_delta;
 
   /**
-   * MHD result code to return.
+   * Set to #GNUNET_YES by #handle_wtid if the wire transfer is still pending
+   * (and the above were not set).
+   * Set to #GNUNET_SYSERR if there was a serious error.
    */
-  int res;
+  int pending;
 };
 
 
@@ -136,35 +154,26 @@ handle_wtid_data (void *cls,
 		  struct GNUNET_TIME_Absolute execution_time)
 {
   struct DepositWtidContext *ctx = cls;
-  struct TALER_Amount coin_delta;
 
   if (NULL == wtid)
   {
-    ctx->res = TEH_RESPONSE_reply_transfer_pending (ctx->connection,
-                                                    execution_time);
+    ctx->pending = GNUNET_YES;
+    ctx->execution_time = execution_time;
+    return;
   }
-  else
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&ctx->coin_delta,
+			     coin_contribution,
+			     coin_fee))
   {
-    if (GNUNET_SYSERR ==
-        TALER_amount_subtract (&coin_delta,
-                               coin_contribution,
-                               coin_fee))
-    {
-      GNUNET_break (0);
-      ctx->res = TEH_RESPONSE_reply_internal_db_error (ctx->connection,
-						       TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT);
-    }
-    else
-    {
-      ctx->res = TEH_RESPONSE_reply_track_transaction (ctx->connection,
-                                                       &ctx->h_contract_terms,
-                                                       &ctx->h_wire,
-                                                       &ctx->coin_pub,
-                                                       &coin_delta,
-                                                       wtid,
-                                                       execution_time);
-    }
+    GNUNET_break (0);
+    ctx->pending = GNUNET_SYSERR;
+    return;
   }
+  ctx->wtid = *wtid;
+  ctx->execution_time = execution_time;
+  ctx->coin_contribution = *coin_contribution;
+  ctx->coin_fee = *coin_fee;
 }
 
 
@@ -172,64 +181,53 @@ handle_wtid_data (void *cls,
  * Execute a "/track/transaction".  Returns the transfer information
  * associated with the given deposit.
  *
- * @param connection the MHD connection to handle
- * @param h_contract_terms hash of the proposal data
- * @param h_wire hash of the wire details
- * @param coin_pub public key of the coin to link
- * @param merchant_pub public key of the merchant
- * @return MHD result code
+ * If it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
+ *
+ * @param cls closure of type `struct DepositWtidContext *`
+ * @param connection MHD request which triggered the transaction
+ * @param session database session to use
+ * @param[out] mhd_ret set to MHD response status for @a connection,
+ *             if transaction failed (!)
+ * @return transaction status
  */
-int
-TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
-                                  const struct GNUNET_HashCode *h_contract_terms,
-                                  const struct GNUNET_HashCode *h_wire,
-                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                  const struct TALER_MerchantPublicKeyP *merchant_pub)
+static enum GNUNET_DB_QueryStatus
+track_transaction_transaction (void *cls,
+			       struct MHD_Connection *connection,
+			       struct TALER_EXCHANGEDB_Session *session,
+			       int *mhd_ret)
 {
-  int ret;
-  struct DepositWtidContext ctx;
-  struct TALER_EXCHANGEDB_Session *session;
+  struct DepositWtidContext *ctx = cls;
+  enum GNUNET_DB_QueryStatus qs;
 
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
+  qs = TEH_plugin->wire_lookup_deposit_wtid (TEH_plugin->cls,
+					     session,
+					     &ctx->tps->h_contract_terms,
+					     &ctx->tps->h_wire,
+					     &ctx->tps->coin_pub,
+					     ctx->merchant_pub,
+					     &handle_wtid_data,
+					     ctx);
+  if (0 > qs)
   {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						       TALER_EC_TRACK_TRANSACTION_DB_FETCH_FAILED);
+    }
+    return qs;
   }
-  ctx.connection = connection;
-  ctx.h_contract_terms = *h_contract_terms;
-  ctx.h_wire = *h_wire;
-  ctx.coin_pub = *coin_pub;
-  ctx.res = GNUNET_SYSERR;
-  ret = TEH_plugin->wire_lookup_deposit_wtid (TEH_plugin->cls,
-                                              session,
-					      h_contract_terms,
-					      h_wire,
-					      coin_pub,
-					      merchant_pub,
-					      &handle_wtid_data,
-					      &ctx);
-  if (GNUNET_SYSERR == ret)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    GNUNET_break (0);
-    GNUNET_break (GNUNET_SYSERR == ctx.res);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_TRACK_TRANSACTION_DB_FETCH_FAILED);
+    *mhd_ret = TEH_RESPONSE_reply_transaction_unknown (connection,
+						       TALER_EC_TRACK_TRANSACTION_NOT_FOUND);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (GNUNET_NO == ret)
-  {
-    GNUNET_break (GNUNET_SYSERR == ctx.res);
-    return TEH_RESPONSE_reply_transaction_unknown (connection,
-						   TALER_EC_TRACK_TRANSACTION_NOT_FOUND);
-  }
-  if (GNUNET_SYSERR == ctx.res)
-  {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TRACK_TRANSACTION_WTID_RESOLUTION_ERROR,
-                                              "bug resolving deposit wtid");
-  }
-  return ctx.res;
+  return qs;
 }
 
 
@@ -246,9 +244,12 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
 static int
 check_and_handle_track_transaction_request (struct MHD_Connection *connection,
                                             const struct TALER_DepositTrackPS *tps,
-                                            struct TALER_MerchantPublicKeyP *merchant_pub,
-                                            struct TALER_MerchantSignatureP *merchant_sig)
+                                            const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                            const struct TALER_MerchantSignatureP *merchant_sig)
 {
+  struct DepositWtidContext ctx;
+  int mhd_ret;
+
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
 				  &tps->purpose,
@@ -260,11 +261,29 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
 						 TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID,
 						 "merchant_sig");
   }
-  return TEH_DB_execute_track_transaction (connection,
-                                           &tps->h_contract_terms,
-                                           &tps->h_wire,
-                                           &tps->coin_pub,
-                                           merchant_pub);
+  ctx.pending = GNUNET_NO;
+  ctx.tps = tps;
+  ctx.merchant_pub = merchant_pub;
+  
+  if (GNUNET_OK !=
+      TEH_DB_run_transaction (connection,
+			      &mhd_ret,
+			      &track_transaction_transaction,
+			      &ctx))
+    return mhd_ret;
+  if (GNUNET_YES == ctx.pending)
+    return TEH_RESPONSE_reply_transfer_pending (connection,
+						ctx.execution_time);
+  if (GNUNET_SYSERR == ctx.pending)
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT);
+  return reply_track_transaction (connection,
+				  &tps->h_contract_terms,
+				  &tps->h_wire,
+				  &tps->coin_pub,
+				  &ctx.coin_delta,
+				  &ctx.wtid,
+				  ctx.execution_time);
 }
 
 

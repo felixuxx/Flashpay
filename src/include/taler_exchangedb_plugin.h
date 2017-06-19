@@ -1754,10 +1754,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param merchant_pub merchant public key
    * @param cb function to call with the result
    * @param cb_cls closure to pass to @a cb
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors,
-   *         #GNUNET_NO if nothing was found
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*wire_lookup_deposit_wtid)(void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
 			      const struct GNUNET_HashCode *h_contract_terms,

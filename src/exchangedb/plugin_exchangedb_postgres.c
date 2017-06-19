@@ -4584,10 +4584,9 @@ postgres_lookup_wire_transfer (void *cls,
  * @param merchant_pub merchant public key
  * @param cb function to call with the result
  * @param cb_cls closure to pass to @a cb
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors,
- *         #GNUNET_NO if nothing was found
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_wire_lookup_deposit_wtid (void *cls,
                                    struct TALER_EXCHANGEDB_Session *session,
 				   const struct GNUNET_HashCode *h_contract_terms,
@@ -4597,7 +4596,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 				   TALER_EXCHANGEDB_TrackTransactionCallback cb,
 				   void *cb_cls)
 {
-  PGresult *result;
+  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
@@ -4605,122 +4604,76 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_end
   };
-  int nrows;
-
+  struct TALER_WireTransferIdentifierRawP wtid;
+  struct GNUNET_TIME_Absolute exec_time;
+  struct TALER_Amount amount_with_fee;
+  struct TALER_Amount deposit_fee;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
+    GNUNET_PQ_result_spec_absolute_time ("execution_date", &exec_time),
+    TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
+    TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
+    GNUNET_PQ_result_spec_end
+  };
+  
   /* check if the melt record exists and get it */
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "lookup_deposit_wtid",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "lookup_deposit_wtid",
+						 params,
+						 rs);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "lookup_deposit_wtid returned 0 matching rows\n");
-    PQclear (result);
-
-    /* Check if transaction exists in deposits, so that we just
-       do not have a WTID yet, if so, do call the CB with a NULL wtid
-       and return #GNUNET_YES! */
-    {
-      struct GNUNET_PQ_QueryParam params2[] = {
-        GNUNET_PQ_query_param_auto_from_type (coin_pub),
-        GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-        GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-        GNUNET_PQ_query_param_auto_from_type (h_wire),
-        GNUNET_PQ_query_param_end
-      };
-
-      result = GNUNET_PQ_exec_prepared (session->conn,
-                                        "get_deposit_for_wtid",
-                                        params2);
-      if (PGRES_TUPLES_OK != PQresultStatus (result))
-      {
-        BREAK_DB_ERR (result, session->conn);
-        PQclear (result);
-        return GNUNET_SYSERR;
-      }
-    }
-    nrows = PQntuples (result);
-    if (0 == nrows)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "get_deposit_for_wtid returned 0 matching rows\n");
-      PQclear (result);
-      return GNUNET_NO;
-    }
-
-    /* Ok, we're aware of the transaction, but it has not yet been
-       executed */
-    {
-      struct GNUNET_TIME_Absolute exec_time;
-      struct TALER_Amount amount_with_fee;
-      struct TALER_Amount deposit_fee;
-      struct GNUNET_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
-        TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
-        GNUNET_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
-        GNUNET_PQ_result_spec_end
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_PQ_extract_result (result,
-                                    rs,
-                                    0))
-      {
-        GNUNET_break (0);
-        PQclear (result);
-        return GNUNET_SYSERR;
-      }
-      cb (cb_cls,
-          NULL,
-          &amount_with_fee,
-          &deposit_fee,
-          exec_time);
-      PQclear (result);
-      return GNUNET_YES;
-    }
-  }
-  if (1 != nrows)
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  {
-    struct TALER_WireTransferIdentifierRawP wtid;
-    struct GNUNET_TIME_Absolute exec_time;
-    struct TALER_Amount amount_with_fee;
-    struct TALER_Amount deposit_fee;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
-      GNUNET_PQ_result_spec_absolute_time ("execution_date", &exec_time),
-      TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
-      TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
-      GNUNET_PQ_result_spec_end
-    };
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
     cb (cb_cls,
         &wtid,
         &amount_with_fee,
         &deposit_fee,
         exec_time);
+    return qs;
   }
-  PQclear (result);
-  return GNUNET_OK;
+  if (0 > qs)
+    return qs;
+
+  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "lookup_deposit_wtid returned 0 matching rows\n");
+  {
+    /* Check if transaction exists in deposits, so that we just
+       do not have a WTID yet, if so, do call the CB with a NULL wtid
+       and return #GNUNET_YES! */
+    struct GNUNET_PQ_QueryParam params2[] = {
+      GNUNET_PQ_query_param_auto_from_type (coin_pub),
+      GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+      GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
+      GNUNET_PQ_query_param_auto_from_type (h_wire),
+      GNUNET_PQ_query_param_end
+    };
+    struct GNUNET_TIME_Absolute exec_time;
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount deposit_fee;
+    struct GNUNET_PQ_ResultSpec rs2[] = {
+      TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
+      TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
+      GNUNET_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
+      GNUNET_PQ_result_spec_end
+    };
+
+    qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_deposit_for_wtid",
+						   params2,
+						   rs2);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    {
+      /* Ok, we're aware of the transaction, but it has not yet been
+	 executed */
+      cb (cb_cls,
+          NULL,
+          &amount_with_fee,
+          &deposit_fee,
+          exec_time);
+      return qs;
+    }
+    return qs;
+  }
 }
 
 

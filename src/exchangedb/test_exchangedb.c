@@ -1313,7 +1313,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
     struct GNUNET_HashCode h_contract_terms_wt2 = h_contract_terms_wt;
 
     h_contract_terms_wt2.bits[0]++;
-    FAILIF (GNUNET_NO !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->wire_lookup_deposit_wtid (plugin->cls,
                                               session,
                                               &h_contract_terms_wt2,
@@ -1350,7 +1350,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                         &wire_out_wtid,
                                         &cb_wt_check,
                                         &cb_wt_never));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->wire_lookup_deposit_wtid (plugin->cls,
                                             session,
                                             &h_contract_terms_wt,
