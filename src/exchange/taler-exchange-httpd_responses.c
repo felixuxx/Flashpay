@@ -467,8 +467,8 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * @param tl transaction history to JSON-ify
  * @return json representation of the @a rh
  */
-static json_t *
-compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
+json_t *
+TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 {
   json_t *history;
 
@@ -663,7 +663,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
 {
   json_t *history;
 
-  history = compile_transaction_history (tl);
+  history = TEH_RESPONSE_compile_transaction_history (tl);
   if (NULL == history)
     return TEH_RESPONSE_reply_internal_error (connection,
                                               TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
@@ -879,86 +879,6 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 
 
 /**
- * Generate refund conflict failure message. Returns the
- * transaction list @a tl with the details about the conflict.
- *
- * @param connection connection to the client
- * @param tl transaction list showing the conflict
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
-                                    const struct TALER_EXCHANGEDB_TransactionList *tl)
-{
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_CONFLICT,
-                                       "{s:s, s:I, s:o}",
-                                       "status", "conflicting refund",
-				       "code", (json_int_t) TALER_EC_REFUND_CONFLICT,
-                                       "history", compile_transaction_history (tl));
-}
-
-
-/**
- * Generate generic refund failure message. All the details
- * are in the @a response_code.  The body can be empty.
- *
- * @param connection connection to the client
- * @param response_code response code to generate
- * @param ec taler error code to include
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
-                                   unsigned int response_code,
-				   enum TALER_ErrorCode ec)
-{
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       response_code,
-                                       "{s:s, s:I}",
-                                       "status", "refund failure",
-				       "code", (json_int_t) ec);
-}
-
-
-/**
- * Generate successful refund confirmation message.
- *
- * @param connection connection to the client
- * @param refund details about the successful refund
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
-                                   const struct TALER_EXCHANGEDB_Refund *refund)
-{
-  struct TALER_RefundConfirmationPS rc;
-  struct TALER_ExchangePublicKeyP pub;
-  struct TALER_ExchangeSignatureP sig;
-
-  rc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
-  rc.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
-  rc.h_contract_terms = refund->h_contract_terms;
-  rc.coin_pub = refund->coin.coin_pub;
-  rc.merchant = refund->merchant_pub;
-  rc.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
-  TALER_amount_hton (&rc.refund_amount,
-                     &refund->refund_amount);
-  TALER_amount_hton (&rc.refund_fee,
-                     &refund->refund_fee);
-  TEH_KS_sign (&rc.purpose,
-               &pub,
-               &sig);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:s, s:o, s:o}",
-                                       "status", "REFUND_OK",
-                                       "sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "pub", GNUNET_JSON_from_data_auto (&pub));
-}
-
-
-/**
  * Send a response for a failed "/refresh/melt" request.  The
  * transaction history of the given coin demonstrates that the
  * @a residual value of the coin is below the @a requested
@@ -983,7 +903,7 @@ TEH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
 {
   json_t *history;
 
-  history = compile_transaction_history (tl);
+  history = TEH_RESPONSE_compile_transaction_history (tl);
   if (NULL == history)
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);

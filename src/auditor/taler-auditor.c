@@ -1864,12 +1864,15 @@ wire_transfer_information_cb (void *cls,
   struct TALER_Amount coin_value_without_fee;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   const struct TALER_CoinPublicInfo *coin;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* Obtain coin's transaction history */
-  tl = edb->get_coin_transactions (edb->cls,
+  qs = edb->get_coin_transactions (edb->cls,
                                    esession,
-                                   coin_pub);
-  if (NULL == tl)
+                                   coin_pub,
+				   &tl);
+  if ( (qs < 0) ||
+       (NULL == tl) )
   {
     wcc->ok = GNUNET_SYSERR;
     report_row_inconsistency ("aggregation",

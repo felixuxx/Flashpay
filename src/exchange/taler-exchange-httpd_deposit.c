@@ -163,9 +163,12 @@ deposit_transaction (void *cls,
   /* Start with fee for THIS transaction */
   spent = deposit->amount_with_fee;
   /* add cost of all previous transactions */
-  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
-                                          &deposit->coin.coin_pub);
+                                          &deposit->coin.coin_pub,
+					  &tl);
+  if (0 > qs)
+    return qs;
   if (GNUNET_OK !=
       TEH_DB_calculate_transaction_list_totals (tl,
 						&spent,

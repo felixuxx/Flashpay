@@ -280,279 +280,6 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
 
 
 /**
- * Execute a "/refund".  Returns a confirmation that the refund
- * was successful, or a failure if we are not aware of a matching
- * /deposit or if it is too late to do the refund.
- *
- * @param connection the MHD connection to handle
- * @param refund refund details
- * @return MHD result code
- */
-int
-TEH_DB_execute_refund (struct MHD_Connection *connection,
-                       const struct TALER_EXCHANGEDB_Refund *refund)
-{
-  struct TALER_EXCHANGEDB_Session *session;
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-  struct TALER_EXCHANGEDB_TransactionList *tlp;
-  const struct TALER_EXCHANGEDB_Deposit *dep;
-  const struct TALER_EXCHANGEDB_Refund *ref;
-  struct TEH_KS_StateHandle *mks;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TALER_Amount expect_fee;
-  enum GNUNET_DB_QueryStatus qs;
-  int ret;
-  int deposit_found;
-  int refund_found;
-  int done;
-  int fee_cmp;
-
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
-  {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
-  }
-  dep = NULL;
-  ref = NULL;
-  START_TRANSACTION (session, connection);
-  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          session,
-                                          &refund->coin.coin_pub);
-  if (NULL == tl)
-  {
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    return TEH_RESPONSE_reply_refund_failure (connection,
-					      MHD_HTTP_NOT_FOUND,
-					      TALER_EC_REFUND_COIN_NOT_FOUND);
-  }
-  deposit_found = GNUNET_NO;
-  refund_found = GNUNET_NO;
-  for (tlp = tl; NULL != tlp; tlp = tlp->next)
-  {
-    switch (tlp->type)
-    {
-    case TALER_EXCHANGEDB_TT_DEPOSIT:
-      if (GNUNET_NO == deposit_found)
-      {
-        if ( (0 == memcmp (&tlp->details.deposit->merchant_pub,
-                           &refund->merchant_pub,
-                           sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.deposit->h_contract_terms,
-                           &refund->h_contract_terms,
-                           sizeof (struct GNUNET_HashCode))) )
-        {
-          dep = tlp->details.deposit;
-          deposit_found = GNUNET_YES;
-          break;
-        }
-      }
-      break;
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-      /* Melts cannot be refunded, ignore here */
-      break;
-    case TALER_EXCHANGEDB_TT_REFUND:
-      if (GNUNET_NO == refund_found)
-      {
-        /* First, check if existing refund request is identical */
-        if ( (0 == memcmp (&tlp->details.refund->merchant_pub,
-                           &refund->merchant_pub,
-                           sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.refund->h_contract_terms,
-                           &refund->h_contract_terms,
-                           sizeof (struct GNUNET_HashCode))) &&
-             (tlp->details.refund->rtransaction_id == refund->rtransaction_id) )
-        {
-          ref = tlp->details.refund;
-          refund_found = GNUNET_YES;
-          break;
-        }
-        /* Second, check if existing refund request conflicts */
-        if ( (0 == memcmp (&tlp->details.refund->merchant_pub,
-                           &refund->merchant_pub,
-                           sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.refund->h_contract_terms,
-                           &refund->h_contract_terms,
-                           sizeof (struct GNUNET_HashCode))) &&
-             (tlp->details.refund->rtransaction_id != refund->rtransaction_id) )
-        {
-          GNUNET_break_op (0); /* conflicting refund found */
-          refund_found = GNUNET_SYSERR;
-          /* NOTE: Alternatively we could total up all existing
-             refunds and check if the sum still permits the
-             refund requested (thus allowing multiple, partial
-             refunds). Fow now, we keep it simple. */
-          break;
-        }
-      }
-      break;
-    case TALER_EXCHANGEDB_TT_PAYBACK:
-      /* Paybacks cannot be refunded, ignore here */
-      break;
-    }
-  }
-  /* handle if deposit was NOT found */
-  if (GNUNET_NO == deposit_found)
-  {
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return TEH_RESPONSE_reply_transaction_unknown (connection,
-						   TALER_EC_REFUND_DEPOSIT_NOT_FOUND);
-  }
-  /* handle if conflicting refund found */
-  if (GNUNET_SYSERR == refund_found)
-  {
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    ret = TEH_RESPONSE_reply_refund_conflict (connection,
-                                              tl);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return ret;
-  }
-  /* handle if identical refund found */
-  if (GNUNET_YES == refund_found)
-  {
-    /* /refund already done, simply re-transmit confirmation */
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    ret = TEH_RESPONSE_reply_refund_success (connection,
-                                             ref);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return ret;
-  }
-
-  /* check currency is compatible */
-  if ( (GNUNET_YES !=
-        TALER_amount_cmp_currency (&refund->refund_amount,
-                                   &dep->amount_with_fee)) ||
-       (GNUNET_YES !=
-        TALER_amount_cmp_currency (&refund->refund_fee,
-                                   &dep->deposit_fee)) )
-  {
-    GNUNET_break_op (0); /* currency missmatch */
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    return TEH_RESPONSE_reply_refund_failure (connection,
-                                              MHD_HTTP_PRECONDITION_FAILED,
-					      TALER_EC_REFUND_CURRENCY_MISSMATCH);
-  }
-
-  /* check if we already send the money for the /deposit */
-  done = TEH_plugin->test_deposit_done (TEH_plugin->cls,
-                                        session,
-                                        dep);
-  if (GNUNET_SYSERR == done)
-  {
-    /* Internal error, we first had the deposit in the history,
-       but now it is gone? */
-    GNUNET_break (0);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_REFUND_DB_INCONSISTENT,
-                                              "database inconsistent");
-  }
-  if (GNUNET_YES == done)
-  {
-    /* money was already transferred to merchant, can no longer refund */
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return TEH_RESPONSE_reply_refund_failure (connection,
-                                              MHD_HTTP_GONE,
-					      TALER_EC_REFUND_MERCHANT_ALREADY_PAID);
-  }
-
-  /* check refund amount is sufficiently low */
-  if (1 == TALER_amount_cmp (&refund->refund_amount,
-                             &dep->amount_with_fee) )
-  {
-    GNUNET_break_op (0); /* cannot refund more than original value */
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return TEH_RESPONSE_reply_refund_failure (connection,
-                                              MHD_HTTP_PRECONDITION_FAILED,
-					      TALER_EC_REFUND_INSUFFICIENT_FUNDS);
-  }
-
-  /* Check refund fee matches fee of denomination key! */
-  mks = TEH_KS_acquire ();
-  dki = TEH_KS_denomination_key_lookup (mks,
-                                        &dep->coin.denom_pub,
-					TEH_KS_DKU_DEPOSIT);
-  if (NULL == dki)
-  {
-    /* DKI not found, but we do have a coin with this DK in our database;
-       not good... */
-    GNUNET_break (0);
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    TEH_KS_release (mks);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_REFUND_DENOMINATION_KEY_NOT_FOUND,
-                                              "denomination key not found");
-  }
-  TALER_amount_ntoh (&expect_fee,
-                     &dki->issue.properties.fee_refund);
-  fee_cmp = TALER_amount_cmp (&refund->refund_fee,
-                              &expect_fee);
-  TEH_KS_release (mks);
-
-  if (-1 == fee_cmp)
-  {
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_REFUND_FEE_TOO_LOW,
-                                           "refund_fee");
-  }
-  if (1 == fee_cmp)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Refund fee proposed by merchant is higher than necessary.\n");
-  }
-  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                          tl);
-
-  /* Finally, store new refund data */
-  qs = TEH_plugin->insert_refund (TEH_plugin->cls,
-				  session,
-				  refund);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    TALER_LOG_WARNING ("Failed to store /refund information in database\n");
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_REFUND_STORE_DB_ERROR);
-  }
-  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-  {
-    /* FIXME: #5010: retry! */
-  }
-  
-  COMMIT_TRANSACTION (session, connection);
-
-  return TEH_RESPONSE_reply_refund_success (connection,
-                                            refund);
-}
-
-
-/**
  * Parse coin melt requests from a JSON object and write them to
  * the database.
  *
@@ -581,6 +308,7 @@ refresh_check_melt (struct MHD_Connection *connection,
   struct TALER_Amount coin_residual;
   struct TALER_Amount spent;
   int res;
+  enum GNUNET_DB_QueryStatus qs;
 
   dk = TEH_KS_denomination_key_lookup (key_state,
                                        &coin_details->coin_info.denom_pub,
@@ -597,9 +325,11 @@ refresh_check_melt (struct MHD_Connection *connection,
   /* fee for THIS transaction; the melt amount includes the fee! */
   spent = coin_details->melt_amount_with_fee;
   /* add historic transaction costs of this coin */
-  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
-                                          &coin_details->coin_info.coin_pub);
+                                          &coin_details->coin_info.coin_pub,
+					  &tl);
+  (void) qs; /* FIXME #5010 */
   if (GNUNET_OK !=
       TEH_DB_calculate_transaction_list_totals (tl,
 						&spent,
@@ -1921,7 +1651,8 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   struct TALER_Amount amount;
   struct TALER_Amount spent;
   struct GNUNET_TIME_Absolute now;
-
+  enum GNUNET_DB_QueryStatus qs;
+  
   if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
   {
     GNUNET_break (0);
@@ -1955,9 +1686,11 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   }
 
   /* Calculate remaining balance. */
-  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
-                                          &coin->coin_pub);
+                                          &coin->coin_pub,
+					  &tl);
+  (void) qs; /* FIXME #5010 */
   TALER_amount_get_zero (value->currency,
                          &spent);
   if (GNUNET_OK !=

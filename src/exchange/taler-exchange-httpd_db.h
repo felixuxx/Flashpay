@@ -84,20 +84,6 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
 
 
 /**
- * Execute a "/refund".  Returns a confirmation that the refund
- * was successful, or a failure if we are not aware of a matching
- * /deposit or if it is too late to do the refund.
- *
- * @param connection the MHD connection to handle
- * @param refund refund details
- * @return MHD result code
- */
-int
-TEH_DB_execute_refund (struct MHD_Connection *connection,
-                       const struct TALER_EXCHANGEDB_Refund *refund);
-
-
-/**
  * @brief Details about a melt operation of an individual coin.
  */
 struct TEH_DB_MeltDetails

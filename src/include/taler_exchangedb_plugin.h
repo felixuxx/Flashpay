@@ -1346,16 +1346,17 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Test if a deposit was marked as done, thereby declaring that it cannot be
-   * refunded anymore.
+   * Test if a deposit was marked as done, thereby declaring that it
+   * cannot be refunded anymore.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param deposit the deposit to check
-   * @return #GNUNET_YES if is is marked done done, #GNUNET_NO if not,
-   *         #GNUNET_SYSERR on error (deposit unknown)
+   * @return #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT if is is marked done,
+   *         #GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if not,
+   *         otherwise transaction error status (incl. deposit unknown)
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*test_deposit_done) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_Deposit *deposit);
@@ -1700,12 +1701,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param coin_pub coin to investigate
-   * @return list of transactions, NULL if coin is fresh
+   * @param[out] tlp set to list of transactions, NULL if coin is fresh
+   * @return database transaction status
    */
-  struct TALER_EXCHANGEDB_TransactionList *
+  enum GNUNET_DB_QueryStatus
   (*get_coin_transactions) (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
-                            const struct TALER_CoinSpendPublicKeyP *coin_pub);
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
+			    struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 
   /**

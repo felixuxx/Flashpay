@@ -274,46 +274,6 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
 
 
 /**
- * Generate refund conflict failure message. Returns the
- * transaction list @a tl with the details about the conflict.
- *
- * @param connection connection to the client
- * @param tl transaction list showing the conflict
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
-                                    const struct TALER_EXCHANGEDB_TransactionList *tl);
-
-
-/**
- * Generate generic refund failure message. All the details
- * are in the @a response_code.  The body can be empty.
- *
- * @param connection connection to the client
- * @param response_code response code to generate
- * @param ec error code uniquely identifying the error
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
-				   unsigned int response_code,
-				   enum TALER_ErrorCode ec);
-
-
-/**
- * Generate successful refund confirmation message.
- *
- * @param connection connection to the client
- * @param refund details about the successful refund
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
-                                   const struct TALER_EXCHANGEDB_Refund *refund);
-
-
-/**
  * A merchant asked for details about a deposit, but
  * we do not know anything about the deposit. Generate the
  * 404 reply.
@@ -555,8 +515,19 @@ int
 TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct TALER_ReservePublicKeyP *reserve_pub,
+
                                     const struct TALER_Amount *amount,
                                     struct GNUNET_TIME_Absolute timestamp);
+
+
+/**
+ * Compile the transaction history of a coin into a JSON object.
+ *
+ * @param tl transaction history to JSON-ify
+ * @return json representation of the @a rh
+ */
+json_t *
+TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
 #endif

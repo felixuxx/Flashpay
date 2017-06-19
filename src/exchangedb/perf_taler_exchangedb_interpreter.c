@@ -1529,13 +1529,16 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           unsigned int coin_index;
           struct PERF_TALER_EXCHANGEDB_Coin *coin;
           struct TALER_EXCHANGEDB_TransactionList *transactions;
+	  enum GNUNET_DB_QueryStatus qs;
 
           coin_index = state->cmd[state->i].details.get_coin_transaction.index_coin;
           coin = state->cmd[coin_index].exposed.data.coin;
-          transactions = state->plugin->get_coin_transactions (state->plugin->cls,
-                                                               state->session,
-                                                               &coin->public_info.coin_pub);
-          GNUNET_assert (transactions != NULL);
+          qs = state->plugin->get_coin_transactions (state->plugin->cls,
+						     state->session,
+						     &coin->public_info.coin_pub,
+						     &transactions);
+	  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+	  GNUNET_assert (transactions != NULL);
           state->plugin->free_coin_transaction_list (state->plugin->cls,
                                                      transactions);
         }

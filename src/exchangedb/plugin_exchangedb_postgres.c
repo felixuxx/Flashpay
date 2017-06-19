@@ -2827,10 +2827,11 @@ postgres_mark_deposit_tiny (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
  * @param deposit the deposit to check
- * @return #GNUNET_YES if is is marked done done, #GNUNET_NO if not,
- *         #GNUNET_SYSERR on error (deposit unknown)
+ * @return #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT if is is marked done,
+ *         #GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if not,
+ *         otherwise transaction error status (incl. deposit unknown)
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_test_deposit_done (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_EXCHANGEDB_Deposit *deposit)
@@ -2842,50 +2843,25 @@ postgres_test_deposit_done (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
+  uint8_t done = 0;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("done",
+					  &done),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "test_deposit_done",
-                                    params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (1 != PQntuples (result))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  {
-    uint8_t done = 0;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("done",
-                                            &done),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    PQclear (result);
-    return (done ? GNUNET_YES : GNUNET_NO);
-  }
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "test_deposit_done",
+						 params,
+						 rs);
+  if (qs < 0)
+    return qs;
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return GNUNET_DB_STATUS_HARD_ERROR; /* deposit MUST exist */
+  return (done
+	  ? GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+	  : GNUNET_DB_STATUS_SUCCESS_NO_RESULTS);
 }
 
 
@@ -4071,317 +4047,385 @@ postgres_get_transfer (void *cls,
 
 
 /**
+ * Closure for callbacks called from #postgres_get_coin_transactions()
+ */
+struct CoinHistoryContext
+{
+  /**
+   * Head of the coin's history list.
+   */
+  struct TALER_EXCHANGEDB_TransactionList *head;
+
+  /**
+   * Public key of the coin we are building the history for.
+   */
+  const struct TALER_CoinSpendPublicKeyP *coin_pub;
+
+  /**
+   * Closure for all callbacks of this database plugin.
+   */
+  void *db_cls;
+
+  /**
+   * Database session we are using.
+   */
+  struct TALER_EXCHANGEDB_Session *session;
+  
+  /**
+   * Set to #GNUNET_SYSERR on errors
+   */ 
+  int status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct CoinHistoryContext`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+add_coin_deposit (void *cls,
+		  PGresult *result,
+		  unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    struct TALER_EXCHANGEDB_Deposit *deposit;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+    
+    deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	TALER_PQ_result_spec_amount ("amount_with_fee",
+				     &deposit->amount_with_fee),
+	TALER_PQ_result_spec_amount ("fee_deposit",
+				     &deposit->deposit_fee),
+	GNUNET_PQ_result_spec_absolute_time ("timestamp",
+					     &deposit->timestamp),
+	GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+					     &deposit->refund_deadline),
+	GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+					      &deposit->merchant_pub),
+	GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+					      &deposit->h_contract_terms),
+	GNUNET_PQ_result_spec_auto_from_type ("h_wire",
+					      &deposit->h_wire),
+	TALER_PQ_result_spec_json ("wire",
+				   &deposit->receiver_wire_account),
+	GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+					      &deposit->csig),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    i))
+      {
+	GNUNET_break (0);
+	GNUNET_free (deposit);
+	chc->status = GNUNET_SYSERR;
+	return;
+      }
+      deposit->coin.coin_pub = *chc->coin_pub;
+    }
+    tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+    tl->next = chc->head;
+    tl->type = TALER_EXCHANGEDB_TT_DEPOSIT;
+    tl->details.deposit = deposit;
+    if (GNUNET_SYSERR == get_known_coin (chc->db_cls,
+					 chc->session,
+					 chc->coin_pub,
+					 &deposit->coin))
+    {
+      GNUNET_break (0);
+      GNUNET_free (deposit);
+      chc->status = GNUNET_SYSERR;
+      return;
+    }
+    chc->head = tl;
+  }
+}
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct CoinHistoryContext`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+add_coin_melt (void *cls,
+	       PGresult *result,
+	       unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+
+  for (unsigned int i=0;i<num_results;i++)
+  {
+    struct TALER_EXCHANGEDB_RefreshMelt *melt;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+
+    melt = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMelt);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	GNUNET_PQ_result_spec_auto_from_type ("session_hash",
+					      &melt->session_hash),
+	/* oldcoin_index not needed */
+	GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
+					      &melt->coin_sig),
+	TALER_PQ_result_spec_amount ("amount_with_fee",
+				     &melt->amount_with_fee),
+	TALER_PQ_result_spec_amount ("fee_refresh",
+				     &melt->melt_fee),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    i))
+      {
+	GNUNET_break (0);
+	GNUNET_free (melt);
+	chc->status = GNUNET_SYSERR;
+	return;
+      }
+      melt->coin.coin_pub = *chc->coin_pub;
+    }
+    tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+    tl->next = chc->head;
+    tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
+    tl->details.melt = melt;
+    if (GNUNET_SYSERR == get_known_coin (chc->db_cls,
+					 chc->session,
+					 chc->coin_pub,
+					 &melt->coin))
+    {
+      GNUNET_break (0);
+      GNUNET_free (melt);
+      chc->status = GNUNET_SYSERR;
+      return;
+    }
+    chc->head = tl;
+  }
+}
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct CoinHistoryContext`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+add_coin_refund (void *cls,
+		 PGresult *result,
+		 unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+
+  for (unsigned int i=0;i<num_results;i++)
+  {
+    struct TALER_EXCHANGEDB_Refund *refund;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+
+    refund = GNUNET_new (struct TALER_EXCHANGEDB_Refund);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+					      &refund->merchant_pub),
+	GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
+					      &refund->merchant_sig),
+	GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+					      &refund->h_contract_terms),
+	GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
+				      &refund->rtransaction_id),
+	TALER_PQ_result_spec_amount ("amount_with_fee",
+				     &refund->refund_amount),
+	TALER_PQ_result_spec_amount ("fee_refund",
+				     &refund->refund_fee),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    i))
+      {
+	GNUNET_break (0);
+	GNUNET_free (refund);
+	chc->status = GNUNET_SYSERR;
+	return;
+      }
+      refund->coin.coin_pub = *chc->coin_pub;
+    }
+    tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+    tl->next = chc->head;
+    tl->type = TALER_EXCHANGEDB_TT_REFUND;
+    tl->details.refund = refund;
+    if (GNUNET_SYSERR ==
+	get_known_coin (chc->db_cls,
+			chc->session,
+			chc->coin_pub,
+			&refund->coin))
+    {
+      GNUNET_break (0);
+      GNUNET_free (refund);
+      chc->status = GNUNET_SYSERR;
+      return;
+    }
+    chc->head = tl;
+  }
+}
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct CoinHistoryContext`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+add_coin_payback (void *cls,
+		  PGresult *result,
+		  unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+
+  for (unsigned int i=0;i<num_results;i++)
+  {
+    struct TALER_EXCHANGEDB_Payback *payback;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+    
+    payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	TALER_PQ_result_spec_amount ("amount",
+				     &payback->value),
+	GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+					      &payback->reserve_pub),
+	GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
+					      &payback->coin_blind),
+	GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+					      &payback->coin_sig),
+	GNUNET_PQ_result_spec_absolute_time ("timestamp",
+					     &payback->timestamp),
+	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+					      &payback->coin.denom_pub.rsa_public_key),
+	GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
+					     &payback->coin.denom_sig.rsa_signature),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result,
+				    rs,
+				    i))
+      {
+	GNUNET_break (0);
+	GNUNET_free (payback);
+	chc->status = GNUNET_SYSERR;
+	return;
+      }
+      payback->coin.coin_pub = *chc->coin_pub;
+    }
+    tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+    tl->next = chc->head;
+    tl->type = TALER_EXCHANGEDB_TT_PAYBACK;
+    tl->details.payback = payback;
+    chc->head = tl;
+  }
+}
+
+
+/**
  * Compile a list of all (historic) transactions performed
  * with the given coin (/refresh/melt, /deposit and /refund operations).
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param coin_pub coin to investigate
- * @return list of transactions, NULL if coin is fresh
+ * @param[out] tlp set to list of transactions, NULL if coin is fresh
+ * @return database transaction status
  */
-static struct TALER_EXCHANGEDB_TransactionList *
+static enum GNUNET_DB_QueryStatus
 postgres_get_coin_transactions (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
-                                const struct TALER_CoinSpendPublicKeyP *coin_pub)
+                                const struct TALER_CoinSpendPublicKeyP *coin_pub,
+				struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
-  struct TALER_EXCHANGEDB_TransactionList *head;
+  struct CoinHistoryContext chc;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  struct {
+    /**
+     * SQL prepared statement name.
+     */
+    const char *statement;
 
-  head = NULL;
-  /** #TALER_EXCHANGEDB_TT_DEPOSIT */
+    /**
+     * Function to call to handle the result(s).
+     */
+    GNUNET_PQ_PostgresResultHandler cb;
+  } work[] = {
+    /** #TALER_EXCHANGEDB_TT_DEPOSIT */
+    { "get_deposit_with_coin_pub",
+      &add_coin_deposit },
+    /** #TALER_EXCHANGEDB_TT_REFRESH_MELT */
+    { "get_refresh_session_by_coin",
+      &add_coin_melt },
+    /** #TALER_EXCHANGEDB_TT_REFUND */
+    { "get_refunds_by_coin",
+      &add_coin_refund },
+    /** #TALER_EXCHANGEDB_TT_PAYBACK */
+    { "payback_by_coin",
+      &add_coin_payback },
+    { NULL, NULL }
+  };
+
+  chc.head = NULL;
+  chc.status = GNUNET_OK;
+  chc.coin_pub = coin_pub;
+  chc.session = session;
+  chc.db_cls = cls;
+  for (unsigned int i=0;NULL != work[i].statement; i++)
   {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (coin_pub),
-      GNUNET_PQ_query_param_end
-    };
-    int nrows;
-    PGresult *result;
-    struct TALER_EXCHANGEDB_TransactionList *tl;
-
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "get_deposit_with_coin_pub",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					       work[i].statement,
+					       params,
+					       work[i].cb,
+					       &chc);
+    if ( (0 > qs) ||
+	 (GNUNET_OK != chc.status) )
     {
-      QUERY_ERR (result, session->conn);
-      PQclear (result);
-      goto cleanup;
+      if (NULL != chc.head)
+	common_free_coin_transaction_list (cls,
+					   chc.head);
+      *tlp = NULL;
+      if (GNUNET_OK != chc.status)
+	qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return qs;
     }
-    nrows = PQntuples (result);
-    for (int i = 0; i < nrows; i++)
-    {
-      struct TALER_EXCHANGEDB_Deposit *deposit;
-
-      deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_amount ("amount_with_fee",
-                                       &deposit->amount_with_fee),
-          TALER_PQ_result_spec_amount ("fee_deposit",
-                                       &deposit->deposit_fee),
-          GNUNET_PQ_result_spec_absolute_time ("timestamp",
-                                               &deposit->timestamp),
-          GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
-                                               &deposit->refund_deadline),
-          GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
-                                                &deposit->merchant_pub),
-          GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                                &deposit->h_contract_terms),
-          GNUNET_PQ_result_spec_auto_from_type ("h_wire",
-                                                &deposit->h_wire),
-          TALER_PQ_result_spec_json ("wire",
-                                     &deposit->receiver_wire_account),
-          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                               &deposit->csig),
-          GNUNET_PQ_result_spec_end
-        };
-
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      i))
-        {
-          GNUNET_break (0);
-          GNUNET_free (deposit);
-          PQclear (result);
-          goto cleanup;
-        }
-        deposit->coin.coin_pub = *coin_pub;
-      }
-      tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
-      tl->next = head;
-      tl->type = TALER_EXCHANGEDB_TT_DEPOSIT;
-      tl->details.deposit = deposit;
-      if (GNUNET_SYSERR == get_known_coin (cls,
-                                           session,
-                                           &deposit->coin.coin_pub,
-                                           &deposit->coin))
-      {
-        GNUNET_break (0);
-        GNUNET_free (deposit);
-        PQclear (result);
-        goto cleanup;
-      }
-      head = tl;
-      continue;
-    }
-    PQclear (result);
   }
-  /** #TALER_EXCHANGEDB_TT_REFRESH_MELT */
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
-      GNUNET_PQ_query_param_end
-    };
-    int nrows;
-    PGresult *result;
-    struct TALER_EXCHANGEDB_TransactionList *tl;
-
-    /* check if the melt records exist and get them */
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "get_refresh_session_by_coin",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
-      goto cleanup;
-    }
-    nrows = PQntuples (result);
-    for (int i=0;i<nrows;i++)
-    {
-      struct TALER_EXCHANGEDB_RefreshMelt *melt;
-
-      melt = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMelt);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          GNUNET_PQ_result_spec_auto_from_type ("session_hash",
-                                                &melt->session_hash),
-          /* oldcoin_index not needed */
-          GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
-                                                &melt->coin_sig),
-          TALER_PQ_result_spec_amount ("amount_with_fee",
-                                       &melt->amount_with_fee),
-          TALER_PQ_result_spec_amount ("fee_refresh",
-                                       &melt->melt_fee),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      i))
-        {
-          GNUNET_break (0);
-          GNUNET_free (melt);
-          PQclear (result);
-          goto cleanup;
-        }
-	melt->coin.coin_pub = *coin_pub;
-      }
-      tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
-      tl->next = head;
-      tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
-      tl->details.melt = melt;
-      if (GNUNET_SYSERR == get_known_coin (cls,
-                                           session,
-                                           coin_pub,
-                                           &melt->coin))
-      {
-        GNUNET_break (0);
-        GNUNET_free (melt);
-        PQclear (result);
-        goto cleanup;
-      }
-      head = tl;
-      continue;
-    }
-    PQclear (result);
-  }
-  /** #TALER_EXCHANGEDB_TT_REFUND */
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (coin_pub),
-      GNUNET_PQ_query_param_end
-    };
-    int nrows;
-    PGresult *result;
-    struct TALER_EXCHANGEDB_TransactionList *tl;
-
-    /* check if a refund records exist and get them */
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "get_refunds_by_coin",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
-      goto cleanup;
-    }
-    nrows = PQntuples (result);
-    for (int i=0;i<nrows;i++)
-    {
-      struct TALER_EXCHANGEDB_Refund *refund;
-
-      refund = GNUNET_new (struct TALER_EXCHANGEDB_Refund);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
-                                                &refund->merchant_pub),
-          GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
-                                                &refund->merchant_sig),
-          GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                                &refund->h_contract_terms),
-          GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
-                                        &refund->rtransaction_id),
-          TALER_PQ_result_spec_amount ("amount_with_fee",
-                                       &refund->refund_amount),
-          TALER_PQ_result_spec_amount ("fee_refund",
-                                       &refund->refund_fee),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      i))
-        {
-          GNUNET_break (0);
-          GNUNET_free (refund);
-          PQclear (result);
-          goto cleanup;
-        }
-	refund->coin.coin_pub = *coin_pub;
-      }
-      tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
-      tl->next = head;
-      tl->type = TALER_EXCHANGEDB_TT_REFUND;
-      tl->details.refund = refund;
-      if (GNUNET_SYSERR ==
-          get_known_coin (cls,
-                          session,
-                          coin_pub,
-                          &refund->coin))
-      {
-        GNUNET_break (0);
-        GNUNET_free (refund);
-        PQclear (result);
-        goto cleanup;
-      }
-      head = tl;
-      continue;
-    }
-    PQclear (result);
-  }
-  /** #TALER_EXCHANGEDB_TT_PAYBACK */
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (coin_pub),
-      GNUNET_PQ_query_param_end
-    };
-    int nrows;
-    PGresult *result;
-    struct TALER_EXCHANGEDB_TransactionList *tl;
-
-    /* check if a refund records exist and get them */
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "payback_by_coin",
-                                      params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
-      goto cleanup;
-    }
-    nrows = PQntuples (result);
-    for (int i=0;i<nrows;i++)
-    {
-      struct TALER_EXCHANGEDB_Payback *payback;
-
-      payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
-      {
-        struct GNUNET_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_amount ("amount",
-                                       &payback->value),
-          GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                                &payback->reserve_pub),
-          GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
-                                                &payback->coin_blind),
-          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                                &payback->coin_sig),
-          GNUNET_PQ_result_spec_absolute_time ("timestamp",
-                                               &payback->timestamp),
-          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                                &payback->coin.denom_pub.rsa_public_key),
-          GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                               &payback->coin.denom_sig.rsa_signature),
-          GNUNET_PQ_result_spec_end
-        };
-        if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result,
-                                      rs,
-                                      i))
-        {
-          GNUNET_break (0);
-          GNUNET_free (payback);
-          PQclear (result);
-          goto cleanup;
-        }
-	payback->coin.coin_pub = *coin_pub;
-      }
-      tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
-      tl->next = head;
-      tl->type = TALER_EXCHANGEDB_TT_PAYBACK;
-      tl->details.payback = payback;
-      head = tl;
-      continue;
-    }
-    PQclear (result);
-  }
-
-  return head;
- cleanup:
-  if (NULL != head)
-    common_free_coin_transaction_list (cls,
-                                       head);
-  return NULL;
+  *tlp = chc.head;
+  if (NULL == chc.head)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 

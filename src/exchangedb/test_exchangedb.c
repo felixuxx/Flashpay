@@ -726,10 +726,13 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   {
     /* Just to test fetching a coin with melt history */
     struct TALER_EXCHANGEDB_TransactionList *tl;
+    enum GNUNET_DB_QueryStatus qs;
 
-    tl = plugin->get_coin_transactions (plugin->cls,
+    qs = plugin->get_coin_transactions (plugin->cls,
                                         session,
-                                        &meltp->coin.coin_pub);
+                                        &meltp->coin.coin_pub,
+					&tl);
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
     plugin->free_coin_transaction_list (plugin->cls,
                                         tl);
   }
@@ -1930,9 +1933,11 @@ run (void *cls)
 						  NULL));
 
   FAILIF (1 != auditor_row_cnt);
-  tl = plugin->get_coin_transactions (plugin->cls,
+  qs = plugin->get_coin_transactions (plugin->cls,
                                       session,
-                                      &refund.coin.coin_pub);
+                                      &refund.coin.coin_pub,
+				      &tl);
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
   GNUNET_assert (NULL != tl);
   matched = 0;
   for (tlp = tl; NULL != tlp; tlp = tlp->next)
