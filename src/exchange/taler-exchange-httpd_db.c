@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_db.c
- * @brief High-level (transactional-layer) database operations for the exchange.
+ * @brief Generic database operations for the exchange.
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -116,6 +116,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
  * @param[out] ret where the resulting total is to be stored
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
+// FIXME: maybe move to another module, i.e. exchangedb???
 int
 TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
 					  const struct TALER_Amount *off,

@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_responses.c
- * @brief API for generating the various replies of the exchange; these
+ * @brief API for generating genric replies of the exchange; these
  *        functions are called TEH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
  * @author Florian Dold
@@ -896,25 +896,6 @@ TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
                                        "{s:s, s:I}",
                                        "error", "Deposit unknown",
 				       "code", (json_int_t) ec);
-}
-
-
-/**
- * A merchant asked for details about a deposit, but
- * we did not execute the deposit yet. Generate a 202 reply.
- *
- * @param connection connection to the client
- * @param planned_exec_time planned execution time
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
-                                     struct GNUNET_TIME_Absolute planned_exec_time)
-{
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_ACCEPTED,
-                                       "{s:o}",
-                                       "execution_time", GNUNET_JSON_from_time_abs (planned_exec_time));
 }
 
 

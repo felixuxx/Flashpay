@@ -16,7 +16,7 @@
 
 /**
  * @file taler-exchange-httpd_responses.h
- * @brief API for generating the various replies of the exchange; these
+ * @brief API for generating generic replies of the exchange; these
  *        functions are called TEH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
  * @author Florian Dold
@@ -285,19 +285,6 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
 int
 TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
 					enum TALER_ErrorCode ec);
-
-
-/**
- * A merchant asked for details about a deposit, but
- * we did not execute the deposit yet. Generate a 202 reply.
- *
- * @param connection connection to the client
- * @param planned_exec_time planned execution time
- * @return MHD result code
- */
-int
-TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
-				     struct GNUNET_TIME_Absolute planned_exec_time);
 
 
 /**

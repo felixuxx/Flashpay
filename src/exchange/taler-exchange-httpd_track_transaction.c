@@ -31,6 +31,25 @@
 
 
 /**
+ * A merchant asked for details about a deposit, but
+ * we did not execute the deposit yet. Generate a 202 reply.
+ *
+ * @param connection connection to the client
+ * @param planned_exec_time planned execution time
+ * @return MHD result code
+ */
+static int
+reply_transfer_pending (struct MHD_Connection *connection,
+			struct GNUNET_TIME_Absolute planned_exec_time)
+{
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_ACCEPTED,
+                                       "{s:o}",
+                                       "execution_time", GNUNET_JSON_from_time_abs (planned_exec_time));
+}
+
+
+/**
  * A merchant asked for details about a deposit.  Provide
  * them. Generates the 200 reply.
  *
@@ -272,8 +291,8 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
 			      &ctx))
     return mhd_ret;
   if (GNUNET_YES == ctx.pending)
-    return TEH_RESPONSE_reply_transfer_pending (connection,
-						ctx.execution_time);
+    return reply_transfer_pending (connection,
+				   ctx.execution_time);
   if (GNUNET_SYSERR == ctx.pending)
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT);
