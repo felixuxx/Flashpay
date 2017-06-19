@@ -4430,50 +4430,44 @@ postgres_get_coin_transactions (void *cls,
 
 
 /**
- * Lookup the list of Taler transactions that were aggregated
- * into a wire transfer by the respective @a wtid.
- *
- * @param cls closure
- * @param session database connection
- * @param wtid the raw wire transfer identifier we used
- * @param cb function to call on each transaction found
- * @param cb_cls closure for @a cb
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors,
- *         #GNUNET_NO if we found no results
+ * Closure for #handle_wt_result.
  */
-static int
-postgres_lookup_wire_transfer (void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               const struct TALER_WireTransferIdentifierRawP *wtid,
-                               TALER_EXCHANGEDB_WireTransferDataCallback cb,
-                               void *cb_cls)
+struct WireTransferResultContext
 {
-  PGresult *result;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_end
-  };
-  int nrows;
+  /**
+   * Function to call on each result.
+   */
+  TALER_EXCHANGEDB_WireTransferDataCallback cb;
 
-  /* check if the melt record exists and get it */
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "lookup_transactions",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "lookup_wire_transfer() returned 0 matching rows\n");
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  for (int i=0;i<nrows;i++)
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Set to #GNUNET_SYSERR on serious errors.
+   */
+  int status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.  Helper function
+ * for #postgres_lookup_wire_transfer().
+ *
+ * @param cls closure of type `struct WireTransferResultContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+handle_wt_result (void *cls,
+		  PGresult *result,
+		  unsigned int num_results)
+{
+  struct WireTransferResultContext *ctx = cls;
+  
+  for (unsigned int i=0;i<num_results;i++)
   {
     uint64_t rowid;
     struct GNUNET_HashCode h_contract_terms;
@@ -4505,37 +4499,75 @@ postgres_lookup_wire_transfer (void *cls,
                                   i))
     {
       GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
+      ctx->status = GNUNET_SYSERR;
+      return;
     }
     t = json_object_get (wire, "type");
     if (NULL == t)
     {
       GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
+      ctx->status = GNUNET_SYSERR;
+      return;
     }
     wire_method = json_string_value (t);
     if (NULL == wire_method)
     {
       GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
+      ctx->status = GNUNET_SYSERR;
+      return;
     }
-    cb (cb_cls,
-        rowid,
-        &merchant_pub,
-        wire_method,
-        &h_wire,
-        exec_time,
-        &h_contract_terms,
-        &coin_pub,
-        &amount_with_fee,
-        &deposit_fee);
+    ctx->cb (ctx->cb_cls,
+	     rowid,
+	     &merchant_pub,
+	     wire_method,
+	     &h_wire,
+	     exec_time,
+	     &h_contract_terms,
+	     &coin_pub,
+	     &amount_with_fee,
+	     &deposit_fee);
     GNUNET_PQ_cleanup_result (rs);
   }
-  PQclear (result);
-  return GNUNET_OK;
+}
+
+
+/**
+ * Lookup the list of Taler transactions that were aggregated
+ * into a wire transfer by the respective @a wtid.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param wtid the raw wire transfer identifier we used
+ * @param cb function to call on each transaction found
+ * @param cb_cls closure for @a cb
+ * @return query status of the transaction
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_wire_transfer (void *cls,
+                               struct TALER_EXCHANGEDB_Session *session,
+                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               TALER_EXCHANGEDB_WireTransferDataCallback cb,
+                               void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (wtid),
+    GNUNET_PQ_query_param_end
+  };
+  struct WireTransferResultContext ctx;
+  enum GNUNET_DB_QueryStatus qs;
+  
+  ctx.cb = cb;
+  ctx.cb_cls = cb_cls;
+  ctx.status = GNUNET_OK;
+  /* check if the melt record exists and get it */
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "lookup_transactions",
+					     params,
+					     &handle_wt_result,
+					     &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
 }
 
 
@@ -4733,10 +4765,9 @@ postgres_insert_aggregation_tracking (void *cls,
  * @param[out] end_date when does the fee end being valid
  * @param[out] wire_fee how high is the wire transfer fee
  * @param[out] master_sig signature over the above by the exchange master key
- * @return #GNUNET_OK on success, #GNUNET_NO if no fee is known
- *         #GNUNET_SYSERR on failure
+ * @return status of the transaction
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_wire_fee (void *cls,
                        struct TALER_EXCHANGEDB_Session *session,
                        const char *type,
@@ -4758,42 +4789,11 @@ postgres_get_wire_fee (void *cls,
     GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
     GNUNET_PQ_result_spec_end
   };
-  PGresult *result;
-  int nrows;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "get_wire_fee",
-                                    params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    /* no matches found */
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  if (1 != nrows)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_PQ_extract_result (result,
-                                rs,
-                                0))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_wire_fee",
+						   params,
+						   rs);
 }
 
 

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -81,14 +81,14 @@ struct TEH_TrackTransferDetail
  * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
  */
-int
-TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
-                                           const struct TALER_Amount *total,
-                                           const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                           const struct GNUNET_HashCode *h_wire,
-                                           const struct TALER_Amount *wire_fee,
-                                           struct GNUNET_TIME_Absolute exec_time,
-                                           const struct TEH_TrackTransferDetail *wdd_head)
+static int
+reply_track_transfer_details (struct MHD_Connection *connection,
+			      const struct TALER_Amount *total,
+			      const struct TALER_MerchantPublicKeyP *merchant_pub,
+			      const struct GNUNET_HashCode *h_wire,
+			      const struct TALER_Amount *wire_fee,
+			      struct GNUNET_TIME_Absolute exec_time,
+			      const struct TEH_TrackTransferDetail *wdd_head)
 {
   const struct TEH_TrackTransferDetail *wdd_pos;
   json_t *deposits;
@@ -155,6 +155,11 @@ struct WtidTransactionContext
 {
 
   /**
+   * Identifier of the wire transfer to track.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
    * Total amount of the wire transfer, as calculated by
    * summing up the individual amounts. To be rounded down
    * to calculate the real transfer amount at the end.
@@ -178,6 +183,11 @@ struct WtidTransactionContext
    * deposits), only valid if @e is_valid is #GNUNET_YES.
    */
   struct GNUNET_HashCode h_wire;
+
+  /**
+   * Wire fee applicable at @e exec_time.
+   */
+  struct TALER_Amount wire_fee;
 
   /**
    * Execution time of the wire transfer
@@ -309,102 +319,116 @@ handle_transaction_data (void *cls,
 /**
  * Execute a "/track/transfer".  Returns the transaction information
  * associated with the given wire transfer identifier.
+ * 
+ * If it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
  *
- * @param connection the MHD connection to handle
- * @param wtid wire transfer identifier to resolve
- * @return MHD result code
+ * @param cls closure
+ * @param connection MHD request which triggered the transaction
+ * @param session database session to use
+ * @param[out] mhd_ret set to MHD response status for @a connection,
+ *             if transaction failed (!)
+ * @return transaction status
  */
-int
-TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
-                               const struct TALER_WireTransferIdentifierRawP *wtid)
+static enum GNUNET_DB_QueryStatus
+track_transfer_transaction (void *cls,
+			    struct MHD_Connection *connection,
+			    struct TALER_EXCHANGEDB_Session *session,
+			    int *mhd_ret)
 {
-  int ret;
-  struct WtidTransactionContext ctx;
-  struct TALER_EXCHANGEDB_Session *session;
-  struct TEH_TrackTransferDetail *wdd;
+  struct WtidTransactionContext *ctx = cls;
+  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute wire_fee_start_date;
   struct GNUNET_TIME_Absolute wire_fee_end_date;
-  struct TALER_Amount wire_fee;
   struct TALER_MasterSignatureP wire_fee_master_sig;
 
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
+  ctx->is_valid = GNUNET_NO;
+  ctx->wdd_head = NULL;
+  ctx->wdd_tail = NULL;
+  ctx->wire_method = NULL;
+  qs = TEH_plugin->lookup_wire_transfer (TEH_plugin->cls,
+					 session,
+					 &ctx->wtid,
+					 &handle_transaction_data,
+					 ctx);
+  if (0 > qs)
+  {
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						       TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED);
+    }
+    return qs;
+  }
+  if (GNUNET_SYSERR == ctx->is_valid)
   {
     GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  ctx.is_valid = GNUNET_NO;
-  ctx.wdd_head = NULL;
-  ctx.wdd_tail = NULL;
-  ctx.wire_method = NULL;
-  ret = TEH_plugin->lookup_wire_transfer (TEH_plugin->cls,
-                                          session,
-                                          wtid,
-                                          &handle_transaction_data,
-                                          &ctx);
-  if (GNUNET_SYSERR == ret)
+  if (GNUNET_NO == ctx->is_valid)
   {
-    GNUNET_break (0);
-    ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED);
-    goto cleanup;
+    *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
+					       TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
+					       "wtid");
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (GNUNET_SYSERR == ctx.is_valid)
+  qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
+				 session,
+				 ctx->wire_method,
+				 ctx->exec_time,
+				 &wire_fee_start_date,
+				 &wire_fee_end_date,
+				 &ctx->wire_fee,
+				 &wire_fee_master_sig);
+  if (0 >= qs)
   {
-    GNUNET_break (0);
-    ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT);
-    goto cleanup;
-  }
-  if (GNUNET_NO == ctx.is_valid)
-  {
-    ret = TEH_RESPONSE_reply_arg_unknown (connection,
-					  TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
-                                          "wtid");
-    goto cleanup;
+    if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
+	 (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS) )
+    {
+      GNUNET_break (0);
+      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						       TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND);
+    }
+    return qs;
   }
   if (GNUNET_OK !=
-      TEH_plugin->get_wire_fee (TEH_plugin->cls,
-                                session,
-                                ctx.wire_method,
-                                ctx.exec_time,
-                                &wire_fee_start_date,
-                                &wire_fee_end_date,
-                                &wire_fee,
-                                &wire_fee_master_sig))
+      TALER_amount_subtract (&ctx->total,
+                             &ctx->total,
+                             &ctx->wire_fee))
   {
     GNUNET_break (0);
-    ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND);
-    goto cleanup;
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (GNUNET_OK !=
-      TALER_amount_subtract (&ctx.total,
-                             &ctx.total,
-                             &wire_fee))
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+/**
+ * Free data structure reachable from @a ctx, but not @a ctx itself.
+ *
+ * @param ctx context to free
+ */
+static void
+free_ctx (struct WtidTransactionContext *ctx)
+{
+  struct TEH_TrackTransferDetail *wdd;
+
+  while (NULL != (wdd = ctx->wdd_head))
   {
-    GNUNET_break (0);
-    ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT);
-    goto cleanup;
-  }
-  ret = TEH_RESPONSE_reply_track_transfer_details (connection,
-                                                   &ctx.total,
-                                                   &ctx.merchant_pub,
-                                                   &ctx.h_wire,
-                                                   &wire_fee,
-                                                   ctx.exec_time,
-                                                   ctx.wdd_head);
- cleanup:
-  while (NULL != (wdd = ctx.wdd_head))
-  {
-    GNUNET_CONTAINER_DLL_remove (ctx.wdd_head,
-                                 ctx.wdd_tail,
+    GNUNET_CONTAINER_DLL_remove (ctx->wdd_head,
+                                 ctx->wdd_tail,
                                  wdd);
     GNUNET_free (wdd);
   }
-  GNUNET_free_non_null (ctx.wire_method);
-  return ret;
+  GNUNET_free_non_null (ctx->wire_method);
 }
 
 
@@ -425,19 +449,37 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
                                      const char *upload_data,
                                      size_t *upload_data_size)
 {
-  struct TALER_WireTransferIdentifierRawP wtid;
+  struct WtidTransactionContext ctx;
   int res;
+  int mhd_ret;
 
+  memset (&ctx, 0, sizeof (ctx));
   res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "wtid",
-                                        &wtid,
+                                        &ctx.wtid,
                                         sizeof (struct TALER_WireTransferIdentifierRawP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  return TEH_DB_execute_track_transfer (connection,
-                                        &wtid);
+  if (GNUNET_OK !=
+      TEH_DB_run_transaction (connection,
+			      &mhd_ret,
+			      &track_transfer_transaction,
+			      &ctx))
+  {
+    free_ctx (&ctx);
+    return mhd_ret;
+  }
+  mhd_ret = reply_track_transfer_details (connection,
+					  &ctx.total,
+					  &ctx.merchant_pub,
+					  &ctx.h_wire,
+					  &ctx.wire_fee,
+					  ctx.exec_time,
+					  ctx.wdd_head);
+  free_ctx (&ctx);
+  return mhd_ret;
 }
 
 

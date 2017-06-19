@@ -1731,10 +1731,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wtid the raw wire transfer identifier we used
    * @param cb function to call on each transaction found
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors,
-   *         #GNUNET_NO if we found no results
+   * @return query status of the transaction
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*lookup_wire_transfer) (void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -1822,10 +1821,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] end_date when does the fee end being valid
    * @param[out] wire_fee how high is the wire transfer fee
    * @param[out] master_sig signature over the above by the exchange master key
-   * @return #GNUNET_OK on success, #GNUNET_NO if no fee is known
-   *         #GNUNET_SYSERR on failure
+   * @return query status of the transaction
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_wire_fee) (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const char *type,

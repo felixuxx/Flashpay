@@ -1185,7 +1185,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   }
   /* This must fail as 'end_date' is NOT in the
      half-open interval [start_date,end_date) */
-  if (GNUNET_OK ==
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->get_wire_fee (plugin->cls,
                             session,
                             "wire-method",
@@ -1198,7 +1198,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_wire_fee (plugin->cls,
                             session,
                             "wire-method",
@@ -1302,7 +1302,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                  TALER_amount_subtract (&transfer_value_wt,
                                         &coin_value_wt,
                                         &coin_fee_wt));
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,
                                         &wire_out_wtid,
@@ -1344,7 +1344,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
           plugin->commit (plugin->cls,
                           session));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,
                                         &wire_out_wtid,
