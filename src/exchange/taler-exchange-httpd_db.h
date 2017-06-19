@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -82,98 +82,6 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
 					  const struct TALER_Amount *off,
 					  struct TALER_Amount *ret);
 
-
-/**
- * @brief Details about a melt operation of an individual coin.
- */
-struct TEH_DB_MeltDetails
-{
-
-  /**
-   * Information about the coin being melted.
-   */
-  struct TALER_CoinPublicInfo coin_info;
-
-  /**
-   * Signature allowing the melt (using
-   * a `struct TALER_EXCHANGEDB_RefreshMeltConfirmSignRequestBody`) to sign over.
-   */
-  struct TALER_CoinSpendSignatureP melt_sig;
-
-  /**
-   * How much of the coin's value did the client allow to be melted?
-   * This amount includes the fees, so the final amount contributed
-   * to the melt is this value minus the fee for melting the coin.
-   */
-  struct TALER_Amount melt_amount_with_fee;
-
-  /**
-   * What fee is earned by the exchange?  Set delayed during
-   * #verify_coin_public_info().
-   */
-  struct TALER_Amount melt_fee;
-};
-
-
-/**
- * Execute a "/refresh/melt". We have been given a list of valid
- * coins and a request to melt them into the given
- * @a refresh_session_pub.  Check that the coins all have the
- * required value left and if so, store that they have been
- * melted and confirm the melting operation to the client.
- *
- * @param connection the MHD connection to handle
- * @param session_hash hash code of the session the coins are melted into
- * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
- * @param denom_pubs array of public denomination keys for the refresh (?)
- * @param coin_melt_detail signatures and (residual) value of and information about the respective coin to be melted
- * @param commit_coin 2d array of coin commitments (what the exchange is to sign
- *                    once the "/refres/reveal" of cut and choose is done)
- * @param transfer_pubs array of transfer public keys (what the exchange is
- *                    to return via "/refresh/link" to enable linkage in the
- *                    future) of length #TALER_CNC_KAPPA
- * @return MHD result code
- */
-int
-TEH_DB_execute_refresh_melt (struct MHD_Connection *connection,
-                             const struct GNUNET_HashCode *session_hash,
-                             unsigned int num_new_denoms,
-                             const struct TALER_DenominationPublicKey *denom_pubs,
-                             const struct TEH_DB_MeltDetails *coin_melt_detail,
-                             struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
-                             const struct TALER_TransferPublicKeyP *transfer_pubs);
-
-
-/**
- * Execute a "/refresh/reveal".  The client is revealing to us the
- * transfer keys for #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
- * revealed transfer keys would allow linkage to the blinded coins,
- * and if so, return the signed coins for corresponding to the set of
- * coins that was not chosen.
- *
- * @param connection the MHD connection to handle
- * @param session_hash hash over the refresh session
- * @param transfer_privs array of length #TALER_CNC_KAPPA-1 with the revealed transfer keys
- * @return MHD result code
- */
-int
-TEH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
-                               const struct GNUNET_HashCode *session_hash,
-                               struct TALER_TransferPrivateKeyP *transfer_privs);
-
-
-/**
- * Execute a "/refresh/link".  Returns the linkage information that
- * will allow the owner of a coin to follow the refresh trail to the
- * refreshed coin.
- *
- * @param connection the MHD connection to handle
- * @param coin_pub public key of the coin to link
- * @return MHD result code
- */
-int
-TEH_DB_execute_refresh_link (struct MHD_Connection *connection,
-                             const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 #endif
 /* TALER_EXCHANGE_HTTPD_DB_H */

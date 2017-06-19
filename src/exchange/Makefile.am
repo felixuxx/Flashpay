@@ -50,7 +50,9 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
   taler-exchange-httpd_parsing.c taler-exchange-httpd_parsing.h \
   taler-exchange-httpd_payback.c taler-exchange-httpd_payback.h \
-  taler-exchange-httpd_refresh.c taler-exchange-httpd_refresh.h \
+  taler-exchange-httpd_refresh_link.c taler-exchange-httpd_refresh_link.h \
+  taler-exchange-httpd_refresh_melt.c taler-exchange-httpd_refresh_melt.h \
+  taler-exchange-httpd_refresh_reveal.c taler-exchange-httpd_refresh_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
   taler-exchange-httpd_reserve_status.c taler-exchange-httpd_reserve_status.h \
   taler-exchange-httpd_reserve_withdraw.c taler-exchange-httpd_reserve_withdraw.h \

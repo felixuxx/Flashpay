@@ -34,11 +34,13 @@
 #include "taler-exchange-httpd_reserve_status.h"
 #include "taler-exchange-httpd_reserve_withdraw.h"
 #include "taler-exchange-httpd_payback.h"
-#include "taler-exchange-httpd_wire.h"
-#include "taler-exchange-httpd_refresh.h"
+#include "taler-exchange-httpd_refresh_link.h"
+#include "taler-exchange-httpd_refresh_melt.h"
+#include "taler-exchange-httpd_refresh_reveal.h"
 #include "taler-exchange-httpd_track_transfer.h"
 #include "taler-exchange-httpd_track_transaction.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_wire.h"
 #if HAVE_DEVELOPER
 #include "taler-exchange-httpd_test.h"
 #endif
