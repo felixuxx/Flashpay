@@ -1598,7 +1598,7 @@ run (void *cls)
                          value.fraction,
                          value.currency));
 
-  FAILIF (GNUNET_YES !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_by_h_blind (plugin->cls,
                                           session,
                                           &cbc.h_coin_envelope,
@@ -1632,7 +1632,7 @@ run (void *cls)
   deposit.coin.denom_pub = dkp->pub;
   deposit.coin.denom_sig = cbc.sig;
   deadline = GNUNET_TIME_absolute_get ();
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_payback_request (plugin->cls,
                                           session,
                                           &reserve_pub,
@@ -1913,7 +1913,7 @@ run (void *cls)
 
   RND_BLK (&coin_sig);
   RND_BLK (&coin_blind);
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_payback_request (plugin->cls,
                                           session,
                                           &reserve_pub,

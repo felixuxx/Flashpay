@@ -6161,11 +6161,9 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
  * @param amount total amount to be paid back
  * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
  * @param timestamp current time (rounded)
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO on transient error
- *         #GNUNET_SYSERR on DB errors
+ * @return transaction result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_payback_request (void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -6193,6 +6191,7 @@ postgres_insert_payback_request (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   /* check if the coin is already known */
+  // FIXME: #5010!
   ret = get_known_coin (cls,
                         session,
                         &coin->coin_pub,
@@ -6210,31 +6209,29 @@ postgres_insert_payback_request (void *cls,
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return ret;
+      return qs;
     }
   }
 
   /* now store actual payback information */
-  if (GNUNET_OK !=
-      (ret = execute_prepared_non_select (session,
-                                          "payback_insert",
-                                          params)))
+  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+					   "payback_insert",
+					   params);
+  if (0 > qs)
   {
-    GNUNET_break (GNUNET_NO == ret);
-    return ret;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
 
   /* Update reserve balance */
   reserve.pub = *reserve_pub;
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      postgres_reserve_get (cls,
-                            session,
-                            &reserve))
+  qs = postgres_reserve_get (cls,
+			     session,
+			     &reserve);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
-    /* FIXME: #5010 */
-    /* Should have been checked before we got here... */
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
   if (GNUNET_SYSERR ==
       TALER_amount_add (&reserve.balance,
@@ -6242,7 +6239,7 @@ postgres_insert_payback_request (void *cls,
                         amount))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   expiry = GNUNET_TIME_absolute_add (timestamp,
                                      pg->idle_reserve_expiration_time);
@@ -6253,10 +6250,10 @@ postgres_insert_payback_request (void *cls,
                          &reserve);
   if (0 >= qs)
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
-  return GNUNET_OK;
+  return qs;
 }
 
 
@@ -6268,11 +6265,9 @@ postgres_insert_payback_request (void *cls,
  * @param session a session
  * @param h_blind_ev hash of the blinded coin
  * @param[out] reserve_pub set to information about the reserve (on success only)
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO if there are no entries,
- *         #GNUNET_SYSERR on DB errors
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_by_h_blind (void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct GNUNET_HashCode *h_blind_ev,
@@ -6282,47 +6277,16 @@ postgres_get_reserve_by_h_blind (void *cls,
     GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+					  reserve_pub),
+    GNUNET_PQ_result_spec_end
+  };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "reserve_by_h_blind",
-                                    params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  int nrows;
-
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "reserve_by_h_blind() returned 0 matching rows\n");
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                            reserve_pub),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "reserve_by_h_blind",
+						   params,
+						   rs);
 }
 
 

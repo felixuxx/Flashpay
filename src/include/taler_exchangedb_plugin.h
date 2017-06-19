@@ -2169,11 +2169,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param receiver_account_details who should receive the funds
    * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
    * @param now timestamp to store
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO on transient error
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction result status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_payback_request)(void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -2193,11 +2191,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session a session
    * @param h_blind_ev hash of the blinded coin
    * @param[out] reserve_pub set to information about the reserve (on success only)
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if there are no entries,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_reserve_by_h_blind)(void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct GNUNET_HashCode *h_blind_ev,
