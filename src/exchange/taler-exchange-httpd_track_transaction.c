@@ -25,8 +25,212 @@
 #include <pthread.h>
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_parsing.h"
+#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_track_transaction.h"
 #include "taler-exchange-httpd_responses.h"
+
+
+/**
+ * A merchant asked for details about a deposit.  Provide
+ * them. Generates the 200 reply.
+ *
+ * @param connection connection to the client
+ * @param h_contract_terms hash of the contract
+ * @param h_wire hash of wire account details
+ * @param coin_pub public key of the coin
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value minus fee)
+ * @param wtid raw wire transfer identifier
+ * @param exec_time execution time of the wire transfer
+ * @return MHD result code
+ */
+int
+TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
+                                      const struct GNUNET_HashCode *h_contract_terms,
+                                      const struct GNUNET_HashCode *h_wire,
+                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                      const struct TALER_Amount *coin_contribution,
+                                      const struct TALER_WireTransferIdentifierRawP *wtid,
+                                      struct GNUNET_TIME_Absolute exec_time)
+{
+  struct TALER_ConfirmWirePS cw;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+
+  cw.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
+  cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
+  cw.h_wire = *h_wire;
+  cw.h_contract_terms = *h_contract_terms;
+  cw.wtid = *wtid;
+  cw.coin_pub = *coin_pub;
+  cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
+  TALER_amount_hton (&cw.coin_contribution,
+                     coin_contribution);
+  TEH_KS_sign (&cw.purpose,
+               &pub,
+               &sig);
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o, s:o, s:o, s:o}",
+                                       "wtid", GNUNET_JSON_from_data_auto (wtid),
+                                       "execution_time", GNUNET_JSON_from_time_abs (exec_time),
+                                       "coin_contribution", TALER_JSON_from_amount (coin_contribution),
+                                       "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
+                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+}
+
+
+/**
+ * Closure for #handle_wtid_data.
+ */
+struct DepositWtidContext
+{
+
+  /**
+   * Where should we send the reply?
+   */
+  struct MHD_Connection *connection;
+
+  /**
+   * Hash of the proposal data we are looking up.
+   */
+  struct GNUNET_HashCode h_contract_terms;
+
+  /**
+   * Hash of the wire transfer details we are looking up.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Public key we are looking up.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * MHD result code to return.
+   */
+  int res;
+};
+
+
+/**
+ * Function called with the results of the lookup of the
+ * wire transfer identifier information.
+ *
+ * @param cls our context for transmission
+ * @param wtid raw wire transfer identifier, NULL
+ *         if the transaction was not yet done
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value including fee)
+ * @param coin_fee how much did the exchange charge for the deposit fee
+ * @param execution_time when was the transaction done, or
+ *         when we expect it to be done (if @a wtid was NULL);
+ *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
+ *         to the exchange
+ */
+static void
+handle_wtid_data (void *cls,
+		  const struct TALER_WireTransferIdentifierRawP *wtid,
+                  const struct TALER_Amount *coin_contribution,
+                  const struct TALER_Amount *coin_fee,
+		  struct GNUNET_TIME_Absolute execution_time)
+{
+  struct DepositWtidContext *ctx = cls;
+  struct TALER_Amount coin_delta;
+
+  if (NULL == wtid)
+  {
+    ctx->res = TEH_RESPONSE_reply_transfer_pending (ctx->connection,
+                                                    execution_time);
+  }
+  else
+  {
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&coin_delta,
+                               coin_contribution,
+                               coin_fee))
+    {
+      GNUNET_break (0);
+      ctx->res = TEH_RESPONSE_reply_internal_db_error (ctx->connection,
+						       TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT);
+    }
+    else
+    {
+      ctx->res = TEH_RESPONSE_reply_track_transaction (ctx->connection,
+                                                       &ctx->h_contract_terms,
+                                                       &ctx->h_wire,
+                                                       &ctx->coin_pub,
+                                                       &coin_delta,
+                                                       wtid,
+                                                       execution_time);
+    }
+  }
+}
+
+
+/**
+ * Execute a "/track/transaction".  Returns the transfer information
+ * associated with the given deposit.
+ *
+ * @param connection the MHD connection to handle
+ * @param h_contract_terms hash of the proposal data
+ * @param h_wire hash of the wire details
+ * @param coin_pub public key of the coin to link
+ * @param merchant_pub public key of the merchant
+ * @return MHD result code
+ */
+int
+TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
+                                  const struct GNUNET_HashCode *h_contract_terms,
+                                  const struct GNUNET_HashCode *h_wire,
+                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                  const struct TALER_MerchantPublicKeyP *merchant_pub)
+{
+  int ret;
+  struct DepositWtidContext ctx;
+  struct TALER_EXCHANGEDB_Session *session;
+
+  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
+  {
+    GNUNET_break (0);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_DB_SETUP_FAILED);
+  }
+  ctx.connection = connection;
+  ctx.h_contract_terms = *h_contract_terms;
+  ctx.h_wire = *h_wire;
+  ctx.coin_pub = *coin_pub;
+  ctx.res = GNUNET_SYSERR;
+  ret = TEH_plugin->wire_lookup_deposit_wtid (TEH_plugin->cls,
+                                              session,
+					      h_contract_terms,
+					      h_wire,
+					      coin_pub,
+					      merchant_pub,
+					      &handle_wtid_data,
+					      &ctx);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_TRACK_TRANSACTION_DB_FETCH_FAILED);
+  }
+  if (GNUNET_NO == ret)
+  {
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
+    return TEH_RESPONSE_reply_transaction_unknown (connection,
+						   TALER_EC_TRACK_TRANSACTION_NOT_FOUND);
+  }
+  if (GNUNET_SYSERR == ctx.res)
+  {
+    GNUNET_break (0);
+    return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TRACK_TRANSACTION_WTID_RESOLUTION_ERROR,
+                                              "bug resolving deposit wtid");
+  }
+  return ctx.res;
+}
 
 
 /**
