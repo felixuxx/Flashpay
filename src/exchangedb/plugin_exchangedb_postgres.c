@@ -3099,6 +3099,7 @@ postgres_iterate_matching_deposits (void *cls,
  *           if upon succesfullying retrieving the record data info @a
  *           coin_info
  */
+// FIXME: #5010
 static int
 get_known_coin (void *cls,
                 struct TALER_EXCHANGEDB_Session *session,
@@ -3284,88 +3285,55 @@ postgres_insert_refund (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use
  * @param session_hash hash over the melt to use to locate the session
- * @param[out] refresh_session where to store the result, can be NULL
- *             to just check if the session exists
- * @return #GNUNET_YES on success,
- *         #GNUNET_NO if not found,
- *         #GNUNET_SYSERR on DB failure
+ * @param[out] refresh_session where to store the result
+ * @return transaction status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_refresh_session (void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
                               const struct GNUNET_HashCode *session_hash,
                               struct TALER_EXCHANGEDB_RefreshSession *refresh_session)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint16 ("num_newcoins",
+				  &refresh_session->num_newcoins),
+    GNUNET_PQ_result_spec_uint16 ("noreveal_index",
+				  &refresh_session->noreveal_index),
+    GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
+					  &refresh_session->melt.coin.coin_pub),
+    GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
+					  &refresh_session->melt.coin_sig),
+    TALER_PQ_result_spec_amount ("amount_with_fee",
+				 &refresh_session->melt.amount_with_fee),
+    TALER_PQ_result_spec_amount ("fee_refresh",
+				 &refresh_session->melt.melt_fee),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "get_refresh_session",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  GNUNET_assert (1 == PQntuples (result));
-  if (NULL == refresh_session)
-  {
-    /* We're done if the caller is only interested in whether the
-     * session exists or not */
-    PQclear (result);
-    return GNUNET_YES;
-  }
   memset (refresh_session,
           0,
           sizeof (struct TALER_EXCHANGEDB_RefreshSession));
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint16 ("num_newcoins",
-                                    &refresh_session->num_newcoins),
-      GNUNET_PQ_result_spec_uint16 ("noreveal_index",
-                                    &refresh_session->noreveal_index),
-      GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
-                                            &refresh_session->melt.coin.coin_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
-                                            &refresh_session->melt.coin_sig),
-      TALER_PQ_result_spec_amount ("amount_with_fee",
-                                   &refresh_session->melt.amount_with_fee),
-      TALER_PQ_result_spec_amount ("fee_refresh",
-                                   &refresh_session->melt.melt_fee),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-  }
-  PQclear (result);
-  if (GNUNET_OK !=
-      get_known_coin (cls,
-                      session,
-                      &refresh_session->melt.coin.coin_pub,
-                      &refresh_session->melt.coin))
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "get_refresh_session",
+						 params,
+						 rs);
+  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
+       (GNUNET_OK !=
+	get_known_coin (cls,
+			session,
+			&refresh_session->melt.coin.coin_pub,
+			&refresh_session->melt.coin)) )
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   refresh_session->melt.session_hash = *session_hash;
-  return GNUNET_YES;
+  return qs;
 }
 
 
@@ -3501,69 +3469,49 @@ free_dpk_result (struct TALER_DenominationPublicKey *denom_pubs,
  * @param session_hash hash to identify refresh session
  * @param num_newcoins size of the array of the @a denom_pubs array
  * @param denom_pubs where to store the deomination keys
- * @return #GNUNET_OK on success
- *         #GNUNET_SYSERR on internal error
+ * @return transaction status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_refresh_order (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct GNUNET_HashCode *session_hash,
                             uint16_t num_newcoins,
                             struct TALER_DenominationPublicKey *denom_pubs)
-{
-  unsigned int i;
-
-  for (i=0;i<(unsigned int) num_newcoins;i++)
+{ 
+  for (unsigned i=0;i<(unsigned int) num_newcoins;i++)
   {
     uint16_t newcoin_off = (uint16_t) i;
-    PGresult *result;
-
+    enum GNUNET_DB_QueryStatus qs;
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (session_hash),
+      GNUNET_PQ_query_param_uint16 (&newcoin_off),
+      GNUNET_PQ_query_param_end
+    };
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+					    &denom_pubs[i].rsa_public_key),
+      GNUNET_PQ_result_spec_end
+    };
+    
+    qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_refresh_order",
+						   params,
+						   rs);
+    switch (qs)
     {
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (session_hash),
-        GNUNET_PQ_query_param_uint16 (&newcoin_off),
-        GNUNET_PQ_query_param_end
-      };
-
-      result = GNUNET_PQ_exec_prepared (session->conn,
-					"get_refresh_order",
-					params);
-    }
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
-    {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
+    case GNUNET_DB_STATUS_HARD_ERROR:
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       free_dpk_result (denom_pubs, i);
-      return GNUNET_SYSERR;
-    }
-    if (0 == PQntuples (result))
-    {
-      PQclear (result);
-      /* FIXME: may want to distinguish between different error cases! */
-      free_dpk_result (denom_pubs, i);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_assert (1 == PQntuples (result));
-    {
-      struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-					      &denom_pubs[i].rsa_public_key),
-        GNUNET_PQ_result_spec_end
-      };
-      if (GNUNET_OK !=
-          GNUNET_PQ_extract_result (result,
-                                    rs,
-                                    0))
-      {
-        PQclear (result);
-        GNUNET_break (0);
-        free_dpk_result (denom_pubs, i);
-        return GNUNET_SYSERR;
-      }
-      PQclear (result);
+      return qs;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      break;
+    default:
+      GNUNET_break (0);
+      break;
     }
   }
-  return GNUNET_OK;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -3639,11 +3587,9 @@ postgres_free_refresh_commit_coins (void *cls,
  * @param session_hash hash to identify refresh session
  * @param num_newcoins size of the @a commit_coins array
  * @param[out] commit_coins array of coin commitments to return
- * @return #GNUNET_OK on success
- *         #GNUNET_NO if not found
- *         #GNUNET_SYSERR on error
+ * @return transaction status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_refresh_commit_coins (void *cls,
                                    struct TALER_EXCHANGEDB_Session *session,
                                    const struct GNUNET_HashCode *session_hash,
@@ -3660,53 +3606,29 @@ postgres_get_refresh_commit_coins (void *cls,
     };
     void *c_buf;
     size_t c_buf_size;
-    PGresult *result;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_variable_size ("coin_ev",
+					   &c_buf,
+					   &c_buf_size),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_DB_QueryStatus qs;
 
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                     "get_refresh_commit_coin",
-                                     params);
-    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_refresh_commit_coin",
+						   params,
+						   rs);
+    if (0 >= qs)
     {
-      BREAK_DB_ERR (result, session->conn);
-      PQclear (result);
       postgres_free_refresh_commit_coins (cls,
                                           i,
                                           commit_coins);
-      return GNUNET_SYSERR;
+      return qs;
     }
-    if (0 == PQntuples (result))
-    {
-      PQclear (result);
-      postgres_free_refresh_commit_coins (cls,
-                                          i,
-                                          commit_coins);
-      return GNUNET_NO;
-    }
-    {
-      struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_variable_size ("coin_ev",
-					     &c_buf,
-					     &c_buf_size),
-        GNUNET_PQ_result_spec_end
-      };
-
-      if (GNUNET_YES !=
-          GNUNET_PQ_extract_result (result,
-                                    rs,
-                                    0))
-      {
-        PQclear (result);
-        postgres_free_refresh_commit_coins (cls,
-                                            i,
-                                            commit_coins);
-        return GNUNET_SYSERR;
-      }
-    }
-    PQclear (result);
     commit_coins[i].coin_ev = c_buf;
     commit_coins[i].coin_ev_size = c_buf_size;
   }
-  return GNUNET_YES;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -3748,11 +3670,9 @@ postgres_insert_refresh_transfer_public_key (void *cls,
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
  * @param[out] tp information to return
- * @return #GNUNET_SYSERR on internal error,
- *         #GNUNET_NO if commitment was not found
- *         #GNUNET_OK on success
+ * @return transaction status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_refresh_transfer_public_key (void *cls,
                                           struct TALER_EXCHANGEDB_Session *session,
                                           const struct GNUNET_HashCode *session_hash,
@@ -3762,40 +3682,16 @@ postgres_get_refresh_transfer_public_key (void *cls,
     GNUNET_PQ_query_param_auto_from_type (session_hash),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
-
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "get_refresh_transfer_public_key",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
-                                            tp),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_YES !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
+					  tp),
+    GNUNET_PQ_result_spec_end
+  };
+  
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_refresh_transfer_public_key",
+						   params,
+						   rs);
 }
 
 
@@ -3809,17 +3705,15 @@ postgres_get_refresh_transfer_public_key (void *cls,
  * @param session_hash hash to identify refresh session
  * @param newcoin_index coin index
  * @param ev_sig coin signature
- * @return #GNUNET_OK on success, #GNUNET_NO if we have no such result
- *         #GNUNET_SYSERR on error
+ * @return transaction result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_refresh_out (void *cls,
                           struct TALER_EXCHANGEDB_Session *session,
                           const struct GNUNET_HashCode *session_hash,
                           uint16_t newcoin_index,
                           struct TALER_DenominationSignature *ev_sig)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
     GNUNET_PQ_query_param_uint16 (&newcoin_index),
@@ -3831,31 +3725,10 @@ postgres_get_refresh_out (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "get_refresh_out",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (1 != PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  if (GNUNET_OK !=
-      GNUNET_PQ_extract_result (result,
-                                rs,
-                                0))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "get_refresh_out",
+						   params,
+						   rs);
 }
 
 
@@ -3870,11 +3743,9 @@ postgres_get_refresh_out (void *cls,
  * @param session_hash hash to identify refresh session
  * @param newcoin_index coin index
  * @param ev_sig coin signature
- * @return #GNUNET_OK on success
- *         #GNUNET_NO on transient error
- *         #GNUNET_SYSERR on error
+ * @return transaction result status
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_refresh_out (void *cls,
                              struct TALER_EXCHANGEDB_Session *session,
                              const struct GNUNET_HashCode *session_hash,
@@ -3888,9 +3759,9 @@ postgres_insert_refresh_out (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "insert_refresh_out",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_refresh_out",
+					     params);
 }
 
 

@@ -357,7 +357,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
                                                commit_coins));
   ret_commit_coins = GNUNET_new_array (MELT_NEW_COINS,
                                        struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_refresh_commit_coins (plugin->cls,
                                             session,
                                             session_hash,
@@ -410,7 +410,7 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
   unsigned int i;
 
   ret = GNUNET_SYSERR;
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_refresh_transfer_public_key (plugin->cls,
                                                    session,
                                                    session_hash,
@@ -422,7 +422,7 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                                                       session,
                                                       session_hash,
                                                       &rctp[MELT_NOREVEAL_INDEX]));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_refresh_transfer_public_key (plugin->cls,
                                                    session,
                                                    session_hash,
@@ -572,21 +572,24 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     meltp->melt_fee = fee_refresh;
   }
 
-  FAILIF (GNUNET_OK != plugin->create_refresh_session (plugin->cls,
-                                                       session,
-                                                       &session_hash,
-                                                       &refresh_session));
-  FAILIF (GNUNET_OK != plugin->get_refresh_session (plugin->cls,
-                                                    session,
-                                                    &session_hash,
-                                                    &ret_refresh_session));
+  FAILIF (GNUNET_OK !=
+	  plugin->create_refresh_session (plugin->cls,
+					  session,
+					  &session_hash,
+					  &refresh_session));
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+	  plugin->get_refresh_session (plugin->cls,
+				       session,
+				       &session_hash,
+				       &ret_refresh_session));
 
   auditor_row_cnt = 0;
-  FAILIF (GNUNET_OK != plugin->select_refreshs_above_serial_id (plugin->cls,
-                                                                session,
-						 	        0,
-						                &audit_refresh_session_cb,
-							        NULL));
+  FAILIF (GNUNET_OK !=
+	  plugin->select_refreshs_above_serial_id (plugin->cls,
+						   session,
+						   0,
+						   &audit_refresh_session_cb,
+						   NULL));
   FAILIF (1 != auditor_row_cnt);
   FAILIF (ret_refresh_session.num_newcoins != refresh_session.num_newcoins);
   FAILIF (ret_refresh_session.noreveal_index != refresh_session.noreveal_index);
@@ -633,7 +636,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
 					  &fee_refund);
     new_denom_pubs[cnt] = new_dkp[cnt]->pub;
   }
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refresh_order (plugin->cls,
                                         session,
                                         &session_hash,
@@ -641,7 +644,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                         new_denom_pubs));
   ret_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
                                      struct TALER_DenominationPublicKey);
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_refresh_order (plugin->cls,
                                      session,
                                      &session_hash,
@@ -672,19 +675,19 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
       = GNUNET_CRYPTO_rsa_sign_fdh (new_dkp[cnt]->priv.rsa_private_key,
                                     &hc);
     GNUNET_assert (NULL != ev_sigs[cnt].rsa_signature);
-    FAILIF (GNUNET_NO !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->get_refresh_out (plugin->cls,
                                      session,
                                      &session_hash,
                                      cnt,
                                      &test_sig));
-    FAILIF (GNUNET_OK !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->insert_refresh_out (plugin->cls,
                                         session,
                                         &session_hash,
                                         cnt,
                                         &ev_sigs[cnt]));
-    FAILIF (GNUNET_OK !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_refresh_out (plugin->cls,
                                      session,
                                      &session_hash,

@@ -1441,11 +1441,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database handle to use
    * @param session_hash hash over the melt to use for the lookup
    * @param[out] refresh_session where to store the result
-   * @return #GNUNET_YES on success,
-   *         #GNUNET_NO if not found,
-   *         #GNUNET_SYSERR on DB failure
+   * @return transaction status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_refresh_session) (void *cls,
                           struct TALER_EXCHANGEDB_Session *session,
                           const struct GNUNET_HashCode *session_hash,
@@ -1500,10 +1498,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param num_newcoins size of the @a denom_pubs array
    * @param[out] denom_pubs where to write @a num_newcoins denomination keys
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on internal error
+   * @return transaction status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_refresh_order) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct GNUNET_HashCode *session_hash,
@@ -1541,11 +1538,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param num_coins size of the @a commit_coins array
    * @param[out] commit_coins array of coin commitments to return
-   * @return #GNUNET_OK on success
-   *         #GNUNET_NO if not found
-   *         #GNUNET_SYSERR on error
+   * @return transaction status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_refresh_commit_coins) (void *cls,
                                struct TALER_EXCHANGEDB_Session *session,
                                const struct GNUNET_HashCode *session_hash,
@@ -1591,11 +1586,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param[out] tp information to return
-   * @return #GNUNET_SYSERR on internal error,
-   *         #GNUNET_NO if commitment was not found
-   *         #GNUNET_OK on success
+   * @return transaction status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_refresh_transfer_public_key) (void *cls,
                                       struct TALER_EXCHANGEDB_Session *session,
                                       const struct GNUNET_HashCode *session_hash,
@@ -1612,10 +1605,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param newcoin_index coin index
    * @param[out] ev_sig coin signature
-   * @return #GNUNET_OK on success, #GNUNET_NO if we have no such entry,
-   *         #GNUNET_SYSERR on error
+   * @return transaction result status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_refresh_out) (void *cls,
                       struct TALER_EXCHANGEDB_Session *session,
                       const struct GNUNET_HashCode *session_hash,
@@ -1634,10 +1626,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param newcoin_index coin index
    * @param ev_sig coin signature
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on error
+   * @return transaction result status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_refresh_out) (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
                          const struct GNUNET_HashCode *session_hash,

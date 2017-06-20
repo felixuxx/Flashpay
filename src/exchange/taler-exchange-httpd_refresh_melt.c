@@ -500,7 +500,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
                             const struct TALER_TransferPublicKeyP *transfer_pubs)
 {
-  unsigned int i;
   struct TEH_KS_StateHandle *key_state;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dk;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
@@ -519,7 +518,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                  TALER_amount_get_zero (TEH_exchange_currency_string,
                                         &total_cost));
   key_state = TEH_KS_acquire ();
-  for (i=0;i<num_new_denoms;i++)
+  for (unsigned int i=0;i<num_new_denoms;i++)
   {
     dk = TEH_KS_denomination_key_lookup (key_state,
                                          &denom_pubs[i],
@@ -754,14 +753,11 @@ free_commit_coins (struct TALER_EXCHANGEDB_RefreshCommitCoin **commit_coin,
                    unsigned int kappa,
                    unsigned int num_new_coins)
 {
-  unsigned int i;
-  unsigned int j;
-
-  for (i=0;i<kappa;i++)
+  for (unsigned int i=0;i<kappa;i++)
   {
     if (NULL == commit_coin[i])
       break;
-    for (j=0;j<num_new_coins;j++)
+    for (unsigned int j=0;j<num_new_coins;j++)
       GNUNET_free_non_null (commit_coin[i][j].coin_ev);
     GNUNET_free (commit_coin[i]);
   }
@@ -790,8 +786,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                           const json_t *coin_evs)
 {
   int res;
-  unsigned int i;
-  unsigned int j;
   struct TALER_DenominationPublicKey *denom_pubs;
   unsigned int num_newcoins;
   struct TEH_DB_MeltDetails coin_melt_details;
@@ -804,7 +798,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
      (except for the signatures on the coins). */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
 
-  for (i = 0; i < TALER_CNC_KAPPA; i++)
+  for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
   {
     struct GNUNET_JSON_Specification trans_spec[] = {
       GNUNET_JSON_spec_fixed_auto (NULL, &transfer_pub[i]),
@@ -830,7 +824,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   num_newcoins = json_array_size (new_denoms);
   denom_pubs = GNUNET_new_array (num_newcoins,
                                  struct TALER_DenominationPublicKey);
-  for (i=0;i<num_newcoins;i++)
+  for (unsigned int i=0;i<num_newcoins;i++)
   {
     char *buf;
     size_t buf_size;
@@ -885,11 +879,11 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   memset (commit_coin,
           0,
           sizeof (commit_coin));
-  for (i = 0; i < TALER_CNC_KAPPA; i++)
+  for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
   {
     commit_coin[i] = GNUNET_new_array (num_newcoins,
                                        struct TALER_EXCHANGEDB_RefreshCommitCoin);
-    for (j = 0; j < num_newcoins; j++)
+    for (unsigned int j = 0; j < num_newcoins; j++)
     {
       struct TALER_EXCHANGEDB_RefreshCommitCoin *rcc = &commit_coin[i][j];
       struct GNUNET_JSON_Specification coin_spec[] = {
@@ -950,7 +944,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
  cleanup_denoms:
   if (NULL != denom_pubs)
   {
-    for (j=0;j<num_newcoins;j++)
+    for (unsigned int j=0;j<num_newcoins;j++)
       if (NULL != denom_pubs[j].rsa_public_key)
         GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
     GNUNET_free (denom_pubs);
