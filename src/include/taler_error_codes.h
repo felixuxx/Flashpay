@@ -441,28 +441,12 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_MELT_DB_STORE_SESSION_ERROR = 1304,
 
   /**
-   * The exchange failed to store refresh order data in the
-   * database.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
-   */
-  TALER_EC_REFRESH_MELT_DB_STORE_ORDER_ERROR = 1305,
-
-  /**
    * The exchange failed to store commit data in the
    * database.
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_ERROR.
    */
   TALER_EC_REFRESH_MELT_DB_STORE_COMMIT_ERROR = 1306,
-
-  /**
-   * The exchange failed to store transfer keys in the
-   * database.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
-   */
-  TALER_EC_REFRESH_MELT_DB_STORE_TRANSFER_ERROR = 1307,
 
   /**
    * The exchange is unaware of the denomination key that was
