@@ -530,6 +530,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_DenominationSignature ev_sigs[MELT_NEW_COINS];
   unsigned int cnt;
   int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   ret = GNUNET_SYSERR;
   memset (ev_sigs, 0, sizeof (ev_sigs));
@@ -695,9 +696,11 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     GNUNET_CRYPTO_rsa_signature_free (test_sig.rsa_signature);
   }
 
-  ldl = plugin->get_link_data_list (plugin->cls,
-                                    session,
-                                    &session_hash);
+  qs = plugin->get_link_data_list (plugin->cls,
+				   session,
+				   &session_hash,
+				   &ldl);
+  FAILIF (0 >= qs);
   FAILIF (NULL == ldl);
   for (ldlp = ldl; NULL != ldlp; ldlp = ldlp->next)
   {
@@ -742,7 +745,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     int ok;
 
     ok = GNUNET_NO;
-    FAILIF (GNUNET_OK !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_transfer (plugin->cls,
                                   session,
                                   &meltp->coin.coin_pub,

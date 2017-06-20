@@ -1652,12 +1652,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param session_hash session to get linkage data for
-   * @return all known link data for the session
+   * @param[out] ldldp set to all known link data for the session
+   * @return status of the transaction
    */
-  struct TALER_EXCHANGEDB_LinkDataList *
+  enum GNUNET_DB_QueryStatus
   (*get_link_data_list) (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
-                         const struct GNUNET_HashCode *session_hash);
+                         const struct GNUNET_HashCode *session_hash,
+			 struct TALER_EXCHANGEDB_LinkDataList **ldlp);
 
 
   /**
@@ -1682,11 +1684,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param coin_pub public key of the coin
    * @param tdc function to call for each session the coin was melted into
    * @param tdc_cls closure for @a tdc
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO on failure (not found)
-   *         #GNUNET_SYSERR on internal failure (database issue)
+   * @return statement execution status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_transfer) (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,

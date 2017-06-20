@@ -3895,45 +3895,38 @@ postgres_insert_refresh_out (void *cls,
 
 
 /**
- * Obtain the link data of a coin, that is the encrypted link
- * information, the denomination keys and the signatures.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection
- * @param session_hash refresh session to get linkage data for
- * @return all known link data for the session
+ * Closure for #add_ldl().
  */
-static struct TALER_EXCHANGEDB_LinkDataList *
-postgres_get_link_data_list (void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
-                             const struct GNUNET_HashCode *session_hash)
+struct LinkDataContext
 {
+  /** 
+   * List we are building.
+   */ 
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
-  int nrows;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (session_hash),
-    GNUNET_PQ_query_param_end
-  };
-  PGresult *result;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_link",
-                                   params);
-  ldl = NULL;
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return NULL;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    PQclear (result);
-    return NULL;
-  }
+  /**
+   * Status, set to #GNUNET_SYSERR on errors,
+   */
+  int status;
+};
 
-  for (int i = nrows-1; i >= 0; i--)
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct LinkDataContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+add_ldl (void *cls,
+	 PGresult *result,
+	 unsigned int num_results)
+{
+  struct LinkDataContext *ldc = cls;
+  
+  for (int i = num_results - 1; i >= 0; i--)
   {
     struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
     struct GNUNET_CRYPTO_RsaSignature *sig;
@@ -3954,71 +3947,98 @@ postgres_get_link_data_list (void *cls,
                                     rs,
                                     i))
       {
-	PQclear (result);
 	GNUNET_break (0);
 	common_free_link_data_list (cls,
-				    ldl);
+				    ldc->ldl);
+	ldc->ldl = NULL;
 	GNUNET_free (pos);
-	return NULL;
+	ldc->status = GNUNET_SYSERR;
+	return;
       }
     }
-    pos->next = ldl;
+    pos->next = ldc->ldl;
     pos->denom_pub.rsa_public_key = denom_pub;
     pos->ev_sig.rsa_signature = sig;
-    ldl = pos;
+    ldc->ldl = pos;
   }
-  PQclear (result);
-  return ldl;
 }
 
 
 /**
- * Obtain shared secret and transfer public key from the public key of
- * the coin.  This information and the link information returned by
- * #postgres_get_link_data_list() enable the owner of an old coin to
- * determine the private keys of the new coins after the melt.
+ * Obtain the link data of a coin, that is the encrypted link
+ * information, the denomination keys and the signatures.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param coin_pub public key of the coin
- * @param tdc function to call for each session the coin was melted into
- * @param tdc_cls closure for @a tdc
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO on failure (not found)
- *         #GNUNET_SYSERR on internal failure (database issue)
+ * @param session_hash refresh session to get linkage data for
+ * @param[out] ldlp set to all known link data for the session
+ * @return transaction status code
  */
-static int
-postgres_get_transfer (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       TALER_EXCHANGEDB_TransferDataCallback tdc,
-                       void *tdc_cls)
+static enum GNUNET_DB_QueryStatus
+postgres_get_link_data_list (void *cls,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             const struct GNUNET_HashCode *session_hash,
+			     struct TALER_EXCHANGEDB_LinkDataList **ldlp)
 {
+  struct LinkDataContext ldc;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
-  int nrows;
+  enum GNUNET_DB_QueryStatus qs;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_transfer",
-                                   params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    /* no matches found */
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  for (int i=0;i<nrows;i++)
+  ldc.status = GNUNET_OK;
+  ldc.ldl = NULL;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "get_link",
+					     params,
+					     &add_ldl,
+					     &ldc);
+  *ldlp = ldc.ldl;
+  if (GNUNET_OK != ldc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Closure for #add_link().
+ */
+struct AddLinkContext
+{
+  /**
+   * Function to call on each result.
+   */
+  TALER_EXCHANGEDB_TransferDataCallback tdc;
+
+  /**
+   * Closure for @e tdc.
+   */
+  void *tdc_cls;
+
+  /**
+   * Status code, set to #GNUNET_SYSERR on errors.
+   */
+  int status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct AddLinkContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+add_link (void *cls,
+	  PGresult *result,
+	  unsigned int num_results)
+{
+  struct AddLinkContext *alc = cls;
+
+  for (unsigned int i=0;i<num_results;i++)
   {
     struct GNUNET_HashCode session_hash;
     struct TALER_TransferPublicKeyP transfer_pub;
@@ -4033,16 +4053,55 @@ postgres_get_transfer (void *cls,
                                   rs,
                                   i))
     {
-      PQclear (result);
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+      alc->status = GNUNET_SYSERR;
+      return;
     }
-    tdc (tdc_cls,
-         &session_hash,
-         &transfer_pub);
+    alc->tdc (alc->tdc_cls,
+	      &session_hash,
+	      &transfer_pub);
   }
-  PQclear (result);
-  return GNUNET_OK;
+}
+
+
+/**
+ * Obtain shared secret and transfer public key from the public key of
+ * the coin.  This information and the link information returned by
+ * #postgres_get_link_data_list() enable the owner of an old coin to
+ * determine the private keys of the new coins after the melt.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session database connection
+ * @param coin_pub public key of the coin
+ * @param tdc function to call for each session the coin was melted into
+ * @param tdc_cls closure for @a tdc
+ * @return statement execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_transfer (void *cls,
+                       struct TALER_EXCHANGEDB_Session *session,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       TALER_EXCHANGEDB_TransferDataCallback tdc,
+                       void *tdc_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct AddLinkContext al_ctx;
+  enum GNUNET_DB_QueryStatus qs;
+
+  al_ctx.tdc = tdc;
+  al_ctx.tdc_cls = tdc_cls;
+  al_ctx.status = GNUNET_OK;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "get_transfer",
+					     params,
+					     &add_link,
+					     &al_ctx);
+  if (GNUNET_OK != al_ctx.status)
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
 }
 
 

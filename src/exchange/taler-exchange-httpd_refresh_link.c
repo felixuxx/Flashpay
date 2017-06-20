@@ -56,6 +56,11 @@ struct HTD_Context
 {
 
   /**
+   * Public key of the coin that we are tracing.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
    * Session link data we collect.
    */
   struct TEH_RESPONSE_LinkSessionInfo *sessions;
@@ -100,18 +105,18 @@ reply_refresh_link_success (struct MHD_Connection *connection,
 			    unsigned int num_sessions,
 			    const struct TEH_RESPONSE_LinkSessionInfo *sessions)
 {
-  json_t *root;
   json_t *mlist;
   int res;
-  unsigned int i;
 
   mlist = json_array ();
-  for (i=0;i<num_sessions;i++)
+  for (unsigned int i=0;i<num_sessions;i++)
   {
-    const struct TALER_EXCHANGEDB_LinkDataList *pos;
     json_t *list = json_array ();
+    json_t *root;
 
-    for (pos = sessions[i].ldl; NULL != pos; pos = pos->next)
+    for (const struct TALER_EXCHANGEDB_LinkDataList *pos = sessions[i].ldl;
+	 NULL != pos;
+	 pos = pos->next)
     {
       json_t *obj;
 
@@ -163,24 +168,24 @@ handle_transfer_data (void *cls,
   struct HTD_Context *ctx = cls;
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
   struct TEH_RESPONSE_LinkSessionInfo *lsi;
+  enum GNUNET_DB_QueryStatus qs;
 
-  if (GNUNET_OK != ctx->status)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ctx->status)
     return;
-  ldl = TEH_plugin->get_link_data_list (TEH_plugin->cls,
-                                        ctx->session,
-                                        session_hash);
-  if (NULL == ldl)
+  ldl = NULL;
+  qs = TEH_plugin->get_link_data_list (TEH_plugin->cls,
+				       ctx->session,
+				       session_hash,
+				       &ldl);
+  if (qs <= 0) 
   {
-    ctx->status = GNUNET_NO;
-    if (MHD_NO ==
-        TEH_RESPONSE_reply_json_pack (ctx->connection,
-                                      MHD_HTTP_NOT_FOUND,
-                                      "{s:s}",
-                                      "error",
-                                      "link data not found (link)"))
-      ctx->status = GNUNET_SYSERR;
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      ctx->status = GNUNET_DB_STATUS_HARD_ERROR;
+    else
+      ctx->status = qs;
     return;
   }
+  GNUNET_assert (NULL != ldl);
   GNUNET_array_grow (ctx->sessions,
                      ctx->num_sessions,
                      ctx->num_sessions + 1);
@@ -191,61 +196,80 @@ handle_transfer_data (void *cls,
 
 
 /**
+ * Free session data kept in @a ctx
+ *
+ * @param ctx context to clean up
+ */
+static void
+purge_context (struct HTD_Context *ctx)
+{
+  for (unsigned int i=0;i<ctx->num_sessions;i++)
+    TEH_plugin->free_link_data_list (TEH_plugin->cls,
+				     ctx->sessions[i].ldl);
+  GNUNET_free_non_null (ctx->sessions);
+  ctx->sessions = NULL;
+  ctx->num_sessions = 0;
+}
+
+
+/**
  * Execute a "/refresh/link".  Returns the linkage information that
  * will allow the owner of a coin to follow the refresh trail to
  * the refreshed coin.
  *
- * @param connection the MHD connection to handle
- * @param coin_pub public key of the coin to link
- * @return MHD result code
+ * If it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
+ *
+ * @param cls closure
+ * @param connection MHD request which triggered the transaction
+ * @param session database session to use
+ * @param[out] mhd_ret set to MHD response status for @a connection,
+ *             if transaction failed (!)
+ * @return transaction status
  */
-static int
-execute_refresh_link (struct MHD_Connection *connection,
-		      const struct TALER_CoinSpendPublicKeyP *coin_pub)
+static enum GNUNET_DB_QueryStatus
+refresh_link_transaction (void *cls,
+			  struct MHD_Connection *connection,
+			  struct TALER_EXCHANGEDB_Session *session,
+			  int *mhd_ret)
 {
-  struct HTD_Context ctx;
-  int res;
-  unsigned int i;
+  struct HTD_Context *ctx = cls;
+  enum GNUNET_DB_QueryStatus qs;
 
-  if (NULL == (ctx.session = TEH_plugin->get_session (TEH_plugin->cls)))
+  ctx->session = session;
+  ctx->status = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  qs = TEH_plugin->get_transfer (TEH_plugin->cls,
+				 session,
+				 &ctx->coin_pub,
+				 &handle_transfer_data,
+				 ctx);
+  ctx->session = NULL;
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
+    *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
+					       TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
+					       "coin_pub");
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  ctx.connection = connection;
-  ctx.num_sessions = 0;
-  ctx.sessions = NULL;
-  ctx.status = GNUNET_OK;
-  res = TEH_plugin->get_transfer (TEH_plugin->cls,
-                                  ctx.session,
-                                  coin_pub,
-                                  &handle_transfer_data,
-                                  &ctx);
-  if (GNUNET_SYSERR == ctx.status)
+  if (0 < qs)
   {
-    res = MHD_NO;
-    goto cleanup;
+    qs = ctx->status;
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      *mhd_ret = TEH_RESPONSE_reply_json_pack (ctx->connection,
+					       MHD_HTTP_NOT_FOUND,
+					       "{s:s}",
+					       "error",
+					       "link data not found (link)");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    return qs;
   }
-  if (GNUNET_NO == ctx.status)
-  {
-    res = MHD_YES;
-    goto cleanup;
-  }
-  GNUNET_assert (GNUNET_OK == ctx.status);
-  if (0 == ctx.num_sessions)
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-					   TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
-                                           "coin_pub");
-  res = reply_refresh_link_success (connection,
-				    ctx.num_sessions,
-				    ctx.sessions);
- cleanup:
-  for (i=0;i<ctx.num_sessions;i++)
-    TEH_plugin->free_link_data_list (TEH_plugin->cls,
-                                     ctx.sessions[i].ldl);
-  GNUNET_free_non_null (ctx.sessions);
-  return res;
+  purge_context (ctx);
+  return qs;
 }
 
 
@@ -267,19 +291,35 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
                                   const char *upload_data,
                                   size_t *upload_data_size)
 {
-  struct TALER_CoinSpendPublicKeyP coin_pub;
+  int mhd_ret;
   int res;
+  struct HTD_Context ctx;
 
+  memset (&ctx,
+	  0,
+	  sizeof (ctx));
   res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "coin_pub",
-                                        &coin_pub,
+                                        &ctx.coin_pub,
                                         sizeof (struct TALER_CoinSpendPublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if (GNUNET_OK != res)
     return MHD_YES;
-  return execute_refresh_link (connection,
-			       &coin_pub);
+  if (GNUNET_OK !=
+      TEH_DB_run_transaction (connection,
+			      &mhd_ret,
+			      &refresh_link_transaction,
+			      &ctx))
+  {
+    purge_context (&ctx);
+    return mhd_ret;
+  }
+  mhd_ret = reply_refresh_link_success (connection,
+					ctx.num_sessions,
+					ctx.sessions);
+  purge_context (&ctx);
+  return mhd_ret;
 }
 
 
