@@ -349,7 +349,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
                                 ccoin->coin_ev,
                                 ccoin->coin_ev_size);
   }
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refresh_commit_coins (plugin->cls,
                                                session,
                                                session_hash,
@@ -417,7 +417,7 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                                                    &tp));
   for (i=0;i<TALER_CNC_KAPPA;i++)
     RND_BLK (&rctp[i]);
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refresh_transfer_public_key (plugin->cls,
                                                       session,
                                                       session_hash,
@@ -572,7 +572,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     meltp->melt_fee = fee_refresh;
   }
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
 	  plugin->create_refresh_session (plugin->cls,
 					  session,
 					  &session_hash,

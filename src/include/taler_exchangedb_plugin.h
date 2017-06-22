@@ -1457,11 +1457,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database handle to use
    * @param session_hash hash over the melt to use to locate the session
    * @param refresh_session session data to store
-   * @return #GNUNET_YES on success,
-   *         #GNUNET_NO on transient error
-   *         #GNUNET_SYSERR on DB failure
+   * @return query status for the transaction
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*create_refresh_session) (void *cls,
                              struct TALER_EXCHANGEDB_Session *session,
                              const struct GNUNET_HashCode *session_hash,
@@ -1477,11 +1475,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
    * @param denom_pubs array denominations of the coins to create
-   * @return #GNUNET_OK on success
-   *         #GNUNET_NO on transient error
-   *         #GNUNET_SYSERR on internal error
+   * @return query status for the transaction
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_refresh_order) (void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct GNUNET_HashCode *session_hash,
@@ -1517,11 +1513,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param num_newcoins coin index size of the @a commit_coins array
    * @param commit_coin array of coin commitments to store
-   * @return #GNUNET_OK on success
-   *         #GNUNET_NO on transient error
-   *         #GNUNET_SYSERR on error
+   * @return query status for the transaction
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_refresh_commit_coins) (void *cls,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   const struct GNUNET_HashCode *session_hash,
@@ -1568,11 +1562,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param tp public key to store
-   * @return #GNUNET_SYSERR on internal error
-   *         #GNUNET_NO on transient errors
-   *         #GNUNET_OK on success
+   * @return query status for the transaction
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_refresh_transfer_public_key) (void *cls,
                                          struct TALER_EXCHANGEDB_Session *session,
                                          const struct GNUNET_HashCode *session_hash,

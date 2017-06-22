@@ -1553,10 +1553,11 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           refresh_session = PERF_TALER_EXCHANGEDB_refresh_session_init ();
           GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                             hash);
-          state->plugin->create_refresh_session (state->session,
-                                                 state->session,
-                                                 hash,
-                                                 refresh_session);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+			 state->plugin->create_refresh_session (state->session,
+								state->session,
+								hash,
+								refresh_session));
           state->cmd[state->i].exposed.data.session_hash = hash;
           PERF_TALER_EXCHANGEDB_refresh_session_free (refresh_session);
           GNUNET_free (refresh_session);
@@ -1589,11 +1590,12 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           denom_index = state->cmd[state->i].details.insert_refresh_order.index_denom;
           session_hash = state->cmd[hash_index].exposed.data.session_hash;
           denom = state->cmd[denom_index].exposed.data.dki;
-          state->plugin->insert_refresh_order (state->plugin->cls,
-                                               state->session,
-                                               session_hash,
-                                               1,
-                                               &denom->denom_pub);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+			 state->plugin->insert_refresh_order (state->plugin->cls,
+							      state->session,
+							      session_hash,
+							      1,
+							      &denom->denom_pub));
 
         }
         break;
@@ -1616,18 +1618,18 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
 
       case PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_COMMIT_COIN:
         {
-          int ret;
+          enum GNUNET_DB_QueryStatus qs;
           unsigned int hash_index;
           struct TALER_EXCHANGEDB_RefreshCommitCoin *refresh_commit;
 
           hash_index = state->cmd[state->i].details.insert_refresh_commit_coin.index_hash;
           refresh_commit = PERF_TALER_EXCHANGEDB_refresh_commit_coin_init ();
-          ret = state->plugin->insert_refresh_commit_coins (state->plugin->cls,
-                                                            state->session,
-                                                            state->cmd[hash_index].exposed.data.session_hash,
-                                                            1,
-                                                            refresh_commit);
-          GNUNET_assert (GNUNET_OK == ret);
+          qs = state->plugin->insert_refresh_commit_coins (state->plugin->cls,
+							   state->session,
+							   state->cmd[hash_index].exposed.data.session_hash,
+							   1,
+							   refresh_commit);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
         }
         break;
 
