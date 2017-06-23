@@ -1150,10 +1150,10 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub the public key used for signing coins of this denomination
-   * @param[out] issue set to issue information with value, fees and other info about the coin, can be NULL
-   * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure
+   * @param[out] issue set to issue information with value, fees and other info about the coin
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_denomination_info) (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_DenominationPublicKey *denom_pub,
@@ -2188,11 +2188,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session a session
    * @param denom_pub_hash hash of the revoked denomination key
    * @param master_sig signature affirming the revocation
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if the entry already exists (transaction must be rolled back!)
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_denomination_revocation)(void *cls,
                                     struct TALER_EXCHANGEDB_Session *session,
                                     const struct GNUNET_HashCode *denom_pub_hash,

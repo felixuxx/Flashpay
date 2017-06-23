@@ -269,7 +269,7 @@ create_denom_key_pair (unsigned int size,
     destroy_denom_key_pair (dkp);
     return NULL;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_denomination_info (plugin->cls,
                                      session,
                                      &dki.denom_pub,
@@ -1124,7 +1124,7 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
     destroy_denom_key_pair (dkp);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK ==
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->get_denomination_info (plugin->cls,
                                      session,
                                      &dkp->pub,
@@ -1905,7 +1905,7 @@ run (void *cls)
     struct TALER_MasterSignatureP msig;
     uint64_t rev_rowid;
 
-    FAILIF (GNUNET_OK !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_denomination_revocation (plugin->cls,
                                                  session,
                                                  &dkp_pub_hash,

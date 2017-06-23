@@ -1465,16 +1465,16 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
       case PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION:
         {
           unsigned int denom_index;
-          int ret;
+          enum GNUNET_DB_QueryStatus qs;
           struct PERF_TALER_EXCHANGEDB_Data *data;
 
           denom_index = state->cmd[state->i].details.get_denomination.index_denom;
           data = &state->cmd[denom_index].exposed;
-          ret = state->plugin->get_denomination_info (state->plugin->cls,
-                                                      state->session,
-                                                      &data->data.dki->denom_pub,
-                                                      &data->data.dki->issue);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          qs = state->plugin->get_denomination_info (state->plugin->cls,
+						     state->session,
+						     &data->data.dki->denom_pub,
+						     &data->data.dki->issue);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
         }
         break;
 

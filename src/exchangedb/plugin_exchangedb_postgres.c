@@ -1826,89 +1826,57 @@ postgres_insert_denomination_info (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param denom_pub the public key used for signing coins of this denomination
- * @param[out] issue set to issue information with value, fees and other info about the coin, can be NULL
- * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure
+ * @param[out] issue set to issue information with value, fees and other info about the coin
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_info (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
                                 const struct TALER_DenominationPublicKey *denom_pub,
                                 struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
-  PGresult *result;
+  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("master_pub",
+					  &issue->properties.master),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+					  &issue->signature),
+    GNUNET_PQ_result_spec_absolute_time_nbo ("valid_from",
+					     &issue->properties.start),
+    GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
+					     &issue->properties.expire_withdraw),
+    GNUNET_PQ_result_spec_absolute_time_nbo ("expire_deposit",
+					     &issue->properties.expire_deposit),
+    GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
+					     &issue->properties.expire_legal),
+    TALER_PQ_result_spec_amount_nbo ("coin",
+				     &issue->properties.value),
+    TALER_PQ_result_spec_amount_nbo ("fee_withdraw",
+				     &issue->properties.fee_withdraw),
+    TALER_PQ_result_spec_amount_nbo ("fee_deposit",
+				     &issue->properties.fee_deposit),
+    TALER_PQ_result_spec_amount_nbo ("fee_refresh",
+				     &issue->properties.fee_refresh),
+    TALER_PQ_result_spec_amount_nbo ("fee_refund",
+				     &issue->properties.fee_refund),
+    GNUNET_PQ_result_spec_end
+  };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "denomination_get",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    QUERY_ERR (result,
-               session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  if (1 != PQntuples (result))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (NULL == issue)
-  {
-    PQclear (result);
-    return GNUNET_OK;
-  }
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("master_pub",
-                                            &issue->properties.master),
-      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                            &issue->signature),
-      GNUNET_PQ_result_spec_absolute_time_nbo ("valid_from",
-                                               &issue->properties.start),
-      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
-                                               &issue->properties.expire_withdraw),
-      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_deposit",
-                                               &issue->properties.expire_deposit),
-      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
-                                               &issue->properties.expire_legal),
-      TALER_PQ_result_spec_amount_nbo ("coin",
-                                       &issue->properties.value),
-      TALER_PQ_result_spec_amount_nbo ("fee_withdraw",
-                                       &issue->properties.fee_withdraw),
-      TALER_PQ_result_spec_amount_nbo ("fee_deposit",
-                                       &issue->properties.fee_deposit),
-      TALER_PQ_result_spec_amount_nbo ("fee_refresh",
-                                       &issue->properties.fee_refresh),
-      TALER_PQ_result_spec_amount_nbo ("fee_refund",
-                                       &issue->properties.fee_refund),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-	GNUNET_PQ_extract_result (result,
-				  rs,
-				  0))
-    {
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-  }
-  PQclear (result);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "denomination_get",
+						 params,
+						 rs);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    return qs;
   issue->properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
   issue->properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &issue->properties.denom_hash);
-  return GNUNET_OK;
+  return qs;
 }
 
 
@@ -6173,54 +6141,23 @@ postgres_get_reserve_by_h_blind (void *cls,
  * @param session a session
  * @param denom_pub_hash hash of the revoked denomination key
  * @param master_sig signature affirming the revocation
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO if the entry already exists (transaction must be rolled back!)
- *         #GNUNET_SYSERR on DB errors
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_revocation (void *cls,
                                          struct TALER_EXCHANGEDB_Session *session,
                                          const struct GNUNET_HashCode *denom_pub_hash,
                                          const struct TALER_MasterSignatureP *master_sig)
 {
-  PGresult *result;
-  int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "denomination_revocation_insert",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    const char *efield;
-
-    efield = PQresultErrorField (result,
-				 PG_DIAG_SQLSTATE);
-    /* FIXME: what about serialization errors? */
-    if ( (PGRES_FATAL_ERROR == PQresultStatus(result)) &&
-	 (NULL != strstr (PQ_DIAG_SQLSTATE_UNIQUE_VIOLATION,
-			  efield)) )
-    {
-      /* This means we had the same reserve/justification/details
-	 before */
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Uniqueness violation, revocation details already known\n");
-      PQclear (result);
-      return GNUNET_NO;
-    }
-    ret = GNUNET_SYSERR;
-    BREAK_DB_ERR (result, session->conn);
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "denomination_revocation_insert",
+					     params);
 }
 
 

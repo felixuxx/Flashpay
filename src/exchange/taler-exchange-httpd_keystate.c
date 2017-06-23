@@ -308,6 +308,81 @@ handle_signal (int signal_number)
 
 
 /**
+ * Closure for #add_revocations_transaction().
+ */
+struct AddRevocationContext
+{
+  /**
+   * Denomination key that is revoked.
+   */
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+
+  /**
+   * Signature affirming the revocation.
+   */
+  const struct TALER_MasterSignatureP *revocation_master_sig;
+};
+
+
+/**
+ * Execute transaction to add revocations.  
+ *
+ * @param cls closure with the `struct AddRevocationContext *`
+ * @param connection NULL
+ * @param session database session to use
+ * @param[out] mhd_ret NULL
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+add_revocations_transaction (void *cls,
+			     struct MHD_Connection *connection,
+			     struct TALER_EXCHANGEDB_Session *session,
+			     int *mhd_ret)
+{
+  struct AddRevocationContext *arc = cls;
+  
+  return TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
+						     session,
+						     &arc->dki->issue.properties.denom_hash,
+						     arc->revocation_master_sig);
+}
+
+
+/**
+ * Execute transaction to add a denomination to the DB.  
+ *
+ * @param cls closure with the `const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *`
+ * @param connection NULL
+ * @param session database session to use
+ * @param[out] mhd_ret NULL
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+add_denomination_transaction (void *cls,
+			      struct MHD_Connection *connection,
+			      struct TALER_EXCHANGEDB_Session *session,
+			      int *mhd_ret)
+{
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue_exists;
+
+  qs = TEH_plugin->get_denomination_info (TEH_plugin->cls,
+					  session,
+					  &dki->denom_pub,
+					  &issue_exists);
+  if (0 > qs)
+    return qs;
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    return qs;
+  return TEH_plugin->insert_denomination_info (TEH_plugin->cls,
+					       session,
+					       &dki->denom_pub,
+					       &dki->issue);
+}
+
+
+/**
  * Iterator for (re)loading/initializing denomination keys.
  *
  * @param cls closure
@@ -330,10 +405,7 @@ reload_keys_denom_iter (void *cls,
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
   struct GNUNET_HashCode denom_key_hash;
-  struct TALER_EXCHANGEDB_Session *session;
-  unsigned int thresh;
   int res;
-  enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Loading denomination key `%s'\n",
@@ -357,14 +429,12 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
 
-  session = TEH_plugin->get_session (TEH_plugin->cls);
-  if (NULL == session)
-    return GNUNET_SYSERR;
-
   if (NULL != revocation_master_sig)
   {
+    struct AddRevocationContext arc;
+    
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Adding denomination key `%s' to revokation set\n",
+                "Adding denomination key `%s' to revocation set\n",
                 alias);
     res = store_in_map (ctx->revoked_map,
                         dki);
@@ -373,47 +443,20 @@ reload_keys_denom_iter (void *cls,
     /* Try to insert DKI into DB until we succeed; note that if the DB
        failure is persistent, we need to die, as we cannot continue
        without the DKI being in the DB). */
-    thresh = 0;
-    qs = GNUNET_DB_STATUS_SOFT_ERROR;
-    while (0 > qs)
+    arc.dki = dki;
+    arc.revocation_master_sig = revocation_master_sig;
+    if (GNUNET_OK !=
+	TEH_DB_run_transaction (NULL,
+				NULL,
+				&add_revocations_transaction,
+				&arc))
     {
-      thresh++;
-      if ( (thresh > 16) ||
-           (GNUNET_DB_STATUS_HARD_ERROR == qs) )
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
-        handle_signal (SIGTERM);
-        return GNUNET_SYSERR;
-      }
-      res = TEH_plugin->start (TEH_plugin->cls,
-                               session);
-      if (GNUNET_OK != res)
-      {
-        /* Transaction start failed!? Very bad error, log and retry */
-        GNUNET_break (0);
-        continue;
-      }
-      res = TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
-                                                        session,
-                                                        &dki->issue.properties.denom_hash,
-                                                        revocation_master_sig);
-      if (GNUNET_SYSERR == res)
-      {
-        GNUNET_break (0);
-        TEH_plugin->rollback (TEH_plugin->cls,
-                              session);
-        continue;
-      }
-      if (GNUNET_NO == res)
-      {
-        TEH_plugin->rollback (TEH_plugin->cls,
-                              session);
-        break; /* already in is also OK! */
-      }
-      qs = TEH_plugin->commit (TEH_plugin->cls,
-                               session);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		  "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+      handle_signal (SIGTERM);
+      return GNUNET_SYSERR;      
     }
+	
     GNUNET_assert (0 ==
                    json_array_append_new (ctx->payback_array,
                                           GNUNET_JSON_from_data_auto (&dki->issue.properties.denom_hash)));
@@ -437,73 +480,16 @@ reload_keys_denom_iter (void *cls,
                                    sizeof (struct GNUNET_HashCode));
 
 
-
-  session = TEH_plugin->get_session (TEH_plugin->cls);
-  if (NULL == session)
-    return GNUNET_SYSERR;
-  /* Try to insert DKI into DB until we succeed; note that if the DB
-     failure is persistent, we die, as we cannot continue without the
-     DKI being in the DB). */
-  qs = GNUNET_DB_STATUS_SOFT_ERROR;
-  thresh = 0;
-  while (0 > qs)
+  if (GNUNET_OK !=
+      TEH_DB_run_transaction (NULL,
+			      NULL,
+			      &add_denomination_transaction,
+			      (void *) dki))
   {
-    thresh++;
-    if ( (thresh > 16) ||
-         (GNUNET_DB_STATUS_HARD_ERROR == qs) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
-      handle_signal (SIGTERM);
-      return GNUNET_SYSERR;
-    }
-
-    res = TEH_plugin->start (TEH_plugin->cls,
-                             session);
-    if (GNUNET_OK != res)
-    {
-      /* Transaction start failed!? Very bad error, log and retry */
-      GNUNET_break (0);
-      continue;
-    }
-    res = TEH_plugin->get_denomination_info (TEH_plugin->cls,
-                                             session,
-                                             &dki->denom_pub,
-                                             NULL);
-    if (GNUNET_SYSERR == res)
-    {
-      /* Fetch failed!? Very bad error, log and retry */
-      GNUNET_break (0);
-      TEH_plugin->rollback (TEH_plugin->cls,
-                            session);
-      continue;
-    }
-    if (GNUNET_OK == res)
-    {
-      /* Record exists, we're good, just exit */
-      TEH_plugin->rollback (TEH_plugin->cls,
-                            session);
-      break;
-    }
-    qs = TEH_plugin->insert_denomination_info (TEH_plugin->cls,
-					       session,
-					       &dki->denom_pub,
-					       &dki->issue);
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-    {
-      /* Insert failed!? Very bad error, log and retry */
-      GNUNET_break (0);
-      TEH_plugin->rollback (TEH_plugin->cls,
-                            session);
-      continue;
-    }
-    qs = TEH_plugin->commit (TEH_plugin->cls,
-                             session);
-    /* If commit succeeded, we're done, otherwise we retry; this
-       time without logging, as theroetically commits can fail
-       in a transactional DB due to concurrent activities that
-       cannot be reconciled. This should be rare for DKIs, but
-       as it is possible we just retry until we succeed. */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+    handle_signal (SIGTERM);
+    return GNUNET_SYSERR;      
   }
 
   res = store_in_map (ctx->denomkey_map,
