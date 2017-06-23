@@ -119,7 +119,7 @@ test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
                                          session,
                                          &dead_prepare_cb,
                                          NULL));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->wire_prepare_data_insert (plugin->cls,
                                             session,
                                             "testcase",
@@ -1666,7 +1666,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fee_closing));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
 	  plugin->insert_reserve_closed (plugin->cls,
 					 session,
 					 &reserve_pub,

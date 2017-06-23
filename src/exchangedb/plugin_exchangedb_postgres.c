@@ -1454,7 +1454,9 @@ postgres_prepare (PGconn *db_conn)
                             " FROM reserves"
                             " WHERE expiration_date<=$1"
                             "   AND (current_balance_val != 0 "
-                            "        OR current_balance_frac != 0);",
+                            "        OR current_balance_frac != 0)"
+			    " ORDER BY expiration_date ASC"
+			    " LIMIT 1;",
                             1),
     /* Used in #postgres_get_coin_transactions() to obtain payback transactions
        for a coin */
@@ -2884,8 +2886,8 @@ postgres_get_ready_deposit (void *cls,
  * @param deposit_cb function to call for each deposit
  * @param deposit_cb_cls closure for @a deposit_cb
  * @param limit maximum number of matching deposits to return
- * @return number of rows processed, 0 if none exist,
- *         #GNUNET_SYSERR on error
+ * @return transaction status code, if positive:
+ *         number of rows processed, 0 if none exist
  */
 static int
 postgres_iterate_matching_deposits (void *cls,
@@ -4633,57 +4635,50 @@ postgres_insert_wire_fee (void *cls,
 
 
 /**
- * Obtain information about expired reserves and their
- * remaining balances.
- *
- * @param cls closure of the plugin
- * @param session database connection
- * @param now timestamp based on which we decide expiration
- * @param rec function to call on expired reserves
- * @param rec_cls closure for @a rec
- * @return #GNUNET_SYSERR on database error
- *         #GNUNET_NO if there are no expired non-empty reserves
- *         #GNUNET_OK on success
+ * Closure for #reserve_expired_cb().
  */
-static int
-postgres_get_expired_reserves (void *cls,
-			       struct TALER_EXCHANGEDB_Session *session,
-			       struct GNUNET_TIME_Absolute now,
-			       TALER_EXCHANGEDB_ReserveExpiredCallback rec,
-			       void *rec_cls)
+struct ExpiredReserveContext
 {
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_end
-  };
-  PGresult *result;
-  int nrows;
+  /**
+   * Function to call for each expired reserve.
+   */
+  TALER_EXCHANGEDB_ReserveExpiredCallback rec;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "get_expired_reserves",
-                                    params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    /* no matches found */
-    PQclear (result);
-    return GNUNET_NO;
-  }
+  /**
+   * Closure to give to @e rec.
+   */
+  void *rec_cls;
 
-  for (int i=0;i<nrows;i++)
+  /**
+   * Set to #GNUNET_SYSERR on error.
+   */
+  int status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+reserve_expired_cb (void *cls,
+		    PGresult *result,
+		    unsigned int num_results)
+{
+  struct ExpiredReserveContext *erc = cls;
+  int ret;
+
+  ret = GNUNET_OK;
+  for (unsigned int i=0;i<num_results;i++)
   {
     struct GNUNET_TIME_Absolute exp_date;
     json_t *account_details;
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount remaining_balance;
-    int ret;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_absolute_time ("expiration_date",
 					   &exp_date),
@@ -4701,21 +4696,59 @@ postgres_get_expired_reserves (void *cls,
 				  rs,
 				  i))
     {
-      PQclear (result);
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+      ret = GNUNET_SYSERR;
+      break;
     }
-    ret = rec (rec_cls,
-	       &reserve_pub,
-	       &remaining_balance,
-	       account_details,
-	       exp_date);
+    ret = erc->rec (erc->rec_cls,
+		    &reserve_pub,
+		    &remaining_balance,
+		    account_details,
+		    exp_date);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
       break;
   }
-  PQclear (result);
-  return GNUNET_OK;
+  erc->status = ret;
+}
+
+
+/**
+ * Obtain information about expired reserves and their
+ * remaining balances.
+ *
+ * @param cls closure of the plugin
+ * @param session database connection
+ * @param now timestamp based on which we decide expiration
+ * @param rec function to call on expired reserves
+ * @param rec_cls closure for @a rec
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_expired_reserves (void *cls,
+			       struct TALER_EXCHANGEDB_Session *session,
+			       struct GNUNET_TIME_Absolute now,
+			       TALER_EXCHANGEDB_ReserveExpiredCallback rec,
+			       void *rec_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+  struct ExpiredReserveContext ectx;
+  enum GNUNET_DB_QueryStatus qs;
+  
+  ectx.rec = rec;
+  ectx.rec_cls = rec_cls;
+  ectx.status = GNUNET_OK;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "get_expired_reserves",
+					     params,
+					     &reserve_expired_cb,
+					     &ectx);
+  if (GNUNET_OK != ectx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
 }
 
 
@@ -4730,11 +4763,9 @@ postgres_get_expired_reserves (void *cls,
  * @param wtid wire transfer details
  * @param amount_with_fee amount we charged to the reserve
  * @param closing_fee how high is the closing fee
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO if the record exists or on transient errors
- *         #GNUNET_SYSERR on failure
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_reserve_closed (void *cls,
 				struct TALER_EXCHANGEDB_Session *session,
 				const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -4757,11 +4788,11 @@ postgres_insert_reserve_closed (void *cls,
   int ret;
   enum GNUNET_DB_QueryStatus qs;
 
-  ret = execute_prepared_non_select (session,
-                                     "reserves_close_insert",
-                                     params);
-  if (GNUNET_OK != ret)
-    return ret;
+  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+					   "reserves_close_insert",
+					   params);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    return qs;
 
   /* update reserve balance */
   reserve.pub = *reserve_pub;
@@ -4770,10 +4801,11 @@ postgres_insert_reserve_closed (void *cls,
                                   session,
                                   &reserve)))
   {
-    /* FIXME: #5010 */
     /* Existence should have been checked before we got here... */
-    GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
-    return (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ? GNUNET_NO : GNUNET_SYSERR;
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return qs;
   }
   ret = TALER_amount_subtract (&reserve.balance,
 			       &reserve.balance,
@@ -4786,18 +4818,12 @@ postgres_insert_reserve_closed (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Closing of reserve `%s' refused due to balance missmatch. Retrying.\n",
                 TALER_B2S (reserve_pub));
-    return GNUNET_NO;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   GNUNET_break (GNUNET_NO == ret);
-  qs = reserves_update (cls,
-			session,
-			&reserve);
-  if (0 >= qs)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
+  return reserves_update (cls,
+			  session,
+			  &reserve);
 }
 
 
@@ -4809,9 +4835,9 @@ postgres_insert_reserve_closed (void *cls,
  * @param type type of the wire transfer (i.e. "sepa")
  * @param buf buffer with wire transfer preparation data
  * @param buf_size number of bytes in @a buf
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ * @return query status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_insert (void *cls,
                                    struct TALER_EXCHANGEDB_Session *session,
                                    const char *type,
@@ -4824,9 +4850,9 @@ postgres_wire_prepare_data_insert (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "wire_prepare_data_insert",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "wire_prepare_data_insert",
+					     params);
 }
 
 

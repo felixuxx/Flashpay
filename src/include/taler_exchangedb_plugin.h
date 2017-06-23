@@ -1009,9 +1009,9 @@ typedef int
  * @param left amount left in the reserve
  * @param account_details information about the reserve's bank account
  * @param expiration_date when did the reserve expire
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ * @return transaction status code to pass on
  */
-typedef int
+typedef enum GNUNET_DB_QueryStatus
 (*TALER_EXCHANGEDB_ReserveExpiredCallback)(void *cls,
 					   const struct TALER_ReservePublicKeyP *reserve_pub,
 					   const struct TALER_Amount *left,
@@ -1821,11 +1821,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param now timestamp based on which we decide expiration
    * @param rec function to call on expired reserves
    * @param rec_cls closure for @a rec
-   * @return #GNUNET_SYSERR on database error
-   *         #GNUNET_NO if there are no expired non-empty reserves
-   *         #GNUNET_OK on success
+   * @return transaction status
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_expired_reserves)(void *cls,
 			  struct TALER_EXCHANGEDB_Session *session,
 			  struct GNUNET_TIME_Absolute now,
@@ -1844,10 +1842,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wtid identifier for the wire transfer
    * @param amount_with_fee amount we charged to the reserve
    * @param closing_fee how high is the closing fee
-   * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
-   *         #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_reserve_closed)(void *cls,
 			   struct TALER_EXCHANGEDB_Session *session,
 			   const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -1866,9 +1863,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param type type of the wire transfer (i.e. "sepa")
    * @param buf buffer with wire transfer preparation data
    * @param buf_size number of bytes in @a buf
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   * @return query status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_insert)(void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
                               const char *type,
