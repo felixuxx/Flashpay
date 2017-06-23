@@ -1107,8 +1107,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
-   * @return #GNUNET_OK on success, #GNUNET_NO if the transaction
-   *         can be retried, #GNUNET_SYSERR on hard failures
+   * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*commit) (void *cls,
@@ -1210,10 +1209,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param db the database connection handle
    * @param[out] wire_reference set to unique reference identifying the wire transfer (binary blob)
    * @param[out] wire_reference_size set to number of bytes in @a wire_reference
-   * @return #GNUNET_OK upon success; #GNUNET_NO if we never got any incoming transfers
-   *         #GNUNET_SYSERR upon failures (DB error)
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus 
   (*get_latest_reserve_in_reference)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *db,
                                      void **wire_reference,

@@ -2092,56 +2092,28 @@ postgres_reserves_in_insert (void *cls,
  * @param session the database session handle
  * @param[out] wire_reference set to unique reference identifying the wire transfer (binary blob)
  * @param[out] wire_reference_size set to number of bytes in @a wire_reference
- * @return #GNUNET_OK upon success; #GNUNET_NO if we never got any incoming transfers
- *         #GNUNET_SYSERR upon failures (DB error)
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_latest_reserve_in_reference (void *cls,
                                           struct TALER_EXCHANGEDB_Session *session,
                                           void **wire_reference,
                                           size_t *wire_reference_size)
 {
-  PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
-  int ret;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_variable_size ("wire_reference",
+					 wire_reference,
+					 wire_reference_size),
+    GNUNET_PQ_result_spec_end
+  };
 
-  ret = GNUNET_SYSERR;
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "reserves_in_get_latest_wire_reference",
-                                    params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    QUERY_ERR (result, session->conn);
-    goto cleanup;
-  }
-  if (0 == PQntuples (result))
-  {
-    ret = GNUNET_NO;
-    goto cleanup;
-  }
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_variable_size ("wire_reference",
-                                           wire_reference,
-                                           wire_reference_size),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  0))
-    {
-      GNUNET_break (0);
-      goto cleanup;
-    }
-  }
-  ret = GNUNET_OK;
- cleanup:
-  PQclear (result);
-  return ret;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "reserves_in_get_latest_wire_reference",
+						   params,
+						   rs);
 }
 
 

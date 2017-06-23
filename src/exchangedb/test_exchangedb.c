@@ -1518,7 +1518,7 @@ run (void *cls)
   result = 4;
   sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
   GNUNET_assert (NULL != sndr);
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    &rr,
@@ -1532,7 +1532,7 @@ run (void *cls)
                                       sndr,
                                       "TEST",
                                       4));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    &rr,
@@ -1555,12 +1555,12 @@ run (void *cls)
 				      sndr,
                                       "TEST2",
                                       5));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    &rr,
                                                    &rr_size));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    &rr,

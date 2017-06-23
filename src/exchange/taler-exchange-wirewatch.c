@@ -223,7 +223,7 @@ history_cb (void *cls,
 	    const struct TALER_WIRE_TransferDetails *details)
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
-  int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
@@ -231,9 +231,9 @@ history_cb (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "End of list. Committing progress!\n");
-    ret = db_plugin->commit (db_plugin->cls,
-			     session);
-    if (GNUNET_OK == ret)
+    qs = db_plugin->commit (db_plugin->cls,
+			    session);
+    if (0 <= qs)
     {
       GNUNET_free_non_null (start_off);
       start_off = last_row_off;
@@ -258,17 +258,24 @@ history_cb (void *cls,
               "Adding wire transfer over %s with subject `%s'\n",
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->reserve_pub));
-  ret = db_plugin->reserves_in_insert (db_plugin->cls,
-				       session,
-				       &details->reserve_pub,
-				       &details->amount,
-				       details->execution_date,
-				       details->account_details,
-                                       row_off,
-                                       row_off_size);
-  if (GNUNET_OK != ret)
+  qs = db_plugin->reserves_in_insert (db_plugin->cls,
+				      session,
+				      &details->reserve_pub,
+				      &details->amount,
+				      details->execution_date,
+				      details->account_details,
+				      row_off,
+				      row_off_size);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
+    db_plugin->rollback (db_plugin->cls,
+			 session);
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+  {
     db_plugin->rollback (db_plugin->cls,
                          session);
     /* try again */
@@ -298,7 +305,7 @@ static void
 find_transfers (void *cls)
 {
   struct TALER_EXCHANGEDB_Session *session;
-  int ret;
+  enum GNUNET_DB_QueryStatus qs;
 
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -322,16 +329,25 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  ret = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
-                                                    session,
-                                                    &start_off,
-                                                    &start_off_size);
-  if (GNUNET_SYSERR == ret)
+  qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
+						   session,
+						   &start_off,
+						   &start_off_size);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain starting point for montoring from database!\n");
     global_ret = GNUNET_SYSERR;
     GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+  {
+    /* try again */
+    db_plugin->rollback (db_plugin->cls,
+                         session);
+    task = GNUNET_SCHEDULER_add_now (&find_transfers,
+				     NULL);
     return;
   }
   delay = GNUNET_YES;
