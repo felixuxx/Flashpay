@@ -1190,11 +1190,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param sender_account_details information about the sender's bank account
    * @param wire_reference unique reference identifying the wire transfer (binary blob)
    * @param wire_reference_size number of bytes in @a wire_reference
-   * @return #GNUNET_OK upon success; #GNUNET_NO if the given
-   *         @a details are already known for this @a reserve_pub,
-   *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*reserves_in_insert) (void *cls,
                          struct TALER_EXCHANGEDB_Session *db,
                          const struct TALER_ReservePublicKeyP *reserve_pub,

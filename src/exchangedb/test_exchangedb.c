@@ -162,7 +162,6 @@ check_reserve (struct TALER_EXCHANGEDB_Session *session,
   struct TALER_EXCHANGEDB_Reserve reserve;
 
   reserve.pub = *pub;
-
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserve_get (plugin->cls,
                                session,
@@ -1485,6 +1484,10 @@ run (void *cls)
     goto drop;
   }
 
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session));
+
   /* test DB is empty */
   FAILIF (GNUNET_NO !=
           plugin->select_payback_above_serial_id (plugin->cls,
@@ -1520,7 +1523,7 @@ run (void *cls)
                                                    session,
                                                    &rr,
                                                    &rr_size));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
@@ -1543,7 +1546,7 @@ run (void *cls)
                          value.value,
                          value.fraction,
                          value.currency));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
@@ -1810,6 +1813,9 @@ run (void *cls)
                                      session,
                                      &deposit_cb,
                                      &deposit));
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+          plugin->commit (plugin->cls,
+                          session));
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          session));

@@ -28,66 +28,96 @@
 
 
 /**
+ * Closure for #admin_add_incoming_transaction()
+ */
+struct AddIncomingContext
+{
+  /**
+   * public key of the reserve
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * amount to add to the reserve
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * When did we receive the wire transfer
+   */
+  struct GNUNET_TIME_Absolute execution_time;
+
+  /**
+   * which account send the funds
+   */
+  json_t *sender_account_details;
+
+  /**
+   * Information that uniquely identifies the transfer
+   */
+  json_t *transfer_details;
+
+  /**
+   * Set to the transaction status.
+   */
+  enum GNUNET_DB_QueryStatus qs;
+};
+
+
+/** 
  * Add an incoming transaction to the database.  Checks if the
  * transaction is fresh (not a duplicate) and if so adds it to
  * the database.
  *
- * @param connection the MHD connection to handle
- * @param reserve_pub public key of the reserve
- * @param amount amount to add to the reserve
- * @param execution_time when did we receive the wire transfer
- * @param sender_account_details which account send the funds
- * @param transfer_details information that uniquely identifies the transfer
- * @return MHD result code
+ * If it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
+ *
+ * @param cls closure with the `struct AddIncomingContext *`
+ * @param connection MHD request which triggered the transaction
+ * @param session database session to use
+ * @param[out] mhd_ret set to MHD response status for @a connection,
+ *             if transaction failed (!)
+ * @return transaction status
  */
-static int
-execute_admin_add_incoming (struct MHD_Connection *connection,
-			    const struct TALER_ReservePublicKeyP *reserve_pub,
-			    const struct TALER_Amount *amount,
-			    struct GNUNET_TIME_Absolute execution_time,
-			    const json_t *sender_account_details,
-			    const json_t *transfer_details)
+static enum GNUNET_DB_QueryStatus
+admin_add_incoming_transaction (void *cls,
+				struct MHD_Connection *connection,
+				struct TALER_EXCHANGEDB_Session *session,
+				int *mhd_ret)
 {
-  struct TALER_EXCHANGEDB_Session *session;
-  int ret;
+  struct AddIncomingContext *aic = cls;
   void *json_str;
 
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
-  {
-    GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DB_SETUP_FAILED);
-  }
-  json_str = json_dumps (transfer_details,
+  json_str = json_dumps (aic->transfer_details,
                          JSON_INDENT(2));
   if (NULL == json_str)
   {
     GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_PARSER_OUT_OF_MEMORY);
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_PARSER_OUT_OF_MEMORY);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  ret = TEH_plugin->reserves_in_insert (TEH_plugin->cls,
-                                        session,
-                                        reserve_pub,
-                                        amount,
-                                        execution_time,
-                                        sender_account_details,
-                                        json_str,
-                                        strlen (json_str));
+  aic->qs = TEH_plugin->reserves_in_insert (TEH_plugin->cls,
+					    session,
+					    &aic->reserve_pub,
+					    &aic->amount,
+					    aic->execution_time,
+					    aic->sender_account_details,
+					    json_str,
+					    strlen (json_str));
   free (json_str);
-  if (GNUNET_SYSERR == ret)
+  
+  if (GNUNET_DB_STATUS_HARD_ERROR == aic->qs)
   {
     GNUNET_break (0);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_ADMIN_ADD_INCOMING_DB_STORE);
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_ADMIN_ADD_INCOMING_DB_STORE);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:s}",
-                                       "status",
-                                       (GNUNET_OK == ret)
-                                       ? "NEW"
-                                       : "DUP");
+  return aic->qs;
 }
 
 
@@ -110,23 +140,20 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
                                       const char *upload_data,
                                       size_t *upload_data_size)
 {
-  struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_Amount amount;
-  struct GNUNET_TIME_Absolute at;
+  struct AddIncomingContext aic;
   enum TALER_ErrorCode ec;
   char *emsg;
-  json_t *sender_account_details;
-  json_t *transfer_details;
   json_t *root;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
-    TALER_JSON_spec_amount ("amount", &amount),
-    GNUNET_JSON_spec_absolute_time ("execution_date", &at),
-    GNUNET_JSON_spec_json ("sender_account_details", &sender_account_details),
-    GNUNET_JSON_spec_json ("transfer_details", &transfer_details),
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub", &aic.reserve_pub),
+    TALER_JSON_spec_amount ("amount", &aic.amount),
+    GNUNET_JSON_spec_absolute_time ("execution_date", &aic.execution_time),
+    GNUNET_JSON_spec_json ("sender_account_details", &aic.sender_account_details),
+    GNUNET_JSON_spec_json ("transfer_details", &aic.transfer_details),
     GNUNET_JSON_spec_end ()
   };
   int res;
+  int mhd_ret;
 
   res = TEH_PARSE_post_json (connection,
                              connection_cls,
@@ -135,7 +162,8 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
                              &root);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == root) )
+  if ( (GNUNET_NO == res) ||
+       (NULL == root) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
                              root,
@@ -148,37 +176,43 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (TALER_EC_NONE !=
-      (ec = TEH_json_validate_wireformat (sender_account_details,
+      (ec = TEH_json_validate_wireformat (aic.sender_account_details,
                                           GNUNET_NO,
                                           &emsg)))
   {
     GNUNET_JSON_parse_free (spec);
-    res = TEH_RESPONSE_reply_external_error (connection,
-                                             ec,
-                                             emsg);
+    mhd_ret = TEH_RESPONSE_reply_external_error (connection,
+						 ec,
+						 emsg);
     GNUNET_free (emsg);
-    return res;
+    return mhd_ret;
   }
-  if (0 != strcasecmp (amount.currency,
+  if (0 != strcasecmp (aic.amount.currency,
                        TEH_exchange_currency_string))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Exchange uses currency `%s', but /admin/add/incoming tried to use currency `%s'\n",
                 TEH_exchange_currency_string,
-                amount.currency);
+                aic.amount.currency);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
 					   TALER_EC_ADMIN_ADD_INCOMING_CURRENCY_UNSUPPORTED,
                                            "amount:currency");
   }
-  res = execute_admin_add_incoming (connection,
-				    &reserve_pub,
-				    &amount,
-				    at,
-				    sender_account_details,
-				    transfer_details);
+  res = TEH_DB_run_transaction (connection,
+				&mhd_ret,
+				&admin_add_incoming_transaction,
+				&aic);
   GNUNET_JSON_parse_free (spec);
-  return res;
+  if (GNUNET_OK != res)
+    return mhd_ret;
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s}",
+                                       "status",
+                                       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == aic.qs)
+                                       ? "NEW"
+                                       : "DUP");
 }
 
 /* end of taler-exchange-httpd_admin.c */

@@ -1952,11 +1952,9 @@ reserves_update (void *cls,
  * @param sender_account_details account information for the sender
  * @param wire_reference unique reference identifying the wire transfer (binary blob)
  * @param wire_reference_size number of bytes in @a wire_reference
- * @return #GNUNET_OK upon success; #GNUNET_NO if the given
- *         @a details are already known for this @a reserve_pub,
- *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_reserves_in_insert (void *cls,
                              struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -1967,18 +1965,11 @@ postgres_reserves_in_insert (void *cls,
                              size_t wire_reference_size)
 {
   struct PostgresClosure *pg = cls;
-  PGresult *result;
   enum GNUNET_DB_QueryStatus reserve_exists;
+  enum GNUNET_DB_QueryStatus qs;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
 
-  if (GNUNET_OK !=
-      postgres_start (cls,
-                      session))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
   reserve.pub = *reserve_pub;
   reserve_exists = postgres_reserve_get (cls,
                                          session,
@@ -1986,7 +1977,7 @@ postgres_reserves_in_insert (void *cls,
   if (0 > reserve_exists)
   {
     GNUNET_break (0);
-    goto rollback;
+    return reserve_exists;
   }
   if ( (0 == reserve.balance.value) &&
        (0 == reserve.balance.fraction) )
@@ -2030,22 +2021,22 @@ postgres_reserves_in_insert (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "reserve_create",
-                                      params);
-    if (PGRES_COMMAND_OK != PQresultStatus(result))
+    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "reserve_create",
+					     params);
+    if (0 > qs)
+      return qs;
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
-      QUERY_ERR (result, session->conn);
-      PQclear (result);
-      goto rollback;
+      /* Maybe DB did not detect serializiability error already,
+	 but clearly there must be one. Still odd. */
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_SOFT_ERROR;
     }
-    PQclear (result);
   }
   /* Create new incoming transaction, SQL "primary key" logic
      is used to guard against duplicates.  If a duplicate is
-     detected, we rollback (which really shouldn't undo
-     anything) and return #GNUNET_NO to indicate that this failure
-     is kind-of harmless (already executed). */
+     detected, we just "succeed" with no changes. */
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
@@ -2057,34 +2048,12 @@ postgres_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_end
     };
 
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                      "reserves_in_add_transaction",
-                                      params);
+    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "reserves_in_add_transaction",
+					     params);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+      return qs;
   }
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    const char *efield;
-
-    efield = PQresultErrorField (result,
-				 PG_DIAG_SQLSTATE);
-    if ( (PGRES_FATAL_ERROR == PQresultStatus(result)) &&
-	 (NULL != strstr ("23505", /* unique violation */
-			  efield)) )
-    {
-      /* This means we had the same reserve/justification/details
-	 before */
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Uniqueness violation, deposit details already known\n");
-      PQclear (result);
-      postgres_rollback (cls,
-			 session);
-      return GNUNET_NO;
-    }
-    QUERY_ERR (result, session->conn);
-    PQclear (result);
-    goto rollback;
-  }
-  PQclear (result);
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == reserve_exists)
   {
@@ -2094,7 +2063,6 @@ postgres_reserves_in_insert (void *cls,
        back for duplicate transactions; like this, we should virtually
        never actually have to rollback anything. */
     struct TALER_EXCHANGEDB_Reserve updated_reserve;
-    enum GNUNET_DB_QueryStatus qs;
     
     updated_reserve.pub = reserve.pub;
     if (GNUNET_OK !=
@@ -2105,38 +2073,15 @@ postgres_reserves_in_insert (void *cls,
       /* currency overflow or incompatible currency */
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Attempt to deposit incompatible amount into reserve\n");
-      goto rollback;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                                        reserve.expiry);
-    qs = reserves_update (cls,
-			  session,
-			  &updated_reserve);
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      goto rollback; /* FIXME: #5010 */
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-    {
-      postgres_rollback (cls,
-			 session);
-      return GNUNET_SYSERR;
-    }
+    return reserves_update (cls,
+			    session,
+			    &updated_reserve);
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-      postgres_commit (cls,
-                       session))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to commit transaction adding amount to reserve\n");
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-
- rollback:
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Transaction failed, doing rollback\n");
-  postgres_rollback (cls,
-                     session);
-  return GNUNET_SYSERR;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
