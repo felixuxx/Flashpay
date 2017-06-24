@@ -91,24 +91,6 @@ struct TALER_EXCHANGEDB_Session
    */
   PGconn *conn;
 
-  /**
-   * Transaction state.  Set to #GNUNET_OK by #postgres_start().
-   * Set to #GNUNET_NO if any part of the transaction failed in a
-   * transient way (i.e. #PG_DIAG_SQLSTATE_DEADLOCK or
-   * #PG_DIAG_SQLSTATE_SERIALIZATION_FAILURE).  Set to
-   * #GNUNET_SYSERR if any part of the transaction failed in a
-   * hard way or if we are not within a transaction scope.
-   *
-   * If #GNUNET_NO, #postgres_commit() will always just do a
-   * rollback and return #GNUNET_NO as well (to retry).
-   *
-   * If #GNUNET_SYSERR, #postgres_commit() will always just do a
-   * rollback and return #GNUNET_SYSERR as well.
-   *
-   * If #GNUNET_OK, #postgres_commit() will try to commit and
-   * return the result from the commit operation.
-   */
-  int state;
 };
 
 
@@ -1554,7 +1536,6 @@ postgres_get_session (void *cls)
     return NULL;
   }
   session = GNUNET_new (struct TALER_EXCHANGEDB_Session);
-  session->state = GNUNET_SYSERR;
   session->conn = db_conn;
   if (0 != pthread_setspecific (pc->db_conn_threadlocal,
                                 session))
@@ -1592,11 +1573,9 @@ postgres_start (void *cls,
                      PQerrorMessage (session->conn));
     GNUNET_break (0);
     PQclear (result);
-    session->state = GNUNET_SYSERR;
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  session->state = GNUNET_OK;
   return GNUNET_OK;
 }
 
@@ -1619,51 +1598,6 @@ postgres_rollback (void *cls,
   GNUNET_break (PGRES_COMMAND_OK ==
                 PQresultStatus (result));
   PQclear (result);
-  session->state = GNUNET_SYSERR;
-}
-
-
-/**
- * Check the @a result's error code to see what happened.
- * Also logs errors.
- *
- * @param session session used
- * @param result result to check
- * @return #GNUNET_OK if the request/transaction succeeded
- *         #GNUNET_NO if it failed but could succeed if retried
- *         #GNUNET_SYSERR on hard errors
- */
-static int
-evaluate_pq_result (struct TALER_EXCHANGEDB_Session *session,
-                    PGresult *result)
-{
-  if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
-  {
-    const char *sqlstate;
-
-    sqlstate = PQresultErrorField (result,
-                                   PG_DIAG_SQLSTATE);
-    if (NULL == sqlstate)
-    {
-      /* very unexpected... */
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    if ( (0 == strcmp (sqlstate,
-                       PQ_DIAG_SQLSTATE_DEADLOCK)) ||
-         (0 == strcmp (sqlstate,
-                       PQ_DIAG_SQLSTATE_SERIALIZATION_FAILURE)) )
-    {
-      /* These two can be retried and have a fair chance of working
-         the next time */
-      QUERY_ERR (result, session->conn);
-      return GNUNET_NO;
-    }
-    BREAK_DB_ERR(result, session->conn);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
 }
 
 
@@ -1685,87 +1619,6 @@ postgres_commit (void *cls,
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "do_commit",
                                              params);
-}
-
-
-/**
- * Update the @a session state based on the latest @a result from
- * the database.  Checks the status code of @a result and possibly
- * sets the state to failed (#GNUNET_SYSERR) or transiently failed
- * (#GNUNET_NO).
- *
- * @param session the session in which the transaction is running
- * @param statement name of the statement we were executing (for logging)
- * @param result the result we got from Postgres
- * @return current session state, i.e.
- *         #GNUNET_OK on success
- *         #GNUNET_NO if the transaction had a transient failure
- *         #GNUNET_SYSERR if the transaction had a hard failure
- */
-static int
-update_session_from_result (struct TALER_EXCHANGEDB_Session *session,
-                            const char *statement,
-                            PGresult *result)
-{
-  int ret;
-
-  if (GNUNET_OK != session->state)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR; /* we already failed, why do we keep going? */
-  }
-  ret = evaluate_pq_result (session,
-                            result);
-  if (GNUNET_OK == ret)
-    return ret;
-  GNUNET_log ((GNUNET_NO == ret)
-              ? GNUNET_ERROR_TYPE_INFO
-              : GNUNET_ERROR_TYPE_ERROR,
-              "Statement `%s' failed: %s/%s/%s/%s/%s",
-              statement,
-              PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY),
-              PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL),
-              PQresultErrorMessage (result),
-              PQresStatus (PQresultStatus (result)),
-              PQerrorMessage (session->conn));
-  session->state = ret;
-  return ret;
-}
-
-
-/**
- * Execute a named prepared @a statement that is NOT a SELECT statement
- * in @a session using the given @a params.  Returns the resulting session
- * state.
- *
- * @param session session to execute the statement in
- * @param statement name of the statement
- * @param params parameters to give to the statement (#GNUNET_PQ_query_param_end-terminated)
- * @return #GNUNET_OK on success
- *         #GNUNET_NO if the transaction had a transient failure
- *         #GNUNET_SYSERR if the transaction had a hard failure
- */
-static int
-execute_prepared_non_select (struct TALER_EXCHANGEDB_Session *session,
-                             const char *statement,
-                             const struct GNUNET_PQ_QueryParam *params)
-{
-  PGresult *result;
-  int ret;
-
-  if (GNUNET_OK != session->state)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR; /* we already failed, why keep going? */
-  }
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    statement,
-                                    params);
-  ret = update_session_from_result (session,
-                                    statement,
-                                    result);
-  PQclear (result);
-  return ret;
 }
 
 
@@ -2787,10 +2640,9 @@ postgres_mark_deposit_done (void *cls,
  * @param session connection to the database
  * @param deposit_cb function to call for ONE such deposit
  * @param deposit_cb_cls closure for @a deposit_cb
- * @return number of rows processed, 0 if none exist,
- *         #GNUNET_SYSERR on error
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_get_ready_deposit (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             TALER_EXCHANGEDB_DepositIterator deposit_cb,
@@ -2801,77 +2653,161 @@ postgres_get_ready_deposit (void *cls,
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
-  unsigned int n;
-  int ret;
+  struct TALER_Amount amount_with_fee;
+  struct TALER_Amount deposit_fee;
+  struct GNUNET_TIME_Absolute wire_deadline;
+  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  uint64_t serial_id;
+  json_t *wire;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+				  &serial_id),
+    TALER_PQ_result_spec_amount ("amount_with_fee",
+				 &amount_with_fee),
+    TALER_PQ_result_spec_amount ("fee_deposit",
+				 &deposit_fee),
+    GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+					 &wire_deadline),
+    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+					  &h_contract_terms),
+    GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+					  &merchant_pub),
+    GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+					  &coin_pub),
+    TALER_PQ_result_spec_json ("wire",
+			       &wire),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "deposits_get_ready",
-                                   params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == (n = PQntuples (result)))
-  {
-    PQclear (result);
-    return 0;
-  }
-  GNUNET_break (1 == n);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "deposits_get_ready",
+						 params,
+						 rs);
+  if (qs <= 0)
+    return qs;
+  qs = deposit_cb (deposit_cb_cls,
+		   serial_id,
+		   &merchant_pub,
+		   &coin_pub,
+		   &amount_with_fee,
+		   &deposit_fee,
+		   &h_contract_terms,
+		   wire_deadline,
+		   wire);
+  GNUNET_PQ_cleanup_result (rs);
+  return qs;
+}
+
+
+/**
+ * Closure for #match_deposit_cb().
+ */
+struct MatchingDepositContext
+{
+  /**
+   * Function to call for each result
+   */
+  TALER_EXCHANGEDB_DepositIterator deposit_cb;
+
+  /**
+   * Closure for @e deposit_cb.
+   */
+  void *deposit_cb_cls;
+
+  /**
+   * Public key of the merchant against which we are matching.
+   */
+  const struct TALER_MerchantPublicKeyP *merchant_pub;
+  
+  /**
+   * Maximum number of results to return.
+   */
+  uint32_t limit;
+
+  /**
+   * Loop counter, actual number of results returned.
+   */
+  unsigned int i;
+
+  /**
+   * Set to #GNUNET_SYSERR on hard errors.
+   */
+  int status;
+};
+
+
+/**
+ * Helper function for #postgres_iterate_matching_deposits().
+ * To be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct MatchingDepositContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+match_deposit_cb (void *cls,
+		  PGresult *result,
+		  unsigned int num_results)
+{
+  struct MatchingDepositContext *mdc = cls;
+  
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Found %u/%u matching deposits\n",
+	      num_results,
+	      mdc->limit);
+  num_results = GNUNET_MIN (num_results,
+			    mdc->limit);
+  for (mdc->i=0;mdc->i<num_results;mdc->i++)
   {
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
     struct GNUNET_TIME_Absolute wire_deadline;
     struct GNUNET_HashCode h_contract_terms;
-    struct TALER_MerchantPublicKeyP merchant_pub;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t serial_id;
-    json_t *wire;
+    enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
-                                   &serial_id),
+                                    &serial_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit",
                                    &deposit_fee),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
-                                          &wire_deadline),
+                                           &wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                           &h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
-                                           &merchant_pub),
+                                            &h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                           &coin_pub),
-      TALER_PQ_result_spec_json ("wire",
-                                 &wire),
+                                            &coin_pub),
       GNUNET_PQ_result_spec_end
     };
-
+    
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
-                                  0))
+                                  mdc->i))
     {
       GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
+      mdc->status = GNUNET_SYSERR;
+      return;
     }
-    ret = deposit_cb (deposit_cb_cls,
-                      serial_id,
-                      &merchant_pub,
-                      &coin_pub,
-                      &amount_with_fee,
-                      &deposit_fee,
-                      &h_contract_terms,
-                      wire_deadline,
-                      wire);
+    qs = mdc->deposit_cb (mdc->deposit_cb_cls,
+			  serial_id,
+			  mdc->merchant_pub,
+			  &coin_pub,
+			  &amount_with_fee,
+			  &deposit_fee,
+			  &h_contract_terms,
+			  wire_deadline,
+			  NULL);
     GNUNET_PQ_cleanup_result (rs);
-    PQclear (result);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+      break;
   }
-  return (GNUNET_OK == ret) ? 1 : 0;
 }
 
 
@@ -2889,7 +2825,7 @@ postgres_get_ready_deposit (void *cls,
  * @return transaction status code, if positive:
  *         number of rows processed, 0 if none exist
  */
-static int // FIXME: enum GNUNET_DB_QueryStatus
+static enum GNUNET_DB_QueryStatus
 postgres_iterate_matching_deposits (void *cls,
                                     struct TALER_EXCHANGEDB_Session *session,
                                     const struct GNUNET_HashCode *h_wire,
@@ -2903,75 +2839,27 @@ postgres_iterate_matching_deposits (void *cls,
     GNUNET_PQ_query_param_auto_from_type (h_wire),
     GNUNET_PQ_query_param_end
   };
-  PGresult *result;
-  unsigned int i;
-  unsigned int n;
+  struct MatchingDepositContext mdc;
+  enum GNUNET_DB_QueryStatus qs;
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "deposits_iterate_matching",
-                                    params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
+  mdc.deposit_cb = deposit_cb;
+  mdc.deposit_cb_cls = deposit_cb_cls;
+  mdc.merchant_pub = merchant_pub;
+  mdc.limit = limit;
+  mdc.status = GNUNET_OK;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "deposits_iterate_matching",
+					     params,
+					     &match_deposit_cb,
+					     &mdc);
+  if (GNUNET_OK != mdc.status)
   {
-    BREAK_DB_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (0 == (n = PQntuples (result)))
-  {
-    PQclear (result);
-    return 0;
-  }
-  if (n > limit)
-    n = limit;
-  for (i=0;i<n;i++)
-  {
-    struct TALER_Amount amount_with_fee;
-    struct TALER_Amount deposit_fee;
-    struct GNUNET_TIME_Absolute wire_deadline;
-    struct GNUNET_HashCode h_contract_terms;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
-    uint64_t serial_id;
-    int ret;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
-                                    &serial_id),
-      TALER_PQ_result_spec_amount ("amount_with_fee",
-                                   &amount_with_fee),
-      TALER_PQ_result_spec_amount ("fee_deposit",
-                                   &deposit_fee),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
-                                           &wire_deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                            &h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                            &coin_pub),
-      GNUNET_PQ_result_spec_end
-    };
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    ret = deposit_cb (deposit_cb_cls,
-                      serial_id,
-                      merchant_pub,
-                      &coin_pub,
-                      &amount_with_fee,
-                      &deposit_fee,
-                      &h_contract_terms,
-                      wire_deadline,
-                      NULL);
-    GNUNET_PQ_cleanup_result (rs);
-    if (GNUNET_OK != ret)
-      break;
-  }
-  PQclear (result);
-  return i;
+  if (qs >= 0)
+    return mdc.i;
+  return qs;
 }
 
 
@@ -4493,11 +4381,9 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO on transient errors
- *         #GNUNET_SYSERR on DB errors
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_aggregation_tracking (void *cls,
                                       struct TALER_EXCHANGEDB_Session *session,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -4510,9 +4396,9 @@ postgres_insert_aggregation_tracking (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "insert_aggregation_tracking",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_aggregation_tracking",
+					     params);
 }
 
 
@@ -4569,11 +4455,9 @@ postgres_get_wire_fee (void *cls,
  * @param end_date when does the fee end being valid
  * @param wire_fee how high is the wire transfer fee
  * @param master_sig signature over the above by the exchange master key
- * @return #GNUNET_OK on success or if the record exists,
- *         #GNUNET_NO on transient errors
- *         #GNUNET_SYSERR on failure
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_fee (void *cls,
                           struct TALER_EXCHANGEDB_Session *session,
                           const char *type,
@@ -4594,43 +4478,46 @@ postgres_insert_wire_fee (void *cls,
   struct TALER_MasterSignatureP sig;
   struct GNUNET_TIME_Absolute sd;
   struct GNUNET_TIME_Absolute ed;
+  enum GNUNET_DB_QueryStatus qs;
 
-  if (GNUNET_OK ==
-      postgres_get_wire_fee (cls,
-                             session,
-                             type,
-                             start_date,
-                             &sd,
-                             &ed,
-                             &wf,
-                             &sig))
+  qs = postgres_get_wire_fee (cls,
+			      session,
+			      type,
+			      start_date,
+			      &sd,
+			      &ed,
+			      &wf,
+			      &sig);
+  if (qs < 0)
+    return qs;
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     if (0 != memcmp (&sig,
                      master_sig,
                      sizeof (sig)))
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (0 != TALER_amount_cmp (wire_fee,
                                &wf))
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if ( (sd.abs_value_us != start_date.abs_value_us) ||
          (ed.abs_value_us != end_date.abs_value_us) )
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     /* equal record already exists */
-    return GNUNET_OK;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
 
-  return execute_prepared_non_select (session,
-                                      "insert_wire_fee",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_wire_fee",
+					     params);
 }
 
 
@@ -4862,9 +4749,9 @@ postgres_wire_prepare_data_insert (void *cls,
  * @param cls closure
  * @param session database connection
  * @param rowid which entry to mark as finished
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_mark_finished (void *cls,
                                           struct TALER_EXCHANGEDB_Session *session,
                                           uint64_t rowid)
@@ -4874,9 +4761,9 @@ postgres_wire_prepare_data_mark_finished (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "wire_prepare_data_mark_done",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "wire_prepare_data_mark_done",
+					     params);
 }
 
 
@@ -4888,76 +4775,46 @@ postgres_wire_prepare_data_mark_finished (void *cls,
  * @param session database connection
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
- * @return #GNUNET_OK on success,
- *         #GNUNET_NO if there are no entries,
- *         #GNUNET_SYSERR on DB errors
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_get (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
                                 TALER_EXCHANGEDB_WirePreparationIterator cb,
                                 void *cb_cls)
 {
-  PGresult *result;
+  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
+  uint64_t prewire_uuid;
+  char *type;
+  void *buf = NULL;
+  size_t buf_size;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("prewire_uuid",
+				  &prewire_uuid),
+    GNUNET_PQ_result_spec_string ("type",
+				  &type),
+    GNUNET_PQ_result_spec_variable_size ("buf",
+					 &buf,
+					 &buf_size),
+    GNUNET_PQ_result_spec_end
+  };
 
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "wire_prepare_data_get",
-                                   params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    QUERY_ERR (result, session->conn);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  if (1 != PQntuples (result))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  {
-    uint64_t prewire_uuid;
-    char *type;
-    void *buf = NULL;
-    size_t buf_size;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("prewire_uuid",
-                                    &prewire_uuid),
-      GNUNET_PQ_result_spec_string ("type",
-                                    &type),
-      GNUNET_PQ_result_spec_variable_size ("buf",
-                                           &buf,
-                                           &buf_size),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                 rs,
-                                 0))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    cb (cb_cls,
-        prewire_uuid,
-        type,
-        buf,
-        buf_size);
-    GNUNET_PQ_cleanup_result (rs);
-  }
-  PQclear (result);
-  return GNUNET_OK;
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "wire_prepare_data_get",
+						 params,
+						 rs);
+  if (0 >= qs)
+    return qs;
+  cb (cb_cls,
+      prewire_uuid,
+      type,
+      buf,
+      buf_size);
+  GNUNET_PQ_cleanup_result (rs);
+  return qs;
 }
 
 
@@ -5003,7 +4860,6 @@ postgres_start_deferred_wire_out (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  session->state = GNUNET_OK;
   return GNUNET_OK;
 }
 
@@ -5017,10 +4873,9 @@ postgres_start_deferred_wire_out (void *cls,
  * @param wtid subject of the wire transfer
  * @param wire_account details about the receiver account of the wire transfer
  * @param amount amount that was transmitted
- * @return #GNUNET_OK on success
- *         #GNUNET_SYSERR on DB errors
+ * @return transaction status code
  */
-static int
+static enum GNUNET_DB_QueryStatus
 postgres_store_wire_transfer_out (void *cls,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   struct GNUNET_TIME_Absolute date,
@@ -5036,9 +4891,9 @@ postgres_store_wire_transfer_out (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  return execute_prepared_non_select (session,
-                                      "insert_wire_out",
-                                      params);
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "insert_wire_out",
+					     params);
 }
 
 

@@ -914,10 +914,9 @@ static uint64_t deposit_rowid;
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR if deposit does
- *         not match our expectations
+ * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
-static int
+static enum GNUNET_DB_QueryStatus
 deposit_cb (void *cls,
             uint64_t rowid,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -953,10 +952,10 @@ deposit_cb (void *cls,
                        sizeof (struct GNUNET_HashCode))) ) )
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  return GNUNET_OK;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -1164,7 +1163,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &master_sig,
                               sizeof (master_sig));
-  if (GNUNET_OK !=
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->insert_wire_fee (plugin->cls,
                                session,
                                "wire-method",
@@ -1176,7 +1175,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->insert_wire_fee (plugin->cls,
                                session,
                                "wire-method",
@@ -1800,7 +1799,7 @@ run (void *cls)
 						   NULL));
   FAILIF (1 != auditor_row_cnt);
   result = 9;
-  FAILIF (1 !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->iterate_matching_deposits (plugin->cls,
                                              session,
                                              &deposit.h_wire,
@@ -1808,7 +1807,7 @@ run (void *cls)
                                              &deposit_cb, &deposit,
                                              2));
 
-  FAILIF (1 !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
                                      session,
                                      &deposit_cb,
@@ -1821,7 +1820,7 @@ run (void *cls)
                          session));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_tiny (plugin->cls,
-                                     session,
+				     session,
                                      deposit_rowid));
   FAILIF (0 !=
           plugin->get_ready_deposit (plugin->cls,
@@ -1838,18 +1837,18 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          session));
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->test_deposit_done (plugin->cls,
                                      session,
                                      &deposit));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_done (plugin->cls,
                                      session,
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls,
                           session));
-  FAILIF (GNUNET_YES !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->test_deposit_done (plugin->cls,
                                      session,
                                      &deposit));
@@ -1857,17 +1856,18 @@ run (void *cls)
   result = 10;
   deposit2 = deposit;
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
-  FAILIF (0 !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
   deposit2.merchant_pub = deposit.merchant_pub;
   RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
-  FAILIF (0 !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
-  FAILIF (GNUNET_OK != test_melting (session));
+  FAILIF (GNUNET_OK !=
+	  test_melting (session));
 
 
   /* test insert_refund! */
@@ -1886,7 +1886,7 @@ run (void *cls)
 
   /* test payback / revocation */
   RND_BLK (&master_sig);
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_revocation (plugin->cls,
                                                   session,
                                                   &dkp_pub_hash,
@@ -1897,7 +1897,7 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          session));
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->insert_denomination_revocation (plugin->cls,
                                                   session,
                                                   &dkp_pub_hash,

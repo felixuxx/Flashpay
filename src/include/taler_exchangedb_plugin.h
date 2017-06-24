@@ -674,9 +674,9 @@ struct TALER_EXCHANGEDB_Session;
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
-typedef int
+typedef enum GNUNET_DB_QueryStatus
 (*TALER_EXCHANGEDB_DepositIterator)(void *cls,
                                     uint64_t rowid,
                                     const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -1383,10 +1383,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session connection to the database
    * @param deposit_cb function to call for ONE such deposit
    * @param deposit_cb_cls closure for @a deposit_cb
-   * @return number of rows processed, 0 if none exist,
-   *         #GNUNET_SYSERR on error
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_ready_deposit) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         TALER_EXCHANGEDB_DepositIterator deposit_cb,
@@ -1418,9 +1417,9 @@ struct TALER_EXCHANGEDB_Plugin
    *        be #TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT, larger values
    *        are not supported, smaller values would be inefficient.
    * @return number of rows processed, 0 if none exist,
-   *         #GNUNET_SYSERR on error
+   *         transaction status code on error
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*iterate_matching_deposits) (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
                                 const struct GNUNET_HashCode *h_wire,
@@ -1753,11 +1752,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param deposit_serial_id row in the deposits table for which this is aggregation data
-   * @return #GNUNET_OK on success
-   *         #GNUNET_NO on transient errors
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_aggregation_tracking)(void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -1774,11 +1771,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param end_date when does the fee end being valid
    * @param wire_fee how high is the wire transfer fee
    * @param master_sig signature over the above by the exchange master key
-   * @return #GNUNET_OK on success or if the record exists,
-   *         #GNUNET_NO on transient errors,
-   *         #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_wire_fee)(void *cls,
                      struct TALER_EXCHANGEDB_Session *session,
                      const char *wire_method,
@@ -1787,7 +1782,7 @@ struct TALER_EXCHANGEDB_Plugin
                      const struct TALER_Amount *wire_fee,
                      const struct TALER_MasterSignatureP *master_sig);
 
-
+  
   /**
    * Obtain wire fee from database.
    *
@@ -1879,9 +1874,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session database connection
    * @param rowid which entry to mark as finished
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_mark_finished)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t rowid);
@@ -1895,11 +1890,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if there are no entries,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_get)(void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
                            TALER_EXCHANGEDB_WirePreparationIterator cb,
@@ -1930,10 +1923,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wtid subject of the wire transfer
    * @param wire_account details about the receiver account of the wire transfer
    * @param amount amount that was transmitted
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*store_wire_transfer_out)(void *cls,
                              struct TALER_EXCHANGEDB_Session *session,
                              struct GNUNET_TIME_Absolute date,
