@@ -425,7 +425,6 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_try_execute("CREATE INDEX prepare_iteration_index "
                                "ON prewire(type,finished);"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
-
   };
   PGconn *conn;
   int ret;
@@ -1421,6 +1420,7 @@ postgres_prepare (PGconn *db_conn)
                             ",timestamp"
                             ",denoms.denom_pub"
                             ",coins.denom_sig"
+
                             " FROM payback"
                             "    JOIN known_coins coins"
                             "      USING (coin_pub)"

@@ -24,6 +24,7 @@
 
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_db_lib.h>
 #include "taler_auditordb_lib.h"
 #include "taler_signatures.h"
 
@@ -236,10 +237,9 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
-   * @return #GNUNET_OK on success, #GNUNET_NO if the transaction
-   *         can be retried, #GNUNET_SYSERR on hard failures
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*commit) (void *cls,
              struct TALER_AUDITORDB_Session *session);
 
@@ -291,9 +291,9 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master public key of the exchange
    * @param cb function to call with the results
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_denomination_info)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_MasterPublicKeyP *master_pub,
@@ -309,9 +309,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master key of the exchange
    * @param pp where is the auditor in processing
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_auditor_progress)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
@@ -326,9 +326,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master key of the exchange
    * @param pp where is the auditor in processing
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_auditor_progress)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
@@ -342,10 +342,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master key of the exchange
    * @param[out] pp set to where the auditor is in processing
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
-   *         #GNUNET_NO if we have no records for the @a master_pub
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_auditor_progress)(void *cls,
                           struct TALER_AUDITORDB_Session *session,
                           const struct TALER_MasterPublicKeyP *master_pub,
@@ -364,9 +363,9 @@ struct TALER_AUDITORDB_Plugin
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param expiration_date expiration date of the reserve
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_reserve_info)(void *cls,
                          struct TALER_AUDITORDB_Session *session,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -388,9 +387,9 @@ struct TALER_AUDITORDB_Plugin
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param expiration_date expiration date of the reserve
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_reserve_info)(void *cls,
                          struct TALER_AUDITORDB_Session *session,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -412,10 +411,9 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param[out] expiration_date expiration date of the reserve
-   * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
-   *         record about this reserve; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_reserve_info)(void *cls,
                       struct TALER_AUDITORDB_Session *session,
                       const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -433,10 +431,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param reserve_pub public key of the reserve
    * @param master_pub master public key of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
-   *         record about this reserve; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*del_reserve_info)(void *cls,
                       struct TALER_AUDITORDB_Session *session,
                       const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -453,9 +450,9 @@ struct TALER_AUDITORDB_Plugin
    * @param reserve_balance amount stored in the reserve
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_reserve_summary)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
@@ -473,9 +470,9 @@ struct TALER_AUDITORDB_Plugin
    * @param reserve_balance amount stored in the reserve
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_reserve_summary)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
@@ -492,10 +489,9 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] reserve_balance amount stored in the reserve
    * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
-   * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
-   *         record about this exchange; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_reserve_summary)(void *cls,
                          struct TALER_AUDITORDB_Session *session,
                          const struct TALER_MasterPublicKeyP *master_pub,
@@ -511,9 +507,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master public key of the exchange
    * @param wire_fee_balance amount the exchange gained in wire fees
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_wire_fee_summary)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
@@ -528,9 +524,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master public key of the exchange
    * @param wire_fee_balance amount the exchange gained in wire fees
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_wire_fee_summary)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
@@ -544,10 +540,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master public key of the exchange
    * @param[out] wire_fee_balance set amount the exchange gained in wire fees
-   * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
-   *         record about this exchange; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_wire_fee_summary)(void *cls,
                           struct TALER_AUDITORDB_Session *session,
                           const struct TALER_MasterPublicKeyP *master_pub,
@@ -563,9 +558,9 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_risk value of coins issued with this denomination key
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_denomination_balance)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
@@ -582,9 +577,9 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_risk value of coins issued with this denomination key
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_denomination_balance)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
@@ -600,9 +595,9 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param[out] denom_balance value of coins outstanding with this denomination key
    * @param[out] denom_risk value of coins issued with this denomination key
-   * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_denomination_balance)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash,
@@ -616,9 +611,9 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*del_denomination_balance)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash);
@@ -636,9 +631,9 @@ struct TALER_AUDITORDB_Plugin
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_balance_summary)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
@@ -661,9 +656,9 @@ struct TALER_AUDITORDB_Plugin
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_balance_summary)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
@@ -685,10 +680,9 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] melt_fee_balance total melt fees collected for this DK
    * @param[out] refund_fee_balance total refund fees collected for this DK
    * @param[out] risk maximum risk exposure of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_NO if there is no entry
-   *           for this @a master_pub; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_balance_summary)(void *cls,
                          struct TALER_AUDITORDB_Session *session,
                          const struct TALER_MasterPublicKeyP *master_pub,
@@ -711,9 +705,9 @@ struct TALER_AUDITORDB_Plugin
    * @param revenue_balance what was the total profit made from
    *                        deposit fees, melting fees, refresh fees
    *                        and coins that were never returned?
-     * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_historic_denom_revenue)(void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_MasterPublicKeyP *master_pub,
@@ -731,9 +725,9 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param cb function to call with the results
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_historic_denom_revenue)(void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_MasterPublicKeyP *master_pub,
@@ -754,9 +748,9 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination key
    * @param loss_timestamp when did this profit get realized
    * @param loss_balance what was the total loss
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_historic_losses)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
@@ -773,9 +767,9 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param cb function to call with the results
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_historic_losses)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
@@ -792,9 +786,9 @@ struct TALER_AUDITORDB_Plugin
    * @param start_time beginning of aggregated time interval
    * @param end_time end of aggregated time interval
    * @param reserve_profits total profits made
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_historic_reserve_revenue)(void *cls,
                                      struct TALER_AUDITORDB_Session *session,
                                      const struct TALER_MasterPublicKeyP *master_pub,
@@ -811,9 +805,9 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param cb function to call with results
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_historic_reserve_revenue)(void *cls,
                                      struct TALER_AUDITORDB_Session *session,
                                      const struct TALER_MasterPublicKeyP *master_pub,
@@ -830,9 +824,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master key of the exchange
    * @param balance what the bank account balance of the exchange should show
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*insert_predicted_result)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
@@ -847,9 +841,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master key of the exchange
    * @param balance what the bank account balance of the exchange should show
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*update_predicted_result)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
@@ -863,10 +857,9 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param master_pub master key of the exchange
    * @param[out] balance expected bank account balance of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
-   *         #GNUNET_NO if we have no records for the @a master_pub
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_predicted_balance)(void *cls,
                            struct TALER_AUDITORDB_Session *session,
                            const struct TALER_MasterPublicKeyP *master_pub,

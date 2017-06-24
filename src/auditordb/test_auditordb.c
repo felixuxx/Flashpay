@@ -70,7 +70,9 @@ select_denomination_info_result (void *cls,
 {
   const struct TALER_DenominationKeyValidityPS *issue1 = cls;
 
-  if (0 != memcmp (issue1, issue2, sizeof (*issue2)))
+  if (0 != memcmp (issue1,
+		   issue2,
+		   sizeof (*issue2)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_denomination_info_result: issue does not match\n");
@@ -202,11 +204,11 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_denomination_info\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >=
           plugin->select_denomination_info (plugin->cls,
                                             session,
                                             &master_pub,
-                                            select_denomination_info_result,
+                                            &select_denomination_info_result,
                                             &issue));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -229,7 +231,7 @@ run (void *cls)
     .last_wire_out_serial_id = 0
   };
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_auditor_progress (plugin->cls,
                                            session,
                                            &master_pub,
@@ -244,7 +246,7 @@ run (void *cls)
   pp.last_refund_serial_id++;
   pp.last_wire_out_serial_id++;
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_auditor_progress (plugin->cls,
                                            session,
                                            &master_pub,
@@ -253,7 +255,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_auditor_progress\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_auditor_progress (plugin->cls,
                                         session,
                                         &master_pub,
@@ -278,7 +280,7 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":23.456789",
                                          &withdraw_fee_balance));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_info (plugin->cls,
                                        session,
                                        &reserve_pub,
@@ -290,7 +292,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_reserve_info\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_reserve_info (plugin->cls,
                                        session,
                                        &reserve_pub,
@@ -302,7 +304,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_reserve_info\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_info (plugin->cls,
                                     session,
                                     &reserve_pub,
@@ -319,7 +321,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_summary\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_summary (plugin->cls,
                                           session,
                                           &master_pub,
@@ -329,7 +331,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_reserve_summary\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_reserve_summary (plugin->cls,
                                           session,
                                           &master_pub,
@@ -342,22 +344,33 @@ run (void *cls)
   ZR_BLK (&reserve_balance2);
   ZR_BLK (&withdraw_fee_balance2);
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_summary (plugin->cls,
                                        session,
                                        &master_pub,
                                        &reserve_balance2,
                                        &withdraw_fee_balance2));
 
-  FAILIF (0 != memcmp (&reserve_balance2, &reserve_balance, sizeof (reserve_balance))
-          || 0 != memcmp (&withdraw_fee_balance2, &withdraw_fee_balance, sizeof (withdraw_fee_balance)));
-
+  FAILIF ( (0 != memcmp (&reserve_balance2,
+			 &reserve_balance,
+			 sizeof (reserve_balance)) ||
+	    (0 != memcmp (&withdraw_fee_balance2,
+			  &withdraw_fee_balance,
+			  sizeof (withdraw_fee_balance))) ) );
+	   
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_balance\n");
 
-  struct TALER_Amount denom_balance, deposit_fee_balance, melt_fee_balance, refund_fee_balance;
-  struct TALER_Amount denom_balance2, deposit_fee_balance2, melt_fee_balance2, refund_fee_balance2;
-  struct TALER_Amount rbalance, rbalance2;
+  struct TALER_Amount denom_balance;
+  struct TALER_Amount deposit_fee_balance;
+  struct TALER_Amount melt_fee_balance;
+  struct TALER_Amount refund_fee_balance;
+  struct TALER_Amount denom_balance2;
+  struct TALER_Amount deposit_fee_balance2;
+  struct TALER_Amount melt_fee_balance2;
+  struct TALER_Amount refund_fee_balance2;
+  struct TALER_Amount rbalance;
+  struct TALER_Amount rbalance2;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":12.345678",
@@ -375,7 +388,7 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":13.57986",
                                          &rbalance));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
@@ -390,7 +403,7 @@ run (void *cls)
   pp.last_melt_serial_id++;
   pp.last_refund_serial_id++;
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
@@ -399,7 +412,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_balance\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_denomination_balance (plugin->cls,
                                             session,
                                             &denom_pub_hash,
@@ -413,7 +426,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_balance_summary\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_balance_summary (plugin->cls,
                                                session,
                                                &master_pub,
@@ -426,7 +439,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_balance_summary\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_balance_summary (plugin->cls,
                                                session,
                                                &master_pub,
@@ -445,7 +458,7 @@ run (void *cls)
   ZR_BLK (&refund_fee_balance2);
   ZR_BLK (&rbalance2);
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_balance_summary (plugin->cls,
                                             session,
                                             &master_pub,
@@ -455,17 +468,27 @@ run (void *cls)
                                             &refund_fee_balance2,
                                             &rbalance2));
 
-  FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance))
-          || 0 != memcmp (&deposit_fee_balance2, &deposit_fee_balance, sizeof (deposit_fee_balance))
-          || 0 != memcmp (&melt_fee_balance2, &melt_fee_balance, sizeof (melt_fee_balance))
-          || 0 != memcmp (&refund_fee_balance2, &refund_fee_balance, sizeof (refund_fee_balance)));
-  FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
+  FAILIF ( (0 != memcmp (&denom_balance2,
+			 &denom_balance,
+			 sizeof (denom_balance)) ) ||
+	   (0 != memcmp (&deposit_fee_balance2,
+			 &deposit_fee_balance,
+			 sizeof (deposit_fee_balance)) ) ||
+	   (0 != memcmp (&melt_fee_balance2,
+			 &melt_fee_balance,
+			 sizeof (melt_fee_balance)) ) ||
+	   (0 != memcmp (&refund_fee_balance2,
+			 &refund_fee_balance,
+			 sizeof (refund_fee_balance))) );
+  FAILIF (0 != memcmp (&rbalance2,
+		       &rbalance,
+		       sizeof (rbalance)));
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_historic_denom_revenue\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_denom_revenue (plugin->cls,
                                                  session,
                                                  &master_pub,
@@ -473,7 +496,7 @@ run (void *cls)
                                                  past,
                                                  &rbalance));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_denom_revenue (plugin->cls,
                                                  session,
                                                  &master_pub,
@@ -511,17 +534,17 @@ run (void *cls)
     return GNUNET_OK;
   }
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >=
           plugin->select_historic_denom_revenue (plugin->cls,
                                                  session,
                                                  &master_pub,
-                                                 select_historic_denom_revenue_result,
+                                                 &select_historic_denom_revenue_result,
                                                  NULL));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_historic_losses\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_losses (plugin->cls,
                                           session,
                                           &master_pub,
@@ -529,7 +552,7 @@ run (void *cls)
                                           past,
                                           &rbalance));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_losses (plugin->cls,
                                           session,
                                           &master_pub,
@@ -568,7 +591,7 @@ run (void *cls)
     return GNUNET_OK;
   }
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >=
           plugin->select_historic_losses (plugin->cls,
                                           session,
                                           &master_pub,
@@ -583,7 +606,7 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":56.789012",
                                          &reserve_profits));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_reserve_revenue (plugin->cls,
                                                    session,
                                                    &master_pub,
@@ -591,7 +614,7 @@ run (void *cls)
                                                    future,
                                                    &reserve_profits));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_reserve_revenue (plugin->cls,
                                                    session,
                                                    &master_pub,
@@ -628,7 +651,7 @@ run (void *cls)
     return GNUNET_OK;
   }
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >=
           plugin->select_historic_reserve_revenue (plugin->cls,
                                                    session,
                                                    &master_pub,
@@ -638,7 +661,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_predicted_result\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_predicted_result (plugin->cls,
                                            session,
                                            &master_pub,
@@ -651,18 +674,18 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":78.901234",
                                          &rbalance));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_predicted_result (plugin->cls,
                                            session,
                                            &master_pub,
                                            &rbalance));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_wire_fee_summary (plugin->cls,
                                            session,
                                            &master_pub,
                                            &rbalance));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_wire_fee_summary (plugin->cls,
                                            session,
                                            &master_pub,
@@ -670,7 +693,7 @@ run (void *cls)
   {
     struct TALER_Amount rprof;
 
-    FAILIF (GNUNET_OK !=
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_wire_fee_summary (plugin->cls,
                                           session,
                                           &master_pub,
@@ -679,7 +702,7 @@ run (void *cls)
             TALER_amount_cmp (&rprof,
                               &reserve_profits));
   }
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >
           plugin->commit (plugin->cls,
                           session));
 
@@ -691,13 +714,13 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_predicted_balance\n");
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_predicted_balance (plugin->cls,
                                          session,
                                          &master_pub,
                                          &rbalance2));
 
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->del_reserve_info (plugin->cls,
                                     session,
                                     &reserve_pub,
