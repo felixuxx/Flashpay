@@ -2889,7 +2889,7 @@ postgres_get_ready_deposit (void *cls,
  * @return transaction status code, if positive:
  *         number of rows processed, 0 if none exist
  */
-static int
+static int // FIXME: enum GNUNET_DB_QueryStatus
 postgres_iterate_matching_deposits (void *cls,
                                     struct TALER_EXCHANGEDB_Session *session,
                                     const struct GNUNET_HashCode *h_wire,
