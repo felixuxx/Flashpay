@@ -1963,10 +1963,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_deposits_above_serial_id)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t serial_id,
@@ -1982,10 +1981,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_refreshs_above_serial_id)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t serial_id,
@@ -2002,10 +2000,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_refunds_above_serial_id)(void *cls,
                                     struct TALER_EXCHANGEDB_Session *session,
                                     uint64_t serial_id,
@@ -2022,10 +2019,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_reserves_in_above_serial_id)(void *cls,
                                         struct TALER_EXCHANGEDB_Session *session,
                                         uint64_t serial_id,
@@ -2041,11 +2037,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if no records were found
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_reserves_out_above_serial_id)(void *cls,
                                          struct TALER_EXCHANGEDB_Session *session,
                                          uint64_t serial_id,
@@ -2062,11 +2056,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if there are no entries,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_wire_out_above_serial_id)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t serial_id,
@@ -2083,11 +2075,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if there are no entries,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_payback_above_serial_id)(void *cls,
                                     struct TALER_EXCHANGEDB_Session *session,
                                     uint64_t serial_id,
@@ -2104,11 +2094,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call
    * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if there are no entries,
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*select_reserve_closed_above_serial_id)(void *cls,
 					   struct TALER_EXCHANGEDB_Session *session,
 					   uint64_t serial_id,
@@ -2191,11 +2179,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param denom_pub_hash hash of the revoked denomination key
    * @param[out] master_sig signature affirming the revocation
    * @param[out] rowid row where the information is stored
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO no such entry exists
-   *         #GNUNET_SYSERR on DB errors
+   * @return transaction status code
    */
-  int
+  enum GNUNET_DB_QueryStatus
   (*get_denomination_revocation)(void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,

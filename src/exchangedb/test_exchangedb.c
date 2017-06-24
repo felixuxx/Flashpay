@@ -98,7 +98,7 @@ mark_prepare_cb (void *cls,
   GNUNET_assert (0 == memcmp (buf,
                               "hello world",
                               buf_size));
-  GNUNET_break (GNUNET_OK ==
+  GNUNET_break (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
                 plugin->wire_prepare_data_mark_finished (plugin->cls,
                                                          session,
                                                          rowid));
@@ -114,7 +114,7 @@ mark_prepare_cb (void *cls,
 static int
 test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
 {
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->wire_prepare_data_get (plugin->cls,
                                          session,
                                          &dead_prepare_cb,
@@ -125,12 +125,12 @@ test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
                                             "testcase",
                                             "hello world",
                                             11));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->wire_prepare_data_get (plugin->cls,
                                          session,
                                          &mark_prepare_cb,
                                          session));
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->wire_prepare_data_get (plugin->cls,
                                          session,
                                          &dead_prepare_cb,
@@ -583,7 +583,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
 				       &ret_refresh_session));
 
   auditor_row_cnt = 0;
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
 	  plugin->select_refreshs_above_serial_id (plugin->cls,
 						   session,
 						   0,
@@ -1328,7 +1328,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                               NULL));
   }
   /* insert WT data */
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_aggregation_tracking (plugin->cls,
                                                session,
                                                &wire_out_wtid,
@@ -1336,7 +1336,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
 
   /* Now let's fix the transient constraint violation by
      putting in the WTID into the wire_out table */
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->store_wire_transfer_out (plugin->cls,
                                            session,
                                            wire_out_date,
@@ -1363,7 +1363,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                             &merchant_pub_wt,
                                             &cb_wtid_check,
                                             &cb_wtid_never));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_wire_out_above_serial_id (plugin->cls,
                                                    session,
                                                    0,
@@ -1488,7 +1488,7 @@ run (void *cls)
                          session));
 
   /* test DB is empty */
-  FAILIF (GNUNET_NO !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->select_payback_above_serial_id (plugin->cls,
                                                   session,
                                                   0,
@@ -1650,7 +1650,7 @@ run (void *cls)
                                           &value,
                                           &cbc.h_coin_envelope,
                                           deadline));
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_payback_above_serial_id (plugin->cls,
                                                   session,
                                                   0,
@@ -1753,13 +1753,13 @@ run (void *cls)
   FAILIF (5 != cnt);
 
   auditor_row_cnt = 0;
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >=
           plugin->select_reserves_in_above_serial_id (plugin->cls,
 	                                              session,
 						      0,
 						      &audit_reserve_in_cb,
 						      NULL));
-  FAILIF (GNUNET_OK !=
+  FAILIF (0 >=
           plugin->select_reserves_out_above_serial_id (plugin->cls,
 	                                               session,
 				                       0,
@@ -1791,7 +1791,7 @@ run (void *cls)
                                 session,
                                 &deposit));
   auditor_row_cnt = 0;
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_deposits_above_serial_id (plugin->cls,
 	                                           session,
 						   0,
@@ -1822,14 +1822,14 @@ run (void *cls)
           plugin->mark_deposit_tiny (plugin->cls,
 				     session,
                                      deposit_rowid));
-  FAILIF (0 !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_ready_deposit (plugin->cls,
                                      session,
                                      &deposit_cb,
                                      &deposit));
   plugin->rollback (plugin->cls,
                     session);
-  FAILIF (1 !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
                                      session,
                                      &deposit_cb,
@@ -1937,7 +1937,7 @@ run (void *cls)
                                           deadline));
 
   auditor_row_cnt = 0;
-  FAILIF (GNUNET_OK !=
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_refunds_above_serial_id (plugin->cls,
 	                                          session,
 						  0,
@@ -2131,3 +2131,5 @@ main (int argc,
   GNUNET_free (testname);
   return result;
 }
+
+/* end of test_exchangedb.c */

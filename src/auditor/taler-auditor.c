@@ -2405,8 +2405,6 @@ struct CoinContext
   /**
    * Current financial risk of the exchange operator with respect
    * to key compromise.
-   *
-   * TODO: not yet properly used!
    */
   struct TALER_Amount risk;
 
