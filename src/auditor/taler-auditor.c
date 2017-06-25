@@ -3574,6 +3574,8 @@ incremental_processing (Analysis analysis,
 				       &pp);
   if (0 >= qs)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"Failed to update auditor DB, not recording progress\n");
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
