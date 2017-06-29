@@ -137,6 +137,14 @@ enum TALER_ErrorCode
    */
   TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1010,
 
+  /**
+   * Internal logic error.  Some server-side function
+   * failed that really should not.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_INTERNAL_LOGIC_ERROR = 1011,
+
 
 
   /* ********** request-specific error codes ************* */
@@ -1284,9 +1292,17 @@ enum TALER_ErrorCode
   TALER_EC_REFUND_INCONSISTENT_AMOUNT = 2602,
 
   /**
-   * The hashed contract term doesn't have any refund associated yet.
+   * The backend encountered an error while trying to retrieve the
+   * payment data from database.  Likely to be an internal error.
    */
-  TALER_EC_REFUND_H_CONTRACT_TERMS_UNKNOWN = 2603,
+  TALER_EC_REFUND_LOOKUP_DB_ERROR = 2603,
+
+  /**
+   * The backend encountered an error while trying to retrieve the
+   * payment data from database.  Likely to be an internal error.
+   */
+  TALER_EC_REFUND_MERCHANT_DB_COMMIT_ERROR = 2604,
+
 
   /* ********** /test API error codes ************* */
 
