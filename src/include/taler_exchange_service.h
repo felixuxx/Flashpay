@@ -206,6 +206,13 @@ struct TALER_EXCHANGE_Keys
   char *version;
 
   /**
+   * Timestamp indicating the /keys generation.  Monotonically
+   * increasing. Used to fetch /keys incrementally.  Set from
+   * the "list_issue_date" timestamp of /keys.
+   */
+  struct GNUNET_TIME_Absolute last_issue_date;
+  
+  /**
    * Length of the @e sign_keys array.
    */
   unsigned int num_sign_keys;

@@ -895,7 +895,13 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE = 1857,
 
-
+  /**
+   * The "have" parameter was not a natural number.
+   * This reponse is provied with an HTTP status code of
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_KEYS_HAVE_NOT_NUMERIC = 1900,
+  
 
   /* *********** Merchant backend error codes ********* */
 

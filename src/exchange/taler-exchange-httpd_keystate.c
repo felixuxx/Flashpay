@@ -661,7 +661,6 @@ reload_auditor_iter (void *cls,
                      const struct TALER_DenominationKeyValidityPS *dki)
 {
   struct TEH_KS_StateHandle *ctx = cls;
-  unsigned int i;
   unsigned int keep;
   const struct TALER_AuditorSignatureP *kept_asigs[dki_len];
   const struct TALER_DenominationKeyValidityPS *kept_dkis[dki_len];
@@ -678,7 +677,7 @@ reload_auditor_iter (void *cls,
   /* Filter the auditor information for those for which the
      keys actually match the denomination keys that are active right now */
   keep = 0;
-  for (i=0;i<dki_len;i++)
+  for (unsigned int i=0;i<dki_len;i++)
   {
     if (GNUNET_YES ==
         GNUNET_CONTAINER_multihashmap_contains (ctx->denomkey_map,
@@ -1274,8 +1273,36 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   char *json;
   size_t json_len;
   int comp;
+  const char *have;
+  struct GNUNET_TIME_Absolute last_issue_date;
 
+  have = MHD_lookup_connection_value (connection,
+				      MHD_GET_ARGUMENT_KIND,
+				      "last_issue_date");
+  if (NULL != have)
+  {
+    unsigned long long haven;
+    
+    if (1 !=
+	sscanf (have,
+		"%llu",
+		&haven))
+    {
+      GNUNET_break_op (0);
+      return TEH_RESPONSE_reply_arg_invalid (connection,
+					     TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+					     "have");
+    }
+    last_issue_date.abs_value_us = (uint64_t) haven;
+  }
+  else
+  {
+    last_issue_date.abs_value_us = 0LLU;
+  }
+  
   key_state = TEH_KS_acquire ();
+  /* FIXME: #4840: compute /keys delta from last_issue_date */
+  (void) last_issue_date;
   comp = MHD_NO;
   if (NULL != key_state->keys_jsonz)
     comp = TEH_RESPONSE_can_compress (connection);

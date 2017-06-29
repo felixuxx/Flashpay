@@ -497,7 +497,10 @@ decode_keys_json (const json_t *resp_obj,
   struct GNUNET_HashContext *hash_context;
   struct TALER_ExchangePublicKeyP pub;
 
-  memset (key_data, 0, sizeof (struct TALER_EXCHANGE_Keys));
+  /* FIXME: #4840: handle incremental / cherry-picked /keys! */
+  memset (key_data,
+	  0,
+	  sizeof (struct TALER_EXCHANGE_Keys));
   if (JSON_OBJECT != json_typeof (resp_obj))
     return GNUNET_SYSERR;
 
@@ -602,7 +605,8 @@ decode_keys_json (const json_t *resp_obj,
       key_data->num_auditors = len;
     }
   }
-
+  key_data->last_issue_date = list_issue_date;
+  
   /* Validate signature... */
   ks.purpose.size = htonl (sizeof (ks));
   ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
@@ -987,7 +991,22 @@ request_keys (struct TALER_EXCHANGE_Handle *exchange)
   GNUNET_assert (NULL == exchange->kr);
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
-  kr->url = MAH_path_to_url (exchange, "/keys");
+  if (GNUNET_YES == MAH_handle_is_ready (exchange))
+  {
+    char *arg;
+
+    GNUNET_asprintf (&arg,
+		     "/keys?last_issue_date=%llu",
+		     (unsigned long long) exchange->key_data.last_issue_date.abs_value_us);
+    kr->url = MAH_path_to_url (exchange,
+			       arg);
+    GNUNET_free (arg);
+  }
+  else
+  {
+    kr->url = MAH_path_to_url (exchange,
+			       "/keys");
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
               kr->url);
