@@ -29,6 +29,17 @@
 #include "taler_signatures.h"
 #include "exchange_api_handle.h"
 
+/**
+ * Which revision of the Taler protocol is implemented
+ * by this library?  Used to determine compatibility.
+ */
+#define TALER_PROTOCOL_CURRENT 0
+
+/**
+ * How many revisions back are we compatible to?
+ */
+#define TALER_PROTOCOL_AGE 0
+
 
 /**
  * Log error related to CURL operations.
@@ -485,11 +496,13 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
  *
  * @param[in] resp_obj JSON object to parse
  * @param[out] key_data where to store the results we decoded
+ * @param[out] where to store version compatibility data
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error (malformed JSON)
  */
 static int
 decode_keys_json (const json_t *resp_obj,
-                  struct TALER_EXCHANGE_Keys *key_data)
+                  struct TALER_EXCHANGE_Keys *key_data,
+		  enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
   struct GNUNET_TIME_Absolute list_issue_date;
   struct TALER_ExchangeSignatureP sig;
@@ -508,6 +521,9 @@ decode_keys_json (const json_t *resp_obj,
   /* parse the master public key and issue date of the response */
   {
     const char *ver;
+    unsigned int age;
+    unsigned int revision;
+    unsigned int current;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("version",
                                &ver),
@@ -526,6 +542,29 @@ decode_keys_json (const json_t *resp_obj,
             GNUNET_JSON_parse (resp_obj,
                                spec,
                                NULL, NULL));
+    if (3 != sscanf (ver,
+		     "%u:%u:%u",
+		     &current,
+		     &revision,
+		     &age))
+    {
+      GNUNET_break_op (0);
+      GNUNET_CRYPTO_hash_context_abort (hash_context);
+      return GNUNET_SYSERR;
+    }
+    *vc = TALER_EXCHANGE_VC_MATCH;
+    if (TALER_PROTOCOL_CURRENT < current)
+    {
+      *vc |= TALER_EXCHANGE_VC_NEWER;
+      if (TALER_PROTOCOL_CURRENT < current - age)
+	*vc |= TALER_EXCHANGE_VC_INCOMPATIBLE;
+    }
+    if (TALER_PROTOCOL_CURRENT > current)
+    {
+      *vc |= TALER_EXCHANGE_VC_OLDER;
+      if (TALER_PROTOCOL_CURRENT - TALER_PROTOCOL_AGE > current)
+	*vc |= TALER_EXCHANGE_VC_INCOMPATIBLE;
+    }
     key_data->version = GNUNET_strdup (ver);
   }
 
@@ -707,12 +746,14 @@ keys_completed_cb (void *cls,
   struct TALER_EXCHANGE_Handle *exchange = kr->exchange;
   struct TALER_EXCHANGE_Keys kd;
   struct TALER_EXCHANGE_Keys kd_old;
+  enum TALER_EXCHANGE_VersionCompatibility vc;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
               response_code);
   kd_old = exchange->key_data;
+  vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
   case 0:
@@ -725,7 +766,8 @@ keys_completed_cb (void *cls,
     }
     if (GNUNET_OK !=
         decode_keys_json (resp_obj,
-                          &kd))
+                          &kd,
+			  &vc))
     {
       response_code = 0;
       break;
@@ -748,7 +790,8 @@ keys_completed_cb (void *cls,
     exchange->state = MHS_FAILED;
     /* notify application that we failed */
     exchange->cert_cb (exchange->cert_cb_cls,
-                       NULL);
+                       NULL,
+		       vc);
     if (NULL != exchange->key_data_raw)
       {
         json_decref (exchange->key_data_raw);
@@ -764,7 +807,8 @@ keys_completed_cb (void *cls,
   exchange->state = MHS_CERT;
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
-                     &exchange->key_data);
+                     &exchange->key_data,
+		     vc);
   free_key_data (&kd_old);
 }
 

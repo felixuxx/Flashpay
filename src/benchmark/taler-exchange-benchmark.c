@@ -1234,10 +1234,12 @@ build_refresh ()
  *
  * @param cls closure
  * @param _keys information about keys of the exchange
+ * @param vc compatibility information
  */
 static void
 cert_cb (void *cls,
-         const struct TALER_EXCHANGE_Keys *_keys)
+         const struct TALER_EXCHANGE_Keys *_keys,
+	 enum TALER_EXCHANGE_VersionCompatibility vc)
 {
   /* check that keys is OK */
   if (NULL == _keys)

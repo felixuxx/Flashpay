@@ -230,6 +230,58 @@ struct TALER_EXCHANGE_Keys
 };
 
 
+/** 
+ * How compatible are the protocol version of the exchange and this
+ * client?  The bits (1,2,4) can be used to test if the exchange's
+ * version is incompatible, older or newer respectively.
+ */
+enum TALER_EXCHANGE_VersionCompatibility
+{
+
+  /**
+   * The exchange runs exactly the same protocol version.
+   */
+  TALER_EXCHANGE_VC_MATCH = 0,
+
+  /**
+   * The exchange is too old or too new to be compatible with this
+   * implementation (bit)
+   */
+  TALER_EXCHANGE_VC_INCOMPATIBLE = 1,
+
+  /**
+   * The exchange is older than this implementation (bit)
+   */
+  TALER_EXCHANGE_VC_OLDER = 2,
+
+  /**
+   * The exchange is too old to be compatible with
+   * this implementation.
+   */
+  TALER_EXCHANGE_VC_INCOMPATIBLE_OUTDATED
+  = TALER_EXCHANGE_VC_INCOMPATIBLE
+  | TALER_EXCHANGE_VC_OLDER,
+
+  /**
+   * The exchange is more recent than this implementation (bit).
+   */
+  TALER_EXCHANGE_VC_NEWER = 4,
+
+  /**
+   * The exchange is too recent for this implementation.
+   */
+  TALER_EXCHANGE_VC_INCOMPATIBLE_NEWER 
+  = TALER_EXCHANGE_VC_INCOMPATIBLE
+  | TALER_EXCHANGE_VC_NEWER,
+
+  /**
+   * We could not even parse the version data.
+   */
+  TALER_EXCHANGE_VC_PROTOCOL_ERROR = 8
+  
+};
+
+
 /**
  * Function called with information about who is auditing
  * a particular exchange and what key the exchange is using.
@@ -237,10 +289,12 @@ struct TALER_EXCHANGE_Keys
  * @param cls closure
  * @param keys information about the various keys used
  *        by the exchange, NULL if /keys failed
+ * @param compat protocol compatibility information
  */
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (void *cls,
-                                         const struct TALER_EXCHANGE_Keys *keys);
+                                         const struct TALER_EXCHANGE_Keys *keys,
+					 enum TALER_EXCHANGE_VersionCompatibility compat);
 
 
 /**
