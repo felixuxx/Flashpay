@@ -1478,6 +1478,33 @@ db_conn_destroy (void *cls)
 
 
 /**
+ * Reset the thread-local database-handle.  Disconnects from the DB.
+ * Needed after the database server restarts as we need to properly
+ * reconnect.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @return the database connection, or NULL on error
+ */
+static void
+postgres_reset_session (void *cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct TALER_EXCHANGEDB_Session *session;
+
+  if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
+    return;
+  if (0 != pthread_setspecific (pc->db_conn_threadlocal,
+                                NULL))
+  {
+    GNUNET_break (0);
+    return;
+  }
+  PQfinish (session->conn);
+  GNUNET_free (session);
+}
+
+
+/**
  * Get the thread-local database-handle.
  * Connect to the db if the connection does not exist yet.
  *
@@ -1492,7 +1519,12 @@ postgres_get_session (void *cls)
   struct TALER_EXCHANGEDB_Session *session;
 
   if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
-    return session;
+  {
+    if (CONNECTION_BAD == PQstatus (session->conn))
+      postgres_reset_session (pc);
+    else
+      return session;
+  }
   db_conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == db_conn)
     return NULL;
