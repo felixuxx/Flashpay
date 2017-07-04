@@ -821,8 +821,11 @@ static void
 db_conn_destroy (void *cls)
 {
   struct TALER_AUDITORDB_Session *session = cls;
-  PGconn *db_conn = session->conn;
+  PGconn *db_conn;
 
+  if (NULL == session)
+    return;
+  db_conn = session->conn;
   if (NULL != db_conn)
     PQfinish (db_conn);
   GNUNET_free (session);
@@ -844,7 +847,23 @@ postgres_get_session (void *cls)
   struct TALER_AUDITORDB_Session *session;
 
   if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
-    return session;
+  {
+    if (CONNECTION_BAD == PQstatus (session->conn))
+    {
+      /**
+       * Reset the thread-local database-handle.  Disconnects from the
+       * DB.  Needed after the database server restarts as we need to
+       * properly reconnect. */
+      GNUNET_assert (0 == pthread_setspecific (pc->db_conn_threadlocal,
+					      NULL));
+      PQfinish (session->conn);
+      GNUNET_free (session);
+    }
+    else
+    {
+      return session;
+    }
+  }
   db_conn = connect_to_postgres (pc);
   if (NULL == db_conn)
     return NULL;

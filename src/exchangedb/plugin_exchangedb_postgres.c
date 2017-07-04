@@ -1469,37 +1469,13 @@ static void
 db_conn_destroy (void *cls)
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
-  PGconn *db_conn = session->conn;
+  PGconn *db_conn;
 
+  if (NULL == session)
+    return;
+  db_conn = session->conn;
   if (NULL != db_conn)
     PQfinish (db_conn);
-  GNUNET_free (session);
-}
-
-
-/**
- * Reset the thread-local database-handle.  Disconnects from the DB.
- * Needed after the database server restarts as we need to properly
- * reconnect.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return the database connection, or NULL on error
- */
-static void
-postgres_reset_session (void *cls)
-{
-  struct PostgresClosure *pc = cls;
-  struct TALER_EXCHANGEDB_Session *session;
-
-  if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
-    return;
-  if (0 != pthread_setspecific (pc->db_conn_threadlocal,
-                                NULL))
-  {
-    GNUNET_break (0);
-    return;
-  }
-  PQfinish (session->conn);
   GNUNET_free (session);
 }
 
@@ -1521,9 +1497,21 @@ postgres_get_session (void *cls)
   if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
   {
     if (CONNECTION_BAD == PQstatus (session->conn))
-      postgres_reset_session (pc);
+    {
+      /**
+       * Reset the thread-local database-handle.  Disconnects from the
+       * DB.  Needed after the database server restarts as we need to
+       * properly reconnect. */
+      GNUNET_assert (0 ==
+		     pthread_setspecific (pc->db_conn_threadlocal,
+					  NULL));
+      PQfinish (session->conn);
+      GNUNET_free (session);
+    }
     else
+    {
       return session;
+    }
   }
   db_conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == db_conn)
