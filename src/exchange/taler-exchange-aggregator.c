@@ -603,8 +603,9 @@ deposit_cb (void *cls,
                              deposit_fee))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fatally malformed record at row %llu\n",
-                (unsigned long long) row_id);
+                "Fatally malformed record at row %llu over %s\n",
+                (unsigned long long) row_id,
+		TALER_amount2s (amount_with_fee));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   au->row_id = row_id;
@@ -700,8 +701,9 @@ aggregate_cb (void *cls,
                              deposit_fee))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fatally malformed record at %llu\n",
-                (unsigned long long) row_id);
+                "Fatally malformed record at %llu over amount %s\n",
+                (unsigned long long) row_id,
+		TALER_amount2s (amount_with_fee));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* add to total */
