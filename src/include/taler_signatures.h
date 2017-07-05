@@ -1275,6 +1275,25 @@ struct TALER_ReserveCloseConfirmationPS
 };
 
 
+/**
+ * Used by the merchant to confirm with a signature that the refund has
+ * been successfully done. Even though the frontend doesn't usually do crypto,
+ * this signature may turn useful in court.
+ */
+struct TALER_MerchantRefundConfirmationPS
+{
+  /**
+   * Set TALER_SIGNATURE_REFUND_OK.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hashed order id; in case frontend wants to check it.
+   */
+  struct GNUNET_HashCode h_order_id GNUNET_PACKED;
+
+};
+
 GNUNET_NETWORK_STRUCT_END
 
 #endif
