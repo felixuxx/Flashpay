@@ -597,7 +597,7 @@ deposit_cb (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   
   au->merchant_pub = *merchant_pub;
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_amount_subtract (&au->total_amount,
                              amount_with_fee,
                              deposit_fee))
@@ -694,7 +694,7 @@ aggregate_cb (void *cls,
                         merchant_pub,
                         sizeof (struct TALER_MerchantPublicKeyP)));
   /* compute contribution of this coin after fees */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_amount_subtract (&delta,
                              amount_with_fee,
                              deposit_fee))
