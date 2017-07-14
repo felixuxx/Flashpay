@@ -244,7 +244,7 @@ postgres_create_tables (void *cls)
 			    ",withdraw_fee_balance_frac INT4 NOT NULL"
 			    ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ",expiration_date INT8 NOT NULL"
-			    ",auditor_reserves_rowid BIGSERIAL"
+			    ",auditor_reserves_rowid BIGSERIAL UNIQUE"
 			    ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_reserves_by_reserve_pub "
 				"ON auditor_reserves(reserve_pub)"),

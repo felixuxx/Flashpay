@@ -176,7 +176,7 @@ postgres_create_tables (void *cls)
                             ")"),
     /* denomination_revocations table is for remembering which denomination keys have been revoked */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS denomination_revocations"
-                            "(denom_revocations_serial_id BIGSERIAL"
+                            "(denom_revocations_serial_id BIGSERIAL UNIQUE"
                             ",denom_pub_hash BYTEA PRIMARY KEY REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
                             ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
                             ");"),
@@ -202,7 +202,7 @@ postgres_create_tables (void *cls)
        into the reserve.  The rows of this table correspond to each
        incoming transaction. */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS reserves_in"
-                           "(reserve_in_serial_id BIGSERIAL"
+                           "(reserve_in_serial_id BIGSERIAL UNIQUE"
                            ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
                            ",wire_reference BYTEA NOT NULL"
                            ",credit_val INT8 NOT NULL"
@@ -238,7 +238,7 @@ postgres_create_tables (void *cls)
        should fail to even withdraw, as otherwise the coins will fail to deposit
        (as they really must be unique). */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves_out"
-                            "(reserve_out_serial_id BIGSERIAL"
+                            "(reserve_out_serial_id BIGSERIAL UNIQUE"
                             ",h_blind_ev BYTEA PRIMARY KEY"
                             ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash)" /* do NOT CASCADE on DELETE, we may keep the denomination key alive! */
                             ",denom_sig BYTEA NOT NULL"
@@ -270,7 +270,7 @@ postgres_create_tables (void *cls)
      * NOTE: maybe we should instead forbid values >= 2^15 categorically?
      */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS refresh_sessions "
-                           "(melt_serial_id BIGSERIAL"
+                           "(melt_serial_id BIGSERIAL UNIQUE"
                            ",session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
                            ",old_coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
                            ",old_coin_sig BYTEA NOT NULL CHECK(LENGTH(old_coin_sig)=64)"
@@ -349,7 +349,7 @@ postgres_create_tables (void *cls)
     /* Table with information about coins that have been refunded. (Technically
        one of the deposit operations that a coin was involved with is refunded.)*/
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS refunds "
-                           "(refund_serial_id BIGSERIAL"
+                           "(refund_serial_id BIGSERIAL UNIQUE"
                            ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
                            ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
                            ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
@@ -374,7 +374,7 @@ postgres_create_tables (void *cls)
     /* Table for the tracking API, mapping from wire transfer identifiers
        to transactions and back */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS aggregation_tracking "
-                           "(aggregation_serial_id BIGSERIAL"
+                           "(aggregation_serial_id BIGSERIAL UNIQUE"
                            ",deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
                            ",wtid_raw BYTEA  CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE"
                            ");"),
@@ -397,7 +397,7 @@ postgres_create_tables (void *cls)
                                "ON aggregation_tracking(wtid_raw);"),
     /* Table for /payback information */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS payback "
-                           "(payback_uuid BIGSERIAL"
+                           "(payback_uuid BIGSERIAL UNIQUE"
                            ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)" /* do NOT CASCADE on delete, we may keep the coin alive! */
                            ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
                            ",coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)"
