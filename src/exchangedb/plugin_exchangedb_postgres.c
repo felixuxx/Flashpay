@@ -174,6 +174,10 @@ postgres_create_tables (void *cls)
                             ",fee_refund_frac INT4 NOT NULL"
                             ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                             ")"),
+    /* index for gc_denominations */
+    GNUNET_PQ_make_try_execute ("CREATE INDEX denominations_expire_legal_index ON "
+                                "denominations (expire_legal);"),
+
     /* denomination_revocations table is for remembering which denomination keys have been revoked */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS denomination_revocations"
                             "(denom_revocations_serial_id BIGSERIAL UNIQUE"
@@ -196,8 +200,9 @@ postgres_create_tables (void *cls)
     /* index on reserves table */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_reserve_pub_index ON "
                                 "reserves (reserve_pub);"),
+    /* index for get_expired_reserves */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_expiration_index"
-                                " ON reserves (expiration_date);"),
+                                " ON reserves (expiration_date,current_balance_val,current_balance_frac);"),
     /* reserves_in table collects the transactions which transfer funds
        into the reserve.  The rows of this table correspond to each
        incoming transaction. */
@@ -280,6 +285,9 @@ postgres_create_tables (void *cls)
                            ",num_newcoins INT2 NOT NULL"
                            ",noreveal_index INT2 NOT NULL"
                            ");"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_sessions_old_coin_pub_index ON "
+                                "refresh_sessions (old_coin_pub);"),
+
     /* Table with information about the desired denominations to be created
        during a refresh operation; contains the denomination key for each
        of the coins (for a given refresh session) */
@@ -308,10 +316,8 @@ postgres_create_tables (void *cls)
                            "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
                            ",newcoin_index INT2 NOT NULL"
                            ",coin_ev BYTEA NOT NULL"
-                           ",UNIQUE (session_hash, newcoin_index)"
+                           ",PRIMARY KEY (session_hash, newcoin_index)"
                            ");"),
-    GNUNET_PQ_make_try_execute("CREATE INDEX refresh_commit_coin_session_hash_index "
-                               "ON refresh_commit_coin(session_hash, newcoin_index)"),
     /* Table with the signatures over coins generated during a refresh
        operation. Needed to answer /refresh/link queries later.  Stores
        the coin signatures under the respective session hash and index. */
@@ -319,10 +325,8 @@ postgres_create_tables (void *cls)
                            "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
                            ",newcoin_index INT2 NOT NULL"
                            ",ev_sig BYTEA NOT NULL"
-                           ",UNIQUE (session_hash, newcoin_index)"
+                           ",PRIMARY KEY (session_hash, newcoin_index)"
                            ");"),
-    GNUNET_PQ_make_try_execute("CREATE INDEX refresh_out_session_hash_index "
-                               "ON refresh_out(session_hash, newcoin_index)"),
     /* This table contains the wire transfers the exchange is supposed to
        execute to transmit funds to the merchants (and manage refunds). */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS deposits "
@@ -346,6 +350,16 @@ postgres_create_tables (void *cls)
     /* Index for get_deposit statement on coin_pub, h_contract_terms and merchant_pub */
     GNUNET_PQ_make_try_execute("CREATE INDEX deposits_coin_pub_index "
                                "ON deposits(coin_pub, h_contract_terms, merchant_pub)"),
+    /* Index for get_deposit_for_wtid */
+    GNUNET_PQ_make_try_execute("CREATE INDEX deposits_coin_pub_merchant_contract_index "
+                               "ON deposits(coin_pub, merchant_pub, h_contract_terms)"),
+    /* Index for deposits_get_ready */
+    GNUNET_PQ_make_try_execute("CREATE INDEX deposits_get_ready_index "
+                               "ON deposits(tiny,done,wire_deadline,refund_deadline)"),
+    /* Index for deposits_iterate_matching */
+    GNUNET_PQ_make_try_execute("CREATE INDEX deposits_iterate_matching "
+                               "ON deposits(merchant_pub,h_wire,done,wire_deadline)"),
+
     /* Table with information about coins that have been refunded. (Technically
        one of the deposit operations that a coin was involved with is refunded.)*/
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS refunds "
@@ -360,6 +374,8 @@ postgres_create_tables (void *cls)
                            ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                            ",PRIMARY KEY (coin_pub, merchant_pub, h_contract_terms, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
                            ");"),
+    GNUNET_PQ_make_try_execute("CREATE INDEX refunds_coin_pub_index "
+                               "ON refunds(coin_pub)"),    
     /* This table contains the data for
        wire transfers the exchange has executed. */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS wire_out "
@@ -395,6 +411,9 @@ postgres_create_tables (void *cls)
     /* Index for lookup_transactions statement on wtid */
     GNUNET_PQ_make_try_execute("CREATE INDEX aggregation_tracking_wtid_index "
                                "ON aggregation_tracking(wtid_raw);"),
+    /* Index for gc_wire_fee */
+    GNUNET_PQ_make_try_execute("CREATE INDEX wire_fee_gc_index "
+                               "ON wire_fee(end_date);"),
     /* Table for /payback information */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS payback "
                            "(payback_uuid BIGSERIAL UNIQUE"
@@ -420,9 +439,9 @@ postgres_create_tables (void *cls)
                            ",finished BOOLEAN NOT NULL DEFAULT false"
                            ",buf BYTEA NOT NULL"
                            ");"),
-    /* Index for prepare_data_iterate statement */
+    /* Index for wire_prepare_data_get and gc_prewire statement */
     GNUNET_PQ_make_try_execute("CREATE INDEX prepare_iteration_index "
-                               "ON prewire(type,finished);"),
+                               "ON prewire(finished);"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
@@ -896,7 +915,8 @@ postgres_prepare (PGconn *db_conn)
                             "SELECT"
                             " coin_ev"
                             " FROM refresh_commit_coin"
-                            " WHERE session_hash=$1 AND newcoin_index=$2;",
+                            " WHERE session_hash=$1"
+			    " AND newcoin_index=$2;",
                             2),
     /* Store information about a /deposit the exchange is to execute.
        Used in #postgres_insert_deposit(). */
@@ -1147,7 +1167,9 @@ postgres_prepare (PGconn *db_conn)
        NOTE: This may (in theory) return multiple results, one per session
        that the old coin was melted into. */
     GNUNET_PQ_make_prepare ("get_transfer",
-                            "SELECT transfer_pub,session_hash"
+                            "SELECT"
+			    " transfer_pub"
+			    ",session_hash"
                             " FROM refresh_sessions rs"
                             "     JOIN refresh_transfer_public_key rcl"
                             "       USING (session_hash)"
