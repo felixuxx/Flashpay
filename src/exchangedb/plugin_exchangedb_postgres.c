@@ -240,7 +240,7 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves_out"
                             "(reserve_out_serial_id BIGSERIAL"
                             ",h_blind_ev BYTEA PRIMARY KEY"
-                            ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
+                            ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash)" /* do NOT CASCADE on DELETE, we may keep the denomination key alive! */
                             ",denom_sig BYTEA NOT NULL"
                             ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
                             ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
@@ -398,8 +398,7 @@ postgres_create_tables (void *cls)
     /* Table for /payback information */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS payback "
                            "(payback_uuid BIGSERIAL"
-                           ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-                           ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
+                           ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)" /* do NOT CASCADE on delete, we may keep the coin alive! */
                            ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
                            ",coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)"
                            ",amount_val INT8 NOT NULL"
@@ -1302,8 +1301,7 @@ postgres_prepare (PGconn *db_conn)
        information */
     GNUNET_PQ_make_prepare ("payback_insert",
                             "INSERT INTO payback "
-                            "(reserve_pub"
-                            ",coin_pub"
+                            "(coin_pub"
                             ",coin_sig"
                             ",coin_blind"
                             ",amount_val"
@@ -1312,14 +1310,14 @@ postgres_prepare (PGconn *db_conn)
                             ",timestamp"
                             ",h_blind_ev"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-                            9),
+                            "($1, $2, $3, $4, $5, $6, $7, $8);",
+                            8),
     /* Used in #postgres_select_payback_above_serial_id() to obtain payback transactions */
     GNUNET_PQ_make_prepare ("payback_get_incr",
                             "SELECT"
                             " payback_uuid"
                             ",timestamp"
-                            ",reserve_pub"
+                            ",ro.reserve_pub"
                             ",coin_pub"
                             ",coin_sig"
                             ",coin_blind"
@@ -1334,6 +1332,8 @@ postgres_prepare (PGconn *db_conn)
                             "      USING (coin_pub)"
                             "    JOIN denominations denoms"
                             "      USING (denom_pub_hash)"
+                            "    JOIN reserves_out ro"
+                            "      USING (h_blind_ev)"
                             " WHERE payback_uuid>=$1"
                             " ORDER BY payback_uuid ASC;",
                             1),
@@ -1374,7 +1374,9 @@ postgres_prepare (PGconn *db_conn)
                             "      USING (coin_pub)"
                             "    JOIN denominations denoms"
                             "      USING (denom_pub_hash)"
-                            " WHERE payback.reserve_pub=$1;",
+                            "    JOIN reserves_out ro"
+                            "      USING (h_blind_ev)"
+                            " WHERE ro.reserve_pub=$1;",
                             1),
     /* Used in #postgres_get_reserve_history() */
     GNUNET_PQ_make_prepare ("close_by_reserve",
@@ -1411,7 +1413,7 @@ postgres_prepare (PGconn *db_conn)
        for a coin */
     GNUNET_PQ_make_prepare ("payback_by_coin",
                             "SELECT"
-                            " payback.reserve_pub"
+                            " ro.reserve_pub"
                             ",coin_sig"
                             ",coin_blind"
                             ",amount_val"
@@ -1420,12 +1422,13 @@ postgres_prepare (PGconn *db_conn)
                             ",timestamp"
                             ",denoms.denom_pub"
                             ",coins.denom_sig"
-
                             " FROM payback"
                             "    JOIN known_coins coins"
                             "      USING (coin_pub)"
                             "    JOIN denominations denoms"
                             "      USING (denom_pub_hash)"
+                            "    JOIN reserves_out ro"
+                            "      USING (h_blind_ev)"
                             " WHERE payback.coin_pub=$1;",
                             1),
     /* Used in #postgres_get_reserve_by_h_blind() */
@@ -1451,6 +1454,11 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE expiration_date < $1"
                             "   AND current_balance_val = 0"
                             "   AND current_balance_frac = 0;",
+                            1),
+    GNUNET_PQ_make_prepare ("gc_wire_fee",
+                            "DELETE"
+                            " FROM wire_fee"
+                            " WHERE end_date < $1;",
                             1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -2267,8 +2275,8 @@ add_withdraw_coin (void *cls,
  */
 static void
 add_payback (void *cls,
-		   PGresult *result,
-		   unsigned int num_results)
+	     PGresult *result,
+	     unsigned int num_results)
 {
   struct ReserveHistoryContext *rhc = cls;
   
@@ -4873,6 +4881,7 @@ postgres_gc (void *cls)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute long_ago;
   struct GNUNET_PQ_QueryParam params_none[] = {
     GNUNET_PQ_query_param_end
   };
@@ -4880,26 +4889,46 @@ postgres_gc (void *cls)
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_QueryParam params_ancient_time[] = {
+    GNUNET_PQ_query_param_absolute_time (&long_ago),
+    GNUNET_PQ_query_param_end
+  };
   PGconn *conn;
   int ret;
-  
+
   now = GNUNET_TIME_absolute_get ();
+  /* Keep wire fees for 10 years, that should always
+     be enough _and_ they are tiny so it does not
+     matter to make this tight */
+  long_ago = GNUNET_TIME_absolute_subtract (now,
+					    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS,
+									   10));
   conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == conn)
     return GNUNET_SYSERR;
   ret = postgres_prepare (conn);
   if (GNUNET_OK == ret)
   {
-    if ( (0 > GNUNET_PQ_eval_prepared_non_select (conn,
+    if (
+	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
+						  "gc_reserves",
+						  params_time)) ||
+	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
 						  "gc_prewire",
 						  params_none)) ||
 	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-						  "gc_denominations",
-						  params_time)) ||
-	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-						  "gc_reserves",
-						  params_time)) )
+						  "gc_wire_fee",
+						  params_ancient_time))
+	)
       ret = GNUNET_SYSERR;
+    /* This one may fail due to foreign key constraints from
+       payback and reserves_out tables to known_coins; these
+       are NOT using 'ON DROP CASCADE' and might keep denomination
+       keys alive for a bit longer, thus causing this statement
+       to fail. */
+    (void) GNUNET_PQ_eval_prepared_non_select (conn,
+					       "gc_denominations",
+					       params_time);    
   }
   PQfinish (conn);
   return ret;
@@ -5995,7 +6024,6 @@ postgres_insert_payback_request (void *cls,
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     GNUNET_PQ_query_param_auto_from_type (coin_blind),

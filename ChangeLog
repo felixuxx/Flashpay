@@ -1,3 +1,12 @@
+Fri Jul 14 17:38:54 CEST 2017
+	Fix #4751 by not allowing denomination deletion (GC)
+	to cascade into reserve_out table (and tolerating such
+	deletion failures). This way, denominations will be kept
+	around until the last reserve that references them (or
+	known_coins derived from them) is closed. Naturally, in
+	most case we expect reserves to be closed much faster
+	than DKs, so in practice this should rarely apply. -CG
+
 Sun Jun 11 17:03:56 CEST 2017
 	Finish implementation and testing of automated refunding
 	of expired reserves (#4956). -CG

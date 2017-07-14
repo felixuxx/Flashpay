@@ -138,12 +138,12 @@ postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS predicted_result;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS historic_ledger;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS historic_losses;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS historic_denomination_revenue;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS balance_summary;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS denomination_pending;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_predicted_result;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_ledger;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_losses;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_denomination_revenue;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_balance_summary;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_denomination_pending;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserve_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_wire_fee_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserves;"),
@@ -274,9 +274,9 @@ postgres_create_tables (void *cls)
        last melt from "refresh_sessions" that the auditor is aware
        of; "refund_serial_id" tells us the last entry in "refunds"
        for this denom_pub that the auditor is aware of. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS denomination_pending"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denomination_pending"
 			    "(denom_pub_hash BYTEA PRIMARY KEY"
-			    /* " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE" // Do we want this? */
+			    " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE" 
 			    ",denom_balance_val INT8 NOT NULL"
 			    ",denom_balance_frac INT4 NOT NULL"
 			    ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -285,12 +285,12 @@ postgres_create_tables (void *cls)
 			    ",denom_risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
     /* Table with the sum of the outstanding coins from
-       "denomination_pending" (denom_pubs must belong to the
+       "auditor_denomination_pending" (denom_pubs must belong to the
        respective's exchange's master public key); it represents the
-       balance_summary of the exchange at this point (modulo
+       auditor_balance_summary of the exchange at this point (modulo
        unexpected historic_loss-style events where denomination keys are
        compromised) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS balance_summary"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_balance_summary"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",denom_balance_val INT8 NOT NULL"
 			    ",denom_balance_frac INT4 NOT NULL"
@@ -317,7 +317,7 @@ postgres_create_tables (void *cls)
        historic_reserve_revenue); the deposit, melt and refund fees are given
        individually; the delta to the revenue_balance is from coins that
        were withdrawn but never deposited prior to expiration. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS historic_denomination_revenue"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue"
 			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
 			    ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
 			    ",revenue_timestamp INT8 NOT NULL"
@@ -330,7 +330,7 @@ postgres_create_tables (void *cls)
        compromised, we incur a loss. These losses are totaled
        up here. (NOTE: the 'bankrupcy' protocol is not yet
        implemented, so right now this table is not used.)  */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS historic_losses"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_losses"
 			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
 			    ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
 			    ",loss_timestamp INT8 NOT NULL"
@@ -339,9 +339,9 @@ postgres_create_tables (void *cls)
 			    ",loss_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
     /* Table with historic profits from reserves; we eventually
-       GC "historic_reserve_revenue", and then store the totals
+       GC "auditor_historic_reserve_revenue", and then store the totals
        in here (by time intervals). */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS historic_reserve_summary"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary"
 			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
 			    ",start_date INT8 NOT NULL"
 			    ",end_date INT8 NOT NULL"
@@ -349,8 +349,8 @@ postgres_create_tables (void *cls)
 			    ",reserve_profits_frac INT4 NOT NULL"
 			    ",reserve_profits_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
-    GNUNET_PQ_make_try_execute ("CREATE INDEX historic_reserve_summary_by_master_pub_start_date "
-				"ON historic_reserve_summary(master_pub,start_date)"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date "
+				"ON auditor_historic_reserve_summary(master_pub,start_date)"),
     /* Table with historic business ledger; basically, when the exchange
        operator decides to use operating costs for anything but wire
        transfers to merchants, it goes in here.  This happens when the
@@ -358,12 +358,12 @@ postgres_create_tables (void *cls)
        is free-form but should be a human-readable wire transfer
        identifier.   This is NOT yet used and outside of the scope of
        the core auditing logic. However, once we do take fees to use
-       operating costs, and if we still want "predicted_result" to match
+       operating costs, and if we still want "auditor_predicted_result" to match
        the tables overall, we'll need a command-line tool to insert rows
-       into this table and update "predicted_result" accordingly.
+       into this table and update "auditor_predicted_result" accordingly.
        (So this table for now just exists as a reminder of what we'll
        need in the long term.) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS historic_ledger"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_ledger"
 			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
 			    ",purpose VARCHAR NOT NULL"
 			    ",timestamp INT8 NOT NULL"
@@ -372,12 +372,12 @@ postgres_create_tables (void *cls)
 			    ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX history_ledger_by_master_pub_and_time "
-				"ON historic_ledger(master_pub,timestamp)"),
-    /* Table with the sum of the ledger, historic_revenue,
-       historic_losses and the auditor_reserve_balance.  This is the
+				"ON auditor_historic_ledger(master_pub,timestamp)"),
+    /* Table with the sum of the ledger, auditor_historic_revenue,
+       auditor_historic_losses and the auditor_reserve_balance.  This is the
        final amount that the exchange should have in its bank account
        right now. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS predicted_result"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_predicted_result"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",balance_val INT8 NOT NULL"
 			    ",balance_frac INT4 NOT NULL"
@@ -616,8 +616,8 @@ postgres_prepare (PGconn *db_conn)
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_denomination_balance() */
-    GNUNET_PQ_make_prepare ("denomination_pending_insert",
-			    "INSERT INTO denomination_pending "
+    GNUNET_PQ_make_prepare ("auditor_denomination_pending_insert",
+			    "INSERT INTO auditor_denomination_pending "
 			    "(denom_pub_hash"
 			    ",denom_balance_val"
 			    ",denom_balance_frac"
@@ -628,8 +628,8 @@ postgres_prepare (PGconn *db_conn)
 			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
 			    7),    
     /* Used in #postgres_update_denomination_balance() */
-    GNUNET_PQ_make_prepare ("denomination_pending_update",
-			    "UPDATE denomination_pending SET"
+    GNUNET_PQ_make_prepare ("auditor_denomination_pending_update",
+			    "UPDATE auditor_denomination_pending SET"
 			    " denom_balance_val=$1"
 			    ",denom_balance_frac=$2"
 			    ",denom_balance_curr=$3"
@@ -639,7 +639,7 @@ postgres_prepare (PGconn *db_conn)
 			    " WHERE denom_pub_hash=$7",
 			    7),    
     /* Used in #postgres_get_denomination_balance() */
-    GNUNET_PQ_make_prepare ("denomination_pending_select",
+    GNUNET_PQ_make_prepare ("auditor_denomination_pending_select",
 			    "SELECT"
 			    " denom_balance_val"
 			    ",denom_balance_frac"
@@ -647,12 +647,12 @@ postgres_prepare (PGconn *db_conn)
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
-			    " FROM denomination_pending"
+			    " FROM auditor_denomination_pending"
 			    " WHERE denom_pub_hash=$1",
 			    1),
     /* Used in #postgres_insert_balance_summary() */
-    GNUNET_PQ_make_prepare ("balance_summary_insert",
-			    "INSERT INTO balance_summary "
+    GNUNET_PQ_make_prepare ("auditor_balance_summary_insert",
+			    "INSERT INTO auditor_balance_summary "
 			    "(master_pub"
 			    ",denom_balance_val"
 			    ",denom_balance_frac"
@@ -672,8 +672,8 @@ postgres_prepare (PGconn *db_conn)
 			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);",
 			    16),
     /* Used in #postgres_update_balance_summary() */
-    GNUNET_PQ_make_prepare ("balance_summary_update",
-			    "UPDATE balance_summary SET"
+    GNUNET_PQ_make_prepare ("auditor_balance_summary_update",
+			    "UPDATE auditor_balance_summary SET"
 			    " denom_balance_val=$1"
 			    ",denom_balance_frac=$2"
 			    ",denom_balance_curr=$3"
@@ -692,7 +692,7 @@ postgres_prepare (PGconn *db_conn)
 			    " WHERE master_pub=$16;",
 			    16),
     /* Used in #postgres_get_balance_summary() */
-    GNUNET_PQ_make_prepare ("balance_summary_select",
+    GNUNET_PQ_make_prepare ("auditor_balance_summary_select",
 			    "SELECT"
 			    " denom_balance_val"
 			    ",denom_balance_frac"
@@ -709,12 +709,12 @@ postgres_prepare (PGconn *db_conn)
 			    ",risk_val"
 			    ",risk_frac"
 			    ",risk_curr"
-			    " FROM balance_summary"
+			    " FROM auditor_balance_summary"
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_historic_denom_revenue() */
-    GNUNET_PQ_make_prepare ("historic_denomination_revenue_insert",
-			    "INSERT INTO historic_denomination_revenue"
+    GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_insert",
+			    "INSERT INTO auditor_historic_denomination_revenue"
 			    "(master_pub"
 			    ",denom_pub_hash"
 			    ",revenue_timestamp"
@@ -724,19 +724,19 @@ postgres_prepare (PGconn *db_conn)
 			    ") VALUES ($1,$2,$3,$4,$5,$6);",
 			    6),
     /* Used in #postgres_select_historic_denom_revenue() */
-    GNUNET_PQ_make_prepare ("historic_denomination_revenue_select",
+    GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_select",
 			    "SELECT"
 			    " denom_pub_hash"
 			    ",revenue_timestamp"
 			    ",revenue_balance_val"
 			    ",revenue_balance_frac"
 			    ",revenue_balance_curr"
-			    " FROM historic_denomination_revenue"
+			    " FROM auditor_historic_denomination_revenue"
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_historic_losses() */
-    GNUNET_PQ_make_prepare ("historic_losses_insert",
-			    "INSERT INTO historic_losses"
+    GNUNET_PQ_make_prepare ("auditor_historic_losses_insert",
+			    "INSERT INTO auditor_historic_losses"
 			    "(master_pub"
 			    ",denom_pub_hash"
 			    ",loss_timestamp"
@@ -746,19 +746,19 @@ postgres_prepare (PGconn *db_conn)
 			    ") VALUES ($1,$2,$3,$4,$5,$6);",
 			    6),
     /* Used in #postgres_select_historic_losses() */
-    GNUNET_PQ_make_prepare ("historic_losses_select",
+    GNUNET_PQ_make_prepare ("auditor_historic_losses_select",
 			    "SELECT"
 			    " denom_pub_hash"
 			    ",loss_timestamp"
 			    ",loss_balance_val"
 			    ",loss_balance_frac"
 			    ",loss_balance_curr"
-			    " FROM historic_losses"
+			    " FROM auditor_historic_losses"
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_historic_reserve_revenue() */
-    GNUNET_PQ_make_prepare ("historic_reserve_summary_insert",
-			    "INSERT INTO historic_reserve_summary"
+    GNUNET_PQ_make_prepare ("auditor_historic_reserve_summary_insert",
+			    "INSERT INTO auditor_historic_reserve_summary"
 			    "(master_pub"
 			    ",start_date"
 			    ",end_date"
@@ -768,19 +768,19 @@ postgres_prepare (PGconn *db_conn)
 			    ") VALUES ($1,$2,$3,$4,$5,$6);",
 			    6),    
     /* Used in #postgres_select_historic_reserve_revenue() */
-    GNUNET_PQ_make_prepare ("historic_reserve_summary_select",
+    GNUNET_PQ_make_prepare ("auditor_historic_reserve_summary_select",
 			    "SELECT"
 			    " start_date"
 			    ",end_date"
 			    ",reserve_profits_val"
 			    ",reserve_profits_frac"
 			    ",reserve_profits_curr"
-			    " FROM historic_reserve_summary"
+			    " FROM auditor_historic_reserve_summary"
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_predicted_result() */
-    GNUNET_PQ_make_prepare ("predicted_result_insert",
-			    "INSERT INTO predicted_result"
+    GNUNET_PQ_make_prepare ("auditor_predicted_result_insert",
+			    "INSERT INTO auditor_predicted_result"
 			    "(master_pub"
 			    ",balance_val"
 			    ",balance_frac"
@@ -788,20 +788,20 @@ postgres_prepare (PGconn *db_conn)
 			    ") VALUES ($1,$2,$3,$4);",
 			    4),
     /* Used in #postgres_update_predicted_result() */
-    GNUNET_PQ_make_prepare ("predicted_result_update",
-			    "UPDATE predicted_result SET"
+    GNUNET_PQ_make_prepare ("auditor_predicted_result_update",
+			    "UPDATE auditor_predicted_result SET"
 			    " balance_val=$1"
 			    ",balance_frac=$2"
 			    ",balance_curr=$3"
 			    " WHERE master_pub=$4;",
 			    4),
     /* Used in #postgres_get_predicted_balance() */
-    GNUNET_PQ_make_prepare ("predicted_result_select",
+    GNUNET_PQ_make_prepare ("auditor_predicted_result_select",
 			    "SELECT"
 			    " balance_val"
 			    ",balance_frac"
 			    ",balance_curr"
-			    " FROM predicted_result"
+			    " FROM auditor_predicted_result"
 			    " WHERE master_pub=$1;",
 			    1),
     GNUNET_PQ_PREPARED_STATEMENT_END
@@ -1668,7 +1668,7 @@ postgres_insert_denomination_balance (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "denomination_pending_insert",
+					     "auditor_denomination_pending_insert",
 					     params);
 }
 
@@ -1699,7 +1699,7 @@ postgres_update_denomination_balance (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "denomination_pending_update",
+					     "auditor_denomination_pending_update",
 					     params);
 }
 
@@ -1732,7 +1732,7 @@ postgres_get_denomination_balance (void *cls,
   };
   
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "denomination_pending_select",
+						   "auditor_denomination_pending_select",
 						   params,
 						   rs);
 }
@@ -1785,7 +1785,7 @@ postgres_insert_balance_summary (void *cls,
                                             refund_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "balance_summary_insert",
+					     "auditor_balance_summary_insert",
 					     params);
 }
 
@@ -1825,7 +1825,7 @@ postgres_update_balance_summary (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "balance_summary_update",
+					     "auditor_balance_summary_update",
 					     params);
 }
 
@@ -1867,7 +1867,7 @@ postgres_get_balance_summary (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "balance_summary_select",
+						   "auditor_balance_summary_select",
 						   params,
 						   rs);
 }
@@ -1904,7 +1904,7 @@ postgres_insert_historic_denom_revenue (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "historic_denomination_revenue_insert",
+					     "auditor_historic_denomination_revenue_insert",
 					     params);
 }
 
@@ -2009,7 +2009,7 @@ postgres_select_historic_denom_revenue (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "historic_denomination_revenue_select",
+					     "auditor_historic_denomination_revenue_select",
 					     params,
 					     &historic_denom_revenue_cb,
 					     &hrc);
@@ -2051,7 +2051,7 @@ postgres_insert_historic_losses (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "historic_losses_insert",
+					     "auditor_historic_losses_insert",
 					     params);
 }
 
@@ -2155,7 +2155,7 @@ postgres_select_historic_losses (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "historic_losses_select",
+					     "auditor_historic_losses_select",
 					     params,
 					     &losses_cb,
 					     &lctx);
@@ -2193,7 +2193,7 @@ postgres_insert_historic_reserve_revenue (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "historic_reserve_summary_insert",
+					     "auditor_historic_reserve_summary_insert",
 					     params);
 }
 
@@ -2296,7 +2296,7 @@ postgres_select_historic_reserve_revenue (void *cls,
   };
   
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "historic_reserve_summary_select",
+					     "auditor_historic_reserve_summary_select",
 					     params,
 					     &historic_reserve_revenue_cb,
 					     &hrc);
@@ -2329,7 +2329,7 @@ postgres_insert_predicted_result (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "predicted_result_insert",
+					     "auditor_predicted_result_insert",
 					     params);
 }
 
@@ -2357,7 +2357,7 @@ postgres_update_predicted_result (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "predicted_result_update",
+					     "auditor_predicted_result_update",
 					     params);
 }
 
@@ -2388,7 +2388,7 @@ postgres_get_predicted_balance (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "predicted_result_select",
+						   "auditor_predicted_result_select",
 						   params,
 						   rs);
 }

@@ -21,6 +21,7 @@
  */
 #include <platform.h>
 #include "taler_exchangedb_lib.h"
+#include "taler_auditordb_lib.h"
 
 
 /**
@@ -58,6 +59,11 @@ static struct TALER_MasterPublicKeyP master_public_key;
  * Our configuration.
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
+ * Handle to access the auditor's database.
+ */
+static struct TALER_AUDITORDB_Plugin *adb;
 
 
 /**
@@ -180,7 +186,6 @@ main (int argc,
   unsigned int dks_len;
   struct TALER_ExchangeKeyValidityPS kv;
   off_t in_size;
-  unsigned int i;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-auditor-sign",
@@ -223,7 +228,8 @@ main (int argc,
              "Auditor URL not given in neither configuration nor command-line\n");
     return 1;
   }
-  if (GNUNET_YES != GNUNET_DISK_file_test (auditor_key_file))
+  if (GNUNET_YES !=
+      GNUNET_DISK_file_test (auditor_key_file))
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Auditor private key `%s' does not exist yet, creating it!\n",
                 auditor_key_file);
@@ -277,9 +283,18 @@ main (int argc,
              "Denomination list has length zero, signature not produced.\n");
     GNUNET_DISK_file_close (fh);
     GNUNET_free (eddsa_priv);
-    return 2;
-  
+    return 2;  
   }
+  if (NULL ==
+      (adb = TALER_AUDITORDB_plugin_load (cfg)))
+  {
+    fprintf (stderr,
+             "Failed to initialize auditor database plugin.\n");
+    GNUNET_DISK_file_close (fh);
+    GNUNET_free (eddsa_priv);
+    return 3;
+  }
+  
   kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS);
   kv.purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS));
   GNUNET_CRYPTO_hash (auditor_url,
@@ -299,6 +314,7 @@ main (int argc,
              "Failed to read input file `%s': %s\n",
              exchange_request_file,
              STRERROR (errno));
+    TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_DISK_file_close (fh);
     GNUNET_free (sigs);
     GNUNET_free (dks);
@@ -306,7 +322,7 @@ main (int argc,
     return 1;
   }
   GNUNET_DISK_file_close (fh);
-  for (i=0;i<dks_len;i++)
+  for (unsigned int i=0;i<dks_len;i++)
   {
     struct TALER_DenominationKeyValidityPS *dk = &dks[i];
 
@@ -333,11 +349,48 @@ main (int argc,
   {
     fprintf (stderr,
              "Output file not given\n");
+    TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_free (dks);
     GNUNET_free (sigs);
     GNUNET_free (eddsa_priv);
     return 1;
   }
+  /* Update DB */
+  {
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_AUDITORDB_Session *session;
+
+    session = adb->get_session (adb->cls);
+    if (NULL == session)
+    {
+      fprintf (stderr,
+	       "Failed to initialize database session\n");
+      TALER_AUDITORDB_plugin_unload (adb);
+      GNUNET_free (dks);
+      GNUNET_free (sigs);
+      GNUNET_free (eddsa_priv);
+      return 3;
+    }
+    for (unsigned int i=0;i<dks_len;i++)
+    {
+      const struct TALER_DenominationKeyValidityPS *dk = &dks[i];
+
+      qs = adb->insert_denomination_info (adb->cls,
+					  session,
+					  dk);
+      if (0 > qs)
+      {
+	fprintf (stderr,
+		 "Failed to store key in auditor DB\n");
+	TALER_AUDITORDB_plugin_unload (adb);
+	GNUNET_free (dks);
+	GNUNET_free (sigs);
+	GNUNET_free (eddsa_priv);
+	return 3;
+      }
+    }
+  }  
+  TALER_AUDITORDB_plugin_unload (adb);
 
   /* write result to disk */
   if (GNUNET_OK !=
@@ -357,7 +410,6 @@ main (int argc,
     GNUNET_free (dks);
     return 1;
   }
-
   GNUNET_free (sigs);
   GNUNET_free (dks);
   GNUNET_free (eddsa_priv);

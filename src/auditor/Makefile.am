@@ -32,6 +32,7 @@ taler_auditor_sign_SOURCES = \
 taler_auditor_sign_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil $(XLIB)
 
