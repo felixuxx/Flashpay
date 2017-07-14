@@ -566,10 +566,11 @@ postgres_prepare (PGconn *db_conn)
                             "UPDATE reserves"
                             " SET"
                             " expiration_date=$1 "
-                            ",current_balance_val=$2 "
+                            ",current_balance_val=$2"
                             ",current_balance_frac=$3"
-                            " WHERE current_balance_curr=$4"
-                            " AND reserve_pub=$5;",
+			    ",current_balance_curr=$4"
+                            " WHERE"
+                            " reserve_pub=$5;",
                             5),
     /* Used in #postgres_reserves_in_insert() to store transaction details */
     GNUNET_PQ_make_prepare ("reserves_in_add_transaction",
