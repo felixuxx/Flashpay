@@ -504,7 +504,7 @@ postgres_prepare (PGconn *db_conn)
                             ",fee_refund_frac"
                             ",fee_refund_curr" /* must match coin_curr */
                             " FROM denominations"
-                            " WHERE denom_pub=$1;",
+                            " WHERE denom_pub_hash=$1;",
                             1),
     /* Used in #postgres_insert_denomination_revocation() */
     GNUNET_PQ_make_prepare ("denomination_revocation_insert",
@@ -1687,8 +1687,9 @@ postgres_get_denomination_info (void *cls,
                                 struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_HashCode dph;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    GNUNET_PQ_query_param_auto_from_type (&dph),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -1717,6 +1718,8 @@ postgres_get_denomination_info (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+				     &dph);
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						 "denomination_get",
 						 params,
