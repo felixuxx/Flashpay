@@ -407,6 +407,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_UNSUPPORTED = 1217,
 
+  /**
+   * Timestamp included in deposit permission is intolerably far off
+   * with respect to the clock of the exchange.
+   */
+  TALER_EC_DEPOSIT_INVALID_TIMESTAMP = 1218,
 
   /**
    * The respective coin did not have sufficient residual value

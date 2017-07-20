@@ -294,6 +294,30 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
+ * Check that @a ts is reasonably close to our own RTC.
+ *
+ * @param ts timestamp to check
+ * @return #GNUNET_OK if @a ts is reasonable
+ */
+static int
+check_timestamp_current (struct GNUNET_TIME_Absolute ts)
+{
+  struct GNUNET_TIME_Relative r;
+  struct GNUNET_TIME_Relative tolerance;
+
+  /* Let's be VERY generous */
+  tolerance = GNUNET_TIME_UNIT_MONTHS;
+  r = GNUNET_TIME_absolute_get_duration (ts);
+  if (r.rel_value_us > tolerance.rel_value_us)
+    return GNUNET_SYSERR;
+  r = GNUNET_TIME_absolute_get_remaining (ts);
+  if (r.rel_value_us > tolerance.rel_value_us)
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+/**
  * Handle a "/deposit" request.  Parses the JSON, and, if successful,
  * passes the JSON data to #verify_and_execute_deposit() to further
  * check the details of the operation specified.  If everything checks
@@ -379,6 +403,15 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                              emsg);
     GNUNET_free (emsg);
     return res;
+  }
+  if (GNUNET_OK !=
+      check_timestamp_current (deposit.timestamp))
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_DEPOSIT_INVALID_TIMESTAMP,
+                                           "timestamp");
   }
   if (GNUNET_OK !=
       TALER_JSON_hash (wire,
