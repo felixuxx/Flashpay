@@ -1251,7 +1251,8 @@ enum TALER_ErrorCode
   /**
    * The exchange gave conflicting information about a coin which has
    * been wire transferred.
-   * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   * The response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR (FIXME: bad choice!).
    */
   TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
 
@@ -1259,6 +1260,14 @@ enum TALER_ErrorCode
    * The merchant backend had problems in creating the JSON response.
    */
   TALER_EC_TRACK_TRANSFER_JSON_RESPONSE_ERROR = 2409,
+
+  /**
+   * The exchange charged a different wire fee than what it
+   * originally advertised, and it is higher.  The response
+   * is provied with an HTTP status of 
+   * MHD_HTTP_INTERNAL_SERVER_ERROR (FIXME: bad choice!).
+   */
+  TALER_EC_TRACK_TRANSFER_JSON_BAD_WIRE_FEE = 2410,
 
   /**
    * The hash provided in the request of /map/in does not match
