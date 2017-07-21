@@ -309,10 +309,24 @@ check_timestamp_current (struct GNUNET_TIME_Absolute ts)
   tolerance = GNUNET_TIME_UNIT_MONTHS;
   r = GNUNET_TIME_absolute_get_duration (ts);
   if (r.rel_value_us > tolerance.rel_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		"Deposit timestamp too old: %llu vs %llu > %llu\n",
+		(unsigned long long) ts.abs_value_us,
+		(unsigned long long) GNUNET_TIME_absolute_get().abs_value_us,
+		(unsigned long long) tolerance.rel_value_us);
     return GNUNET_SYSERR;
+  }
   r = GNUNET_TIME_absolute_get_remaining (ts);
   if (r.rel_value_us > tolerance.rel_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		"Deposit timestamp too new: %llu vs %llu < - %llu\n",
+		(unsigned long long) ts.abs_value_us,
+		(unsigned long long) GNUNET_TIME_absolute_get().abs_value_us,
+		(unsigned long long) tolerance.rel_value_us);
     return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
