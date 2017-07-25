@@ -1323,6 +1323,14 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFUND_MERCHANT_DB_COMMIT_ERROR = 2604,
 
+  /**
+   * Payments are stored in a single db transaction; this error indicates
+   * that one db operation within that transaction failed.  This might involve
+   * storing of coins or other related db operations, like starting/committing
+   * the db transaction or marking a contract as paid.
+   */
+   TALER_EC_PAY_DB_STORE_PAYMENTS_ERROR = 2605,
+
 
   /* ********** /test API error codes ************* */
 
