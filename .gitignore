@@ -10,6 +10,7 @@ aclocal.m4
 autom4te.cache
 autoscan.log
 compile
+INSTALL
 configure
 depcomp
 missing
