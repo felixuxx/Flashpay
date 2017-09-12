@@ -55,28 +55,24 @@
 struct TEH_KS_StateHandle
 {
   /**
-   * JSON array with denomination keys.  (Currently not really used
-   * after initialization.)
+   * JSON array with denomination keys.
    */
   json_t *denom_keys_array;
 
   /**
-   * JSON array with signing keys. (Currently not really used
-   * after initialization.)
-   */
-  json_t *sign_keys_array;
-
-  /**
-   * JSON array with auditor information. (Currently not really used
-   * after initialization.)
+   * JSON array with auditor information.
    */
   json_t *auditors_array;
 
   /**
-   * JSON array with revoked denomination keys. (Currently not really used
-   * after initialization).
+   * JSON array with revoked denomination keys.
    */
   json_t *payback_array;
+
+  /**
+   * JSON array with signing keys.
+   */
+  json_t *sign_keys_array;
 
   /**
    * Cached JSON text that the exchange will send for a "/keys" request.
@@ -214,6 +210,97 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
 
 
 /**
+ * Closure for #denom_keys_to_json().
+ */
+struct ResponseBuilderContext
+{
+  /**
+   * JSON array with denomination keys.
+   */
+  json_t *denom_keys_array;
+
+  /**
+   * JSON array with auditor signatures.
+   */
+  json_t *auditors_array;
+
+  /**
+   * Keys after what issue date do we care about?
+   */
+  struct GNUNET_TIME_Absolute last_issue_date;
+
+  /**
+   * Flag set to #GNUNET_SYSERR on internal errors
+   */
+  int error;
+};
+
+
+/**
+ * Add denomination keys past the "last_issue_date" to the
+ * "denom_keys_array".
+ *
+ * @param cls a `struct ResponseBuilderContext`
+ * @param key hash of the denomination key
+ * @param value a `struct TALER_EXCHANGEDB_DenominationKeyIssueInformation`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+denom_keys_to_json (void *cls,
+                    const struct GNUNET_HashCode *key,
+                    void *value)
+{
+  struct ResponseBuilderContext *rbc = cls;
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
+
+  if (rbc->last_issue_date.abs_value_us >=
+      GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us)
+  {
+    /* remove matching entry from 'auditors_array' */
+    size_t off;
+    json_t *val;
+    json_t *kval;
+
+    kval = GNUNET_JSON_from_data_auto (key);
+    json_array_foreach (rbc->auditors_array, off, val) {
+      size_t ioff;
+      json_t *dkv;
+      json_t *dka = json_object_get (val,
+                                     "denomination_keys");
+      if (NULL == dka)
+      {
+        GNUNET_break (0);
+        continue;
+      }
+      json_array_foreach (dka, ioff, dkv) {
+        json_t *ival = json_object_get (dkv,
+                                        "denom_pub_h");
+
+        if (NULL == ival)
+        {
+          GNUNET_break (0);
+          continue;
+        }
+        if (json_equal (ival, kval))
+        {
+          json_array_remove (dka,
+                             ioff);
+          break;
+        }
+      };
+    };
+    return GNUNET_OK; /* skip, key known to client */
+  }
+  if (0 !=
+      json_array_append_new (rbc->denom_keys_array,
+                             denom_key_issue_to_json (&dki->denom_pub,
+                                                      &dki->issue)))
+    rbc->error = GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+/**
  * Get the relative time value that describes how
  * far in the future do we want to provide coin keys.
  *
@@ -325,7 +412,7 @@ struct AddRevocationContext
 
 
 /**
- * Execute transaction to add revocations.  
+ * Execute transaction to add revocations.
  *
  * @param cls closure with the `struct AddRevocationContext *`
  * @param connection NULL
@@ -340,7 +427,7 @@ add_revocations_transaction (void *cls,
 			     int *mhd_ret)
 {
   struct AddRevocationContext *arc = cls;
-  
+
   return TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
 						     session,
 						     &arc->dki->issue.properties.denom_hash,
@@ -349,7 +436,7 @@ add_revocations_transaction (void *cls,
 
 
 /**
- * Execute transaction to add a denomination to the DB.  
+ * Execute transaction to add a denomination to the DB.
  *
  * @param cls closure with the `const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *`
  * @param connection NULL
@@ -432,7 +519,7 @@ reload_keys_denom_iter (void *cls,
   if (NULL != revocation_master_sig)
   {
     struct AddRevocationContext arc;
-    
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Adding denomination key `%s' to revocation set\n",
                 alias);
@@ -454,9 +541,9 @@ reload_keys_denom_iter (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
 		  "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
       handle_signal (SIGTERM);
-      return GNUNET_SYSERR;      
+      return GNUNET_SYSERR;
     }
-	
+
     GNUNET_assert (0 ==
                    json_array_append_new (ctx->payback_array,
                                           GNUNET_JSON_from_data_auto (&dki->issue.properties.denom_hash)));
@@ -478,8 +565,6 @@ reload_keys_denom_iter (void *cls,
   GNUNET_CRYPTO_hash_context_read (ctx->hash_context,
                                    &denom_key_hash,
                                    sizeof (struct GNUNET_HashCode));
-
-
   if (GNUNET_OK !=
       TEH_DB_run_transaction (NULL,
 			      NULL,
@@ -487,9 +572,9 @@ reload_keys_denom_iter (void *cls,
 			      (void *) dki))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+		"Could not persist denomination key in DB. Committing suicide via SIGTERM.\n");
     handle_signal (SIGTERM);
-    return GNUNET_SYSERR;      
+    return GNUNET_SYSERR;
   }
 
   res = store_in_map (ctx->denomkey_map,
@@ -893,10 +978,9 @@ TEH_KS_acquire_ (const char *location)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:O, s:o, s:o, s:o}",
                       "version", TALER_PROTOCOL_VERSION,
-                      "master_public_key",
-                      GNUNET_JSON_from_data_auto (&TEH_master_public_key),
+                      "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
                       "payback", key_state->payback_array,
@@ -905,10 +989,7 @@ TEH_KS_acquire_ (const char *location)
                       "eddsa_pub", GNUNET_JSON_from_data_auto (&key_state->current_sign_key_issue.issue.signkey_pub),
                       "eddsa_sig", GNUNET_JSON_from_data_auto (&sig));
     GNUNET_assert (NULL != keys);
-    key_state->auditors_array = NULL;
-    key_state->sign_keys_array = NULL;
     key_state->denom_keys_array = NULL;
-    key_state->payback_array = NULL;
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
     GNUNET_assert (NULL != key_state->keys_json);
@@ -1282,7 +1363,7 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   if (NULL != have)
   {
     unsigned long long haven;
-    
+
     if (1 !=
 	sscanf (have,
 		"%llu",
@@ -1299,26 +1380,75 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   {
     last_issue_date.abs_value_us = 0LLU;
   }
-  
   key_state = TEH_KS_acquire ();
-  /* FIXME: #4840: compute /keys delta from last_issue_date */
-  (void) last_issue_date;
-  comp = MHD_NO;
-  if (NULL != key_state->keys_jsonz)
-    comp = TEH_RESPONSE_can_compress (connection);
-  if (MHD_YES == comp)
+  if (0LLU != last_issue_date.abs_value_us)
   {
-    json = key_state->keys_jsonz;
-    json_len = key_state->keys_jsonz_size;
+    /* Generate incremental response */
+    struct ResponseBuilderContext rbc;
+
+    rbc.error = GNUNET_NO;
+    rbc.denom_keys_array = json_array ();
+    rbc.auditors_array = json_deep_copy (key_state->auditors_array);
+    rbc.last_issue_date = last_issue_date;
+    GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
+                                           &denom_keys_to_json,
+                                           &rbc);
+    if (GNUNET_NO == rbc.error)
+    {
+      json_t *keys;
+
+      keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:o, s:o}",
+                        "version", TALER_PROTOCOL_VERSION,
+                        "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
+                        "signkeys", key_state->sign_keys_array,
+                        "denoms", rbc.denom_keys_array,
+                        "payback", key_state->payback_array,
+                        "auditors", rbc.auditors_array,
+                        "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time));
+      rbc.denom_keys_array = NULL;
+      rbc.auditors_array = NULL;
+      json = json_dumps (keys,
+                         JSON_INDENT (2));
+      json_decref (keys);
+      json_len = strlen (json);
+      if (TEH_RESPONSE_can_compress (connection))
+        comp = TEH_RESPONSE_body_compress ((void **) &json,
+                                           &json_len);
+      response = MHD_create_response_from_buffer (json_len,
+                                                  json,
+                                                  MHD_RESPMEM_MUST_FREE);
+    }
+    else
+    {
+      /* Try to salvage the situation by returning full reply */
+      GNUNET_break (0);
+      last_issue_date.abs_value_us = 0LLU;
+    }
+    if (NULL != rbc.denom_keys_array)
+      json_decref (rbc.denom_keys_array);
+    if (NULL != rbc.auditors_array)
+      json_decref (rbc.auditors_array);
   }
-  else
+  if (0LLU == last_issue_date.abs_value_us)
   {
-    json = key_state->keys_json;
-    json_len = strlen (key_state->keys_json);
+    /* Generate full response */
+    comp = MHD_NO;
+    if (NULL != key_state->keys_jsonz)
+      comp = TEH_RESPONSE_can_compress (connection);
+    if (MHD_YES == comp)
+    {
+      json = key_state->keys_jsonz;
+      json_len = key_state->keys_jsonz_size;
+    }
+    else
+    {
+      json = key_state->keys_json;
+      json_len = strlen (key_state->keys_json);
+    }
+    response = MHD_create_response_from_buffer (json_len,
+                                                json,
+                                                MHD_RESPMEM_MUST_COPY);
   }
-  response = MHD_create_response_from_buffer (json_len,
-                                              json,
-                                              MHD_RESPMEM_MUST_COPY);
   TEH_KS_release (key_state);
   if (NULL == response)
   {

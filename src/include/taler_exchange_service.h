@@ -206,12 +206,17 @@ struct TALER_EXCHANGE_Keys
   char *version;
 
   /**
-   * Timestamp indicating the /keys generation.  Monotonically
-   * increasing. Used to fetch /keys incrementally.  Set from
-   * the "list_issue_date" timestamp of /keys.
+   * Timestamp indicating the /keys generation.
    */
-  struct GNUNET_TIME_Absolute last_issue_date;
-  
+  struct GNUNET_TIME_Absolute list_issue_date;
+
+  /**
+   * Timestamp indicating the creation time of the last
+   * denomination key in /keys.
+   * Used to fetch /keys incrementally.
+   */
+  struct GNUNET_TIME_Absolute last_denom_issue_date;
+
   /**
    * Length of the @e sign_keys array (number of valid entries).
    */
@@ -228,9 +233,9 @@ struct TALER_EXCHANGE_Keys
   unsigned int num_auditors;
 
   /**
-   * Actual length of the @e sign_keys array (size of allocation).
+   * Actual length of the @e auditors array (size of allocation).
    */
-  unsigned int sign_keys_size;
+  unsigned int auditors_size;
 
   /**
    * Actual length of the @e denom_keys array (size of allocation).
@@ -240,7 +245,7 @@ struct TALER_EXCHANGE_Keys
 };
 
 
-/** 
+/**
  * How compatible are the protocol version of the exchange and this
  * client?  The bits (1,2,4) can be used to test if the exchange's
  * version is incompatible, older or newer respectively.
@@ -280,7 +285,7 @@ enum TALER_EXCHANGE_VersionCompatibility
   /**
    * The exchange is too recent for this implementation.
    */
-  TALER_EXCHANGE_VC_INCOMPATIBLE_NEWER 
+  TALER_EXCHANGE_VC_INCOMPATIBLE_NEWER
   = TALER_EXCHANGE_VC_INCOMPATIBLE
   | TALER_EXCHANGE_VC_NEWER,
 
@@ -288,7 +293,7 @@ enum TALER_EXCHANGE_VersionCompatibility
    * We could not even parse the version data.
    */
   TALER_EXCHANGE_VC_PROTOCOL_ERROR = 8
-  
+
 };
 
 
