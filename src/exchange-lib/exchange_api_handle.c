@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -436,7 +436,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
         GNUNET_JSON_parse (key,
                            kspec,
                            NULL, NULL))
-      {
+    {
       GNUNET_break_op (0);
       continue;
     }
@@ -509,32 +509,22 @@ decode_keys_json (const json_t *resp_obj,
   struct TALER_ExchangeKeySetPS ks;
   struct GNUNET_HashContext *hash_context;
   struct TALER_ExchangePublicKeyP pub;
+  unsigned int age;
+  unsigned int revision;
+  unsigned int current;
 
-  /* FIXME: #4840: handle incremental / cherry-picked /keys! */
   memset (key_data,
 	  0,
 	  sizeof (struct TALER_EXCHANGE_Keys));
   if (JSON_OBJECT != json_typeof (resp_obj))
     return GNUNET_SYSERR;
 
-  hash_context = GNUNET_CRYPTO_hash_context_start ();
-  /* parse the master public key and issue date of the response */
+  /* check the version */
   {
     const char *ver;
-    unsigned int age;
-    unsigned int revision;
-    unsigned int current;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("version",
                                &ver),
-      GNUNET_JSON_spec_fixed_auto ("master_public_key",
-                                   &key_data->master_pub),
-      GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
-                                   &sig),
-      GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
-                                   &pub),
-      GNUNET_JSON_spec_absolute_time ("list_issue_date",
-                                      &list_issue_date),
       GNUNET_JSON_spec_end()
     };
 
@@ -549,7 +539,6 @@ decode_keys_json (const json_t *resp_obj,
 		     &age))
     {
       GNUNET_break_op (0);
-      GNUNET_CRYPTO_hash_context_abort (hash_context);
       return GNUNET_SYSERR;
     }
     *vc = TALER_EXCHANGE_VC_MATCH;
@@ -568,6 +557,27 @@ decode_keys_json (const json_t *resp_obj,
     key_data->version = GNUNET_strdup (ver);
   }
 
+  /* parse the master public key and issue date of the response */
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  {
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("master_public_key",
+                                   &key_data->master_pub),
+      GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
+                                   &sig),
+      GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
+                                   &pub),
+      GNUNET_JSON_spec_absolute_time ("list_issue_date",
+                                      &list_issue_date),
+      GNUNET_JSON_spec_end()
+    };
+
+    EXITIF (GNUNET_OK !=
+            GNUNET_JSON_parse (resp_obj,
+                               spec,
+                               NULL, NULL));
+  }
+
   /* parse the signing keys */
   {
     json_t *sign_keys_array;
@@ -578,17 +588,37 @@ decode_keys_json (const json_t *resp_obj,
                      json_object_get (resp_obj,
                                       "signkeys")));
     EXITIF (JSON_ARRAY != json_typeof (sign_keys_array));
-    EXITIF (0 == (key_data->num_sign_keys =
-                  json_array_size (sign_keys_array)));
-    key_data->sign_keys
-      = GNUNET_new_array (key_data->num_sign_keys,
-                          struct TALER_EXCHANGE_SigningPublicKey);
+
     index = 0;
     json_array_foreach (sign_keys_array, index, sign_key_obj) {
+      struct TALER_EXCHANGE_SigningPublicKey sk;
+      bool found = false;
+      
       EXITIF (GNUNET_SYSERR ==
-              parse_json_signkey (&key_data->sign_keys[index],
+              parse_json_signkey (&sk,
                                   sign_key_obj,
                                   &key_data->master_pub));
+      for (unsigned int j=0;j<key_data->num_sign_keys;j++)
+      {
+	if (0 == memcmp (&sk,
+			 &key_data->sign_keys[j],
+			 sizeof (sk)))
+	{
+	  found = true;
+	  break;
+	}
+      }
+      if (found)
+      {
+	/* 0:0:0 did not support /keys cherry picking */
+	GNUNET_break_op (0 == current);
+	continue;
+      }
+      if (key_data->sign_keys_size == key_data->num_sign_keys)
+	GNUNET_array_grow (key_data->sign_keys,
+			   key_data->sign_keys_size,
+			   key_data->sign_keys_size * 2 + 2);
+      key_data->sign_keys[key_data->num_sign_keys++] = sk;      
     }
   }
 
@@ -601,21 +631,41 @@ decode_keys_json (const json_t *resp_obj,
     EXITIF (NULL == (denom_keys_array =
                      json_object_get (resp_obj, "denoms")));
     EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
-    if (0 == (key_data->num_denom_keys = json_array_size (denom_keys_array)))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Found no denomination keys at this exchange\n");
-      goto EXITIF_exit;
-    }
+
     key_data->denom_keys = GNUNET_new_array (key_data->num_denom_keys,
                                              struct TALER_EXCHANGE_DenomPublicKey);
+
     index = 0;
     json_array_foreach (denom_keys_array, index, denom_key_obj) {
+      struct TALER_EXCHANGE_DenomPublicKey dk;
+      bool found = false;
+      
       EXITIF (GNUNET_SYSERR ==
-              parse_json_denomkey (&key_data->denom_keys[index],
+              parse_json_denomkey (&dk,
                                    denom_key_obj,
                                    &key_data->master_pub,
                                    hash_context));
+      for (unsigned int j=0;j<key_data->num_denom_keys;j++)
+      {
+	if (0 == memcmp (&dk,
+			 &key_data->denom_keys[j],
+			 sizeof (dk)))
+	{
+	  found = true;
+	  break;
+	}
+      }
+      if (found)
+      {
+	/* 0:0:0 did not support /keys cherry picking */
+	GNUNET_break_op (0 == current); 
+	continue;
+      }
+      if (key_data->denom_keys_size == key_data->num_denom_keys)
+	GNUNET_array_grow (key_data->denom_keys,
+			   key_data->denom_keys_size,
+			   key_data->denom_keys_size * 2 + 2);
+      key_data->denom_keys[key_data->num_denom_keys++] = dk;      
     }
   }
 
@@ -655,7 +705,7 @@ decode_keys_json (const json_t *resp_obj,
   hash_context = NULL;
   EXITIF (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_data,
-                                       &pub));
+					   &pub));
   EXITIF (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_KEY_SET,
                                       &ks.purpose,
@@ -679,12 +729,12 @@ static void
 free_key_data (struct TALER_EXCHANGE_Keys *key_data)
 {
   GNUNET_array_grow (key_data->sign_keys,
-                     key_data->num_sign_keys,
+                     key_data->sign_keys_size,
                      0);
   for (unsigned int i=0;i<key_data->num_denom_keys;i++)
     GNUNET_CRYPTO_rsa_public_key_free (key_data->denom_keys[i].key.rsa_public_key);
   GNUNET_array_grow (key_data->denom_keys,
-                     key_data->num_denom_keys,
+                     key_data->denom_keys_size,
                      0);
   for (unsigned int i=0;i<key_data->num_auditors;i++)
   {

@@ -213,7 +213,7 @@ struct TALER_EXCHANGE_Keys
   struct GNUNET_TIME_Absolute last_issue_date;
   
   /**
-   * Length of the @e sign_keys array.
+   * Length of the @e sign_keys array (number of valid entries).
    */
   unsigned int num_sign_keys;
 
@@ -226,6 +226,16 @@ struct TALER_EXCHANGE_Keys
    * Length of the @e auditors array.
    */
   unsigned int num_auditors;
+
+  /**
+   * Actual length of the @e sign_keys array (size of allocation).
+   */
+  unsigned int sign_keys_size;
+
+  /**
+   * Actual length of the @e denom_keys array (size of allocation).
+   */
+  unsigned int denom_keys_size;
 
 };
 

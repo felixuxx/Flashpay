@@ -2704,6 +2704,11 @@ postgres_get_ready_deposit (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+	      "Finding ready deposits by deadline %s (%llu)\n",
+	      GNUNET_STRINGS_absolute_time_to_string (now),
+	      (unsigned long long) now.abs_value_us);
+
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						 "deposits_get_ready",
 						 params,
@@ -3027,6 +3032,11 @@ postgres_insert_deposit (void *cls,
 				   session,
 				   &deposit->coin)))
     return qs;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+	      "Inserting deposit to be executed at %s (%llu/%llu)\n",
+	      GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
+	      (unsigned long long) deposit->wire_deadline.abs_value_us,
+	      (unsigned long long) deposit->refund_deadline.abs_value_us);
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
 					     "insert_deposit",
 					     params);
