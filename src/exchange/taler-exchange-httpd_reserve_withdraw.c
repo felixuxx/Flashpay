@@ -159,7 +159,7 @@ withdraw_transaction (void *cls,
 		      int *mhd_ret)
 {
   struct WithdrawContext *wc = cls;
-  struct TALER_EXCHANGEDB_ReserveHistory *rh;  
+  struct TALER_EXCHANGEDB_ReserveHistory *rh;
   struct TALER_Amount deposit_total;
   struct TALER_Amount withdraw_total;
   struct TALER_Amount balance;
@@ -200,7 +200,7 @@ withdraw_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_WITHDRAW_DB_FETCH_ERROR); 
+						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
     return qs;
   }
   if (NULL == rh)
@@ -237,7 +237,7 @@ withdraw_transaction (void *cls,
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       {
 	struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *tdki;
-	
+
 	tdki = TEH_KS_denomination_key_lookup (wc->key_state,
 					       &pos->details.withdraw->denom_pub,
 					       TEH_KS_DKU_WITHDRAW);
@@ -321,7 +321,7 @@ withdraw_transaction (void *cls,
     GNUNET_break (0); /* database inconsistent */
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						     TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE);
-    return GNUNET_DB_STATUS_HARD_ERROR;	
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 < TALER_amount_cmp (&wc->amount_required,
                             &balance))
@@ -348,6 +348,8 @@ withdraw_transaction (void *cls,
 						  "Internal error");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  TALER_amount_ntoh (&fee_withdraw,
+                     &wc->dki->issue.properties.fee_withdraw);
   wc->collectable.sig = denom_sig;
   wc->collectable.denom_pub = wc->denomination_pub;
   wc->collectable.amount_with_fee = wc->amount_required;
