@@ -285,7 +285,6 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   struct TALER_DenominationKeyValidityPS denom_key_issue;
   struct GNUNET_CRYPTO_RsaPublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
-
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
 				 &sig),
@@ -320,7 +319,9 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
     return GNUNET_SYSERR;
   }
 
-  memset (&denom_key_issue, 0, sizeof (denom_key_issue));
+  memset (&denom_key_issue,
+          0,
+          sizeof (denom_key_issue));
   GNUNET_CRYPTO_rsa_public_key_hash (pk,
                                      &denom_key_issue.denom_hash);
   denom_key_issue.purpose.purpose

@@ -230,6 +230,11 @@ struct ResponseBuilderContext
   struct GNUNET_TIME_Absolute last_issue_date;
 
   /**
+   * Used for computing the hash over all the denomination keys.
+   */
+  struct GNUNET_HashContext *hash_context;
+
+  /**
    * Flag set to #GNUNET_SYSERR on internal errors
    */
   int error;
@@ -252,6 +257,7 @@ denom_keys_to_json (void *cls,
 {
   struct ResponseBuilderContext *rbc = cls;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
+  struct GNUNET_HashCode denom_key_hash;
 
   if (rbc->last_issue_date.abs_value_us >=
       GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us)
@@ -291,6 +297,11 @@ denom_keys_to_json (void *cls,
     };
     return GNUNET_OK; /* skip, key known to client */
   }
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
+                                     &denom_key_hash);
+  GNUNET_CRYPTO_hash_context_read (rbc->hash_context,
+                                   &denom_key_hash,
+                                   sizeof (struct GNUNET_HashCode));
   if (0 !=
       json_array_append_new (rbc->denom_keys_array,
                              denom_key_issue_to_json (&dki->denom_pub,
@@ -1390,13 +1401,25 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
     rbc.denom_keys_array = json_array ();
     rbc.auditors_array = json_deep_copy (key_state->auditors_array);
     rbc.last_issue_date = last_issue_date;
+    rbc.hash_context = GNUNET_CRYPTO_hash_context_start ();
     GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
                                            &denom_keys_to_json,
                                            &rbc);
     if (GNUNET_NO == rbc.error)
     {
       json_t *keys;
+      struct TALER_ExchangeKeySetPS ks;
+      struct TALER_ExchangeSignatureP sig;
 
+      ks.purpose.size = htonl (sizeof (ks));
+      ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
+      ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
+      GNUNET_CRYPTO_hash_context_finish (key_state->hash_context,
+                                         &ks.hc);
+      GNUNET_assert (GNUNET_OK ==
+                     GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
+                                               &ks.purpose,
+                                               &sig.eddsa_signature));
       keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:o, s:o}",
                         "version", TALER_PROTOCOL_VERSION,
                         "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
@@ -1404,7 +1427,10 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                         "denoms", rbc.denom_keys_array,
                         "payback", key_state->payback_array,
                         "auditors", rbc.auditors_array,
-                        "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time));
+                        "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time),
+                        "eddsa_pub", GNUNET_JSON_from_data_auto (&key_state->current_sign_key_issue.issue.signkey_pub),
+                        "eddsa_sig", GNUNET_JSON_from_data_auto (&sig));
+
       rbc.denom_keys_array = NULL;
       rbc.auditors_array = NULL;
       json = json_dumps (keys,
