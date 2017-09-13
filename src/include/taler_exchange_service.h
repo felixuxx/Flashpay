@@ -367,10 +367,12 @@ TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
  * not, trigger /keys download.
  *
  * @param exchange exchange to check keys for
+ * @param force_download #GNUNET_YES to force download even if /keys is still valid
  * @return until when the response is current, 0 if we are re-downloading
  */
 struct GNUNET_TIME_Absolute
-TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange);
+TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
+                                   int force_download);
 
 
 /**

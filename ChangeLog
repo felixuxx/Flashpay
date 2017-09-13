@@ -1,3 +1,8 @@
+Wed Sep 13 14:06:44 CEST 2017
+	Add argument to TALER_EXCHANGE_check_keys_current()
+	to force download even if /keys are still considered
+	current. -CG
+
 Fri Jul 14 17:38:54 CEST 2017
 	Fix #4751 by not allowing denomination deletion (GC)
 	to cascade into reserve_out table (and tolerating such

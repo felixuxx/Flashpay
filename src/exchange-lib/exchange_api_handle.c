@@ -770,14 +770,17 @@ request_keys (struct TALER_EXCHANGE_Handle *exchange);
  * not trigger download.
  *
  * @param exchange exchange to check keys for
+ * @param force_download #GNUNET_YES to force download even if /keys is still valid
  * @return until when the response is current, 0 if we are re-downloading
  */
 struct GNUNET_TIME_Absolute
-TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange)
+TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
+                                   int force_download)
 {
   if (NULL != exchange->kr)
     return GNUNET_TIME_UNIT_ZERO_ABS;
-  if (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us)
+  if ( (GNUNET_NO == force_download) &&
+       (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;
   request_keys (exchange);
   return GNUNET_TIME_UNIT_ZERO_ABS;
@@ -1280,7 +1283,8 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
 const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
-  (void) TALER_EXCHANGE_check_keys_current (exchange);
+  (void) TALER_EXCHANGE_check_keys_current (exchange,
+                                            GNUNET_NO);
   return &exchange->key_data;
 }
 
@@ -1295,7 +1299,8 @@ TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 json_t *
 TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 {
-  (void) TALER_EXCHANGE_check_keys_current (exchange);
+  (void) TALER_EXCHANGE_check_keys_current (exchange,
+                                            GNUNET_NO);
   return json_deep_copy (exchange->key_data_raw);
 }
 
