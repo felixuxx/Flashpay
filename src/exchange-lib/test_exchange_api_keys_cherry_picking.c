@@ -138,6 +138,13 @@ struct Command
        */
       unsigned int num_denom_keys;
 
+      /**
+       * Which generation of /keys are we verifying here?
+       * Used to make sure we got the right number of
+       * interactions.
+       */
+      unsigned int generation;
+
     } check_keys;
 
   } details;
@@ -170,6 +177,17 @@ struct InterpreterState
    * instruction to run next.
    */
   unsigned int ip;
+
+  /**
+   * Is the interpreter running (#GNUNET_YES) or waiting
+   * for /keys (#GNUNET_NO)?
+   */
+  int working;
+
+  /**
+   * How often have we gotten a /keys response so far?
+   */
+  unsigned int key_generation;
 
 };
 
@@ -305,6 +323,48 @@ interpreter_run (void *cls)
                                           is);
       return;
     }
+  case OC_SIGNAL_EXCHANGE:
+    {
+      GNUNET_break (0 ==
+                    GNUNET_OS_process_kill (exchanged,
+                                            SIGUSR1));
+      /* give exchange time to process the signal */
+      sleep (1);
+      next_command (is);
+      return;
+    }
+  case OC_CHECK_KEYS:
+    {
+      if (is->key_generation < cmd->details.check_keys.generation)
+      {
+        /* Go back to waiting for /keys signal! */
+        is->working = GNUNET_NO;
+        GNUNET_break (0 ==
+                      TALER_EXCHANGE_check_keys_current (exchange,
+                                                         GNUNET_YES).abs_value_us);
+        return;
+      }
+      if (is->key_generation > cmd->details.check_keys.generation)
+      {
+        /* We got /keys too often, strange. Fatal. May theoretically happen if
+           somehow we were really unlucky and /keys expired "naturally", but
+           obviously with a sane configuration this should also not be. */
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      /* /keys was updated, let's check they were OK! */
+      if (cmd->details.check_keys.num_denom_keys !=
+          is->keys->num_denom_keys)
+      {
+        /* Did not get the expected number of denomination keys! */
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      next_command (is);
+      return;
+    }
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
@@ -388,6 +448,12 @@ do_shutdown (void *cls)
         cmd->details.run_process.child_death_task = NULL;
       }
       break;
+    case OC_SIGNAL_EXCHANGE:
+      /* nothing to do */
+      break;
+    case OC_CHECK_KEYS:
+      /* nothing to do */
+      break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unknown instruction %d at %u (%s)\n",
@@ -457,6 +523,10 @@ cert_cb (void *cls,
 
   /* run actual tests via interpreter-loop */
   is->keys = keys;
+  if (GNUNET_YES == is->working)
+    return;
+  is->working = GNUNET_YES;
+  is->key_generation++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
 }
@@ -473,6 +543,8 @@ run (void *cls)
   struct InterpreterState *is;
   static struct Command commands[] =
   {
+    /* Test signal handling by itself */
+    { .oc = OC_SIGNAL_EXCHANGE },
     { .oc = OC_END }
   };
 
@@ -677,9 +749,11 @@ main (int argc,
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   shc_chld = NULL;
   GNUNET_DISK_pipe_close (sigpipe);
-  GNUNET_OS_process_kill (exchanged,
-                          SIGTERM);
-  GNUNET_OS_process_wait (exchanged);
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (exchanged,
+                                        SIGTERM));
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_OS_process_wait (exchanged));
   GNUNET_OS_process_destroy (exchanged);
   return (GNUNET_OK == result) ? 0 : 1;
 }

@@ -3773,9 +3773,11 @@ main (int argc,
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   shc_chld = NULL;
   GNUNET_DISK_pipe_close (sigpipe);
-  GNUNET_OS_process_kill (exchanged,
-                          SIGTERM);
-  GNUNET_OS_process_wait (exchanged);
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (exchanged,
+                                        SIGTERM));
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_OS_process_wait (exchanged));
   GNUNET_OS_process_destroy (exchanged);
   return (GNUNET_OK == result) ? 0 : 1;
 }
