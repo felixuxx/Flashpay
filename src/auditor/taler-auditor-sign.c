@@ -196,8 +196,9 @@ main (int argc,
                          argc, argv) < 0)
     return 1;
   cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
-                                                  cfgfile))
+  if (GNUNET_SYSERR ==
+      GNUNET_CONFIGURATION_load (cfg,
+                                 cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 _("Malformed configuration file `%s', exit ...\n"),
@@ -283,7 +284,7 @@ main (int argc,
              "Denomination list has length zero, signature not produced.\n");
     GNUNET_DISK_file_close (fh);
     GNUNET_free (eddsa_priv);
-    return 2;  
+    return 2;
   }
   if (NULL ==
       (adb = TALER_AUDITORDB_plugin_load (cfg)))
@@ -294,7 +295,7 @@ main (int argc,
     GNUNET_free (eddsa_priv);
     return 3;
   }
-  
+
   kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS);
   kv.purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS));
   GNUNET_CRYPTO_hash (auditor_url,
@@ -355,6 +356,21 @@ main (int argc,
     GNUNET_free (eddsa_priv);
     return 1;
   }
+
+  /* Create required tables */
+  if (GNUNET_OK !=
+      adb->create_tables (adb->cls))
+  {
+    fprintf (stderr,
+             "Failed to create tables in auditor's database\n");
+    TALER_AUDITORDB_plugin_unload (adb);
+    GNUNET_free (dks);
+    GNUNET_free (sigs);
+    GNUNET_free (eddsa_priv);
+    return 3;
+  }
+
+
   /* Update DB */
   {
     enum GNUNET_DB_QueryStatus qs;
@@ -389,7 +405,7 @@ main (int argc,
 	return 3;
       }
     }
-  }  
+  }
   TALER_AUDITORDB_plugin_unload (adb);
 
   /* write result to disk */
