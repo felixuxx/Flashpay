@@ -316,12 +316,11 @@ handle_mhd_request (void *cls,
       &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
     };
   struct TEH_RequestHandler *rh;
-  unsigned int i;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Handling request for URL '%s'\n",
               url);
-  for (i=0;NULL != handlers[i].url;i++)
+  for (unsigned int i=0;NULL != handlers[i].url;i++)
   {
     rh = &handlers[i];
     if ( (0 == strcasecmp (url,
