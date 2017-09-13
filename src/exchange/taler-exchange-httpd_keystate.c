@@ -19,6 +19,16 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ *
+ * TODO:
+ *
+ * - includes quite a bit of code duplication between
+ * cherry-picked and full /keys response generation
+ * - cherry-picked response generation is ugly/messy,
+ * partially because existing exchangedb API does not
+ * match nicely with requirements.
+ * => should revisit exchangedb API, and then clean up
+ *    this mess.
  */
 #include "platform.h"
 #include <pthread.h>
