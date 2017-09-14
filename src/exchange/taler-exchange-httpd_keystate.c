@@ -1424,13 +1424,13 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
       ks.purpose.size = htonl (sizeof (ks));
       ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
       ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
-      GNUNET_CRYPTO_hash_context_finish (key_state->hash_context,
+      GNUNET_CRYPTO_hash_context_finish (rbc.hash_context,
                                          &ks.hc);
       GNUNET_assert (GNUNET_OK ==
                      GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                                &ks.purpose,
                                                &sig.eddsa_signature));
-      keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:o, s:o}",
+      keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:o, s:o, s:o, s:o}",
                         "version", TALER_PROTOCOL_VERSION,
                         "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
                         "signkeys", key_state->sign_keys_array,

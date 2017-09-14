@@ -812,6 +812,9 @@ keys_completed_cb (void *cls,
               kr->url,
               response_code);
   kd_old = exchange->key_data;
+  memset (&kd,
+          0,
+          sizeof (struct TALER_EXCHANGE_Keys));
   vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
@@ -823,15 +826,12 @@ keys_completed_cb (void *cls,
       response_code = 0;
       break;
     }
-    memset (&kd,
-            0,
-            sizeof (struct TALER_EXCHANGE_Keys));
-
     /* We keep the denomination keys and auditor signatures from the
        previous iteration (/keys cherry picking) */
     kd.num_denom_keys = kd_old.num_denom_keys;
-    kd.denom_keys = GNUNET_new_array (kd.num_denom_keys,
-                                      struct TALER_EXCHANGE_DenomPublicKey);
+    GNUNET_array_grow (kd.denom_keys,
+                       kd.denom_keys_size,
+                       kd.num_denom_keys);
     /* First make a shallow copy, we then need another pass for the RSA key... */
     memcpy (kd.denom_keys,
             kd_old.denom_keys,
@@ -857,7 +857,7 @@ keys_completed_cb (void *cls,
       for (unsigned int j=0;j<aold->num_denom_keys;j++)
       {
         /* offsets will map 1:1 */
-        unsigned int off = kd_old.denom_keys - aold->denom_keys[j];
+        unsigned int off = aold->denom_keys[j] - kd_old.denom_keys;
 
         GNUNET_assert (off < kd_old.num_denom_keys);
         anew->denom_keys[j] = &kd.denom_keys[off];
@@ -872,7 +872,6 @@ keys_completed_cb (void *cls,
       response_code = 0;
       break;
     }
-    exchange->key_data = kd;
     json_decref (exchange->key_data_raw);
     exchange->key_data_raw = json_deep_copy (resp_obj);
     break;
@@ -882,6 +881,7 @@ keys_completed_cb (void *cls,
                 (unsigned int) response_code);
     break;
   }
+  exchange->key_data = kd;
 
   if (MHD_HTTP_OK != response_code)
   {

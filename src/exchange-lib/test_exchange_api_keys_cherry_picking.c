@@ -117,7 +117,7 @@ struct Command
       /**
        * Command-line arguments for the process to be run.
        */
-      char *const*argv;
+      char *const *argv;
 
       /**
        * Process handle.
@@ -359,6 +359,10 @@ interpreter_run (void *cls)
       {
         /* Did not get the expected number of denomination keys! */
         GNUNET_break (0);
+        fprintf (stderr,
+                 "Got %u keys in step %s\n",
+                 is->keys->num_denom_keys,
+                 cmd->label);
         fail (is);
         return;
       }
@@ -419,13 +423,8 @@ do_shutdown (void *cls)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd;
-  unsigned int i;
 
-  fprintf (stderr,
-           "Executing shutdown at `%s'\n",
-           is->commands[is->ip].label);
-
-  for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
+  for (unsigned int i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
   {
     switch (cmd->oc)
     {
@@ -541,10 +540,47 @@ static void
 run (void *cls)
 {
   struct InterpreterState *is;
+  static char *keyup[] = {
+    "taler-exchange-keyup",
+    "-c", "test_exchange_api_keys_cherry_picking_extended.conf",
+    "-o", "auditor.in",
+    NULL
+  };
+  static char *auditorsign[] = {
+    "taler-auditor-sign",
+    "-c", "test_exchange_api_keys_cherry_picking.conf",
+    "-u", "http://auditor/",
+    "-m", "98NJW3CQHZQGQXTY3K85K531XKPAPAVV4Q5V8PYYRR00NJGZWNVG",
+    "-r", "auditor.in",
+    "-o", "test_exchange_api_home/.local/share/taler/auditors/auditor.out",
+    NULL
+  };
   static struct Command commands[] =
   {
     /* Test signal handling by itself */
     { .oc = OC_SIGNAL_EXCHANGE },
+    /* Check we got /keys properly */
+    { .oc = OC_CHECK_KEYS,
+      .details.check_keys.generation = 1,
+      .details.check_keys.num_denom_keys = 4
+    },
+    /* Generate more keys */
+    { .oc = OC_RUN_PROCESS,
+      .details.run_process.binary = "taler-exchange-keyup",
+      .details.run_process.argv = keyup
+    },
+    /* Auditor-sign them */
+    { .oc = OC_RUN_PROCESS,
+      .details.run_process.binary = "taler-auditor-sign",
+      .details.run_process.argv = auditorsign
+    },
+    /* Load new keys into exchange via signal */
+    { .oc = OC_SIGNAL_EXCHANGE },
+    /* Re-download and check /keys */
+    { .oc = OC_CHECK_KEYS,
+      .details.check_keys.generation = 2,
+      .details.check_keys.num_denom_keys = 8
+    },
     { .oc = OC_END }
   };
 
@@ -640,7 +676,7 @@ main (int argc,
                                   NULL, NULL, NULL,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
-                                  "-c", "test_exchange_api.conf",
+                                  "-c", "test_exchange_api_keys_cherry_picking.conf",
                                   "-o", "auditor.in",
                                   NULL);
   if (NULL == proc)
@@ -657,7 +693,7 @@ main (int argc,
                                   NULL, NULL, NULL,
                                   "taler-auditor-sign",
                                   "taler-auditor-sign",
-                                  "-c", "test_exchange_api.conf",
+                                  "-c", "test_exchange_api_keys_cherry_picking.conf",
                                   "-u", "http://auditor/",
                                   "-m", "98NJW3CQHZQGQXTY3K85K531XKPAPAVV4Q5V8PYYRR00NJGZWNVG",
                                   "-r", "auditor.in",
@@ -677,7 +713,7 @@ main (int argc,
                                   NULL, NULL, NULL,
                                   "taler-exchange-dbinit",
                                   "taler-exchange-dbinit",
-                                  "-c", "test_exchange_api.conf",
+                                  "-c", "test_exchange_api_keys_cherry_picking.conf",
                                   "-r",
                                   NULL);
   if (NULL == proc)
@@ -715,7 +751,7 @@ main (int argc,
                                        NULL, NULL, NULL,
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
-                                       "-c", "test_exchange_api.conf",
+                                       "-c", "test_exchange_api_keys_cherry_picking.conf",
                                        "-i",
                                        NULL);
   /* give child time to start and bind against the socket */

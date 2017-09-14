@@ -80,4 +80,6 @@ EXTRA_DIST = \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_exchange_api_home/.config/taler/test.json \
   test_exchange_api_home/.config/taler/sepa.json \
-  test_exchange_api.conf
+  test_exchange_api.conf \
+  test_exchange_api_keys_cherry_picking.conf \
+  test_exchange_api_keys_cherry_picking_extended.conf
