@@ -53,6 +53,11 @@ TEH_RESPONSE_add_global_headers (struct MHD_Response *response)
  *
  * @param connection connection to check
  * @return #MHD_YES if 'deflate' compression is allowed
+ *
+ * Note that right now we're ignoring q-values, which is technically
+ * not correct, and also do not support "*" anywhere but in a line by
+ * itself.  This should eventually be fixed, see also
+ * https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
  */
 int
 TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
@@ -69,11 +74,15 @@ TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
 	       "deflate");
   if (NULL == de)
     return MHD_NO;
+  if (0 == strcmp (de,
+                   "*"))
+    return MHD_YES;
   if ( ( (de == ae) ||
 	 ( de[-1] == ',') ||
 	 (de[-1] == ' ') ) &&
        ( (de[strlen ("deflate")] == '\0') ||
-	 (de[strlen ("deflate")] == ',') ) )
+	 (de[strlen ("deflate")] == ',') ||
+         (de[strlen ("deflate")] == ';') ) )
     return MHD_YES;
   return MHD_NO;
 }

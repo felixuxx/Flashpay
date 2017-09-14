@@ -1496,10 +1496,11 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          rh->mime_type));
-  if (MHD_YES !=
-      MHD_add_response_header (response,
-			       MHD_HTTP_HEADER_CONTENT_ENCODING,
-			       "deflate"))
+  if ( (MHD_YES == comp) &&
+       (MHD_YES !=
+        MHD_add_response_header (response,
+                                 MHD_HTTP_HEADER_CONTENT_ENCODING,
+                                 "deflate")) )
   {
     GNUNET_break (0);
     MHD_destroy_response (response);
