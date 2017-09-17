@@ -1140,7 +1140,7 @@ request_keys (struct TALER_EXCHANGE_Handle *exchange)
 
     GNUNET_asprintf (&arg,
 		     "/keys?last_issue_date=%llu",
-		     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us);
+		     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
     kr->url = MAH_path_to_url (exchange,
 			       arg);
     GNUNET_free (arg);

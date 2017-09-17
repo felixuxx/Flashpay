@@ -19,16 +19,6 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * TODO:
- *
- * - includes quite a bit of code duplication between
- * cherry-picked and full /keys response generation
- * - cherry-picked response generation is ugly/messy,
- * partially because existing exchangedb API does not
- * match nicely with requirements.
- * => should revisit exchangedb API, and then clean up
- *    this mess.
  */
 #include "platform.h"
 #include <pthread.h>
@@ -48,8 +38,179 @@
  * precisely.  Note that this version has NOTHING to do with the
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
+ *
+ * NOTE: needs to be bumped because of /keys cherry picking support for v0.4!
  */
 #define TALER_PROTOCOL_VERSION "0:0:0"
+
+
+/**
+ * Signatures of an auditor over a denomination key of this exchange.
+ */
+struct AuditorSignature
+{
+  /**
+   * We store the signatures in a DLL.
+   */
+  struct AuditorSignature *prev;
+
+  /**
+   * We store the signatures in a DLL.
+   */
+  struct AuditorSignature *next;
+
+  /**
+   * A signature from the auditor.
+   */
+  struct TALER_AuditorSignatureP asig;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP apub;
+
+  /**
+   * URL of the auditor. Allocated at the end of this struct.
+   */
+  const char *auditor_url;
+
+};
+
+
+/**
+ * Entry in sorted array of denomination keys.  Sorted by starting
+ * "start" time (validity period) of the `struct
+ * TALER_DenominationKeyValidityPS`.
+ */
+struct DenominationKeyEntry
+{
+
+  /**
+   * Reference to the public key.
+   * (Must also be in the `denomkey_map`).
+   */
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+
+  /**
+   * Head of DLL of signatures for this @e dki.
+   */
+  struct AuditorSignature *as_head;
+
+  /**
+   * Tail of DLL of signatures for this @e dki.
+   */
+  struct AuditorSignature *as_tail;
+
+};
+
+
+/**
+ * Entry in (sorted) array with possible pre-build responses for /keys.
+ * We keep pre-build responses for the various (valid) cherry-picking
+ * values around.
+ */
+struct KeysResponseData
+{
+
+  /**
+   * Response to return if the client supports (gzip) compression.
+   */
+  struct MHD_Response *response_compressed;
+
+  /**
+   * Response to return if the client does not support compression.
+   */
+  struct MHD_Response *response_uncompressed;
+
+  /**
+   * Cherry-picking timestamp the client must have set for this
+   * response to be valid.  0 if this is the "full" response.
+   * The client's request must include this date or a higher one
+   * for this response to be applicable.
+   */
+  struct GNUNET_TIME_Absolute cherry_pick_date;
+
+};
+
+
+/**
+ * State we keep around while building an individual entry in the
+ * `struct KeysResponseData` array, i.e. the global state for ONE of
+ * the responses.
+ */
+struct ResponseBuilderContext
+{
+
+  /**
+   * Hash context we used to combine the hashes of all denomination
+   * keys into one big hash for signing.
+   */
+  struct GNUNET_HashContext *hash_context;
+
+  /**
+   * JSON array with denomination key information.
+   */
+  json_t *denom_keys_array;
+
+  /**
+   * JSON array with auditor information.
+   */
+  json_t *auditors_array;
+
+  /**
+   * Keys after what issue date do we care about?
+   */
+  struct GNUNET_TIME_Absolute last_issue_date;
+
+  /**
+   * Flag set to #GNUNET_SYSERR on internal errors
+   */
+  int error;
+
+};
+
+
+/**
+ * State we keep around while building the `struct KeysResponseData`
+ * array, i.e. the global state for all of the responses.
+ */
+struct ResponseFactoryContext
+{
+
+  /**
+   * JSON array with revoked denomination keys.  Every response
+   * always returns the full list (cherry picking does not apply
+   * for key revocations, as we cannot sort those by issue date).
+   */
+  json_t *payback_array;
+
+  /**
+   * JSON array with signing keys.  Every response includes the full
+   * list, as it should be quite short anyway, and for simplicity the
+   * client only communicates the one time stamp of the last
+   * denomination key it knows when cherry picking.
+   */
+  json_t *sign_keys_array;
+
+  /**
+   * Sorted array of denomination keys.  Length is @e denomkey_array_length.
+   * Entries are sorted by the validity period's starting time.  All entries
+   * must also be in the #denomkey_map.
+   */
+  struct DenominationKeyEntry *denomkey_array;
+
+  /**
+   * The main key state we are building everything for.
+   */
+  struct TEH_KS_StateHandle *key_state;
+
+  /**
+   * Length of the @e denomkey_array.
+   */
+  unsigned int denomkey_array_length;
+
+};
+
 
 
 /**
@@ -64,42 +225,6 @@
  */
 struct TEH_KS_StateHandle
 {
-  /**
-   * JSON array with denomination keys.
-   */
-  json_t *denom_keys_array;
-
-  /**
-   * JSON array with auditor information.
-   */
-  json_t *auditors_array;
-
-  /**
-   * JSON array with revoked denomination keys.
-   */
-  json_t *payback_array;
-
-  /**
-   * JSON array with signing keys.
-   */
-  json_t *sign_keys_array;
-
-  /**
-   * Cached JSON text that the exchange will send for a "/keys" request.
-   * Includes our @e TEH_master_public_key public key, the signing and
-   * denomination keys as well as the @e reload_time.
-   */
-  char *keys_json;
-
-  /**
-   * deflate-compressed version of @e keys_json, or NULL if not available.
-   */
-  void *keys_jsonz;
-
-  /**
-   * Number of bytes in @e keys_jsonz.
-   */
-  size_t keys_jsonz_size;
 
   /**
    * Mapping from denomination keys to denomination key issue struct.
@@ -114,10 +239,10 @@ struct TEH_KS_StateHandle
   struct GNUNET_CONTAINER_MultiHashMap *revoked_map;
 
   /**
-   * Hash context we used to combine the hashes of all denomination
-   * keys into one big hash.
+   * Sorted array of responses to /keys (sorted by cherry-picking date) of
+   * length @e krd_array_length;
    */
-  struct GNUNET_HashContext *hash_context;
+  struct KeysResponseData *krd_array;
 
   /**
    * When did we initiate the key reloading?
@@ -144,24 +269,180 @@ struct TEH_KS_StateHandle
    * Reference count.  The struct is released when the RC hits zero.
    */
   unsigned int refcnt;
+
+  /**
+   * Length of the @e krd_array.
+   */
+  unsigned int krd_array_length;
 };
 
 
-/**
- * Exchange key state.  Never use directly, instead access via
- * #TEH_KS_acquire() and #TEH_KS_release().
- */
-static struct TEH_KS_StateHandle *internal_key_state;
+/* ************************** Clean up logic *********************** */
+
 
 /**
- * Mutex protecting access to #internal_key_state.
+ * Release memory used by @a rfc.
+ *
+ * @param rfc factory to release (but do not #GNUNET_free() rfc itself!)
  */
-static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static void
+destroy_response_factory (struct ResponseFactoryContext *rfc)
+{
+  if (NULL != rfc->payback_array)
+  {
+    json_decref (rfc->payback_array);
+    rfc->payback_array = NULL;
+  }
+  if (NULL != rfc->sign_keys_array)
+  {
+    json_decref (rfc->sign_keys_array);
+    rfc->sign_keys_array = NULL;
+  }
+  for (unsigned int i=0;i<rfc->denomkey_array_length;i++)
+  {
+    struct DenominationKeyEntry *dke = &rfc->denomkey_array[i];
+    struct AuditorSignature *as;
+
+    while (NULL != (as = dke->as_head))
+    {
+      GNUNET_CONTAINER_DLL_remove (dke->as_head,
+                                   dke->as_tail,
+                                   as);
+      GNUNET_free (as);
+    }
+  }
+  GNUNET_array_grow (rfc->denomkey_array,
+                     rfc->denomkey_array_length,
+                     0);
+}
+
+
+/**
+ * Release memory used by @a rbc.
+ */
+static void
+destroy_response_builder (struct ResponseBuilderContext *rbc)
+{
+  if (NULL != rbc->denom_keys_array)
+  {
+    json_decref (rbc->denom_keys_array);
+    rbc->denom_keys_array = NULL;
+  }
+  if (NULL != rbc->auditors_array)
+  {
+    json_decref (rbc->auditors_array);
+    rbc->auditors_array = NULL;
+  }
+}
+
+
+/**
+ * Iterator for freeing denomination keys.
+ *
+ * @param cls closure with the `struct TEH_KS_StateHandle`
+ * @param key key for the denomination key
+ * @param value coin details
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+free_denom_key (void *cls,
+                const struct GNUNET_HashCode *key,
+                void *value)
+{
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
+
+  GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
+  GNUNET_free (dki);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Release key state, free if necessary (if reference count gets to zero).
+ * Internal method used when the mutex is already held.
+ *
+ * @param key_state the key state to release
+ */
+static void
+ks_release (struct TEH_KS_StateHandle *key_state)
+{
+  GNUNET_assert (0 < key_state->refcnt);
+  key_state->refcnt--;
+  if (0 == key_state->refcnt)
+  {
+    if (NULL != key_state->denomkey_map)
+    {
+      GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
+                                             &free_denom_key,
+                                             key_state);
+      GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
+      key_state->denomkey_map = NULL;
+    }
+    if (NULL != key_state->revoked_map)
+    {
+      GNUNET_CONTAINER_multihashmap_iterate (key_state->revoked_map,
+                                             &free_denom_key,
+                                             key_state);
+      GNUNET_CONTAINER_multihashmap_destroy (key_state->revoked_map);
+      key_state->revoked_map = NULL;
+    }
+    for (unsigned int i=0;i<key_state->krd_array_length;i++)
+    {
+      struct KeysResponseData *krd = &key_state->krd_array[i];
+
+      if (NULL != krd->response_compressed)
+        MHD_destroy_response (krd->response_compressed);
+      if (NULL != krd->response_uncompressed)
+        MHD_destroy_response (krd->response_uncompressed);
+    }
+    GNUNET_array_grow (key_state->krd_array,
+                       key_state->krd_array_length,
+                       0);
+    GNUNET_free (key_state);
+  }
+}
+
+
+/* ************************* Signal logic ************************** */
 
 /**
  * Pipe used for signaling reloading of our key state.
  */
 static int reload_pipe[2];
+
+
+/**
+ * Handle a signal, writing relevant signal numbers to the pipe.
+ *
+ * @param signal_number the signal number
+ */
+static void
+handle_signal (int signal_number)
+{
+  ssize_t res;
+  char c = signal_number;
+
+  res = write (reload_pipe[1],
+               &c,
+               1);
+  if ( (res < 0) &&
+       (EINTR != errno) )
+  {
+    GNUNET_break (0);
+    return;
+  }
+  if (0 == res)
+  {
+    GNUNET_break (0);
+    return;
+  }
+}
+
+
+/* ************************** State builder ************************ */
 
 
 /**
@@ -220,135 +501,6 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
 
 
 /**
- * Closure for #denom_keys_to_json().
- */
-struct ResponseBuilderContext
-{
-  /**
-   * JSON array with denomination keys.
-   */
-  json_t *denom_keys_array;
-
-  /**
-   * JSON array with auditor signatures.
-   */
-  json_t *auditors_array;
-
-  /**
-   * Keys after what issue date do we care about?
-   */
-  struct GNUNET_TIME_Absolute last_issue_date;
-
-  /**
-   * Used for computing the hash over all the denomination keys.
-   */
-  struct GNUNET_HashContext *hash_context;
-
-  /**
-   * Flag set to #GNUNET_SYSERR on internal errors
-   */
-  int error;
-};
-
-
-/**
- * Add denomination keys past the "last_issue_date" to the
- * "denom_keys_array".
- *
- * @param cls a `struct ResponseBuilderContext`
- * @param key hash of the denomination key
- * @param value a `struct TALER_EXCHANGEDB_DenominationKeyIssueInformation`
- * @return #GNUNET_OK (continue to iterate)
- */
-static int
-denom_keys_to_json (void *cls,
-                    const struct GNUNET_HashCode *key,
-                    void *value)
-{
-  struct ResponseBuilderContext *rbc = cls;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
-  struct GNUNET_HashCode denom_key_hash;
-
-  if (rbc->last_issue_date.abs_value_us >=
-      GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us)
-  {
-    /* remove matching entry from 'auditors_array' */
-    size_t off;
-    json_t *val;
-    json_t *kval;
-
-    kval = GNUNET_JSON_from_data_auto (key);
-    json_array_foreach (rbc->auditors_array, off, val) {
-      size_t ioff;
-      json_t *dkv;
-      json_t *dka = json_object_get (val,
-                                     "denomination_keys");
-      if (NULL == dka)
-      {
-        GNUNET_break (0);
-        continue;
-      }
-      json_array_foreach (dka, ioff, dkv) {
-        json_t *ival = json_object_get (dkv,
-                                        "denom_pub_h");
-
-        if (NULL == ival)
-        {
-          GNUNET_break (0);
-          continue;
-        }
-        if (json_equal (ival, kval))
-        {
-          json_array_remove (dka,
-                             ioff);
-          break;
-        }
-      };
-    };
-    return GNUNET_OK; /* skip, key known to client */
-  }
-  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
-                                     &denom_key_hash);
-  GNUNET_CRYPTO_hash_context_read (rbc->hash_context,
-                                   &denom_key_hash,
-                                   sizeof (struct GNUNET_HashCode));
-  if (0 !=
-      json_array_append_new (rbc->denom_keys_array,
-                             denom_key_issue_to_json (&dki->denom_pub,
-                                                      &dki->issue)))
-    rbc->error = GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
-/**
- * Get the relative time value that describes how
- * far in the future do we want to provide coin keys.
- *
- * @return the provide duration
- */
-static struct GNUNET_TIME_Relative
-TALER_EXCHANGE_conf_duration_provide ()
-{
-  struct GNUNET_TIME_Relative rel;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "exchange_keys",
-                                           "lookahead_provide",
-                                           &rel))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
-                               "lookahead_provide",
-                               "time value required");
-    GNUNET_assert (0);
-  }
-  return rel;
-}
-
-
-/**
  * Store a copy of @a dki in @a map.
  *
  * @param map hash map to store @a dki in
@@ -387,33 +539,6 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
 }
 
 
-/**
- * Handle a signal, writing relevant signal numbers to the pipe.
- *
- * @param signal_number the signal number
- */
-static void
-handle_signal (int signal_number)
-{
-  ssize_t res;
-  char c = signal_number;
-
-  res = write (reload_pipe[1],
-               &c,
-               1);
-  if ( (res < 0) &&
-       (EINTR != errno) )
-  {
-    GNUNET_break (0);
-    return;
-  }
-  if (0 == res)
-  {
-    GNUNET_break (0);
-    return;
-  }
-}
-
 
 /**
  * Closure for #add_revocations_transaction().
@@ -430,6 +555,33 @@ struct AddRevocationContext
    */
   const struct TALER_MasterSignatureP *revocation_master_sig;
 };
+
+
+/**
+ * Get the relative time value that describes how
+ * far in the future do we want to provide coin keys.
+ *
+ * @return the provide duration
+ */
+static struct GNUNET_TIME_Relative
+TALER_EXCHANGE_conf_duration_provide ()
+{
+  struct GNUNET_TIME_Relative rel;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchange_keys",
+                                           "lookahead_provide",
+                                           &rel))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange_keys",
+                               "lookahead_provide",
+                               "time value required");
+    GNUNET_assert (0);
+  }
+  return rel;
+}
 
 
 /**
@@ -493,7 +645,7 @@ add_denomination_transaction (void *cls,
 /**
  * Iterator for (re)loading/initializing denomination keys.
  *
- * @param cls closure
+ * @param cls closure with a `struct ResponseFactoryContext *`
  * @param dki the denomination key issue
  * @param alias coin alias
  * @param revocation_master_sig non-NULL if @a dki was revoked
@@ -507,12 +659,12 @@ reload_keys_denom_iter (void *cls,
                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
                         const struct TALER_MasterSignatureP *revocation_master_sig)
 {
-  struct TEH_KS_StateHandle *ctx = cls;
+  struct ResponseFactoryContext *rfc = cls;
+  struct TEH_KS_StateHandle *key_state = rfc->key_state;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
-  struct GNUNET_HashCode denom_key_hash;
   int res;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -544,7 +696,7 @@ reload_keys_denom_iter (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Adding denomination key `%s' to revocation set\n",
                 alias);
-    res = store_in_map (ctx->revoked_map,
+    res = store_in_map (key_state->revoked_map,
                         dki);
     if (GNUNET_NO == res)
       return GNUNET_OK;
@@ -564,9 +716,8 @@ reload_keys_denom_iter (void *cls,
       handle_signal (SIGTERM);
       return GNUNET_SYSERR;
     }
-
     GNUNET_assert (0 ==
-                   json_array_append_new (ctx->payback_array,
+                   json_array_append_new (rfc->payback_array,
                                           GNUNET_JSON_from_data_auto (&dki->issue.properties.denom_hash)));
     return GNUNET_OK;
   }
@@ -581,11 +732,6 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
 
-  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
-                                     &denom_key_hash);
-  GNUNET_CRYPTO_hash_context_read (ctx->hash_context,
-                                   &denom_key_hash,
-                                   sizeof (struct GNUNET_HashCode));
   if (GNUNET_OK !=
       TEH_DB_run_transaction (NULL,
 			      NULL,
@@ -598,16 +744,12 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_SYSERR;
   }
 
-  res = store_in_map (ctx->denomkey_map,
+  res = store_in_map (key_state->denomkey_map,
                       dki);
   if (GNUNET_NO == res)
     return GNUNET_OK;
-  ctx->min_dk_expire = GNUNET_TIME_absolute_min (ctx->min_dk_expire,
-                                                 expire_deposit);
-  GNUNET_assert (0 ==
-                 json_array_append_new (ctx->denom_keys_array,
-                                        denom_key_issue_to_json (&dki->denom_pub,
-                                                                 &dki->issue)));
+  key_state->min_dk_expire = GNUNET_TIME_absolute_min (key_state->min_dk_expire,
+                                                       expire_deposit);
   return GNUNET_OK;
 }
 
@@ -637,9 +779,11 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
 
 
 /**
- * Iterator for sign keys.
+ * Iterator for sign keys.  Adds current and near-future signing keys
+ * to the `sign_keys_array` and stores the current one in the
+ * `key_state`.
  *
- * @param cls closure with the `struct TEH_KS_StateHandle *`
+ * @param cls closure with the `struct ResponseFactoryContext *`
  * @param filename name of the file the key came from
  * @param ski the sign key issue
  * @return #GNUNET_OK to continue to iterate,
@@ -651,7 +795,8 @@ reload_keys_sign_iter (void *cls,
                        const char *filename,
                        const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
 {
-  struct TEH_KS_StateHandle *ctx = cls;
+  struct ResponseFactoryContext *rfc = cls;
+  struct TEH_KS_StateHandle *key_state = rfc->key_state;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
 
@@ -686,57 +831,19 @@ reload_keys_sign_iter (void *cls,
 
   /* The signkey is valid at this time, check if it's more recent than
      what we have so far! */
-  if ( (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us <
+  if ( (GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.start).abs_value_us <
         GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us) &&
        (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us <
         now.abs_value_us) )
   {
     /* We use the most recent one, if it is valid now (not just in the near future) */
-    ctx->current_sign_key_issue = *ski;
+    key_state->current_sign_key_issue = *ski;
   }
   GNUNET_assert (0 ==
-                 json_array_append_new (ctx->sign_keys_array,
+                 json_array_append_new (rfc->sign_keys_array,
                                         sign_key_issue_to_json (&ski->issue)));
 
   return GNUNET_OK;
-}
-
-
-/**
- * Convert information from an auditor to a JSON object.
- *
- * @param apub the auditor's public key
- * @param auditor_url URL of the auditor
- * @param dki_len length of @a dki and @a asigs arrays
- * @param asigs the auditor's signatures
- * @param dki array of denomination coin data signed by the auditor
- * @return a JSON object describing the auditor information and signature
- */
-static json_t *
-auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
-                 const char *auditor_url,
-                 unsigned int dki_len,
-                 const struct TALER_AuditorSignatureP **asigs,
-                 const struct TALER_DenominationKeyValidityPS **dki)
-{
-  unsigned int i;
-  json_t *ja;
-
-  ja = json_array ();
-  for (i=0;i<dki_len;i++)
-    GNUNET_assert (0 ==
-                   json_array_append_new (ja,
-                                          json_pack ("{s:o, s:o}",
-                                                     "denom_pub_h",
-                                                     GNUNET_JSON_from_data_auto (&dki[i]->denom_hash),
-                                                     "auditor_sig",
-                                                     GNUNET_JSON_from_data_auto (asigs[i]))));
-  return
-    json_pack ("{s:o, s:s, s:o}",
-               "denomination_keys", ja,
-               "auditor_url", auditor_url,
-               "auditor_pub",
-               GNUNET_JSON_from_data_auto (apub));
 }
 
 
@@ -746,7 +853,7 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
  * add the auditor information to our /keys response (if it is
  * (still) applicable).
  *
- * @param cls closure with the `struct TEH_KS_StateHandle *`
+ * @param cls closure with the `struct ResponseFactoryContext *`
  * @param apub the auditor's public key
  * @param auditor_url URL of the auditor
  * @param mpub the exchange's public key (as expected by the auditor)
@@ -766,10 +873,8 @@ reload_auditor_iter (void *cls,
                      const struct TALER_AuditorSignatureP *asigs,
                      const struct TALER_DenominationKeyValidityPS *dki)
 {
-  struct TEH_KS_StateHandle *ctx = cls;
-  unsigned int keep;
-  const struct TALER_AuditorSignatureP *kept_asigs[dki_len];
-  const struct TALER_DenominationKeyValidityPS *kept_dkis[dki_len];
+  struct ResponseFactoryContext *rfc = cls;
+  struct TEH_KS_StateHandle *key_state = rfc->key_state;
 
   /* Check if the signature is at least for this exchange. */
   if (0 != memcmp (&mpub->eddsa_pub,
@@ -782,103 +887,654 @@ reload_auditor_iter (void *cls,
   }
   /* Filter the auditor information for those for which the
      keys actually match the denomination keys that are active right now */
-  keep = 0;
   for (unsigned int i=0;i<dki_len;i++)
   {
-    if (GNUNET_YES ==
-        GNUNET_CONTAINER_multihashmap_contains (ctx->denomkey_map,
+    if (GNUNET_YES !=
+        GNUNET_CONTAINER_multihashmap_contains (key_state->denomkey_map,
                                                 &dki[i].denom_hash))
+      continue;
+    for (unsigned int j=0;j<rfc->denomkey_array_length;j++)
     {
-      kept_asigs[keep] = &asigs[i];
-      kept_dkis[keep] = &dki[i];
-      keep++;
+      struct DenominationKeyEntry *dke = &rfc->denomkey_array[j];
+      struct AuditorSignature *as;
+
+      if (0 !=
+          memcmp (dki,
+                  &dke->dki->issue.properties,
+                  sizeof (struct TALER_DenominationKeyValidityPS)))
+        continue;
+      as = GNUNET_malloc (sizeof (struct AuditorSignature) +
+                          strlen (auditor_url) + 1);
+      as->asig = asigs[i];
+      as->apub = *apub;
+      as->auditor_url = (const char *) &as[1];
+      memcpy (&as[1],
+              auditor_url,
+              strlen (auditor_url) + 1);
+      GNUNET_CONTAINER_DLL_insert (dke->as_head,
+                                   dke->as_tail,
+                                   as);
     }
   }
-  /* add auditor information to our /keys response */
-  GNUNET_assert (0 ==
-                 json_array_append_new (ctx->auditors_array,
-                                        auditor_to_json (apub,
-                                                         auditor_url,
-                                                         keep,
-                                                         kept_asigs,
-                                                         kept_dkis)));
   return GNUNET_OK;
 }
 
 
 /**
- * Iterator for freeing denomination keys.
+ * Initialize the `denomkey_array`.  We are called once per
+ * array index, which is tracked in `denomkey_array_length` (the
+ * array will be of sufficient size).  Set the pointer to the
+ * denomination key and increment the `denomkey_array_length`.
  *
- * @param cls closure with the `struct TEH_KS_StateHandle`
- * @param key key for the denomination key
- * @param value coin details
- * @return #GNUNET_OK to continue to iterate,
- *  #GNUNET_NO to stop iteration with no error,
- *  #GNUNET_SYSERR to abort iteration with error!
+ * @param cls a `struct ResponseFactoryContext`
+ * @param denom_hash hash of a denomination key
+ * @param value a `struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *`
+ * @return #GNUNET_OK
  */
 static int
-free_denom_key (void *cls,
-                const struct GNUNET_HashCode *key,
-                void *value)
+initialize_denomkey_array (void *cls,
+                           const struct GNUNET_HashCode *denom_hash,
+                           void *value)
 {
+  struct ResponseFactoryContext *rfc = cls;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
 
-  GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
-  GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
-  GNUNET_free (dki);
+  rfc->denomkey_array[rfc->denomkey_array_length++].dki = dki;
   return GNUNET_OK;
 }
 
 
 /**
- * Release key state, free if necessary (if reference count gets to zero).
- * Internal method used when the mutex is already held.
+ * Comparator used to sort the `struct DenominationKeyEntry` array
+ * by the validity period's starting time of the keys.
  *
- * @param key_state the key state to release
+ * @param k1 a `struct DenominationKeyEntry *`
+ * @param k2 a `struct DenominationKeyEntry *`
+ * @return -1 if k1 starts before k2,
+ *          1 if k2 starts before k1,
+ *          0 if they start at the same time
+ */
+static int
+denomkey_array_sort_comparator (const void *k1,
+                                const void *k2)
+{
+  const struct DenominationKeyEntry *dke1 = k1;
+  const struct DenominationKeyEntry *dke2 = k2;
+  struct GNUNET_TIME_Absolute d1
+    = GNUNET_TIME_absolute_ntoh (dke1->dki->issue.properties.start);
+  struct GNUNET_TIME_Absolute d2
+    = GNUNET_TIME_absolute_ntoh (dke2->dki->issue.properties.start);
+
+  if (d1.abs_value_us < d2.abs_value_us)
+    return -1;
+  if (d1.abs_value_us > d2.abs_value_us)
+    return  1;
+  return 0;
+}
+
+
+/**
+ * Produce HTTP "Date:" header.
+ *
+ * @param at time to write to @a date
+ * @param[out] date where to write the header, with
+ *        at least 128 bytes available space.
  */
 static void
-ks_release_ (struct TEH_KS_StateHandle *key_state)
+get_date_string (struct GNUNET_TIME_Absolute at,
+                 char *date)
 {
-  GNUNET_assert (0 < key_state->refcnt);
-  key_state->refcnt--;
-  if (0 == key_state->refcnt)
-  {
-    if (NULL != key_state->denom_keys_array)
-    {
-      json_decref (key_state->denom_keys_array);
-      key_state->denom_keys_array = NULL;
-    }
-    if (NULL != key_state->payback_array)
-    {
-      json_decref (key_state->payback_array);
-      key_state->payback_array = NULL;
-    }
-    if (NULL != key_state->sign_keys_array)
-    {
-      json_decref (key_state->sign_keys_array);
-      key_state->sign_keys_array = NULL;
-    }
-    if (NULL != key_state->denomkey_map)
-    {
-      GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
-                                             &free_denom_key,
-                                             key_state);
-      GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
-      key_state->denomkey_map = NULL;
-    }
-    if (NULL != key_state->revoked_map)
-    {
-      GNUNET_CONTAINER_multihashmap_iterate (key_state->revoked_map,
-                                             &free_denom_key,
-                                             key_state);
-      GNUNET_CONTAINER_multihashmap_destroy (key_state->revoked_map);
-      key_state->revoked_map = NULL;
-    }
-    GNUNET_free_non_null (key_state->keys_json);
-    GNUNET_free_non_null (key_state->keys_jsonz);
-    GNUNET_free (key_state);
-  }
+  static const char *const days[] =
+    { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  static const char *const mons[] =
+    { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+    "Nov", "Dec"
+  };
+  struct tm now;
+  time_t t;
+#if !defined(HAVE_C11_GMTIME_S) && !defined(HAVE_W32_GMTIME_S) && !defined(HAVE_GMTIME_R)
+  struct tm* pNow;
+#endif
+
+  date[0] = 0;
+  t = (time_t) (at.abs_value_us / 1000LL / 1000LL);
+#if defined(HAVE_C11_GMTIME_S)
+  if (NULL == gmtime_s (&t, &now))
+    return;
+#elif defined(HAVE_W32_GMTIME_S)
+  if (0 != gmtime_s (&now, &t))
+    return;
+#elif defined(HAVE_GMTIME_R)
+  if (NULL == gmtime_r(&t, &now))
+    return;
+#else
+  pNow = gmtime(&t);
+  if (NULL == pNow)
+    return;
+  now = *pNow;
+#endif
+  sprintf (date,
+           "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
+           days[now.tm_wday % 7],
+           (unsigned int) now.tm_mday,
+           mons[now.tm_mon % 12],
+           (unsigned int) (1900 + now.tm_year),
+           (unsigned int) now.tm_hour,
+           (unsigned int) now.tm_min,
+           (unsigned int) now.tm_sec);
 }
+
+
+/**
+ * Add the headers we want to set for every /keys response.
+ *
+ * @param key_state the key state to use
+ * @param[in,out] response the response to modify
+ * @return #GNUNET_OK on success
+ */
+static int
+setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
+                                struct MHD_Response *response)
+{
+  char dat[128];
+
+  TEH_RESPONSE_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         "application/json"));
+  get_date_string (key_state->reload_time,
+                   dat);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_LAST_MODIFIED,
+                                         dat));
+  get_date_string (key_state->next_reload,
+                   dat);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_EXPIRES,
+                                         dat));
+  return GNUNET_OK;
+}
+
+
+/**
+ * Information about an auditor to be added.
+ */
+struct AuditorEntry
+{
+  /**
+   * URL of the auditor (allocated still as part of a
+   * `struct AuditorSignature`, do not free!).
+   */
+  const char *auditor_url;
+
+  /**
+   * Public key of the auditor (allocated still as part of a
+   * `struct AuditorSignature`, do not free!).
+   */
+  const struct TALER_AuditorPublicKeyP *apub;
+
+  /**
+   * Array of denomination keys and auditor signatures.
+   */
+  json_t *ar;
+
+};
+
+
+/**
+ * Convert auditor entries from the hash map to entries
+ * in the auditor array, free the auditor entry as well.
+ *
+ * @param cls a `struct ResponseBuilderContext *`
+ * @param key unused
+ * @param value a `struct AuditorEntry` to add to the `auditors_array`
+ * @return #GNUNET_OK (to continue to iterate)
+ */
+static int
+add_auditor_entry (void *cls,
+                   const struct GNUNET_HashCode *key,
+                   void *value)
+{
+  struct ResponseBuilderContext *rbc = cls;
+  struct AuditorEntry *ae = value;
+  json_t *ao;
+
+  ao = json_pack ("{s:o, s:s, s:o}",
+                  "denomination_keys", ae->ar,
+                  "auditor_url", ae->auditor_url,
+                  "auditor_pub", GNUNET_JSON_from_data_auto (ae->apub));
+  json_array_append_new (rbc->auditors_array,
+                         ao);
+  GNUNET_free (ae);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Initialize @a krd for the given @a cherry_pick_date using
+ * the key data in @a rfc.  This function actually builds the
+ * respective JSON replies (compressed and uncompressed).
+ *
+ * @param rfc factory with key material
+ * @param[out] krd response object to initialize
+ * @param denom_off offset in the @a rfc's `denomkey_array` at which
+ *        keys beyond the @a cherry_pick_date are stored
+ * @param cherry_pick_date cut-off date to use
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+build_keys_response (const struct ResponseFactoryContext *rfc,
+                     struct KeysResponseData *krd,
+                     unsigned int denom_off,
+                     struct GNUNET_TIME_Absolute cherry_pick_date)
+{
+  struct ResponseBuilderContext rbc;
+  json_t *keys;
+  struct TALER_ExchangeKeySetPS ks;
+  struct TALER_ExchangeSignatureP sig;
+  char *keys_json;
+  void *keys_jsonz;
+  size_t keys_jsonz_size;
+  int comp;
+
+  krd->cherry_pick_date = cherry_pick_date;
+
+  /* Initialize `rbc` */
+  memset (&rbc,
+          0,
+          sizeof (rbc));
+  rbc.denom_keys_array = json_array ();
+  if (NULL == rbc.denom_keys_array)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  rbc.auditors_array = json_array ();
+  if (NULL == rbc.auditors_array)
+  {
+    destroy_response_builder (&rbc);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  rbc.hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+  /* Go over relevant denomination keys. */
+  {
+    struct GNUNET_CONTAINER_MultiHashMap *auditors;
+
+    auditors = GNUNET_CONTAINER_multihashmap_create (4,
+                                                     GNUNET_NO);
+    for (unsigned int i=denom_off;i<rfc->denomkey_array_length;i++)
+    {
+      /* Add denomination key to the response */
+      const struct DenominationKeyEntry *dke
+        = &rfc->denomkey_array[i];
+      struct GNUNET_HashCode denom_key_hash;
+
+      GNUNET_CRYPTO_rsa_public_key_hash (dke->dki->denom_pub.rsa_public_key,
+                                         &denom_key_hash);
+      GNUNET_CRYPTO_hash_context_read (rbc.hash_context,
+                                       &denom_key_hash,
+                                       sizeof (struct GNUNET_HashCode));
+      if (0 !=
+          json_array_append_new (rbc.denom_keys_array,
+                                 denom_key_issue_to_json (&dke->dki->denom_pub,
+                                                          &dke->dki->issue)))
+      {
+        GNUNET_break (0);
+        destroy_response_builder (&rbc);
+        return GNUNET_SYSERR;
+      }
+
+      /* Add auditor data */
+      for (const struct AuditorSignature *as = dke->as_head;
+           NULL != as;
+           as = as->next)
+      {
+        struct GNUNET_HashCode ahash;
+        struct AuditorEntry *ae;
+
+        GNUNET_CRYPTO_hash (&as->apub,
+                            sizeof (&as->apub),
+                            &ahash);
+        ae = GNUNET_CONTAINER_multihashmap_get (auditors,
+                                                &ahash);
+        if (NULL == ae)
+        {
+          ae = GNUNET_new (struct AuditorEntry);
+          ae->ar = json_array ();
+          ae->apub = &as->apub;
+          GNUNET_assert (GNUNET_YES ==
+                         GNUNET_CONTAINER_multihashmap_put (auditors,
+                                                            &ahash,
+                                                            ae,
+                                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+        }
+        json_array_append_new (ae->ar,
+                               json_pack ("{s:o, s:o}",
+                                          "denom_pub_h",
+                                          GNUNET_JSON_from_data_auto (&denom_key_hash),
+                                          "auditor_sig",
+                                          GNUNET_JSON_from_data_auto (&as->asig)));
+      }
+    }
+
+    GNUNET_CONTAINER_multihashmap_iterate (auditors,
+                                           &add_auditor_entry,
+                                           &rbc);
+    GNUNET_CONTAINER_multihashmap_destroy (auditors);
+  }
+
+  /* Sign hash over denomination keys */
+  ks.purpose.size = htonl (sizeof (ks));
+  ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
+  ks.list_issue_date = GNUNET_TIME_absolute_hton (rfc->key_state->reload_time);
+  GNUNET_CRYPTO_hash_context_finish (rbc.hash_context,
+                                     &ks.hc);
+  rbc.hash_context = NULL;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (&rfc->key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
+                                           &ks.purpose,
+                                           &sig.eddsa_signature));
+
+  /* Build /keys response */
+  keys = json_pack ("{s:s, s:o, s:O, s:O, s:o, s:o, s:o, s:o, s:o}",
+                    "version", TALER_PROTOCOL_VERSION,
+                    "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
+                    "signkeys", rfc->sign_keys_array,
+                    "payback", rfc->payback_array,
+                    "denoms", rbc.denom_keys_array,
+                    "auditors", rbc.auditors_array,
+                    "list_issue_date", GNUNET_JSON_from_time_abs (rfc->key_state->reload_time),
+                    "eddsa_pub", GNUNET_JSON_from_data_auto (&rfc->key_state->current_sign_key_issue.issue.signkey_pub),
+                    "eddsa_sig", GNUNET_JSON_from_data_auto (&sig));
+  if (NULL == keys)
+  {
+    destroy_response_builder (&rbc);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  rbc.denom_keys_array = NULL;
+  rbc.auditors_array = NULL;
+  destroy_response_builder (&rbc);
+
+  /* Convert /keys response to UTF8-String */
+  keys_json = json_dumps (keys,
+                          JSON_INDENT (2));
+  json_decref (keys);
+  if (NULL == keys_json)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* Keep copy for later compression... */
+  keys_jsonz = GNUNET_strdup (keys_json);
+  keys_jsonz_size = strlen (keys_json);
+
+  /* Create uncompressed response */
+  krd->response_uncompressed
+    = MHD_create_response_from_buffer (keys_jsonz_size,
+                                       keys_json,
+                                       MHD_RESPMEM_MUST_FREE);
+  if (NULL == krd->response_uncompressed)
+  {
+    GNUNET_break (0);
+    GNUNET_free (keys_json);
+    GNUNET_free (keys_jsonz);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      setup_general_response_headers (rfc->key_state,
+                                      krd->response_uncompressed))
+  {
+    GNUNET_break (0);
+    GNUNET_free (keys_jsonz);
+    return GNUNET_SYSERR;
+  }
+
+  /* Also compute compressed version of /keys response */
+  comp = TEH_RESPONSE_body_compress (&keys_jsonz,
+                                     &keys_jsonz_size);
+  krd->response_compressed
+    = MHD_create_response_from_buffer (keys_jsonz_size,
+                                       keys_jsonz,
+                                       MHD_RESPMEM_MUST_FREE);
+  if (NULL == krd->response_compressed)
+  {
+    GNUNET_break (0);
+    GNUNET_free (keys_jsonz);
+    return GNUNET_SYSERR;
+  }
+  /* If the response is actually compressed, set the
+     respective header. */
+  if ( (MHD_YES == comp) &&
+       (MHD_YES !=
+        MHD_add_response_header (krd->response_compressed,
+                                 MHD_HTTP_HEADER_CONTENT_ENCODING,
+                                 "deflate")) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      setup_general_response_headers (rfc->key_state,
+                                      krd->response_compressed))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Actual "main" logic that builds the state which this module
+ * evolves around.  This function will import the key data from
+ * the exchangedb module and convert it into (1) internally used
+ * lookup tables, and (2) HTTP responses to be returned from
+ * /keys.
+ *
+ * @return NULL on error (usually pretty fatal...)
+ */
+static struct TEH_KS_StateHandle *
+make_fresh_key_state ()
+{
+  struct TEH_KS_StateHandle *key_state;
+  struct ResponseFactoryContext rfc;
+  struct GNUNET_TIME_Absolute last;
+  unsigned int off;
+
+  memset (&rfc,
+          0,
+          sizeof (rfc));
+  rfc.payback_array = json_array ();
+  if (NULL == rfc.payback_array)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  rfc.sign_keys_array = json_array ();
+  if (NULL == rfc.sign_keys_array)
+  {
+    GNUNET_break (0);
+    json_decref (rfc.payback_array);
+    return NULL;
+  }
+
+  key_state = GNUNET_new (struct TEH_KS_StateHandle);
+  rfc.key_state = key_state;
+  key_state->min_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
+  key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
+                                                                  GNUNET_NO);
+  key_state->revoked_map = GNUNET_CONTAINER_multihashmap_create (4,
+                                                                 GNUNET_NO);
+  key_state->reload_time = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&key_state->reload_time);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loading keys from `%s'\n",
+              TEH_exchange_directory);
+  /* Initialize the 'denomkey_map' and the 'revoked_map' and
+     'rfc.payback_array' */
+  if (-1 ==
+      TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
+                                                  &TEH_master_public_key,
+                                                  &reload_keys_denom_iter,
+                                                  &rfc))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to load denomination keys from `%s'.\n",
+                TEH_exchange_directory);
+    key_state->refcnt = 1;
+    ks_release (key_state);
+    json_decref (rfc.payback_array);
+    json_decref (rfc.sign_keys_array);
+    return NULL;
+  }
+  if (0 == GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Have no denomination keys. Bad configuration.\n");
+    key_state->refcnt = 1;
+    ks_release (key_state);
+    destroy_response_factory (&rfc);
+    return NULL;
+  }
+
+  /* Initialize `current_sign_key_issue` and `rfc.sign_keys_array` */
+  TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
+                                         &reload_keys_sign_iter,
+                                         &rfc);
+  if (0 !=
+      memcmp (&key_state->current_sign_key_issue.issue.master_public_key,
+              &TEH_master_public_key,
+              sizeof (struct TALER_MasterPublicKeyP)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Have no signing key. Bad configuration.\n");
+    key_state->refcnt = 1;
+    ks_release (key_state);
+    destroy_response_factory (&rfc);
+    return NULL;
+  }
+
+  /* Initialize and sort the `denomkey_array` */
+  rfc.denomkey_array
+    = GNUNET_new_array (GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map),
+                        struct DenominationKeyEntry);
+  GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
+                                         &initialize_denomkey_array,
+                                         &rfc);
+  GNUNET_assert (rfc.denomkey_array_length ==
+                 GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map));
+  qsort (rfc.denomkey_array,
+         rfc.denomkey_array_length,
+         sizeof (struct DenominationKeyEntry),
+         &denomkey_array_sort_comparator);
+
+  /* Complete `denomkey_array` by adding auditor signature data */
+  TALER_EXCHANGEDB_auditor_iterate (cfg,
+                                    &reload_auditor_iter,
+                                    &rfc);
+
+  /* Determine size of `krd_array` by counting number of discrete
+     denomination key starting times. */
+  last = GNUNET_TIME_UNIT_ZERO_ABS;
+  key_state->krd_array_length = 0;
+  off = 1; /* reserve one slot for the "no keys" response */
+  for (unsigned int i=0;i<rfc.denomkey_array_length;i++)
+  {
+    const struct DenominationKeyEntry *dke
+      = &rfc.denomkey_array[i];
+    struct GNUNET_TIME_Absolute d
+      = GNUNET_TIME_absolute_ntoh (dke->dki->issue.properties.start);
+
+    if (last.abs_value_us == d.abs_value_us)
+      continue;
+    last = d;
+    off++;
+  }
+
+  /* Initialize `krd_array` */
+  key_state->krd_array_length = off;
+  key_state->krd_array
+    = GNUNET_new_array (key_state->krd_array_length,
+                        struct KeysResponseData);
+  off = 0;
+  last = GNUNET_TIME_UNIT_ZERO_ABS;
+  for (unsigned int i=0;i<rfc.denomkey_array_length;i++)
+  {
+    const struct DenominationKeyEntry *dke
+      = &rfc.denomkey_array[i];
+    struct GNUNET_TIME_Absolute d
+      = GNUNET_TIME_absolute_ntoh (dke->dki->issue.properties.start);
+
+    if (last.abs_value_us == d.abs_value_us)
+      continue;
+    if (GNUNET_OK !=
+        build_keys_response (&rfc,
+                             &key_state->krd_array[off++],
+                             i,
+                             last))
+    {
+      /* Fail hard, will be caught via test on `off` below */
+      GNUNET_break (0);
+      off = key_state->krd_array_length; /* flag as 'invalid' */
+      break;
+    }
+    last = d;
+  }
+  /* Finally, build an `empty` response without denomination keys
+     for requests past the last known denomination key start date */
+  if ( (off + 1 < key_state->krd_array_length) ||
+       (GNUNET_OK !=
+        build_keys_response (&rfc,
+                             &key_state->krd_array[off++],
+                             rfc.denomkey_array_length,
+                             last)) )
+  {
+    GNUNET_break (0);
+    key_state->refcnt = 1;
+    ks_release (key_state);
+    destroy_response_factory (&rfc);
+    return NULL;
+  }
+
+  /* Compute next automatic reload time */
+  key_state->next_reload =
+    GNUNET_TIME_absolute_min (GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire),
+                                key_state->min_dk_expire);
+  GNUNET_assert (0 != key_state->next_reload.abs_value_us);
+
+  /* Clean up intermediary state we don't need anymore and return
+     new key_state! */
+  destroy_response_factory (&rfc);
+  return key_state;
+}
+
+
+/* ************************** Persistent part ********************** */
+
+/**
+ * Exchange key state.  This is the long-term, read-only internal global state,
+ * which the various threads "lock" to use in read-only ways.  We eventually
+ * create a completely new object "on the side" and then start to return
+ * the new read-only object to threads that ask. Once none of the threads
+ * use the previous object (RC drops to zero), we discard it.
+ *
+ * Thus, this instance should never be used directly, instead reserve
+ * access via #TEH_KS_acquire() and release it via #TEH_KS_release().
+ */
+static struct TEH_KS_StateHandle *internal_key_state;
+
+/**
+ * Mutex protecting access to #internal_key_state.
+ */
+static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 
 /**
@@ -892,7 +1548,7 @@ TEH_KS_release_ (const char *location,
                  struct TEH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  ks_release_ (key_state);
+  ks_release (key_state);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
 
@@ -910,126 +1566,19 @@ TEH_KS_acquire_ (const char *location)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TEH_KS_StateHandle *key_state;
-  json_t *keys;
-  struct TALER_ExchangeKeySetPS ks;
-  struct TALER_ExchangeSignatureP sig;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   if ( (NULL != internal_key_state) &&
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
-    ks_release_ (internal_key_state);
+    ks_release (internal_key_state);
     internal_key_state = NULL;
   }
   if (NULL == internal_key_state)
-  {
-    key_state = GNUNET_new (struct TEH_KS_StateHandle);
-    key_state->hash_context = GNUNET_CRYPTO_hash_context_start ();
-    key_state->min_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
-
-    key_state->denom_keys_array = json_array ();
-    GNUNET_assert (NULL != key_state->denom_keys_array);
-
-    key_state->payback_array = json_array ();
-    GNUNET_assert (NULL != key_state->payback_array);
-
-    key_state->sign_keys_array = json_array ();
-    GNUNET_assert (NULL != key_state->sign_keys_array);
-
-    key_state->auditors_array = json_array ();
-    GNUNET_assert (NULL != key_state->auditors_array);
-
-    key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
-                                                                    GNUNET_NO);
-    key_state->revoked_map = GNUNET_CONTAINER_multihashmap_create (4,
-                                                                   GNUNET_NO);
-    key_state->reload_time = GNUNET_TIME_absolute_get ();
-    GNUNET_TIME_round_abs (&key_state->reload_time);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Loading keys from `%s'\n",
-                TEH_exchange_directory);
-    if (-1 == TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
-                                                          &TEH_master_public_key,
-                                                          &reload_keys_denom_iter,
-                                                          key_state))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Can't load denomination keys.\n");
-      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-      return NULL;
-    }
-    TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
-                                           &reload_keys_sign_iter,
-                                           key_state);
-    TALER_EXCHANGEDB_auditor_iterate (cfg,
-                                      &reload_auditor_iter,
-                                      key_state);
-
-    if (0 != memcmp (&key_state->current_sign_key_issue.issue.master_public_key,
-                     &TEH_master_public_key,
-                     sizeof (struct TALER_MasterPublicKeyP)))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Have no signing key. Bad configuration.\n");
-      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-      return NULL;
-    }
-
-    if (0 == GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Have no denomination keys. Bad configuration.\n");
-      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-      return NULL;
-    }
-
-    ks.purpose.size = htonl (sizeof (ks));
-    ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
-    ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
-    GNUNET_CRYPTO_hash_context_finish (key_state->hash_context,
-                                       &ks.hc);
-    key_state->hash_context = NULL;
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
-                                             &ks.purpose,
-                                             &sig.eddsa_signature));
-    key_state->next_reload =
-      GNUNET_TIME_absolute_min (GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire),
-                                key_state->min_dk_expire);
-    if (0 == key_state->next_reload.abs_value_us)
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "No valid signing key found!\n");
-
-    keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:O, s:o, s:o, s:o}",
-                      "version", TALER_PROTOCOL_VERSION,
-                      "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
-                      "signkeys", key_state->sign_keys_array,
-                      "denoms", key_state->denom_keys_array,
-                      "payback", key_state->payback_array,
-                      "auditors", key_state->auditors_array,
-                      "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time),
-                      "eddsa_pub", GNUNET_JSON_from_data_auto (&key_state->current_sign_key_issue.issue.signkey_pub),
-                      "eddsa_sig", GNUNET_JSON_from_data_auto (&sig));
-    GNUNET_assert (NULL != keys);
-    key_state->denom_keys_array = NULL;
-    key_state->keys_json = json_dumps (keys,
-                                       JSON_INDENT (2));
-    GNUNET_assert (NULL != key_state->keys_json);
-    json_decref (keys);
-    /* also compute compressed version of /keys */
-    key_state->keys_jsonz = GNUNET_strdup (key_state->keys_json);
-    key_state->keys_jsonz_size = strlen (key_state->keys_json);
-    if (MHD_YES !=
-	TEH_RESPONSE_body_compress (&key_state->keys_jsonz,
-				    &key_state->keys_jsonz_size))
-    {
-      GNUNET_free (key_state->keys_jsonz);
-      key_state->keys_jsonz = NULL;
-      key_state->keys_jsonz_size = 0;
-    }
-    internal_key_state = key_state;
-  }
+    internal_key_state = make_fresh_key_state ();
   key_state = internal_key_state;
-  key_state->refcnt++;
+  if (NULL != key_state)
+    key_state->refcnt++;
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 
   return key_state;
@@ -1299,54 +1848,25 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
 
 
 /**
- * Produce HTTP "Date:" header.
+ * Comparator used for a binary search for @a key in the
+ * `struct KeysResponseData` array.
  *
- * @param at time to write to @a date
- * @param[out] date where to write the header, with
- *        at least 128 bytes available space.
+ * @param key pointer to a `struct GNUNET_TIME_Absolute`
+ * @param value pointer to a `struct KeysResponseData` array entry
+ * @return 0 if time matches, -1 if key is smaller, 1 if key is larger
  */
-static void
-get_date_string (struct GNUNET_TIME_Absolute at,
-                 char *date)
+static int
+krd_search_comparator (const void *key,
+                       const void *value)
 {
-  static const char *const days[] =
-    { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-  static const char *const mons[] =
-    { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
-    "Nov", "Dec"
-  };
-  struct tm now;
-  time_t t;
-#if !defined(HAVE_C11_GMTIME_S) && !defined(HAVE_W32_GMTIME_S) && !defined(HAVE_GMTIME_R)
-  struct tm* pNow;
-#endif
+  const struct GNUNET_TIME_Absolute *kd = key;
+  const struct KeysResponseData *krd = value;
 
-  date[0] = 0;
-  t = (time_t) (at.abs_value_us / 1000LL / 1000LL);
-#if defined(HAVE_C11_GMTIME_S)
-  if (NULL == gmtime_s (&t, &now))
-    return;
-#elif defined(HAVE_W32_GMTIME_S)
-  if (0 != gmtime_s (&now, &t))
-    return;
-#elif defined(HAVE_GMTIME_R)
-  if (NULL == gmtime_r(&t, &now))
-    return;
-#else
-  pNow = gmtime(&t);
-  if (NULL == pNow)
-    return;
-  now = *pNow;
-#endif
-  sprintf (date,
-           "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
-           days[now.tm_wday % 7],
-           (unsigned int) now.tm_mday,
-           mons[now.tm_mon % 12],
-           (unsigned int) (1900 + now.tm_year),
-           (unsigned int) now.tm_hour,
-           (unsigned int) now.tm_min,
-           (unsigned int) now.tm_sec);
+  if (kd->abs_value_us > krd->cherry_pick_date.abs_value_us)
+    return 1;
+  if (kd->abs_value_us < krd->cherry_pick_date.abs_value_us)
+    return -1;
+  return 0;
 }
 
 
@@ -1369,14 +1889,10 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                      size_t *upload_data_size)
 {
   struct TEH_KS_StateHandle *key_state;
-  struct MHD_Response *response;
   int ret;
-  char dat[128];
-  char *json;
-  size_t json_len;
-  int comp;
   const char *have;
   struct GNUNET_TIME_Absolute last_issue_date;
+  const struct KeysResponseData *krd;
 
   have = MHD_lookup_connection_value (connection,
 				      MHD_GET_ARGUMENT_KIND,
@@ -1395,133 +1911,38 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
 					     TALER_EC_KEYS_HAVE_NOT_NUMERIC,
 					     "have");
     }
-    last_issue_date.abs_value_us = (uint64_t) haven;
+    last_issue_date.abs_value_us = (uint64_t) haven * 1000000LLU;
   }
   else
   {
     last_issue_date.abs_value_us = 0LLU;
   }
   key_state = TEH_KS_acquire ();
-  if (0LLU != last_issue_date.abs_value_us)
+  krd = bsearch (&last_issue_date,
+                 key_state->krd_array,
+                 key_state->krd_array_length,
+                 sizeof (struct KeysResponseData),
+                 &krd_search_comparator);
+  if ( (NULL == krd) &&
+       (key_state->krd_array_length > 0) )
   {
-    /* Generate incremental response */
-    struct ResponseBuilderContext rbc;
-
-    rbc.error = GNUNET_NO;
-    rbc.denom_keys_array = json_array ();
-    rbc.auditors_array = json_deep_copy (key_state->auditors_array);
-    rbc.last_issue_date = last_issue_date;
-    rbc.hash_context = GNUNET_CRYPTO_hash_context_start ();
-    GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
-                                           &denom_keys_to_json,
-                                           &rbc);
-    if (GNUNET_NO == rbc.error)
-    {
-      json_t *keys;
-      struct TALER_ExchangeKeySetPS ks;
-      struct TALER_ExchangeSignatureP sig;
-
-      ks.purpose.size = htonl (sizeof (ks));
-      ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
-      ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
-      GNUNET_CRYPTO_hash_context_finish (rbc.hash_context,
-                                         &ks.hc);
-      GNUNET_assert (GNUNET_OK ==
-                     GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
-                                               &ks.purpose,
-                                               &sig.eddsa_signature));
-      keys = json_pack ("{s:s, s:o, s:O, s:o, s:O, s:o, s:o, s:o, s:o}",
-                        "version", TALER_PROTOCOL_VERSION,
-                        "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
-                        "signkeys", key_state->sign_keys_array,
-                        "denoms", rbc.denom_keys_array,
-                        "payback", key_state->payback_array,
-                        "auditors", rbc.auditors_array,
-                        "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time),
-                        "eddsa_pub", GNUNET_JSON_from_data_auto (&key_state->current_sign_key_issue.issue.signkey_pub),
-                        "eddsa_sig", GNUNET_JSON_from_data_auto (&sig));
-
-      rbc.denom_keys_array = NULL;
-      rbc.auditors_array = NULL;
-      json = json_dumps (keys,
-                         JSON_INDENT (2));
-      json_decref (keys);
-      json_len = strlen (json);
-      if (TEH_RESPONSE_can_compress (connection))
-        comp = TEH_RESPONSE_body_compress ((void **) &json,
-                                           &json_len);
-      response = MHD_create_response_from_buffer (json_len,
-                                                  json,
-                                                  MHD_RESPMEM_MUST_FREE);
-    }
-    else
-    {
-      /* Try to salvage the situation by returning full reply */
-      GNUNET_break (0);
-      last_issue_date.abs_value_us = 0LLU;
-    }
-    if (NULL != rbc.denom_keys_array)
-      json_decref (rbc.denom_keys_array);
-    if (NULL != rbc.auditors_array)
-      json_decref (rbc.auditors_array);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Client provided invalid cherry picking timestamp %s, returning full response\n",
+                GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
+    krd = &key_state->krd_array[0];
   }
-  if (0LLU == last_issue_date.abs_value_us)
+  if (NULL == krd)
   {
-    /* Generate full response */
-    comp = MHD_NO;
-    if (NULL != key_state->keys_jsonz)
-      comp = TEH_RESPONSE_can_compress (connection);
-    if (MHD_YES == comp)
-    {
-      json = key_state->keys_jsonz;
-      json_len = key_state->keys_jsonz_size;
-    }
-    else
-    {
-      json = key_state->keys_json;
-      json_len = strlen (key_state->keys_json);
-    }
-    response = MHD_create_response_from_buffer (json_len,
-                                                json,
-                                                MHD_RESPMEM_MUST_COPY);
-  }
-  TEH_KS_release (key_state);
-  if (NULL == response)
-  {
+    /* FIXME: should return 500 response instead... */
     GNUNET_break (0);
     return MHD_NO;
   }
-  TEH_RESPONSE_add_global_headers (response);
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (response,
-                                         MHD_HTTP_HEADER_CONTENT_TYPE,
-                                         rh->mime_type));
-  if ( (MHD_YES == comp) &&
-       (MHD_YES !=
-        MHD_add_response_header (response,
-                                 MHD_HTTP_HEADER_CONTENT_ENCODING,
-                                 "deflate")) )
-  {
-    GNUNET_break (0);
-    MHD_destroy_response (response);
-    return MHD_NO;
-  }
-  get_date_string (key_state->reload_time,
-                   dat);
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (response,
-                                         MHD_HTTP_HEADER_LAST_MODIFIED,
-                                         dat));
-  get_date_string (key_state->next_reload,
-                   dat);
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (response,
-                                         MHD_HTTP_HEADER_EXPIRES,
-                                         dat));
   ret = MHD_queue_response (connection,
                             rh->response_code,
-                            response);
-  MHD_destroy_response (response);
+                            (MHD_YES == TEH_RESPONSE_can_compress (connection))
+                            ? krd->response_compressed
+                            : krd->response_uncompressed);
+  TEH_KS_release (key_state);
   return ret;
 }
 

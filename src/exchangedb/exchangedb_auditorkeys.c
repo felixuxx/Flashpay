@@ -280,4 +280,4 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
 }
 
 
-/* end of exchangedb_keyio.c */
+/* end of exchangedb_auditorkeys.c */

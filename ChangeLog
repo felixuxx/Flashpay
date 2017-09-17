@@ -1,3 +1,6 @@
+Sun Sep 17 16:46:13 CEST 2017
+	Implement /keys cherry picking (#4840). -CG
+
 Wed Sep 13 14:06:44 CEST 2017
 	Add argument to TALER_EXCHANGE_check_keys_current()
 	to force download even if /keys are still considered
