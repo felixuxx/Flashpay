@@ -38,10 +38,8 @@
  * precisely.  Note that this version has NOTHING to do with the
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
- *
- * NOTE: needs to be bumped because of /keys cherry picking support for v0.4!
  */
-#define TALER_PROTOCOL_VERSION "0:0:0"
+#define TALER_PROTOCOL_VERSION "1:0:1"
 
 
 /**
