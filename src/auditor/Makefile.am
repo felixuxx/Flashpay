@@ -13,11 +13,24 @@ pkgcfg_DATA = \
 
 bin_PROGRAMS = \
   taler-auditor \
+  taler-wire-auditor \
   taler-auditor-sign
 
 taler_auditor_SOURCES = \
   taler-auditor.c
 taler_auditor_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  -ljansson \
+  -lgnunetutil
+
+taler_wire_auditor_SOURCES = \
+  taler-wire-auditor.c
+taler_wire_auditor_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
