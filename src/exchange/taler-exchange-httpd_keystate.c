@@ -1107,6 +1107,7 @@ add_auditor_entry (void *cls,
                   "denomination_keys", ae->ar,
                   "auditor_url", ae->auditor_url,
                   "auditor_pub", GNUNET_JSON_from_data_auto (ae->apub));
+  GNUNET_assert (NULL != ao);
   GNUNET_assert (0 ==
                  json_array_append_new (rbc->auditors_array,
                                         ao));
@@ -1207,6 +1208,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
         if (NULL == ae)
         {
           ae = GNUNET_new (struct AuditorEntry);
+          ae->auditor_url = as->auditor_url;
           ae->ar = json_array ();
           ae->apub = &as->apub;
           GNUNET_assert (GNUNET_YES ==
