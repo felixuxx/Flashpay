@@ -1196,7 +1196,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
         struct AuditorEntry *ae;
 
         GNUNET_CRYPTO_hash (&as->apub,
-                            sizeof (&as->apub),
+                            sizeof (as->apub),
                             &ahash);
         ae = GNUNET_CONTAINER_multihashmap_get (auditors,
                                                 &ahash);
