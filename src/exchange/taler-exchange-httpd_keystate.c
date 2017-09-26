@@ -1104,8 +1104,9 @@ add_auditor_entry (void *cls,
                   "denomination_keys", ae->ar,
                   "auditor_url", ae->auditor_url,
                   "auditor_pub", GNUNET_JSON_from_data_auto (ae->apub));
-  json_array_append_new (rbc->auditors_array,
-                         ao);
+  GNUNET_assert (0 ==
+                 json_array_append_new (rbc->auditors_array,
+                                        ao));
   GNUNET_free (ae);
   return GNUNET_OK;
 }
@@ -1211,12 +1212,13 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                                                             ae,
                                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
         }
-        json_array_append_new (ae->ar,
-                               json_pack ("{s:o, s:o}",
-                                          "denom_pub_h",
-                                          GNUNET_JSON_from_data_auto (&denom_key_hash),
-                                          "auditor_sig",
-                                          GNUNET_JSON_from_data_auto (&as->asig)));
+        GNUNET_assert (0 ==
+                       json_array_append_new (ae->ar,
+                                              json_pack ("{s:o, s:o}",
+                                                         "denom_pub_h",
+                                                         GNUNET_JSON_from_data_auto (&denom_key_hash),
+                                                         "auditor_sig",
+                                                         GNUNET_JSON_from_data_auto (&as->asig))));
       }
     }
 

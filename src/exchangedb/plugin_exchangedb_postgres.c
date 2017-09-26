@@ -375,7 +375,7 @@ postgres_create_tables (void *cls)
                            ",PRIMARY KEY (coin_pub, merchant_pub, h_contract_terms, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
                            ");"),
     GNUNET_PQ_make_try_execute("CREATE INDEX refunds_coin_pub_index "
-                               "ON refunds(coin_pub)"),    
+                               "ON refunds(coin_pub)"),
     /* This table contains the data for
        wire transfers the exchange has executed. */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS wire_out "
@@ -1940,7 +1940,7 @@ postgres_reserves_in_insert (void *cls,
        back for duplicate transactions; like this, we should virtually
        never actually have to rollback anything. */
     struct TALER_EXCHANGEDB_Reserve updated_reserve;
-    
+
     updated_reserve.pub = reserve.pub;
     if (GNUNET_OK !=
         TALER_amount_add (&updated_reserve.balance,
@@ -2135,14 +2135,14 @@ struct ReserveHistoryContext
 
   /**
    * Which reserve are we building the history for?
-   */ 
+   */
   const struct TALER_ReservePublicKeyP *reserve_pub;
-  
+
   /**
    * Where we build the history.
    */
   struct TALER_EXCHANGEDB_ReserveHistory *rh;
- 
+
   /**
    * Tail of @e rh list.
    */
@@ -2151,7 +2151,7 @@ struct ReserveHistoryContext
   /**
    * Set to #GNUNET_SYSERR on serious internal errors during
    * the callbacks.
-   */ 
+   */
   int status;
 };
 
@@ -2162,7 +2162,7 @@ struct ReserveHistoryContext
  *
  * @param rhc where the history is kept
  * @return the fresh element that was added
- */ 
+ */
 static struct TALER_EXCHANGEDB_ReserveHistory *
 append_rh (struct ReserveHistoryContext *rhc)
 {
@@ -2196,7 +2196,7 @@ add_bank_to_exchange (void *cls,
 		      unsigned int num_results)
 {
   struct ReserveHistoryContext *rhc = cls;
-  
+
   while (0 < num_results)
   {
     struct TALER_EXCHANGEDB_BankTransfer *bt;
@@ -2216,7 +2216,7 @@ add_bank_to_exchange (void *cls,
 				   &bt->sender_account_details),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -2249,7 +2249,7 @@ add_withdraw_coin (void *cls,
 		   unsigned int num_results)
 {
   struct ReserveHistoryContext *rhc = cls;
-  
+
   while (0 < num_results)
   {
     struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
@@ -2272,7 +2272,7 @@ add_withdraw_coin (void *cls,
 				     &cbc->withdraw_fee),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -2305,7 +2305,7 @@ add_payback (void *cls,
 	     unsigned int num_results)
 {
   struct ReserveHistoryContext *rhc = cls;
-  
+
   while (0 < num_results)
   {
     struct TALER_EXCHANGEDB_Payback *payback;
@@ -2330,7 +2330,7 @@ add_payback (void *cls,
 					     &payback->coin.denom_sig.rsa_signature),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -2364,12 +2364,12 @@ add_exchange_to_bank (void *cls,
 		      unsigned int num_results)
 {
   struct ReserveHistoryContext *rhc = cls;
-  
+
   while (0 < num_results)
   {
     struct TALER_EXCHANGEDB_ClosingTransfer *closing;
     struct TALER_EXCHANGEDB_ReserveHistory *tail;
-      
+
     closing = GNUNET_new (struct TALER_EXCHANGEDB_ClosingTransfer);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -2385,7 +2385,7 @@ add_exchange_to_bank (void *cls,
 					      &closing->wtid),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -2458,6 +2458,7 @@ postgres_get_reserve_history (void *cls,
   rhc.rh = NULL;
   rhc.rh_tail = NULL;
   rhc.status = GNUNET_OK;
+  qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS; /* make static analysis happy */
   for (unsigned int i=0;NULL != work[i].cb;i++)
   {
     qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
@@ -2481,7 +2482,7 @@ postgres_get_reserve_history (void *cls,
       qs = GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
-  *rhp = rhc.rh;  
+  *rhp = rhc.rh;
   return qs;
 }
 
@@ -2748,7 +2749,7 @@ struct MatchingDepositContext
    * Public key of the merchant against which we are matching.
    */
   const struct TALER_MerchantPublicKeyP *merchant_pub;
-  
+
   /**
    * Maximum number of results to return.
    */
@@ -2781,7 +2782,7 @@ match_deposit_cb (void *cls,
 		  unsigned int num_results)
 {
   struct MatchingDepositContext *mdc = cls;
-  
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Found %u/%u matching deposits\n",
 	      num_results,
@@ -2812,7 +2813,7 @@ match_deposit_cb (void *cls,
                                             &coin_pub),
       GNUNET_PQ_result_spec_end
     };
-    
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -2916,7 +2917,7 @@ get_known_coin (void *cls,
 					 &coin_info->denom_sig.rsa_signature),
     GNUNET_PQ_result_spec_end
   };
-  
+
   coin_info->coin_pub = *coin_pub;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						   "get_known_coin",
@@ -2963,7 +2964,7 @@ insert_known_coin (void *cls,
  * @param session database session
  * @param coin the coin that must be made known
  * @return database transaction status, non-negative on success
- */ 
+ */
 static enum GNUNET_DB_QueryStatus
 ensure_coin_known (struct PostgresClosure *cls,
 		   struct TALER_EXCHANGEDB_Session *session,
@@ -3250,7 +3251,7 @@ postgres_get_refresh_order (void *cls,
                             const struct GNUNET_HashCode *session_hash,
                             uint16_t num_newcoins,
                             struct TALER_DenominationPublicKey *denom_pubs)
-{ 
+{
   for (unsigned i=0;i<(unsigned int) num_newcoins;i++)
   {
     uint16_t newcoin_off = (uint16_t) i;
@@ -3265,7 +3266,7 @@ postgres_get_refresh_order (void *cls,
 					    &denom_pubs[i].rsa_public_key),
       GNUNET_PQ_result_spec_end
     };
-    
+
     qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						   "get_refresh_order",
 						   params,
@@ -3456,7 +3457,7 @@ postgres_get_refresh_transfer_public_key (void *cls,
 					  tp),
     GNUNET_PQ_result_spec_end
   };
-  
+
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						   "get_refresh_transfer_public_key",
 						   params,
@@ -3539,9 +3540,9 @@ postgres_insert_refresh_out (void *cls,
  */
 struct LinkDataContext
 {
-  /** 
+  /**
    * List we are building.
-   */ 
+   */
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
 
   /**
@@ -3565,7 +3566,7 @@ add_ldl (void *cls,
 	 unsigned int num_results)
 {
   struct LinkDataContext *ldc = cls;
-  
+
   for (int i = num_results - 1; i >= 0; i--)
   {
     struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
@@ -3769,10 +3770,10 @@ struct CoinHistoryContext
    * Database session we are using.
    */
   struct TALER_EXCHANGEDB_Session *session;
-  
+
   /**
    * Set to transaction status.
-   */ 
+   */
   enum GNUNET_DB_QueryStatus status;
 };
 
@@ -3797,7 +3798,7 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_Deposit *deposit;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     enum GNUNET_DB_QueryStatus qs;
-    
+
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -3821,7 +3822,7 @@ add_coin_deposit (void *cls,
 					      &deposit->csig),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -3889,7 +3890,7 @@ add_coin_melt (void *cls,
 				     &melt->melt_fee),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -3960,7 +3961,7 @@ add_coin_refund (void *cls,
 				     &refund->refund_fee),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -4012,7 +4013,7 @@ add_coin_payback (void *cls,
   {
     struct TALER_EXCHANGEDB_Payback *payback;
     struct TALER_EXCHANGEDB_TransactionList *tl;
-    
+
     payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4032,7 +4033,7 @@ add_coin_payback (void *cls,
 					     &payback->coin.denom_sig.rsa_signature),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result,
 				    rs,
@@ -4170,7 +4171,7 @@ handle_wt_result (void *cls,
 		  unsigned int num_results)
 {
   struct WireTransferResultContext *ctx = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     uint64_t rowid;
@@ -4259,7 +4260,7 @@ postgres_lookup_wire_transfer (void *cls,
   };
   struct WireTransferResultContext ctx;
   enum GNUNET_DB_QueryStatus qs;
-  
+
   ctx.cb = cb;
   ctx.cb_cls = cb_cls;
   ctx.status = GNUNET_OK;
@@ -4319,7 +4320,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
     GNUNET_PQ_result_spec_end
   };
-  
+
   /* check if the melt record exists and get it */
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						 "lookup_deposit_wtid",
@@ -4631,7 +4632,7 @@ postgres_get_expired_reserves (void *cls,
   };
   struct ExpiredReserveContext ectx;
   enum GNUNET_DB_QueryStatus qs;
-  
+
   ectx.rec = rec;
   ectx.rec_cls = rec_cls;
   ectx.status = GNUNET_OK;
@@ -4964,7 +4965,7 @@ postgres_gc (void *cls)
        to fail. */
     (void) GNUNET_PQ_eval_prepared_non_select (conn,
 					       "gc_denominations",
-					       params_time);    
+					       params_time);
   }
   PQfinish (conn);
   return ret;
@@ -4981,15 +4982,15 @@ struct DepositSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_DepositCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5008,7 +5009,7 @@ deposit_serial_helper_cb (void *cls,
 			  unsigned int num_results)
 {
   struct DepositSerialContext *dsc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     struct TALER_EXCHANGEDB_Deposit deposit;
@@ -5043,7 +5044,7 @@ deposit_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_end
     };
     int ret;
-    
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -5123,15 +5124,15 @@ struct RefreshsSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_RefreshSessionCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5150,7 +5151,7 @@ refreshs_serial_helper_cb (void *cls,
 			   unsigned int num_results)
 {
   struct RefreshsSerialContext *rsc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     struct TALER_DenominationPublicKey denom_pub;
@@ -5257,15 +5258,15 @@ struct RefundsSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_RefundCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5284,7 +5285,7 @@ refunds_serial_helper_cb (void *cls,
 			  unsigned int num_results)
 {
   struct RefundsSerialContext *rsc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     struct TALER_EXCHANGEDB_Refund refund;
@@ -5310,7 +5311,7 @@ refunds_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_end
     };
     int ret;
-    
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -5386,15 +5387,15 @@ struct ReservesInSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_ReserveInCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5493,7 +5494,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  
+
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
 					     "audit_reserves_in_get_transactions_incr",
 					     params,
@@ -5515,15 +5516,15 @@ struct ReservesOutSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_WithdrawCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5542,7 +5543,7 @@ reserves_out_serial_helper_cb (void *cls,
 			       unsigned int num_results)
 {
   struct ReservesOutSerialContext *rosc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     struct GNUNET_HashCode h_blind_ev;
@@ -5573,7 +5574,7 @@ reserves_out_serial_helper_cb (void *cls,
       GNUNET_PQ_result_spec_end
     };
     int ret;
-    
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -5649,15 +5650,15 @@ struct WireOutSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_WireTransferOutCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5676,7 +5677,7 @@ wire_out_serial_helper_cb (void *cls,
 			   unsigned int num_results)
 {
   struct WireOutSerialContext *wosc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     uint64_t rowid;
@@ -5771,15 +5772,15 @@ struct PaybackSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_PaybackCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5798,7 +5799,7 @@ payback_serial_helper_cb (void *cls,
 			  unsigned int num_results)
 {
   struct PaybackSerialContext *psc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     uint64_t rowid;
@@ -5886,7 +5887,7 @@ postgres_select_payback_above_serial_id (void *cls,
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  
+
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
 					     "payback_get_incr",
 					     params,
@@ -5908,15 +5909,15 @@ struct ReserveClosedSerialContext
    * Callback to call.
    */
   TALER_EXCHANGEDB_ReserveClosedCallback cb;
-  
+
   /**
    * Closure for @e cb.
    */
   void *cb_cls;
-  
+
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
-   */ 
+   */
   int status;
 };
 
@@ -5935,7 +5936,7 @@ reserve_closed_serial_helper_cb (void *cls,
 				 unsigned int num_results)
 {
   struct ReserveClosedSerialContext *rcsc = cls;
-  
+
   for (unsigned int i=0;i<num_results;i++)
   {
     uint64_t rowid;
@@ -6016,7 +6017,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  
+
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
 					     "reserves_close_get_incr",
 					     params,

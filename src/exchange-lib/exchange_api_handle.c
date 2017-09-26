@@ -516,8 +516,10 @@ decode_keys_json (const json_t *resp_obj,
   unsigned int current;
 
   if (JSON_OBJECT != json_typeof (resp_obj))
+  {
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
-
+  }
   /* check the version */
   {
     const char *ver;
@@ -527,10 +529,14 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_JSON_spec_end()
     };
 
-    EXITIF (GNUNET_OK !=
-            GNUNET_JSON_parse (resp_obj,
-                               spec,
-                               NULL, NULL));
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (resp_obj,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
     if (3 != sscanf (ver,
 		     "%u:%u:%u",
 		     &current,
