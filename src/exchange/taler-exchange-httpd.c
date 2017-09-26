@@ -320,6 +320,9 @@ handle_mhd_request (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Handling request for URL '%s'\n",
               url);
+  if (0 == strcasecmp (method,
+                       MHD_HTTP_METHOD_HEAD))
+    method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
   for (unsigned int i=0;NULL != handlers[i].url;i++)
   {
     rh = &handlers[i];

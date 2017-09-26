@@ -1047,12 +1047,15 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_LAST_MODIFIED,
                                          dat));
-  get_date_string (key_state->next_reload,
-                   dat);
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (response,
-                                         MHD_HTTP_HEADER_EXPIRES,
-                                         dat));
+  if (0 != key_state->next_reload.abs_value_us)
+  {
+    get_date_string (key_state->next_reload,
+                     dat);
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (response,
+                                           MHD_HTTP_HEADER_EXPIRES,
+                                           dat));
+  }
   return GNUNET_OK;
 }
 
@@ -1458,6 +1461,13 @@ make_fresh_key_state ()
     off++;
   }
 
+  /* Compute next automatic reload time */
+  key_state->next_reload =
+    GNUNET_TIME_absolute_min (GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire),
+                              key_state->min_dk_expire);
+  GNUNET_assert (0 != key_state->next_reload.abs_value_us);
+
+
   /* Initialize `krd_array` */
   key_state->krd_array_length = off;
   key_state->krd_array
@@ -1487,6 +1497,7 @@ make_fresh_key_state ()
     }
     last = d;
   }
+
   /* Finally, build an `empty` response without denomination keys
      for requests past the last known denomination key start date */
   if ( (off + 1 < key_state->krd_array_length) ||
@@ -1502,12 +1513,6 @@ make_fresh_key_state ()
     destroy_response_factory (&rfc);
     return NULL;
   }
-
-  /* Compute next automatic reload time */
-  key_state->next_reload =
-    GNUNET_TIME_absolute_min (GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire),
-                                key_state->min_dk_expire);
-  GNUNET_assert (0 != key_state->next_reload.abs_value_us);
 
   /* Clean up intermediary state we don't need anymore and return
      new key_state! */

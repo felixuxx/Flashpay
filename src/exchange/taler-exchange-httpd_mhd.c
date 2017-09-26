@@ -89,10 +89,10 @@ TEH_MHD_handler_static_response (struct TEH_RequestHandler *rh,
  */
 int
 TEH_MHD_handler_agpl_redirect (struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size)
+                               struct MHD_Connection *connection,
+                               void **connection_cls,
+                               const char *upload_data,
+                               size_t *upload_data_size)
 {
   const char *agpl =
     "This server is licensed under the Affero GPL. You will now be redirected to the source code.";
