@@ -793,7 +793,7 @@ struct TALER_ExchangeKeyValidityPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash of the auditor's URL.
+   * Hash of the auditor's URL (including 0-terminator).
    */
   struct GNUNET_HashCode auditor_url_hash;
 

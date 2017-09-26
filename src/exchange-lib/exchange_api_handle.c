@@ -472,6 +472,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     TALER_amount_hton (&kv.fee_refund,
                        &dk->fee_refund);
     kv.denom_hash = dk->h_key;
+
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
                                     &kv.purpose,

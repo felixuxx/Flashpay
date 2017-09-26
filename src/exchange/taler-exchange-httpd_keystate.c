@@ -99,6 +99,11 @@ struct DenominationKeyEntry
    */
   struct AuditorSignature *as_tail;
 
+  /**
+   * Hash of the public denomination key.
+   */
+  struct GNUNET_HashCode denom_key_hash;
+
 };
 
 
@@ -898,7 +903,7 @@ reload_auditor_iter (void *cls,
 
       if (0 !=
           memcmp (dki,
-                  &dke->dki->issue.properties,
+                  &dke->dki[i].issue.properties,
                   sizeof (struct TALER_DenominationKeyValidityPS)))
         continue;
       as = GNUNET_malloc (sizeof (struct AuditorSignature) +
@@ -937,6 +942,7 @@ initialize_denomkey_array (void *cls,
   struct ResponseFactoryContext *rfc = cls;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
 
+  rfc->denomkey_array[rfc->denomkey_array_length].denom_key_hash = *denom_hash;
   rfc->denomkey_array[rfc->denomkey_array_length++].dki = dki;
   return GNUNET_OK;
 }
@@ -1175,12 +1181,11 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
       /* Add denomination key to the response */
       const struct DenominationKeyEntry *dke
         = &rfc->denomkey_array[i];
-      struct GNUNET_HashCode denom_key_hash;
+      const struct GNUNET_HashCode *denom_key_hash
+        = &dke->denom_key_hash;
 
-      GNUNET_CRYPTO_rsa_public_key_hash (dke->dki->denom_pub.rsa_public_key,
-                                         &denom_key_hash);
       GNUNET_CRYPTO_hash_context_read (rbc.hash_context,
-                                       &denom_key_hash,
+                                       denom_key_hash,
                                        sizeof (struct GNUNET_HashCode));
       if (0 !=
           json_array_append_new (rbc.denom_keys_array,
@@ -1221,7 +1226,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                        json_array_append_new (ae->ar,
                                               json_pack ("{s:o, s:o}",
                                                          "denom_pub_h",
-                                                         GNUNET_JSON_from_data_auto (&denom_key_hash),
+                                                         GNUNET_JSON_from_data_auto (denom_key_hash),
                                                          "auditor_sig",
                                                          GNUNET_JSON_from_data_auto (&as->asig))));
       }
