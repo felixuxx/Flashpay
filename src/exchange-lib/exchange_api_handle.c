@@ -1000,49 +1000,32 @@ static int
 parse_date_string (const char *date,
                    struct GNUNET_TIME_Absolute *at)
 {
-  static const char *const days[] =
-    { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-  static const char *const mons[] =
-    { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"  };
   struct tm now;
   time_t t;
-  char day[4];
-  char mon[4];
-  unsigned int mday;
-  unsigned int year;
-  unsigned int h;
-  unsigned int m;
-  unsigned int s;
+  const char *end;
 
-  if (7 != sscanf (date,
-                   "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
-                   day,
-                   &mday,
-                   mon,
-                   &year,
-                   &h,
-                   &m,
-                   &s))
+  memset (&now,
+          0,
+          sizeof (now));
+  end = strptime (date,
+                  "%a, %d %b %Y %H:%M:%S %Z", /* RFC-1123 standard spec */
+                  &now);
+  if ( (NULL == end) ||
+       ( (*end != '\n') &&
+         (*end != '\r') ) )
+  {
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
-  memset (&now, 0, sizeof (now));
-  now.tm_year = year - 1900;
-  now.tm_mday = mday;
-  now.tm_hour = h;
-  now.tm_min = m;
-  now.tm_sec = s;
-  now.tm_wday = 7;
-  for (unsigned int i=0;i<7;i++)
-    if (0 == strcasecmp (days[i], day))
-      now.tm_wday = i;
-  now.tm_mon = 12;
-  for (unsigned int i=0;i<12;i++)
-    if (0 == strcasecmp (mons[i], mon))
-      now.tm_mon = i;
-  if ( (7 == now.tm_wday) ||
-       (12 == now.tm_mon) )
-    return GNUNET_SYSERR;
+  }
   t = mktime (&now);
+  if (((time_t) -1) == t)
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "mktime");
+    return GNUNET_SYSERR;
+  }
+  if (t < 0)
+    t = 0; /* can happen due to timezone issues if date was 1.1.1970 */
   at->abs_value_us = 1000LL * 1000LL * t;
   return GNUNET_OK;
 }
@@ -1085,6 +1068,7 @@ header_cb (char *buffer,
                 "Failed to parse %s-header `%s'\n",
                 MHD_HTTP_HEADER_EXPIRES,
                 val);
+    kr->expire = GNUNET_TIME_UNIT_ZERO_ABS;
   }
   GNUNET_free (val);
   return total;
