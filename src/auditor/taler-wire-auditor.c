@@ -78,9 +78,9 @@ static struct TALER_AUDITORDB_Session *asession;
 static struct TALER_MasterPublicKeyP master_pub;
 
 /**
- * Last reserve_in serial ID seen.
+ * Last reserve_in / reserve_out serial IDs seen.
  */
-static struct TALER_AUDITORDB_ProgressPoint pp;
+static struct TALER_AUDITORDB_WireProgressPoint pp;
 
 
 /* ***************************** Report logic **************************** */
@@ -192,10 +192,10 @@ incremental_processing (Analysis analysis,
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsx;
 
-  qsx = adb->get_auditor_progress (adb->cls,
-				   asession,
-				   &master_pub,
-				   &pp);
+  qsx = adb->get_wire_auditor_progress (adb->cls,
+                                        asession,
+                                        &master_pub,
+                                        &pp);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -209,14 +209,9 @@ incremental_processing (Analysis analysis,
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu/%llu\n"),
+                _("Resuming audit at %llu/%llu\n"),
                 (unsigned long long) pp.last_reserve_in_serial_id,
-                (unsigned long long) pp.last_reserve_out_serial_id,
-                (unsigned long long) pp.last_withdraw_serial_id,
-                (unsigned long long) pp.last_deposit_serial_id,
-                (unsigned long long) pp.last_melt_serial_id,
-                (unsigned long long) pp.last_refund_serial_id,
-                (unsigned long long) pp.last_wire_out_serial_id);
+                (unsigned long long) pp.last_reserve_out_serial_id);
   }
   qs = analysis (analysis_cls);
   if (0 > qs)
@@ -230,15 +225,15 @@ incremental_processing (Analysis analysis,
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx)
-    qs = adb->update_auditor_progress (adb->cls,
-				       asession,
-				       &master_pub,
-				       &pp);
+    qs = adb->update_wire_auditor_progress (adb->cls,
+                                            asession,
+                                            &master_pub,
+                                            &pp);
   else
-    qs = adb->insert_auditor_progress (adb->cls,
-				       asession,
-				       &master_pub,
-				       &pp);
+    qs = adb->insert_wire_auditor_progress (adb->cls,
+                                            asession,
+                                            &master_pub,
+                                            &pp);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -247,14 +242,9 @@ incremental_processing (Analysis analysis,
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              _("Concluded audit step at %llu/%llu/%llu/%llu/%llu/%llu/%llu\n\n"),
+              _("Concluded audit step at %llu/%llu\n"),
               (unsigned long long) pp.last_reserve_in_serial_id,
-              (unsigned long long) pp.last_reserve_out_serial_id,
-              (unsigned long long) pp.last_withdraw_serial_id,
-              (unsigned long long) pp.last_deposit_serial_id,
-              (unsigned long long) pp.last_melt_serial_id,
-              (unsigned long long) pp.last_refund_serial_id,
-              (unsigned long long) pp.last_wire_out_serial_id);
+              (unsigned long long) pp.last_reserve_out_serial_id);
   return qs;
 }
 

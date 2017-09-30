@@ -107,6 +107,24 @@ typedef int
 
 
 /**
+ * Structure for remembering the wire auditor's progress over the
+ * various tables and (auditor) transactions.
+ */
+struct TALER_AUDITORDB_WireProgressPoint
+{
+  /**
+   * last_reserve_in_serial_id serial ID of the last reserve_in transfer the wire auditor processed
+   */
+  uint64_t last_reserve_in_serial_id;
+
+  /**
+   * last_reserve_out_serial_id serial ID of the last reserve_out the wire auditor processed
+   */
+  uint64_t last_reserve_out_serial_id;
+};
+
+
+/**
  * Structure for remembering the auditor's progress over the
  * various tables and (auditor) transactions.
  */
@@ -349,6 +367,56 @@ struct TALER_AUDITORDB_Plugin
                           struct TALER_AUDITORDB_Session *session,
                           const struct TALER_MasterPublicKeyP *master_pub,
                           struct TALER_AUDITORDB_ProgressPoint *pp);
+
+
+  /**
+   * Insert information about the wire auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param pp where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_wire_auditor_progress)(void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_AUDITORDB_WireProgressPoint *pp);
+
+
+  /**
+   * Update information about the progress of the wire auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param pp where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_wire_auditor_progress)(void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_AUDITORDB_WireProgressPoint *pp);
+
+
+  /**
+   * Get information about the progress of the wire auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param[out] pp set to where the auditor is in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_wire_auditor_progress)(void *cls,
+                               struct TALER_AUDITORDB_Session *session,
+                               const struct TALER_MasterPublicKeyP *master_pub,
+                               struct TALER_AUDITORDB_WireProgressPoint *pp);
 
 
   /**
