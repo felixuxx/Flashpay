@@ -43,6 +43,11 @@ static int global_ret;
 static int restart;
 
 /**
+ * Name of the wire plugin to load to access the exchange's bank account.
+ */
+static char *wire_plugin;
+
+/**
  * Handle to access the exchange's database.
  */
 static struct TALER_EXCHANGEDB_Plugin *edb;
@@ -76,6 +81,11 @@ static struct TALER_AUDITORDB_Session *asession;
  * Master public key of the exchange to audit.
  */
 static struct TALER_MasterPublicKeyP master_pub;
+
+/**
+ * Handle to the wire plugin for wire operations.
+ */
+static struct TALER_WIRE_Plugin *wp;
 
 /**
  * Last reserve_in / reserve_out serial IDs seen.
@@ -159,6 +169,16 @@ analyze_reserves_in (void *cls)
 static enum GNUNET_DB_QueryStatus
 analyze_reserves_out (void *cls)
 {
+#if 0
+  // FIXME: start_off != rowid!
+  hh = wp->get_history (wp->cls,
+                        TALER_BANK_DIRECTION_CREDIT,
+                        &start_off,
+                        sizeof (start_off),
+                        INT64_MAX,
+                        &history_cb,
+                        NULL);
+#endif
   /* FIXME: #4958 */
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
@@ -191,11 +211,17 @@ incremental_processing (Analysis analysis,
 {
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsx;
+  void *in_wire_off;
+  void *out_wire_off;
+  size_t wire_off_size;
 
   qsx = adb->get_wire_auditor_progress (adb->cls,
                                         asession,
                                         &master_pub,
-                                        &pp);
+                                        &pp,
+                                        &in_wire_off,
+                                        &out_wire_off,
+                                        &wire_off_size);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -214,6 +240,7 @@ incremental_processing (Analysis analysis,
                 (unsigned long long) pp.last_reserve_out_serial_id);
   }
   qs = analysis (analysis_cls);
+  // FIXME: wire plugin does NOT support synchronous activity!
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -228,12 +255,19 @@ incremental_processing (Analysis analysis,
     qs = adb->update_wire_auditor_progress (adb->cls,
                                             asession,
                                             &master_pub,
-                                            &pp);
+                                            &pp,
+                                            in_wire_off,
+                                            out_wire_off,
+                                            wire_off_size);
   else
     qs = adb->insert_wire_auditor_progress (adb->cls,
                                             asession,
                                             &master_pub,
-                                            &pp);
+                                            &pp,
+                                            in_wire_off,
+                                            out_wire_off,
+                                            wire_off_size);
+
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -341,7 +375,17 @@ setup_sessions_and_run ()
     global_ret = 1;
     return;
   }
-
+  wp = TALER_WIRE_plugin_load (cfg,
+                               wire_plugin);
+  if (NULL == wp)
+  {
+    fprintf (stderr,
+             "Failed to load wire plugin `%s'\n",
+             wire_plugin);
+    global_ret = 1;
+    return;
+  }
+  // FIXME: wire plugin does NOT support synchronous activity!
   transact (&analyze_reserves_in,
             NULL);
   transact (&analyze_reserves_out,
@@ -420,8 +464,12 @@ run (void *cls,
   setup_sessions_and_run ();
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  TALER_AUDITORDB_plugin_unload (adb);
-  TALER_EXCHANGEDB_plugin_unload (edb);
+  if (NULL != wp)
+    TALER_WIRE_plugin_unload (wp);
+  if (NULL != adb)
+    TALER_AUDITORDB_plugin_unload (adb);
+  if (NULL != edb)
+    TALER_EXCHANGEDB_plugin_unload (edb);
 }
 
 
@@ -448,6 +496,11 @@ main (int argc,
                                "restart",
                                "restart audit from the beginning (required on first run)",
                                &restart),
+    GNUNET_GETOPT_option_string ('w',
+                                 "wire",
+                                 "PLUGINNAME",
+                                 "name of the wire plugin to use",
+                                 &wire_plugin),
     GNUNET_GETOPT_OPTION_END
   };
 

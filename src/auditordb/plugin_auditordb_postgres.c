@@ -227,8 +227,13 @@ postgres_create_tables (void *cls)
 			    ",last_melt_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_refund_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+			    ")"),
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_wire_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",wire_in_off BLOB"
+                            ",wire_out_off BLOB"
 			    ")"),
     /* Table with all of the customer reserves and their respective
        balances that the auditor is aware of.
@@ -512,25 +517,31 @@ postgres_prepare (PGconn *db_conn)
 			    1),
     /* Used in #postgres_insert_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
-			    "INSERT INTO auditor_progress "
+			    "INSERT INTO wire_auditor_progress "
 			    "(master_pub"
 			    ",last_wire_reserve_in_serial_id"
 			    ",last_wire_reserve_out_serial_id"
-			    ") VALUES ($1,$2,$3);",
-			    3),
+                            ",wire_in_off"
+                            ",wire_out_off"
+			    ") VALUES ($1,$2,$3,$4,$5);",
+			    5),
     /* Used in #postgres_update_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
-			    "UPDATE auditor_progress SET "
+			    "UPDATE wire_auditor_progress SET "
 			    " last_wire_reserve_in_serial_id=$1"
 			    ",last_wire_reserve_out_serial_id=$2"
-			    " WHERE master_pub=$3",
-			    3),
+                            ",wire_in_off=$3"
+                            ",wire_out_off=$4"
+			    " WHERE master_pub=$5",
+			    5),
     /* Used in #postgres_get_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
 			    "SELECT"
 			    " last_wire_reserve_in_serial_id"
 			    ",last_wire_reserve_out_serial_id"
-			    " FROM auditor_progress"
+                            ",wire_in_off"
+                            ",wire_out_off"
+			    " FROM wire_auditor_progress"
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_reserve_info() */
@@ -1333,12 +1344,19 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
                                        const struct TALER_MasterPublicKeyP *master_pub,
-                                       const struct TALER_AUDITORDB_WireProgressPoint *pp)
+                                       const struct TALER_AUDITORDB_WireProgressPoint *pp,
+                                       const void *in_wire_off,
+                                       const void *out_wire_off,
+                                       size_t wire_off_size)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_fixed_size (in_wire_off,
+                                      wire_off_size),
+    GNUNET_PQ_query_param_fixed_size (out_wire_off,
+                                      wire_off_size),
     GNUNET_PQ_query_param_end
   };
 
@@ -1362,12 +1380,19 @@ static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
                                        const struct TALER_MasterPublicKeyP *master_pub,
-                                       const struct TALER_AUDITORDB_WireProgressPoint *pp)
+                                       const struct TALER_AUDITORDB_WireProgressPoint *pp,
+                                       const void *in_wire_off,
+                                       const void *out_wire_off,
+                                       size_t wire_off_size)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_fixed_size (in_wire_off,
+                                      wire_off_size),
+    GNUNET_PQ_query_param_fixed_size (out_wire_off,
+                                      wire_off_size),
     GNUNET_PQ_query_param_end
   };
 
@@ -1390,8 +1415,13 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_progress (void *cls,
                                     struct TALER_AUDITORDB_Session *session,
                                     const struct TALER_MasterPublicKeyP *master_pub,
-                                    struct TALER_AUDITORDB_WireProgressPoint *pp)
+                                    struct TALER_AUDITORDB_WireProgressPoint *pp,
+                                    void **in_wire_off,
+                                    void **out_wire_off,
+                                    size_t *wire_off_size)
 {
+  size_t xsize;
+  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1401,13 +1431,21 @@ postgres_get_wire_auditor_progress (void *cls,
                                   &pp->last_reserve_in_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id",
                                   &pp->last_reserve_out_serial_id),
+    GNUNET_PQ_result_spec_variable_size ("wire_in_off",
+                                         in_wire_off,
+                                         wire_off_size),
+    GNUNET_PQ_result_spec_variable_size ("wire_out_off",
+                                         out_wire_off,
+                                         &xsize),
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "wire_auditor_progress_select",
-						   params,
-						   rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                 "wire_auditor_progress_select",
+                                                 params,
+                                                 rs);
+  GNUNET_assert (xsize == *wire_off_size);
+  return qs;
 }
 
 
