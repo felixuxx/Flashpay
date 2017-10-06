@@ -551,6 +551,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                &fee_deposit,
                                &fee_refresh,
 			       &fee_refund);
+  GNUNET_assert (NULL != dkp);
   /* initialize refresh session melt data */
   {
     struct GNUNET_HashCode hc;
@@ -633,6 +634,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                           &fee_deposit,
                                           &fee_refresh,
 					  &fee_refund);
+    GNUNET_assert (NULL != new_dkp[cnt]);
     new_denom_pubs[cnt] = new_dkp[cnt]->pub;
   }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1117,6 +1119,7 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
                                &fee_deposit,
                                &fee_refresh,
                                &fee_refund);
+  GNUNET_assert (NULL != dkp);
   if (GNUNET_OK !=
       plugin->gc (plugin->cls))
   {
@@ -1585,6 +1588,7 @@ run (void *cls)
                                &fee_deposit,
                                &fee_refresh,
 			       &fee_refund);
+  GNUNET_assert (NULL != dkp);
   GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
                                      &dkp_pub_hash);
   RND_BLK(&cbc.h_coin_envelope);
