@@ -363,18 +363,22 @@ get_anchor_iter (void *cls,
   struct GNUNET_TIME_Absolute stamp;
   const char *base;
   char *end = NULL;
+  long long int bval;
 
   base = GNUNET_STRINGS_get_short_name (filename);
-  stamp.abs_value_us = strtoll (base,
-                                &end,
-                                10);
-  if ((NULL == end) || (0 != *end))
+  bval = strtoll (base,
+                  &end,
+                  10);
+  if ( (NULL == end) ||
+       (0 != *end) ||
+       (0 > bval) )
   {
     fprintf(stderr,
             "Ignoring unexpected file `%s'.\n",
             filename);
     return GNUNET_OK;
   }
+  stamp.abs_value_us = (uint64_t) bval;
   *anchor = GNUNET_TIME_absolute_max (stamp,
                                       *anchor);
   return GNUNET_OK;

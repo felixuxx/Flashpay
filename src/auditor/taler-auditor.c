@@ -1941,6 +1941,7 @@ wire_transfer_information_cb (void *cls,
     return;
   }
 
+  GNUNET_assert (NULL != dki); /* mostly to help static analysis */
   /* Check transaction history to see if it supports aggregate
      valuation */
   check_transaction_history (coin_pub,
