@@ -104,7 +104,7 @@ struct DepositContext
    * Value of the coin.
    */
   struct TALER_Amount value;
-  
+
 };
 
 
@@ -133,7 +133,7 @@ deposit_transaction (void *cls,
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
-  
+
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
 				 session,
 				 deposit);
@@ -255,6 +255,13 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 
   /* check denomination */
   mks = TEH_KS_acquire ();
+  if (NULL == mks)
+  {
+    TALER_LOG_ERROR ("Lacking keys to operate\n");
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   dki = TEH_KS_denomination_key_lookup (mks,
                                         &deposit->coin.denom_pub,
 					TEH_KS_DKU_DEPOSIT);
@@ -450,6 +457,14 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
 
   /* check denomination exists and is valid */
   key_state = TEH_KS_acquire ();
+  if (NULL == key_state)
+  {
+    TALER_LOG_ERROR ("Lacking keys to operate\n");
+    GNUNET_JSON_parse_free (spec);
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   dki = TEH_KS_denomination_key_lookup (key_state,
                                         &deposit.coin.denom_pub,
 					TEH_KS_DKU_DEPOSIT);

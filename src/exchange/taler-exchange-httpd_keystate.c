@@ -1571,7 +1571,7 @@ TEH_KS_release_ (const char *location,
  * to #TEH_KS_release() must be made.
  *
  * @param location name of the function in which the lock is acquired
- * @return the key state
+ * @return the key state, NULL on error (usually pretty fatal)
  */
 struct TEH_KS_StateHandle *
 TEH_KS_acquire_ (const char *location)
@@ -1837,6 +1837,11 @@ read_again:
 /**
  * Sign the message in @a purpose with the exchange's signing key.
  *
+ * FIXME:
+ * - Change API to return status code and do not assert on TEH_KS_acquire()
+ *   failures, instead allow caller to handle it (i.e. by returning
+ *   #TALER_EC_EXCHANGE_BAD_CONFIGURATION to application).
+ *
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
@@ -1850,6 +1855,9 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   struct TEH_KS_StateHandle *key_state;
 
   key_state = TEH_KS_acquire ();
+  GNUNET_assert (NULL != key_state); /* This *can* happen if the exchange's keys are
+                                        not properly maintained, but in this case we
+                                        simply have no good way forward. */
   *pub = key_state->current_sign_key_issue.issue.signkey_pub;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
@@ -1930,6 +1938,13 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
     last_issue_date.abs_value_us = 0LLU;
   }
   key_state = TEH_KS_acquire ();
+  if (NULL == key_state)
+  {
+    TALER_LOG_ERROR ("Lacking keys to operate\n");
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   krd = bsearch (&last_issue_date,
                  key_state->krd_array,
                  key_state->krd_array_length,

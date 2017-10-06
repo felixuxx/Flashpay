@@ -432,6 +432,14 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   wc.key_state = TEH_KS_acquire ();
+  if (NULL == wc.key_state)
+  {
+    TALER_LOG_ERROR ("Lacking keys to operate\n");
+    GNUNET_JSON_parse_free (spec);
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   wc.dki = TEH_KS_denomination_key_lookup (wc.key_state,
 					   &wc.denomination_pub,
 					   TEH_KS_DKU_WITHDRAW);

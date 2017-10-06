@@ -53,6 +53,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_NOT_IMPLEMENTED = 3,
 
+  /**
+   * Exchange is badly configured and thus cannot operate.
+   */
+  TALER_EC_EXCHANGE_BAD_CONFIGURATION = 4,
+
   /* ********** generic error codes ************* */
 
   /**
@@ -906,7 +911,7 @@ enum TALER_ErrorCode
    * MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_KEYS_HAVE_NOT_NUMERIC = 1900,
-  
+
 
   /* *********** Merchant backend error codes ********* */
 
@@ -1264,7 +1269,7 @@ enum TALER_ErrorCode
   /**
    * The exchange charged a different wire fee than what it
    * originally advertised, and it is higher.  The response
-   * is provied with an HTTP status of 
+   * is provied with an HTTP status of
    * MHD_HTTP_INTERNAL_SERVER_ERROR (FIXME: bad choice!).
    */
   TALER_EC_TRACK_TRANSFER_JSON_BAD_WIRE_FEE = 2410,

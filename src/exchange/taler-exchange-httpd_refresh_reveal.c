@@ -531,7 +531,7 @@ refresh_reveal_transaction (void *cls,
   for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
   {
     int res;
-    
+
     if (i == rc->refresh_session.noreveal_index)
     {
       off = 1;
@@ -542,7 +542,7 @@ refresh_reveal_transaction (void *cls,
 						 rc->refresh_session.num_newcoins,
 						 rc->commit_coins);
       if (0 >= qs)
-      {	
+      {
 	cleanup_rc (rc);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
 	if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -596,7 +596,7 @@ refresh_reveal_transaction (void *cls,
     cleanup_rc (rc);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  
+
   /* Client request OK, sign coins */
   rc->ev_sigs = GNUNET_new_array (rc->refresh_session.num_newcoins,
 				  struct TALER_DenominationSignature);
@@ -604,6 +604,12 @@ refresh_reveal_transaction (void *cls,
     struct TEH_KS_StateHandle *key_state;
 
     key_state = TEH_KS_acquire ();
+    if (NULL == key_state)
+    {
+      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      cleanup_rc (rc);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
     for (unsigned int j=0;j<rc->refresh_session.num_newcoins;j++)
     {
       qs = refresh_exchange_coin (connection,

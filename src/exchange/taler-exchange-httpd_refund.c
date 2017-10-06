@@ -241,7 +241,7 @@ refund_transaction (void *cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_transaction_unknown (connection,
 						       TALER_EC_REFUND_DEPOSIT_NOT_FOUND);
-    return GNUNET_DB_STATUS_HARD_ERROR;    
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* handle if conflicting refund found */
   if (GNUNET_SYSERR == refund_found)
@@ -250,7 +250,7 @@ refund_transaction (void *cls,
 				      tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    return GNUNET_DB_STATUS_HARD_ERROR; 
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* handle if identical refund found */
   if (GNUNET_YES == refund_found)
@@ -297,7 +297,7 @@ refund_transaction (void *cls,
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     return qs; /* go and retry */
-  
+
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     /* money was already transferred to merchant, can no longer refund */
@@ -325,6 +325,16 @@ refund_transaction (void *cls,
   // FIXME: do this outside of transaction function?
   /* Check refund fee matches fee of denomination key! */
   mks = TEH_KS_acquire ();
+  if (NULL == mks)
+  {
+    TALER_LOG_ERROR ("Lacking keys to operate\n");
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
+                                                  TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                                  "no keys");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   dki = TEH_KS_denomination_key_lookup (mks,
                                         &dep->coin.denom_pub,
 					TEH_KS_DKU_DEPOSIT);

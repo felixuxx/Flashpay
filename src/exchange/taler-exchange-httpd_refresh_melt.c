@@ -163,7 +163,7 @@ struct RefreshMeltContext
   /**
    * Information about the denomination key of the coin being
    * melted.
-   */ 
+   */
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
 
   /**
@@ -184,7 +184,7 @@ struct RefreshMeltContext
 
   /**
    * Set to the session hash once the @e hash_context has finished.
-   */ 
+   */
   struct GNUNET_HashCode session_hash;
 
   /**
@@ -220,7 +220,7 @@ struct RefreshMeltContext
  * @param[out] mhd_ret status code to return to MHD on hard error
  * @return transaction status code
  */
-static enum GNUNET_DB_QueryStatus 
+static enum GNUNET_DB_QueryStatus
 refresh_check_melt (struct MHD_Connection *connection,
                     struct TALER_EXCHANGEDB_Session *session,
 		    struct RefreshMeltContext *rmc,
@@ -416,7 +416,7 @@ refresh_melt_prepare (struct MHD_Connection *connection,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "/refresh/melt request for session %s\n",
               GNUNET_h2s (&rmc->session_hash));
-  
+
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TEH_exchange_currency_string,
                                         &total_cost));
@@ -700,7 +700,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                      buf_size);
     GNUNET_free (buf);
   }
-  
+
   /* decode JSON data on coin to melt and check that this is a
      valid coin */
   {
@@ -767,6 +767,13 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   rmc.hash_context = NULL;
 
   rmc.key_state = TEH_KS_acquire ();
+  if (NULL == rmc.key_state)
+  {
+    TALER_LOG_ERROR ("Lacking keys to operate\n");
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   rmc.dki = TEH_KS_denomination_key_lookup (rmc.key_state,
 					    &rmc.coin_melt_details.coin_info.denom_pub,
 					    TEH_KS_DKU_DEPOSIT);
@@ -804,7 +811,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 						TALER_EC_REFRESH_MELT_AMOUNT_INSUFFICIENT,
 						"melt amount smaller than melting fee");
     }
-    
+
     if (GNUNET_OK !=
 	GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
 				    &body.purpose,
@@ -818,7 +825,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 						   "confirm_sig");
     }
   }
-    
+
   /* prepare commit */
   if (GNUNET_OK !=
       refresh_melt_prepare (connection,

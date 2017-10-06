@@ -42,7 +42,7 @@ struct TEH_KS_StateHandle;
  * to #TEH_KS_release() must be made.
  *
  * @param location name of the function in which the lock is acquired
- * @return the key state
+ * @return the key state, NULL on error (usually pretty fatal)
  */
 struct TEH_KS_StateHandle *
 TEH_KS_acquire_ (const char *location);
