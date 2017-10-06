@@ -1616,16 +1616,21 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
               TALER_B2S (coin_pub));
 
   GNUNET_assert (NULL != tl_head);
-  TALER_amount_get_zero (currency,
-                         &expenditures);
-  TALER_amount_get_zero (currency,
-                         &refunds);
-  TALER_amount_get_zero (currency,
-                         merchant_gain);
-  TALER_amount_get_zero (currency,
-                         merchant_fees);
-  TALER_amount_get_zero (currency,
-                         &merchant_loss);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &expenditures));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &refunds));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        merchant_gain));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        merchant_fees));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &merchant_loss));
   /* Go over transaction history to compute totals; note that we do not
      know the order, so instead of subtracting we compute positive
      (deposit, melt) and negative (refund) values separately here,
