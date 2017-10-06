@@ -837,8 +837,6 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
     if (NULL == rhistory)
     {
       GNUNET_break (0);
-      free_rhistory (rhistory,
-                     len);
       return GNUNET_SYSERR;
     }
 
