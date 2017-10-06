@@ -235,6 +235,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       /* decode all coins */
       for (i=0;i<json_array_size (jsona);i++)
       {
+        GNUNET_assert (i + off_coin < num_coins);
 	if (GNUNET_OK !=
 	    parse_refresh_link_coin (rlh,
 				     json_array_get (jsona,
