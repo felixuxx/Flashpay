@@ -292,7 +292,10 @@ validate_iban (const char *iban)
 
   len = strlen (iban);
   if (len > 34)
+  {
+    GNUNET_break_op (0);
     return GNUNET_NO;
+  }
   strncpy (cc, iban, 2);
   strncpy (ibancpy, iban + 4, len - 4);
   strncpy (ibancpy + len - 4, iban, 4);
@@ -305,7 +308,10 @@ validate_iban (const char *iban)
                sizeof (country_table) / sizeof (struct table_entry),
                sizeof (struct table_entry),
                &cmp_country_code))
+  {
+    GNUNET_break_op (0);
     return GNUNET_NO;
+  }
   nbuf = GNUNET_malloc ((len * 2) + 1);
   for (i=0, j=0; i < len; i++)
   {
@@ -338,6 +344,7 @@ validate_iban (const char *iban)
                        &nread)))
     {
       GNUNET_free (nbuf);
+      GNUNET_break_op (0);
       return GNUNET_NO;
     }
     if (0 != remainder)
@@ -347,6 +354,7 @@ validate_iban (const char *iban)
   GNUNET_free (nbuf);
   if (1 == remainder)
     return GNUNET_YES;
+  GNUNET_break_op (0); /* checksum wrong */
   return GNUNET_NO;
 }
 
