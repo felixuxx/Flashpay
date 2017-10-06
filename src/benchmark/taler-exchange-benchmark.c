@@ -487,13 +487,12 @@ static const struct TALER_EXCHANGE_DenomPublicKey *
 find_pk (const struct TALER_EXCHANGE_Keys *keys,
          const struct TALER_Amount *amount)
 {
-  unsigned int i;
   struct GNUNET_TIME_Absolute now;
   struct TALER_EXCHANGE_DenomPublicKey *pk;
   char *str;
 
   now = GNUNET_TIME_absolute_get ();
-  for (i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i=0;i<keys->num_denom_keys;i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
@@ -504,7 +503,7 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
   }
   /* do 2nd pass to check if expiration times are to blame for failure */
   str = TALER_amount_to_string (amount);
-  for (i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i=0;i<keys->num_denom_keys;i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
@@ -1189,12 +1188,11 @@ benchmark_run (void *cls)
  * @return #GNUNET_OK if the array is correctly built, #GNUNET_SYSERR
  * otherwise
  */
-static unsigned int
+static int
 build_refresh ()
 {
   char *amount_str;
   struct TALER_Amount amount;
-  unsigned int i;
   const struct TALER_EXCHANGE_DenomPublicKey *picked_denom;
   const struct TALER_EXCHANGE_Keys *keys;
 
@@ -1202,7 +1200,7 @@ build_refresh ()
 		     refresh_pk_len,
 		     0);
   keys = TALER_EXCHANGE_get_keys (exchange);
-  for (i=0; NULL != refresh_denoms[i]; i++)
+  for (unsigned int i=0; NULL != refresh_denoms[i]; i++)
   {
     GNUNET_asprintf (&amount_str,
 		     "%s:%s",
@@ -1293,7 +1291,6 @@ cert_cb (void *cls,
 static void
 do_shutdown (void *cls)
 {
-  unsigned int i;
   struct GNUNET_TIME_Relative duration;
 
   if (warm >= WARM_THRESHOLD)
@@ -1305,7 +1302,7 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (benchmark_task);
     benchmark_task = NULL;
   }
-  for (i=0; i<nreserves; i++)
+  for (unsigned int i=0; i<nreserves; i++)
   {
     if (NULL != reserves[i].aih)
     {
@@ -1316,7 +1313,7 @@ do_shutdown (void *cls)
       reserves[i].aih = NULL;
     }
   }
-  for (i=0; i<COINS_PER_RESERVE * nreserves; i++)
+  for (unsigned int i=0; i<COINS_PER_RESERVE * nreserves; i++)
   {
     struct Coin *coin = &coins[i];
 
@@ -1439,8 +1436,6 @@ run (void *cls)
   char *bank_details_filename;
   char *merchant_details_filename;
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-  unsigned int i;
-  unsigned int j;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "gotten pool_size of %d\n",
@@ -1520,7 +1515,7 @@ run (void *cls)
   ncoins = COINS_PER_RESERVE * nreserves;
   coins = GNUNET_new_array (ncoins,
                             struct Coin);
-  for (i=0;i < nreserves;i++)
+  for (unsigned int i=0;i < nreserves;i++)
   {
     struct Reserve *r = &reserves[i];
 
@@ -1528,7 +1523,7 @@ run (void *cls)
     GNUNET_CONTAINER_DLL_insert (empty_reserve_head,
 				 empty_reserve_tail,
 				 r);
-    for (j=0; j < COINS_PER_RESERVE; j++)
+    for (unsigned int j=0; j < COINS_PER_RESERVE; j++)
     {
       struct Coin *coin;
       unsigned int coin_index;
