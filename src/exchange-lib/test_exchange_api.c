@@ -1709,8 +1709,9 @@ wire_deposits_cb (void *cls,
         wire = json_loads (dep->details.deposit.wire_details,
                            JSON_REJECT_DUPLICATES,
                            NULL);
-        TALER_JSON_hash (wire,
-                         &hw);
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_JSON_hash (wire,
+                                        &hw));
         json_decref (wire);
         if (0 != memcmp (&hw,
                          h_wire,
@@ -2261,8 +2262,9 @@ interpreter_run (void *cls)
         fail (is);
         return;
       }
-      TALER_JSON_hash (contract_terms,
-                       &h_contract_terms);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_JSON_hash (contract_terms,
+                                      &h_contract_terms));
       json_decref (contract_terms);
       wire = json_loads (cmd->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
@@ -2307,8 +2309,9 @@ interpreter_run (void *cls)
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.h_contract_terms = h_contract_terms;
-        TALER_JSON_hash (wire,
-                         &dr.h_wire);
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_JSON_hash (wire,
+                                        &dr.h_wire));
         dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
         dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
         TALER_amount_hton (&dr.amount_with_fee,
@@ -2542,15 +2545,17 @@ interpreter_run (void *cls)
                          JSON_REJECT_DUPLICATES,
                          NULL);
       GNUNET_assert (NULL != wire);
-      TALER_JSON_hash (wire,
-                       &h_wire);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_JSON_hash (wire,
+                                      &h_wire));
       json_decref (wire);
       contract_terms = json_loads (ref->details.deposit.contract_terms,
                              JSON_REJECT_DUPLICATES,
                              NULL);
       GNUNET_assert (NULL != contract_terms);
-      TALER_JSON_hash (contract_terms,
-                       &h_contract_terms);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_JSON_hash (contract_terms,
+                                      &h_contract_terms));
       json_decref (contract_terms);
       cmd->details.deposit_wtid.dwh
           = TALER_EXCHANGE_track_transaction (exchange,
@@ -2665,8 +2670,9 @@ interpreter_run (void *cls)
                              JSON_REJECT_DUPLICATES,
                              NULL);
       GNUNET_assert (NULL != contract_terms);
-      TALER_JSON_hash (contract_terms,
-                       &h_contract_terms);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_JSON_hash (contract_terms,
+                                      &h_contract_terms));
       json_decref (contract_terms);
 
       coin = find_command (is,

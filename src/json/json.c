@@ -40,7 +40,10 @@ TALER_JSON_hash (const json_t *json,
 
   if (NULL == (wire_enc = json_dumps (json,
                                       JSON_COMPACT | JSON_SORT_KEYS)))
+  {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
+  }
   len = strlen (wire_enc) + 1;
   GNUNET_CRYPTO_hash (wire_enc,
                       len,

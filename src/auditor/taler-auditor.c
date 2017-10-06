@@ -606,7 +606,7 @@ struct ReserveContext
    * Transaction status code, set to error codes if applicable.
    */
   enum GNUNET_DB_QueryStatus qs;
-  
+
 };
 
 
@@ -2182,8 +2182,15 @@ check_wire_out_cb (void *cls,
   wcc.date = date;
   TALER_amount_get_zero (amount->currency,
                          &wcc.total_deposits);
-  TALER_JSON_hash (wire,
-                   &wcc.h_wire);
+  if (GNUNET_OK !=
+      TALER_JSON_hash (wire,
+                       &wcc.h_wire))
+  {
+    report_row_inconsistency ("wire_out",
+                              rowid,
+                              "could not hash wire address");
+    return GNUNET_OK;
+  }
   qs = edb->lookup_wire_transfer (edb->cls,
 				  esession,
 				  wtid,
@@ -3170,7 +3177,7 @@ deposit_cb (void *cls,
     /* This should not be possible, unless the AUDITOR
        has a bug in tracking total balance. */
     GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
 
@@ -3191,7 +3198,7 @@ deposit_cb (void *cls,
                           &dfee))
     {
       GNUNET_break (0);
-      cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return GNUNET_SYSERR;
     }
   }
@@ -3304,7 +3311,7 @@ refund_cb (void *cls,
                         &amount_without_fee))
   {
     GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -3313,7 +3320,7 @@ refund_cb (void *cls,
                         &amount_without_fee))
   {
     GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -3322,7 +3329,7 @@ refund_cb (void *cls,
                         &amount_without_fee))
   {
     GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -3331,7 +3338,7 @@ refund_cb (void *cls,
                         &amount_without_fee))
   {
     GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
 
@@ -3347,7 +3354,7 @@ refund_cb (void *cls,
                         &refund_fee))
   {
     GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR; 
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
 
@@ -3431,7 +3438,7 @@ analyze_coins (void *cls)
   }
 
   /* process refreshs */
-  if (0 > 
+  if (0 >
       (qs = edb->select_refreshs_above_serial_id (edb->cls,
 						  esession,
 						  pp.last_melt_serial_id,

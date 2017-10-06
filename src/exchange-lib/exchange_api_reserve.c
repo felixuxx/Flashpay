@@ -354,8 +354,13 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       }
       TALER_amount_hton (&rcc.closing_amount,
 			 &amount);
-      TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
-		       &rcc.h_wire);
+      if (GNUNET_OK !=
+          TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
+                           &rcc.h_wire))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
       rcc.wtid = rhistory[off].details.close_details.wtid;
       rcc.purpose.size = htonl (sizeof (rcc));
       rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);

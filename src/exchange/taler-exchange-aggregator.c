@@ -354,7 +354,7 @@ update_fees (struct WirePlugin *wp,
              struct TALER_EXCHANGEDB_Session *session)
 {
   enum GNUNET_DB_QueryStatus qs;
-  
+
   advance_fees (wp,
                 now);
   if (NULL != wp->af)
@@ -595,7 +595,7 @@ deposit_cb (void *cls,
             const json_t *wire)
 {
   enum GNUNET_DB_QueryStatus qs;
-  
+
   au->merchant_pub = *merchant_pub;
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&au->total_amount,
@@ -611,8 +611,15 @@ deposit_cb (void *cls,
   au->row_id = row_id;
   GNUNET_assert (NULL == au->wire);
   au->wire = json_incref ((json_t *) wire);
-  TALER_JSON_hash (au->wire,
-                   &au->h_wire);
+  if (GNUNET_OK !=
+      TALER_JSON_hash (au->wire,
+                       &au->h_wire))
+  {
+    GNUNET_break (0);
+    json_decref (au->wire);
+    au->wire = NULL;
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &au->wtid,
                               sizeof (au->wtid));
@@ -839,7 +846,7 @@ prepare_close_cb (void *cls,
 		  size_t buf_size)
 {
   enum GNUNET_DB_QueryStatus qs;
-    
+
   GNUNET_assert (cls == ctc);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -867,7 +874,7 @@ prepare_close_cb (void *cls,
 					    buf_size);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
-    GNUNET_break (0); 
+    GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          ctc->session);
     global_ret = GNUNET_SYSERR;
@@ -1093,7 +1100,7 @@ run_reserve_closures (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
   struct ExpiredReserveContext erc;
-  
+
   task = NULL;
   reserves_idle = GNUNET_NO;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -1126,9 +1133,9 @@ run_reserve_closures (void *cls)
 					GNUNET_TIME_absolute_get (),
 					&expired_reserve_cb,
 					&erc);
-  switch (qs) 
+  switch (qs)
   {
-  case GNUNET_DB_STATUS_HARD_ERROR:    
+  case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          session);
@@ -1290,7 +1297,7 @@ run_aggregation (void *cls)
 				     NULL);
     return;
   }
-  
+
   /* Subtract wire transfer fee and round to the unit supported by the
      wire transfer method; Check if after rounding down, we still have
      an amount to transfer, and if not mark as 'tiny'. */
@@ -1322,7 +1329,7 @@ run_aggregation (void *cls)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to start database transaction!\n");
       global_ret = GNUNET_SYSERR;
-      cleanup_au ();      
+      cleanup_au ();
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
@@ -1690,7 +1697,7 @@ run_transfers (void *cls)
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
-				     NULL);      
+				     NULL);
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     /* no more prepared wire transfers, go back to aggregation! */

@@ -415,9 +415,13 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_assert (GNUNET_YES ==
 		 MAH_handle_is_ready (exchange));
   /* initialize h_wire */
-  GNUNET_assert (GNUNET_OK ==
-		 TALER_JSON_hash (wire_details,
-				  &h_wire));
+  if (GNUNET_OK !=
+      TALER_JSON_hash (wire_details,
+                       &h_wire))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
                                              denom_pub);

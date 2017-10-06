@@ -932,7 +932,9 @@ deposit_cb (void *cls,
 
   deposit_rowid = rowid;
   if (NULL != wire)
-    TALER_JSON_hash (wire, &h_wire);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_hash (wire,
+                                    &h_wire));
   if ( (0 != memcmp (merchant_pub,
                      &deposit->merchant_pub,
                      sizeof (struct TALER_MerchantPublicKeyP))) ||
@@ -1776,8 +1778,9 @@ run (void *cls)
   RND_BLK (&deposit.merchant_pub);
   RND_BLK (&deposit.h_contract_terms);
   wire = json_loads (json_wire_str, 0, NULL);
-  TALER_JSON_hash (wire,
-                   &deposit.h_wire);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_hash (wire,
+                                  &deposit.h_wire));
   deposit.receiver_wire_account = wire;
   deposit.amount_with_fee = value;
   deposit.deposit_fee = fee_deposit;

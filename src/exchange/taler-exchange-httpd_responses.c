@@ -718,6 +718,7 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
                               &deposit_total,
                               &pos->details.bank->amount))
         {
+          GNUNET_break (0);
           json_decref (json_history);
           return NULL;
         }
@@ -748,6 +749,7 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 				&withdraw_total,
 				&value))
 	  {
+            GNUNET_break (0);
 	    json_decref (json_history);
 	    return NULL;
 	  }
@@ -782,6 +784,7 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 				&deposit_total,
 				&payback->value))
 	  {
+            GNUNET_break (0);
 	    json_decref (json_history);
 	    return NULL;
 	  }
@@ -840,8 +843,14 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 	TALER_amount_hton (&rcc.closing_fee,
 			   &pos->details.closing->closing_fee);
 	rcc.reserve_pub = pos->details.closing->reserve_pub;
-	TALER_JSON_hash (pos->details.closing->receiver_account_details,
-			 &rcc.h_wire);
+	if (GNUNET_OK !=
+            TALER_JSON_hash (pos->details.closing->receiver_account_details,
+                             &rcc.h_wire))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
 	rcc.wtid = pos->details.closing->wtid;
 	TEH_KS_sign (&rcc.purpose,
 		     &pub,
