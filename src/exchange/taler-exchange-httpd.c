@@ -1060,9 +1060,10 @@ main (int argc,
         fh_admin = -1;
       }
       flags |= FD_CLOEXEC;
-      if (0 != fcntl (fh_admin,
-                      F_SETFD,
-                      flags))
+      if ( (-1 != fh_admin) &&
+           (0 != fcntl (fh_admin,
+                        F_SETFD,
+                        flags)) )
         GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                              "fcntl");
     }
