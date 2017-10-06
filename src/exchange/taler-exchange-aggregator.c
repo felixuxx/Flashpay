@@ -1620,6 +1620,19 @@ wire_prepare_cb (void *cls,
               "Starting wire transfer %llu\n",
               (unsigned long long) rowid);
   wpd->wp = find_plugin (wire_method);
+  if (NULL == wpd->wp)
+  {
+    /* Should really never happen here, as when we get
+       here the plugin should be in the cache. */
+    GNUNET_break (0);
+    db_plugin->rollback (db_plugin->cls,
+                         wpd->session);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    GNUNET_free (wpd);
+    wpd = NULL;
+    return;
+  }
   wpd->eh = wpd->wp->wire_plugin->execute_wire_transfer (wpd->wp->wire_plugin->cls,
                                                          buf,
                                                          buf_size,
