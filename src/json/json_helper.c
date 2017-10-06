@@ -152,8 +152,8 @@ TALER_JSON_spec_amount (const char *name,
  */
 static int
 parse_amount_nbo (void *cls,
-              json_t *root,
-              struct GNUNET_JSON_Specification *spec)
+                  json_t *root,
+                  struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_AmountNBO *r_amount = spec->ptr;
   struct TALER_Amount amount;
