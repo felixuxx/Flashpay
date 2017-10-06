@@ -1125,6 +1125,12 @@ run (void *cls)
   struct TALER_DenominationPublicKey dpk;
 
   plugin = TALER_EXCHANGEDB_plugin_load (cfg);
+  if (NULL == plugin)
+  {
+    GNUNET_break (0);
+    result = 77;
+    return;
+  }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
