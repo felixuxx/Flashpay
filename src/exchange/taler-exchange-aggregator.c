@@ -1006,8 +1006,9 @@ expired_reserve_cb (void *cls,
     /* Closing fee higher than remaining balance, close
        without wire transfer. */
     closing_fee = left;
-    TALER_amount_get_zero (left->currency,
-			   &amount_without_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (left->currency,
+                                          &amount_without_fee));
   }
 
   /* NOTE: sizeof (*reserve_pub) == sizeof (wtid) right now, but to

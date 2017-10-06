@@ -115,7 +115,7 @@ struct PaybackContext
    * Details about the coin.
    */
   const struct TALER_CoinPublicInfo *coin;
-  
+
   /**
    * Key used to blind the coin.
    */
@@ -174,7 +174,7 @@ payback_transaction (void *cls,
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
-  
+
   /* Check whether a payback is allowed, and if so, to which
      reserve / account the money should go */
   qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
@@ -214,8 +214,9 @@ payback_transaction (void *cls,
     }
     return qs;
   }
-  TALER_amount_get_zero (pc->value.currency,
-                         &spent);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (pc->value.currency,
+                                        &spent));
   if (GNUNET_OK !=
       TEH_DB_calculate_transaction_list_totals (tl,
 						&spent,
@@ -386,7 +387,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
 			      &payback_transaction,
 			      &pc))
     return mhd_ret;
-  
+
   return reply_payback_success (connection,
 				&coin->coin_pub,
 				&pc.reserve_pub,

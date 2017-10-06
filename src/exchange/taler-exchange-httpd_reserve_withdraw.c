@@ -309,8 +309,9 @@ withdraw_transaction (void *cls,
   if (0 == (res & 2))
   {
     /* did not encounter any withdraw operations, set to zero */
-    TALER_amount_get_zero (deposit_total.currency,
-                           &withdraw_total);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (deposit_total.currency,
+                                          &withdraw_total));
   }
   /* All reserve balances should be non-negative */
   if (GNUNET_SYSERR ==

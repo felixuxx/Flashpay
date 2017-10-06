@@ -39,7 +39,7 @@
  * attempts to commit the transaction.  Upon soft failures,
  * retries @a cb a few times.  Upon hard or persistent soft
  * errors, generates an error message for @a connection.
- * 
+ *
  * @param connection MHD connection to run @a cb for
  * @param[out] set to MHD response code, if transaction failed
  * @param cb callback implementing transaction logic
@@ -68,13 +68,13 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    if (GNUNET_OK !=                                            
-	TEH_plugin->start (TEH_plugin->cls,                     
-			   session))                            
-    {                                      
+    if (GNUNET_OK !=
+	TEH_plugin->start (TEH_plugin->cls,
+			   session))
+    {
       GNUNET_break (0);
       if (NULL != mhd_ret)
-	*mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection, 
+	*mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							 TALER_EC_DB_START_FAILED);
       return GNUNET_SYSERR;
     }
@@ -84,12 +84,12 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
 	     mhd_ret);
     if (0 > qs)
       TEH_plugin->rollback (TEH_plugin->cls,
-			    session);      
+			    session);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       return GNUNET_SYSERR;
     if (0 <= qs)
       qs = TEH_plugin->commit (TEH_plugin->cls,
-			       session);                              
+			       session);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       if (NULL != mhd_ret)
@@ -132,8 +132,9 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
   struct TALER_EXCHANGEDB_TransactionList *pos;
   struct TALER_Amount refunded;
 
-  TALER_amount_get_zero (spent.currency,
-                         &refunded);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (spent.currency,
+                                        &refunded));
   for (pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)

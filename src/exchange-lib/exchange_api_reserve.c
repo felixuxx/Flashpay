@@ -104,10 +104,12 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_Amount total_out;
   size_t off;
 
-  TALER_amount_get_zero (currency,
-                         &total_in);
-  TALER_amount_get_zero (currency,
-                         &total_out);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_out));
   uuid_off = 0;
   for (off=0;off<history_length;off++)
   {

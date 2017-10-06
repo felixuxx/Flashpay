@@ -42,7 +42,6 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                     struct TALER_Amount *total)
 {
   size_t len;
-  size_t off;
   int add;
   struct TALER_Amount rtotal;
 
@@ -57,11 +56,13 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  TALER_amount_get_zero (currency,
-                         total);
-  TALER_amount_get_zero (currency,
-                         &rtotal);
-  for (off=0;off<len;off++)
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        total));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &rtotal));
+  for (size_t off=0;off<len;off++)
   {
     json_t *transaction;
     struct TALER_Amount amount;

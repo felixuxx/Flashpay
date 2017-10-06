@@ -879,8 +879,9 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
   if (0 == (2 & ret))
   {
     /* did not encounter any withdraw operations, set to zero */
-    TALER_amount_get_zero (deposit_total.currency,
-                           &withdraw_total);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (deposit_total.currency,
+                                          &withdraw_total));
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (balance,
