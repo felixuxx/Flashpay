@@ -232,8 +232,8 @@ postgres_create_tables (void *cls)
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_wire_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",wire_in_off BLOB"
-                            ",wire_out_off BLOB"
+                            ",wire_in_off BYTEA"
+                            ",wire_out_off BYTEA"
 			    ")"),
     /* Table with all of the customer reserves and their respective
        balances that the auditor is aware of.
