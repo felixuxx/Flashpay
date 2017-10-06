@@ -1015,37 +1015,54 @@ main (int argc,
   listen_fds = getenv ("LISTEN_FDS");
   if ( (NULL != listen_pid) &&
        (NULL != listen_fds) &&
-       (getpid() == strtol (listen_pid, NULL, 10)) &&
-       ( (1 == strtoul (listen_fds, NULL, 10)) ||
-         (2 == strtoul (listen_fds, NULL, 10)) ) )
+       (getpid() == strtol (listen_pid,
+                            NULL,
+                            10)) &&
+       ( (1 == strtoul (listen_fds,
+                        NULL,
+                        10)) ||
+         (2 == strtoul (listen_fds,
+                        NULL,
+                        10)) ) )
   {
     int flags;
 
     fh = 3;
-    flags = fcntl (fh, F_GETFD);
-    if ( (-1 == flags) && (EBADF == errno) )
+    flags = fcntl (fh,
+                   F_GETFD);
+    if ( (-1 == flags) &&
+         (EBADF == errno) )
     {
       fprintf (stderr,
                "Bad listen socket passed, ignored\n");
       fh = -1;
     }
     flags |= FD_CLOEXEC;
-    if (0 != fcntl (fh, F_SETFD, flags))
+    if ( (-1 != fh) &&
+         (0 != fcntl (fh,
+                      F_SETFD,
+                      flags)) )
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                            "fcntl");
 
-    if (2 == strtoul (listen_fds, NULL, 10))
+    if (2 == strtoul (listen_fds,
+                      NULL,
+                      10))
     {
       fh_admin = 4;
-      flags = fcntl (fh_admin, F_GETFD);
-      if ( (-1 == flags) && (EBADF == errno) )
+      flags = fcntl (fh_admin,
+                     F_GETFD);
+      if ( (-1 == flags) &&
+           (EBADF == errno) )
       {
         fprintf (stderr,
                  "Bad listen socket passed, ignored\n");
         fh_admin = -1;
       }
       flags |= FD_CLOEXEC;
-      if (0 != fcntl (fh_admin, F_SETFD, flags))
+      if (0 != fcntl (fh_admin,
+                      F_SETFD,
+                      flags))
         GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                              "fcntl");
     }
