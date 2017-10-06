@@ -309,7 +309,7 @@ validate_iban (const char *iban)
   nbuf = GNUNET_malloc ((len * 2) + 1);
   for (i=0, j=0; i < len; i++)
   {
-    if (isalpha ((int) ibancpy[i]))
+    if (isalpha ((unsigned char) ibancpy[i]))
     {
       if (2 != snprintf(&nbuf[j],
                         3,
@@ -326,7 +326,7 @@ validate_iban (const char *iban)
     j++;
   }
   for (j=0;'\0' != nbuf[j];j++)
-    GNUNET_assert (isdigit(nbuf[j]));
+    GNUNET_assert (isdigit( (unsigned char) nbuf[j]));
   GNUNET_assert (sizeof(dividend) >= 8);
   remainder = 0;
   for (i=0; i<j; i+=16)

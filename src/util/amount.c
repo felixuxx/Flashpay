@@ -52,7 +52,7 @@ TALER_string_to_amount (const char *str,
           0,
           sizeof (struct TALER_Amount));
   /* skip leading whitespace */
-  while (isspace(str[0]))
+  while (isspace( (unsigned char) str[0]))
     str++;
   if ('\0' == str[0])
   {
