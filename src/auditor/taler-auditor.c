@@ -2186,8 +2186,9 @@ check_wire_out_cb (void *cls,
   wcc.method = json_string_value (method);
   wcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   wcc.date = date;
-  TALER_amount_get_zero (amount->currency,
-                         &wcc.total_deposits);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (amount->currency,
+                                        &wcc.total_deposits));
   if (GNUNET_OK !=
       TALER_JSON_hash (wire,
                        &wcc.h_wire))
