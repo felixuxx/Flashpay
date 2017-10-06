@@ -111,15 +111,6 @@ run_queries (PGconn *conn)
       TALER_PQ_query_param_json (json),
       GNUNET_PQ_query_param_end
     };
-    struct GNUNET_PQ_QueryParam params_select[] = {
-      GNUNET_PQ_query_param_end
-    };
-    struct GNUNET_PQ_ResultSpec results_select[] = {
-      TALER_PQ_result_spec_amount ("hamount", &hamount2),
-      TALER_PQ_result_spec_amount_nbo ("namount", &namount2),
-      TALER_PQ_result_spec_json ("json", &json2),
-      GNUNET_PQ_result_spec_end
-    };
 
     result = GNUNET_PQ_exec_prepared (conn,
 				      "test_insert",
@@ -132,8 +123,13 @@ run_queries (PGconn *conn)
       PQclear (result);
       return 1;
     }
-
     PQclear (result);
+  }
+  {
+    struct GNUNET_PQ_QueryParam params_select[] = {
+      GNUNET_PQ_query_param_end
+    };
+
     result = GNUNET_PQ_exec_prepared (conn,
 				      "test_select",
 				      params_select);
@@ -144,6 +140,16 @@ run_queries (PGconn *conn)
       PQclear (result);
       return 1;
     }
+  }
+
+  {
+    struct GNUNET_PQ_ResultSpec results_select[] = {
+      TALER_PQ_result_spec_amount ("hamount", &hamount2),
+      TALER_PQ_result_spec_amount_nbo ("namount", &namount2),
+      TALER_PQ_result_spec_json ("json", &json2),
+      GNUNET_PQ_result_spec_end
+    };
+
     ret = GNUNET_PQ_extract_result (result,
 				    results_select,
 				    0);
