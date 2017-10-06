@@ -307,7 +307,7 @@ test_wire_validate (void *cls,
                                      sizeof (sig)))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE;
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_TEST_DETAILS,
