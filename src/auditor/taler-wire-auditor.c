@@ -122,9 +122,11 @@ static size_t wire_off_size;
 
 /**
  * Task run on shutdown.
+ *
+ * @param cls NULL
  */
 static void
-do_shutdown ()
+do_shutdown (void *cls)
 {
   if (NULL != hh)
   {
