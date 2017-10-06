@@ -288,7 +288,6 @@ get_cointype_dir (const struct CoinTypeParams *p)
   struct GNUNET_HashCode hash;
   char *hash_str;
   char *val_str;
-  size_t i;
 
   hash_coin_type (p, &hash);
   hash_str = GNUNET_STRINGS_data_to_string_alloc (&hash,
@@ -298,7 +297,8 @@ get_cointype_dir (const struct CoinTypeParams *p)
   hash_str[HASH_CUTOFF] = 0;
 
   val_str = TALER_amount_to_string (&p->value);
-  for (i = 0; i < strlen (val_str); i++)
+  GNUNET_assert (NULL != val_str);
+  for (size_t i = 0; i < strlen (val_str); i++)
     if ( (':' == val_str[i]) ||
          ('.' == val_str[i]) )
       val_str[i] = '_';
