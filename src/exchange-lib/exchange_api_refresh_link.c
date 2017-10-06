@@ -282,6 +282,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     }
 
     /* clean up */
+    GNUNET_assert (off_coin <= num_coins);
     for (i=0;i<off_coin;i++)
     {
       if (NULL != sigs[i].rsa_signature)
