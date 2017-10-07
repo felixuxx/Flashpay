@@ -78,9 +78,15 @@ reply_deposit_success (struct MHD_Connection *connection,
                      amount_without_fee);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
-  TEH_KS_sign (&dc.purpose,
-               &pub,
-               &sig);
+  if (GNUNET_OK !=
+      TEH_KS_sign (&dc.purpose,
+		   &pub,
+		   &sig))
+  {
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:s, s:o, s:o}",

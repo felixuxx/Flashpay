@@ -131,9 +131,17 @@ reply_track_transfer_details (struct MHD_Connection *connection,
   wdp.h_wire = *h_wire;
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &wdp.h_details);
-  TEH_KS_sign (&wdp.purpose,
-               &pub,
-               &sig);
+  if (GNUNET_OK !=
+      TEH_KS_sign (&wdp.purpose,
+		   &pub,
+		   &sig))
+  {
+    json_decref (deposits);
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
+    
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",

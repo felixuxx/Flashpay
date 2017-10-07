@@ -82,9 +82,15 @@ reply_payback_success (struct MHD_Connection *connection,
                      amount);
   pc.coin_pub = *coin_pub;
   pc.reserve_pub = *reserve_pub;
-  TEH_KS_sign (&pc.purpose,
-               &pub,
-               &sig);
+  if (GNUNET_OK !=
+      TEH_KS_sign (&pc.purpose,
+		   &pub,
+		   &sig))
+  {
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o}",

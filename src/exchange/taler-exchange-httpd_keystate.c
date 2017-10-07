@@ -1845,8 +1845,9 @@ read_again:
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if we lack key material
  */
-void
+int
 TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
              struct TALER_ExchangePublicKeyP *pub,
              struct TALER_ExchangeSignatureP *sig)
@@ -1855,15 +1856,21 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   struct TEH_KS_StateHandle *key_state;
 
   key_state = TEH_KS_acquire ();
-  GNUNET_assert (NULL != key_state); /* This *can* happen if the exchange's keys are
-                                        not properly maintained, but in this case we
-                                        simply have no good way forward. */
+  if (NULL == key_state)
+  {
+    /* This *can* happen if the exchange's keys are
+       not properly maintained. */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		_("Cannot sign request, no valid keys available\n"));
+    return GNUNET_SYSERR;
+  }
   *pub = key_state->current_sign_key_issue.issue.signkey_pub;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                            purpose,
                                            &sig->eddsa_signature));
   TEH_KS_release (key_state);
+  return GNUNET_OK;
 }
 
 

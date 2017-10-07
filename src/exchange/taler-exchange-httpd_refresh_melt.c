@@ -135,9 +135,15 @@ reply_refresh_melt_success (struct MHD_Connection *connection,
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
   body.reserved = htons (0);
-  TEH_KS_sign (&body.purpose,
-               &pub,
-               &sig);
+  if (GNUNET_OK !=
+      TEH_KS_sign (&body.purpose,
+		   &pub,
+		   &sig))
+  {
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   sig_json = GNUNET_JSON_from_data_auto (&sig);
   GNUNET_assert (NULL != sig_json);
   return TEH_RESPONSE_reply_json_pack (connection,

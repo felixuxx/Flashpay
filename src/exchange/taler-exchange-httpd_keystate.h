@@ -140,8 +140,9 @@ TEH_KS_loop (void);
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if we lack key material
  */
-void
+int
 TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
              struct TALER_ExchangePublicKeyP *pub,
              struct TALER_ExchangeSignatureP *sig);

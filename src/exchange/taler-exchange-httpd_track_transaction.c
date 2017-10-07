@@ -85,9 +85,15 @@ reply_track_transaction (struct MHD_Connection *connection,
   cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
   TALER_amount_hton (&cw.coin_contribution,
                      coin_contribution);
-  TEH_KS_sign (&cw.purpose,
-               &pub,
-               &sig);
+  if (GNUNET_OK !=
+      TEH_KS_sign (&cw.purpose,
+		   &pub,
+		   &sig))
+  {
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o}",

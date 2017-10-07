@@ -474,7 +474,7 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * Compile the transaction history of a coin into a JSON object.
  *
  * @param tl transaction history to JSON-ify
- * @return json representation of the @a rh
+ * @return json representation of the @a rh, NULL on error
  */
 json_t *
 TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
@@ -632,9 +632,15 @@ TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_Transact
                            &payback->value);
         pc.coin_pub = payback->coin.coin_pub;
         pc.reserve_pub = payback->reserve_pub;
-        TEH_KS_sign (&pc.purpose,
-                     &epub,
-                     &esig);
+        if (GNUNET_OK !=
+	    TEH_KS_sign (&pc.purpose,
+			 &epub,
+			 &esig))
+	{
+	  GNUNET_break (0);
+	  json_decref (history);
+	  return NULL;
+	}
         GNUNET_assert (0 ==
                        json_array_append_new (history,
                                               json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
@@ -796,9 +802,15 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 			   &payback->value);
 	pc.coin_pub = payback->coin.coin_pub;
 	pc.reserve_pub = payback->reserve_pub;
-	TEH_KS_sign (&pc.purpose,
-		     &pub,
-		     &sig);
+	if (GNUNET_OK !=
+	    TEH_KS_sign (&pc.purpose,
+			 &pub,
+			 &sig))
+	{
+	  GNUNET_break (0);
+	  json_decref (json_history);
+	  return NULL;
+	}
 
 	GNUNET_assert (0 ==
 		       json_array_append_new (json_history,
@@ -852,9 +864,15 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
           return NULL;
         }
 	rcc.wtid = pos->details.closing->wtid;
-	TEH_KS_sign (&rcc.purpose,
-		     &pub,
-		     &sig);
+	if (GNUNET_OK !=
+	    TEH_KS_sign (&rcc.purpose,
+			 &pub,
+			 &sig))
+	{
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+	}
 	GNUNET_assert (0 ==
 		       json_array_append_new (json_history,
 					      json_pack ("{s:s, s:O, s:o, s:o, s:o, s:o, s:o, s:o}",

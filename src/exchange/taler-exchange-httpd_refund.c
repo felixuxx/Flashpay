@@ -61,9 +61,15 @@ reply_refund_success (struct MHD_Connection *connection,
                      &refund->refund_amount);
   TALER_amount_hton (&rc.refund_fee,
                      &refund->refund_fee);
-  TEH_KS_sign (&rc.purpose,
-               &pub,
-               &sig);
+  if (GNUNET_OK !=
+      TEH_KS_sign (&rc.purpose,
+		   &pub,
+		   &sig))
+  {
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:s, s:o, s:o}",
