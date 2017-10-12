@@ -154,7 +154,7 @@ report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Database inconsistency detected in table %s at row %llu: %s\n",
               table,
@@ -176,7 +176,7 @@ report_row_minor_inconsistency (const char *table,
                                 uint64_t rowid,
                                 const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Minor inconsistency detected in table %s at row %llu: %s\n",
               table,
@@ -199,7 +199,7 @@ report_reserve_inconsistency (const struct TALER_ReservePublicKeyP *reserve_pub,
                               const struct TALER_Amount *observed,
                               const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file, include amounts.
+  // TODO (#4963): implement proper reporting logic writing to file, include amounts.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Reserve inconsistency detected affecting reserve %s: %s\n",
               TALER_B2S (reserve_pub),
@@ -223,7 +223,7 @@ report_wire_out_inconsistency (const json_t *destination,
                                const struct TALER_Amount *observed,
                                const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file, include amounts.
+  // TODO (#4963): implement proper reporting logic writing to file, include amounts.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Wire out inconsistency detected: %s\n",
               diagnostic);
@@ -244,7 +244,7 @@ report_coin_inconsistency (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            const struct TALER_Amount *observed,
                            const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file, include amounts.
+  // TODO (#4963): implement proper reporting logic writing to file, include amounts.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Coin inconsistency detected: %s\n",
               diagnostic);
@@ -271,7 +271,7 @@ static void
 report_reserve_balance (const struct TALER_Amount *total_balance,
                         const struct TALER_Amount *total_fee_balance)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               "Escrow balance to be held for reserves is %s\n",
               TALER_amount2s (total_balance));
@@ -294,7 +294,7 @@ report_reserve_balance (const struct TALER_Amount *total_balance,
 static void
 report_aggregation_fee_balance (const struct TALER_Amount *total_fee_balance)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               "Aggregation fees income is %s\n",
               TALER_amount2s (total_fee_balance));
@@ -317,7 +317,7 @@ report_denomination_balance (const struct TALER_Amount *total_balance,
                              const struct TALER_Amount *melt_fees,
                              const struct TALER_Amount *refund_fees)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963/4962): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               "Escrow balance for issued coins is %s\n",
               TALER_amount2s (total_balance));
@@ -2125,7 +2125,7 @@ get_wire_fee (struct AggregationContext *ac,
                                        pos->prev,
                                        wfi);
   /* Check non-overlaping fee invariant */
-  /* TODO: maybe report problems more nicely? */
+  /* TODO (#4963): maybe report problems more nicely? */
   if (NULL != wfi->prev)
     GNUNET_break (wfi->prev->end_date.abs_value_us <= wfi->start_date.abs_value_us);
   if (NULL != wfi->next)

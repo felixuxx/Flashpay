@@ -60,7 +60,7 @@ struct TALER_WIRE_TransferDetails
 
   /**
    * Reserve public key that was encoded in the wire transfer subject.
-   * FIXME: this is incorrect for *outgoing* wire transfers.
+   * FIXME (#5077): this is incorrect for *outgoing* wire transfers.
    * Maybe use `struct TALER_WireTransferIdentifierRawP` here instead?
    * OTOH, we might want to make this even more generic in case of
    * invalid transfers, so that we can capture those as well!

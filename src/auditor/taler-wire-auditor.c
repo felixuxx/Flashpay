@@ -295,7 +295,7 @@ report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Database inconsistency detected in table %s at row %llu: %s\n",
               table,
@@ -317,7 +317,7 @@ report_row_minor_inconsistency (const char *table,
                                 uint64_t rowid,
                                 const char *diagnostic)
 {
-  // TODO: implement proper reporting logic writing to file.
+  // TODO (#4963): implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Minor inconsistency detected in table %s at row %llu: %s\n",
               table,
@@ -451,7 +451,7 @@ wire_out_cb (void *cls,
 					   &key);
   if (NULL == roi)
   {
-    /* FIXME: do proper logging! */
+    /* FIXME (#4963): do proper logging! */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
 		"Failed to find wire transfer `%s' over %s at `%s' in exchange database!\n",
 		TALER_B2S (wtid),
@@ -509,7 +509,7 @@ complain_out_not_found (void *cls,
 {
   struct ReserveOutInfo *roi = value;
 
-  /* FIXME: log more precisely which wire transfer (and amount)
+  /* FIXME (#4963): log more precisely which wire transfer (and amount)
      is bogus. */
   report_row_inconsistency ("reserves_out",
 			    UINT64_MAX,
@@ -585,12 +585,12 @@ history_debit_cb (void *cls,
     return GNUNET_OK;
   }
   roi = GNUNET_new (struct ReserveOutInfo);
-  GNUNET_CRYPTO_hash (&details->reserve_pub, /* FIXME: missnomer */
+  GNUNET_CRYPTO_hash (&details->reserve_pub, /* FIXME (#5077): missnomer */
 		      sizeof (details->reserve_pub),
 		      &roi->subject_hash);
   roi->details.amount = details->amount;
   roi->details.execution_date = details->execution_date;
-  roi->details.reserve_pub = details->reserve_pub; /* FIXME: missnomer & redundant */
+  roi->details.reserve_pub = details->reserve_pub; /* FIXME (#5077): missnomer & redundant */
   roi->details.account_details = json_incref ((json_t *) details->account_details);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (out_map,
