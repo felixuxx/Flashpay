@@ -21,7 +21,7 @@
  * - First, this auditor verifies that 'reserves_in' actually matches
  *   the incoming wire transfers from the bank.
  * - Second, we check that the outgoing wire transfers match those
- *   given in the 'wire_out' table.
+ *   given in the 'wire_out' table (TODO!)
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -61,6 +61,12 @@ static char *currency;
  * Our configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
+ * Map with information about incoming wire transfers.
+ * Maps hashes of the wire offsets to `struct ReserveInInfo`s.
+ */
+static struct GNUNET_CONTAINER_MultiHashMap *in_map;
 
 /**
  * Our session with the #edb.
@@ -120,6 +126,61 @@ static size_t wire_off_size;
 
 /* *****************************   Shutdown   **************************** */
 
+/** 
+ * Entry in map with wire information we expect to obtain from the
+ * #edb later.
+ */
+struct ReserveInInfo
+{
+
+  /** 
+   * Hash of expected row offset.
+   */
+  struct GNUNET_HashCode row_off_hash;
+
+  /**
+   * Number of bytes in @e row_off.
+   */
+  size_t row_off_size;
+
+  /**
+   * Expected details about the wire transfer.
+   */
+  struct TALER_WIRE_TransferDetails details;
+
+  /**
+   * RowID in reserves_in table.
+   */
+  uint64_t rowid;
+  
+};
+
+
+/**
+ * Free entry in #in_map.
+ *
+ * @param cls NULL
+ * @param key unused key
+ * @param value the `struct ReserveInInfo` to free
+ * @return #GNUNET_OK
+ */
+static int
+free_rii (void *cls,
+	  const struct GNUNET_HashCode *key,
+	  void *value)
+{
+  struct ReserveInInfo *rii = value;
+
+  GNUNET_assert (GNUNET_YES ==
+		 GNUNET_CONTAINER_multihashmap_remove (in_map,
+						       key,
+						       rii));
+  json_decref (rii->details.account_details);
+  GNUNET_free (rii);
+  return GNUNET_OK;
+}
+
+
 /**
  * Task run on shutdown.
  *
@@ -133,6 +194,14 @@ do_shutdown (void *cls)
     wp->get_history_cancel (wp->cls,
                             hh);
     hh = NULL;
+  }
+  if (NULL != in_map)
+  {
+    GNUNET_CONTAINER_multihashmap_iterate (in_map,
+					   &free_rii,
+					   NULL);
+    GNUNET_CONTAINER_multihashmap_destroy (in_map);
+    in_map = NULL;
   }
   if (NULL != wp)
   {
@@ -154,7 +223,6 @@ do_shutdown (void *cls)
 
 /* ***************************** Report logic **************************** */
 
-#if 0
 /**
  * Report a (serious) inconsistency in the exchange's database.
  *
@@ -196,7 +264,6 @@ report_row_minor_inconsistency (const char *table,
               (unsigned long long) rowid,
               diagnostic);
 }
-#endif
 
 
 /* *************************** General transaction logic ****************** */
@@ -291,7 +358,100 @@ commit (enum GNUNET_DB_QueryStatus qs)
 }
 
 
+/* ***************************** Analyze reserves_out ************************ */
+
+
+/**
+ * Main functin for processing reserves_out data.
+ */
+static void
+process_debits ()
+{
+  /* TODO: also check DEBITs! */
+
+  /* conclude with: */
+  commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
 /* ***************************** Analyze reserves_in ************************ */
+
+
+/**
+ * Function called with details about incoming wire transfers
+ * as claimed by the exchange DB.
+ *
+ * @param cls NULL
+ * @param rowid unique serial ID for the refresh session in our DB
+ * @param reserve_pub public key of the reserve (also the WTID)
+ * @param credit amount that was received
+ * @param sender_account_details information about the sender's bank account
+ * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
+ * @param wire_reference_size number of bytes in @a wire_reference
+ * @param execution_date when did we receive the funds
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+reserve_in_cb (void *cls,
+	       uint64_t rowid,
+	       const struct TALER_ReservePublicKeyP *reserve_pub,
+	       const struct TALER_Amount *credit,
+	       const json_t *sender_account_details,
+	       const void *wire_reference,
+	       size_t wire_reference_size,
+	       struct GNUNET_TIME_Absolute execution_date)
+
+{
+  struct ReserveInInfo *rii;
+
+  rii = GNUNET_new (struct ReserveInInfo);
+  GNUNET_CRYPTO_hash (wire_reference,
+		      wire_reference_size,
+		      &rii->row_off_hash);
+  rii->row_off_size = wire_reference_size;
+  rii->details.amount = *credit;
+  rii->details.execution_date = execution_date;
+  rii->details.reserve_pub = *reserve_pub;
+  rii->details.account_details = json_incref ((json_t *) sender_account_details);
+  rii->rowid = rowid;
+  if (GNUNET_OK !=
+      GNUNET_CONTAINER_multihashmap_put (in_map,
+					 &rii->row_off_hash,
+					 rii,
+					 GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+  {
+    GNUNET_break_op (0); /* duplicate wire offset is not allowed! */
+    report_row_inconsistency ("reserves_in",
+			      rowid,
+			      "duplicate wire offset");
+    return GNUNET_SYSERR;
+  }
+  pp.last_reserve_in_serial_id = rowid + 1;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Complain that we failed to match an entry from #in_map.
+ *
+ * @param cls NULL
+ * @param key unused key
+ * @param value the `struct ReserveInInfo` to free
+ * @return #GNUNET_OK
+ */
+static int
+complain_not_found (void *cls,
+		    const struct GNUNET_HashCode *key,
+		    void *value)
+{
+  struct ReserveInInfo *rii = value;
+
+  report_row_inconsistency ("reserves_in",
+			    rii->rowid,
+			    "matching wire transfer not found");
+  return GNUNET_OK;
+}
 
 
 /**
@@ -312,19 +472,105 @@ history_credit_cb (void *cls,
                    size_t row_off_size,
                    const struct TALER_WIRE_TransferDetails *details)
 {
-  if (NULL == details)
+  struct ReserveInInfo *rii;
+  struct GNUNET_HashCode key;
+  
+  if (TALER_BANK_DIRECTION_NONE == dir)
   {
     /* end of operation */
     hh = NULL;
-    /* TODO: also check DEBITs! */
-    commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
+    GNUNET_CONTAINER_multihashmap_iterate (in_map,
+					   &complain_not_found,
+					   NULL);
+    /* clean up before 2nd phase */
+    GNUNET_CONTAINER_multihashmap_iterate (in_map,
+					   &free_rii,
+					   NULL);
+    GNUNET_CONTAINER_multihashmap_destroy (in_map);
+    in_map = NULL;
+    process_debits ();
+    return GNUNET_SYSERR;
+  }
+  GNUNET_CRYPTO_hash (row_off,
+		      row_off_size,
+		      &key);
+  rii = GNUNET_CONTAINER_multihashmap_get (in_map,
+					   &key);
+  if (NULL == rii)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
+		GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
+    return GNUNET_SYSERR;
+  }
+
+  /* Update offset */
+  if (NULL == in_wire_off)
+  {
+    wire_off_size = row_off_size;
+    in_wire_off = GNUNET_malloc (row_off_size);
+  }
+  if (wire_off_size != row_off_size)
+  {
+    GNUNET_break (0);
+    commit (GNUNET_DB_STATUS_HARD_ERROR);
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_SYSERR;
   }
-  /* TODO: implement actual checks! */
+  memcpy (in_wire_off,
+	  row_off,
+	  row_off_size);
+
+  /* compare records with expected data */
+  if (row_off_size != rii->row_off_size)
+  {
+    GNUNET_break (0);
+    report_row_inconsistency ("reserves_in",
+			      rii->rowid,
+			      "wire reference size missmatch");
+    return GNUNET_OK;
+  }
+  if (0 != TALER_amount_cmp (&rii->details.amount,
+			     &details->amount))
+  {
+    report_row_inconsistency ("reserves_in",
+			      rii->rowid,
+			      "wire amount missmatch");
+    return GNUNET_OK;
+  }
+  if (details->execution_date.abs_value_us !=
+      rii->details.execution_date.abs_value_us)
+  {
+    report_row_minor_inconsistency ("reserves_in",
+				    rii->rowid,
+				    "execution date missmatch");
+  }
+  if (0 != memcmp (&details->reserve_pub,
+		   &rii->details.reserve_pub,
+		   sizeof (struct TALER_ReservePublicKeyP)))
+  {
+    report_row_inconsistency ("reserves_in",
+			      rii->rowid,
+			      "reserve public key / wire subject missmatch");
+    return GNUNET_OK;
+  }
+  if (! json_equal (details->account_details,
+		    rii->details.account_details))
+  {
+    report_row_minor_inconsistency ("reserves_in",
+				    rii->rowid,
+				    "sender account missmatch");
+  }
+  GNUNET_assert (GNUNET_OK ==
+		 GNUNET_CONTAINER_multihashmap_remove (in_map,
+						       &key,
+						       rii));
+  GNUNET_assert (GNUNET_OK ==
+		 free_rii (NULL,
+			   &key,
+			   rii));
   return GNUNET_OK;
 }
-
 
 
 /* ***************************** Setup logic    ************************ */
@@ -344,6 +590,7 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  enum GNUNET_DB_QueryStatus qs;
   int ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -475,6 +722,27 @@ run (void *cls,
                 (unsigned long long) pp.last_reserve_out_serial_id);
   }
 
+  in_map = GNUNET_CONTAINER_multihashmap_create (1024,
+						 GNUNET_YES);
+  qs = edb->select_reserves_in_above_serial_id (edb->cls,
+						esession,
+						pp.last_reserve_in_serial_id,
+						&reserve_in_cb,
+						NULL);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "No new incoming transactions available, skipping CREDIT phase\n");
+    process_debits ();
+    return;
+  }
   hh = wp->get_history (wp->cls,
                         TALER_BANK_DIRECTION_CREDIT,
                         in_wire_off,
