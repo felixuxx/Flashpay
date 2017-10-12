@@ -231,7 +231,7 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_wire_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
+			    ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
                             ",wire_in_off BYTEA"
                             ",wire_out_off BYTEA"
 			    ")"),
@@ -520,7 +520,7 @@ postgres_prepare (PGconn *db_conn)
 			    "INSERT INTO wire_auditor_progress "
 			    "(master_pub"
 			    ",last_wire_reserve_in_serial_id"
-			    ",last_wire_reserve_out_serial_id"
+			    ",last_wire_wire_out_serial_id"
                             ",wire_in_off"
                             ",wire_out_off"
 			    ") VALUES ($1,$2,$3,$4,$5);",
@@ -529,7 +529,7 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
 			    "UPDATE wire_auditor_progress SET "
 			    " last_wire_reserve_in_serial_id=$1"
-			    ",last_wire_reserve_out_serial_id=$2"
+			    ",last_wire_wire_out_serial_id=$2"
                             ",wire_in_off=$3"
                             ",wire_out_off=$4"
 			    " WHERE master_pub=$5",
@@ -538,7 +538,7 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
 			    "SELECT"
 			    " last_wire_reserve_in_serial_id"
-			    ",last_wire_reserve_out_serial_id"
+			    ",last_wire_wire_out_serial_id"
                             ",wire_in_off"
                             ",wire_out_off"
 			    " FROM wire_auditor_progress"
@@ -1352,7 +1352,7 @@ postgres_insert_wire_auditor_progress (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     GNUNET_PQ_query_param_fixed_size (in_wire_off,
                                       wire_off_size),
     GNUNET_PQ_query_param_fixed_size (out_wire_off,
@@ -1387,7 +1387,7 @@ postgres_update_wire_auditor_progress (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_fixed_size (in_wire_off,
                                       wire_off_size),
@@ -1429,8 +1429,8 @@ postgres_get_wire_auditor_progress (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id",
                                   &pp->last_reserve_in_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id",
-                                  &pp->last_reserve_out_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_wire_out_serial_id",
+                                  &pp->last_wire_out_serial_id),
     GNUNET_PQ_result_spec_variable_size ("wire_in_off",
                                          in_wire_off,
                                          wire_off_size),

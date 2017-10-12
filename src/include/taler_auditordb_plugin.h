@@ -118,9 +118,9 @@ struct TALER_AUDITORDB_WireProgressPoint
   uint64_t last_reserve_in_serial_id;
 
   /**
-   * last_reserve_out_serial_id serial ID of the last reserve_out the wire auditor processed
+   * last_wire_out_serial_id serial ID of the last wire_out the wire auditor processed
    */
-  uint64_t last_reserve_out_serial_id;
+  uint64_t last_wire_out_serial_id;
 };
 
 
