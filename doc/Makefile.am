@@ -31,4 +31,7 @@ extra_TEXINFOS = \
 EXTRA_DIST = \
   coding-style.txt \
   $(man_MANS) \
-  $(extra_TEXINFOS)
+  $(extra_TEXINFOS) \
+  docstyle.css \
+  brown-paper.css
+
