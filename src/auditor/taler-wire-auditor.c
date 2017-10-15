@@ -509,6 +509,7 @@ complain_out_not_found (void *cls,
 {
   struct ReserveOutInfo *roi = value;
 
+  (void) roi;
   /* FIXME (#4963): log more precisely which wire transfer (and amount)
      is bogus. */
   report_row_inconsistency ("reserves_out",
