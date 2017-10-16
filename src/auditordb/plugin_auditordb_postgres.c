@@ -148,6 +148,7 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_wire_fee_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserves;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
