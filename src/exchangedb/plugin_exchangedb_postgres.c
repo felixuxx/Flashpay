@@ -1300,6 +1300,29 @@ postgres_prepare (PGconn *db_conn)
                             " ORDER BY prewire_uuid ASC"
                             " LIMIT 1;",
                             0),
+    /* Used in #postgres_select_deposits_missing_wire */
+    GNUNET_PQ_make_prepare ("deposits_get_overdue",
+			    "SELECT"
+			    " deposit_serial_id"
+			    ",coin_pub"
+			    ",amount_with_fee_val"
+			    ",amount_with_fee_frac"
+			    ",amount_with_fee_curr"
+			    ",wire"
+			    ",wire_deadline"
+			    ",tiny"
+			    ",done"
+			    " FROM deposits"
+			    " WHERE wire_deadline <= $1"
+			    " AND wire_deadline > $2" 
+			    " AND NOT (EXISTS (SELECT 1"
+			    "            FROM refunds"
+			    "            WHERE (refunds.coin_pub = deposits.coin_pub))"
+			    "       OR EXISTS (SELECT 1"
+			    "            FROM aggregation_tracking"
+			    "            WHERE (aggregation_tracking.deposit_serial_id = deposits.deposit_serial_id)))"
+			    " ORDER BY wire_deadline ASC",
+			    2),
     /* Used in #postgres_gc() */
     GNUNET_PQ_make_prepare ("gc_prewire",
                             "DELETE"
@@ -6217,6 +6240,135 @@ postgres_get_denomination_revocation (void *cls,
 
 
 /**
+ * Closure for #missing_wire_cb().
+ */
+struct MissingWireContext
+{
+  /**
+   * Function to call per result.
+   */
+  TALER_EXCHANGEDB_WireMissingCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Set to #GNUNET_SYSERR on error.
+   */
+  int status;
+};
+
+
+/**
+ * Invoke the callback for each result.
+ *
+ * @param cls a `struct MissingWireContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+missing_wire_cb (void *cls,
+		 PGresult *result,
+		 unsigned int num_results)
+{
+  struct MissingWireContext *mwc = cls;
+
+  while (0 < num_results)
+  {
+    uint64_t rowid;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_Amount amount;
+    json_t *wire;
+    struct GNUNET_TIME_Absolute deadline;
+    /* bool? */ uint32_t tiny;
+    /* bool? */ uint32_t done;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+				    &rowid),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+					    &coin_pub),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+				   &amount),
+      TALER_PQ_result_spec_json ("wire",
+				 &wire),
+      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+					   &deadline),
+      GNUNET_PQ_result_spec_uint32 ("tiny",
+				    &tiny),
+      GNUNET_PQ_result_spec_uint32 ("done",
+				    &done),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+	GNUNET_PQ_extract_result (result,
+				  rs,
+				  --num_results))
+    {
+      GNUNET_break (0);
+      mwc->status = GNUNET_SYSERR;
+      return;
+    }
+    mwc->cb (mwc->cb_cls,
+	     rowid,
+	     &coin_pub,
+	     &amount,
+	     wire,
+	     deadline,
+	     tiny,
+	     done);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Select all of those deposits in the database for which we do
+ * not have a wire transfer (or a refund) and which should have
+ * been deposited between @a start_date and @a end_date.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param start_date lower bound on the requested wire execution date
+ * @param end_date upper bound on the requested wire execution date
+ * @param cb function to call on all such deposits
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_deposits_missing_wire (void *cls,
+				       struct TALER_EXCHANGEDB_Session *session,
+				       struct GNUNET_TIME_Absolute start_date,
+				       struct GNUNET_TIME_Absolute end_date,
+				       TALER_EXCHANGEDB_WireMissingCallback cb,
+				       void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&start_date),
+    GNUNET_PQ_query_param_absolute_time (&end_date),
+    GNUNET_PQ_query_param_end
+  };
+  struct MissingWireContext mwc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "deposits_get_overdue",
+					     params,
+					     &missing_wire_cb,
+					     &mwc);
+  if (GNUNET_OK != mwc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -6337,6 +6489,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_reserve_by_h_blind = &postgres_get_reserve_by_h_blind;
   plugin->insert_denomination_revocation = &postgres_insert_denomination_revocation;
   plugin->get_denomination_revocation = &postgres_get_denomination_revocation;
+  plugin->select_deposits_missing_wire = &postgres_select_deposits_missing_wire;
   return plugin;
 }
 

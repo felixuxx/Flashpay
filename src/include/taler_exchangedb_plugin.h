@@ -1042,6 +1042,30 @@ typedef void
 
 
 /**
+ * Function called on deposits that are past their due date
+ * and have not yet seen a wire transfer.
+ *
+ * @param cls closure
+ * @param rowid deposit table row of the coin's deposit
+ * @param coin_pub public key of the coin
+ * @param amount value of the deposit, including fee
+ * @param wire where should the funds be wired
+ * @param deadline what was the requested wire transfer deadline
+ * @param tiny did the exchange defer this transfer because it is too small?
+ * @param done did the exchange claim that it made a transfer?
+ */
+typedef void
+(*TALER_EXCHANGEDB_WireMissingCallback)(void *cls,
+					uint64_t rowid,
+					const struct TALER_CoinSpendPublicKeyP *coin_pub,
+					const struct TALER_Amount *amount,
+					const json_t *wire,
+					struct GNUNET_TIME_Absolute deadline,
+					/* bool? */ int tiny,
+					/* bool? */ int done);
+
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
@@ -2188,6 +2212,28 @@ struct TALER_EXCHANGEDB_Plugin
                                  struct TALER_MasterSignatureP *master_sig,
 				 uint64_t *rowid);
 
+
+  /**
+   * Select all of those deposits in the database for which we do
+   * not have a wire transfer (or a refund) and which should have
+   * been deposited between @a start_date and @a end_date.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param start_date lower bound on the requested wire execution date
+   * @param end_date upper bound on the requested wire execution date
+   * @param cb function to call on all such deposits
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_deposits_missing_wire)(void *cls,
+				  struct TALER_EXCHANGEDB_Session *session,
+				  struct GNUNET_TIME_Absolute start_date,
+				  struct GNUNET_TIME_Absolute end_date,
+				  TALER_EXCHANGEDB_WireMissingCallback cb,
+				  void *cb_cls);
+  
 
 };
 
