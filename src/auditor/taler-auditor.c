@@ -25,7 +25,6 @@
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
  * KNOWN BUGS:
- * - calculate, store and report aggregation fee balance!
  * - error handling if denomination keys are used that are not known to the
  *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
  *   violation back at the user. Great UX.

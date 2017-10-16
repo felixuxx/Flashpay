@@ -1,3 +1,6 @@
+Mon Oct 16 12:10:35 CEST 2017
+	Realize JSON-based report formats from auditor (#4963). -CG
+
 Sun Sep 17 16:46:13 CEST 2017
 	Implement /keys cherry picking (#4840). -CG
 

@@ -129,6 +129,16 @@ static void *out_wire_off;
  */
 static size_t wire_off_size;
 
+/**
+ * Array of reports about row inconsitencies.
+ */
+static json_t *report_row_inconsistencies;
+
+/**
+ * Array of reports about minor row inconcistencies.
+ */
+static json_t *report_row_minor_inconsistencies;
+
 
 /* *****************************   Shutdown   **************************** */
 
@@ -240,6 +250,21 @@ free_roi (void *cls,
 static void
 do_shutdown (void *cls)
 {
+  if (NULL != report_row_inconsistencies)
+  {
+    json_t *report;
+    
+    GNUNET_assert (NULL != report_row_minor_inconsistencies);
+    report = json_pack ("{s:o, s:o}",
+			"row-inconsistencies", report_row_inconsistencies,
+			"row-minor-inconsistencies", report_row_minor_inconsistencies);
+    json_dumpf (report,
+		stdout,
+		JSON_INDENT (2));
+    json_decref (report);
+    report_row_inconsistencies = NULL;
+    report_row_minor_inconsistencies = NULL;
+  }
   if (NULL != hh)
   {
     wp->get_history_cancel (wp->cls,
@@ -284,6 +309,23 @@ do_shutdown (void *cls)
 
 
 /**
+ * Add @a object to the report @a array.  Fail hard if this fails.
+ *
+ * @param array report array to append @a object to
+ * @param object object to append, should be check that it is not NULL
+ */ 
+static void
+report (json_t *array,
+	json_t *object)
+{
+  GNUNET_assert (NULL != object);
+  GNUNET_assert (0 ==
+		 json_array_append_new (array,
+					object));
+}
+
+
+/**
  * Report a (serious) inconsistency in the exchange's database.
  *
  * @param table affected table
@@ -295,12 +337,11 @@ report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Database inconsistency detected in table %s at row %llu: %s\n",
-              table,
-              (unsigned long long) rowid,
-              diagnostic);
+  report (report_row_inconsistencies,
+	  json_pack ("{s:s, s:I, s:s}",
+		     "table", table,
+		     "row", (json_int_t) rowid,
+		     "diagnostic", diagnostic));
 }
 
 
@@ -317,12 +358,11 @@ report_row_minor_inconsistency (const char *table,
                                 uint64_t rowid,
                                 const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Minor inconsistency detected in table %s at row %llu: %s\n",
-              table,
-              (unsigned long long) rowid,
-              diagnostic);
+  report (report_row_minor_inconsistencies,
+	  json_pack ("{s:s, s:I, s:s}",
+		     "table", table,
+		     "row", (json_int_t) rowid,
+		     "diagnostic", diagnostic));
 }
 
 
@@ -961,6 +1001,10 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  GNUNET_assert (NULL !=
+		 (report_row_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_row_minor_inconsistencies = json_array ()));
   qsx = adb->get_wire_auditor_progress (adb->cls,
                                         asession,
                                         &master_pub,
