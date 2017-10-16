@@ -114,8 +114,71 @@ static struct TALER_MasterPublicKeyP master_pub;
  */
 static struct TALER_AUDITORDB_ProgressPoint pp;
 
+/**
+ * Array of reports about denomination keys with an
+ * emergency (more deposited than withdrawn)
+ */
+static json_t *report_emergencies;
+
+/**
+ * Array of reports about row inconsitencies.
+ */
+static json_t *report_row_inconsistencies;
+
+/**
+ * Array of reports about minor row inconcistencies.
+ */
+static json_t *report_row_minor_inconsistencies;
+
+/**
+ * Array of reports about reserve inconsitencies.
+ */
+static json_t *report_reserve_inconsistencies;
+
+/**
+ * Array of reports about irregular wire out entries.
+ */
+static json_t *report_wire_out_inconsistencies;
+
+/**
+ * Array of reports about inconsistencies about coins.
+ */
+static json_t *report_coin_inconsistencies;
+
+/**
+ * Report about expected reserve balances.
+ */
+static json_t *report_reserve_balances;
+
+/**
+ * Report about aggregate wire transfer fee profits.
+ */
+static json_t *report_aggregation_fee_balances;
+
+/**
+ * Report about denomination fee balances.
+ */
+static json_t *report_denomination_balances;
+
 
 /* ***************************** Report logic **************************** */
+
+
+/**
+ * Add @a object to the report @a array.  Fail hard if this fails.
+ *
+ * @param array report array to append @a object to
+ * @param object object to append, should be check that it is not NULL
+ */ 
+static void
+report (json_t *array,
+	json_t *object)
+{
+  GNUNET_assert (NULL != object);
+  GNUNET_assert (0 ==
+		 json_array_append_new (array,
+					object));
+}
 
 
 /**
@@ -131,14 +194,10 @@ static struct TALER_AUDITORDB_ProgressPoint pp;
 static void
 report_emergency (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki)
 {
-  char *dhks;
-
-  dhks = GNUNET_STRINGS_data_to_string_alloc (&dki->properties.denom_hash,
-                                              sizeof (struct GNUNET_HashCode));
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Emergency detected. Exchange must revoke key using `taler-auditor -r %s`\n",
-              dhks);
-  GNUNET_free (dhks);
+  report (report_emergencies,
+	  json_pack ("{s:o}",
+		     "denompub_hash",
+		     GNUNET_JSON_from_data_auto (&dki->properties.denom_hash)));
 }
 
 
@@ -154,12 +213,11 @@ report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Database inconsistency detected in table %s at row %llu: %s\n",
-              table,
-              (unsigned long long) rowid,
-              diagnostic);
+  report (report_row_inconsistencies,
+	  json_pack ("{s:s, s:I, s:s}",
+		     "table", table,
+		     "row", (json_int_t) rowid,
+		     "diagnostic", diagnostic));
 }
 
 
@@ -176,12 +234,11 @@ report_row_minor_inconsistency (const char *table,
                                 uint64_t rowid,
                                 const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Minor inconsistency detected in table %s at row %llu: %s\n",
-              table,
-              (unsigned long long) rowid,
-              diagnostic);
+  report (report_row_minor_inconsistencies,
+	  json_pack ("{s:s, s:I, s:s}",
+		     "table", table,
+		     "row", (json_int_t) rowid,
+		     "diagnostic", diagnostic));
 }
 
 
@@ -199,11 +256,16 @@ report_reserve_inconsistency (const struct TALER_ReservePublicKeyP *reserve_pub,
                               const struct TALER_Amount *observed,
                               const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file, include amounts.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Reserve inconsistency detected affecting reserve %s: %s\n",
-              TALER_B2S (reserve_pub),
-              diagnostic);
+  report (report_reserve_inconsistencies,
+	  json_pack ("{s:o, s:o, s:o, s:s}",
+		     "reserve_pub",
+		     GNUNET_JSON_from_data_auto (reserve_pub),
+		     "expected",
+		     TALER_JSON_from_amount (expected),
+		     "observed",
+		     TALER_JSON_from_amount (observed),
+		     "diagnostic",
+		     diagnostic));
 }
 
 
@@ -223,10 +285,18 @@ report_wire_out_inconsistency (const json_t *destination,
                                const struct TALER_Amount *observed,
                                const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file, include amounts.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Wire out inconsistency detected: %s\n",
-              diagnostic);
+  report (report_wire_out_inconsistencies,
+	  json_pack ("{s:O, s:I, s:o, s:o, s:s}",
+		     "destination_account",
+		     destination,
+		     "rowid",
+		     (json_int_t) rowid,
+		     "expected",
+		     TALER_JSON_from_amount (expected),
+		     "observed",
+		     TALER_JSON_from_amount (observed),
+		     "diagnostic",
+		     diagnostic));
 }
 
 
@@ -244,10 +314,16 @@ report_coin_inconsistency (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            const struct TALER_Amount *observed,
                            const char *diagnostic)
 {
-  // TODO (#4963): implement proper reporting logic writing to file, include amounts.
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Coin inconsistency detected: %s\n",
-              diagnostic);
+  report (report_coin_inconsistencies,
+	  json_pack ("{s:o, s:o, s:o, s:s}",
+		     "coin_pub",
+		     GNUNET_JSON_from_data_auto (coin_pub),
+		     "expected",
+		     TALER_JSON_from_amount (expected),
+		     "observed",
+		     TALER_JSON_from_amount (observed),
+		     "diagnostic",
+		     diagnostic));
 }
 
 
@@ -271,13 +347,12 @@ static void
 report_reserve_balance (const struct TALER_Amount *total_balance,
                         const struct TALER_Amount *total_fee_balance)
 {
-  // TODO (#4963): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Escrow balance to be held for reserves is %s\n",
-              TALER_amount2s (total_balance));
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Withdraw fees income is %s\n",
-              TALER_amount2s (total_fee_balance));
+  report (report_reserve_balances,
+	  json_pack ("{s:o, s:o}",
+		     "total_escrow_balance",
+		     TALER_JSON_from_amount (total_balance),
+		     "total_withdraw_fee_income",
+		     TALER_JSON_from_amount (total_fee_balance)));
 }
 
 
@@ -294,10 +369,10 @@ report_reserve_balance (const struct TALER_Amount *total_balance,
 static void
 report_aggregation_fee_balance (const struct TALER_Amount *total_fee_balance)
 {
-  // TODO (#4963): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Aggregation fees income is %s\n",
-              TALER_amount2s (total_fee_balance));
+  report (report_aggregation_fee_balances,
+	  json_pack ("{s:o}",
+		     "total_aggregation_fee_income",
+		     TALER_JSON_from_amount (total_fee_balance)));
 }
 
 
@@ -317,22 +392,18 @@ report_denomination_balance (const struct TALER_Amount *total_balance,
                              const struct TALER_Amount *melt_fees,
                              const struct TALER_Amount *refund_fees)
 {
-  // TODO (#4963/4962): implement proper reporting logic writing to file.
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Escrow balance for issued coins is %s\n",
-              TALER_amount2s (total_balance));
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Risk from active operations is %s\n",
-              TALER_amount2s (total_risk));
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Deposit fee income is %s\n",
-              TALER_amount2s (deposit_fees));
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Melt fee income is %s\n",
-              TALER_amount2s (melt_fees));
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Refund fee income is %s\n",
-              TALER_amount2s (refund_fees));
+  report (report_denomination_balances,
+	  json_pack ("{s:o, s:o, s:o, s:o, s:o}",
+		     "total_escrow_balance",
+		     TALER_JSON_from_amount (total_balance),
+		     "total_active_risk",
+		     TALER_JSON_from_amount (total_risk),
+		     "total_deposit_fee_income",
+		     TALER_JSON_from_amount (deposit_fees),
+		     "total_melt_fee_income",
+		     TALER_JSON_from_amount (melt_fees),
+		     "total_refund_fee_income",
+		     TALER_JSON_from_amount (refund_fees)));
 }
 
 
@@ -3723,6 +3794,8 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  json_t *report;
+  
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
@@ -3789,11 +3862,43 @@ run (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
+  GNUNET_assert (NULL !=
+		 (report_emergencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_row_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_row_minor_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_reserve_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_wire_out_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_coin_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_reserve_balances = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_aggregation_fee_balances = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_denomination_balances = json_array ()));
   setup_sessions_and_run ();
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
   TALER_AUDITORDB_plugin_unload (adb);
   TALER_EXCHANGEDB_plugin_unload (edb);
+  report = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+		      "emergencies", report_emergencies,
+		      "row-inconsistencies", report_row_inconsistencies,
+		      "row-minor-inconsistencies", report_row_minor_inconsistencies,
+		      "reserve-inconsistencies", report_reserve_inconsistencies,
+		      "wire-out-inconsistencies", report_wire_out_inconsistencies,
+		      "coin_inconsistencies", report_coin_inconsistencies,
+		      "reserve_balance", report_reserve_balances,
+		      "aggregation_fee_balance", report_aggregation_fee_balances,
+		      "report_denomination_balance", report_denomination_balances);
+  json_dumpf (report,
+	      stdout,
+	      JSON_INDENT (2));
+  json_decref (report);
 }
 
 
@@ -3812,14 +3917,14 @@ main (int argc,
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
     (GNUNET_GETOPT_option_base32_auto ('m',
-                                           "exchange-key",
-                                           "KEY",
-                                           "public key of the exchange (Crockford base32 encoded)",
-                                           &master_pub)),
+				       "exchange-key",
+				       "KEY",
+				       "public key of the exchange (Crockford base32 encoded)",
+				       &master_pub)),
     GNUNET_GETOPT_option_flag ('r',
-                                  "restart",
-                                  "restart audit from the beginning (required on first run)",
-                                  &restart),
+			       "restart",
+			       "restart audit from the beginning (required on first run)",
+			       &restart),
     GNUNET_GETOPT_OPTION_END
   };
 
