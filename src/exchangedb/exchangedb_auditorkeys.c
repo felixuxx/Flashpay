@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2017 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -40,6 +40,11 @@ struct AuditorIterateContext
    * Closure for @e it.
    */
   void *it_cls;
+
+  /**
+   * Status of the iteration.
+   */
+  int status;
 };
 
 
@@ -94,6 +99,7 @@ auditor_iter (void *cls,
   const char *auditor_url;
   unsigned int dki_len;
   size_t url_len;
+  int iret;
 
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
                                           &size,
@@ -160,14 +166,22 @@ auditor_iter (void *cls,
     GNUNET_free (af);
     return GNUNET_OK;
   }
-  /*Ignoring return value to not interrupt the iteration*/
-  aic->it (aic->it_cls,
-           &af->apub,
-           auditor_url,
-           &af->mpub,
-           dki_len,
-           sigs,
-           dki);
+  /* Ignoring return value to not interrupt the iteration */
+  if (GNUNET_OK !=
+      (iret = aic->it (aic->it_cls,
+		       &af->apub,
+		       auditor_url,
+		       &af->mpub,
+		       dki_len,
+		       sigs,
+		       dki)))
+  {
+    GNUNET_free (af);
+    if (GNUNET_SYSERR == iret)
+      aic->status = GNUNET_SYSERR;
+    return GNUNET_SYSERR;
+  }
+  aic->status++;
   GNUNET_free (af);
   return GNUNET_OK;
 }
@@ -201,10 +215,14 @@ TALER_EXCHANGEDB_auditor_iterate (const struct GNUNET_CONFIGURATION_Handle *cfg,
     return -1;
   aic.it = it;
   aic.it_cls = it_cls;
+  aic.status = 0;
   ret = GNUNET_DISK_directory_scan (auditor_base_dir,
                                     &auditor_iter,
                                     &aic);
   GNUNET_free (auditor_base_dir);
+  if ( (0 != aic.status) ||
+       (GNUNET_OK == ret) )
+    return aic.status;
   return ret;
 }
 
