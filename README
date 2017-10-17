@@ -15,7 +15,7 @@ payment system.
 
 Taler is currently developed by a worldwide group of independent free
 software developers and the DECENTRALISE team at Inria Rennes.  Taler
-is free software and a GNU package (http://www.gnu.org/).
+is free software and a GNU package (https://www.gnu.org/).
 
 This is an alpha release with a few known bugs, lacking a few
 important features, documentation, testing, performance tuning and an
@@ -23,7 +23,7 @@ external security audit.  However, you can run the code and it largely
 works fine.  that does not work yet.  This package also only includes
 the Taler exchange, not the other components of the system.
 
-Documentation about Taler can be found at http://taler.net/.
+Documentation about Taler can be found at https://taler.net/.
 Our bug tracker is at https://gnunet.org/bugs/.
 
 
@@ -63,9 +63,17 @@ src/exchange-tools/
 src/exchange-lib/
   -- libtalerexchange: C API to issue HTTP requests to exchange
 
+src/auditor/
+  -- tools to generate reports about financial performance and
+     to validate that the exchange has been operating correctly
+
+src/benchmark/
+  -- tool to run performance measurements
+
+
 
 Getting Started
-==============
+===============
 
 The following steps illustrate how to set up a exchange HTTP server.
 They take as a stub for configuring the exchange the content of 'contrib/exchange-template/config/'.
