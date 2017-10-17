@@ -1095,11 +1095,12 @@ main (int argc,
                                "restart",
                                "restart audit from the beginning (required on first run)",
                                &restart),
-    GNUNET_GETOPT_option_string ('w',
-                                 "wire",
-                                 "PLUGINNAME",
-                                 "name of the wire plugin to use",
-                                 &wire_plugin),
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_string ('w',
+				  "wire",
+				  "PLUGINNAME",
+				  "name of the wire plugin to use",
+				  &wire_plugin)),
     GNUNET_GETOPT_OPTION_END
   };
 
