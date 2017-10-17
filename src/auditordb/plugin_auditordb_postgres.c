@@ -1445,6 +1445,11 @@ postgres_get_wire_auditor_progress (void *cls,
                                                  "wire_auditor_progress_select",
                                                  params,
                                                  rs);
+  if (qs <= 0)
+  {
+    *wire_off_size = 0;
+    xsize = 0;
+  }
   GNUNET_assert (xsize == *wire_off_size);
   return qs;
 }
