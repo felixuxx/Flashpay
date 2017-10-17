@@ -1599,7 +1599,12 @@ main (int argc,
   GNUNET_assert (COIN_VALUE <= (1LL << REFRESH_SLOTS_NEEDED));
   ret = GNUNET_GETOPT_run ("taler-exchange-benchmark",
 			   options, argc, argv);
-  GNUNET_assert (GNUNET_SYSERR != ret);
+  if (GNUNET_SYSERR == ret)
+  {
+    fprintf (stderr,
+	     "Invalid command line arguments\n");
+    return 1;
+  }
   if (GNUNET_NO == ret)
     return 0;
   if ( (0 != num_iterations) &&
