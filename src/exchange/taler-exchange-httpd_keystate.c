@@ -542,7 +542,6 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
 }
 
 
-
 /**
  * Closure for #add_revocations_transaction().
  */
@@ -671,8 +670,9 @@ reload_keys_denom_iter (void *cls,
   int res;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Loading denomination key `%s'\n",
-              alias);
+              "Loading denomination key `%s' (%s)\n",
+              alias,
+	      GNUNET_h2s (&dki->issue.properties.denom_hash));
   now = GNUNET_TIME_absolute_get ();
   expire_deposit = GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit);
   if (expire_deposit.abs_value_us < now.abs_value_us)
@@ -697,8 +697,9 @@ reload_keys_denom_iter (void *cls,
     struct AddRevocationContext arc;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Adding denomination key `%s' to revocation set\n",
-                alias);
+                "Adding denomination key `%s' (%s) to revocation set\n",
+                alias,
+		GNUNET_h2s (&dki->issue.properties.denom_hash));
     res = store_in_map (key_state->revoked_map,
                         dki);
     if (GNUNET_NO == res)
@@ -729,8 +730,9 @@ reload_keys_denom_iter (void *cls,
   if (start.abs_value_us > horizon.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Skipping future denomination key `%s' (starts at %s)\n",
+                "Skipping future denomination key `%s' (%s), validity starts at %s\n",
                 alias,
+		GNUNET_h2s (&dki->issue.properties.denom_hash),
                 GNUNET_STRINGS_absolute_time_to_string (start));
     return GNUNET_OK;
   }
@@ -742,11 +744,16 @@ reload_keys_denom_iter (void *cls,
 			      (void *) dki))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Could not persist denomination key in DB. Committing suicide via SIGTERM.\n");
+		"Could not persist denomination key %s in DB. Committing suicide via SIGTERM.\n",
+		GNUNET_h2s (&dki->issue.properties.denom_hash));
     handle_signal (SIGTERM);
     return GNUNET_SYSERR;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+	      "Adding denomination key `%s' (%s) to active set\n",
+	      alias,
+	      GNUNET_h2s (&dki->issue.properties.denom_hash));
   res = store_in_map (key_state->denomkey_map,
                       dki);
   if (GNUNET_NO == res)
@@ -892,25 +899,42 @@ reload_auditor_iter (void *cls,
      keys actually match the denomination keys that are active right now */
   for (unsigned int i=0;i<dki_len;i++)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-		"Found auditor signature for DK `%s'\n",
-		GNUNET_h2s (&dki[i].denom_hash));
+    int matched;
+
     if (GNUNET_YES !=
         GNUNET_CONTAINER_multihashmap_contains (key_state->denomkey_map,
                                                 &dki[i].denom_hash))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		  "Found auditor signature for DK `%s', but key is not in active map\n",
+		  GNUNET_h2s (&dki[i].denom_hash));
       continue;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		"Found auditor signature for DK `%s'\n",
+		GNUNET_h2s (&dki[i].denom_hash));
     /* Note: the array is sorted, we could theoretically
        speed this up using a binary search. */
+    matched = GNUNET_NO;
     for (unsigned int j=0;j<rfc->denomkey_array_length;j++)
     {
       struct DenominationKeyEntry *dke = &rfc->denomkey_array[j];
       struct AuditorSignature *as;
 
       if (0 !=
-          memcmp (dki,
-                  &dke->dki[i].issue.properties,
+	  memcmp (&dki[i].denom_hash,
+		  &dke->dki->issue.properties.denom_hash,
+		  sizeof (struct GNUNET_HashCode)))
+	continue;
+      if (0 !=
+          memcmp (&dki[i],
+                  &dke->dki->issue.properties,
                   sizeof (struct TALER_DenominationKeyValidityPS)))
+      {
+	/* if the hash is the same, the properties should also match! */
+	GNUNET_break (0);
         continue;
+      }
       as = GNUNET_malloc (sizeof (struct AuditorSignature) +
                           strlen (auditor_url) + 1);
       as->asig = asigs[i];
@@ -922,6 +946,15 @@ reload_auditor_iter (void *cls,
       GNUNET_CONTAINER_DLL_insert (dke->as_head,
                                    dke->as_tail,
                                    as);
+      matched = GNUNET_YES;
+      break;
+    }
+    if (GNUNET_NO == matched)
+    {
+      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		  "DK `%s' is in active map, but not in array!?\n",
+		  GNUNET_h2s (&dki[i].denom_hash));
     }
   }
   return GNUNET_OK;
@@ -1459,10 +1492,12 @@ make_fresh_key_state ()
   {
     const struct DenominationKeyEntry *dke
       = &rfc.denomkey_array[i];
+
     if (NULL == dke->as_head)
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-		  "Denomination key `%s' not signed by any auditor!\n",
-		  GNUNET_h2s (&dke->denom_key_hash));
+		  "Denomination key `%s' at %p not signed by any auditor!\n",
+		  GNUNET_h2s (&dke->denom_key_hash),
+		  dke);
   }
   
   /* Determine size of `krd_array` by counting number of discrete

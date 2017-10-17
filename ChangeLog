@@ -1,3 +1,7 @@
+Tue Oct 17 14:32:46 CEST 2017
+	Fix building of /keys response to include full auditor
+	signature set instead of partial map. -CG
+
 Mon Oct 16 12:10:35 CEST 2017
 	Realize JSON-based report formats from auditor (#4963). -CG
 
