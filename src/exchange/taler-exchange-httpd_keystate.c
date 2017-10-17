@@ -892,10 +892,15 @@ reload_auditor_iter (void *cls,
      keys actually match the denomination keys that are active right now */
   for (unsigned int i=0;i<dki_len;i++)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		"Found auditor signature for DK `%s'\n",
+		GNUNET_h2s (&dki[i].denom_hash));
     if (GNUNET_YES !=
         GNUNET_CONTAINER_multihashmap_contains (key_state->denomkey_map,
                                                 &dki[i].denom_hash))
       continue;
+    /* Note: the array is sorted, we could theoretically
+       speed this up using a binary search. */
     for (unsigned int j=0;j<rfc->denomkey_array_length;j++)
     {
       struct DenominationKeyEntry *dke = &rfc->denomkey_array[j];
@@ -1449,7 +1454,17 @@ make_fresh_key_state ()
   TALER_EXCHANGEDB_auditor_iterate (cfg,
                                     &reload_auditor_iter,
                                     &rfc);
-
+  /* Sanity check: do we have auditors for all denomination keys? */
+  for (unsigned int i=0;i<rfc.denomkey_array_length;i++)
+  {
+    const struct DenominationKeyEntry *dke
+      = &rfc.denomkey_array[i];
+    if (NULL == dke->as_head)
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+		  "Denomination key `%s' not signed by any auditor!\n",
+		  GNUNET_h2s (&dke->denom_key_hash));
+  }
+  
   /* Determine size of `krd_array` by counting number of discrete
      denomination key starting times. */
   last = GNUNET_TIME_UNIT_ZERO_ABS;
