@@ -33,5 +33,6 @@ EXTRA_DIST = \
   $(man_MANS) \
   $(extra_TEXINFOS) \
   docstyle.css \
-  brown-paper.css
+  brown-paper.css \
+  exchange-db.png
 
