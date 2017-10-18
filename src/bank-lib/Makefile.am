@@ -81,3 +81,6 @@ test_bank_api_with_fakebank_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson
+
+EXTRA_DIST = \
+  bank.conf
