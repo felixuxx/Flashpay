@@ -75,7 +75,7 @@ libtalerwire_la_LIBADD = \
   -lgnunetutil \
   $(XLIB)
 libtalerwire_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:0 \
   -export-dynamic -no-undefined
 
 

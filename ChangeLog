@@ -1,3 +1,6 @@
+Wed Oct 18 15:20:29 CEST 2017
+	Releasing Taler v0.4.0. -CG
+
 Tue Oct 17 14:32:46 CEST 2017
 	Fix building of /keys response to include full auditor
 	signature set instead of partial map. -CG

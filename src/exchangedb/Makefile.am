@@ -54,7 +54,7 @@ libtalerexchangedb_la_LIBADD = \
 
 libtalerexchangedb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
-  -version-info 0:0:0 \
+  -version-info 1:0:0 \
   -no-undefined
 
 
