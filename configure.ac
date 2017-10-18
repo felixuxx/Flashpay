@@ -317,6 +317,8 @@ AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
 if test "$gnurl" = 1
 then
+        LDFLAGS="-L$with_libgnurl/lib $LDFLAGS"
+        CPPFLAGS="-I$with_libgnurl/include $CPPFLAGS"
 	AM_CONDITIONAL(HAVE_LIBGNURL, [true])
 	AC_DEFINE([HAVE_LIBGNURL],[1],[Have libgnurl])
 else
@@ -327,6 +329,8 @@ fi
 LIBCURL_CHECK_CONFIG(,7.34.0,[curl=true],[curl=false])
 if test "x$curl" = xtrue
 then
+ LDFLAGS="-L$with_libcurl/lib $LDFLAGS"
+ CPPFLAGS="-I$with_libcurl/include $CPPFLAGS"
  AC_CHECK_HEADERS([curl/curl.h],
    AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=true],[curl=false],[[#include <curl/curl.h>]]),
    [curl=false])
