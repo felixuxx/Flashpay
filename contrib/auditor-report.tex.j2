@@ -1,0 +1,89 @@
+\documentclass{article} % {acmart}
+\usepackage{url}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+
+\title{Taler Auditor Report}
+\maketitle
+
+\section{Operations}
+
+The balance of the escrow account should
+be {\bf
+\mbox{
+  {{ data.report_denomination_balance[0].total_escrow_balance.value }}.{{ data.report_denomination_balance[0].total_escrow_balance.fraction }} 
+  {{ data.report_denomination_balance[0].total_escrow_balance.currency }}}}.
+
+\noindent
+The active operational risk stands at
+\mbox{
+{\bf 
+  {{ data.report_denomination_balance[0].total_active_risk.value }}.{{ data.report_denomination_balance[0].total_active_risk.fraction }} 
+  {{ data.report_denomination_balance[0].total_active_risk.currency }}}}.
+
+
+\section{Income}
+
+\begin{table}[h!]
+  \caption{Revenue}
+  \label{table:revenue}
+  \begin{tabular}{l|rl}
+    Category    & Amount &   \\ \hline \hline
+  Withdraw fees &
+  {{ data.reserve_balance[0].total_withdraw_fee_income.value }}.{{ data.reserve_balance[0].total_withdraw_fee_income.fraction }} &
+  {{ data.reserve_balance[0].total_withdraw_fee_income.currency }} \\
+  Deposit fees &
+  {{ data.report_denomination_balance[0].total_deposit_fee_income.value }}.{{ data.report_denomination_balance[0].total_deposit_fee_income.fraction }} &
+  {{ data.report_denomination_balance[0].total_deposit_fee_income.currency }} \\
+  Melt fees &
+  {{ data.report_denomination_balance[0].total_melt_fee_income.value }}.{{ data.report_denomination_balance[0].total_melt_fee_income.fraction }} &
+  {{ data.report_denomination_balance[0].total_melt_fee_income.currency }} \\
+  Refund fees &
+  {{ data.report_denomination_balance[0].total_refund_fee_income.value }}.{{ data.report_denomination_balance[0].total_refund_fee_income.fraction }} &
+  {{ data.report_denomination_balance[0].total_refund_fee_income.currency }} \\
+  Aggregation fees &
+  {{ data.aggregation_fee_balance[0].total_aggregation_fee_income.value }}.{{ data.aggregation_fee_balance[0].total_aggregation_fee_income.fraction }} &
+  {{ data.aggregation_fee_balance[0].total_aggregation_fee_income.currency }} \\
+  {\bf Total}  & TBD & TBD \\
+\end{tabular}
+\end{table}
+
+\section{Irregularities}
+
+{% if data.emergencies|length() == 0 %}
+  {\bf No emergencies detected.}
+{% else %}
+  \begin{table}
+    \caption{Emergencies.}
+    \label{table:emergencies}
+    TBD.
+  \end{table}
+      {% endif %}
+
+
+{% if data.reserve_inconsistencies|length() == 0 %}
+  {\bf No reserve inconsistencies detected.}
+{% else %}
+  \begin{table}
+    \caption{Reserve inconsistencies.}
+    \label{table:reserve:inconsistencies}
+    \begin{tabular}{p{1.5cm}|rl|rl|p{4cm}}
+      {\bf Reserve} & \multicolumn{2}{|c|}{Expected} & \multicolumn{2}{|c|}{Observed} & Diagnostic \\ \hline \hline
+{% for item in data.reserve_inconsistencies %}
+  \multicolumn{6}{l}{ {\tt {{ item.reserve_pub }} } } \\
+  &
+  {{ item.expected.value }}.{{ item.expected.fraction }} &
+  {{ item.expected.currency }} &
+  {{ item.observed.value }}.{{ item.observed.fraction }} &
+  {{ item.observed.currency }} &
+  {{ item.diagnostic }} \\ \hline
+{% endfor %}
+  \hline
+  {\bf Reserve} & Expected & Observed & Diagnostic \\ 
+    \end{tabular}
+  \end{table}
+{% endif %}
+    
+\end{document}

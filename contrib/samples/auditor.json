@@ -2,7 +2,7 @@
   "emergencies": [],
   "row-inconsistencies": [],
   "row-minor-inconsistencies": [],
-  "reserve-inconsistencies": [
+  "reserve_inconsistencies": [
     {
       "reserve_pub": "8ZV52AB6MHX8YVV0W0FHVDEZB54197JB85703J0E0AY6ZC4BFR7G",
       "expected": {
