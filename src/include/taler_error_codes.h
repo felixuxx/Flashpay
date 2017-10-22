@@ -1336,6 +1336,46 @@ enum TALER_ErrorCode
    */
    TALER_EC_PAY_DB_STORE_PAYMENTS_ERROR = 2605,
 
+  /**
+   * The backend does not know the instance that was supposed to support
+   * the tip.  Likely to be a configuration error. Returned with an
+   * HTTP status code of "NOT FOUND".
+   */
+  TALER_EC_TIP_AUTHORIZE_INSTANCE_UNKNOWN = 2700,
+
+  /**
+   * The backend knows the instance that was supposed to support the
+   * tip, but it was not configured for tipping (i.e. has no exchange
+   * associated with it).  Likely to be a configuration
+   * error. Returned with an HTTP status code of "NOT FOUND".
+   */
+  TALER_EC_TIP_AUTHORIZE_INSTANCE_DOES_NOT_TIP = 2701,
+
+  /**
+   * The backend knows the instance that was supposed to support the
+   * tip, and it was configured for tipping. However, the funds
+   * remaining are insufficient to cover the tip, and the merchant
+   * should top up the reserve.
+   * Returned with an HTTP status code of "PRECONDITION FAILED".
+   */
+  TALER_EC_TIP_AUTHORIZE_INSUFFICIENT_FUNDS = 2702,
+
+  /**
+   * The backend had trouble accessing the database to persist
+   * information about the tip authorization.
+   * Returned with an HTTP status code of internal error.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_TRANSACTION_ERROR = 2703,
+
+  /**
+   * The backend had trouble accessing the database to persist
+   * information about enabling tips.
+   * Returned with an HTTP status code of internal error.
+   */
+  TALER_EC_TIP_ENABLE_DB_TRANSACTION_ERROR = 2750,
+
+
+
 
   /* ********** /test API error codes ************* */
 
