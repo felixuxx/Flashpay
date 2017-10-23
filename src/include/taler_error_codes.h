@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 Inria
+  Copyright (C) 2016, 2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1352,20 +1352,41 @@ enum TALER_ErrorCode
   TALER_EC_TIP_AUTHORIZE_INSTANCE_DOES_NOT_TIP = 2701,
 
   /**
+   * The reserve that was used to fund the tips has expired.
+   * Returned with an HTTP status code of "not found".
+   */
+  TALER_EC_TIP_AUTHORIZE_RESERVE_EXPIRED = 2702,
+
+  /**
+   * The reserve that was used to fund the tips was not found in the DB.
+   * Returned with an HTTP status code of "not found".
+   */
+  TALER_EC_TIP_AUTHORIZE_RESERVE_UNKNOWN = 2703,
+
+  /**
    * The backend knows the instance that was supposed to support the
    * tip, and it was configured for tipping. However, the funds
    * remaining are insufficient to cover the tip, and the merchant
    * should top up the reserve.
    * Returned with an HTTP status code of "PRECONDITION FAILED".
    */
-  TALER_EC_TIP_AUTHORIZE_INSUFFICIENT_FUNDS = 2702,
+  TALER_EC_TIP_AUTHORIZE_INSUFFICIENT_FUNDS = 2704,
 
   /**
    * The backend had trouble accessing the database to persist
    * information about the tip authorization.
    * Returned with an HTTP status code of internal error.
    */
-  TALER_EC_TIP_AUTHORIZE_DB_TRANSACTION_ERROR = 2703,
+  TALER_EC_TIP_AUTHORIZE_DB_HARD_ERROR = 2705,
+
+  /**
+   * The backend had trouble accessing the database to persist
+   * information about the tip authorization.
+   * The problem might be fixable by repeating the transaction.
+   * This error should never be returned to clients but handled
+   * internally.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_SOFT_ERROR = 2706,
 
   /**
    * The backend had trouble accessing the database to persist
@@ -1374,7 +1395,39 @@ enum TALER_ErrorCode
    */
   TALER_EC_TIP_ENABLE_DB_TRANSACTION_ERROR = 2750,
 
+  /**
+   * The tip ID is unknown.  This could happen if the tip has
+   * expired.  Returned with an HTTP status code of "not found".
+   */
+  TALER_EC_TIP_PICKUP_TIP_ID_UNKNOWN = 2800,
 
+  /**
+   * The amount requested exceeds the remaining tipping balance for this tip ID.
+   * Returned with an HTTP status code of "service unavailable".
+   */
+  TALER_EC_TIP_PICKUP_NO_FUNDS = 2801,
+
+  /**
+   * We encountered a DB error, repeating the request may work.
+   * (This error code should not be returned to the application
+   * but ought to be handled internally by retrying.)
+   */
+  TALER_EC_TIP_PICKUP_DB_ERROR_SOFT = 2802,
+
+  /**
+   * We encountered a DB error, repeating the request will not help.
+   * This is an internal server error.
+   */
+  TALER_EC_TIP_PICKUP_DB_ERROR_HARD = 2803,
+
+  /**
+   * The same pickup ID was already used for picking up a different
+   * amount. This points to a very strange internal error as the
+   * pickup ID is derived from the denomination key which is tied
+   * to a particular amount. Hence this should also be an internal
+   * server error.
+   */
+  TALER_EC_TIP_PICKUP_AMOUNT_CHANGED = 2804,
 
 
   /* ********** /test API error codes ************* */
