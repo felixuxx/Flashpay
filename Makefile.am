@@ -2,9 +2,17 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
 if DOC_ONLY
+if ENABLE_DOC
   SUBDIRS = . doc
 else
+  SUBDIRS = .
+endif
+else
+if ENABLE_DOC
   SUBDIRS = . src doc
+else
+  SUBDIRS = . src doc
+endif
 endif
 
 @DX_RULES@

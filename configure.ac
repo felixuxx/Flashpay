@@ -472,6 +472,14 @@ AC_TYPE_UINTMAX_T
 # Checks for library functions.
 AC_CHECK_FUNCS([strdup])
 
+
+AC_ARG_ENABLE([[doc]],
+  [AS_HELP_STRING([[--disable-doc]], [do not build any documentation])], ,
+    [enable_doc=yes])
+test "x$enable_doc" = "xno" || enable_doc=yes
+AM_CONDITIONAL([ENABLE_DOC], [test "x$enable_doc" = "xyes"])
+
+
 else
 
 # logic if doc_only is set, make sure conditionals are still defined
@@ -482,6 +490,7 @@ AM_CONDITIONAL([HAVE_LIBCURL], [false])
 AM_CONDITIONAL([HAVE_LIBGNURL], [false])
 AM_CONDITIONAL([HAVE_DEVELOPER], [false])
 AM_CONDITIONAL([USE_COVERAGE], [false])
+AM_CONDITIONAL([ENABLE_DOC], [true])
 
 
 # end of 'doc_only'
