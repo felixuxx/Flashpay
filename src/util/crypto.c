@@ -178,9 +178,9 @@ TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans
  * @param[out] fc value to initialize
  */
 void
-TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
+TALER_setup_planchet (const struct TALER_TransferSecretP *secret_seed,
                         unsigned int coin_num_salt,
-                        struct TALER_FreshCoinP *fc)
+                        struct TALER_PlanchetSecretsP *fc)
 {
   uint32_t be_salt = htonl (coin_num_salt);
   uint8_t *p;

@@ -40,8 +40,8 @@ test_high_level ()
   struct TALER_TransferPublicKeyP trans_pub;
   struct TALER_TransferSecretP secret;
   struct TALER_TransferSecretP secret2;
-  struct TALER_FreshCoinP fc1;
-  struct TALER_FreshCoinP fc2;
+  struct TALER_PlanchetSecretsP fc1;
+  struct TALER_PlanchetSecretsP fc2;
 
   pk = GNUNET_CRYPTO_eddsa_key_create ();
   coin_priv.eddsa_priv = *pk;
@@ -70,16 +70,16 @@ test_high_level ()
 		 memcmp (&secret,
 			 &secret2,
 			 sizeof (secret)));
-  TALER_setup_fresh_coin (&secret,
+  TALER_setup_planchet (&secret,
                           0,
                           &fc1);
-  TALER_setup_fresh_coin (&secret,
+  TALER_setup_planchet (&secret,
                           1,
                           &fc2);
   GNUNET_assert (0 !=
                  memcmp (&fc1,
                          &fc2,
-                         sizeof (struct TALER_FreshCoinP)));
+                         sizeof (struct TALER_PlanchetSecretsP)));
   return 0;
 }
 

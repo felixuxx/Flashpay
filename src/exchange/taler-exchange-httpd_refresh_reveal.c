@@ -171,13 +171,13 @@ check_commitment (struct MHD_Connection *connection,
   /* Check that the commitments for all new coins were correct */
   for (unsigned int j = 0; j < num_newcoins; j++)
   {
-    struct TALER_FreshCoinP fc;
+    struct TALER_PlanchetSecretsP fc;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
 
-    TALER_setup_fresh_coin (&transfer_secret,
+    TALER_setup_planchet (&transfer_secret,
                             j,
                             &fc);
     GNUNET_CRYPTO_eddsa_key_get_public (&fc.coin_priv.eddsa_priv,

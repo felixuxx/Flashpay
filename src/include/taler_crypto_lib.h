@@ -522,7 +522,7 @@ TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans
  * Header for serializations of coin-specific information about the
  * fresh coins we generate during a melt.
  */
-struct TALER_FreshCoinP
+struct TALER_PlanchetSecretsP
 {
 
   /**
@@ -548,9 +548,9 @@ struct TALER_FreshCoinP
  * @param[out] fc value to initialize
  */
 void
-TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
-                        unsigned int coin_num_salt,
-                        struct TALER_FreshCoinP *fc);
+TALER_setup_planchet (const struct TALER_TransferSecretP *secret_seed,
+                      unsigned int coin_num_salt,
+                      struct TALER_PlanchetSecretsP *fc);
 
 
 

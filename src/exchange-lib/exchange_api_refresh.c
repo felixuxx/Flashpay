@@ -117,7 +117,7 @@ struct MeltDataP
      1) struct MeltedCoinP melted_coins[num_melted_coins];
      2) struct TALER_EXCHANGE_DenomPublicKey fresh_pks[num_fresh_coins];
      3) TALER_CNC_KAPPA times:
-        3a) struct TALER_FreshCoinP fresh_coins[num_fresh_coins];
+        3a) struct TALER_PlanchetSecretsP fresh_coins[num_fresh_coins];
   */
 };
 
@@ -204,7 +204,7 @@ struct MeltData
    * Arrays of @e num_fresh_coins with information about the fresh
    * coins to be created, for each cut-and-choose dimension.
    */
-  struct TALER_FreshCoinP *fresh_coins[TALER_CNC_KAPPA];
+  struct TALER_PlanchetSecretsP *fresh_coins[TALER_CNC_KAPPA];
 };
 
 
@@ -490,15 +490,15 @@ deserialize_denomination_key (struct TALER_DenominationPublicKey *dk,
  *        @a buf is NULL, number of bytes required
  */
 static size_t
-serialize_fresh_coin (const struct TALER_FreshCoinP *fc,
+serialize_fresh_coin (const struct TALER_PlanchetSecretsP *fc,
                       char *buf,
                       size_t off)
 {
   if (NULL != buf)
     memcpy (&buf[off],
 	    fc,
-	    sizeof (struct TALER_FreshCoinP));
-  return sizeof (struct TALER_FreshCoinP);
+	    sizeof (struct TALER_PlanchetSecretsP));
+  return sizeof (struct TALER_PlanchetSecretsP);
 }
 
 
@@ -512,12 +512,12 @@ serialize_fresh_coin (const struct TALER_FreshCoinP *fc,
  * @return number of bytes read from @a buf, 0 on error
  */
 static size_t
-deserialize_fresh_coin (struct TALER_FreshCoinP *fc,
+deserialize_fresh_coin (struct TALER_PlanchetSecretsP *fc,
                         const char *buf,
                         size_t size,
                         int *ok)
 {
-  if (size < sizeof (struct TALER_FreshCoinP))
+  if (size < sizeof (struct TALER_PlanchetSecretsP))
   {
     GNUNET_break (0);
     *ok = GNUNET_NO;
@@ -525,8 +525,8 @@ deserialize_fresh_coin (struct TALER_FreshCoinP *fc,
   }
   memcpy (fc,
           buf,
-          sizeof (struct TALER_FreshCoinP));
-  return sizeof (struct TALER_FreshCoinP);
+          sizeof (struct TALER_PlanchetSecretsP));
+  return sizeof (struct TALER_PlanchetSecretsP);
 }
 
 
@@ -617,7 +617,7 @@ deserialize_melt_data (const char *buf,
                                     struct TALER_DenominationPublicKey);
   for (i=0;i<TALER_CNC_KAPPA;i++)
     md->fresh_coins[i] = GNUNET_new_array (md->num_fresh_coins,
-                                           struct TALER_FreshCoinP);
+                                           struct TALER_PlanchetSecretsP);
   off = sizeof (struct MeltDataP);
   ok = GNUNET_YES;
   off += deserialize_melted_coin (&md->melted_coin,
@@ -753,10 +753,10 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   for (i=0;i<TALER_CNC_KAPPA;i++)
   {
     md.fresh_coins[i] = GNUNET_new_array (fresh_pks_len,
-                                          struct TALER_FreshCoinP);
+                                          struct TALER_PlanchetSecretsP);
     for (j=0;j<fresh_pks_len;j++)
     {
-      TALER_setup_fresh_coin (&trans_sec[i],
+      TALER_setup_planchet (&trans_sec[i],
                               j,
                               &md.fresh_coins[i][j]);
     }
@@ -824,7 +824,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   {
     for (j = 0; j < fresh_pks_len; j++)
     {
-      const struct TALER_FreshCoinP *fc; /* coin this is about */
+      const struct TALER_PlanchetSecretsP *fc; /* coin this is about */
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct GNUNET_HashCode coin_hash;
       char *coin_ev; /* blinded message to be signed (in envelope) for each coin */
@@ -1293,7 +1293,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     tmp = json_array ();
     for (i=0;i<md->num_fresh_coins;i++)
     {
-      const struct TALER_FreshCoinP *fc = &md->fresh_coins[j][i];
+      const struct TALER_PlanchetSecretsP *fc = &md->fresh_coins[j][i];
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct GNUNET_HashCode coin_hash;
       char *coin_ev; /* blinded message to be signed (in envelope) for each coin */
@@ -1506,7 +1506,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
   }
   for (i=0;i<rrh->md->num_fresh_coins;i++)
   {
-    const struct TALER_FreshCoinP *fc;
+    const struct TALER_PlanchetSecretsP *fc;
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct GNUNET_CRYPTO_RsaSignature *blind_sig;

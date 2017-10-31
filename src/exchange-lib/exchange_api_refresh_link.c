@@ -99,7 +99,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     GNUNET_JSON_spec_end()
   };
   struct TALER_TransferSecretP secret;
-  struct TALER_FreshCoinP fc;
+  struct TALER_PlanchetSecretsP fc;
 
   /* parse reply */
   if (GNUNET_OK !=
@@ -114,7 +114,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   TALER_link_recover_transfer_secret (trans_pub,
                                       &rlh->coin_priv,
                                       &secret);
-  TALER_setup_fresh_coin (&secret,
+  TALER_setup_planchet (&secret,
                           coin_num,
                           &fc);
 
