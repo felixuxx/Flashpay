@@ -503,7 +503,6 @@ TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans
                                    struct TALER_TransferSecretP *transfer_secret);
 
 
-
 /**
  * Decrypt the shared @a secret from the information in the
  * @a trans_priv and @a coin_pub.
@@ -517,6 +516,7 @@ TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans
                                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                                     struct TALER_TransferSecretP *transfer_secret);
 
+GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Header for serializations of coin-specific information about the
@@ -537,6 +537,8 @@ struct TALER_PlanchetSecretsP
 
 };
 
+GNUNET_NETWORK_STRUCT_END
+
 
 /**
  * Setup information for a fresh coin, deriving the coin private key
@@ -548,7 +550,7 @@ struct TALER_PlanchetSecretsP
  * @param[out] fc value to initialize
  */
 void
-TALER_setup_planchet (const struct TALER_TransferSecretP *secret_seed,
+TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                       unsigned int coin_num_salt,
                       struct TALER_PlanchetSecretsP *fc);
 

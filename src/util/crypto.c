@@ -178,7 +178,7 @@ TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans
  * @param[out] fc value to initialize
  */
 void
-TALER_setup_planchet (const struct TALER_TransferSecretP *secret_seed,
+TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                         unsigned int coin_num_salt,
                         struct TALER_PlanchetSecretsP *fc)
 {

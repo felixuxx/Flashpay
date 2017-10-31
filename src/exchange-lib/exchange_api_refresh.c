@@ -756,7 +756,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
                                           struct TALER_PlanchetSecretsP);
     for (j=0;j<fresh_pks_len;j++)
     {
-      TALER_setup_planchet (&trans_sec[i],
+      TALER_planchet_setup_refresh (&trans_sec[i],
                               j,
                               &md.fresh_coins[i][j]);
     }

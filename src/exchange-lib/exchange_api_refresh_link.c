@@ -114,7 +114,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   TALER_link_recover_transfer_secret (trans_pub,
                                       &rlh->coin_priv,
                                       &secret);
-  TALER_setup_planchet (&secret,
+  TALER_planchet_setup_refresh (&secret,
                           coin_num,
                           &fc);
 

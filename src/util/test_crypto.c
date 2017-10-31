@@ -70,10 +70,10 @@ test_high_level ()
 		 memcmp (&secret,
 			 &secret2,
 			 sizeof (secret)));
-  TALER_setup_planchet (&secret,
+  TALER_planchet_setup_refresh (&secret,
                           0,
                           &fc1);
-  TALER_setup_planchet (&secret,
+  TALER_planchet_setup_refresh (&secret,
                           1,
                           &fc2);
   GNUNET_assert (0 !=

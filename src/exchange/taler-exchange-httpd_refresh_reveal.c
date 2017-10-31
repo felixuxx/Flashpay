@@ -177,7 +177,7 @@ check_commitment (struct MHD_Connection *connection,
     char *buf;
     size_t buf_len;
 
-    TALER_setup_planchet (&transfer_secret,
+    TALER_planchet_setup_refresh (&transfer_secret,
                             j,
                             &fc);
     GNUNET_CRYPTO_eddsa_key_get_public (&fc.coin_priv.eddsa_priv,
