@@ -967,96 +967,56 @@ handle_reserve_withdraw_finished (void *cls,
 
 
 /**
- * Withdraw a coin from the exchange using a /reserve/withdraw request.  Note
- * that to ensure that no money is lost in case of hardware failures,
- * the caller must have committed (most of) the arguments to disk
- * before calling, and be ready to repeat the request with the same
- * arguments in case of failures.
+ * Helper function for #TALER_EXCHANGE_reserve_withdraw2() and
+ * #TALER_EXCHANGE_reserve_withdraw().
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to create
- * @param reserve_priv private key of the reserve to withdraw from
+ * @param reserve_sig signature from the reserve authorizing the withdrawal
+ * @param reserve_pub public key of the reserve to withdraw from
  * @param ps secrets of the planchet
  *        caller must have committed this value to disk before the call (with @a pk)
+ * @param pd planchet details matching @a ps
  * @param res_cb the callback to call when the final result for this request is available
- * @param res_cb_cls closure for the above callback
- * @return handle for the operation on success, NULL on error, i.e.
+ * @param res_cb_cls closure for @a res_cb
+ * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_ReserveWithdrawHandle *
-TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                                 const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                                 const struct TALER_ReservePrivateKeyP *reserve_priv,
-                                 const struct TALER_PlanchetSecretsP *ps,
-                                 TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
-                                 void *res_cb_cls)
+reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
+                           const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                           const struct TALER_ReserveSignatureP *reserve_sig,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           const struct TALER_PlanchetSecretsP *ps,
+                           const struct TALER_PlanchetDetail *pd,
+                           TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                           void *res_cb_cls)
 {
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
-  struct TALER_WithdrawRequestPS req;
-  struct TALER_ReserveSignatureP reserve_sig;
   struct GNUNET_CURL_Context *ctx;
-  struct TALER_Amount amount_with_fee;
   json_t *withdraw_obj;
   CURL *eh;
-  struct TALER_PlanchetDetail pd;
 
-  if (GNUNET_OK !=
-      TALER_planchet_prepare (&pk->key,
-                              ps,
-                              &pd))
-  {
-    GNUNET_break_op (0);
-    return NULL;
-  }
   wsh = GNUNET_new (struct TALER_EXCHANGE_ReserveWithdrawHandle);
   wsh->exchange = exchange;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
   wsh->pk = pk;
-  wsh->c_hash = pd.c_hash;
-  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                      &wsh->reserve_pub.eddsa_pub);
-  req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
-  req.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-  req.reserve_pub = wsh->reserve_pub;
-  if (GNUNET_OK !=
-      TALER_amount_add (&amount_with_fee,
-                        &pk->fee_withdraw,
-                        &pk->value))
-  {
-    /* exchange gave us denomination keys that overflow like this!? */
-    GNUNET_break_op (0);
-    GNUNET_free (pd.coin_ev);
-    GNUNET_free (wsh);
-    return NULL;
-  }
-  TALER_amount_hton (&req.amount_with_fee,
-                     &amount_with_fee);
-  TALER_amount_hton (&req.withdraw_fee,
-                     &pk->fee_withdraw);
-  req.h_denomination_pub = pd.denom_pub_hash;
-  GNUNET_CRYPTO_hash (pd.coin_ev,
-                      pd.coin_ev_size,
-                      &req.h_coin_envelope);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
-                                           &req.purpose,
-                                           &reserve_sig.eddsa_signature));
+  wsh->reserve_pub = *reserve_pub;
+  wsh->c_hash = pd->c_hash;
   withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub and coin_ev */
                             " s:o, s:o}",/* reserve_pub and reserve_sig */
                             "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
-                            "coin_ev", GNUNET_JSON_from_data (pd.coin_ev,
-                                                              pd.coin_ev_size),
-                            "reserve_pub", GNUNET_JSON_from_data_auto (&wsh->reserve_pub),
-                            "reserve_sig", GNUNET_JSON_from_data_auto (&reserve_sig));
-  GNUNET_free (pd.coin_ev);
+                            "coin_ev", GNUNET_JSON_from_data (pd->coin_ev,
+                                                              pd->coin_ev_size),
+                            "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
+                            "reserve_sig", GNUNET_JSON_from_data_auto (reserve_sig));
   if (NULL == withdraw_obj)
   {
     GNUNET_break (0);
     return NULL;
   }
-
 
   wsh->ps = *ps;
   wsh->url = MAH_path_to_url (exchange, "/reserve/withdraw");
@@ -1084,6 +1044,142 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                           GNUNET_YES,
                           &handle_reserve_withdraw_finished,
                           wsh);
+  return wsh;
+}
+
+
+/**
+ * Withdraw a coin from the exchange using a /reserve/withdraw request.  Note
+ * that to ensure that no money is lost in case of hardware failures,
+ * the caller must have committed (most of) the arguments to disk
+ * before calling, and be ready to repeat the request with the same
+ * arguments in case of failures.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pk kind of coin to create
+ * @param reserve_priv private key of the reserve to withdraw from
+ * @param ps secrets of the planchet
+ *        caller must have committed this value to disk before the call (with @a pk)
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return handle for the operation on success, NULL on error, i.e.
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReserveWithdrawHandle *
+TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
+                                 const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                                 const struct TALER_ReservePrivateKeyP *reserve_priv,
+                                 const struct TALER_PlanchetSecretsP *ps,
+                                 TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                 void *res_cb_cls)
+{
+  struct TALER_Amount amount_with_fee;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_ReserveSignatureP reserve_sig;
+  struct TALER_WithdrawRequestPS req;
+  struct TALER_PlanchetDetail pd;
+  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                      &reserve_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                      &req.reserve_pub.eddsa_pub);
+  req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
+  req.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
+  if (GNUNET_OK !=
+      TALER_amount_add (&amount_with_fee,
+                        &pk->fee_withdraw,
+                        &pk->value))
+  {
+    /* exchange gave us denomination keys that overflow like this!? */
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  TALER_amount_hton (&req.amount_with_fee,
+                     &amount_with_fee);
+  TALER_amount_hton (&req.withdraw_fee,
+                     &pk->fee_withdraw);
+  req.h_denomination_pub = pd.denom_pub_hash;
+  if (GNUNET_OK !=
+      TALER_planchet_prepare (&pk->key,
+                              ps,
+                              &pd))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  GNUNET_CRYPTO_hash (pd.coin_ev,
+                      pd.coin_ev_size,
+                      &req.h_coin_envelope);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                                           &req.purpose,
+                                           &reserve_sig.eddsa_signature));
+  wsh = reserve_withdraw_internal (exchange,
+                                   pk,
+                                   &reserve_sig,
+                                   &req.reserve_pub,
+                                   ps,
+                                   &pd,
+                                   res_cb,
+                                   res_cb_cls);
+  GNUNET_free (pd.coin_ev);
+  return wsh;
+}
+
+
+/**
+ * Withdraw a coin from the exchange using a /reserve/withdraw
+ * request.  This API is typically used by a wallet to withdraw a tip
+ * where the reserve's signature was created by the merchant already.
+ *
+ * Note that to ensure that no money is lost in case of hardware
+ * failures, the caller must have committed (most of) the arguments to
+ * disk before calling, and be ready to repeat the request with the
+ * same arguments in case of failures.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pk kind of coin to create
+ * @param reserve_sig signature from the reserve authorizing the withdrawal
+ * @param reserve_pub public key of the reserve to withdraw from
+ * @param ps secrets of the planchet
+ *        caller must have committed this value to disk before the call (with @a pk)
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for @a res_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReserveWithdrawHandle *
+TALER_EXCHANGE_reserve_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
+                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                                  const struct TALER_ReserveSignatureP *reserve_sig,
+                                  const struct TALER_ReservePublicKeyP *reserve_pub,
+                                  const struct TALER_PlanchetSecretsP *ps,
+                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                  void *res_cb_cls)
+{
+  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+  struct TALER_PlanchetDetail pd;
+
+  if (GNUNET_OK !=
+      TALER_planchet_prepare (&pk->key,
+                              ps,
+                              &pd))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  wsh = reserve_withdraw_internal (exchange,
+                                   pk,
+                                   reserve_sig,
+                                   reserve_pub,
+                                   ps,
+                                   &pd,
+                                   res_cb,
+                                   res_cb_cls);
+  GNUNET_free (pd.coin_ev);
   return wsh;
 }
 

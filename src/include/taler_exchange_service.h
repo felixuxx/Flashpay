@@ -966,12 +966,14 @@ typedef void
 
 
 /**
- * Withdraw a coin from the exchange using a /reserve/withdraw request.  This
- * API is typically used by a wallet.  Note that to ensure that no
- * money is lost in case of hardware failures, the caller must have
- * committed (most of) the arguments to disk before calling, and be
- * ready to repeat the request with the same arguments in case of
- * failures.
+ * Withdraw a coin from the exchange using a /reserve/withdraw
+ * request.  This API is typically used by a wallet to withdraw from a
+ * reserve.
+ *
+ * Note that to ensure that no money is lost in case of hardware
+ * failures, the caller must have committed (most of) the arguments to
+ * disk before calling, and be ready to repeat the request with the
+ * same arguments in case of failures.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to create
@@ -991,6 +993,38 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  const struct TALER_PlanchetSecretsP *ps,
                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
                                  void *res_cb_cls);
+
+
+/**
+ * Withdraw a coin from the exchange using a /reserve/withdraw
+ * request.  This API is typically used by a wallet to withdraw a tip
+ * where the reserve's signature was created by the merchant already.
+ *
+ * Note that to ensure that no money is lost in case of hardware
+ * failures, the caller must have committed (most of) the arguments to
+ * disk before calling, and be ready to repeat the request with the
+ * same arguments in case of failures.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pk kind of coin to create
+ * @param reserve_sig signature from the reserve authorizing the withdrawal
+ * @param reserve_pub public key of the reserve to withdraw from
+ * @param ps secrets of the planchet
+ *        caller must have committed this value to disk before the call (with @a pk)
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for @a res_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReserveWithdrawHandle *
+TALER_EXCHANGE_reserve_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
+                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                                  const struct TALER_ReserveSignatureP *reserve_sig,
+                                  const struct TALER_ReservePublicKeyP *reserve_pub,
+                                  const struct TALER_PlanchetSecretsP *ps,
+                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                  void *res_cb_cls);
 
 
 /**
