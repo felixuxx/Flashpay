@@ -260,8 +260,7 @@ handle_payback_finished (void *cls,
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
- * @param coin_priv the coin's private key,
- * @param blinding_key where to fetch the coin's blinding key
+ * @param ps secret internals of the original planchet
  * @param payback_cb the callback to call when the final result for this request is available
  * @param payback_cb_cls closure for @a payback_cb
  * @return NULL
@@ -272,8 +271,7 @@ struct TALER_EXCHANGE_PaybackHandle *
 TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_EXCHANGE_DenomPublicKey *pk,
                         const struct TALER_DenominationSignature *denom_sig,
-                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                        const struct TALER_DenominationBlindingKeyP *blinding_key,
+                        const struct TALER_PlanchetSecretsP *ps,
                         TALER_EXCHANGE_PaybackResultCallback payback_cb,
                         void *payback_cb_cls)
 {
@@ -288,12 +286,12 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
 		 MAH_handle_is_ready (exchange));
   pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
   pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
-  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+  GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &pr.coin_pub.eddsa_pub);
   pr.h_denom_pub = pk->h_key;
-  pr.coin_blind = *blinding_key;
+  pr.coin_blind = ps->blinding_key;
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                 GNUNET_CRYPTO_eddsa_sign (&ps->coin_priv.eddsa_priv,
                                            &pr.purpose,
                                            &coin_sig.eddsa_signature));
 
@@ -304,7 +302,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                            "denom_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
                            "coin_pub", GNUNET_JSON_from_data_auto (&pr.coin_pub),
                            "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
-                           "coin_blind_key_secret", GNUNET_JSON_from_data_auto (blinding_key)
+                           "coin_blind_key_secret", GNUNET_JSON_from_data_auto (&ps->blinding_key)
 			  );
   if (NULL == payback_obj)
   {

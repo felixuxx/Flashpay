@@ -71,15 +71,56 @@ test_high_level ()
 			 &secret2,
 			 sizeof (secret)));
   TALER_planchet_setup_refresh (&secret,
-                          0,
-                          &fc1);
+                                0,
+                                &fc1);
   TALER_planchet_setup_refresh (&secret,
-                          1,
-                          &fc2);
+                                1,
+                                &fc2);
   GNUNET_assert (0 !=
                  memcmp (&fc1,
                          &fc2,
                          sizeof (struct TALER_PlanchetSecretsP)));
+  return 0;
+}
+
+
+/**
+ * Test the basic planchet functionality of creating a fresh planchet
+ * and extracting the respective signature.
+ *
+ * @return 0 on success
+ */
+static int
+test_planchets ()
+{
+  struct TALER_PlanchetSecretsP ps;
+  struct TALER_DenominationPrivateKey dk_priv;
+  struct TALER_DenominationPublicKey dk_pub;
+  struct TALER_PlanchetDetail pd;
+  struct GNUNET_CRYPTO_RsaSignature *blind_sig;
+  struct TALER_FreshCoin coin;
+
+  dk_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  dk_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (dk_priv.rsa_private_key);
+  TALER_planchet_setup_random (&ps);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_planchet_prepare (&dk_pub,
+                                         &ps,
+                                         &pd));
+  blind_sig = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.rsa_private_key,
+                                              pd.coin_ev,
+                                              pd.coin_ev_size);
+  GNUNET_assert (NULL != blind_sig);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_planchet_to_coin (&dk_pub,
+                                         blind_sig,
+                                         &ps,
+                                         &pd.c_hash,
+                                         &coin));
+  GNUNET_CRYPTO_rsa_signature_free (blind_sig);
+  GNUNET_CRYPTO_rsa_signature_free (coin.sig.rsa_signature);
+  GNUNET_CRYPTO_rsa_private_key_free (dk_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_free (dk_pub.rsa_public_key);
   return 0;
 }
 
@@ -89,6 +130,8 @@ main(int argc,
      const char *const argv[])
 {
   if (0 != test_high_level ())
+    return 1;
+  if (0 != test_planchets ())
     return 1;
   return 0;
 }

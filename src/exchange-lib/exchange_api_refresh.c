@@ -236,18 +236,16 @@ free_melted_coin (struct MeltedCoin *mc)
 static void
 free_melt_data (struct MeltData *md)
 {
-  unsigned int i;
-
   free_melted_coin (&md->melted_coin);
   if (NULL != md->fresh_pks)
   {
-    for (i=0;i<md->num_fresh_coins;i++)
+    for (unsigned int i=0;i<md->num_fresh_coins;i++)
       if (NULL != md->fresh_pks[i].rsa_public_key)
         GNUNET_CRYPTO_rsa_public_key_free (md->fresh_pks[i].rsa_public_key);
     GNUNET_free (md->fresh_pks);
   }
 
-  for (i=0;i<TALER_CNC_KAPPA;i++)
+  for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
     GNUNET_free (md->fresh_coins[i]);
   /* Finally, clean up a bit...
      (NOTE: compilers might optimize this away, so this is
@@ -600,8 +598,6 @@ deserialize_melt_data (const char *buf,
 {
   struct MeltData *md;
   struct MeltDataP mdp;
-  unsigned int i;
-  unsigned int j;
   size_t off;
   int ok;
 
@@ -615,7 +611,7 @@ deserialize_melt_data (const char *buf,
   md->num_fresh_coins = ntohs (mdp.num_fresh_coins);
   md->fresh_pks = GNUNET_new_array (md->num_fresh_coins,
                                     struct TALER_DenominationPublicKey);
-  for (i=0;i<TALER_CNC_KAPPA;i++)
+  for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
     md->fresh_coins[i] = GNUNET_new_array (md->num_fresh_coins,
                                            struct TALER_PlanchetSecretsP);
   off = sizeof (struct MeltDataP);
@@ -624,14 +620,14 @@ deserialize_melt_data (const char *buf,
                                   &buf[off],
                                   buf_size - off,
                                   &ok);
-  for (i=0;(i<md->num_fresh_coins)&&(GNUNET_YES == ok);i++)
+  for (unsigned int i=0;(i<md->num_fresh_coins)&&(GNUNET_YES == ok);i++)
     off += deserialize_denomination_key (&md->fresh_pks[i],
                                          &buf[off],
                                          buf_size - off,
                                          &ok);
 
-  for (i=0;i<TALER_CNC_KAPPA;i++)
-    for(j=0;(j<md->num_fresh_coins)&&(GNUNET_YES == ok);j++)
+  for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
+    for (unsigned int j=0;(j<md->num_fresh_coins)&&(GNUNET_YES == ok);j++)
       off += deserialize_fresh_coin (&md->fresh_coins[i][j],
                                      &buf[off],
                                      buf_size - off,
@@ -704,8 +700,6 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
 {
   struct MeltData md;
   char *buf;
-  unsigned int i;
-  unsigned int j;
   struct GNUNET_HashContext *hash_context;
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -715,7 +709,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
                                       &coin_pub.eddsa_pub);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   /* build up melt data structure */
-  for (i=0;i<TALER_CNC_KAPPA;i++)
+  for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
   {
     struct GNUNET_CRYPTO_EcdhePrivateKey *tpk;
     struct TALER_TransferPublicKeyP tp;
@@ -747,18 +741,18 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
     = GNUNET_CRYPTO_rsa_signature_dup (melt_sig->rsa_signature);
   md.fresh_pks = GNUNET_new_array (fresh_pks_len,
                                    struct TALER_DenominationPublicKey);
-  for (i=0;i<fresh_pks_len;i++)
+  for (unsigned int i=0;i<fresh_pks_len;i++)
     md.fresh_pks[i].rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pks[i].key.rsa_public_key);
-  for (i=0;i<TALER_CNC_KAPPA;i++)
+  for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
   {
     md.fresh_coins[i] = GNUNET_new_array (fresh_pks_len,
                                           struct TALER_PlanchetSecretsP);
-    for (j=0;j<fresh_pks_len;j++)
+    for (unsigned int j=0;j<fresh_pks_len;j++)
     {
       TALER_planchet_setup_refresh (&trans_sec[i],
-                              j,
-                              &md.fresh_coins[i][j]);
+                                    j,
+                                    &md.fresh_coins[i][j]);
     }
   }
 
@@ -766,7 +760,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   GNUNET_assert (GNUNET_OK ==
 		 TALER_amount_get_zero (melt_amount->currency,
 					&total));
-  for (j=0;j<fresh_pks_len;j++)
+  for (unsigned int j=0;j<fresh_pks_len;j++)
   {
     if ( (GNUNET_OK !=
 	  TALER_amount_add (&total,
@@ -795,7 +789,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
 
   /* next, add all of the hashes from the denomination keys to the
      hash_context */
-  for (i=0;i<fresh_pks_len;i++)
+  for (unsigned int i=0;i<fresh_pks_len;i++)
   {
     char *buf;
     size_t buf_size;
@@ -820,28 +814,18 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
                                      sizeof (struct TALER_AmountNBO));
 
   }
-  for (i = 0; i < TALER_CNC_KAPPA; i++)
+  for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
   {
-    for (j = 0; j < fresh_pks_len; j++)
+    for (unsigned int j = 0; j < fresh_pks_len; j++)
     {
       const struct TALER_PlanchetSecretsP *fc; /* coin this is about */
-      struct TALER_CoinSpendPublicKeyP coin_pub;
-      struct GNUNET_HashCode coin_hash;
-      char *coin_ev; /* blinded message to be signed (in envelope) for each coin */
-      size_t coin_ev_size;
+      struct TALER_PlanchetDetail pd;
 
       fc = &md.fresh_coins[i][j];
-      GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
-                                          &coin_pub.eddsa_pub);
-      GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
-                          sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                          &coin_hash);
-      if (GNUNET_YES !=
-          GNUNET_CRYPTO_rsa_blind (&coin_hash,
-                                   &fc->blinding_key.bks,
-                                   md.fresh_pks[j].rsa_public_key,
-                                   &coin_ev,
-                                   &coin_ev_size))
+      if (GNUNET_OK !=
+          TALER_planchet_prepare (&md.fresh_pks[j],
+                                  fc,
+                                  &pd))
       {
         GNUNET_break_op (0);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
@@ -849,9 +833,9 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
         return NULL;
       }
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       coin_ev,
-                                       coin_ev_size);
-      GNUNET_free (coin_ev);
+                                       pd.coin_ev,
+                                       pd.coin_ev_size);
+      GNUNET_free (pd.coin_ev);
     }
   }
   GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -1294,22 +1278,12 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     for (i=0;i<md->num_fresh_coins;i++)
     {
       const struct TALER_PlanchetSecretsP *fc = &md->fresh_coins[j][i];
-      struct TALER_CoinSpendPublicKeyP coin_pub;
-      struct GNUNET_HashCode coin_hash;
-      char *coin_ev; /* blinded message to be signed (in envelope) for each coin */
-      size_t coin_ev_size;
+      struct TALER_PlanchetDetail pd;
 
-      GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
-                                          &coin_pub.eddsa_pub);
-      GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
-                          sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                          &coin_hash);
-      if (GNUNET_YES !=
-          GNUNET_CRYPTO_rsa_blind (&coin_hash,
-                                   &fc->blinding_key.bks,
-                                   md->fresh_pks[i].rsa_public_key,
-                                   &coin_ev,
-                                   &coin_ev_size))
+      if (GNUNET_OK !=
+          TALER_planchet_prepare (&md->fresh_pks[i],
+                                  fc,
+                                  &pd))
       {
         /* This should have been noticed during the preparation stage. */
         GNUNET_break (0);
@@ -1322,9 +1296,9 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
       }
       GNUNET_assert (0 ==
                      json_array_append_new (tmp,
-                                            GNUNET_JSON_from_data (coin_ev,
-                                                                   coin_ev_size)));
-      GNUNET_free (coin_ev);
+                                            GNUNET_JSON_from_data (pd.coin_ev,
+                                                                   pd.coin_ev_size)));
+      GNUNET_free (pd.coin_ev);
     }
     GNUNET_assert (0 ==
                    json_array_append_new (coin_evs,
@@ -1510,13 +1484,13 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct GNUNET_CRYPTO_RsaSignature *blind_sig;
-    struct GNUNET_CRYPTO_RsaSignature *sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode coin_hash;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),
       GNUNET_JSON_spec_end()
     };
+    struct TALER_FreshCoin coin;
 
     fc = &rrh->md->fresh_coins[rrh->noreveal_index][i];
     pk = &rrh->md->fresh_pks[i];
@@ -1533,31 +1507,28 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
       return GNUNET_SYSERR;
     }
 
-    /* unblind the signature */
-    sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
-				     &fc->blinding_key.bks,
-                                     pk->rsa_public_key);
-    GNUNET_CRYPTO_rsa_signature_free (blind_sig);
-
-    /* verify the signature */
+    /* needed to verify the signature, and we didn't store it earlier,
+       hence recomputing it here... */
     GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                         sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                         &coin_hash);
-
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_rsa_verify (&coin_hash,
-                                  sig,
-                                  pk->rsa_public_key))
+        TALER_planchet_to_coin (pk,
+                                blind_sig,
+                                fc,
+                                &coin_hash,
+                                &coin))
     {
       GNUNET_break_op (0);
-      GNUNET_CRYPTO_rsa_signature_free (sig);
+      GNUNET_CRYPTO_rsa_signature_free (blind_sig);
       GNUNET_JSON_parse_free (outer_spec);
       return GNUNET_SYSERR;
     }
-    coin_privs[i] = fc->coin_priv;
-    sigs[i].rsa_signature = sig;
+    GNUNET_CRYPTO_rsa_signature_free (blind_sig);
+    coin_privs[i] = coin.coin_priv;
+    sigs[i] = coin.sig;
   }
   GNUNET_JSON_parse_free (outer_spec);
   return GNUNET_OK;

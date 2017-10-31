@@ -171,35 +171,19 @@ TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans
 
 
 /**
- * Setup information for a fresh coin.
+ * Set the bits in the private EdDSA key so that they match
+ * the specification.
  *
- * @param secret_seed seed to use for KDF to derive coin keys
- * @param coin_num_salt number of the coin to include in KDF
- * @param[out] fc value to initialize
+ * @param[in,out] pk private key to patch
  */
-void
-TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                        unsigned int coin_num_salt,
-                        struct TALER_PlanchetSecretsP *fc)
+static void
+patch_private_key (struct GNUNET_CRYPTO_EddsaPrivateKey *pk)
 {
-  uint32_t be_salt = htonl (coin_num_salt);
-  uint8_t *p;
-
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_kdf (fc,
-                                    sizeof (*fc),
-                                    &be_salt,
-                                    sizeof (be_salt),
-                                    secret_seed,
-                                    sizeof (*secret_seed),
-                                    "taler-coin-derivation",
-                                    strlen ("taler-coin-derivation"),
-                                    NULL, 0));
+  uint8_t *p = (uint8_t *) pk;
 
   /* Taken from like 170-172 of libgcrypt/cipher/ecc.c
    * We note that libgcrypt stores the private key in the reverse order
    * from many Ed25519 implementatons. */
-  p = (uint8_t *) &(fc->coin_priv);
   p[0] &= 0x7f;  /* Clear bit 255. */
   p[0] |= 0x40;  /* Set bit 254.   */
   p[31] &= 0xf8; /* Clear bits 2..0 so that d mod 8 == 0  */
@@ -213,6 +197,121 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 }
 
 
+/**
+ * Setup information for a fresh coin.
+ *
+ * @param secret_seed seed to use for KDF to derive coin keys
+ * @param coin_num_salt number of the coin to include in KDF
+ * @param[out] ps value to initialize
+ */
+void
+TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
+                              unsigned int coin_num_salt,
+                              struct TALER_PlanchetSecretsP *ps)
+{
+  uint32_t be_salt = htonl (coin_num_salt);
 
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_kdf (ps,
+                                    sizeof (*ps),
+                                    &be_salt,
+                                    sizeof (be_salt),
+                                    secret_seed,
+                                    sizeof (*secret_seed),
+                                    "taler-coin-derivation",
+                                    strlen ("taler-coin-derivation"),
+                                    NULL, 0));
+  patch_private_key (&ps->coin_priv.eddsa_priv);
+}
+
+
+/**
+ * Setup information for a fresh coin.
+ *
+ * @param[out] ps value to initialize
+ */
+void
+TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
+{
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              ps,
+                              sizeof (*ps));
+  patch_private_key (&ps->coin_priv.eddsa_priv);
+}
+
+
+/**
+ * Prepare a planchet for tipping.  Creates and blinds a coin.
+ *
+ * @param dk denomination key for the coin to be created
+ * @param ps secret planchet internals (for #TALER_planchet_to_coin)
+ * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
+ *               other withdraw operations
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
+                        const struct TALER_PlanchetSecretsP *ps,
+                        struct TALER_PlanchetDetail *pd)
+{
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
+                                      &coin_pub.eddsa_pub);
+  GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &pd->c_hash);
+  if (GNUNET_YES !=
+      GNUNET_CRYPTO_rsa_blind (&pd->c_hash,
+                               &ps->blinding_key.bks,
+                               dk->rsa_public_key,
+                               &pd->coin_ev,
+                               &pd->coin_ev_size))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_CRYPTO_rsa_public_key_hash (dk->rsa_public_key,
+                                     &pd->denom_pub_hash);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Obtain a coin from the planchet's secrets and the blind signature
+ * of the exchange.
+ *
+ * @param dk denomination key, must match what was given to #TALER_planchet_prepare()
+ * @param blind_sig blind signature from the exchange
+ * @param ps secrets from #TALER_planchet_prepare()
+ * @param c_hash hash of the coin's public key for verification of the signature
+ * @param[out] coin set to the details of the fresh coin
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
+                        const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
+                        const struct TALER_PlanchetSecretsP *ps,
+                        const struct GNUNET_HashCode *c_hash,
+                        struct TALER_FreshCoin *coin)
+{
+  struct GNUNET_CRYPTO_RsaSignature *sig;
+
+  sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
+                                   &ps->blinding_key.bks,
+                                   dk->rsa_public_key);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_rsa_verify (c_hash,
+                                sig,
+                                dk->rsa_public_key))
+  {
+    GNUNET_break_op (0);
+    GNUNET_CRYPTO_rsa_signature_free (sig);
+    return GNUNET_SYSERR;
+  }
+  coin->sig.rsa_signature = sig;
+  coin->coin_priv = ps->coin_priv;
+  return GNUNET_OK;
+}
 
 /* end of crypto.c */

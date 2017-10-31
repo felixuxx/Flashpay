@@ -1,3 +1,9 @@
+Tue Oct 31 13:43:55 CET 2017
+	Extended crypto API to provide planchet generation functions
+	explicitly (to be used on withdraw, refresh and tipping).
+	Renamed a few API calls to better reflect their functions.
+	Changed a few function signatures to use new structs. -CG
+
 Wed Oct 18 15:20:29 CEST 2017
 	Releasing Taler v0.4.0. -CG
 

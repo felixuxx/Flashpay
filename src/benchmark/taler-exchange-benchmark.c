@@ -981,6 +981,7 @@ withdraw_coin (struct Coin *coin)
   struct TALER_Amount left;
   const struct TALER_EXCHANGE_Keys *keys;
   struct Reserve *r;
+  struct TALER_PlanchetSecretsP ps;
 
   keys = TALER_EXCHANGE_get_keys (exchange);
   r = &reserves[coin->reserve_index];
@@ -996,12 +997,13 @@ withdraw_coin (struct Coin *coin)
   GNUNET_assert (NULL != (coin->pk = find_pk (keys, &amount)));
   if (warm >= WARM_THRESHOLD)
     num_withdraw++;
+  ps.coin_priv = coin->coin_priv;
+  ps.blinding_key = blinding_key;
   coin->wsh =
     TALER_EXCHANGE_reserve_withdraw (exchange,
 				     coin->pk,
 				     &r->reserve_priv,
-				     &coin->coin_priv,
-				     &blinding_key,
+				     &ps,
 				     &reserve_withdraw_cb,
 				     coin);
   GNUNET_assert (GNUNET_SYSERR !=

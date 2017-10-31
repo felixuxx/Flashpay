@@ -396,7 +396,83 @@ int
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
 
 
-/* ****************** Refresh crypto primitives ************* */
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Header for serializations of coin-specific information about the
+ * fresh coins we generate.  These are the secrets that arise during
+ * planchet generation, which is the first stage of creating a new
+ * coin.
+ */
+struct TALER_PlanchetSecretsP
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * The blinding key.
+   */
+  struct TALER_DenominationBlindingKeyP blinding_key;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * Details about a planchet that the customer wants to obtain
+ * a withdrawal authorization.  This is the information that
+ * will need to be sent to the exchange to obtain the blind
+ * signature required to turn a planchet into a coin.
+ */
+struct TALER_PlanchetDetail
+{
+  /**
+   * Hash of the denomination public key.
+   */
+  struct GNUNET_HashCode denom_pub_hash;
+
+  /**
+   * Hash of the coin's public key.  Kept around so we do not need to
+   * compute it again.  Can be recomputed by hashing the public key
+   * of @a coin_priv if storage is at a premium.
+   */
+  struct GNUNET_HashCode c_hash;
+
+  /**
+   * Blinded coin (see GNUNET_CRYPTO_rsa_blind()).  Note: is malloc()'ed!
+   */
+  char *coin_ev;
+
+  /**
+   * Number of bytes in @a coin_ev.
+   */
+  size_t coin_ev_size;
+};
+
+
+/**
+ * Information about a (fresh) coin, returned from the API when we
+ * finished creating a coin.  Note that @e sig needs to be freed
+ * using the appropriate code.
+ */
+struct TALER_FreshCoin
+{
+
+  /**
+   * The exchange's signature over the coin's public key.
+   */
+  struct TALER_DenominationSignature sig;
+
+  /**
+   * The coin's private key.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+};
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
@@ -425,6 +501,7 @@ struct TALER_TransferSecretP
  * #TALER_WIRE_TRANSFER_IDENTIFIER_LEN as a string.
  */
 #define TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR "32"
+
 
 /**
  * Raw value of a wire transfer subjects, without the checksum.
@@ -472,6 +549,68 @@ struct TALER_WireTransferIdentifierP
 
 GNUNET_NETWORK_STRUCT_END
 
+
+/**
+ * Setup information for a fresh coin, deriving the coin private key
+ * and the blinding factor from the @a secret_seed with a KDF salted
+ * by the @a coin_num_salt.
+ *
+ * @param secret_seed seed to use for KDF to derive coin keys
+ * @param coin_num_salt number of the coin to include in KDF
+ * @param[out] fc value to initialize
+ */
+void
+TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
+                              unsigned int coin_num_salt,
+                              struct TALER_PlanchetSecretsP *fc);
+
+
+/**
+ * Setup information for a fresh coin.
+ *
+ * @param[out] ps value to initialize
+ */
+void
+TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps);
+
+
+/**
+ * Prepare a planchet for tipping.  Creates and blinds a coin.
+ *
+ * @param dk denomination key for the coin to be created
+ * @param ps secret planchet internals (for #TALER_planchet_to_coin)
+ * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
+ *               other withdraw operations
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
+                        const struct TALER_PlanchetSecretsP *ps,
+                        struct TALER_PlanchetDetail *pd);
+
+
+/**
+ * Obtain a coin from the planchet's secrets and the blind signature
+ * of the exchange.
+ *
+ * @param dk denomination key, must match what was given to #TALER_planchet_prepare()
+ * @param blind_sig blind signature from the exchange
+ * @param ps secrets from #TALER_planchet_prepare()
+ * @param c_hash hash of the coin's public key for verification of the signature
+ * @param[out] coin set to the details of the fresh coin
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
+                        const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
+                        const struct TALER_PlanchetSecretsP *ps,
+                        const struct GNUNET_HashCode *c_hash,
+                        struct TALER_FreshCoin *coin);
+
+
+/* ****************** Refresh crypto primitives ************* */
+
+
 /**
  * Given the coin and the transfer private keys, compute the
  * transfer secret.  (Technically, we only need one of the two
@@ -515,45 +654,6 @@ void
 TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans_pub,
                                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                                     struct TALER_TransferSecretP *transfer_secret);
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * Header for serializations of coin-specific information about the
- * fresh coins we generate during a melt.
- */
-struct TALER_PlanchetSecretsP
-{
-
-  /**
-   * Private key of the coin.
-   */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * The blinding key.
-   */
-  struct TALER_DenominationBlindingKeyP blinding_key;
-
-};
-
-GNUNET_NETWORK_STRUCT_END
-
-
-/**
- * Setup information for a fresh coin, deriving the coin private key
- * and the blinding factor from the @a secret_seed with a KDF salted
- * by the @a coin_num_salt.
- *
- * @param secret_seed seed to use for KDF to derive coin keys
- * @param coin_num_salt number of the coin to include in KDF
- * @param[out] fc value to initialize
- */
-void
-TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                      unsigned int coin_num_salt,
-                      struct TALER_PlanchetSecretsP *fc);
-
 
 
 #endif

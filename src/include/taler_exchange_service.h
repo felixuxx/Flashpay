@@ -976,9 +976,7 @@ typedef void
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to create
  * @param reserve_priv private key of the reserve to withdraw from
- * @param coin_priv where to fetch the coin's private key,
- *        caller must have committed this value to disk before the call (with @a pk)
- * @param blinding_key where to fetch the coin's blinding key
+ * @param ps secrets of the planchet
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
@@ -990,8 +988,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle *
 TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
                                  const struct TALER_ReservePrivateKeyP *reserve_priv,
-                                 const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                                 const struct TALER_DenominationBlindingKeyP *blinding_key,
+                                 const struct TALER_PlanchetSecretsP *ps,
                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
                                  void *res_cb_cls);
 
@@ -1540,8 +1537,7 @@ typedef void
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
- * @param coin_priv the coin's private key,
- * @param blinding_key where to fetch the coin's blinding key
+ * @param ps secret internals of the original planchet
  * @param payback_cb the callback to call when the final result for this request is available
  * @param payback_cb_cls closure for @a payback_cb
  * @return NULL
@@ -1552,8 +1548,7 @@ struct TALER_EXCHANGE_PaybackHandle *
 TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_EXCHANGE_DenomPublicKey *pk,
                         const struct TALER_DenominationSignature *denom_sig,
-                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                        const struct TALER_DenominationBlindingKeyP *blinding_key,
+                        const struct TALER_PlanchetSecretsP *ps,
                         TALER_EXCHANGE_PaybackResultCallback payback_cb,
                         void *payback_cb_cls);
 

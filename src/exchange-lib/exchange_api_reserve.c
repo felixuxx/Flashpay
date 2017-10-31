@@ -693,9 +693,9 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
   TALER_EXCHANGE_ReserveWithdrawResultCallback cb;
 
   /**
-   * Key used to blind the value.
+   * Secrets of the planchet.
    */
-  struct TALER_DenominationBlindingKeyP blinding_key;
+  struct TALER_PlanchetSecretsP ps;
 
   /**
    * Denomination key we are withdrawing.
@@ -739,8 +739,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
                      const json_t *json)
 {
   struct GNUNET_CRYPTO_RsaSignature *blind_sig;
-  struct GNUNET_CRYPTO_RsaSignature *sig;
-  struct TALER_DenominationSignature dsig;
+  struct TALER_FreshCoin fc;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),
     GNUNET_JSON_spec_end()
@@ -754,29 +753,28 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
-                                   &wsh->blinding_key.bks,
-                                   wsh->pk->key.rsa_public_key);
-  GNUNET_CRYPTO_rsa_signature_free (blind_sig);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_rsa_verify (&wsh->c_hash,
-                                sig,
-                                wsh->pk->key.rsa_public_key))
+      TALER_planchet_to_coin (&wsh->pk->key,
+                              blind_sig,
+                              &wsh->ps,
+                              &wsh->c_hash,
+                              &fc))
   {
     GNUNET_break_op (0);
-    GNUNET_CRYPTO_rsa_signature_free (sig);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
+  GNUNET_JSON_parse_free (spec);
+
   /* signature is valid, return it to the application */
-  dsig.rsa_signature = sig;
   wsh->cb (wsh->cb_cls,
            MHD_HTTP_OK,
 	   TALER_EC_NONE,
-           &dsig,
+           &fc.sig,
            json);
   /* make sure callback isn't called again after return */
   wsh->cb = NULL;
-  GNUNET_CRYPTO_rsa_signature_free (sig);
+  GNUNET_CRYPTO_rsa_signature_free (fc.sig.rsa_signature);
   return GNUNET_OK;
 }
 
@@ -978,9 +976,7 @@ handle_reserve_withdraw_finished (void *cls,
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to create
  * @param reserve_priv private key of the reserve to withdraw from
- * @param coin_priv where to fetch the coin's private key,
- *        caller must have committed this value to disk before the call (with @a pk)
- * @param blinding_key where to fetch the coin's blinding key
+ * @param ps secrets of the planchet
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
@@ -992,44 +988,33 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle *
 TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
                                  const struct TALER_ReservePrivateKeyP *reserve_priv,
-                                 const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                                 const struct TALER_DenominationBlindingKeyP *blinding_key,
+                                 const struct TALER_PlanchetSecretsP *ps,
                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
                                  void *res_cb_cls)
 {
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
   struct TALER_WithdrawRequestPS req;
   struct TALER_ReserveSignatureP reserve_sig;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct GNUNET_CURL_Context *ctx;
   struct TALER_Amount amount_with_fee;
-  char *coin_ev;
-  size_t coin_ev_size;
   json_t *withdraw_obj;
   CURL *eh;
+  struct TALER_PlanchetDetail pd;
 
+  if (GNUNET_OK !=
+      TALER_planchet_prepare (&pk->key,
+                              ps,
+                              &pd))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
   wsh = GNUNET_new (struct TALER_EXCHANGE_ReserveWithdrawHandle);
   wsh->exchange = exchange;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
   wsh->pk = pk;
-
-  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
-                                      &coin_pub.eddsa_pub);
-  GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &wsh->c_hash);
-  if (GNUNET_YES !=
-      GNUNET_CRYPTO_rsa_blind (&wsh->c_hash,
-                               &blinding_key->bks,
-                               pk->key.rsa_public_key,
-                               &coin_ev,
-                               &coin_ev_size))
-  {
-    GNUNET_break_op (0);
-    GNUNET_free (wsh);
-    return NULL;
-  }
+  wsh->c_hash = pd.c_hash;
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &wsh->reserve_pub.eddsa_pub);
   req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
@@ -1042,7 +1027,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
   {
     /* exchange gave us denomination keys that overflow like this!? */
     GNUNET_break_op (0);
-    GNUNET_free (coin_ev);
+    GNUNET_free (pd.coin_ev);
     GNUNET_free (wsh);
     return NULL;
   }
@@ -1050,10 +1035,9 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                      &amount_with_fee);
   TALER_amount_hton (&req.withdraw_fee,
                      &pk->fee_withdraw);
-  GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
-                                     &req.h_denomination_pub);
-  GNUNET_CRYPTO_hash (coin_ev,
-                      coin_ev_size,
+  req.h_denomination_pub = pd.denom_pub_hash;
+  GNUNET_CRYPTO_hash (pd.coin_ev,
+                      pd.coin_ev_size,
                       &req.h_coin_envelope);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
@@ -1062,11 +1046,11 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
   withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub and coin_ev */
                             " s:o, s:o}",/* reserve_pub and reserve_sig */
                             "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
-                            "coin_ev", GNUNET_JSON_from_data (coin_ev,
-                                                              coin_ev_size),
+                            "coin_ev", GNUNET_JSON_from_data (pd.coin_ev,
+                                                              pd.coin_ev_size),
                             "reserve_pub", GNUNET_JSON_from_data_auto (&wsh->reserve_pub),
                             "reserve_sig", GNUNET_JSON_from_data_auto (&reserve_sig));
-  GNUNET_free (coin_ev);
+  GNUNET_free (pd.coin_ev);
   if (NULL == withdraw_obj)
   {
     GNUNET_break (0);
@@ -1074,7 +1058,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
   }
 
 
-  wsh->blinding_key = *blinding_key;
+  wsh->ps = *ps;
   wsh->url = MAH_path_to_url (exchange, "/reserve/withdraw");
 
   eh = curl_easy_init ();

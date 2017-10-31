@@ -341,14 +341,9 @@ struct Command
       struct TALER_DenominationSignature sig;
 
       /**
-       * Set (by the interpreter) to the coin's private key.
+       * Private key material of the coin, set by the interpreter.
        */
-      struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-      /**
-       * Blinding key used for the operation.
-       */
-      struct TALER_DenominationBlindingKeyP blinding_key;
+      struct TALER_PlanchetSecretsP ps;
 
       /**
        * Withdraw handle (while operation is running).
@@ -1984,7 +1979,7 @@ get_public_key_from_coin_command (const struct Command *coin,
   switch (coin->oc)
   {
   case OC_WITHDRAW_SIGN:
-    GNUNET_CRYPTO_eddsa_key_get_public (&coin->details.reserve_withdraw.coin_priv.eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&coin->details.reserve_withdraw.ps.coin_priv.eddsa_priv,
                                         &coin_pub->eddsa_pub);
     break;
   case OC_REFRESH_REVEAL:
@@ -2016,7 +2011,6 @@ interpreter_run (void *cls)
   struct Command *cmd = &is->commands[is->ip];
   const struct Command *ref;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute execution_date;
   json_t *sender_details;
@@ -2165,27 +2159,14 @@ interpreter_run (void *cls)
       return;
     }
 
-    /* create coin's private key */
-    {
-      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-
-      priv = GNUNET_CRYPTO_eddsa_key_create ();
-      cmd->details.reserve_withdraw.coin_priv.eddsa_priv = *priv;
-      GNUNET_free (priv);
-    }
-    GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.reserve_withdraw.coin_priv.eddsa_priv,
-                                        &coin_pub.eddsa_pub);
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-				&cmd->details.reserve_withdraw.blinding_key,
-				sizeof (cmd->details.reserve_withdraw.blinding_key));
+    TALER_planchet_setup_random (&cmd->details.reserve_withdraw.ps);
     cmd->details.reserve_withdraw.wsh
       = TALER_EXCHANGE_reserve_withdraw (exchange,
-                                     cmd->details.reserve_withdraw.pk,
-                                     &ref->details.admin_add_incoming.reserve_priv,
-                                     &cmd->details.reserve_withdraw.coin_priv,
-                                     &cmd->details.reserve_withdraw.blinding_key,
-                                     &reserve_withdraw_cb,
-                                     is);
+                                         cmd->details.reserve_withdraw.pk,
+                                         &ref->details.admin_add_incoming.reserve_priv,
+                                         &cmd->details.reserve_withdraw.ps,
+                                         &reserve_withdraw_cb,
+                                         is);
     if (NULL == cmd->details.reserve_withdraw.wsh)
     {
       GNUNET_break (0);
@@ -2217,7 +2198,7 @@ interpreter_run (void *cls)
       switch (ref->oc)
       {
       case OC_WITHDRAW_SIGN:
-        coin_priv = &ref->details.reserve_withdraw.coin_priv;
+        coin_priv = &ref->details.reserve_withdraw.ps.coin_priv;
         coin_pk = ref->details.reserve_withdraw.pk;
         coin_pk_sig = &ref->details.reserve_withdraw.sig;
         break;
@@ -2376,7 +2357,7 @@ interpreter_run (void *cls)
         GNUNET_assert (NULL != ref);
         GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
 
-        melt_priv = ref->details.reserve_withdraw.coin_priv;
+        melt_priv = ref->details.reserve_withdraw.ps.coin_priv;
         if (GNUNET_OK !=
             TALER_string_to_amount (md->amount,
                                     &melt_amount))
@@ -2478,7 +2459,7 @@ interpreter_run (void *cls)
     /* finally, use private key from withdraw sign command */
     cmd->details.refresh_link.rlh
       = TALER_EXCHANGE_refresh_link (exchange,
-                                     &ref->details.reserve_withdraw.coin_priv,
+                                     &ref->details.reserve_withdraw.ps.coin_priv,
                                      &link_cb,
                                      is);
     if (NULL == cmd->details.refresh_link.rlh)
@@ -2745,8 +2726,7 @@ interpreter_run (void *cls)
         = TALER_EXCHANGE_payback (exchange,
                                   ref->details.reserve_withdraw.pk,
                                   &ref->details.reserve_withdraw.sig,
-                                  &ref->details.reserve_withdraw.coin_priv,
-                                  &ref->details.reserve_withdraw.blinding_key,
+                                  &ref->details.reserve_withdraw.ps,
                                   &payback_cb,
                                   is);
       return;
