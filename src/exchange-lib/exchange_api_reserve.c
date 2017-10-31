@@ -925,7 +925,7 @@ handle_reserve_withdraw_finished (void *cls,
        check the signatures in the history... */
     if (GNUNET_OK !=
         reserve_withdraw_payment_required (wsh,
-                                        json))
+                                           json))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -1075,14 +1075,11 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  void *res_cb_cls)
 {
   struct TALER_Amount amount_with_fee;
-  struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReserveSignatureP reserve_sig;
   struct TALER_WithdrawRequestPS req;
   struct TALER_PlanchetDetail pd;
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                      &reserve_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &req.reserve_pub.eddsa_pub);
   req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
@@ -1100,7 +1097,6 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                      &amount_with_fee);
   TALER_amount_hton (&req.withdraw_fee,
                      &pk->fee_withdraw);
-  req.h_denomination_pub = pd.denom_pub_hash;
   if (GNUNET_OK !=
       TALER_planchet_prepare (&pk->key,
                               ps,
@@ -1109,6 +1105,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break_op (0);
     return NULL;
   }
+  req.h_denomination_pub = pd.denom_pub_hash;
   GNUNET_CRYPTO_hash (pd.coin_ev,
                       pd.coin_ev_size,
                       &req.h_coin_envelope);
