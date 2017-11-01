@@ -677,7 +677,7 @@ reload_keys_denom_iter (void *cls,
   expire_deposit = GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit);
   if (expire_deposit.abs_value_us < now.abs_value_us)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping expired denomination key `%s'\n",
                 alias);
     return GNUNET_OK;
@@ -729,7 +729,7 @@ reload_keys_denom_iter (void *cls,
   start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
   if (start.abs_value_us > horizon.abs_value_us)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping future denomination key `%s' (%s), validity starts at %s\n",
                 alias,
 		GNUNET_h2s (&dki->issue.properties.denom_hash),
@@ -814,7 +814,7 @@ reload_keys_sign_iter (void *cls,
   if (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us >
       horizon.abs_value_us)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping future signing key `%s'\n",
                 filename);
     return GNUNET_OK;
@@ -823,7 +823,7 @@ reload_keys_sign_iter (void *cls,
   if (GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us <
       now.abs_value_us)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping expired signing key `%s'\n",
                 filename);
     return GNUNET_OK;
