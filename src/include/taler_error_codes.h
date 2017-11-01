@@ -1392,7 +1392,7 @@ enum TALER_ErrorCode
    * The reserve that was used to fund the tips was never enabled.
    * Returned with an HTTP status code of "not found".
    */
-  TALER_EC_TIP_AUTHORIZE_RESERVE_NOT_ENABLED = 2702,
+  TALER_EC_TIP_AUTHORIZE_RESERVE_NOT_ENABLED = 2707,
   
   /**
    * The backend had trouble accessing the database to persist
