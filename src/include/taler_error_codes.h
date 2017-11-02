@@ -58,6 +58,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_EXCHANGE_BAD_CONFIGURATION = 4,
 
+  /**
+   * Internal assertion error.
+   */
+  TALER_EC_INTERNAL_INVARIANT_FAILURE = 5,
+  
+
   /* ********** generic error codes ************* */
 
   /**
@@ -1434,6 +1440,40 @@ enum TALER_ErrorCode
    * server error.
    */
   TALER_EC_TIP_PICKUP_AMOUNT_CHANGED = 2804,
+
+  /**
+   * We failed to contact the exchange to obtain the denomination 
+   * keys.  Returned with a response code "failed dependency" (424).
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_DOWN = 2805,
+
+  /**
+   * We contacted the exchange to obtain any denomination 
+   * keys, but got no valid keys.
+   * Returned with a response code "failed dependency" (424).
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_LACKED_KEYS = 2806,
+
+  /**
+   * We contacted the exchange to obtain at least one of
+   * the denomination keys specified in the request.
+   * Returned with a response code "not found" (404).
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_LACKED_KEY = 2807,
+
+  /**
+   * We encountered an arithmetic issue totaling up the
+   * amount to withdraw. Returned with a response code
+   * of "bad request".
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_AMOUNT_OVERFLOW = 2808,
+
+  /**
+   * The number of planchets specified exceeded the 
+   * limit. Returned with a response code
+   * of "bad request".
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_TOO_MANY_PLANCHETS = 2809,
 
 
   /* ********** /test API error codes ************* */
