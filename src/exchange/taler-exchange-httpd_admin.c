@@ -64,10 +64,10 @@ struct AddIncomingContext
 };
 
 
-/** 
+/**
  * Add an incoming transaction to the database.  Checks if the
- * transaction is fresh (not a duplicate) and if so adds it to
- * the database.
+ * transaction is fresh (not a duplicate) and if so adds it to the
+ * database.
  *
  * If it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
@@ -109,7 +109,7 @@ admin_add_incoming_transaction (void *cls,
 					    json_str,
 					    strlen (json_str));
   free (json_str);
-  
+
   if (GNUNET_DB_STATUS_HARD_ERROR == aic->qs)
   {
     GNUNET_break (0);
