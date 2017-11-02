@@ -32,7 +32,7 @@
 /**
  * Maximum legal 'value' for an amount, based on IEEE double (for JavaScript compatibility).
  */
-#define MAX_AMOUNT_VALUE (1LLU << 53)
+#define MAX_AMOUNT_VALUE (1LLU << 52)
 
 
 /**
