@@ -29,6 +29,25 @@
 #endif
 #include <gcrypt.h>
 
+/**
+ * Maximum legal 'value' for an amount, based on IEEE double (for JavaScript compatibility).
+ */
+#define MAX_AMOUNT_VALUE (1LLU << 53)
+
+
+/**
+ * Set @a a to "invalid".
+ *
+ * @param a amount to set to invalid
+ */
+static void
+invalidate (struct TALER_Amount *a)
+{
+  memset (a,
+          0,
+          sizeof (struct TALER_Amount));
+}
+
 
 /**
  * Parse money amount description, in the format "A:B.C".
@@ -48,9 +67,7 @@ TALER_string_to_amount (const char *str,
   const char *colon;
   const char *value;
 
-  memset (denom,
-          0,
-          sizeof (struct TALER_Amount));
+  invalidate (denom);
   /* skip leading whitespace */
   while (isspace( (unsigned char) str[0]))
     str++;
@@ -138,6 +155,12 @@ TALER_string_to_amount (const char *str,
     denom->fraction += n * b;
     b /= 10;
     i++;
+  }
+  if (denom->value > MAX_AMOUNT_VALUE)
+  {
+    /* too large to be legal */
+    invalidate (denom);
+    return GNUNET_SYSERR;
   }
   return GNUNET_OK;
 
@@ -234,20 +257,6 @@ TALER_amount_get_zero (const char *cur,
           cur,
           slen);
   return GNUNET_OK;
-}
-
-
-/**
- * Set @a a to "invalid".
- *
- * @param a amount to set to invalid
- */
-static void
-invalidate (struct TALER_Amount *a)
-{
-  memset (a,
-          0,
-          sizeof (struct TALER_Amount));
 }
 
 
@@ -469,6 +478,12 @@ TALER_amount_add (struct TALER_Amount *sum,
   if (res.value < n1.value)
   {
     /* integer overflow */
+    invalidate (sum);
+    return GNUNET_SYSERR;
+  }
+  if (res.value > MAX_AMOUNT_VALUE)
+  {
+    /* too large to be legal */
     invalidate (sum);
     return GNUNET_SYSERR;
   }
