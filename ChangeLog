@@ -1,3 +1,7 @@
+Thu Nov  2 16:50:46 CET 2017
+	Fixing serious bug in reserve balance calculations, as
+	fees were not always properly included in the summation. -CG
+
 Tue Oct 31 13:43:55 CET 2017
 	Extended crypto API to provide planchet generation functions
 	explicitly (to be used on withdraw, refresh and tipping).

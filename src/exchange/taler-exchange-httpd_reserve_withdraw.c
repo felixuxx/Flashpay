@@ -163,7 +163,6 @@ withdraw_transaction (void *cls,
   struct TALER_Amount deposit_total;
   struct TALER_Amount withdraw_total;
   struct TALER_Amount balance;
-  struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
   int res;
   enum GNUNET_DB_QueryStatus qs;
@@ -236,27 +235,13 @@ withdraw_transaction (void *cls,
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       {
-	struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *tdki;
-
-	tdki = TEH_KS_denomination_key_lookup (wc->key_state,
-					       &pos->details.withdraw->denom_pub,
-					       TEH_KS_DKU_WITHDRAW);
-	if (NULL == tdki)
-        {
-	  GNUNET_break (0);
-	  *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-							   TALER_EC_WITHDRAW_HISTORIC_DENOMINATION_KEY_NOT_FOUND);
-	  return GNUNET_DB_STATUS_HARD_ERROR;
-	}
-	TALER_amount_ntoh (&value,
-			   &tdki->issue.properties.value);
 	if (0 == (res & 2))
-	  withdraw_total = value;
+	  withdraw_total = pos->details.withdraw->amount_with_fee;
 	else
 	  if (GNUNET_OK !=
 	      TALER_amount_add (&withdraw_total,
 				&withdraw_total,
-				&value))
+				&pos->details.withdraw->amount_with_fee))
 	  {
 	    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							     TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
@@ -283,17 +268,27 @@ withdraw_transaction (void *cls,
 
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       if (0 == (res & 2))
-        withdraw_total = pos->details.bank->amount;
+        withdraw_total = pos->details.closing->amount;
       else
         if (GNUNET_OK !=
             TALER_amount_add (&withdraw_total,
                               &withdraw_total,
-                              &pos->details.bank->amount))
+                              &pos->details.closing->amount))
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
+      if (GNUNET_OK !=
+          TALER_amount_add (&withdraw_total,
+                            &withdraw_total,
+                            &pos->details.closing->closing_fee))
+      {
+        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                         TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+
       res |= 2;
       break;
     }
@@ -324,6 +319,7 @@ withdraw_transaction (void *cls,
 						     TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
   if (0 < TALER_amount_cmp (&wc->amount_required,
                             &balance))
   {
