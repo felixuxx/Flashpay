@@ -62,7 +62,7 @@ enum TALER_ErrorCode
    * Internal assertion error.
    */
   TALER_EC_INTERNAL_INVARIANT_FAILURE = 5,
-  
+
 
   /* ********** generic error codes ************* */
 
@@ -1389,8 +1389,6 @@ enum TALER_ErrorCode
    * The backend had trouble accessing the database to persist
    * information about the tip authorization.
    * The problem might be fixable by repeating the transaction.
-   * This error should never be returned to clients but handled
-   * internally.
    */
   TALER_EC_TIP_AUTHORIZE_DB_SOFT_ERROR = 2706,
 
@@ -1399,7 +1397,7 @@ enum TALER_ErrorCode
    * Returned with an HTTP status code of "not found".
    */
   TALER_EC_TIP_AUTHORIZE_RESERVE_NOT_ENABLED = 2707,
-  
+
   /**
    * The backend had trouble accessing the database to persist
    * information about enabling tips.
@@ -1421,8 +1419,6 @@ enum TALER_ErrorCode
 
   /**
    * We encountered a DB error, repeating the request may work.
-   * (This error code should not be returned to the application
-   * but ought to be handled internally by retrying.)
    */
   TALER_EC_TIP_PICKUP_DB_ERROR_SOFT = 2802,
 
@@ -1442,13 +1438,13 @@ enum TALER_ErrorCode
   TALER_EC_TIP_PICKUP_AMOUNT_CHANGED = 2804,
 
   /**
-   * We failed to contact the exchange to obtain the denomination 
+   * We failed to contact the exchange to obtain the denomination
    * keys.  Returned with a response code "failed dependency" (424).
    */
   TALER_EC_TIP_PICKUP_EXCHANGE_DOWN = 2805,
 
   /**
-   * We contacted the exchange to obtain any denomination 
+   * We contacted the exchange to obtain any denomination
    * keys, but got no valid keys.
    * Returned with a response code "failed dependency" (424).
    */
@@ -1469,7 +1465,7 @@ enum TALER_ErrorCode
   TALER_EC_TIP_PICKUP_EXCHANGE_AMOUNT_OVERFLOW = 2808,
 
   /**
-   * The number of planchets specified exceeded the 
+   * The number of planchets specified exceeded the
    * limit. Returned with a response code
    * of "bad request".
    */
