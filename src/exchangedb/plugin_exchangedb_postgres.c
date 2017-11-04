@@ -343,8 +343,8 @@ postgres_create_tables (void *cls)
                            ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
                            ",coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)"
                            ",wire TEXT NOT NULL"
-                           ",tiny BOOLEAN NOT NULL DEFAULT false"
-                           ",done BOOLEAN NOT NULL DEFAULT false"
+                           ",tiny BOOLEAN NOT NULL DEFAULT FALSE"
+                           ",done BOOLEAN NOT NULL DEFAULT FALSE"
                            ",UNIQUE (coin_pub, h_contract_terms, merchant_pub)"
                            ");"),
     /* Index for get_deposit statement on coin_pub, h_contract_terms and merchant_pub */
@@ -1035,8 +1035,8 @@ postgres_prepare (PGconn *db_conn)
                             " FROM deposits"
                             "    JOIN known_coins USING (coin_pub)"
                             "    JOIN denominations denom USING (denom_pub_hash)"
-                            " WHERE tiny=false"
-                            "    AND done=false"
+                            " WHERE tiny=FALSE"
+                            "    AND done=FALSE"
                             "    AND wire_deadline<=$1"
                             "    AND refund_deadline<$1"
                             " ORDER BY wire_deadline ASC"
@@ -1063,20 +1063,20 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE"
                             " merchant_pub=$1 AND"
                             " h_wire=$2 AND"
-                            " done=false"
+                            " done=FALSE"
                             " ORDER BY wire_deadline ASC"
                             " LIMIT " TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT_STR ";",
                             2),
     /* Used in #postgres_mark_deposit_tiny() */
     GNUNET_PQ_make_prepare ("mark_deposit_tiny",
                             "UPDATE deposits"
-                            " SET tiny=true"
+                            " SET tiny=TRUE"
                             " WHERE deposit_serial_id=$1",
                             1),
     /* Used in #postgres_mark_deposit_done() */
     GNUNET_PQ_make_prepare ("mark_deposit_done",
                             "UPDATE deposits"
-                            " SET done=true"
+                            " SET done=TRUE"
                             " WHERE deposit_serial_id=$1;",
                             1),
     /* Used in #postgres_test_deposit_done() */
@@ -1314,7 +1314,7 @@ postgres_prepare (PGconn *db_conn)
 			    ",done"
 			    " FROM deposits"
 			    " WHERE wire_deadline <= $1"
-			    " AND wire_deadline > $2" 
+			    " AND wire_deadline > $2"
 			    " AND NOT (EXISTS (SELECT 1"
 			    "            FROM refunds"
 			    "            WHERE (refunds.coin_pub = deposits.coin_pub))"
