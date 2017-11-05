@@ -2,6 +2,7 @@
 \usepackage{url}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{longtable}
 
 \begin{document}
 
@@ -13,14 +14,14 @@
 The balance of the escrow account should
 be {\bf
 \mbox{
-  {{ data.report_denomination_balance[0].total_escrow_balance.value }}.{{ data.report_denomination_balance[0].total_escrow_balance.fraction }} 
+  {{ data.report_denomination_balance[0].total_escrow_balance.value }}.{{ data.report_denomination_balance[0].total_escrow_balance.fraction }}
   {{ data.report_denomination_balance[0].total_escrow_balance.currency }}}}.
 
 \noindent
 The active operational risk stands at
 \mbox{
-{\bf 
-  {{ data.report_denomination_balance[0].total_active_risk.value }}.{{ data.report_denomination_balance[0].total_active_risk.fraction }} 
+{\bf
+  {{ data.report_denomination_balance[0].total_active_risk.value }}.{{ data.report_denomination_balance[0].total_active_risk.fraction }}
   {{ data.report_denomination_balance[0].total_active_risk.currency }}}}.
 
 
@@ -52,6 +53,8 @@ The active operational risk stands at
 
 \section{Irregularities}
 
+\subsection{Emergencies}
+
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies detected.}
 {% else %}
@@ -62,17 +65,28 @@ The active operational risk stands at
   \end{table}
       {% endif %}
 
+\subsection{Reserve inconsistencies}
 
 {% if data.reserve_inconsistencies|length() == 0 %}
   {\bf No reserve inconsistencies detected.}
 {% else %}
-  \begin{table}
+  \begin{longtable}{p{1.5cm}|rl|rl|p{4cm}}
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\ \hline \hline
+\endfirsthead
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\
+\endfoot
+  \hline
+% FIXME: replace these with the summary column adding up the amounts!
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\
     \caption{Reserve inconsistencies.}
     \label{table:reserve:inconsistencies}
-    \begin{tabular}{p{1.5cm}|rl|rl|p{4cm}}
-      {\bf Reserve} & \multicolumn{2}{|c|}{Expected} & \multicolumn{2}{|c|}{Observed} & Diagnostic \\ \hline \hline
+\endlastfoot
 {% for item in data.reserve_inconsistencies %}
   \multicolumn{6}{l}{ {\tt {{ item.reserve_pub }} } } \\
+\nopagebreak
   &
   {{ item.expected.value }}.{{ item.expected.fraction }} &
   {{ item.expected.currency }} &
@@ -80,10 +94,7 @@ The active operational risk stands at
   {{ item.observed.currency }} &
   {{ item.diagnostic }} \\ \hline
 {% endfor %}
-  \hline
-  {\bf Reserve} & Expected & Observed & Diagnostic \\ 
-    \end{tabular}
-  \end{table}
+  \end{longtable}
 {% endif %}
-    
+
 \end{document}
