@@ -48,6 +48,16 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount);
 
 
 /**
+ * Convert a TALER amount to a JSON object.
+ *
+ * @param amount the amount
+ * @return a json object describing the amount
+ */
+json_t *
+TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount);
+
+
+/**
  * Provide specification to parse given JSON object to an amount.
  *
  * @param name name of the amount field in the JSON

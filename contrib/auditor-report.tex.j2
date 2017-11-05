@@ -27,43 +27,86 @@ The active operational risk stands at
 
 \section{Income}
 
+This section analyzes the income of the exchange operator from fees.
+
 \begin{table}[h!]
-  \caption{Revenue}
+\begin{center}
+  \caption{Fee revenue summary}
   \label{table:revenue}
   \begin{tabular}{l|rl}
     Category    & Amount &   \\ \hline \hline
   Withdraw fees &
-  {{ data.reserve_balance[0].total_withdraw_fee_income.value }}.{{ data.reserve_balance[0].total_withdraw_fee_income.fraction }} &
-  {{ data.reserve_balance[0].total_withdraw_fee_income.currency }} \\
+  {{ data.total_withdraw_fee_income.value }}.{{ data.total_withdraw_fee_income.fraction }} &
+  {{ data.total_withdraw_fee_income.currency }} \\
   Deposit fees &
-  {{ data.report_denomination_balance[0].total_deposit_fee_income.value }}.{{ data.report_denomination_balance[0].total_deposit_fee_income.fraction }} &
-  {{ data.report_denomination_balance[0].total_deposit_fee_income.currency }} \\
+  {{ data.total_deposit_fee_income.value }}.{{ data.total_deposit_fee_income.fraction }} &
+  {{ data.total_deposit_fee_income.currency }} \\
   Melt fees &
-  {{ data.report_denomination_balance[0].total_melt_fee_income.value }}.{{ data.report_denomination_balance[0].total_melt_fee_income.fraction }} &
-  {{ data.report_denomination_balance[0].total_melt_fee_income.currency }} \\
+  {{ data.total_melt_fee_income.value }}.{{ data.total_melt_fee_income.fraction }} &
+  {{ data.total_melt_fee_income.currency }} \\
   Refund fees &
-  {{ data.report_denomination_balance[0].total_refund_fee_income.value }}.{{ data.report_denomination_balance[0].total_refund_fee_income.fraction }} &
-  {{ data.report_denomination_balance[0].total_refund_fee_income.currency }} \\
+  {{ data.total_refund_fee_income.value }}.{{ data.total_refund_fee_income.fraction }} &
+  {{ data.total_refund_fee_income.currency }} \\
   Aggregation fees &
-  {{ data.aggregation_fee_balance[0].total_aggregation_fee_income.value }}.{{ data.aggregation_fee_balance[0].total_aggregation_fee_income.fraction }} &
-  {{ data.aggregation_fee_balance[0].total_aggregation_fee_income.currency }} \\
-  {\bf Total}  & TBD & TBD \\
+  {{ data.total_aggregation_fee_income.value }}.{{ data.total_aggregation_fee_income.fraction }} &
+  {{ data.total_aggregation_fee_income.currency }} \\
+  {\bf Total}  &
+  {{ data.income_fee_total.value }}.{{ data.income_fee_total.fraction }} &
+  {{ data.income_fee_total.currency }} \\
 \end{tabular}
+\end{center}
 \end{table}
+
 
 \section{Irregularities}
 
+This section describes the possible irregularities that the auditor
+has checked, and lists all of the actual irregularities encountered
+in detail.
+
 \subsection{Emergencies}
+
+Emergencies are errors where more coins were deposited than the
+exchange remembers issuing.  This usually means that the private keys
+of the exchange were compromised (stolen or factored) and subsequently
+used to sign coins off the books.  If this happens, all coins of the
+respective denomination that the exchange has redeemed so far may have
+been created by the attacker, and the exchange would have to refund
+all of the outstanding coins from ordinary users.  Thus, the {\bf risk
+exposure} is the amount of coins in circulation for a particular
+denominatin and the maximum loss for the exchange from this type of
+compromise.
 
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies detected.}
 {% else %}
-  \begin{table}
+  \begin{longtable}{p{1.5cm}|rl|c|rl}
+  {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
+\endfirsthead
+  {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\
+\endfoot
+  \hline
+% FIXME: replace these with the summary column adding up the amounts!
+  \multicolumn{4}{|c|}{ {\bf Total risk from emergencies}} & {{ data.emergencies_risk_total }} \\
     \caption{Emergencies.}
     \label{table:emergencies}
-    TBD.
-  \end{table}
-      {% endif %}
+\endlastfoot
+{% for item in data.reserve_inconsistencies %}
+  \multicolumn{6}{l}{ {\tt {{ item.denompub_hash }} } } \\
+\nopagebreak
+  &
+  {{ item.value.value }}.{{ item.value.fraction }} &
+  {{ item.value.currency }} &
+  {{ item.start }} - {{ item.deposit_end }} &
+  {{ item.denom_risk.value }}.{{ item.denom_risk.fraction }} &
+  {{ item.denom_risk.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
 
 \subsection{Reserve inconsistencies}
 

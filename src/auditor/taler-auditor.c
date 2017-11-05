@@ -145,19 +145,50 @@ static json_t *report_wire_out_inconsistencies;
 static json_t *report_coin_inconsistencies;
 
 /**
- * Report about expected reserve balances.
- */
-static json_t *report_reserve_balances;
-
-/**
  * Report about aggregate wire transfer fee profits.
  */
 static json_t *report_aggregation_fee_balances;
 
 /**
- * Report about denomination fee balances.
+ * Total amount reported in all calls to #report_emergency().
  */
-static json_t *report_denomination_balances;
+static struct TALER_Amount reported_emergency_sum;
+
+/**
+ * Expected balance in the escrow account.
+ */
+static struct TALER_Amount total_escrow_balance;
+
+/**
+ * Active risk exposure.
+ */
+static struct TALER_Amount total_risk;
+
+/**
+ * Total withdraw fees earned.
+ */
+static struct TALER_Amount total_withdraw_fee_income;
+
+/**
+ * Total deposit fees earned.
+ */
+static struct TALER_Amount total_deposit_fee_income;
+
+/**
+ * Total melt fees earned.
+ */
+static struct TALER_Amount total_melt_fee_income;
+
+/**
+ * Total refund fees earned.
+ */
+static struct TALER_Amount total_refund_fee_income;
+
+/**
+ * Total aggregation fees earned.
+ */
+static struct TALER_Amount total_aggregation_fee_income;
+
 
 
 /* ***************************** Report logic **************************** */
@@ -168,7 +199,7 @@ static json_t *report_denomination_balances;
  *
  * @param array report array to append @a object to
  * @param object object to append, should be check that it is not NULL
- */ 
+ */
 static void
 report (json_t *array,
 	json_t *object)
@@ -189,14 +220,28 @@ report (json_t *array,
  * denomination (and as an exchange suffer a huge financial loss).
  *
  * @param dki denomination key where the loss was detected
+ * @param risk maximum risk that might have just become real (coins created by this @a dki)
  */
 static void
-report_emergency (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki)
+report_emergency (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                  const struct TALER_Amount *risk)
 {
   report (report_emergencies,
-	  json_pack ("{s:o}",
+	  json_pack ("{s:o, s:o, s:s, s:s, s:o}",
 		     "denompub_hash",
-		     GNUNET_JSON_from_data_auto (&dki->properties.denom_hash)));
+		     GNUNET_JSON_from_data_auto (&dki->properties.denom_hash),
+                     "denom_risk",
+                     TALER_JSON_from_amount (risk),
+                     "start",
+                     GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dki->properties.start)),
+                     "deposit_end",
+                     GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dki->properties.expire_deposit)),
+                     "value",
+                     TALER_JSON_from_amount_nbo (&dki->properties.value)));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&reported_emergency_sum,
+                                   &reported_emergency_sum,
+                                   risk));
 }
 
 
@@ -323,86 +368,6 @@ report_coin_inconsistency (const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		     TALER_JSON_from_amount (observed),
 		     "diagnostic",
 		     diagnostic));
-}
-
-
-/**
- * Report the final result on the reserve balances of the exchange.
- * The reserve must have @a total_balance in its escrow account just
- * to cover outstanding reserve funds (outstanding coins are on top).
- * The reserve has made @a total_fee_balance in profit from withdrawal
- * operations alone.
- *
- * Note that this is for the "ongoing" reporting period.  Historic
- * revenue (as stored via the "insert_historic_reserve_revenue")
- * is not included in the @a total_fee_balance.
- *
- * @param total_balance how much money (in total) is left in all of the
- *        reserves (that has not been withdrawn)
- * @param total_fee_balance how much money (in total) did the reserve
- *        make from withdrawal fees
- */
-static void
-report_reserve_balance (const struct TALER_Amount *total_balance,
-                        const struct TALER_Amount *total_fee_balance)
-{
-  report (report_reserve_balances,
-	  json_pack ("{s:o, s:o}",
-		     "total_escrow_balance",
-		     TALER_JSON_from_amount (total_balance),
-		     "total_withdraw_fee_income",
-		     TALER_JSON_from_amount (total_fee_balance)));
-}
-
-
-/**
- * Report on the aggregation fees the exchange made.
- *
- * Note that this is for the "ongoing" reporting period.  Historic
- * revenue (as stored via the "insert_historic_reserve_revenue")
- * is not included in the @a total_fee_balance.
- *
- * @param total_fee_balance how much money (in total) did the reserve
- *        make from aggregation fees
- */
-static void
-report_aggregation_fee_balance (const struct TALER_Amount *total_fee_balance)
-{
-  report (report_aggregation_fee_balances,
-	  json_pack ("{s:o}",
-		     "total_aggregation_fee_income",
-		     TALER_JSON_from_amount (total_fee_balance)));
-}
-
-
-/**
- * Report state of denomination processing.
- *
- * @param total_balance total value of outstanding coins
- * @param total_risk total value of issued coins in active denominations
- * @param deposit_fees total deposit fees collected
- * @param melt_fees total melt fees collected
- * @param refund_fees total refund fees collected
- */
-static void
-report_denomination_balance (const struct TALER_Amount *total_balance,
-                             const struct TALER_Amount *total_risk,
-                             const struct TALER_Amount *deposit_fees,
-                             const struct TALER_Amount *melt_fees,
-                             const struct TALER_Amount *refund_fees)
-{
-  report (report_denomination_balances,
-	  json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-		     "total_escrow_balance",
-		     TALER_JSON_from_amount (total_balance),
-		     "total_active_risk",
-		     TALER_JSON_from_amount (total_risk),
-		     "total_deposit_fee_income",
-		     TALER_JSON_from_amount (deposit_fees),
-		     "total_melt_fee_income",
-		     TALER_JSON_from_amount (melt_fees),
-		     "total_refund_fee_income",
-		     TALER_JSON_from_amount (refund_fees)));
 }
 
 
@@ -661,16 +626,6 @@ struct ReserveContext
    * there but bogus.
    */
   struct GNUNET_CONTAINER_MultiHashMap *revoked;
-
-  /**
-   * Total balance in all reserves (updated).
-   */
-  struct TALER_Amount total_balance;
-
-  /**
-   * Total withdraw fees gotten in all reserves (updated).
-   */
-  struct TALER_Amount total_fee_balance;
 
   /**
    * Transaction status code, set to error codes if applicable.
@@ -1261,16 +1216,16 @@ verify_reserve_balance (void *cls,
     goto cleanup;
   }
   if ( (GNUNET_YES !=
-        TALER_amount_add (&rc->total_balance,
-                          &rc->total_balance,
+        TALER_amount_add (&total_escrow_balance,
+                          &total_escrow_balance,
                           &rs->total_in)) ||
        (GNUNET_SYSERR ==
-        TALER_amount_subtract (&rc->total_balance,
-                               &rc->total_balance,
+        TALER_amount_subtract (&total_escrow_balance,
+                               &total_escrow_balance,
                                &rs->total_out)) ||
        (GNUNET_YES !=
-        TALER_amount_add (&rc->total_fee_balance,
-                          &rc->total_fee_balance,
+        TALER_amount_add (&total_withdraw_fee_income,
+                          &total_withdraw_fee_income,
                           &rs->total_fee)) )
   {
     GNUNET_break (0);
@@ -1367,23 +1322,13 @@ analyze_reserves (void *cls)
   qsx = adb->get_reserve_summary (adb->cls,
 				  asession,
 				  &master_pub,
-				  &rc.total_balance,
-				  &rc.total_fee_balance);
+				  &total_escrow_balance,
+				  &total_withdraw_fee_income);
   if (qsx < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &rc.total_balance));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &rc.total_fee_balance));
-  }
-
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
   rc.revoked = GNUNET_CONTAINER_multihashmap_create (4,
@@ -1446,24 +1391,22 @@ analyze_reserves (void *cls)
     qs = adb->insert_reserve_summary (adb->cls,
 				      asession,
 				      &master_pub,
-				      &rc.total_balance,
-				      &rc.total_fee_balance);
+				      &total_escrow_balance,
+				      &total_withdraw_fee_income);
   }
   else
   {
     qs = adb->update_reserve_summary (adb->cls,
 				      asession,
 				      &master_pub,
-				      &rc.total_balance,
-				      &rc.total_fee_balance);
+				      &total_escrow_balance,
+				      &total_withdraw_fee_income);
   }
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  report_reserve_balance (&rc.total_balance,
-                          &rc.total_fee_balance);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -1565,7 +1508,7 @@ struct AggregationContext
   /**
    * How much did we make in aggregation fees.
    */
-  struct TALER_Amount total_aggregation_fees;
+  struct TALER_Amount total_aggregation_feesX;
 
   /**
    * Final result status.
@@ -2341,8 +2284,8 @@ check_wire_out_cb (void *cls,
 
   /* Sum up aggregation fees (we simply include the rounding gains) */
   if (GNUNET_OK !=
-      TALER_amount_add (&ac->total_aggregation_fees,
-                        &ac->total_aggregation_fees,
+      TALER_amount_add (&total_aggregation_fee_income,
+                        &total_aggregation_fee_income,
                         &exchange_gain))
   {
     GNUNET_break (0);
@@ -2393,16 +2336,12 @@ analyze_aggregations (void *cls)
   qsx = adb->get_wire_fee_summary (adb->cls,
 				   asession,
 				   &master_pub,
-				   &ac.total_aggregation_fees);
+				   &total_aggregation_fee_income);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &ac.total_aggregation_fees));
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = edb->select_wire_out_above_serial_id (edb->cls,
 					     esession,
@@ -2439,18 +2378,17 @@ analyze_aggregations (void *cls)
     ac.qs = adb->insert_wire_fee_summary (adb->cls,
 					  asession,
 					  &master_pub,
-					  &ac.total_aggregation_fees);
+					  &total_aggregation_fee_income);
   else
     ac.qs = adb->update_wire_fee_summary (adb->cls,
 					  asession,
 					  &master_pub,
-					  &ac.total_aggregation_fees);
+					  &total_aggregation_fee_income);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
     return ac.qs;
   }
-  report_aggregation_fee_balance (&ac.total_aggregation_fees);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -2501,32 +2439,6 @@ struct CoinContext
    * Map for tracking information about denominations.
    */
   struct GNUNET_CONTAINER_MultiHashMap *denom_summaries;
-
-  /**
-   * Total outstanding balances across all denomination keys.
-   */
-  struct TALER_Amount total_denom_balance;
-
-  /**
-   * Total deposit fees earned so far.
-   */
-  struct TALER_Amount deposit_fee_balance;
-
-  /**
-   * Total melt fees earned so far.
-   */
-  struct TALER_Amount melt_fee_balance;
-
-  /**
-   * Total refund fees earned so far.
-   */
-  struct TALER_Amount refund_fee_balance;
-
-  /**
-   * Current financial risk of the exchange operator with respect
-   * to key compromise.
-   */
-  struct TALER_Amount risk;
 
   /**
    * Current write/replace offset in the circular @e summaries buffer.
@@ -2670,8 +2582,8 @@ sync_denomination (void *cls,
          book the remaining balance as profit, and reduce our risk
          exposure by the accumulated risk of the denomination. */
       if (GNUNET_SYSERR ==
-          TALER_amount_subtract (&cc->risk,
-                                 &cc->risk,
+          TALER_amount_subtract (&total_risk,
+                                 &total_risk,
                                  &ds->denom_risk))
       {
         /* Holy smokes, our risk assessment was inconsistent!
@@ -2815,8 +2727,8 @@ withdraw_cb (void *cls,
               GNUNET_h2s (&dh),
               TALER_amount2s (&ds->denom_balance));
   if (GNUNET_OK !=
-      TALER_amount_add (&cc->total_denom_balance,
-                        &cc->total_denom_balance,
+      TALER_amount_add (&total_escrow_balance,
+                        &total_escrow_balance,
                         &value))
   {
     GNUNET_break (0);
@@ -2824,8 +2736,8 @@ withdraw_cb (void *cls,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_add (&cc->risk,
-                        &cc->risk,
+      TALER_amount_add (&total_risk,
+                        &total_risk,
                         &value))
   {
     GNUNET_break (0);
@@ -3058,8 +2970,8 @@ refresh_session_cb (void *cls,
                   GNUNET_h2s (&new_dki[i]->properties.denom_hash),
                   TALER_amount2s (&dsi->denom_balance));
       if (GNUNET_OK !=
-          TALER_amount_add (&cc->total_denom_balance,
-                            &cc->total_denom_balance,
+          TALER_amount_add (&total_escrow_balance,
+                            &total_escrow_balance,
                             &value))
       {
         GNUNET_break (0);
@@ -3067,8 +2979,8 @@ refresh_session_cb (void *cls,
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
-          TALER_amount_add (&cc->risk,
-                            &cc->risk,
+          TALER_amount_add (&total_risk,
+                            &total_risk,
                             &value))
       {
         GNUNET_break (0);
@@ -3092,13 +3004,14 @@ refresh_session_cb (void *cls,
                              &dso->denom_balance,
                              amount_with_fee))
   {
-    report_emergency (dki);
+    report_emergency (dki,
+                      &dso->denom_risk);
     return GNUNET_SYSERR;
   }
   dso->denom_balance = tmp;
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&cc->total_denom_balance,
-                             &cc->total_denom_balance,
+      TALER_amount_subtract (&total_escrow_balance,
+                             &total_escrow_balance,
                              amount_with_fee))
   {
     /* This should not be possible, unless the AUDITOR
@@ -3120,8 +3033,8 @@ refresh_session_cb (void *cls,
     TALER_amount_ntoh (&rfee,
                        &dki->properties.fee_refresh);
     if (GNUNET_OK !=
-        TALER_amount_add (&cc->melt_fee_balance,
-                          &cc->melt_fee_balance,
+        TALER_amount_add (&total_melt_fee_income,
+                          &total_melt_fee_income,
                           &rfee))
     {
       GNUNET_break (0);
@@ -3241,14 +3154,15 @@ deposit_cb (void *cls,
                              &ds->denom_balance,
                              amount_with_fee))
   {
-    report_emergency (dki);
+    report_emergency (dki,
+                      &ds->denom_risk);
     cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
   ds->denom_balance = tmp;
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&cc->total_denom_balance,
-                             &cc->total_denom_balance,
+      TALER_amount_subtract (&total_escrow_balance,
+                             &total_escrow_balance,
                              amount_with_fee))
   {
     /* This should not be possible, unless the AUDITOR
@@ -3270,8 +3184,8 @@ deposit_cb (void *cls,
     TALER_amount_ntoh (&dfee,
                        &dki->properties.fee_deposit);
     if (GNUNET_OK !=
-        TALER_amount_add (&cc->deposit_fee_balance,
-                          &cc->deposit_fee_balance,
+        TALER_amount_add (&total_deposit_fee_income,
+                          &total_deposit_fee_income,
                           &dfee))
     {
       GNUNET_break (0);
@@ -3401,8 +3315,8 @@ refund_cb (void *cls,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_add (&cc->total_denom_balance,
-                        &cc->total_denom_balance,
+      TALER_amount_add (&total_escrow_balance,
+                        &total_escrow_balance,
                         &amount_without_fee))
   {
     GNUNET_break (0);
@@ -3410,8 +3324,8 @@ refund_cb (void *cls,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_add (&cc->risk,
-                        &cc->risk,
+      TALER_amount_add (&total_risk,
+                        &total_risk,
                         &amount_without_fee))
   {
     GNUNET_break (0);
@@ -3426,8 +3340,8 @@ refund_cb (void *cls,
 
   /* update total refund fee balance */
   if (GNUNET_OK !=
-      TALER_amount_add (&cc->refund_fee_balance,
-                        &cc->refund_fee_balance,
+      TALER_amount_add (&total_refund_fee_income,
+                        &total_refund_fee_income,
                         &refund_fee))
   {
     GNUNET_break (0);
@@ -3461,33 +3375,15 @@ analyze_coins (void *cls)
   qsx = adb->get_balance_summary (adb->cls,
 				  asession,
 				  &master_pub,
-				  &cc.total_denom_balance,
-				  &cc.deposit_fee_balance,
-				  &cc.melt_fee_balance,
-				  &cc.refund_fee_balance,
-				  &cc.risk);
+				  &total_escrow_balance,
+				  &total_deposit_fee_income,
+				  &total_melt_fee_income,
+				  &total_refund_fee_income,
+				  &total_risk);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &cc.total_denom_balance));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &cc.deposit_fee_balance));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &cc.melt_fee_balance));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &cc.refund_fee_balance));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (currency,
-                                          &cc.risk));
   }
 
   /* process withdrawals */
@@ -3553,30 +3449,25 @@ analyze_coins (void *cls)
     qs = adb->update_balance_summary (adb->cls,
 				      asession,
 				      &master_pub,
-				      &cc.total_denom_balance,
-				      &cc.deposit_fee_balance,
-				      &cc.melt_fee_balance,
-				      &cc.refund_fee_balance,
-				      &cc.risk);
+				      &total_escrow_balance,
+				      &total_deposit_fee_income,
+				      &total_melt_fee_income,
+				      &total_refund_fee_income,
+				      &total_risk);
   else
     qs = adb->insert_balance_summary (adb->cls,
 				      asession,
 				      &master_pub,
-				      &cc.total_denom_balance,
-				      &cc.deposit_fee_balance,
-				      &cc.melt_fee_balance,
-				      &cc.refund_fee_balance,
-				      &cc.risk);
+				      &total_escrow_balance,
+				      &total_deposit_fee_income,
+				      &total_melt_fee_income,
+				      &total_refund_fee_income,
+				      &total_risk);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  report_denomination_balance (&cc.total_denom_balance,
-                               &cc.risk,
-                               &cc.deposit_fee_balance,
-                               &cc.melt_fee_balance,
-                               &cc.refund_fee_balance);
   return qs;
 }
 
@@ -3793,8 +3684,9 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  struct TALER_Amount income_fee_total;
   json_t *report;
-  
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
@@ -3861,6 +3753,30 @@ run (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &reported_emergency_sum));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_escrow_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_risk));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_withdraw_fee_income));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_deposit_fee_income));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_melt_fee_income));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_refund_fee_income));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_aggregation_fee_income));
   GNUNET_assert (NULL !=
 		 (report_emergencies = json_array ()));
   GNUNET_assert (NULL !=
@@ -3874,26 +3790,47 @@ run (void *cls,
   GNUNET_assert (NULL !=
 		 (report_coin_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-		 (report_reserve_balances = json_array ()));
-  GNUNET_assert (NULL !=
 		 (report_aggregation_fee_balances = json_array ()));
-  GNUNET_assert (NULL !=
-		 (report_denomination_balances = json_array ()));
   setup_sessions_and_run ();
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
   TALER_AUDITORDB_plugin_unload (adb);
   TALER_EXCHANGEDB_plugin_unload (edb);
-  report = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+
+  GNUNET_assert (TALER_amount_add (&income_fee_total,
+                                   &total_withdraw_fee_income,
+                                   &total_deposit_fee_income));
+  GNUNET_assert (TALER_amount_add (&income_fee_total,
+                                   &income_fee_total,
+                                   &total_melt_fee_income));
+  GNUNET_assert (TALER_amount_add (&income_fee_total,
+                                   &income_fee_total,
+                                   &total_refund_fee_income));
+  GNUNET_assert (TALER_amount_add (&income_fee_total,
+                                   &income_fee_total,
+                                   &total_aggregation_fee_income));
+  report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
+                      " s:o, s:o, s:o, s:o, s:o"
+                      " s:o, s:o, s:o, s:o, s:o}",
+                      /* blocks of 5 for easier counting/matching to format string */
 		      "emergencies", report_emergencies,
+                      "emergencies_risk_total", TALER_JSON_from_amount (&reported_emergency_sum),
 		      "row_inconsistencies", report_row_inconsistencies,
 		      "row_minor_inconsistencies", report_row_minor_inconsistencies,
 		      "reserve_inconsistencies", report_reserve_inconsistencies,
+                      /* block */
 		      "wire_out_inconsistencies", report_wire_out_inconsistencies,
 		      "coin_inconsistencies", report_coin_inconsistencies,
-		      "reserve_balance", report_reserve_balances,
-		      "aggregation_fee_balance", report_aggregation_fee_balances,
-		      "report_denomination_balance", report_denomination_balances);
+		      "total_aggregation_fee_income", TALER_JSON_from_amount (&total_aggregation_fee_income),
+                      "total_escrow_balance", TALER_JSON_from_amount (&total_escrow_balance),
+                      "total_active_risk", TALER_JSON_from_amount (&total_risk),
+                      /* block */
+                      "total_withdraw_fee_income", TALER_JSON_from_amount (&total_withdraw_fee_income),
+                      "total_deposit_fee_income", TALER_JSON_from_amount (&total_deposit_fee_income),
+                      "total_melt_fee_income", TALER_JSON_from_amount (&total_melt_fee_income),
+                      "total_refund_fee_income", TALER_JSON_from_amount (&total_refund_fee_income),
+                      "income_fee_total", TALER_JSON_from_amount (&income_fee_total)
+                      );
   json_dumpf (report,
 	      stdout,
 	      JSON_INDENT (2));
