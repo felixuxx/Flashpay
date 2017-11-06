@@ -108,31 +108,39 @@ compromise.
 {% endif %}
 
 
+\subsection{Arithmetic problems}
 
+This section lists cases where the arithmetic of the exchange
+involving amounts disagrees with the arithmetic of the auditor.
+Disagreements imply that either the exchange made a loss (sending out
+too much money), or screwed a customer (and thus at least needs to fix
+the financial damage done to the customer).
 
-  \begin{longtable}{p{1.5cm}|rl|rl|p{4cm}}
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\ \hline \hline
+  \begin{longtable}{p{5.5cm}|l|rl|rl}
+  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  \hline \hline
 \endfirsthead
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\ \hline \hline
+  {\bf Operation} & {\bf Table row} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\
+  {\bf Operation} & {\bf Table row} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
 \endfoot
   \hline
-% FIXME: replace these with the summary column adding up the amounts!
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\
-    \caption{Reserve inconsistencies.}
-    \label{table:reserve:inconsistencies}
+  {\bf Total} & &
+  {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
+  {{ data.total_arithmetic_delta_plus.currency }} &
+  {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
+  {{ data.total_arithmetic_delta_minus.currency }} &
+    \caption{Arithmetic inconsistencies.}
+    \label{table:amount:arithmetic:inconsistencies}
 \endlastfoot
-{% for item in data.reserve_inconsistencies %}
-  \multicolumn{6}{l}{ {\tt {{ item.reserve_pub }} } } \\
-\nopagebreak
-  &
-  {{ item.expected.value }}.{{ item.expected.fraction }} &
-  {{ item.expected.currency }} &
-  {{ item.observed.value }}.{{ item.observed.fraction }} &
-  {{ item.observed.currency }} &
-  {{ item.diagnostic }} \\ \hline
+{% for item in data.amount_arithmetic_inconsistencies %}
+  {{ item.operation }} &
+  {{ item.rowid }} &
+  {{ item.exchange.value }}.{{ item.exchange.fraction }} &
+  {{ item.exchange.currency }} &
+  {{ item.auditor.value }}.{{ item.auditor.fraction }} &
+  {{ item.auditor.currency }} \\ \hline
 {% endfor %}
   \end{longtable}
 
@@ -172,7 +180,7 @@ compromise resulting in proportional financial losses to the exchange.
 {% endif %}
 
 
-\subsection{Claimed outgoing wire transfers}
+\subsection{Claimed outgoing wire transfer inconsistencies}
 
 This section is about the exchange's database containing a
 justification to make an outgoing wire transfer for an aggregated
@@ -217,12 +225,93 @@ would be reported separately in Section~\ref{sec:wire_check_out}.
 
 \subsection{Coin history inconsistencies}
 
-TODO.
+This section lists cases where the exchange made arithmetic errors found when
+looking at the transaction history of a coin.  The totals sum up the differences
+in amounts that matter for profit/loss calculations of the exchange. When an
+exchange merely shifted money from customers to merchants (or vice versa) without
+any effects on its own balance, those entries are excluded from the total.
+
+{% if data.coin_inconsistencies|length() == 0 %}
+  {\bf All coin histories were unproblematic.}
+{% else %}
+  \begin{longtable}{l|p{5.5cm}|rl|rl}
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  \hline \hline
+\endfirsthead
+  {\bf Operation} & {\bf Coin public key} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Operation} & {\bf Coin public key} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+\endfoot
+  \hline
+  {\bf Total} & &
+  {{ data.total_coin_delta_plus.value }}.{{ data.total_coin_delta_plus.fraction }} &
+  {{ data.total_coin_delta_plus.currency }} &
+  - {{ data.total_coin_delta_minus.value }}.{{ data.total_coin_delta_minus.fraction }} &
+  {{ data.total_coin_delta_minus.currency }} &
+    \caption{Arithmetic inconsistencies of amount calculations involving a coin.}
+    \label{table:amount:arithmetic:coin:inconsistencies}
+\endlastfoot
+{% for item in data.coin_inconsistencies %}
+  {{ item.operation }} &
+  \multicolumn{5}{l}{ {\tt {{ item.coin_pub }} } } \\
+\nopagebreak & &
+  {{ item.exchange.value }}.{{ item.exchange.fraction }} &
+  {{ item.exchange.currency }} &
+  {{ item.auditor.value }}.{{ item.auditor.fraction }} &
+  {{ item.auditor.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Operations with bad signatures}
+
+This section lists operations that the exchange performed, but for
+which the signatures provided are invalid. Hence the operations were
+invalid and the amount involved should be considered lost.
+
+The key given is always the key for which the signature verification
+step failed. This is the reserve public key for ``withdraw''
+operations, the coin public key for ``deposit'' and ``melt''
+operations, the merchant's public key for ``melt'' operations,
+the (hash of the) denomination public key for
+``payback-verify'' and ``deposit-verify'' operations, and the master
+public key for ``payback-master'' operations.
+
+{% if data.reserve_wire_out_inconsistencies|length() == 0 %}
+  {\bf All signatures were valid.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|c|l|rl}
+  {\bf Public key} & {\bf Operation type} & Database row & \multicolumn{2}{|c|}{ {\bf Loss amount}} \\
+  \hline \hline
+\endfirsthead
+  {\bf Public key} & {\bf Operation type} & Database row & \multicolumn{2}{|c|}{ {\bf Loss amount}} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Public key} & {\bf Operation type} & Database row & \multicolumn{2}{|c|}{ {\bf Loss amount}} \\
+\endfoot
+  \hline
+  {\bf Total losses}  & & &
+  {{ data.total_bad_sig_loss.value}}.{{ data.total_bad_sig_loss.fraction}} & {{ data.total_bad_sig_loss.currency}} \\
+  \caption{Losses from operations performed on coins without proper signatures.}
+  \label{table:bad_signature_losses}
+\endlastfoot
+{% for item in data.bad_sig_losses %}
+  \multicolumn{5}{l}{ {\tt {{ item.key_pub }} } } \\
+\nopagebreak
+  & {{ item.operation }} & {{ item.rowid }} &
+    {{ item.loss.value }}.{{ item.loss.fraction }} &
+    {{ item.loss.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
 
 
 \subsection{Actual incoming wire transfers}
 
-TBD. See bug 4958.
+TBD.  See bug 4958.
 
 \subsection{Actual outgoing wire transfers} \label{sec:wire_check_out}
 
@@ -264,6 +353,38 @@ translate into a financial loss (yet).
   {{ item.auditor.currency }} &
   {{ item.exchange.value }}.{{ item.exchange.fraction }} &
   {{ item.exchange.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Other issues}
+
+This section describes issues found that do not have a clear financial
+impact.
+
+{% if data.row_inconsistencies|length() == 0 %}
+  {\bf No row inconsistencies found.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|l|p{5.5}}
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+  \hline \hline
+\endfirsthead
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+  \hline \hline
+\endhead
+  \hline \hline
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+\endfoot
+  \hline
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+  \caption{Other issues found (by table and row).}
+  \label{table:misc}
+\endlastfoot
+{% for item in data.row_inconsistencies %}
+  {{ item.table }} &
+  {{ item.row }} &
+  {{ item.diagnostic }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
