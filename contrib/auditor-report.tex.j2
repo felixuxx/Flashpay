@@ -58,11 +58,11 @@ This section analyzes the income of the exchange operator from fees.
 \end{table}
 
 
-\section{Irregularities}
+\section{Major irregularities}
 
-This section describes the possible irregularities that the auditor
-has checked, and lists all of the actual irregularities encountered
-in detail.
+This section describes the possible major irregularities that the
+auditor has checked, and lists all of the actual irregularities
+encountered in detail.
 
 \subsection{Emergencies}
 
@@ -108,11 +108,8 @@ compromise.
 {% endif %}
 
 
-\subsection{Reserve inconsistencies}
 
-{% if data.reserve_inconsistencies|length() == 0 %}
-  {\bf No reserve inconsistencies detected.}
-{% else %}
+
   \begin{longtable}{p{1.5cm}|rl|rl|p{4cm}}
   {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Observed}} & {\bf Diagnostic} \\ \hline \hline
 \endfirsthead
@@ -138,6 +135,220 @@ compromise.
   {{ item.diagnostic }} \\ \hline
 {% endfor %}
   \end{longtable}
+
+
+\subsection{Reserve withdrawals exceeding balance}
+
+This section highlights cases where more coins were withdrawn from a
+reserve than the reserve contained funding for.  This is a serious
+compromise resulting in proportional financial losses to the exchange.
+
+
+{% if data.reserve_balance_insufficient_inconsistencies|length() == 0 %}
+  {\bf All withdrawals were covered by sufficient reserve funding.}
+{% else %}
+  \begin{longtable}{p{4.5cm}|rl}
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Loss}}  \\ \hline \hline
+\endfirsthead
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Loss}}  \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Loss}}
+\endfoot
+  \hline
+  {\bf Total loss}  & &
+  {{ data.total_loss_balance_insufficient.value}}.{{ data.total_loss_balance_insufficient.fraction}} & {{ data.total_loss_balance_insufficient.currency}} \\
+  \caption{Reserves with withdrawals higher than reserve funding.}
+  \label{table:reserve:balance_insufficient}
+\endlastfoot
+{% for item in data.reserve_balance_insufficient_inconsistencies %}
+  \multicolumn{3}{l}{ {\tt {{ item.reserve_pub }} } } \\
+\nopagebreak
+  &
+  {{ item.loss.value }}.{{ item.loss.fraction }} &
+  {{ item.loss.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
 {% endif %}
+
+
+\subsection{Claimed outgoing wire transfers}
+
+This section is about the exchange's database containing a
+justification to make an outgoing wire transfer for an aggregated
+amount for various deposits. It is reported as an inconsistency if the
+amount claimed for the wire transfer does not match up the deposits
+aggregated.  This is about a {\em claimed} outgoing wire transfer as
+violations do not imply that the wire transfer was actually made (as
+that is a separate check).  Note that not making the wire transfer
+would be reported separately in Section~\ref{sec:wire_check_out}.
+
+
+{% if data.reserve_wire_out_inconsistencies|length() == 0 %}
+  {\bf All aggregations matched up.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|l|rl|rl}
+  {\bf Destination account} & {\bf Database row} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Claimed}} \\ \hline \hline
+\endfirsthead
+  {\bf Destination account} & {\bf Database row} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Claimed}} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Destination account} & {\bf Database row} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Claimed}} \\
+\endfoot
+  \hline
+  {\bf Total deltas}  & &
+  {{ data.total_wire_out_delta_plus.value}}.{{ data.total_wire_out_delta_plus.fraction}} & {{ data.total_wire_out_delta_plus.currency}} &
+  - {{ data.total_wire_out_delta_minus.value}}.{{ data.total_wire_out_delta_minus.fraction}} & {{ data.total_wire_out_delta_minus.currency}} \\
+  \caption{Claimed wire out aggregate totals not matching up.}
+  \label{table:reserve:wire_out_balance_inconsistencies}
+\endlastfoot
+{% for item in data.wire_out_inconsistencies %}
+  \multicolumn{6}{l}{ {\tt {{ item.destination_account }} } } \\
+\nopagebreak
+  & {{ item.rowid }} &
+  {{ item.expected.value }}.{{ item.expected.fraction }} &
+  {{ item.expected.currency }} &
+  {{ item.claimed.value }}.{{ item.claimed.fraction }} &
+  {{ item.claimed.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Coin history inconsistencies}
+
+TODO.
+
+
+\subsection{Actual incoming wire transfers}
+
+TBD. See bug 4958.
+
+\subsection{Actual outgoing wire transfers} \label{sec:wire_check_out}
+
+TBD.  See bug 4958.
+
+\section{Minor irregularities}
+
+\subsection{Incorrect reserve balance summary in database}
+
+This section highlights cases where the reserve balance summary
+in the database does not match the calculations made by the auditor.
+Deltas may indicate a corrupt database, but do not necessarily
+translate into a financial loss (yet).
+
+
+{% if data.reserve_balance_summary_wrong_inconsistencies|length() == 0 %}
+  {\bf All balances matched up.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|rl|rl}
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Auditor}} & \multicolumn{2}{|c|}{ {\bf Exchange}} \\ \hline \hline
+\endfirsthead
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Auditor}} & \multicolumn{2}{|c|}{ {\bf Exchange}} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Auditor}} & \multicolumn{2}{|c|}{ {\bf Exchange}}
+\endfoot
+  \hline
+  {\bf Total deltas}  & &
+  {{ data.total_balance_summary_delta_plus.value}}.{{ data.total_balance_summary_delta_plus.fraction}} & {{ data.total_balance_summary_delta_plus.currency}} &
+  - {{ data.total_balance_summary_delta_minus.value}}.{{ data.total_balance_summary_delta_minus.fraction}} & {{ data.total_balance_summary_delta_minus.currency}} \\
+  \caption{Reserves balances not matching up.}
+  \label{table:reserve:balance_inconsistencies}
+\endlastfoot
+{% for item in data.reserve_balance_summary_wrong_inconsistencies %}
+  \multicolumn{5}{l}{ {\tt {{ item.reserve_pub }} } } \\
+\nopagebreak
+  &
+  {{ item.auditor.value }}.{{ item.auditor.fraction }} &
+  {{ item.auditor.currency }} &
+  {{ item.exchange.value }}.{{ item.exchange.fraction }} &
+  {{ item.exchange.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\section{Delays and timing}
+
+This section describes issues that are likely caused simply by
+some job process of the exchange not running properly or not having
+caught up with the work load yet.
+
+\subsection{Delayed closure of reserves}
+
+This section describes cases where the exchange did not
+close a reserve and wire back the remaining funds when the
+reserve expired.
+
+
+{% if data.reserve_not_closed_inconsistencies|length() == 0 %}
+  {\bf All expired reserves were closed.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|c|rl}
+  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c|}{ {\bf Balance}} \\ \hline \hline
+\endfirsthead
+  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c|}{ {\bf Balance}} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c|}{ {\bf Balance}}
+\endfoot
+  \hline
+  {\bf Sum}     & &
+  {{ data.total_balance_reserve_not_closed.value}}.{{ data.total_balance_reserve_not_closed.fraction}} & {{ data.total_balance_reserve_not_closed.currency}} \\
+  \caption{Reserves not closed on time.}
+  \label{table:reserve:not_closed}
+\endlastfoot
+{% for item in data.reserve_not_closed_inconsistencies %}
+  \multicolumn{4}{l}{ {\tt {{ item.reserve_pub }} } } \\
+\nopagebreak
+  &
+  {{ item.expiration_time }} &
+  {{ item.balance.value }}.{{ item.balance.fraction }} &
+  {{ item.balance.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Denomination key invalid at time of withdrawal}
+
+This section lists cases where a denomination key was not valid for
+withdrawal at the time when the exchange claims to have signed a coin
+with it.  This would be irregular, but has no obvious financial
+implications.
+
+
+{% if data.denomination_key_validity_withdraw_inconsistencies|length() == 0 %}
+  {\bf All denomination keys were valid at the time of withdrawals.}
+{% else %}
+  \begin{longtable}{p{7.5cm}|c}
+  {\bf Reserve} & {\bf Table row} \\
+  {\bf Denomination key hash} & {\bf Execution time} \\ \hline \hline
+\endfirsthead
+  {\bf Reserve} & {\bf Table row} \\
+  {\bf Denomination key hash} & {\bf Execution time} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Reserve} & {\bf Table row} \\
+  {\bf Denomination key hash} & {\bf Execution time} \\
+\endfoot
+  \hline
+  {\bf Reserve} & {\bf Table row} \\
+  {\bf Denomination key hash} & {\bf Execution time} \\
+  \caption{Execution times not matching denomination key validity period.}
+  \label{table:withdraw:bad_time}
+\endlastfoot
+{% for item in data.denomination_key_validity_withdraw_inconsistencies %}
+  {\tt {{ item.reserve_pub }} } & {{ item.row }} \\
+\nopagebreak
+  &
+  {\tt {{ item.denompub_h }} } & {{ item.execution_date }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+
 
 \end{document}

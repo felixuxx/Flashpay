@@ -125,19 +125,64 @@ static json_t *report_emergencies;
 static json_t *report_row_inconsistencies;
 
 /**
- * Array of reports about minor row inconcistencies.
+ * Array of reports about the denomination key not being
+ * valid at the time of withdrawal.
  */
-static json_t *report_row_minor_inconsistencies;
+static json_t *denomination_key_validity_withdraw_inconsistencies;
 
 /**
- * Array of reports about reserve inconsitencies.
+ * Array of reports about reserve balance insufficient inconsitencies.
  */
-static json_t *report_reserve_inconsistencies;
+static json_t *report_reserve_balance_insufficient_inconsistencies;
+
+/**
+ * Total amount reserves were charged beyond their balance.
+ */
+static struct TALER_Amount total_balance_insufficient_loss;
+
+/**
+ * Array of reports about reserve balance summary wrong in database.
+ */
+static json_t *report_reserve_balance_summary_wrong_inconsistencies;
+
+/**
+ * Total delta between expected and stored reserve balance summaries,
+ * for positive deltas.
+ */
+static struct TALER_Amount total_balance_summary_delta_plus;
+
+/**
+ * Total delta between expected and stored reserve balance summaries,
+ * for negative deltas.
+ */
+static struct TALER_Amount total_balance_summary_delta_minus;
+
+/**
+ * Array of reports about reserve's not being closed inconsitencies.
+ */
+static json_t *report_reserve_not_closed_inconsistencies;
+
+/**
+ * Total amount affected by reserves not having been closed on time.
+ */
+static struct TALER_Amount total_balance_reserve_not_closed;
 
 /**
  * Array of reports about irregular wire out entries.
  */
 static json_t *report_wire_out_inconsistencies;
+
+/**
+ * Total delta between calculated and stored wire out transfers,
+ * for positive deltas.
+ */
+static struct TALER_Amount total_wire_out_delta_plus;
+
+/**
+ * Total delta between calculated and stored wire out transfers
+ * for negative deltas.
+ */
+static struct TALER_Amount total_wire_out_delta_minus;
 
 /**
  * Array of reports about inconsistencies about coins.
@@ -262,85 +307,6 @@ report_row_inconsistency (const char *table,
 		     "table", table,
 		     "row", (json_int_t) rowid,
 		     "diagnostic", diagnostic));
-}
-
-
-/**
- * Report a minor inconsistency in the exchange's database (i.e. something
- * relating to timestamps that should have no financial implications).
- *
- * @param table affected table
- * @param rowid affected row, UINT64_MAX if row is missing
- * @param diagnostic message explaining the problem
- */
-static void
-report_row_minor_inconsistency (const char *table,
-                                uint64_t rowid,
-                                const char *diagnostic)
-{
-  report (report_row_minor_inconsistencies,
-	  json_pack ("{s:s, s:I, s:s}",
-		     "table", table,
-		     "row", (json_int_t) rowid,
-		     "diagnostic", diagnostic));
-}
-
-
-/**
- * Report a global inconsistency with respect to a reserve.
- *
- * @param reserve_pub the affected reserve
- * @param expected expected amount
- * @param observed observed amount
- * @param diagnostic message explaining what @a expected and @a observed refer to
- */
-static void
-report_reserve_inconsistency (const struct TALER_ReservePublicKeyP *reserve_pub,
-                              const struct TALER_Amount *expected,
-                              const struct TALER_Amount *observed,
-                              const char *diagnostic)
-{
-  report (report_reserve_inconsistencies,
-	  json_pack ("{s:o, s:o, s:o, s:s}",
-		     "reserve_pub",
-		     GNUNET_JSON_from_data_auto (reserve_pub),
-		     "expected",
-		     TALER_JSON_from_amount (expected),
-		     "observed",
-		     TALER_JSON_from_amount (observed),
-		     "diagnostic",
-		     diagnostic));
-}
-
-
-/**
- * Report a global inconsistency with respect to a wire transfer.
- *
- * @param destination wire transfer target account
- * @param rowid which row is the inconsitency in
- * @param expected expected amount
- * @param observed observed amount
- * @param diagnostic message explaining what @a expected and @a observed refer to
- */
-static void
-report_wire_out_inconsistency (const json_t *destination,
-                               uint64_t rowid,
-                               const struct TALER_Amount *expected,
-                               const struct TALER_Amount *observed,
-                               const char *diagnostic)
-{
-  report (report_wire_out_inconsistencies,
-	  json_pack ("{s:O, s:I, s:o, s:o, s:s}",
-		     "destination_account",
-		     destination,
-		     "rowid",
-		     (json_int_t) rowid,
-		     "expected",
-		     TALER_JSON_from_amount (expected),
-		     "observed",
-		     TALER_JSON_from_amount (observed),
-		     "diagnostic",
-		     diagnostic));
 }
 
 
@@ -594,10 +560,6 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
         TALER_amount_cmp_currency (&rs->total_in,
                                    &rs->a_balance)) )
   {
-    report_row_inconsistency ("auditor-reserve-info",
-                              rowid,
-                              "currencies for reserve differ");
-    /* TODO: find a sane way to continue... */
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -781,9 +743,12 @@ handle_reserve_out (void *cls,
   if ( (valid_start.abs_value_us > execution_date.abs_value_us) ||
        (expire_withdraw.abs_value_us < execution_date.abs_value_us) )
   {
-    report_row_minor_inconsistency ("withdraw",
-                                    rowid,
-                                    "denomination key not valid at time of withdrawal");
+    report (denomination_key_validity_withdraw_inconsistencies,
+            json_pack ("{s:I, s:s, s:o, s:o}",
+                       "row", (json_int_t) rowid,
+                       "execution_date", GNUNET_STRINGS_absolute_time_to_string (execution_date),
+                       "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
+                       "denompub_h", GNUNET_JSON_from_data_auto (&wsrd.h_denomination_pub)));
   }
 
   /* check reserve_sig */
@@ -1155,10 +1120,7 @@ verify_reserve_balance (void *cls,
                         &rs->total_in,
                         &rs->a_balance))
   {
-    report_reserve_inconsistency (&rs->reserve_pub,
-                                  &rs->total_in,
-                                  &rs->a_balance,
-                                  "could not add old balance to new balance");
+    GNUNET_break (0);
     goto cleanup;
   }
 
@@ -1167,19 +1129,62 @@ verify_reserve_balance (void *cls,
                              &balance,
                              &rs->total_out))
   {
-    report_reserve_inconsistency (&rs->reserve_pub,
-                                  &rs->total_in,
-                                  &rs->total_out,
-                                  "available balance insufficient to cover transfers");
+    struct TALER_Amount loss;
+
+    GNUNET_break (GNUNET_SYSERR !=
+                  TALER_amount_subtract (&loss,
+                                         &rs->total_out,
+                                         &balance));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_balance_insufficient_loss,
+                                    &total_balance_insufficient_loss,
+                                    &loss));
+    report (report_reserve_balance_insufficient_inconsistencies,
+            json_pack ("{s:o, s:o, s:o, s:s}",
+                       "reserve_pub",
+                       GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                       "loss",
+                       TALER_JSON_from_amount (&loss)));
     goto cleanup;
   }
   if (0 != TALER_amount_cmp (&balance,
                              &reserve.balance))
   {
-    report_reserve_inconsistency (&rs->reserve_pub,
-                                  &balance,
-                                  &reserve.balance,
-                                  "computed balance does not match stored balance");
+    struct TALER_Amount delta;
+
+    if (0 < TALER_amount_cmp (&balance,
+                              &reserve.balance))
+    {
+      /* balance > reserve.balance */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_subtract (&delta,
+                                            &balance,
+                                            &reserve.balance));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_balance_summary_delta_plus,
+                                       &total_balance_summary_delta_plus,
+                                       &delta));
+    }
+    else
+    {
+      /* balance < reserve.balance */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_subtract (&delta,
+                                            &reserve.balance,
+                                            &balance));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_balance_summary_delta_minus,
+                                       &total_balance_summary_delta_minus,
+                                       &delta));
+    }
+    report (report_reserve_balance_summary_wrong_inconsistencies,
+            json_pack ("{s:o, s:o, s:o}",
+                       "reserve_pub",
+                       GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                       "exchange",
+                       TALER_JSON_from_amount (&reserve.balance),
+                       "auditor",
+                       TALER_JSON_from_amount (&balance)));
     goto cleanup;
   }
 
@@ -1189,16 +1194,18 @@ verify_reserve_balance (void *cls,
        ( (0 != balance.value) ||
 	 (0 != balance.fraction) ) )
   {
-    struct TALER_Amount zero;
-
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (balance.currency,
-                                          &zero));
-
-    report_reserve_inconsistency (&rs->reserve_pub,
-                                  &balance,
-                                  &zero,
-                                  "expired reserve needs to be closed");
+                   TALER_amount_add (&total_balance_reserve_not_closed,
+                                     &total_balance_reserve_not_closed,
+                                     &balance));
+    report (report_reserve_not_closed_inconsistencies,
+            json_pack ("{s:o, s:o, s:s}",
+                       "reserve_pub",
+                       GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                       "balance",
+                       TALER_JSON_from_amount (&balance),
+                       "expiration_time",
+                       GNUNET_STRINGS_absolute_time_to_string (rs->a_expiration_date)));
   }
 
   /* Add withdraw fees we encountered to totals */
@@ -2206,10 +2213,8 @@ check_wire_out_cb (void *cls,
       TALER_JSON_hash (wire,
                        &wcc.h_wire))
   {
-    report_row_inconsistency ("wire_out",
-                              rowid,
-                              "could not hash wire address");
-    return GNUNET_OK;
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
   qs = edb->lookup_wire_transfer (edb->cls,
 				  esession,
@@ -2256,20 +2261,13 @@ check_wire_out_cb (void *cls,
                             wcc.method);
   if (NULL == plugin)
   {
-    report_row_inconsistency ("wire_out",
-                              rowid,
-                              "could not load required wire plugin to validate");
-    return GNUNET_OK;
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
 
-  if (GNUNET_SYSERR ==
-      plugin->amount_round (plugin->cls,
-                            &final_amount))
-  {
-    report_row_minor_inconsistency ("wire_out",
-                                    rowid,
-                                    "wire plugin failed to round given amount");
-  }
+  GNUNET_break (GNUNET_SYSERR !=
+                plugin->amount_round (plugin->cls,
+                                      &final_amount));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
   if (GNUNET_OK !=
@@ -2297,11 +2295,44 @@ check_wire_out_cb (void *cls,
   if (0 != TALER_amount_cmp (amount,
                              &final_amount))
   {
-    report_wire_out_inconsistency (wire,
-                                   rowid,
-                                   &final_amount,
-                                   amount,
-                                   "computed amount inconsistent with wire amount");
+    struct TALER_Amount delta;
+
+    if (0 < TALER_amount_cmp (amount,
+                              &final_amount))
+    {
+      /* amount > final_amount */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_subtract (&delta,
+                                            amount,
+                                            &final_amount));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_wire_out_delta_plus,
+                                       &total_wire_out_delta_plus,
+                                       &delta));
+    }
+    else
+    {
+      /* amount < final_amount */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_subtract (&delta,
+                                            &final_amount,
+                                            amount));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_wire_out_delta_minus,
+                                       &total_wire_out_delta_minus,
+                                       &delta));
+    }
+
+    report (report_wire_out_inconsistencies,
+            json_pack ("{s:O, s:I, s:o, s:o}",
+                       "destination_account",
+                       wire,
+                       "rowid",
+                       (json_int_t) rowid,
+                       "expected",
+                       TALER_JSON_from_amount (&final_amount),
+                       "claimed",
+                       TALER_JSON_from_amount (amount)));
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -3777,14 +3808,36 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_aggregation_fee_income));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_balance_insufficient_loss));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_balance_summary_delta_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_balance_summary_delta_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_wire_out_delta_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_wire_out_delta_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_balance_reserve_not_closed));
   GNUNET_assert (NULL !=
 		 (report_emergencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-		 (report_row_minor_inconsistencies = json_array ()));
+		 (denomination_key_validity_withdraw_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-		 (report_reserve_inconsistencies = json_array ()));
+		 (report_reserve_balance_summary_wrong_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_reserve_balance_insufficient_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_reserve_not_closed_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_wire_out_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
@@ -3810,26 +3863,62 @@ run (void *cls,
                                    &income_fee_total,
                                    &total_aggregation_fee_income));
   report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o"
-                      " s:o, s:o, s:o, s:o, s:o}",
+                      " s:o, s:o, s:o, s:o, s:o,"
+                      " s:o, s:o, s:o, s:o, s:o,"
+                      " s:o, s:o, s:o, s:o, s:o,"
+                      " s:o, s:o, s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
-		      "emergencies", report_emergencies,
-                      "emergencies_risk_total", TALER_JSON_from_amount (&reported_emergency_sum),
-		      "row_inconsistencies", report_row_inconsistencies,
-		      "row_minor_inconsistencies", report_row_minor_inconsistencies,
-		      "reserve_inconsistencies", report_reserve_inconsistencies,
                       /* block */
-		      "wire_out_inconsistencies", report_wire_out_inconsistencies,
-		      "coin_inconsistencies", report_coin_inconsistencies,
-		      "total_aggregation_fee_income", TALER_JSON_from_amount (&total_aggregation_fee_income),
-                      "total_escrow_balance", TALER_JSON_from_amount (&total_escrow_balance),
-                      "total_active_risk", TALER_JSON_from_amount (&total_risk),
+		      "reserve_balance_insufficient_inconsistencies",
+                      report_reserve_balance_insufficient_inconsistencies,
+                      "total_loss_balance_insufficient",
+                      TALER_JSON_from_amount (&total_balance_insufficient_loss),
+		      "reserve_balance_summary_wrong_inconsistencies",
+                      report_reserve_balance_summary_wrong_inconsistencies,
+                      "total_balance_summary_delta_plus",
+                      TALER_JSON_from_amount (&total_balance_summary_delta_plus),
+                      "total_balance_summary_delta_minus",
+                      TALER_JSON_from_amount (&total_balance_summary_delta_minus),
                       /* block */
-                      "total_withdraw_fee_income", TALER_JSON_from_amount (&total_withdraw_fee_income),
-                      "total_deposit_fee_income", TALER_JSON_from_amount (&total_deposit_fee_income),
-                      "total_melt_fee_income", TALER_JSON_from_amount (&total_melt_fee_income),
-                      "total_refund_fee_income", TALER_JSON_from_amount (&total_refund_fee_income),
-                      "income_fee_total", TALER_JSON_from_amount (&income_fee_total)
+                      "total_escrow_balance",
+                      TALER_JSON_from_amount (&total_escrow_balance),
+                      "total_active_risk",
+                      TALER_JSON_from_amount (&total_risk),
+                      "total_withdraw_fee_income",
+                      TALER_JSON_from_amount (&total_withdraw_fee_income),
+                      "total_deposit_fee_income",
+                      TALER_JSON_from_amount (&total_deposit_fee_income),
+                      "total_melt_fee_income",
+                      /* block */
+                      TALER_JSON_from_amount (&total_melt_fee_income),
+                      "total_refund_fee_income",
+                      TALER_JSON_from_amount (&total_refund_fee_income),
+                      "income_fee_total",
+                      TALER_JSON_from_amount (&income_fee_total),
+		      "emergencies",
+                      report_emergencies,
+                      "emergencies_risk_total",
+                      TALER_JSON_from_amount (&reported_emergency_sum),
+                      /* block */
+		      "reserve_not_closed_inconsistencies",
+                      report_reserve_not_closed_inconsistencies,
+                      "total_balance_reserve_not_closed",
+                      TALER_JSON_from_amount (&total_balance_reserve_not_closed),
+		      "wire_out_inconsistencies",
+                      report_wire_out_inconsistencies,
+                      "total_wire_out_delta_plus",
+                      TALER_JSON_from_amount (&total_wire_out_delta_plus),
+                      "total_wire_out_delta_minus",
+                      TALER_JSON_from_amount (&total_wire_out_delta_minus),
+                      /* block */
+		      "row_inconsistencies",
+                      report_row_inconsistencies,
+		      "denomination_key_validity_withdraw_inconsistencies",
+                      denomination_key_validity_withdraw_inconsistencies,
+		      "coin_inconsistencies",
+                      report_coin_inconsistencies,
+		      "total_aggregation_fee_income",
+                      TALER_JSON_from_amount (&total_aggregation_fee_income)
                       );
   json_dumpf (report,
 	      stdout,
