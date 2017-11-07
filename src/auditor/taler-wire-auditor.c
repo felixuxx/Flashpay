@@ -130,7 +130,23 @@ static void *out_wire_off;
 static size_t wire_off_size;
 
 /**
- * Array of reports about row inconsitencies.
+ * Array of reports about row inconsitencies in wire_out table.
+ */
+static json_t *report_wire_out_inconsistencies;
+
+/**
+ * Array of reports about row inconsitencies in reserves_in table.
+ */
+static json_t *report_reserve_in_inconsistencies;
+
+/**
+ * Array of reports about wrong bank account being recorded for
+ * incoming wire transfers.
+ */
+static json_t *report_missattribution_in_inconsistencies;
+
+/**
+ * Array of reports about row inconcistencies.
  */
 static json_t *report_row_inconsistencies;
 
@@ -139,17 +155,49 @@ static json_t *report_row_inconsistencies;
  */
 static json_t *report_row_minor_inconsistencies;
 
+/**
+ * Total amount that was transferred too much from the exchange.
+ */
+static struct TALER_Amount total_bad_amount_out_plus;
+
+/**
+ * Total amount that was transferred too little from the exchange.
+ */
+static struct TALER_Amount total_bad_amount_out_minus;
+
+/**
+ * Total amount that was transferred too much to the exchange.
+ */
+static struct TALER_Amount total_bad_amount_in_plus;
+
+/**
+ * Total amount that was transferred too little to the exchange.
+ */
+static struct TALER_Amount total_bad_amount_in_minus;
+
+/**
+ * Total amount where the exchange has the wrong sender account
+ * for incoming funds and may thus wire funds to the wrong
+ * destination when closing the reserve.
+ */
+static struct TALER_Amount total_missattribution_in;
+
+/**
+ * Amount of zero in our currency.
+ */
+static struct TALER_Amount zero;
+
 
 /* *****************************   Shutdown   **************************** */
 
-/** 
+/**
  * Entry in map with wire information we expect to obtain from the
  * bank later.
  */
 struct ReserveInInfo
 {
 
-  /** 
+  /**
    * Hash of expected row offset.
    */
   struct GNUNET_HashCode row_off_hash;
@@ -168,18 +216,18 @@ struct ReserveInInfo
    * RowID in reserves_in table.
    */
   uint64_t rowid;
-  
+
 };
 
 
-/** 
+/**
  * Entry in map with wire information we expect to obtain from the
  * #edb later.
  */
 struct ReserveOutInfo
 {
 
-  /** 
+  /**
    * Hash of the wire transfer subject.
    */
   struct GNUNET_HashCode subject_hash;
@@ -188,7 +236,7 @@ struct ReserveOutInfo
    * Expected details about the wire transfer.
    */
   struct TALER_WIRE_TransferDetails details;
-  
+
 };
 
 
@@ -253,11 +301,32 @@ do_shutdown (void *cls)
   if (NULL != report_row_inconsistencies)
   {
     json_t *report;
-    
+
     GNUNET_assert (NULL != report_row_minor_inconsistencies);
-    report = json_pack ("{s:o, s:o}",
-			"row-inconsistencies", report_row_inconsistencies,
-			"row-minor-inconsistencies", report_row_minor_inconsistencies);
+    report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
+                        " s:o, s:o, s:o, s:o, s:o }",
+                        /* blocks of 5 */
+			"wire_out_amount_inconsistencies",
+                        report_wire_out_inconsistencies,
+                        "total_wire_out_delta_plus",
+                        TALER_JSON_from_amount (&total_bad_amount_out_plus),
+                        "total_wire_out_delta_minus",
+                        TALER_JSON_from_amount (&total_bad_amount_out_minus),
+			"reserve_in_amount_inconsistencies",
+                        report_reserve_in_inconsistencies,
+                        "total_wire_in_delta_minus",
+                        TALER_JSON_from_amount (&total_bad_amount_in_plus),
+                        /* block */
+                        "total_wire_in_delta_minus",
+                        TALER_JSON_from_amount (&total_bad_amount_in_minus),
+                        "missattribution_in_inconsistencies",
+                        report_missattribution_in_inconsistencies,
+                        "total_missattribution_in",
+                        TALER_JSON_from_amount (&total_missattribution_in),
+			"row_inconsistencies",
+                        report_row_inconsistencies,
+			"row_minor_inconsistencies",
+                        report_row_minor_inconsistencies);
     json_dumpf (report,
 		stdout,
 		JSON_INDENT (2));
@@ -313,7 +382,7 @@ do_shutdown (void *cls)
  *
  * @param array report array to append @a object to
  * @param object object to append, should be check that it is not NULL
- */ 
+ */
 static void
 report (json_t *array,
 	json_t *object)
@@ -322,47 +391,6 @@ report (json_t *array,
   GNUNET_assert (0 ==
 		 json_array_append_new (array,
 					object));
-}
-
-
-/**
- * Report a (serious) inconsistency in the exchange's database.
- *
- * @param table affected table
- * @param rowid affected row, UINT64_MAX if row is missing
- * @param diagnostic message explaining the problem
- */
-static void
-report_row_inconsistency (const char *table,
-                          uint64_t rowid,
-                          const char *diagnostic)
-{
-  report (report_row_inconsistencies,
-	  json_pack ("{s:s, s:I, s:s}",
-		     "table", table,
-		     "row", (json_int_t) rowid,
-		     "diagnostic", diagnostic));
-}
-
-
-/**
- * Report a minor inconsistency in the exchange's database (i.e. something
- * relating to timestamps that should have no financial implications).
- *
- * @param table affected table
- * @param rowid affected row, UINT64_MAX if row is missing
- * @param diagnostic message explaining the problem
- */
-static void
-report_row_minor_inconsistency (const char *table,
-                                uint64_t rowid,
-                                const char *diagnostic)
-{
-  report (report_row_minor_inconsistencies,
-	  json_pack ("{s:s, s:I, s:s}",
-		     "table", table,
-		     "row", (json_int_t) rowid,
-		     "diagnostic", diagnostic));
 }
 
 
@@ -475,15 +503,15 @@ commit (enum GNUNET_DB_QueryStatus qs)
  */
 static int
 wire_out_cb (void *cls,
-		uint64_t rowid,
-		struct GNUNET_TIME_Absolute date,
-		const struct TALER_WireTransferIdentifierRawP *wtid,
-		const json_t *wire,
-		const struct TALER_Amount *amount)
+             uint64_t rowid,
+             struct GNUNET_TIME_Absolute date,
+             const struct TALER_WireTransferIdentifierRawP *wtid,
+             const json_t *wire,
+             const struct TALER_Amount *amount)
 {
   struct GNUNET_HashCode key;
   struct ReserveOutInfo *roi;
-  
+
   GNUNET_CRYPTO_hash (wtid,
 		      sizeof (struct TALER_WireTransferIdentifierRawP),
 		      &key);
@@ -491,37 +519,108 @@ wire_out_cb (void *cls,
 					   &key);
   if (NULL == roi)
   {
-    /* FIXME (#4963): do proper logging! */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to find wire transfer `%s' over %s at `%s' in exchange database!\n",
-		TALER_B2S (wtid),
-		TALER_amount2s (amount),
-		GNUNET_STRINGS_absolute_time_to_string (date));
+    /* Wire transfer was not made (yet) at all (but would have been
+       justified), so the entire amount is missing / still to be done.
+       This is moderately harmless, it might just be that the aggreator
+       has not yet fully caught up with the transfers it should do. */
+    report (report_wire_out_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rowid,
+                       "amount_wired", TALER_JSON_from_amount (&zero),
+                       "amount_justified", TALER_JSON_from_amount (amount),
+                       "wtid", GNUNET_JSON_from_data_auto (wtid),
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
+                       "diagnostic", "wire transfer not made (yet?)"));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_amount_out_minus,
+                                    &total_bad_amount_out_minus,
+                                    amount));
     return GNUNET_OK;
-  }
-  if (0 != TALER_amount_cmp (&roi->details.amount,
-			     amount))
-  {
-    report_row_inconsistency ("reserves_out",
-			      rowid,
-			      "wire amount missmatch");
-    return GNUNET_OK;
-  }
-  if (roi->details.execution_date.abs_value_us !=
-      date.abs_value_us)
-  {
-    report_row_minor_inconsistency ("reserves_out",
-				    rowid,
-				    "execution date missmatch");
   }
   if (! json_equal ((json_t *) wire,
 		    roi->details.account_details))
   {
-    report_row_inconsistency ("reserves_out",
-			      rowid,
-			      "receiver account missmatch");
-    return GNUNET_OK;
+    /* Destination bank account is wrong in actual wire transfer, so
+       we should count the wire transfer as entirely spurious, and
+       additionally consider the justified wire transfer as missing. */
+    report (report_wire_out_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rowid,
+                       "amount_wired", TALER_JSON_from_amount (&roi->details.amount),
+                       "amount_justified", TALER_JSON_from_amount (&zero),
+                       "wtid", GNUNET_JSON_from_data_auto (wtid),
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
+                       "diagnostic", "recevier account missmatch"));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_amount_out_plus,
+                                    &total_bad_amount_out_plus,
+                                    &roi->details.amount));
+    report (report_wire_out_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rowid,
+                       "amount_wired", TALER_JSON_from_amount (&zero),
+                       "amount_justified", TALER_JSON_from_amount (amount),
+                       "wtid", GNUNET_JSON_from_data_auto (wtid),
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
+                       "diagnostic", "receiver account missmatch"));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_amount_out_minus,
+                                    &total_bad_amount_out_minus,
+                                    amount));
+    goto cleanup;
   }
+  if (0 != TALER_amount_cmp (&roi->details.amount,
+			     amount))
+  {
+    report (report_wire_out_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rowid,
+                       "amount_justified", TALER_JSON_from_amount (amount),
+                       "amount_wired", TALER_JSON_from_amount (&roi->details.amount),
+                       "wtid", GNUNET_JSON_from_data_auto (wtid),
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
+                       "diagnostic", "wire amount does not match"));
+    if (0 < TALER_amount_cmp (amount,
+                              &roi->details.amount))
+    {
+      /* amount > roi->details.amount: wire transfer was smaller than it should have been */
+      struct TALER_Amount delta;
+
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_subtract (&delta,
+                                           amount,
+                                           &roi->details.amount));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_bad_amount_out_minus,
+                                      &total_bad_amount_out_minus,
+                                      &delta));
+    }
+    else
+    {
+      /* roi->details.amount < amount: wire transfer was larger than it should have been */
+      struct TALER_Amount delta;
+
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_subtract (&delta,
+                                           &roi->details.amount,
+                                           amount));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_bad_amount_out_plus,
+                                      &total_bad_amount_out_plus,
+                                      &delta));
+    }
+    goto cleanup;
+  }
+  if (roi->details.execution_date.abs_value_us !=
+      date.abs_value_us)
+  {
+    report (report_row_minor_inconsistencies,
+            json_pack ("{s:s, s:I, s:s}",
+                       "table", "wire_out",
+                       "row", (json_int_t) rowid,
+                       "diagnostic", "execution date missmatch"));
+  }
+cleanup:
   GNUNET_assert (GNUNET_OK ==
 		 GNUNET_CONTAINER_multihashmap_remove (out_map,
 						       &key,
@@ -535,11 +634,12 @@ wire_out_cb (void *cls,
 
 
 /**
- * Complain that we failed to match an entry from #out_map.
+ * Complain that we failed to match an entry from #out_map.  This
+ * means a wire transfer was made without proper justification.
  *
  * @param cls NULL
  * @param key unused key
- * @param value the `struct ReserveOutInfo` to free
+ * @param value the `struct ReserveOutInfo` to report
  * @return #GNUNET_OK
  */
 static int
@@ -549,12 +649,18 @@ complain_out_not_found (void *cls,
 {
   struct ReserveOutInfo *roi = value;
 
-  (void) roi;
-  /* FIXME (#4963): log more precisely which wire transfer (and amount)
-     is bogus. */
-  report_row_inconsistency ("reserves_out",
-			    UINT64_MAX,
-			    "matching wire transfer not found");
+  report (report_wire_out_inconsistencies,
+          json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                     "row", (json_int_t) 0,
+                     "amount_wired", TALER_JSON_from_amount (&roi->details.amount),
+                     "amount_justified", TALER_JSON_from_amount (&zero),
+                     "wtid", GNUNET_JSON_from_data_auto (&roi->details.reserve_pub), /* #5077 missnomer */
+                     "timestamp", GNUNET_STRINGS_absolute_time_to_string (roi->details.execution_date),
+                     "diagnostic", "justification for wire transfer not found"));
+  GNUNET_break (GNUNET_OK ==
+                TALER_amount_add (&total_bad_amount_out_plus,
+                                  &total_bad_amount_out_plus,
+                                  &roi->details.amount));
   return GNUNET_OK;
 }
 
@@ -567,7 +673,7 @@ static void
 check_exchange_wire_out ()
 {
   enum GNUNET_DB_QueryStatus qs;
-    
+
   qs = edb->select_wire_out_above_serial_id (edb->cls,
 					     esession,
 					     pp.last_wire_out_serial_id,
@@ -582,14 +688,14 @@ check_exchange_wire_out ()
   }
   GNUNET_CONTAINER_multihashmap_iterate (out_map,
 					 &complain_out_not_found,
-					 NULL); 
-  /* clean up (technically redundant, but nicer) */
+					 NULL);
+  /* clean up */
   GNUNET_CONTAINER_multihashmap_iterate (out_map,
 					 &free_roi,
 					 NULL);
   GNUNET_CONTAINER_multihashmap_destroy (out_map);
   out_map = NULL;
- 
+
   /* conclude with: */
   commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
   GNUNET_SCHEDULER_shutdown ();
@@ -616,7 +722,7 @@ history_debit_cb (void *cls,
 		  const struct TALER_WIRE_TransferDetails *details)
 {
   struct ReserveOutInfo *roi;
-  
+
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     /* end of iteration, now check wire_out to see
@@ -640,9 +746,12 @@ history_debit_cb (void *cls,
 					 GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
     GNUNET_break_op (0); /* duplicate wire offset is not allowed! */
-    report_row_inconsistency ("bank wire log",
-			      UINT64_MAX,
-			      "duplicate wire offset");
+    report (report_row_inconsistencies,
+            json_pack ("{s:s, s:I, s:o, s:s}",
+                       "table", "bank wire log",
+                       "row", (json_int_t) 0,
+                       "wire_offset_hash", GNUNET_JSON_from_data_auto (&roi->subject_hash),
+                       "diagnostic", "duplicate wire offset"));
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -727,9 +836,12 @@ reserve_in_cb (void *cls,
 					 GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
     GNUNET_break_op (0); /* duplicate wire offset is not allowed! */
-    report_row_inconsistency ("reserves_in",
-			      rowid,
-			      "duplicate wire offset");
+    report (report_row_inconsistencies,
+            json_pack ("{s:s, s:I, s:o, s:s}",
+                       "table", "reserves_in",
+                       "row", (json_int_t) rowid,
+                       "wire_offset_hash", GNUNET_JSON_from_data_auto (&rii->row_off_hash),
+                       "diagnostic", "duplicate wire offset"));
     return GNUNET_SYSERR;
   }
   pp.last_reserve_in_serial_id = rowid + 1;
@@ -752,9 +864,18 @@ complain_in_not_found (void *cls,
 {
   struct ReserveInInfo *rii = value;
 
-  report_row_inconsistency ("reserves_in",
-			    rii->rowid,
-			    "matching wire transfer not found");
+  report (report_reserve_in_inconsistencies,
+          json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                     "row", (json_int_t) rii->rowid,
+                     "amount_expected", TALER_JSON_from_amount (&rii->details.amount),
+                     "amount_wired", TALER_JSON_from_amount (&zero),
+                     "wtid", GNUNET_JSON_from_data_auto (&rii->details.reserve_pub), /* also reserve_pub, but see #5077 missnomer */
+                     "timestamp", GNUNET_STRINGS_absolute_time_to_string (rii->details.execution_date),
+                     "diagnostic", "incoming wire transfer claimed by exchange not found"));
+  GNUNET_break (GNUNET_OK ==
+                TALER_amount_add (&total_bad_amount_in_minus,
+                                  &total_bad_amount_in_minus,
+                                  &rii->details.amount));
   return GNUNET_OK;
 }
 
@@ -780,7 +901,7 @@ history_credit_cb (void *cls,
 {
   struct ReserveInInfo *rii;
   struct GNUNET_HashCode key;
-  
+
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     /* end of operation */
@@ -831,42 +952,110 @@ history_credit_cb (void *cls,
   if (row_off_size != rii->row_off_size)
   {
     GNUNET_break (0);
-    report_row_inconsistency ("reserves_in",
-			      rii->rowid,
-			      "wire reference size missmatch");
+    report (report_row_inconsistencies,
+            json_pack ("{s:s, s:o, s:o, s:s}",
+                       "table", "reserves_in",
+                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "wire_offset_hash", GNUNET_JSON_from_data_auto (&key),
+                       "diagnostic", "wire reference size missmatch"));
     return GNUNET_OK;
-  }
-  if (0 != TALER_amount_cmp (&rii->details.amount,
-			     &details->amount))
-  {
-    report_row_inconsistency ("reserves_in",
-			      rii->rowid,
-			      "wire amount missmatch");
-    return GNUNET_OK;
-  }
-  if (details->execution_date.abs_value_us !=
-      rii->details.execution_date.abs_value_us)
-  {
-    report_row_minor_inconsistency ("reserves_in",
-				    rii->rowid,
-				    "execution date missmatch");
   }
   if (0 != memcmp (&details->reserve_pub,
 		   &rii->details.reserve_pub,
 		   sizeof (struct TALER_ReservePublicKeyP)))
   {
-    report_row_inconsistency ("reserves_in",
-			      rii->rowid,
-			      "reserve public key / wire subject missmatch");
-    return GNUNET_OK;
+    report (report_reserve_in_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "amount_exchange_expected", TALER_JSON_from_amount (&rii->details.amount),
+                       "amount_wired", TALER_JSON_from_amount (&zero),
+                       "wtid", GNUNET_JSON_from_data_auto (&rii->details.reserve_pub), /* #5077 missnomer */
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (rii->details.execution_date),
+                       "diagnostic", "wire subject does not match"));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_amount_in_minus,
+                                    &total_bad_amount_in_minus,
+                                    &rii->details.amount));
+    report (report_reserve_in_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "amount_exchange_expected", TALER_JSON_from_amount (&zero),
+                       "amount_wired", TALER_JSON_from_amount (&details->amount),
+                       "wtid", GNUNET_JSON_from_data_auto (&details->reserve_pub), /* #5077 missnomer */
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (details->execution_date),
+                       "diagnostic", "wire subject does not match"));
+
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_amount_in_plus,
+                                    &total_bad_amount_in_plus,
+                                    &details->amount));
+    goto cleanup;
+  }
+  if (0 != TALER_amount_cmp (&rii->details.amount,
+			     &details->amount))
+  {
+    report (report_reserve_in_inconsistencies,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "amount_exchange_expected", TALER_JSON_from_amount (&rii->details.amount),
+                       "amount_wired", TALER_JSON_from_amount (&details->amount),
+                       "wtid", GNUNET_JSON_from_data_auto (&details->reserve_pub), /* #5077 missnomer */
+                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (details->execution_date),
+                       "diagnostic", "wire amount does not match"));
+    if (0 < TALER_amount_cmp (&details->amount,
+                              &rii->details.amount))
+    {
+      /* details->amount > rii->details.amount: wire transfer was larger than it should have been */
+      struct TALER_Amount delta;
+
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_subtract (&delta,
+                                           &details->amount,
+                                           &rii->details.amount));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_bad_amount_in_plus,
+                                      &total_bad_amount_in_plus,
+                                      &delta));
+    }
+    else
+    {
+      /* rii->details.amount < details->amount: wire transfer was smaller than it should have been */
+      struct TALER_Amount delta;
+
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_subtract (&delta,
+                                           &rii->details.amount,
+                                           &details->amount));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_bad_amount_in_minus,
+                                      &total_bad_amount_in_minus,
+                                      &delta));
+    }
+    goto cleanup;
   }
   if (! json_equal (details->account_details,
 		    rii->details.account_details))
   {
-    report_row_minor_inconsistency ("reserves_in",
-				    rii->rowid,
-				    "sender account missmatch");
+    report (report_missattribution_in_inconsistencies,
+            json_pack ("{s:s, s:o, s:o}",
+                       "amount", TALER_JSON_from_amount (&rii->details.amount),
+                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "wtid", GNUNET_JSON_from_data_auto (&rii->details.reserve_pub))); /* FIXME #5077 missnomer */
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_missattribution_in,
+                                    &total_missattribution_in,
+                                    &rii->details.amount));
   }
+  if (details->execution_date.abs_value_us !=
+      rii->details.execution_date.abs_value_us)
+  {
+    report (report_row_minor_inconsistencies,
+            json_pack ("{s:s, s:o, s:s}",
+                       "table", "reserves_in",
+                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "diagnostic", "execution date missmatch"));
+  }
+ cleanup:
   GNUNET_assert (GNUNET_OK ==
 		 GNUNET_CONTAINER_multihashmap_remove (in_map,
 						       &key,
@@ -1002,9 +1191,32 @@ run (void *cls,
     return;
   }
   GNUNET_assert (NULL !=
-		 (report_row_inconsistencies = json_array ()));
+		 (report_wire_out_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_reserve_in_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_row_minor_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_row_inconsistencies = json_array ()));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_bad_amount_out_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_bad_amount_out_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_bad_amount_in_plus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_bad_amount_in_minus));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_missattribution_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &zero));
+
   qsx = adb->get_wire_auditor_progress (adb->cls,
                                         asession,
                                         &master_pub,

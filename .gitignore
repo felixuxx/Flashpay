@@ -88,3 +88,7 @@ contrib/taler-exchange.tag
 doxygen-doc/
 src/exchange-lib/test_exchange_api_keys_cherry_picking
 src/auditor/taler-wire-auditor
+contrib/auditor-report.aux
+contrib/auditor-report.log
+contrib/auditor-report.tex
+contrib/auditor-report.pdf

@@ -311,11 +311,130 @@ public key for ``payback-master'' operations.
 
 \subsection{Actual incoming wire transfers}
 
-TBD.  See bug 4958.
+This section highlights cases where the exchange's record about
+incoming wire transfers does not match with that of the bank.
+
+{% if wire.reserve_in_amount_inconsistencies() == 0 %}
+  {\bf All incoming wire transfer amounts and subjects matched up.}
+{% else %}
+  \begin{longtable}{p{6.5cm}|rl|rl}
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Expected}}  \\
+  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \hline \hline
+\endfirsthead
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Expected}}  \\
+  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \hline \hline
+\endhead
+  \hline \hline
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Expected}}  \\
+  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+\endfoot
+  \hline
+  {\bf Total deltas}  & &
+  {{ wire.total_bad_amount_in_plus.value}}.{{ wire.total_bad_amount_in_plus.fraction}} & {{ wire.total_bad_amount_in_plus.currency}} &
+  - {{ wire.total_bad_amount_in_minus.value}}.{{ wire.total_bad_amount_in_minus.fraction}} & {{ wire.total_bad_amount_in_minus.currency}} \\
+  \caption{Incoming wire transfer amounts not matching up.}
+  \label{table:wire_in:transfer_amount_inconsistencies}
+\endlastfoot
+{% for item in wire.reserve_in_amount_inconsistencies %}
+  {\tt {{ item.wtid }} } &
+  {{ item.amount_wired.value }}.{{ item.amount_wired.fraction }} &
+  {{ item.amount_wired.currency }} &
+  {{ item.amount_expected.value }}.{{ item.amount_expected.fraction }} &
+  {{ item.amount_expected.currency }} \\ \hline
+\nopagebreak
+  &
+  {{ item.diagnostic }} &
+  {{ item.row }} &
+  {{ item.timestmap }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Missattributed incoming wire transfers}
+
+This section lists cases where the sender account record of an
+incoming wire transfer differs between the exchange and the bank.
+This will cause funds to be sent to the wrong account when the reserve
+is closed and the remaining balance is refunded to the original
+account.
+
+
+{% if wire.missattribution_in_inconsistencies() == 0 %}
+  {\bf All incoming wire transfer sender accounts matched up.}
+{% else %}
+  \begin{longtable}{p{6.5cm}|rl}
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  \hline \hline
+\endfirsthead
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  \hline \hline
+\endhead
+  \hline \hline
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+\endfoot
+  \hline
+  {\bf Total amount}  &
+  {{ wire.total_missattribution_in_plus.value}}.{{ wire.total_missattribution_in_plus.fraction}} & {{ wire.total_missattribution_in_plus.currency}} \\
+  \caption{Incoming wire transfer sender accounts not matching up.}
+  \label{table:wire_in:sender_account_inconsistencies}
+\endlastfoot
+{% for item in wire.missattribution_in_inconsistencies %}
+  {\tt {{ item.wtid }} } &
+  {{ item.amount.value }}.{{ item.amount.fraction }} &
+  {{ item.amount.currency }} \\ hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+
 
 \subsection{Actual outgoing wire transfers} \label{sec:wire_check_out}
 
-TBD.  See bug 4958.
+This section highlights cases where the exchange missbehaved
+with respect to outgoing wire transfers.
+
+{% if wire.wire_out_amount_inconsistencies() == 0 %}
+  {\bf All outgoing wire transfers matched up.}
+{% else %}
+  \begin{longtable}{p{6.5cm}|rl|rl}
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Justified}}  \\
+  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \hline \hline
+\endfirsthead
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Justified}}  \\
+  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \hline \hline
+\endhead
+  \hline \hline
+  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Justified}}  \\
+  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+\endfoot
+  \hline
+  {\bf Total deltas}  & &
+  {{ wire.total_bad_amount_out_plus.value}}.{{ wire.total_bad_amount_out_plus.fraction}} & {{ wire.total_bad_amount_out_plus.currency}} &
+  - {{ wire.total_bad_amount_out_minus.value}}.{{ wire.total_bad_amount_out_minus.fraction}} & {{ wire.total_bad_amount_out_minus.currency}} \\
+  \caption{Outgoing wire transfer amounts not matching up.}
+  \label{table:wire_out:transfer_amount_inconsistencies}
+\endlastfoot
+{% for item in wire.wire_out_amount_inconsistencies %}
+  {\tt {{ item.wtid }} } &
+  {{ item.amount_wired.value }}.{{ item.amount_wired.fraction }} &
+  {{ item.amount_wired.currency }} &
+  {{ item.amount_justified.value }}.{{ item.amount_justified.fraction }} &
+  {{ item.amount_justified.currency }} \\ \hline
+\nopagebreak
+  &
+  {{ item.diagnostic }} &
+  {{ item.row }} &
+  {{ item.timestmap }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
 
 \section{Minor irregularities}
 
@@ -357,6 +476,39 @@ translate into a financial loss (yet).
   \end{longtable}
 {% endif %}
 
+
+\subsection{Wire table issues}
+
+This section describes issues found by the wire auditor that do not
+have a clear financial impact.
+
+{% if wire.row_inconsistencies|length() == 0 %}
+  {\bf No wire row inconsistencies found.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|l|p{5.5}}
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+  \hline \hline
+\endfirsthead
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+  \hline \hline
+\endhead
+  \hline \hline
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+\endfoot
+  \hline
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
+  \caption{Other wire table issues found (by table and row).}
+  \label{table:misc}
+\endlastfoot
+{% for item in data.row_inconsistencies %}
+  {{ item.table }} &
+  {{ item.row }} &
+  {{ item.diagnostic }} \\
+\nopagebreak
+  {{ item.wire_offset_hash }}  \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
 
 \subsection{Other issues}
 
@@ -470,6 +622,34 @@ implications.
 {% endif %}
 
 
+\subsection{Wire transfer timestamp issues}
+
+This section lists issues with wire transfers related to timestamps.
+
+
+{% if wire.row_minor_inconsistencies|length() == 0 %}
+  {\bf No timestamp issues detected.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|r|p{5.5}}
+  {\bf Table} & {\bf Table row} & {\bf Diagnostic}
+  \\ \hline \hline
+\endfirsthead
+  {\bf Table} & {\bf Table row} & {\bf Diagnostic}
+  \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Table} & {\bf Table row} & {\bf Diagnostic} \\
+\endfoot
+  \hline \hline
+  {\bf Table} & {\bf Table row} & {\bf Diagnostic} \\
+  \caption{Execution times not matching in wire transfers.}
+  \label{table:wire:bad_time}
+\endlastfoot
+{% for item in wire.row_minor_inconsistencies %}
+  {\tt {{ item.table }} } & {{ item.row }} & {{ item.diagnostic }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
 
 
 \end{document}
