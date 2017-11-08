@@ -327,12 +327,16 @@ do_shutdown (void *cls)
                         report_row_inconsistencies,
 			"row_minor_inconsistencies",
                         report_row_minor_inconsistencies);
+    GNUNET_break (NULL != report);
     json_dumpf (report,
 		stdout,
 		JSON_INDENT (2));
     json_decref (report);
+    report_wire_out_inconsistencies = NULL;
+    report_reserve_in_inconsistencies = NULL;
     report_row_inconsistencies = NULL;
     report_row_minor_inconsistencies = NULL;
+    report_missattribution_in_inconsistencies = NULL;
   }
   if (NULL != hh)
   {
@@ -842,7 +846,9 @@ reserve_in_cb (void *cls,
                        "row", (json_int_t) rowid,
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rii->row_off_hash),
                        "diagnostic", "duplicate wire offset"));
-    return GNUNET_SYSERR;
+    json_decref (rii->details.account_details);
+    GNUNET_free (rii);
+    return GNUNET_OK;
   }
   pp.last_reserve_in_serial_id = rowid + 1;
   return GNUNET_OK;
@@ -1198,6 +1204,8 @@ run (void *cls,
 		 (report_row_minor_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_row_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_missattribution_in_inconsistencies = json_array ()));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_bad_amount_out_plus));
