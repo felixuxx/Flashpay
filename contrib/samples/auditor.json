@@ -1,60 +1,112 @@
 {
+  "reserve_balance_insufficient_inconsistencies": [],
+  "total_loss_balance_insufficient": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "reserve_balance_summary_wrong_inconsistencies": [],
+  "total_balance_summary_delta_plus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_balance_summary_delta_minus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_escrow_balance": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_active_risk": {
+    "currency": "KUDOS",
+    "value": 150,
+    "fraction": 0
+  },
+  "total_withdraw_fee_income": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 30000000
+  },
+  "total_deposit_fee_income": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 30000000
+  },
+  "total_melt_fee_income": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_refund_fee_income": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "income_fee_total": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 60000000
+  },
   "emergencies": [],
-  "row_inconsistencies": [],
-  "row_minor_inconsistencies": [],
-  "reserve_inconsistencies": [],
+  "emergencies_risk_total": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "reserve_not_closed_inconsistencies": [],
+  "total_balance_reserve_not_closed": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
   "wire_out_inconsistencies": [],
+  "total_wire_out_delta_plus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_wire_out_delta_minus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "bad_sig_losses": [],
+  "total_bad_sig_loss": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "row_inconsistencies": [],
+  "denomination_key_validity_withdraw_inconsistencies": [],
   "coin_inconsistencies": [],
-  "reserve_balance": [
-    {
-      "total_escrow_balance": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 0
-      },
-      "total_withdraw_fee_income": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 30000000
-      }
-    }
-  ],
-  "aggregation_fee_balance": [
-    {
-      "total_aggregation_fee_income": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 0
-      }
-    }
-  ],
-  "report_denomination_balance": [
-    {
-      "total_escrow_balance": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 0
-      },
-      "total_active_risk": {
-        "currency": "KUDOS",
-        "value": 150,
-        "fraction": 0
-      },
-      "total_deposit_fee_income": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 30000000
-      },
-      "total_melt_fee_income": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 0
-      },
-      "total_refund_fee_income": {
-        "currency": "KUDOS",
-        "value": 0,
-        "fraction": 0
-      }
-    }
-  ]
+  "total_coin_delta_plus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_coin_delta_minus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "amount_arithmetic_inconsistencies": [],
+  "total_arithmetic_delta_plus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_arithmetic_delta_minus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "total_aggregation_fee_income": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  }
 }

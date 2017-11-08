@@ -14,15 +14,15 @@
 The balance of the escrow account should
 be {\bf
 \mbox{
-  {{ data.report_denomination_balance[0].total_escrow_balance.value }}.{{ data.report_denomination_balance[0].total_escrow_balance.fraction }}
-  {{ data.report_denomination_balance[0].total_escrow_balance.currency }}}}.
+  {{ data.total_escrow_balance.value }}.{{ data.total_escrow_balance.fraction }}
+  {{ data.total_escrow_balance.currency }}}}.
 
 \noindent
 The active operational risk stands at
 \mbox{
 {\bf
-  {{ data.report_denomination_balance[0].total_active_risk.value }}.{{ data.report_denomination_balance[0].total_active_risk.fraction }}
-  {{ data.report_denomination_balance[0].total_active_risk.currency }}}}.
+  {{ data.total_active_risk.value }}.{{ data.total_active_risk.fraction }}
+  {{ data.total_active_risk.currency }}}}.
 
 
 \section{Income}
@@ -120,17 +120,17 @@ the financial damage done to the customer).
   {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Table row} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Table row} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
 \endfoot
   \hline
   {\bf Total} & &
   {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
   {{ data.total_arithmetic_delta_plus.currency }} &
   {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
-  {{ data.total_arithmetic_delta_minus.currency }} &
+  {{ data.total_arithmetic_delta_minus.currency }} \\
     \caption{Arithmetic inconsistencies.}
     \label{table:amount:arithmetic:inconsistencies}
 \endlastfoot
@@ -192,7 +192,7 @@ that is a separate check).  Note that not making the wire transfer
 would be reported separately in Section~\ref{sec:wire_check_out}.
 
 
-{% if data.reserve_wire_out_inconsistencies|length() == 0 %}
+{% if data.wire_out_inconsistencies|length() == 0 %}
   {\bf All aggregations matched up.}
 {% else %}
   \begin{longtable}{p{1.5cm}|l|rl|rl}
@@ -238,17 +238,17 @@ any effects on its own balance, those entries are excluded from the total.
   {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Coin public key} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Coin public key} & \ \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
 \endfoot
   \hline
   {\bf Total} & &
   {{ data.total_coin_delta_plus.value }}.{{ data.total_coin_delta_plus.fraction }} &
   {{ data.total_coin_delta_plus.currency }} &
   - {{ data.total_coin_delta_minus.value }}.{{ data.total_coin_delta_minus.fraction }} &
-  {{ data.total_coin_delta_minus.currency }} &
+  {{ data.total_coin_delta_minus.currency }} \\
     \caption{Arithmetic inconsistencies of amount calculations involving a coin.}
     \label{table:amount:arithmetic:coin:inconsistencies}
 \endlastfoot
@@ -279,7 +279,7 @@ the (hash of the) denomination public key for
 ``payback-verify'' and ``deposit-verify'' operations, and the master
 public key for ``payback-master'' operations.
 
-{% if data.reserve_wire_out_inconsistencies|length() == 0 %}
+{% if data.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
 {% else %}
   \begin{longtable}{p{1.5cm}|c|l|rl}
@@ -314,7 +314,7 @@ public key for ``payback-master'' operations.
 This section highlights cases where the exchange's record about
 incoming wire transfers does not match with that of the bank.
 
-{% if wire.reserve_in_amount_inconsistencies() == 0 %}
+{% if wire.reserve_in_amount_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer amounts and subjects matched up.}
 {% else %}
   \begin{longtable}{p{6.5cm}|rl|rl}
@@ -331,9 +331,9 @@ incoming wire transfers does not match with that of the bank.
   {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
 \endfoot
   \hline
-  {\bf Total deltas}  & &
-  {{ wire.total_bad_amount_in_plus.value}}.{{ wire.total_bad_amount_in_plus.fraction}} & {{ wire.total_bad_amount_in_plus.currency}} &
-  - {{ wire.total_bad_amount_in_minus.value}}.{{ wire.total_bad_amount_in_minus.fraction}} & {{ wire.total_bad_amount_in_minus.currency}} \\
+  {\bf Total deltas}  &
+  {{ wire.total_wire_in_delta_plus.value}}.{{ wire.total_wire_in_delta_plus.fraction}} & {{ wire.total_wire_in_delta_plus.currency}} &
+  - {{ wire.total_wire_in_delta_minus.value}}.{{ wire.total_wire_in_delta_minus.fraction}} & {{ wire.total_wire_in_delta_minus.currency}} \\
   \caption{Incoming wire transfer amounts not matching up.}
   \label{table:wire_in:transfer_amount_inconsistencies}
 \endlastfoot
@@ -347,7 +347,7 @@ incoming wire transfers does not match with that of the bank.
   &
   {{ item.diagnostic }} &
   {{ item.row }} &
-  {{ item.timestmap }} \\ \hline
+  {{ item.timestamp }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -362,7 +362,7 @@ is closed and the remaining balance is refunded to the original
 account.
 
 
-{% if wire.missattribution_in_inconsistencies() == 0 %}
+{% if wire.missattribution_in_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer sender accounts matched up.}
 {% else %}
   \begin{longtable}{p{6.5cm}|rl}
@@ -397,7 +397,7 @@ account.
 This section highlights cases where the exchange missbehaved
 with respect to outgoing wire transfers.
 
-{% if wire.wire_out_amount_inconsistencies() == 0 %}
+{% if wire.wire_out_amount_inconsistencies|length() == 0 %}
   {\bf All outgoing wire transfers matched up.}
 {% else %}
   \begin{longtable}{p{6.5cm}|rl|rl}
@@ -415,8 +415,8 @@ with respect to outgoing wire transfers.
 \endfoot
   \hline
   {\bf Total deltas}  & &
-  {{ wire.total_bad_amount_out_plus.value}}.{{ wire.total_bad_amount_out_plus.fraction}} & {{ wire.total_bad_amount_out_plus.currency}} &
-  - {{ wire.total_bad_amount_out_minus.value}}.{{ wire.total_bad_amount_out_minus.fraction}} & {{ wire.total_bad_amount_out_minus.currency}} \\
+  {{ wire.total_wire_out_delta_plus.value}}.{{ wire.total_wire_out_delta_plus.fraction}} & {{ wire.total_wire_out_delta_plus.currency}} &
+  - {{ wire.total_wire_out_delta_minus.value}}.{{ wire.total_bad_amount_out_minus.fraction}} & {{ wire.total_wire_out_delta_minus.currency}} \\
   \caption{Outgoing wire transfer amounts not matching up.}
   \label{table:wire_out:transfer_amount_inconsistencies}
 \endlastfoot
@@ -485,7 +485,7 @@ have a clear financial impact.
 {% if wire.row_inconsistencies|length() == 0 %}
   {\bf No wire row inconsistencies found.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|l|p{5.5}}
+  \begin{longtable}{p{1.5cm}|l|p{5.5cm}}
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \hline \hline
 \endfirsthead

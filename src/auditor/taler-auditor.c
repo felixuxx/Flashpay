@@ -4072,8 +4072,7 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o}",
+                      " s:o, s:o, s:o, s:o, s:o}",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
 		      "reserve_balance_insufficient_inconsistencies",
@@ -4096,8 +4095,8 @@ run (void *cls,
                       "total_deposit_fee_income",
                       TALER_JSON_from_amount (&total_deposit_fee_income),
                       "total_melt_fee_income",
-                      /* block */
                       TALER_JSON_from_amount (&total_melt_fee_income),
+                      /* block */
                       "total_refund_fee_income",
                       TALER_JSON_from_amount (&total_refund_fee_income),
                       "income_fee_total",
@@ -4106,9 +4105,9 @@ run (void *cls,
                       report_emergencies,
                       "emergencies_risk_total",
                       TALER_JSON_from_amount (&reported_emergency_sum),
-                      /* block */
 		      "reserve_not_closed_inconsistencies",
                       report_reserve_not_closed_inconsistencies,
+                      /* block */
                       "total_balance_reserve_not_closed",
                       TALER_JSON_from_amount (&total_balance_reserve_not_closed),
 		      "wire_out_inconsistencies",
@@ -4117,9 +4116,9 @@ run (void *cls,
                       TALER_JSON_from_amount (&total_wire_out_delta_plus),
                       "total_wire_out_delta_minus",
                       TALER_JSON_from_amount (&total_wire_out_delta_minus),
-                      /* block */
                       "bad_sig_losses",
                       report_bad_sig_losses,
+                      /* block */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
 		      "row_inconsistencies",
@@ -4128,9 +4127,9 @@ run (void *cls,
                       denomination_key_validity_withdraw_inconsistencies,
 		      "coin_inconsistencies",
                       report_coin_inconsistencies,
-                      /* block */
                       "total_coin_delta_plus",
                       TALER_JSON_from_amount (&total_coin_delta_plus),
+                      /* block */
                       "total_coin_delta_minus",
                       TALER_JSON_from_amount (&total_coin_delta_minus),
                       "amount_arithmetic_inconsistencies",
@@ -4139,10 +4138,11 @@ run (void *cls,
                       TALER_JSON_from_amount (&total_arithmetic_delta_plus),
                       "total_arithmetic_delta_minus",
                       TALER_JSON_from_amount (&total_arithmetic_delta_minus),
-                      /* block */
 		      "total_aggregation_fee_income",
                       TALER_JSON_from_amount (&total_aggregation_fee_income)
+                      /* block */
                       );
+  GNUNET_break (NULL != report);
   json_dumpf (report,
 	      stdout,
 	      JSON_INDENT (2));

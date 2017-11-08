@@ -314,7 +314,7 @@ do_shutdown (void *cls)
                         TALER_JSON_from_amount (&total_bad_amount_out_minus),
 			"reserve_in_amount_inconsistencies",
                         report_reserve_in_inconsistencies,
-                        "total_wire_in_delta_minus",
+                        "total_wire_in_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_in_plus),
                         /* block */
                         "total_wire_in_delta_minus",

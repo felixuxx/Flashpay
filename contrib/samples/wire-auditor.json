@@ -28,6 +28,11 @@
       "diagnostic": "incoming wire transfer claimed by exchange not found"
     }
   ],
+  "total_wire_in_delta_plus": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
   "total_wire_in_delta_minus": {
     "currency": "KUDOS",
     "value": 5,

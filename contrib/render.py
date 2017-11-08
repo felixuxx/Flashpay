@@ -31,10 +31,10 @@ class StdinLoader(BaseLoader):
 
 
 jsonFile1 = open (sys.argv[1], 'r')
-jsonData1 = json.load(jsonFile)
+jsonData1 = json.load(jsonFile1)
 
 jsonFile2 = open (sys.argv[2], 'r')
-jsonData2 = json.load(jsonFile)
+jsonData2 = json.load(jsonFile2)
 
 jinjaEnv = jinja2.Environment(loader=StdinLoader(),
                               lstrip_blocks=True,
