@@ -2,6 +2,7 @@
 \usepackage{url}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{multirow}
 \usepackage{longtable}
 
 \begin{document}
@@ -116,14 +117,17 @@ Disagreements imply that either the exchange made a loss (sending out
 too much money), or screwed a customer (and thus at least needs to fix
 the financial damage done to the customer).
 
-  \begin{longtable}{p{5.5cm}|l|rl|rl}
-  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+{% if data.amount_arithmetic_inconsistencies|length() == 0 %}
+  {\bf No arithmetic problems detected.}
+{% else %}
+  \begin{longtable}{p{4.5cm}|l|rl|rl}
+  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
 \endfoot
   \hline
   {\bf Total} & &
@@ -143,7 +147,7 @@ the financial damage done to the customer).
   {{ item.auditor.currency }} \\ \hline
 {% endfor %}
   \end{longtable}
-
+{% endif %}
 
 \subsection{Reserve withdrawals exceeding balance}
 
@@ -317,20 +321,20 @@ incoming wire transfers does not match with that of the bank.
 {% if wire.reserve_in_amount_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer amounts and subjects matched up.}
 {% else %}
-  \begin{longtable}{p{6.5cm}|rl|rl}
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Expected}}  \\
-  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \begin{longtable}{p{5.5cm}|rl|rl}
+  \multicolumn{5}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
+  {\bf Diagnostic} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c}{ {\bf Expected}}  \\
   \hline \hline
 \endfirsthead
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Expected}}  \\
-  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \multicolumn{5}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
+  {\bf Diagnostic} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c}{ {\bf Expected}}  \\
   \hline \hline
 \endhead
   \hline \hline
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Expected}}  \\
-  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \multicolumn{5}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
+  {\bf Diagnostic} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c}{ {\bf Expected}}  \\
 \endfoot
-  \hline
+  \hline \hline
   {\bf Total deltas}  &
   {{ wire.total_wire_in_delta_plus.value}}.{{ wire.total_wire_in_delta_plus.fraction}} & {{ wire.total_wire_in_delta_plus.currency}} &
   - {{ wire.total_wire_in_delta_minus.value}}.{{ wire.total_wire_in_delta_minus.fraction}} & {{ wire.total_wire_in_delta_minus.currency}} \\
@@ -338,16 +342,17 @@ incoming wire transfers does not match with that of the bank.
   \label{table:wire_in:transfer_amount_inconsistencies}
 \endlastfoot
 {% for item in wire.reserve_in_amount_inconsistencies %}
-  {\tt {{ item.wtid }} } &
+  \multicolumn{5}{l}{ {\tt {{ item.wtid }} } ({{ item.row }}) } \\
+\nopagebreak
+  {{ item.timestamp }}: &
   {{ item.amount_wired.value }}.{{ item.amount_wired.fraction }} &
   {{ item.amount_wired.currency }} &
   {{ item.amount_expected.value }}.{{ item.amount_expected.fraction }} &
-  {{ item.amount_expected.currency }} \\ \hline
-\nopagebreak
-  &
-  {{ item.diagnostic }} &
-  {{ item.row }} &
-  {{ item.timestamp }} \\ \hline
+  {{ item.amount_expected.currency }} \\
+  {{ item.diagnostic }}  & & & & \\
+%\nopagebreak
+%  & \multicolumn{4}{|c}{ {{ item.timestamp }} }
+  \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -485,14 +490,14 @@ have a clear financial impact.
 {% if wire.row_inconsistencies|length() == 0 %}
   {\bf No wire row inconsistencies found.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|l|p{5.5cm}}
+  \begin{longtable}{p{5.5cm}|l|p{4.5cm}}
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \hline \hline
 \endfirsthead
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \hline \hline
 \endhead
-  \hline \hline
+  \hline
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
 \endfoot
   \hline
@@ -500,12 +505,12 @@ have a clear financial impact.
   \caption{Other wire table issues found (by table and row).}
   \label{table:misc}
 \endlastfoot
-{% for item in data.row_inconsistencies %}
-  {{ item.table }} &
+{% for item in wire.row_inconsistencies %}
+  \verb! {{ item.table }} ! &
   {{ item.row }} &
   {{ item.diagnostic }} \\
 \nopagebreak
-  {{ item.wire_offset_hash }}  \\ \hline
+  \multicolumn{3}{l}{ {\tiny {\tt {{ item.wire_offset_hash }} } } } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
