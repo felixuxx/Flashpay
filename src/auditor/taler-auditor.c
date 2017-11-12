@@ -2303,7 +2303,7 @@ get_wire_fee (struct AggregationContext *ac,
                                        pos->prev,
                                        wfi);
   /* Check non-overlaping fee invariant */
-  /* TODO (#4963): maybe report problems more nicely? */
+  /* TODO (#5177): report problems more nicely? */
   if (NULL != wfi->prev)
     GNUNET_break (wfi->prev->end_date.abs_value_us <= wfi->start_date.abs_value_us);
   if (NULL != wfi->next)

@@ -756,7 +756,7 @@ history_debit_cb (void *cls,
                        "amount", TALER_JSON_from_amount (&details->amount),
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
                        "diagnostic", diagnostic));
-    /* TODO: report generator currently ignores 'amount' for this
+    /* TODO (#5177): report generator currently ignores 'amount' for this
        table, maybe use a different table to report this issue! */
     /* TODO: add 'amount' to some total amount that was badly wired! */
     GNUNET_free (diagnostic);
@@ -791,7 +791,7 @@ history_debit_cb (void *cls,
                        "amount", TALER_JSON_from_amount (&details->amount),
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
                        "diagnostic", diagnostic));
-    /* TODO: report generator currently ignores 'amount' for this
+    /* TODO (#5177): report generator currently ignores 'amount' for this
        table, maybe use a different table to report this issue! */
     /* TODO: add 'amount' to some total amount that was badly wired! */
     GNUNET_free (diagnostic);
