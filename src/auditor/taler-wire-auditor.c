@@ -1091,12 +1091,48 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  static const struct TALER_MasterPublicKeyP zeromp;
   enum GNUNET_DB_QueryStatus qs;
   int ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
+  if (0 == memcmp (&zeromp,
+                   &master_pub,
+                   sizeof (struct TALER_MasterPublicKeyP)))
+  {
+    /* -m option not given, try configuration */
+    char *master_public_key_str;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "MASTER_PUBLIC_KEY",
+                                               &master_public_key_str))
+    {
+      fprintf (stderr,
+               "Pass option -m or set it in the configuration!\n");
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY");
+      global_ret = 1;
+      return;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_public_key_from_string (master_public_key_str,
+                                                    strlen (master_public_key_str),
+                                                    &master_pub.eddsa_pub))
+    {
+      fprintf (stderr,
+               "Invalid master public key given in configuration file.");
+      GNUNET_free (master_public_key_str);
+      global_ret = 1;
+      return;
+    }
+    GNUNET_free (master_public_key_str);
+  } /* end of -m not given */
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -1305,12 +1341,11 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_base32_auto ('m',
-                                       "exchange-key",
-                                       "KEY",
-                                       "public key of the exchange (Crockford base32 encoded)",
-                                       &master_pub)),
+    GNUNET_GETOPT_option_base32_auto ('m',
+                                      "exchange-key",
+                                      "KEY",
+                                      "public key of the exchange (Crockford base32 encoded)",
+                                      &master_pub),
     GNUNET_GETOPT_option_flag ('r',
                                "restart",
                                "restart audit from the beginning (required on first run)",
