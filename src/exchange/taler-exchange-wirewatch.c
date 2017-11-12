@@ -37,6 +37,23 @@
 
 
 /**
+ * Closure for #reject_cb().
+ */
+struct RejectContext
+{
+  /**
+   * Wire transfer subject that was illformed.
+   */
+  char *wtid_s;
+
+  /**
+   * Database session that encountered the problem.
+   */
+  struct TALER_EXCHANGEDB_Session *session;
+};
+
+
+/**
  * Handle to the plugin.
  */
 static struct TALER_WIRE_Plugin *wire_plugin;
@@ -109,6 +126,11 @@ static struct GNUNET_SCHEDULER_Task *task;
  */
 static struct TALER_WIRE_HistoryHandle *hh;
 
+/**
+ * Active request to reject a wire transfer.
+ */
+static struct TALER_WIRE_RejectHandle *rt;
+
 
 /**
  * We're being aborted with CTRL-C (or SIGTERM). Shut down.
@@ -128,6 +150,15 @@ shutdown_task (void *cls)
     wire_plugin->get_history_cancel (wire_plugin->cls,
 				     hh);
     hh = NULL;
+  }
+  if (NULL != rt)
+  {
+    char *wtid_s;
+
+    wtid_s = wire_plugin->reject_transfer_cancel (wire_plugin->cls,
+                                                  rt);
+    rt = NULL;
+    GNUNET_free (wtid_s);
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   db_plugin = NULL;
@@ -205,6 +236,48 @@ find_transfers (void *cls);
 
 
 /**
+ * Function called upon completion of the rejection of a wire transfer.
+ *
+ * @param cls closure with the `struct RejectContext`
+ * @param ec error code for the operation
+ */
+static void
+reject_cb (void *cls,
+           enum TALER_ErrorCode ec)
+{
+  struct RejectContext *rtc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  rt = NULL;
+  if (TALER_EC_NONE != ec)
+  {
+    fprintf (stderr,
+             "Failed to wire back transfer `%s': %d\n",
+             rtc->wtid_s,
+             ec);
+    GNUNET_free (rtc->wtid_s);
+    db_plugin->rollback (db_plugin->cls,
+			 rtc->session);
+    GNUNET_free (rtc);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  GNUNET_free (rtc->wtid_s);
+  qs = db_plugin->commit (db_plugin->cls,
+                          rtc->session);
+  GNUNET_free (rtc);
+  if (0 <= qs)
+  {
+    GNUNET_free_non_null (start_off);
+    start_off = last_row_off;
+    start_off_size = last_row_off_size;
+  }
+  task = GNUNET_SCHEDULER_add_now (&find_transfers,
+                                   NULL);
+}
+
+
+/**
  * Callbacks of this type are used to serve the result of asking
  * the bank for the transaction history.
  *
@@ -224,6 +297,7 @@ history_cb (void *cls,
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
@@ -254,13 +328,45 @@ history_cb (void *cls,
 				       NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
+  if (NULL != details->wtid_s)
+  {
+    struct RejectContext *rtc;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Wire transfer over %s has invalid subject `%s', sending it back!\n",
+                TALER_amount2s (&details->amount),
+                details->wtid_s);
+    if (last_row_off_size != row_off_size)
+    {
+      GNUNET_free_non_null (last_row_off);
+      last_row_off = GNUNET_malloc (row_off_size);
+    }
+    memcpy (last_row_off,
+            row_off,
+            row_off_size);
+    rtc = GNUNET_new (struct RejectContext);
+    rtc->session = session;
+    rtc->wtid_s = GNUNET_strdup (details->wtid_s);
+    rt = wire_plugin->reject_transfer (wire_plugin->cls,
+                                       row_off,
+                                       row_off_size,
+                                       &reject_cb,
+                                       rtc);
+    return GNUNET_SYSERR; /* will continue later... */
+  }
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Adding wire transfer over %s with subject `%s'\n",
               TALER_amount2s (&details->amount),
-              TALER_B2S (&details->reserve_pub));
+              TALER_B2S (&details->wtid));
+  /* Wire transfer identifier == reserve public key */
+  GNUNET_assert (sizeof (reserve_pub) == sizeof (details->wtid));
+  memcpy (&reserve_pub,
+          &details->wtid,
+          sizeof (reserve_pub));
   qs = db_plugin->reserves_in_insert (db_plugin->cls,
 				      session,
-				      &details->reserve_pub,
+				      &reserve_pub,
 				      &details->amount,
 				      details->execution_date,
 				      details->account_details,

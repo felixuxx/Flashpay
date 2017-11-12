@@ -211,9 +211,8 @@ history_result_cb (void *cls,
     return GNUNET_SYSERR;
   }
   if (0 != memcmp (&wtid,
-                   &details->reserve_pub,
-                   GNUNET_MIN (sizeof (struct TALER_ReservePublicKeyP),
-                               sizeof (wtid))))
+                   &details->wtid,
+                   sizeof (struct TALER_WireTransferIdentifierRawP)))
   {
     GNUNET_break (0);
     global_ret = GNUNET_SYSERR;

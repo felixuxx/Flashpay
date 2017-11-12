@@ -59,13 +59,17 @@ struct TALER_WIRE_TransferDetails
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Reserve public key that was encoded in the wire transfer subject.
-   * FIXME (#5077): this is incorrect for *outgoing* wire transfers.
-   * Maybe use `struct TALER_WireTransferIdentifierRawP` here instead?
-   * OTOH, we might want to make this even more generic in case of
-   * invalid transfers, so that we can capture those as well!
+   * Binary data that was encoded in the wire transfer subject, if
+   * it decoded properly.  Otherwise all-zeros and @e wtid_s is set.
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
+   * Wire transfer identifer as a string.  Set to NULL if the
+   * identifier was properly Base32 encoded and this @e wtid could be
+   * set instead.
+   */
+  char *wtid_s;
 
   /**
    * The other account that was involved
@@ -91,6 +95,18 @@ typedef int
                                      const void *row_off,
                                      size_t row_off_size,
                                      const struct TALER_WIRE_TransferDetails *details);
+
+
+/**
+ * Callbacks of this type are used to serve the result of asking
+ * the bank to reject a wire transfer.
+ *
+ * @param cls closure
+ * @param ec status of the operation, #TALER_EC_NONE on success
+ */
+typedef void
+(*TALER_WIRE_RejectTransferCallback) (void *cls,
+                                      enum TALER_ErrorCode ec);
 
 
 /**
@@ -308,11 +324,54 @@ struct TALER_WIRE_Plugin
   /**
    * Cancel going over the account's history.
    *
+   * @param cls plugins' closure
    * @param whh operation to cancel
    */
   void
   (*get_history_cancel) (void *cls,
 			 struct TALER_WIRE_HistoryHandle *whh);
+
+
+  /**
+   * Reject an incoming wire transfer that was obtained from the
+   * history. This function can be used to transfer funds back to
+   * the sender if the WTID was malformed (i.e. due to a typo).
+   *
+   * Calling `reject_transfer` twice on the same wire transfer should
+   * be idempotent, i.e. not cause the funds to be wired back twice.
+   * Furthermore, the transfer should henceforth be removed from the
+   * results returned by @e get_history.
+   *
+   * @param cls plugin's closure
+   * @param start_off offset of the wire transfer in plugin-specific format
+   * @param start_off_len number of bytes in @a start_off
+   * @param rej_cb function to call with the result of the operation
+   * @param rej_cb_cls closure for @a rej_cb
+   * @return handle to cancel the operation
+   */
+  struct TALER_WIRE_RejectHandle *
+  (*reject_transfer)(void *cls,
+                     const void *start_off,
+                     size_t start_off_len,
+                     TALER_WIRE_RejectTransferCallback rej_cb,
+                     void *rej_cb_cls);
+
+  /**
+   * Cancel ongoing reject operation.  Note that the rejection may still
+   * proceed. Basically, if this function is called, the rejection may
+   * have happened or not.  This function is usually used during shutdown
+   * or system upgrades.  At a later point, the application must call
+   * @e reject_transfer again for this wire transfer, unless the
+   * @e get_history shows that the wire transfer no longer exists.
+   *
+   * @param cls plugins' closure
+   * @param rh operation to cancel
+   * @return closure of the callback of the operation
+   */
+  void *
+  (*reject_transfer_cancel)(void *cls,
+                            struct TALER_WIRE_RejectHandle *rh);
+
 
 };
 

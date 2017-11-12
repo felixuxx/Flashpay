@@ -791,6 +791,107 @@ sepa_get_history_cancel (void *cls,
 }
 
 
+
+/**
+ * Context for a rejection operation.
+ */
+struct TALER_WIRE_RejectHandle
+{
+  /**
+   * Function to call with the result.
+   */
+  TALER_WIRE_RejectTransferCallback rej_cb;
+
+  /**
+   * Closure for @e rej_cb.
+   */
+  void *rej_cb_cls;
+
+  /**
+   * Handle to task for timeout of operation.
+   */
+  struct GNUNET_SCHEDULER_Task *timeout_task;
+};
+
+
+/**
+ * Rejection operation failed with timeout, notify callback
+ * and clean up.
+ *
+ * @param cls closure with `struct TALER_WIRE_RejectHandle`
+ */
+static void
+timeout_reject (void *cls)
+{
+  struct TALER_WIRE_RejectHandle *rh = cls;
+
+  rh->timeout_task = NULL;
+  rh->rej_cb (rh->rej_cb_cls,
+              TALER_EC_NOT_IMPLEMENTED /* in the future: TALER_EC_TIMEOUT */);
+  GNUNET_free (rh);
+}
+
+
+/**
+ * Reject an incoming wire transfer that was obtained from the
+ * history. This function can be used to transfer funds back to
+ * the sender if the WTID was malformed (i.e. due to a typo).
+ *
+ * Calling `reject_transfer` twice on the same wire transfer should
+ * be idempotent, i.e. not cause the funds to be wired back twice.
+ * Furthermore, the transfer should henceforth be removed from the
+ * results returned by @e get_history.
+ *
+ * @param cls plugin's closure
+ * @param start_off offset of the wire transfer in plugin-specific format
+ * @param start_off_len number of bytes in @a start_off
+ * @param rej_cb function to call with the result of the operation
+ * @param rej_cb_cls closure for @a rej_cb
+ * @return handle to cancel the operation
+ */
+static struct TALER_WIRE_RejectHandle *
+sepa_reject_transfer (void *cls,
+                      const void *start_off,
+                      size_t start_off_len,
+                      TALER_WIRE_RejectTransferCallback rej_cb,
+                      void *rej_cb_cls)
+{
+  struct TALER_WIRE_RejectHandle *rh;
+
+  GNUNET_break (0); /* not implemented, just a stub! */
+  rh = GNUNET_new (struct TALER_WIRE_RejectHandle);
+  rh->rej_cb = rej_cb;
+  rh->rej_cb_cls = rej_cb_cls;
+  rh->timeout_task = GNUNET_SCHEDULER_add_now (&timeout_reject,
+                                               rh);
+  return rh;
+}
+
+
+/**
+ * Cancel ongoing reject operation.  Note that the rejection may still
+ * proceed. Basically, if this function is called, the rejection may
+ * have happened or not.  This function is usually used during shutdown
+ * or system upgrades.  At a later point, the application must call
+ * @e reject_transfer again for this wire transfer, unless the
+ * @e get_history shows that the wire transfer no longer exists.
+ *
+ * @param cls plugins' closure
+ * @param rh operation to cancel
+ * @return closure of the callback of the operation
+ */
+static void *
+sepa_reject_transfer_cancel (void *cls,
+                             struct TALER_WIRE_RejectHandle *rh)
+{
+  void *ret = rh->rej_cb_cls;
+
+  GNUNET_SCHEDULER_cancel (rh->timeout_task);
+  GNUNET_free (rh);
+  return ret;
+}
+
+
 /**
  * Initialize sepa-wire subsystem.
  *
@@ -832,6 +933,8 @@ libtaler_plugin_wire_sepa_init (void *cls)
   plugin->execute_wire_transfer_cancel = &sepa_execute_wire_transfer_cancel;
   plugin->get_history = &sepa_get_history;
   plugin->get_history_cancel = &sepa_get_history_cancel;
+  plugin->reject_transfer = &sepa_reject_transfer;
+  plugin->reject_transfer_cancel = &sepa_reject_transfer_cancel;
   return plugin;
 }
 

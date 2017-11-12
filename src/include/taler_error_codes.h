@@ -63,6 +63,10 @@ enum TALER_ErrorCode
    */
   TALER_EC_INTERNAL_INVARIANT_FAILURE = 5,
 
+  /**
+   * Operation timed out.
+   */
+  TALER_EC_TIMEOUT = 6,
 
   /* ********** generic error codes ************* */
 

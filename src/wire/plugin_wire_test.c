@@ -820,52 +820,52 @@ bhist_cb (void *cls,
   uint64_t bserial_id = GNUNET_htonll (serial_id);
   struct TALER_WIRE_TransferDetails wd;
 
-  if (MHD_HTTP_OK == http_status)
-  {
-    char *subject;
-    char *space;
+  switch (http_status) {
+  case MHD_HTTP_OK:
+    {
+      char *subject;
+      char *space;
 
-    wd.amount = details->amount;
-    wd.execution_date = details->execution_date;
-    subject = GNUNET_strdup (details->wire_transfer_subject);
-    space = strchr (subject, (int) ' ');
-    if (NULL != space)
-    {
-      /* Space separates the actual wire transfer subject from the
-         exchange base URL (if present, expected only for outgoing
-         transactions).  So we cut the string off at the space. */
-      *space = '\0';
-    }
-    /* NOTE: For a real bank, the subject should include a checksum! */
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (subject,
-                                       strlen (subject),
-                                       &wd.reserve_pub,
-                                       sizeof (wd.reserve_pub)))
-    {
-      GNUNET_break (0);
+      wd.amount = details->amount;
+      wd.execution_date = details->execution_date;
+      subject = GNUNET_strdup (details->wire_transfer_subject);
+      space = strchr (subject, (int) ' ');
+      if (NULL != space)
+      {
+        /* Space separates the actual wire transfer subject from the
+           exchange base URL (if present, expected only for outgoing
+           transactions).  So we cut the string off at the space. */
+        *space = '\0';
+      }
+      /* NOTE: For a real bank, the subject should include a checksum! */
+      if (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (subject,
+                                         strlen (subject),
+                                         &wd.wtid,
+                                         sizeof (wd.wtid)))
+      {
+        /* Ill-formed wire subject, set binary version to all zeros
+           and pass as a string, this time including the part after
+           the space. */
+        memset (&wd.wtid,
+                0,
+                sizeof (wd.wtid));
+        wd.wtid_s = details->wire_transfer_subject;
+      }
       GNUNET_free (subject);
-      /* NOTE: for a "real" bank, we would want to trigger logic to undo the
-         wire transfer. However, for the "demo" bank, it should currently
-         be "impossible" to do wire transfers with invalid subjects, and
-         equally we thus don't need to undo them (and there is no API to do
-         that nicely either right now). So we don't handle this case for now. */
-      return;
-    }
-    GNUNET_free (subject);
-    wd.account_details = details->account_details;
+      wd.account_details = details->account_details;
 
-    if ( (NULL != whh->hres_cb) &&
-	 (GNUNET_OK !=
-	  whh->hres_cb (whh->hres_cb_cls,
-			dir,
-			&bserial_id,
-			sizeof (bserial_id),
-			&wd)) )
-      whh->hres_cb = NULL;
-  }
-  else
-  {
+      if ( (NULL != whh->hres_cb) &&
+           (GNUNET_OK !=
+            whh->hres_cb (whh->hres_cb_cls,
+                          dir,
+                          &bserial_id,
+                          sizeof (bserial_id),
+                          &wd)) )
+        whh->hres_cb = NULL;
+      break;
+    }
+  case MHD_HTTP_NO_CONTENT:
     if (NULL != whh->hres_cb)
       (void) whh->hres_cb (whh->hres_cb_cls,
                            TALER_BANK_DIRECTION_NONE,
@@ -874,6 +874,20 @@ bhist_cb (void *cls,
                            NULL);
     whh->hh = NULL;
     GNUNET_free (whh);
+    break;
+  default:
+    /* FIXME: consider modifying API to pass more specific error code(s)
+       back to the application. */
+    GNUNET_break (0);
+    if (NULL != whh->hres_cb)
+      (void) whh->hres_cb (whh->hres_cb_cls,
+                           TALER_BANK_DIRECTION_NONE,
+                           NULL,
+                           0,
+                           NULL);
+    whh->hh = NULL;
+    GNUNET_free (whh);
+    break;
   }
 }
 
@@ -972,6 +986,106 @@ test_get_history_cancel (void *cls,
 {
   TALER_BANK_history_cancel (whh->hh);
   GNUNET_free (whh);
+}
+
+
+/**
+ * Context for a rejection operation.
+ */
+struct TALER_WIRE_RejectHandle
+{
+  /**
+   * Function to call with the result.
+   */
+  TALER_WIRE_RejectTransferCallback rej_cb;
+
+  /**
+   * Closure for @e rej_cb.
+   */
+  void *rej_cb_cls;
+
+  /**
+   * Handle to task for timeout of operation.
+   */
+  struct GNUNET_SCHEDULER_Task *timeout_task;
+};
+
+
+/**
+ * Rejection operation failed with timeout, notify callback
+ * and clean up.
+ *
+ * @param cls closure with `struct TALER_WIRE_RejectHandle`
+ */
+static void
+timeout_reject (void *cls)
+{
+  struct TALER_WIRE_RejectHandle *rh = cls;
+
+  rh->timeout_task = NULL;
+  rh->rej_cb (rh->rej_cb_cls,
+              TALER_EC_NOT_IMPLEMENTED /* in the future: TALER_EC_TIMEOUT */);
+  GNUNET_free (rh);
+}
+
+
+/**
+ * Reject an incoming wire transfer that was obtained from the
+ * history. This function can be used to transfer funds back to
+ * the sender if the WTID was malformed (i.e. due to a typo).
+ *
+ * Calling `reject_transfer` twice on the same wire transfer should
+ * be idempotent, i.e. not cause the funds to be wired back twice.
+ * Furthermore, the transfer should henceforth be removed from the
+ * results returned by @e get_history.
+ *
+ * @param cls plugin's closure
+ * @param start_off offset of the wire transfer in plugin-specific format
+ * @param start_off_len number of bytes in @a start_off
+ * @param rej_cb function to call with the result of the operation
+ * @param rej_cb_cls closure for @a rej_cb
+ * @return handle to cancel the operation
+ */
+static struct TALER_WIRE_RejectHandle *
+test_reject_transfer (void *cls,
+                      const void *start_off,
+                      size_t start_off_len,
+                      TALER_WIRE_RejectTransferCallback rej_cb,
+                      void *rej_cb_cls)
+{
+  struct TALER_WIRE_RejectHandle *rh;
+
+  GNUNET_break (0); /* not implemented, just a stub! */
+  rh = GNUNET_new (struct TALER_WIRE_RejectHandle);
+  rh->rej_cb = rej_cb;
+  rh->rej_cb_cls = rej_cb_cls;
+  rh->timeout_task = GNUNET_SCHEDULER_add_now (&timeout_reject,
+                                               rh);
+  return rh;
+}
+
+
+/**
+ * Cancel ongoing reject operation.  Note that the rejection may still
+ * proceed. Basically, if this function is called, the rejection may
+ * have happened or not.  This function is usually used during shutdown
+ * or system upgrades.  At a later point, the application must call
+ * @e reject_transfer again for this wire transfer, unless the
+ * @e get_history shows that the wire transfer no longer exists.
+ *
+ * @param cls plugins' closure
+ * @param rh operation to cancel
+ * @return closure of the callback of the operation
+ */
+static void *
+test_reject_transfer_cancel (void *cls,
+                             struct TALER_WIRE_RejectHandle *rh)
+{
+  void *ret = rh->rej_cb_cls;
+
+  GNUNET_SCHEDULER_cancel (rh->timeout_task);
+  GNUNET_free (rh);
+  return ret;
 }
 
 
@@ -1087,6 +1201,8 @@ libtaler_plugin_wire_test_init (void *cls)
   plugin->execute_wire_transfer_cancel = &test_execute_wire_transfer_cancel;
   plugin->get_history = &test_get_history;
   plugin->get_history_cancel = &test_get_history_cancel;
+  plugin->reject_transfer = &test_reject_transfer;
+  plugin->reject_transfer_cancel = &test_reject_transfer_cancel;
   return plugin;
 }
 
