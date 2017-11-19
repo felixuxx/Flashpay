@@ -121,6 +121,12 @@ struct TALER_AUDITORDB_WireProgressPoint
    * last_wire_out_serial_id serial ID of the last wire_out the wire auditor processed
    */
   uint64_t last_wire_out_serial_id;
+
+  /**
+   * Time until which we have confirmed that all wire transactions
+   * that the exchange should do, have indeed been done.
+   */
+  struct GNUNET_TIME_Absolute last_timestamp;
 };
 
 
