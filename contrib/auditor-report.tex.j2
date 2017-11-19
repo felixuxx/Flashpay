@@ -59,6 +59,60 @@ This section analyzes the income of the exchange operator from fees.
 \end{table}
 
 
+\section{Lag}
+
+This section analyzes the lag, which is by how much the exchange's aggregator is behind in
+making wire transfers that have been due.
+
+The total amount the exchange currently lags behind is
+{\bf  {{ wire.total_amount_lag.value }}.{{ wire.total_amount_lag.fraction }}
+      {{ wire.total_amount_lag.currency }}
+}.
+
+Note that some lag is perfectly normal, as tiny amounts that are too small to be wired
+are deferred beyond the due date, hoping that additional transfers will push them above
+the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagging behind.
+
+{% if wire.lag_details|length() == 0 %}
+  {\bf No non-tiny wire transfers that are lagging behind detected.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|rl|c|rl}
+  \multicolumn{4}{l}{\bf Coin} \\
+  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
+\endfirsthead
+  \multicolumn{4}{l}{\bf Coin} \\
+  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
+\endhead
+  \hline \hline
+  \multicolumn{4}{l}{\bf Coin} \\
+  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Target account} \\
+\endfoot
+  \hline \hline
+  \multicolumn{4}{l}{\bf Coin} \\
+  {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Target account} \\
+    \caption{Lagging non-tiny transactions.}
+    \label{table:lag}
+\endlastfoot
+{% for item in wire.lag_details %}
+  \multicolumn{4}{l}{ {\tt {{ item.coin_pub }} } } \\
+\nopagebreak
+  &
+  {{ item.deadline }} &
+  {{ item.amount.value }}.{{ item.amount.fraction }} &
+  {{ item.amount.currency }} &
+  {{ item.row }} &
+  {{ item.claimed_done }} \\
+\nopagebreak
+  \multicolumn{4}{l}{ {\tt {{ item.account }} } } \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
 \section{Major irregularities}
 
 This section describes the possible major irregularities that the

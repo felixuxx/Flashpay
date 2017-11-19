@@ -22,6 +22,8 @@
  *   the incoming wire transfers from the bank.
  * - Second, we check that the outgoing wire transfers match those
  *   given in the 'wire_out' table
+ * - Finally, we check that all wire transfers that should have been made,
+ *   were actually made
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -31,6 +33,12 @@
 #include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
+/**
+ * How much time do we allow the aggregator to lag behind?  If
+ * wire transfers should have been made more than #GRACE_PERIOD
+ * before, we issue warnings.
+ */
+#define GRACE_PERIOD GNUNET_TIME_UNIT_HOURS
 
 /**
  * Return value from main().
@@ -157,6 +165,11 @@ static json_t *report_row_inconsistencies;
 static json_t *report_row_minor_inconsistencies;
 
 /**
+ * Array of reports about lagging transactions.
+ */
+static json_t *report_lags;
+
+/**
  * Total amount that was transferred too much from the exchange.
  */
 static struct TALER_Amount total_bad_amount_out_plus;
@@ -182,6 +195,11 @@ static struct TALER_Amount total_bad_amount_in_minus;
  * destination when closing the reserve.
  */
 static struct TALER_Amount total_missattribution_in;
+
+/**
+ * Total amount which the exchange did not transfer in time.
+ */
+static struct TALER_Amount total_amount_lag;
 
 /**
  * Amount of zero in our currency.
@@ -305,7 +323,8 @@ do_shutdown (void *cls)
 
     GNUNET_assert (NULL != report_row_minor_inconsistencies);
     report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                        " s:o, s:o, s:o, s:o, s:o }",
+                        " s:o, s:o, s:o, s:o, s:o,"
+                        " s:o, s:o }",
                         /* blocks of 5 */
 			"wire_out_amount_inconsistencies",
                         report_wire_out_inconsistencies,
@@ -327,7 +346,12 @@ do_shutdown (void *cls)
 			"row_inconsistencies",
                         report_row_inconsistencies,
 			"row_minor_inconsistencies",
-                        report_row_minor_inconsistencies);
+                        report_row_minor_inconsistencies,
+                        /* block */
+                        "total_amount_lag",
+                        TALER_JSON_from_amount (&total_bad_amount_in_minus),
+                        "lag_details",
+                        report_lags);
     GNUNET_break (NULL != report);
     json_dumpf (report,
 		stdout,
@@ -338,6 +362,7 @@ do_shutdown (void *cls)
     report_row_inconsistencies = NULL;
     report_row_minor_inconsistencies = NULL;
     report_missattribution_in_inconsistencies = NULL;
+    report_lags = NULL;
   }
   if (NULL != hh)
   {
@@ -673,6 +698,57 @@ complain_out_not_found (void *cls,
 
 
 /**
+ * Function called on deposits that are past their due date
+ * and have not yet seen a wire transfer.
+ *
+ * @param cls closure
+ * @param rowid deposit table row of the coin's deposit
+ * @param coin_pub public key of the coin
+ * @param amount value of the deposit, including fee
+ * @param wire where should the funds be wired
+ * @param deadline what was the requested wire transfer deadline
+ * @param tiny did the exchange defer this transfer because it is too small?
+ * @param done did the exchange claim that it made a transfer?
+ */
+static void
+wire_missing_cb (void *cls,
+                 uint64_t rowid,
+                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                 const struct TALER_Amount *amount,
+                 const json_t *wire,
+                 struct GNUNET_TIME_Absolute deadline,
+                 /* bool? */ int tiny,
+                 /* bool? */ int done)
+{
+  GNUNET_break (GNUNET_OK ==
+                TALER_amount_add (&total_amount_lag,
+                                  &total_amount_lag,
+                                  amount));
+  if (GNUNET_YES == tiny)
+  {
+    struct TALER_Amount rounded;
+
+    rounded = *amount;
+    GNUNET_break (GNUNET_SYSERR !=
+                  wp->amount_round (wp->cls,
+                                    &rounded));
+    if (0 == TALER_amount_cmp (&rounded,
+                               &zero))
+      return; /* acceptable, amount was tiny */
+  }
+  report (report_lags,
+          json_pack ("{s:I, s:o, s:s, s:s, s:o, s:O}",
+                     "row", (json_int_t) rowid,
+                     "amount", TALER_JSON_from_amount (amount),
+                     "deadline", GNUNET_STRINGS_absolute_time_to_string (deadline),
+                     "claimed_done", (done) ? "yes" : "no",
+                     "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
+                     "account", wire));
+
+}
+
+
+/**
  * Go over the "wire_out" table of the exchange and
  * verify that all wire outs are in that table.
  */
@@ -680,6 +756,7 @@ static void
 check_exchange_wire_out ()
 {
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_TIME_Absolute next_timestamp;
 
   qs = edb->select_wire_out_above_serial_id (edb->cls,
 					     esession,
@@ -702,6 +779,28 @@ check_exchange_wire_out ()
 					 NULL);
   GNUNET_CONTAINER_multihashmap_destroy (out_map);
   out_map = NULL;
+
+  /* now check that all wire transfers that should have happened,
+     have indeed happened */
+  next_timestamp = GNUNET_TIME_absolute_get ();
+  /* Subtract #GRACE_PERIOD, so we can be a bit behind in processing
+     without immediately raising undue concern */
+  next_timestamp = GNUNET_TIME_absolute_subtract (next_timestamp,
+                                                  GRACE_PERIOD);
+  qs = edb->select_deposits_missing_wire (edb->cls,
+                                          esession,
+                                          pp.last_timestamp,
+                                          next_timestamp,
+                                          &wire_missing_cb,
+                                          &next_timestamp);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  pp.last_timestamp = next_timestamp;
 
   /* conclude with: */
   commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
@@ -1118,7 +1217,7 @@ history_credit_cb (void *cls,
 }
 
 
-/* ***************************** Setup logic    ************************ */
+/* ***************************** Setup logic ************************ */
 
 
 /**
@@ -1286,6 +1385,8 @@ run (void *cls,
 		 (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_missattribution_in_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_lags = json_array ()));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_bad_amount_out_plus));
@@ -1301,6 +1402,9 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_missattribution_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_amount_lag));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &zero));
