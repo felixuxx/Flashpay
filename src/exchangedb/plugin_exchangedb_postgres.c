@@ -1100,6 +1100,7 @@ postgres_prepare (PGconn *db_conn)
                             ",denom.fee_deposit_curr"
                             ",timestamp"
                             ",refund_deadline"
+                            ",wire_deadline"
                             ",merchant_pub"
                             ",h_contract_terms"
                             ",h_wire"
@@ -1313,8 +1314,8 @@ postgres_prepare (PGconn *db_conn)
 			    ",tiny"
 			    ",done"
 			    " FROM deposits"
-			    " WHERE wire_deadline <= $1"
-			    " AND wire_deadline > $2"
+			    " WHERE wire_deadline >= $1"
+			    " AND wire_deadline < $2"
 			    " AND NOT (EXISTS (SELECT 1"
 			    "            FROM refunds"
 			    "            WHERE (refunds.coin_pub = deposits.coin_pub))"
@@ -3833,6 +3834,8 @@ add_coin_deposit (void *cls,
 					     &deposit->timestamp),
 	GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
 					     &deposit->refund_deadline),
+	GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+					     &deposit->wire_deadline),
 	GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
 					      &deposit->merchant_pub),
 	GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",

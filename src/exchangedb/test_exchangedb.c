@@ -1417,6 +1417,57 @@ payback_cb (void *cls,
 
 
 /**
+ * Function called on deposits that are past their due date
+ * and have not yet seen a wire transfer.
+ *
+ * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
+ * @param rowid deposit table row of the coin's deposit
+ * @param coin_pub public key of the coin
+ * @param amount value of the deposit, including fee
+ * @param wire where should the funds be wired
+ * @param deadline what was the requested wire transfer deadline
+ * @param tiny did the exchange defer this transfer because it is too small?
+ * @param done did the exchange claim that it made a transfer?
+ */
+static void
+wire_missing_cb (void *cls,
+                 uint64_t rowid,
+                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                 const struct TALER_Amount *amount,
+                 const json_t *wire,
+                 struct GNUNET_TIME_Absolute deadline,
+                 /* bool? */ int tiny,
+                 /* bool? */ int done)
+{
+  struct TALER_EXCHANGEDB_Deposit *deposit = cls;
+  struct GNUNET_HashCode h_wire;
+
+  if (NULL != wire)
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_hash (wire,
+                                    &h_wire));
+  else
+    memset (&h_wire,
+            0,
+            sizeof (h_wire));
+  if ( (GNUNET_NO != tiny) ||
+       (GNUNET_NO != done) ||
+       (0 != TALER_amount_cmp (amount,
+                               &deposit->amount_with_fee)) ||
+       (0 != memcmp (coin_pub,
+                     &deposit->coin.coin_pub,
+                     sizeof (struct TALER_CoinSpendPublicKeyP))) ||
+       (0 != memcmp (&h_wire,
+                     &deposit->h_wire,
+                     sizeof (struct GNUNET_HashCode))) )
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with config
@@ -1646,6 +1697,7 @@ run (void *cls)
   deposit.coin.denom_pub = dkp->pub;
   deposit.coin.denom_sig = cbc.sig;
   deadline = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&deadline);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_payback_request (plugin->cls,
                                           session,
@@ -1788,6 +1840,9 @@ run (void *cls)
   deposit.receiver_wire_account = wire;
   deposit.amount_with_fee = value;
   deposit.deposit_fee = fee_deposit;
+
+  deposit.refund_deadline = deadline;
+  deposit.wire_deadline = deadline;
   result = 8;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_deposit (plugin->cls,
@@ -1797,6 +1852,23 @@ run (void *cls)
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit));
+  {
+    struct GNUNET_TIME_Absolute start_range;
+    struct GNUNET_TIME_Absolute end_range;
+
+    start_range = GNUNET_TIME_absolute_subtract (deadline,
+                                                 GNUNET_TIME_UNIT_SECONDS);
+    end_range = GNUNET_TIME_absolute_add (deadline,
+                                          GNUNET_TIME_UNIT_SECONDS);
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->select_deposits_missing_wire (plugin->cls,
+                                                  session,
+                                                  start_range,
+                                                  end_range,
+                                                  &wire_missing_cb,
+                                                  &deposit));
+    FAILIF (8 != result);
+  }
   auditor_row_cnt = 0;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_deposits_above_serial_id (plugin->cls,
