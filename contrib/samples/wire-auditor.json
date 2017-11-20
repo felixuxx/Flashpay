@@ -220,5 +220,17 @@
       "diagnostic": "duplicate wire offset"
     }
   ],
-  "row_minor_inconsistencies": []
+  "row_minor_inconsistencies": [],
+  "total_wire_format_amount": {
+    "currency": "KUDOS",
+    "value": 0,
+    "fraction": 0
+  },
+  "wire_format_inconsistencies": [],
+  "total_amount_lag": {
+    "currency": "KUDOS",
+    "value": 5,
+    "fraction": 1000000
+  },
+  "lag_details": []
 }

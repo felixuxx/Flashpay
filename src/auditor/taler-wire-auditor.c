@@ -996,7 +996,6 @@ reserve_in_cb (void *cls,
 					 rii,
 					 GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
-    GNUNET_break_op (0); /* duplicate wire offset is not allowed! */
     report (report_row_inconsistencies,
             json_pack ("{s:s, s:I, s:o, s:s}",
                        "table", "reserves_in",
