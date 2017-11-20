@@ -108,5 +108,6 @@
     "currency": "KUDOS",
     "value": 0,
     "fraction": 0
-  }
+  },
+  "wire_fee_time_inconsistencies": []
 }
