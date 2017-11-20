@@ -872,7 +872,6 @@ bhist_cb (void *cls,
                            NULL,
                            0,
                            NULL);
-    whh->hh = NULL;
     GNUNET_free (whh);
     break;
   default:
@@ -885,7 +884,6 @@ bhist_cb (void *cls,
                            NULL,
                            0,
                            NULL);
-    whh->hh = NULL;
     GNUNET_free (whh);
     break;
   }
@@ -970,6 +968,7 @@ test_get_history (void *cls,
     GNUNET_free (whh);
     return NULL;
   }
+
   return whh;
 }
 

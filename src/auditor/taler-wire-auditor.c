@@ -874,7 +874,7 @@ history_debit_cb (void *cls,
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
                        "diagnostic", diagnostic));
     GNUNET_free (diagnostic);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   roi = GNUNET_new (struct ReserveOutInfo);
   GNUNET_CRYPTO_hash (&details->wtid,
@@ -908,14 +908,14 @@ history_debit_cb (void *cls,
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
                        "diagnostic", diagnostic));
     GNUNET_free (diagnostic);
-    return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   return GNUNET_OK;
 }
 
 
 /**
- * Main functin for processing 'reserves_out' data.
+ * Main function for processing 'reserves_out' data.
  * We start by going over the DEBIT transactions this
  * time, and then verify that all of them are justified
  * by 'reserves_out'.
@@ -1044,6 +1044,27 @@ complain_in_not_found (void *cls,
 
 
 /**
+ * Conclude the credit history check by logging entries that
+ * were not found and freeing resources. Then move on to
+ * processing debits.
+ */
+static void
+conclude_credit_history ()
+{
+  GNUNET_CONTAINER_multihashmap_iterate (in_map,
+                                         &complain_in_not_found,
+                                         NULL);
+  /* clean up before 2nd phase */
+  GNUNET_CONTAINER_multihashmap_iterate (in_map,
+                                         &free_rii,
+                                         NULL);
+  GNUNET_CONTAINER_multihashmap_destroy (in_map);
+  in_map = NULL;
+  process_debits ();
+}
+
+
+/**
  * This function is called for all transactions that
  * are credited to the exchange's account (incoming
  * transactions).
@@ -1069,17 +1090,8 @@ history_credit_cb (void *cls,
   {
     /* end of operation */
     hh = NULL;
-    GNUNET_CONTAINER_multihashmap_iterate (in_map,
-					   &complain_in_not_found,
-					   NULL);
-    /* clean up before 2nd phase */
-    GNUNET_CONTAINER_multihashmap_iterate (in_map,
-					   &free_rii,
-					   NULL);
-    GNUNET_CONTAINER_multihashmap_destroy (in_map);
-    in_map = NULL;
-    process_debits ();
-    return GNUNET_SYSERR;
+    conclude_credit_history ();
+    return GNUNET_OK;
   }
   GNUNET_CRYPTO_hash (row_off,
 		      row_off_size,
@@ -1091,7 +1103,9 @@ history_credit_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		"Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
 		GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
-    return GNUNET_SYSERR;
+    hh = NULL;
+    conclude_credit_history ();
+    return GNUNET_SYSERR; /* not an error, just end of processing */
   }
 
   /* Update offset */
@@ -1105,6 +1119,7 @@ history_credit_cb (void *cls,
     GNUNET_break (0);
     commit (GNUNET_DB_STATUS_HARD_ERROR);
     GNUNET_SCHEDULER_shutdown ();
+    hh = NULL;
     return GNUNET_SYSERR;
   }
   memcpy (in_wire_off,
