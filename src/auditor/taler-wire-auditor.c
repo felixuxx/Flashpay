@@ -160,6 +160,12 @@ static json_t *report_missattribution_in_inconsistencies;
 static json_t *report_row_inconsistencies;
 
 /**
+ * Array of reports about inconcistencies in the database about
+ * the incoming wire transfers (exchange is not exactly to blame).
+ */
+static json_t *report_wire_format_inconsistencies;
+
+/**
  * Array of reports about minor row inconcistencies.
  */
 static json_t *report_row_minor_inconsistencies;
@@ -200,6 +206,11 @@ static struct TALER_Amount total_missattribution_in;
  * Total amount which the exchange did not transfer in time.
  */
 static struct TALER_Amount total_amount_lag;
+
+/**
+ * Total amount affected by wire format trouble.s
+ */
+static struct TALER_Amount total_wire_format_amount;
 
 /**
  * Amount of zero in our currency.
@@ -324,7 +335,7 @@ do_shutdown (void *cls)
     GNUNET_assert (NULL != report_row_minor_inconsistencies);
     report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o, s:o,"
-                        " s:o, s:o }",
+                        " s:o, s:o, s:o, s:o }",
                         /* blocks of 5 */
 			"wire_out_amount_inconsistencies",
                         report_wire_out_inconsistencies,
@@ -348,6 +359,10 @@ do_shutdown (void *cls)
 			"row_minor_inconsistencies",
                         report_row_minor_inconsistencies,
                         /* block */
+                        "total_wire_format_amount",
+                        TALER_JSON_from_amount (&total_wire_format_amount),
+                        "wire_format_inconsistencies",
+                        report_wire_format_inconsistencies,
                         "total_amount_lag",
                         TALER_JSON_from_amount (&total_bad_amount_in_minus),
                         "lag_details",
@@ -363,6 +378,7 @@ do_shutdown (void *cls)
     report_row_minor_inconsistencies = NULL;
     report_missattribution_in_inconsistencies = NULL;
     report_lags = NULL;
+    report_wire_format_inconsistencies = NULL;
   }
   if (NULL != hh)
   {
@@ -846,18 +862,17 @@ history_debit_cb (void *cls,
                         row_off_size,
                         &rowh);
     GNUNET_asprintf (&diagnostic,
-                     "malformed wire transfer subject `%s'",
+                     "malformed subject `%8s...'",
                      details->wtid_s);
-    report (report_row_inconsistencies,
-            json_pack ("{s:s, s:I, s:o, s:o, s:s}",
-                       "table", "bank wire log",
-                       "row", (json_int_t) 0,
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_wire_format_amount,
+                                    &total_wire_format_amount,
+                                    &details->amount));
+    report (report_wire_format_inconsistencies,
+            json_pack ("{s:o, s:o, s:s}",
                        "amount", TALER_JSON_from_amount (&details->amount),
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
                        "diagnostic", diagnostic));
-    /* TODO (#5177): report generator currently ignores 'amount' for this
-       table, maybe use a different table to report this issue! */
-    /* TODO: add 'amount' to some total amount that was badly wired! */
     GNUNET_free (diagnostic);
     return GNUNET_SYSERR;
   }
@@ -881,18 +896,17 @@ history_debit_cb (void *cls,
                         row_off_size,
                         &rowh);
     GNUNET_asprintf (&diagnostic,
-                     "duplicate wire transfer subject `%s'",
+                     "duplicate subject hash `%8s...'",
                      TALER_B2S (&roi->subject_hash));
-    report (report_row_inconsistencies,
-            json_pack ("{s:s, s:I, s:o, s:o, s:s}",
-                       "table", "bank wire log",
-                       "row", (json_int_t) 0,
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_wire_format_amount,
+                                    &total_wire_format_amount,
+                                    &details->amount));
+    report (report_wire_format_inconsistencies,
+            json_pack ("{s:o, s:o, s:s}",
                        "amount", TALER_JSON_from_amount (&details->amount),
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
                        "diagnostic", diagnostic));
-    /* TODO (#5177): report generator currently ignores 'amount' for this
-       table, maybe use a different table to report this issue! */
-    /* TODO: add 'amount' to some total amount that was badly wired! */
     GNUNET_free (diagnostic);
     return GNUNET_SYSERR;
   }
@@ -1382,6 +1396,8 @@ run (void *cls,
   GNUNET_assert (NULL !=
 		 (report_row_minor_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
+		 (report_wire_format_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
 		 (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_missattribution_in_inconsistencies = json_array ()));
@@ -1405,6 +1421,9 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_amount_lag));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_wire_format_amount));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &zero));

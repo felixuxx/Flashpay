@@ -1,3 +1,24 @@
+% This file is part of TALER
+% Copyright (C) 2016, 2017 Taler Systems SA
+%
+% TALER is free software; you can redistribute it and/or modify it under the
+% terms of the GNU Affero General Public License as published by the Free Software
+% Foundation; either version 3, or (at your option) any later version.
+%
+% TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+% A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+%
+% You should have received a copy of the GNU Affero General Public License along with
+% TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+%
+%
+% With respect to this file, our interpretation of the license is
+% that publishing an audit report (i.e. in TeX or PDF) requires
+% publishing the corresponding j2 template sources under AGPL, and
+% linking to them from the report. (This file _is_ source code,
+% the generated PDF is the service under definition of the AGPL.)
+%
 \documentclass{article} % {acmart}
 \usepackage{url}
 \usepackage[T1]{fontenc}
@@ -7,7 +28,15 @@
 
 \begin{document}
 
-\title{Taler Auditor Report}
+% If you update this template, complying with the license requires
+% publishing the J2 source and linking to it from the generated PDF.
+% So if you change this outside of the Taler Git repository, you must
+% update this link (and the link must remain available to the receiver
+% of the result from the generated TeX, PDF or other format).
+\title{Taler Auditor Report\footnote{Template available at \url{https://git.taler.net/}}}
+
+% You must also credit the original author.
+\author{Christian Grothoff}
 \maketitle
 
 \section{Operations}
@@ -568,6 +597,80 @@ have a clear financial impact.
 {% endfor %}
   \end{longtable}
 {% endif %}
+
+
+\subsection{Outgoing wire transfer subject issues}
+
+This section describes issues found by the wire auditor that
+relate to outgoing wire transfers being malformed.
+This happens if the exchange somehow creates wire transfers
+with duplicate or malformed wire transfer subjects.
+
+{% if wire.wire_format_inconsistencies|length() == 0 %}
+  {\bf No wire format inconsistencies found.}
+{% else %}
+  \begin{longtable}{p{4.5cm}|rl}
+  \multicolumn{3}{c}{ {\bf Row hash} } \\
+  {\bf Diagnostic} & \multicolumn{2}{c|}{ {\bf Amount} } \\
+  \hline \hline
+\endfirsthead
+  \multicolumn{3}{c}{ {\bf Row hash} } \\
+  {\bf Diagnostic} & \multicolumn{2}{c|}{ {\bf Amount} } \\
+  \hline \hline
+\endhead
+  \hline
+  \multicolumn{3}{c}{ {\bf Row hash} } \\
+  {\bf Diagnostic} & \multicolumn{2}{c|}{ {\bf Amount} } \\
+\endfoot
+  \hline
+  \hline
+  {\bf Total} &
+  {{ wire.total_wire_format_amount.value }}.{{ wire.total_wire_format_amount.fraction }} &
+  {{ wire.total_wire_format_amount.currency }} \\
+  \caption{Outgoing wire transfer subject issues found.}
+  \label{table:outgoing:wtid}
+\endlastfoot
+{% for item in wire.wire_format_inconsistencies %}
+  \multicolumn{3}{l}{ \verb! {{ item.wire_offset_hash }} ! } \\
+\nopagebreak
+  {{ item.diagnostic }} &
+  {{ item.amount.value }}.{{ item.amount.fraction }} &
+  {{ item.amount.currency }} \\
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Wire fee structure inconsistencies}
+
+This section lists cases where the exchange's database may be ambiguous
+with respect to what wire fee it charges at what time.
+
+{% if data.wire_fee_time_inconsistencies|length() == 0 %}
+  {\bf No wire fee timing issues detected.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|r|p{5.5}}
+  {\bf Wire format} & {\bf Timestamp} & {\bf Diagnostic}
+  \\ \hline \hline
+\endfirsthead
+  {\bf Wire format} & {\bf Timestamp} & {\bf Diagnostic}
+  \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Wire format} & {\bf Timestamp} & {\bf Diagnostic} \\
+\endfoot
+  \hline \hline
+  {\bf Wire format} & {\bf Timestamp} & {\bf Diagnostic} \\
+  \caption{Wire fees with ambiguous timestamps.}
+  \label{table:wire_fee:ambiguity}
+\endlastfoot
+{% for item in data.wire_fee_time_inconsistencies %}
+  {\tt {{ item.type }} } & {{ item.time }} & {{ item.diagnostic }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
 
 \subsection{Other issues}
 

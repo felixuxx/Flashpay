@@ -3,14 +3,14 @@
   Copyright (C) 2016, 2017 Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
+  terms of the GNU Affero Public License as published by the Free Software
   Foundation; either version 3, or (at your option) any later version.
 
   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  A PARTICULAR PURPOSE.  See the GNU Affero Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
+  You should have received a copy of the GNU Affero Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
@@ -209,6 +209,11 @@ static json_t *report_aggregation_fee_balances;
  * or loss at the exchange).
  */
 static json_t *report_amount_arithmetic_inconsistencies;
+
+/**
+ * Array of reports about wire fees being ambiguous in terms of validity periods.
+ */
+static json_t *report_fee_time_inconsistencies;
 
 /**
  * Profits the exchange made by bad amount calculations.
@@ -2303,11 +2308,24 @@ get_wire_fee (struct AggregationContext *ac,
                                        pos->prev,
                                        wfi);
   /* Check non-overlaping fee invariant */
-  /* TODO (#5177): report problems more nicely? */
-  if (NULL != wfi->prev)
-    GNUNET_break (wfi->prev->end_date.abs_value_us <= wfi->start_date.abs_value_us);
-  if (NULL != wfi->next)
-    GNUNET_break (wfi->next->start_date.abs_value_us >= wfi->end_date.abs_value_us);
+  if ( (NULL != wfi->prev) &&
+       (wfi->prev->end_date.abs_value_us > wfi->start_date.abs_value_us) )
+  {
+    report (report_fee_time_inconsistencies,
+            json_pack ("{s:s, s:s, s:s}",
+                       "type", type,
+                       "diagnostic", "start date before previous end date",
+                       "time", GNUNET_STRINGS_absolute_time_to_string (wfi->start_date)));
+  }
+  if ( (NULL != wfi->next) &&
+       (wfi->next->start_date.abs_value_us >= wfi->end_date.abs_value_us) )
+  {
+    report (report_fee_time_inconsistencies,
+            json_pack ("{s:s, s:s, s:s}",
+                       "type", type,
+                       "diagnostic", "end date date after next start date",
+                       "time", GNUNET_STRINGS_absolute_time_to_string (wfi->end_date)));
+  }
   return &wfi->wire_fee;
 }
 
@@ -4085,6 +4103,8 @@ run (void *cls,
 		 (report_amount_arithmetic_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_bad_sig_losses = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_fee_time_inconsistencies = json_array ()));
   setup_sessions_and_run ();
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
@@ -4108,7 +4128,8 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o}",
+                      " s:o, s:o, s:o, s:o, s:o,"
+                      " s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
 		      "reserve_balance_insufficient_inconsistencies",
@@ -4175,9 +4196,10 @@ run (void *cls,
                       "total_arithmetic_delta_minus",
                       TALER_JSON_from_amount (&total_arithmetic_delta_minus),
 		      "total_aggregation_fee_income",
-                      TALER_JSON_from_amount (&total_aggregation_fee_income)
+                      TALER_JSON_from_amount (&total_aggregation_fee_income),
                       /* block */
-                      );
+                      "wire_fee_time_inconsistencies",
+                      report_fee_time_inconsistencies);
   GNUNET_break (NULL != report);
   json_dumpf (report,
 	      stdout,
