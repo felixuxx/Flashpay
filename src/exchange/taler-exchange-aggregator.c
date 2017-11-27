@@ -961,6 +961,7 @@ expired_reserve_cb (void *cls,
 
   GNUNET_assert (NULL == ctc);
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
 
   /* lookup wire plugin */
   type = extract_type (account_details);
