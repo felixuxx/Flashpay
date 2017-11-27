@@ -1475,6 +1475,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_TIP_PICKUP_EXCHANGE_TOO_MANY_PLANCHETS = 2809,
 
+  /**
+   * The tip id is unknown.  This could happen if the
+   * tip id is wrong or the tip authorization expired.
+   */
+  TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2810,
+
 
   /* ********** /test API error codes ************* */
 
