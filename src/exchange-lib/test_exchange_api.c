@@ -1199,7 +1199,7 @@ static void
 melt_cb (void *cls,
          unsigned int http_status,
 	 enum TALER_ErrorCode ec,
-         uint16_t noreveal_index,
+         uint32_t noreveal_index,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {
@@ -1312,8 +1312,6 @@ link_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
   const struct Command *ref;
-  unsigned int i;
-  unsigned int j;
   unsigned int found;
 
   cmd->details.refresh_link.rlh = NULL;
@@ -1341,16 +1339,16 @@ link_cb (void *cls,
       return;
     }
     /* check that the coins match */
-    for (i=0;i<num_coins;i++)
-      for (j=i+1;j<num_coins;j++)
+    for (unsigned int i=0;i<num_coins;i++)
+      for (unsigned int j=i+1;j<num_coins;j++)
 	if (0 == memcmp (&coin_privs[i],
 			 &coin_privs[j],
 			 sizeof (struct TALER_CoinSpendPrivateKeyP)))
 	  GNUNET_break (0);
     /* Note: coins might be legitimately permutated in here... */
     found = 0;
-    for (i=0;i<num_coins;i++)
-      for (j=0;j<num_coins;j++)
+    for (unsigned int i=0;i<num_coins;i++)
+      for (unsigned int j=0;j<num_coins;j++)
       {
 	const struct FreshCoin *fc;
 

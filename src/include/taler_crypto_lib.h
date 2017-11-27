@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -289,6 +289,19 @@ struct TALER_DenominationBlindingKeyP
 };
 
 
+/**
+ * Commitment value for the refresh protocol.
+ * See #TALER_refresh_get_commitment().
+ */
+struct TALER_RefreshCommitmentP
+{
+  /**
+   * The commitment is a hash code.
+   */
+  struct GNUNET_HashCode session_hash;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
@@ -557,12 +570,12 @@ GNUNET_NETWORK_STRUCT_END
  *
  * @param secret_seed seed to use for KDF to derive coin keys
  * @param coin_num_salt number of the coin to include in KDF
- * @param[out] fc value to initialize
+ * @param[out] ps value to initialize
  */
 void
 TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                              unsigned int coin_num_salt,
-                              struct TALER_PlanchetSecretsP *fc);
+                              uint32_t coin_num_salt,
+                              struct TALER_PlanchetSecretsP *ps);
 
 
 /**
@@ -654,6 +667,67 @@ void
 TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans_pub,
                                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                                     struct TALER_TransferSecretP *transfer_secret);
+
+
+/**
+ * Information about a coin to be created during a refresh operation.
+ */
+struct TALER_RefreshCoinData
+{
+
+  /**
+   * The denomination's public key.
+   */
+  const struct TALER_DenominationPublicKey *dk;
+
+  /**
+   * The envelope with the blinded coin.
+   */
+  char *coin_ev;
+
+  /**
+   * Number of bytes in @a coin_ev
+   */
+  size_t coin_ev_size;
+
+};
+
+
+/**
+ * One of the #TALER_CNC_KAPPA commitments.
+ */
+struct TALER_RefreshCommitmentEntry
+{
+  /**
+   * Transfer public key of this commitment.
+   */
+  struct TALER_TransferPublicKeyP transfer_pub;
+
+  /**
+   * Array of @e num_new_coins new coins to be created.
+   */
+  struct TALER_RefreshCoinData *new_coins;
+};
+
+
+/**
+ * Compute the commitment for a /refresh/melt operation from
+ * the respective public inputs.
+ *
+ * @param[out] rc set to the value the wallet must commit to
+ * @param kappa number of transfer public keys involved (must be #TALER_CNC_KAPPA)
+ * @param num_new_coins number of new coins to be created
+ * @param commitments array of @a kappa commitments
+ * @param coin_pub public key of the coin to be melted
+ * @param amount_with_fee amount to be melted, including fee
+ */
+void
+TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
+                              uint32_t kappa,
+                              uint32_t num_new_coins,
+                              const struct TALER_RefreshCommitmentEntry *rcs,
+                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                              const struct TALER_Amount *amount_with_fee);
 
 
 #endif

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 Inria
+  Copyright (C) 2016, 2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -274,6 +274,17 @@ static json_t *report_bad_sig_losses;
  * Total amount lost by operations for which signatures were invalid.
  */
 static struct TALER_Amount total_bad_sig_loss;
+
+/**
+ * Array of refresh transactions where the /refresh/reveal has not yet
+ * happened (and may of course never happen).
+ */
+static json_t *report_refreshs_hanging;
+
+/**
+ * Total amount lost by operations for which signatures were invalid.
+ */
+static struct TALER_Amount total_refresh_hanging;
 
 
 /* ***************************** Report logic **************************** */
@@ -1893,7 +1904,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       }
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-      amount_with_fee = &tl->details.melt->amount_with_fee;
+      amount_with_fee = &tl->details.melt->session.amount_with_fee;
       fee = &tl->details.melt->melt_fee;
       fee_dki = &dki->properties.fee_refresh;
       if (GNUNET_OK !=
@@ -2104,7 +2115,7 @@ wire_transfer_information_cb (void *cls,
     coin = &tl->details.deposit->coin;
     break;
   case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-    coin = &tl->details.melt->coin;
+    coin = &tl->details.melt->session.coin;
     break;
   case TALER_EXCHANGEDB_TT_REFUND:
     coin = &tl->details.refund->coin;
@@ -2968,6 +2979,54 @@ withdraw_cb (void *cls,
 
 
 /**
+ * Closure for #reveal_data_cb().
+ */
+struct RevealContext
+{
+
+  /**
+   * Denomination public keys of the new coins.
+   */
+  struct TALER_DenominationPublicKey *new_dps;
+
+  /**
+   * Size of the @a new_dp and @a new_dki arrays.
+   */
+  unsigned int num_newcoins;
+};
+
+
+/**
+ * Function called with information about a refresh order.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the row in our database
+ * @param num_newcoins size of the @a rrcs array
+ * @param rrcs array of @a num_newcoins information about coins to be created
+ * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
+ * @param tprivs array of @e num_tprivs transfer private keys
+ * @param tp transfer public key information
+ */
+static void
+reveal_data_cb (void *cls,
+                uint32_t num_newcoins,
+                const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
+                unsigned int num_tprivs,
+                const struct TALER_TransferPrivateKeyP *tprivs,
+                const struct TALER_TransferPublicKeyP *tp)
+{
+  struct RevealContext *rctx = cls;
+
+  rctx->num_newcoins = num_newcoins;
+  rctx->new_dps = GNUNET_new_array (num_newcoins,
+                                    struct TALER_DenominationPublicKey);
+  for (unsigned int i=0;i<num_newcoins;i++)
+    rctx->new_dps[i].rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_dup (rrcs[i].denom_pub.rsa_public_key);
+}
+
+
+/**
  * Function called with details about coins that were melted, with the
  * goal of auditing the refresh's execution.  Verifies the signature
  * and updates our information about coins outstanding (the old coin's
@@ -2980,7 +3039,6 @@ withdraw_cb (void *cls,
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
- * @param num_newcoins how many coins were issued
  * @param noreveal_index which index was picked by the exchange in cut-and-choose
  * @param session_hash what is the session hash
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -2992,9 +3050,8 @@ refresh_session_cb (void *cls,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     const struct TALER_CoinSpendSignatureP *coin_sig,
                     const struct TALER_Amount *amount_with_fee,
-                    uint16_t num_newcoins,
-                    uint16_t noreveal_index,
-                    const struct GNUNET_HashCode *session_hash)
+                    uint32_t noreveal_index,
+                    const struct TALER_RefreshCommitmentP *rc)
 {
   struct CoinContext *cc = cls;
   struct TALER_RefreshMeltCoinAffirmationPS rmc;
@@ -3020,7 +3077,7 @@ refresh_session_cb (void *cls,
   /* verify melt signature */
   rmc.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   rmc.purpose.size = htonl (sizeof (rmc));
-  rmc.session_hash = *session_hash;
+  rmc.rc = *rc;
   TALER_amount_hton (&rmc.amount_with_fee,
                      amount_with_fee);
   rmc.melt_fee = dki->properties.fee_refresh;
@@ -3050,161 +3107,189 @@ refresh_session_cb (void *cls,
               TALER_amount2s (amount_with_fee));
 
   {
-    struct TALER_DenominationPublicKey new_dp[num_newcoins];
-    const struct TALER_EXCHANGEDB_DenominationKeyInformationP *new_dki[num_newcoins];
+    struct RevealContext reveal_ctx;
     struct TALER_Amount refresh_cost;
     int err;
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (amount_with_fee->currency,
                                           &refresh_cost));
-    qs = edb->get_refresh_order (edb->cls,
-				 esession,
-				 session_hash,
-				 num_newcoins,
-				 new_dp);
-    if (0 >= qs)
+    memset (&reveal_ctx,
+            0,
+            sizeof (reveal_ctx));
+    qs = edb->get_refresh_reveal (edb->cls,
+                                  esession,
+                                  rc,
+                                  &reveal_data_cb,
+                                  &reveal_ctx);
+    if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return GNUNET_SYSERR;
     }
-    /* Update outstanding amounts for all new coin's denominations, and check
-       that the resulting amounts are consistent with the value being refreshed. */
-    err = GNUNET_NO;
-    for (unsigned int i=0;i<num_newcoins;i++)
+    if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
+         (0 == reveal_ctx.num_newcoins) )
     {
-      /* lookup new coin denomination key */
-      qs = get_denomination_info (&new_dp[i],
-				  &new_dki[i],
-				  NULL);
-      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-      {
-        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-	cc->qs = qs;
-        err = GNUNET_YES;
-      }
-      GNUNET_CRYPTO_rsa_public_key_free (new_dp[i].rsa_public_key);
-      new_dp[i].rsa_public_key = NULL;
-    }
-    if (err)
-      return GNUNET_SYSERR;
-
-    /* calculate total refresh cost */
-    for (unsigned int i=0;i<num_newcoins;i++)
-    {
-      /* update cost of refresh */
-      struct TALER_Amount fee;
-      struct TALER_Amount value;
-
-      TALER_amount_ntoh (&fee,
-                         &new_dki[i]->properties.fee_withdraw);
-      TALER_amount_ntoh (&value,
-                         &new_dki[i]->properties.value);
-      if ( (GNUNET_OK !=
-            TALER_amount_add (&refresh_cost,
-                              &refresh_cost,
-                              &fee)) ||
-           (GNUNET_OK !=
-            TALER_amount_add (&refresh_cost,
-                              &refresh_cost,
-                              &value)) )
-      {
-        GNUNET_break (0);
-	cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-        return GNUNET_SYSERR;
-      }
-    }
-
-    /* compute contribution of old coin */
-    {
-      struct TALER_Amount melt_fee;
-
-      TALER_amount_ntoh (&melt_fee,
-                         &dki->properties.fee_refresh);
-      if (GNUNET_OK !=
-          TALER_amount_subtract (&amount_without_fee,
-                                 amount_with_fee,
-                                 &melt_fee))
-      {
-        GNUNET_break (0);
-	cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-        return GNUNET_SYSERR;
-      }
-    }
-
-    /* check old coin covers complete expenses */
-    if (1 == TALER_amount_cmp (&refresh_cost,
-                               &amount_without_fee))
-    {
-      /* refresh_cost > amount_without_fee */
-      report_amount_arithmetic_inconsistency ("melt (fee)",
-                                              rowid,
-                                              &amount_without_fee,
-                                              &refresh_cost,
-                                              -1);
+      /* This can happen if /refresh/reveal was not yet called or only
+         with invalid data, even if the exchange is correctly
+         operating. We still report it. */
+      report (report_refreshs_hanging,
+              json_pack ("{s:I, s:o, s:o}",
+                         "row", (json_int_t) rowid,
+                         "amount", TALER_JSON_from_amount (amount_with_fee),
+                         "coin_pub", GNUNET_JSON_from_data_auto (coin_pub)));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_refresh_hanging,
+                                      &total_refresh_hanging,
+                                      amount_with_fee));
       return GNUNET_OK;
     }
+    // FIXME: free reveal_ctx.num_newcoins later!
 
-    /* update outstanding denomination amounts */
-    for (unsigned int i=0;i<num_newcoins;i++)
     {
-      struct DenominationSummary *dsi;
-      struct TALER_Amount value;
+      const struct TALER_EXCHANGEDB_DenominationKeyInformationP *new_dkis[reveal_ctx.num_newcoins];
 
-      dsi = get_denomination_summary (cc,
-                                      new_dki[i],
-                                      &new_dki[i]->properties.denom_hash);
-      if (NULL == dsi)
+      /* Update outstanding amounts for all new coin's denominations, and check
+         that the resulting amounts are consistent with the value being refreshed. */
+      err = GNUNET_NO;
+      for (unsigned int i=0;i<reveal_ctx.num_newcoins;i++)
       {
-	GNUNET_break (0);
-	return GNUNET_SYSERR;
+        /* lookup new coin denomination key */
+        qs = get_denomination_info (&reveal_ctx.new_dps[i],
+                                    &new_dkis[i],
+                                    NULL);
+        if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+        {
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+          cc->qs = qs;
+          err = GNUNET_YES;
+        }
+        GNUNET_CRYPTO_rsa_public_key_free (reveal_ctx.new_dps[i].rsa_public_key);
+        reveal_ctx.new_dps[i].rsa_public_key = NULL;
       }
-      TALER_amount_ntoh (&value,
-                         &new_dki[i]->properties.value);
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Created fresh coin in denomination `%s' of value %s\n",
-                  GNUNET_h2s (&new_dki[i]->properties.denom_hash),
-                  TALER_amount2s (&value));
-      if (GNUNET_OK !=
-          TALER_amount_add (&dsi->denom_balance,
-                            &dsi->denom_balance,
-                            &value))
-      {
-        GNUNET_break (0);
-	cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      GNUNET_free (reveal_ctx.new_dps);
+      reveal_ctx.new_dps = NULL;
+
+      if (err)
         return GNUNET_SYSERR;
+
+      /* calculate total refresh cost */
+      for (unsigned int i=0;i<reveal_ctx.num_newcoins;i++)
+      {
+        /* update cost of refresh */
+        struct TALER_Amount fee;
+        struct TALER_Amount value;
+
+        TALER_amount_ntoh (&fee,
+                           &new_dkis[i]->properties.fee_withdraw);
+        TALER_amount_ntoh (&value,
+                           &new_dkis[i]->properties.value);
+        if ( (GNUNET_OK !=
+              TALER_amount_add (&refresh_cost,
+                                &refresh_cost,
+                                &fee)) ||
+             (GNUNET_OK !=
+              TALER_amount_add (&refresh_cost,
+                                &refresh_cost,
+                                &value)) )
+        {
+          GNUNET_break (0);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
       }
-      if (GNUNET_OK !=
-          TALER_amount_add (&dsi->denom_risk,
-                            &dsi->denom_risk,
-                            &value))
+
+      /* compute contribution of old coin */
       {
-        GNUNET_break (0);
-	cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-        return GNUNET_SYSERR;
+        struct TALER_Amount melt_fee;
+
+        TALER_amount_ntoh (&melt_fee,
+                           &dki->properties.fee_refresh);
+        if (GNUNET_OK !=
+            TALER_amount_subtract (&amount_without_fee,
+                                   amount_with_fee,
+                                   &melt_fee))
+        {
+          GNUNET_break (0);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
       }
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "New balance of denomination `%s' is %s\n",
-                  GNUNET_h2s (&new_dki[i]->properties.denom_hash),
-                  TALER_amount2s (&dsi->denom_balance));
-      if (GNUNET_OK !=
-          TALER_amount_add (&total_escrow_balance,
-                            &total_escrow_balance,
-                            &value))
+
+      /* check old coin covers complete expenses */
+      if (1 == TALER_amount_cmp (&refresh_cost,
+                                 &amount_without_fee))
       {
-        GNUNET_break (0);
-	cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-        return GNUNET_SYSERR;
+        /* refresh_cost > amount_without_fee */
+        report_amount_arithmetic_inconsistency ("melt (fee)",
+                                                rowid,
+                                                &amount_without_fee,
+                                                &refresh_cost,
+                                                -1);
+        return GNUNET_OK;
       }
-      if (GNUNET_OK !=
-          TALER_amount_add (&total_risk,
-                            &total_risk,
-                            &value))
+
+      /* update outstanding denomination amounts */
+      for (unsigned int i=0;i<reveal_ctx.num_newcoins;i++)
       {
-        GNUNET_break (0);
-	cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-        return GNUNET_SYSERR;
+        struct DenominationSummary *dsi;
+        struct TALER_Amount value;
+
+        dsi = get_denomination_summary (cc,
+                                        new_dkis[i],
+                                        &new_dkis[i]->properties.denom_hash);
+        if (NULL == dsi)
+        {
+          GNUNET_break (0);
+          return GNUNET_SYSERR;
+        }
+        TALER_amount_ntoh (&value,
+                           &new_dkis[i]->properties.value);
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Created fresh coin in denomination `%s' of value %s\n",
+                    GNUNET_h2s (&new_dkis[i]->properties.denom_hash),
+                    TALER_amount2s (&value));
+        if (GNUNET_OK !=
+            TALER_amount_add (&dsi->denom_balance,
+                              &dsi->denom_balance,
+                              &value))
+        {
+          GNUNET_break (0);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
+        if (GNUNET_OK !=
+            TALER_amount_add (&dsi->denom_risk,
+                              &dsi->denom_risk,
+                              &value))
+        {
+          GNUNET_break (0);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "New balance of denomination `%s' is %s\n",
+                    GNUNET_h2s (&new_dkis[i]->properties.denom_hash),
+                    TALER_amount2s (&dsi->denom_balance));
+        if (GNUNET_OK !=
+            TALER_amount_add (&total_escrow_balance,
+                              &total_escrow_balance,
+                              &value))
+        {
+          GNUNET_break (0);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
+        if (GNUNET_OK !=
+            TALER_amount_add (&total_risk,
+                              &total_risk,
+                              &value))
+        {
+          GNUNET_break (0);
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          return GNUNET_SYSERR;
+        }
       }
     }
   }
@@ -4081,6 +4166,9 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_bad_sig_loss));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_refresh_hanging));
   GNUNET_assert (NULL !=
 		 (report_emergencies = json_array ()));
   GNUNET_assert (NULL !=
@@ -4103,6 +4191,8 @@ run (void *cls,
 		 (report_amount_arithmetic_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_bad_sig_losses = json_array ()));
+  GNUNET_assert (NULL !=
+		 (report_refreshs_hanging = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_fee_time_inconsistencies = json_array ()));
   setup_sessions_and_run ();
@@ -4129,7 +4219,7 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o }",
+                      " s:o, s:o, s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
 		      "reserve_balance_insufficient_inconsistencies",
@@ -4199,7 +4289,11 @@ run (void *cls,
                       TALER_JSON_from_amount (&total_aggregation_fee_income),
                       /* block */
                       "wire_fee_time_inconsistencies",
-                      report_fee_time_inconsistencies);
+                      report_fee_time_inconsistencies,
+                      "total_refresh_hanging",
+                      TALER_JSON_from_amount (&total_refresh_hanging),
+                      "refresh_hanging",
+                      report_refreshs_hanging);
   GNUNET_break (NULL != report);
   json_dumpf (report,
 	      stdout,

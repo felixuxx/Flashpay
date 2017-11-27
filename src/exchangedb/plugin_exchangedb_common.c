@@ -74,31 +74,6 @@ common_free_reserve_history (void *cls,
 
 
 /**
- * Free memory of the link data list.
- *
- * @param cls the @e cls of this struct with the plugin-specific state (unused)
- * @param ldl link data list to release
- */
-static void
-common_free_link_data_list (void *cls,
-                            struct TALER_EXCHANGEDB_LinkDataList *ldl)
-{
-  struct TALER_EXCHANGEDB_LinkDataList *next;
-
-  while (NULL != ldl)
-  {
-    next = ldl->next;
-    if (NULL != ldl->denom_pub.rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (ldl->denom_pub.rsa_public_key);
-      if (NULL != ldl->ev_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (ldl->ev_sig.rsa_signature);
-    GNUNET_free (ldl);
-    ldl = next;
-  }
-}
-
-
-/**
  * Free linked list of transactions.
  *
  * @param cls the @e cls of this struct with the plugin-specific state (unused)
@@ -125,10 +100,10 @@ common_free_coin_transaction_list (void *cls,
       GNUNET_free (list->details.deposit);
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-      if (NULL != list->details.melt->coin.denom_pub.rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (list->details.melt->coin.denom_pub.rsa_public_key);
-      if (NULL != list->details.melt->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.melt->coin.denom_sig.rsa_signature);
+      if (NULL != list->details.melt->session.coin.denom_pub.rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (list->details.melt->session.coin.denom_pub.rsa_public_key);
+      if (NULL != list->details.melt->session.coin.denom_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (list->details.melt->session.coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.melt);
       break;
     case TALER_EXCHANGEDB_TT_REFUND:

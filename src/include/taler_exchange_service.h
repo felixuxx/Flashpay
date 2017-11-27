@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 GNUnet e.V.
+  Copyright (C) 2014-2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -1110,7 +1110,7 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
- *                    UINT16_MAX on error
+ *                    UINT32_MAX on error
  * @param sign_key exchange key used to sign @a full_response, or NULL
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
@@ -1118,7 +1118,7 @@ typedef void
 (*TALER_EXCHANGE_RefreshMeltCallback) (void *cls,
                                        unsigned int http_status,
 				       enum TALER_ErrorCode ec,
-				       uint16_t noreveal_index,
+				       uint32_t noreveal_index,
                                        const struct TALER_ExchangePublicKeyP *sign_key,
                                        const json_t *full_response);
 
@@ -1223,7 +1223,7 @@ struct TALER_EXCHANGE_RefreshRevealHandle *
 TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                                size_t refresh_data_length,
                                const char *refresh_data,
-                               uint16_t noreveal_index,
+                               uint32_t noreveal_index,
                                TALER_EXCHANGE_RefreshRevealCallback reveal_cb,
                                void *reveal_cb_cls);
 

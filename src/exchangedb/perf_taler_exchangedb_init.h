@@ -44,7 +44,7 @@ struct PERF_TALER_EXCHANGEDB_Reserve
 
 
 /**
- * All informations about a coin 
+ * All informations about a coin
  */
 struct PERF_TALER_EXCHANGEDB_Coin
 {
@@ -169,42 +169,20 @@ PERF_TALER_EXCHANGEDB_coin_free (struct PERF_TALER_EXCHANGEDB_Coin *coin);
 
 
 /**
- * @return a randomly generated refresh session
- */
-struct TALER_EXCHANGEDB_RefreshSession *
-PERF_TALER_EXCHANGEDB_refresh_session_init (void);
-
-
-/**
- * @return #GNUNET_OK if the copy was successful, #GNUNET_SYSERR if it wasn't
- */
-int
-PERF_TALER_EXCHANGEDB_refresh_session_copy (struct TALER_EXCHANGEDB_RefreshSession *session, 
-					    struct TALER_EXCHANGEDB_RefreshSession *copy);
-
-
-/**
- * Frees memory of a refresh_session
- */
-int
-PERF_TALER_EXCHANGEDB_refresh_session_free (struct TALER_EXCHANGEDB_RefreshSession *refresh_session);
-
-
-/**
  * Create a melt operation
  *
- * @param session the refresh session 
+ * @param rc the commitment of the refresh session
  * @param dki the denomination the melted coin uses
- * @return a pointer to a #TALER_EXCHANGEDB_RefreshMelt 
+ * @return a pointer to a #TALER_EXCHANGEDB_RefreshMelt
  */
 struct TALER_EXCHANGEDB_RefreshMelt *
-PERF_TALER_EXCHANGEDB_refresh_melt_init (struct GNUNET_HashCode *session,
-                                     struct PERF_TALER_EXCHANGEDB_Coin *coin);
+PERF_TALER_EXCHANGEDB_refresh_melt_init (struct TALER_RefreshCommitmentP *rc,
+                                         struct PERF_TALER_EXCHANGEDB_Coin *coin);
 
 
 /**
  * Copies the internals of a #TALER_EXCHANGEDB_RefreshMelt
- * 
+ *
  * @param melt the refresh melt to copy
  * @return an copy of @ melt
  */
@@ -220,31 +198,5 @@ PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMe
  */
 int
 PERF_TALER_EXCHANGEDB_refresh_melt_free (struct TALER_EXCHANGEDB_RefreshMelt *melt);
-
-
-/**
- * Create a #TALER_EXCHANGEDB_RefreshCommitCoin
- */
-struct TALER_EXCHANGEDB_RefreshCommitCoin *
-PERF_TALER_EXCHANGEDB_refresh_commit_coin_init (void);
-
-
-/**
- * Copies a #TALER_EXCHANGEDB_RefreshCommitCoin
- *
- * @param commit_coin the commit to copy
- * @return a copy of @a commit_coin
- */
-struct TALER_EXCHANGEDB_RefreshCommitCoin *
-PERF_TALER_EXCHANGEDB_refresh_commit_coin_copy (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin);
-
-
-/**
- * Free a #TALER_EXCHANGEDB_RefreshCommitCoin
- *
- * @param commit_coin the coin to free
- */
-void
-PERF_TALER_EXCHANGEDB_refresh_commit_coin_free (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin);
 
 #endif

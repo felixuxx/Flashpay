@@ -331,7 +331,7 @@
 }
 
 /**
- * Inserts informations about a withdrawal in the database
+ * Inserts information about a withdrawal into the database
  *
  * @exposes #PERF_TALER_EXCHANGEDB_COIN
  *
@@ -452,16 +452,18 @@
                                              _label_coin), \
   PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DEPOSIT (_label "insert", \
                                              _label "deposit")
+
 /**
  * Insert informations about a refresh session
  * melts one coin into another
  *
  * @param _label the label of the command
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_REFRESH_SESSION(_label) \
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_REFRESH_SESSION(_label, _label_coin)  \
 { \
   .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION, \
   .label = _label, \
+  .details.create_refresh_session.label_coin = _label_coin, \
   .exposed.type = PERF_TALER_EXCHANGEDB_REFRESH_HASH \
 }
 
@@ -519,7 +521,7 @@ struct PERF_TALER_EXCHANGEDB_Data
     /** #PERF_TALER_EXCHANGEDB_DENOMINATION_INFO */
     struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
     /** #PERF_TALER_EXCHANGEDB_REFRESH_HASH */
-    struct GNUNET_HashCode *session_hash;
+    struct TALER_RefreshCommitmentP rc;
   } data;
 };
 
@@ -679,54 +681,19 @@ enum PERF_TALER_EXCHANGEDB_CMD_Name
   PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION,
 
   /**
-   * Insert a melt refresh order
+   * Insert a melt refresh reveal data
    */
-  PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_ORDER,
+  PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_REVEAL,
 
   /**
-   * Get informations about a refresh order
+   * Get informations about a refresh reveal data
    */
-  PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_ORDER,
-
-  /**
-   * Insert refresh commit coin
-   */
-  PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_COMMIT_COIN,
-
-  /**
-   * Get refresh commit coin
-   */
-  PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_COMMIT_COIN,
-
-  /**
-   * Insert refresh commit link
-   */
-  PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_COMMIT_LINK,
-
-  /**
-   * Get refresh commit link
-   */
-  PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_COMMIT_LINK,
-
-  /**
-   * Get information avout the melt commit
-   */
-  PERF_TALER_EXCHANGEDB_CMD_GET_MELT_COMMITMENT,
-
-  /**
-   * Insert a new coin into the database after a melt operation
-   */
-  PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_OUT,
+  PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_REVEAL,
 
   /**
    * Get the link data list of a coin
    */
-  PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA_LIST,
-
-  /**
-   * Get the shared secret and the transfere public key
-   */
-  PERF_TALER_EXCHANGEDB_CMD_GET_TRANSFER
+  PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA
 
 };
 
@@ -1029,6 +996,18 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
   } get_deposit;
 
  /**
+   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION command
+   */
+  struct PERF_TALER_EXCHANGEDB_CMD_createRefreshSessionDetails
+  {
+    /**
+     * label of the source of the hash of the session
+     */
+    const char *label_coin;
+    unsigned int index_coin;
+  } create_refresh_session;
+
+   /**
    * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION command
    */
   struct PERF_TALER_EXCHANGEDB_CMD_getRefreshSessionDetails
@@ -1041,9 +1020,9 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
   } get_refresh_session;
 
   /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_ORDER command
+   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_REVEAL command
    */
-  struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshOrderDetails
+  struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshRevealDetails
   {
    /**
     * The refresh session hash
@@ -1056,12 +1035,12 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
     */
    const char *label_denom;
    unsigned int index_denom;
-  } insert_refresh_order;
+  } insert_refresh_reveal;
 
   /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_ORDER command
+   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_REVEAL command
    */
-  struct PERF_TALER_EXCHANGEDB_CMD_getRefreshOrderDetails
+  struct PERF_TALER_EXCHANGEDB_CMD_getRefreshRevealDetails
   {
     /**
      * The session hash
@@ -1069,82 +1048,7 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
     const char *label_hash;
     unsigned int index_hash;
 
-  } get_refresh_order;
-
-  /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_COMMIT_COIN command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshCommitCoinDetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-
-  } insert_refresh_commit_coin;
-
-  /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_COMMIT_COIN command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_getRefreshCommitCoinDetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-
-  } get_refresh_commit_coin;
-
-  /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_COMMIT_LINK command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshCommitLinkDetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-
-  } insert_refresh_commit_link;
-
-  /**
-   * Data requiered by the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_COMMIT_LINK command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_getRefreshCommitLinkDetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-  } get_refresh_commit_link;
-
-  /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_MELT_COMMITMENT command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_getMeltCommitmentDaetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-  } get_melt_commitment;
-
-  /**
-   * Data requiered by the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_OUT command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshOutDetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-  } insert_refresh_out;
+  } get_refresh_reveal;
 
   /**
    * Data requiered by the #PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA_LIST command
@@ -1158,17 +1062,6 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
     unsigned int index_hash;
   } get_link_data_list;
 
-  /**
-   * Data requiered by the #PERF_TALER_EXCHANGEDB_CMD_GET_TRANSFER command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_getTransferDetails
-  {
-    /**
-     * The refresh session hash
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-  } get_transfer;
 
 };
 

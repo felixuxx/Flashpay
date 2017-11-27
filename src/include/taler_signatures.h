@@ -532,9 +532,9 @@ struct TALER_RefreshMeltCoinAffirmationPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Which melting session should the coin become a part of.
+   * Which melt commitment is made by the wallet.
    */
-  struct GNUNET_HashCode session_hash GNUNET_PACKED;
+  struct TALER_RefreshCommitmentP rc GNUNET_PACKED;
 
   /**
    * How much of the value of the coin should be melted?  This amount
@@ -581,20 +581,16 @@ struct TALER_RefreshMeltConfirmationPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash of the refresh session.
+   * Commitment made in the /refresh/melt.
    */
-  struct GNUNET_HashCode session_hash GNUNET_PACKED;
+  struct TALER_RefreshCommitmentP rc GNUNET_PACKED;
 
   /**
    * Index that the client will not have to reveal, in NBO.
    * Must be smaller than #TALER_CNC_KAPPA.
    */
-  uint16_t noreveal_index GNUNET_PACKED;
+  uint32_t noreveal_index GNUNET_PACKED;
 
-  /**
-   * Zero.
-   */
-  uint16_t reserved GNUNET_PACKED;
 };
 
 

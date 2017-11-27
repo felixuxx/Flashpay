@@ -39,7 +39,7 @@
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
  */
-#define TALER_PROTOCOL_VERSION "1:0:1"
+#define TALER_PROTOCOL_VERSION "2:0:0"
 
 
 /**
@@ -1499,7 +1499,7 @@ make_fresh_key_state ()
 		  GNUNET_h2s (&dke->denom_key_hash),
 		  dke);
   }
-  
+
   /* Determine size of `krd_array` by counting number of discrete
      denomination key starting times. */
   last = GNUNET_TIME_UNIT_ZERO_ABS;
@@ -1662,15 +1662,37 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
 				enum TEH_KS_DenominationKeyUse use)
 {
   struct GNUNET_HashCode hc;
+
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                     &hc);
+  return TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                 &hc,
+                                                 use);
+}
+
+
+/**
+ * Look up the issue for a denom public key.  Note that the result
+ * is only valid while the @a key_state is not released!
+ *
+ * @param key_state state to look in
+ * @param denom_pub_hash hash of denomination public key
+ * @param use purpose for which the key is being located
+ * @return the denomination key issue,
+ *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
+ */
+struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
+TEH_KS_denomination_key_lookup_by_hash (const struct TEH_KS_StateHandle *key_state,
+                                        const struct GNUNET_HashCode *denom_pub_hash,
+                                        enum TEH_KS_DenominationKeyUse use)
+{
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct GNUNET_TIME_Absolute now;
   const struct GNUNET_CONTAINER_MultiHashMap *map;
 
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
-                                     &hc);
   map = (TEH_KS_DKU_PAYBACK == use) ? key_state->revoked_map : key_state->denomkey_map;
   dki = GNUNET_CONTAINER_multihashmap_get (map,
-					   &hc);
+					   denom_pub_hash);
   if (NULL == dki)
     return NULL;
   now = GNUNET_TIME_absolute_get ();
@@ -1679,7 +1701,7 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		"Not returning DKI for %s, as start time is in the future\n",
-		GNUNET_h2s (&hc));
+		GNUNET_h2s (denom_pub_hash));
     return NULL;
   }
   now = GNUNET_TIME_absolute_get ();
@@ -1691,7 +1713,7 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to create coins has passed\n",
-		  GNUNET_h2s (&hc));
+		  GNUNET_h2s (denom_pub_hash));
       return NULL;
     }
     break;
@@ -1701,7 +1723,7 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to spend coin has passed\n",
-		  GNUNET_h2s (&hc));
+		  GNUNET_h2s (denom_pub_hash));
       return NULL;
     }
     break;
@@ -1711,7 +1733,7 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to payback coin has passed\n",
-		  GNUNET_h2s (&hc));
+		  GNUNET_h2s (denom_pub_hash));
       return NULL;
     }
     break;

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V. and INRIA
+  Copyright (C) 2014, 2015, 2016, 2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Lesser General Public License as published by the Free Software
@@ -623,7 +623,7 @@ static void
 melt_cb (void *cls,
          unsigned int http_status,
 	 enum TALER_ErrorCode ec,
-         uint16_t noreveal_index,
+         uint32_t noreveal_index,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {

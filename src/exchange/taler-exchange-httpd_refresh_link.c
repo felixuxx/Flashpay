@@ -32,122 +32,26 @@
 
 
 /**
- * @brief Information for each session a coin was melted into.
- */
-struct TEH_RESPONSE_LinkSessionInfo
-{
-  /**
-   * Transfer public key of the coin.
-   */
-  struct TALER_TransferPublicKeyP transfer_pub;
-
-  /**
-   * Linked data of coins being created in the session.
-   */
-  struct TALER_EXCHANGEDB_LinkDataList *ldl;
-
-};
-
-
-/**
  * Closure for #handle_transfer_data().
  */
 struct HTD_Context
 {
 
   /**
-   * Public key of the coin that we are tracing.
+   * Public key of the coin for which we are running /refresh/link.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Session link data we collect.
+   * Json array with transfer data we collect.
    */
-  struct TEH_RESPONSE_LinkSessionInfo *sessions;
-
-  /**
-   * Database session. Nothing to do with @a sessions.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
-
-  /**
-   * MHD connection, for queueing replies.
-   */
-  struct MHD_Connection *connection;
-
-  /**
-   * Number of sessions the coin was melted into.
-   */
-  unsigned int num_sessions;
-
-  /**
-   * How are we expected to proceed. #GNUNET_SYSERR if we
-   * failed to return an error (should return #MHD_NO).
-   * #GNUNET_NO if we succeeded in queueing an MHD error
-   * (should return #MHD_YES from #TEH_execute_refresh_link),
-   * #GNUNET_OK if we should call #reply_refresh_link_success().
-   */
-  int status;
-};
-
-
-/**
- * Send a response for "/refresh/link".
- *
- * @param connection the connection to send the response to
- * @param num_sessions number of sessions the coin was used in
- * @param sessions array of @a num_session entries with
- *                  information for each session
- * @return a MHD result code
- */
-static int
-reply_refresh_link_success (struct MHD_Connection *connection,
-			    unsigned int num_sessions,
-			    const struct TEH_RESPONSE_LinkSessionInfo *sessions)
-{
   json_t *mlist;
-  int res;
 
-  mlist = json_array ();
-  for (unsigned int i=0;i<num_sessions;i++)
-  {
-    json_t *list = json_array ();
-    json_t *root;
-
-    for (const struct TALER_EXCHANGEDB_LinkDataList *pos = sessions[i].ldl;
-	 NULL != pos;
-	 pos = pos->next)
-    {
-      json_t *obj;
-
-      obj = json_object ();
-      json_object_set_new (obj,
-                           "denom_pub",
-                           GNUNET_JSON_from_rsa_public_key (pos->denom_pub.rsa_public_key));
-      json_object_set_new (obj,
-                           "ev_sig",
-                           GNUNET_JSON_from_rsa_signature (pos->ev_sig.rsa_signature));
-      GNUNET_assert (0 ==
-                     json_array_append_new (list,
-                                            obj));
-    }
-    root = json_object ();
-    json_object_set_new (root,
-                         "new_coins",
-                         list);
-    json_object_set_new (root,
-                         "transfer_pub",
-                         GNUNET_JSON_from_data_auto (&sessions[i].transfer_pub));
-    GNUNET_assert (0 ==
-                   json_array_append_new (mlist,
-                                          root));
-  }
-  res = TEH_RESPONSE_reply_json (connection,
-                                 mlist,
-                                 MHD_HTTP_OK);
-  json_decref (mlist);
-  return res;
-}
+  /**
+   * Taler error code.
+   */
+  enum TALER_ErrorCode ec;
+};
 
 
 /**
@@ -157,58 +61,59 @@ reply_refresh_link_success (struct MHD_Connection *connection,
  *
  *
  * @param cls closure, a `struct HTD_Context`
- * @param session_hash a session the coin was melted in
  * @param transfer_pub public transfer key for the session
+ * @param ldl link data related to @a transfer_pub
  */
 static void
-handle_transfer_data (void *cls,
-                      const struct GNUNET_HashCode *session_hash,
-                      const struct TALER_TransferPublicKeyP *transfer_pub)
+handle_link_data (void *cls,
+                  const struct TALER_TransferPublicKeyP *transfer_pub,
+                  const struct TALER_EXCHANGEDB_LinkDataList *ldl)
 {
   struct HTD_Context *ctx = cls;
-  struct TALER_EXCHANGEDB_LinkDataList *ldl;
-  struct TEH_RESPONSE_LinkSessionInfo *lsi;
-  enum GNUNET_DB_QueryStatus qs;
+  json_t *list;
+  json_t *root;
 
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ctx->status)
+  if (NULL == ctx->mlist)
     return;
-  ldl = NULL;
-  qs = TEH_plugin->get_link_data_list (TEH_plugin->cls,
-				       ctx->session,
-				       session_hash,
-				       &ldl);
-  if (qs <= 0) 
+  if (NULL == (list = json_array ()))
+    goto fail;
+
+  for (const struct TALER_EXCHANGEDB_LinkDataList *pos = ldl;
+       NULL != pos;
+       pos = pos->next)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      ctx->status = GNUNET_DB_STATUS_HARD_ERROR;
-    else
-      ctx->status = qs;
-    return;
+    json_t *obj;
+
+    if (NULL == (obj = json_object ()))
+      goto fail;
+    json_object_set_new (obj,
+                         "denom_pub",
+                         GNUNET_JSON_from_rsa_public_key (pos->denom_pub.rsa_public_key));
+    json_object_set_new (obj,
+                         "ev_sig",
+                         GNUNET_JSON_from_rsa_signature (pos->ev_sig.rsa_signature));
+    if (0 !=
+        json_array_append_new (list,
+                               obj))
+      goto fail;
   }
-  GNUNET_assert (NULL != ldl);
-  GNUNET_array_grow (ctx->sessions,
-                     ctx->num_sessions,
-                     ctx->num_sessions + 1);
-  lsi = &ctx->sessions[ctx->num_sessions - 1];
-  lsi->transfer_pub = *transfer_pub;
-  lsi->ldl = ldl;
-}
-
-
-/**
- * Free session data kept in @a ctx
- *
- * @param ctx context to clean up
- */
-static void
-purge_context (struct HTD_Context *ctx)
-{
-  for (unsigned int i=0;i<ctx->num_sessions;i++)
-    TEH_plugin->free_link_data_list (TEH_plugin->cls,
-				     ctx->sessions[i].ldl);
-  GNUNET_free_non_null (ctx->sessions);
-  ctx->sessions = NULL;
-  ctx->num_sessions = 0;
+  if (NULL == (root = json_object ()))
+    goto fail;
+  json_object_set_new (root,
+                       "new_coins",
+                       list);
+  json_object_set_new (root,
+                       "transfer_pub",
+                       GNUNET_JSON_from_data_auto (transfer_pub));
+  if (0 !=
+      json_array_append_new (ctx->mlist,
+                             root))
+    goto fail;
+  return;
+ fail:
+  ctx->ec = TALER_EC_JSON_ALLOCATION_FAILURE;
+  json_decref (ctx->mlist);
+  ctx->mlist = NULL;
 }
 
 
@@ -239,14 +144,18 @@ refresh_link_transaction (void *cls,
   struct HTD_Context *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  ctx->session = session;
-  ctx->status = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  qs = TEH_plugin->get_transfer (TEH_plugin->cls,
-				 session,
-				 &ctx->coin_pub,
-				 &handle_transfer_data,
-				 ctx);
-  ctx->session = NULL;
+  qs = TEH_plugin->get_link_data (TEH_plugin->cls,
+                                  session,
+                                  &ctx->coin_pub,
+                                  &handle_link_data,
+                                  ctx);
+  if (NULL == ctx->mlist)
+  {
+    *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
+                                                  ctx->ec,
+                                                  "coin_pub");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
@@ -254,21 +163,6 @@ refresh_link_transaction (void *cls,
 					       "coin_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (0 < qs)
-  {
-    qs = ctx->status;
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      *mhd_ret = TEH_RESPONSE_reply_json_pack (ctx->connection,
-					       MHD_HTTP_NOT_FOUND,
-					       "{s:s}",
-					       "error",
-					       "link data not found (link)");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    return qs;
-  }
-  purge_context (ctx);
   return qs;
 }
 
@@ -306,19 +200,21 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
     return MHD_NO;
   if (GNUNET_OK != res)
     return MHD_YES;
+  ctx.mlist = json_array ();
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
 			      &mhd_ret,
 			      &refresh_link_transaction,
 			      &ctx))
   {
-    purge_context (&ctx);
+    if (NULL != ctx.mlist)
+      json_decref (ctx.mlist);
     return mhd_ret;
   }
-  mhd_ret = reply_refresh_link_success (connection,
-					ctx.num_sessions,
-					ctx.sessions);
-  purge_context (&ctx);
+  mhd_ret = TEH_RESPONSE_reply_json (connection,
+                                     ctx.mlist,
+                                     MHD_HTTP_OK);
+  json_decref (ctx.mlist);
   return mhd_ret;
 }
 

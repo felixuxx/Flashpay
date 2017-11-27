@@ -155,7 +155,7 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
-                            &pos->details.melt->amount_with_fee))
+                            &pos->details.melt->session.amount_with_fee))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;

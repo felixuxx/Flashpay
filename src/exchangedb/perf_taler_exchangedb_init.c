@@ -435,56 +435,14 @@ PERF_TALER_EXCHANGEDB_coin_free (struct PERF_TALER_EXCHANGEDB_Coin *coin)
 
 
 /**
- * @return a randomly generated refresh session
- */
-struct TALER_EXCHANGEDB_RefreshSession *
-PERF_TALER_EXCHANGEDB_refresh_session_init ()
-{
-  struct TALER_EXCHANGEDB_RefreshSession *refresh_session;
-
-  GNUNET_assert (NULL !=
-                 (refresh_session = GNUNET_new (struct TALER_EXCHANGEDB_RefreshSession)));
-  refresh_session->noreveal_index = 1;
-  refresh_session->num_newcoins = 1;
-
-  return refresh_session;
-}
-
-
-/**
- * @return #GNUNET_OK if the copy was successful, #GNUNET_SYSERR if it wasn't
- */
-int
-PERF_TALER_EXCHANGEDB_refresh_session_copy (struct TALER_EXCHANGEDB_RefreshSession *session,
-                                            struct TALER_EXCHANGEDB_RefreshSession *copy)
-{
-  *copy = *session;
-  return GNUNET_OK;
-}
-
-
-/**
- * Free a refresh session
- */
-int
-PERF_TALER_EXCHANGEDB_refresh_session_free (struct TALER_EXCHANGEDB_RefreshSession *refresh_session)
-{
-  if (NULL == refresh_session)
-    return GNUNET_OK;
-  GNUNET_free (refresh_session);
-  return GNUNET_OK;
-}
-
-
-/**
  * Create a melt operation
  *
- * @param session the refresh session
+ * @param rc the commitment of the refresh session
  * @param dki the denomination the melted coin uses
  * @return a pointer to a #TALER_EXCHANGEDB_RefreshMelt
  */
 struct TALER_EXCHANGEDB_RefreshMelt *
-PERF_TALER_EXCHANGEDB_refresh_melt_init (struct GNUNET_HashCode *session,
+PERF_TALER_EXCHANGEDB_refresh_melt_init (struct TALER_RefreshCommitmentP *rc,
                                          struct PERF_TALER_EXCHANGEDB_Coin *coin)
 {
   struct TALER_EXCHANGEDB_RefreshMelt *melt;
@@ -496,12 +454,12 @@ PERF_TALER_EXCHANGEDB_refresh_melt_init (struct GNUNET_HashCode *session,
     struct
     {
       struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-      struct GNUNET_HashCode session;
+      struct TALER_RefreshCommitmentP rc;
     } to_sign;
 
     to_sign.purpose.purpose = GNUNET_SIGNATURE_PURPOSE_TEST;
     to_sign.purpose.size = htonl (sizeof (to_sign));
-    to_sign.session = *session;
+    to_sign.rc = *rc;
     GNUNET_CRYPTO_eddsa_sign (&coin->priv,
                               &to_sign.purpose,
                               &coin_sig.eddsa_signature);
@@ -513,16 +471,16 @@ PERF_TALER_EXCHANGEDB_refresh_melt_init (struct GNUNET_HashCode *session,
                  TALER_string_to_amount (CURRENCY ":0.1",
                                          &amount_with_fee));
   melt = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMelt);
-  melt->coin.coin_pub = coin->public_info.coin_pub;
-  melt->coin.denom_sig.rsa_signature =
+  melt->session.coin.coin_pub = coin->public_info.coin_pub;
+  melt->session.coin.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
-  melt->coin.denom_pub.rsa_public_key =
+  melt->session.coin.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key);
-  GNUNET_assert (NULL != melt->coin.denom_pub.rsa_public_key);
-  GNUNET_assert (NULL != melt->coin.denom_sig.rsa_signature);
-  melt->coin_sig = coin_sig;
-  melt->session_hash = *session;
-  melt->amount_with_fee = amount;
+  GNUNET_assert (NULL != melt->session.coin.denom_pub.rsa_public_key);
+  GNUNET_assert (NULL != melt->session.coin.denom_sig.rsa_signature);
+  melt->session.coin_sig = coin_sig;
+  melt->session.rc = *rc;
+  melt->session.amount_with_fee = amount;
   melt->melt_fee = amount_with_fee;
   return melt;
 }
@@ -541,9 +499,9 @@ PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMe
 
   copy = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMelt);
   *copy = *melt;
-  copy->coin.denom_sig.rsa_signature =
-    GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature);
-  GNUNET_assert (NULL != copy->coin.denom_sig.rsa_signature);
+  copy->session.coin.denom_sig.rsa_signature =
+    GNUNET_CRYPTO_rsa_signature_dup (melt->session.coin.denom_sig.rsa_signature);
+  GNUNET_assert (NULL != copy->session.coin.denom_sig.rsa_signature);
 
   return copy;
 }
@@ -558,51 +516,7 @@ PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMe
 int
 PERF_TALER_EXCHANGEDB_refresh_melt_free (struct TALER_EXCHANGEDB_RefreshMelt *melt)
 {
-  GNUNET_CRYPTO_rsa_signature_free (melt->coin.denom_sig.rsa_signature);
+  GNUNET_CRYPTO_rsa_signature_free (melt->session.coin.denom_sig.rsa_signature);
   GNUNET_free (melt);
   return GNUNET_OK;
-}
-
-
-/**
- * Create a #TALER_EXCHANGEDB_RefreshCommitCoin
- */
-struct TALER_EXCHANGEDB_RefreshCommitCoin *
-PERF_TALER_EXCHANGEDB_refresh_commit_coin_init ()
-{
-  struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin;
-
-  commit_coin = GNUNET_new (struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  commit_coin->coin_ev = "coin_ev";
-  commit_coin->coin_ev_size = 8;
-  return commit_coin;
-}
-
-
-/**
- * Copies a #TALER_EXCHANGEDB_RefreshCommitCoin
- *
- * @param commit_coin the commit to copy
- * @return a copy of @a commit_coin
- */
-struct TALER_EXCHANGEDB_RefreshCommitCoin *
-PERF_TALER_EXCHANGEDB_refresh_commit_coin_copy (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin)
-{
-  struct TALER_EXCHANGEDB_RefreshCommitCoin *copy;
-
-  copy = GNUNET_new (struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  *copy = *commit_coin;
-  return copy;
-}
-
-
-/**
- * Free a #TALER_EXCHANGEDB_RefreshCommitCoin
- *
- * @param commit_coin the coin to free
- */
-void
-PERF_TALER_EXCHANGEDB_refresh_commit_coin_free (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin)
-{
-  GNUNET_free (commit_coin);
 }

@@ -121,6 +121,22 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
 
 
 /**
+ * Look up the issue for a denom public key.  Note that the result
+ * is only valid while the @a key_state is not released!
+ *
+ * @param key_state state to look in
+ * @param denom_pub_hash hash of denomination public key
+ * @param use purpose for which the key is being located
+ * @return the denomination key issue,
+ *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
+ */
+struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
+TEH_KS_denomination_key_lookup_by_hash (const struct TEH_KS_StateHandle *key_state,
+                                        const struct GNUNET_HashCode *denom_pub_hash,
+                                        enum TEH_KS_DenominationKeyUse use);
+
+
+/**
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is received, terminate if SIGTERM/SIGINT is received, and
  * restart if SIGHUP is received.

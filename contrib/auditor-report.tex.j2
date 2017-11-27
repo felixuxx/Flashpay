@@ -753,6 +753,45 @@ reserve expired.
 {% endif %}
 
 
+\subsection{Hanging refresh operations}
+
+This section describes cases where the exchange booked a
+coin as spent from {\tt /refresh/melt} but where the
+wallet did not yet complete {\tt /refresh/reveal}.  This
+may happen even if the exchange is correct.
+
+
+{% if data.refresh_hanging|length() == 0 %}
+  {\bf All melted coins were refreshed.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|c|rl}
+  {\bf Key} & {\bf row} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  \hline \hline
+\endfirsthead
+  {\bf Key} & {\bf row} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  \hline \hline
+\endhead
+  \hline \hline
+  {\bf Key} & {\bf row} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+\endfoot
+  \hline
+  {\bf Sum}     & &
+  {{ data.total_refresh_hanging.value}}.{{ data.total_refresh_hanging.fraction}} & {{ data.total_refresh_hanging.currency}} \\
+  \caption{Refresh operations hanging.}
+  \label{table:refresh:hanging}
+\endlastfoot
+{% for item in data.refresh_hanging %}
+  \multicolumn{4}{l}{ {\tt {{ item.coin_pub }} } } \\
+\nopagebreak
+  &
+  {{ item.row }} &
+  {{ item.amount.value }}.{{ item.amount.fraction }} &
+  {{ item.amount.currency }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
 \subsection{Denomination key invalid at time of withdrawal}
 
 This section lists cases where a denomination key was not valid for

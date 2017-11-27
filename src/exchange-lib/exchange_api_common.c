@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2017 Inria & GNUnet e.V.
+  Copyright (C) 2015-2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -143,8 +143,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
-        GNUNET_JSON_spec_fixed_auto ("session_hash",
-                                     &rm.session_hash),
+        GNUNET_JSON_spec_fixed_auto ("rc",
+                                     &rm.rc),
         TALER_JSON_spec_amount_nbo ("melt_fee",
 				    &rm.melt_fee),
         GNUNET_JSON_spec_end()

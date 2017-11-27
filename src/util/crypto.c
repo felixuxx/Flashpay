@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014-2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -206,7 +206,7 @@ patch_private_key (struct GNUNET_CRYPTO_EddsaPrivateKey *pk)
  */
 void
 TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                              unsigned int coin_num_salt,
+                              uint32_t coin_num_salt,
                               struct TALER_PlanchetSecretsP *ps)
 {
   uint32_t be_salt = htonl (coin_num_salt);
@@ -313,5 +313,88 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
   coin->coin_priv = ps->coin_priv;
   return GNUNET_OK;
 }
+
+
+/**
+ * Compute the commitment for a /refresh/melt operation from
+ * the respective public inputs.
+ *
+ * @param[out] rc set to the value the wallet must commit to
+ * @param kappa number of transfer public keys involved (must be #TALER_CNC_KAPPA)
+ * @param num_new_coins number of new coins to be created
+ * @param commitments array of @a kappa commitments
+ * @param coin_pub public key of the coin to be melted
+ * @param amount_with_fee amount to be melted, including fee
+ */
+void
+TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
+                              uint32_t kappa,
+                              uint32_t num_new_coins,
+                              const struct TALER_RefreshCommitmentEntry *rcs,
+                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                              const struct TALER_Amount *amount_with_fee)
+{
+  struct GNUNET_HashContext *hash_context;
+
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  /* first, iterate over transfer public keys for hash_context */
+  for (unsigned int i=0;i<kappa;i++)
+  {
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &rcs[i].transfer_pub,
+                                     sizeof (struct TALER_TransferPublicKeyP));
+  }
+  /* next, add all of the hashes from the denomination keys to the
+     hash_context */
+  for (unsigned int i=0;i<num_new_coins;i++)
+  {
+    char *buf;
+    size_t buf_size;
+
+    /* The denomination keys should / must all be identical regardless
+       of what offset we use, so we use [0]. */
+    GNUNET_assert (kappa > 0); /* sanity check */
+    buf_size = GNUNET_CRYPTO_rsa_public_key_encode (rcs[0].new_coins[i].dk->rsa_public_key,
+						    &buf);
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+				     buf,
+				     buf_size);
+    GNUNET_free (buf);
+  }
+
+  /* next, add public key of coin and amount being refreshed */
+  {
+    struct TALER_AmountNBO melt_amountn;
+
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     coin_pub,
+                                     sizeof (struct TALER_CoinSpendPublicKeyP));
+    TALER_amount_hton (&melt_amountn,
+                       amount_with_fee);
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &melt_amountn,
+                                     sizeof (struct TALER_AmountNBO));
+  }
+
+  /* finally, add all the envelopes */
+  for (unsigned int i=0;i<kappa;i++)
+  {
+    const struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
+
+    for (unsigned int j=0;j<num_new_coins;j++)
+    {
+      const struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
+
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       rcd->coin_ev,
+                                       rcd->coin_ev_size);
+    }
+  }
+
+  /* Conclude */
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &rc->session_hash);
+}
+
 
 /* end of crypto.c */

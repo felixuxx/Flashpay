@@ -68,6 +68,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_TIMEOUT = 6,
 
+  /**
+   * Exchange failed to allocate memory for building JSON reply.
+   */
+  TALER_EC_JSON_ALLOCATION_FAILURE = 7,
+
   /* ********** generic error codes ************* */
 
   /**
@@ -428,6 +433,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_DEPOSIT_INVALID_TIMESTAMP = 1218,
 
+
   /**
    * The respective coin did not have sufficient residual value
    * for the /refresh/melt operation.  The "history" in this
@@ -469,85 +475,25 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_MELT_DB_STORE_SESSION_ERROR = 1304,
 
   /**
-   * The exchange failed to store commit data in the
-   * database.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
-   */
-  TALER_EC_REFRESH_MELT_DB_STORE_COMMIT_ERROR = 1306,
-
-  /**
-   * The exchange is unaware of the denomination key that was
-   * requested for one of the fresh coins.  This response is provided
-   * with HTTP status code MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_REFRESH_MELT_FRESH_DENOMINATION_KEY_NOT_FOUND = 1308,
-
-  /**
-   * The exchange encountered a numeric overflow totaling up
-   * the cost for the refresh operation.  This response is provided
-   * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
-   */
-  TALER_EC_REFRESH_MELT_COST_CALCULATION_OVERFLOW = 1309,
-
-  /**
-   * During the transaction phase, the exchange could suddenly
-   * no longer find the denomination key that was
-   * used to sign the melted coin.  This response is provided
-   * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
-   */
-  TALER_EC_REFRESH_MELT_DB_DENOMINATION_KEY_NOT_FOUND = 1310,
-
-  /**
    * The exchange encountered melt fees exceeding the melted
    * coin's contribution.  This response is provided
    * with HTTP status code MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION = 1311,
-
-  /**
-   * The exchange's cost calculation does not add up to the
-   * melt fees specified in the request.  This response is provided
-   * with HTTP status code MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_REFRESH_MELT_FEES_MISSMATCH = 1312,
+  TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION = 1305,
 
   /**
    * The denomination key signature on the melted coin is invalid.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID = 1313,
-
-  /**
-   * The exchange's cost calculation shows that the melt amount
-   * is below the costs of the transaction.  This response is provided
-   * with HTTP status code MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_REFRESH_MELT_AMOUNT_INSUFFICIENT = 1314,
+  TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID = 1306,
 
   /**
    * The signature made with the coin to be melted is invalid.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID = 1315,
-
-  /**
-   * The size of the cut-and-choose dimension of the
-   * blinded coins request does not match #TALER_CNC_KAPPA.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_REFRESH_MELT_CNC_COIN_ARRAY_SIZE_INVALID = 1316,
-
-  /**
-   * The size of the cut-and-choose dimension of the
-   * transfer keys request does not match #TALER_CNC_KAPPA.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_REFRESH_MELT_CNC_TRANSFER_ARRAY_SIZE_INVALID = 1317,
+  TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID = 1307,
 
   /**
    * The exchange failed to obtain the transaction history of the
@@ -556,7 +502,8 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1318,
+  TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1308,
+
 
   /**
    * The provided transfer keys do not match up with the
@@ -567,20 +514,12 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_REVEAL_COMMITMENT_VIOLATION = 1350,
 
   /**
-   * Failed to blind the envelope to reconstruct the blinded
-   * coins for revealation checks.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
-   */
-  TALER_EC_REFRESH_REVEAL_BLINDING_ERROR = 1351,
-
-  /**
    * Failed to produce the blinded signatures over the coins
    * to be returned.
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_ERROR.
    */
-  TALER_EC_REFRESH_REVEAL_SIGNING_ERROR = 1352,
+  TALER_EC_REFRESH_REVEAL_SIGNING_ERROR = 1351,
 
   /**
    * The exchange is unaware of the refresh sessino specified in
@@ -588,7 +527,7 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REFRESH_REVEAL_SESSION_UNKNOWN = 1353,
+  TALER_EC_REFRESH_REVEAL_SESSION_UNKNOWN = 1352,
 
   /**
    * The exchange failed to retrieve valid session data from the
@@ -596,23 +535,14 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_ERROR.
    */
-  TALER_EC_REFRESH_REVEAL_DB_FETCH_SESSION_ERROR = 1354,
+  TALER_EC_REFRESH_REVEAL_DB_FETCH_SESSION_ERROR = 1353,
 
   /**
-   * The exchange failed to retrieve order data from the
-   * database.
-   * This response is provided with HTTP status code
+   * The exchange failed to retrieve previously revealed data from the
+   * database.  This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_ERROR.
    */
-  TALER_EC_REFRESH_REVEAL_DB_FETCH_ORDER_ERROR = 1355,
-
-  /**
-   * The exchange failed to retrieve transfer keys from the
-   * database.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
-   */
-  TALER_EC_REFRESH_REVEAL_DB_FETCH_TRANSFER_ERROR = 1356,
+  TALER_EC_REFRESH_REVEAL_DB_FETCH_REVEAL_ERROR = 1354,
 
   /**
    * The exchange failed to retrieve commitment data from the
@@ -620,7 +550,7 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_ERROR.
    */
-  TALER_EC_REFRESH_REVEAL_DB_FETCH_COMMIT_ERROR = 1357,
+  TALER_EC_REFRESH_REVEAL_DB_COMMIT_ERROR = 1355,
 
   /**
    * The size of the cut-and-choose dimension of the
@@ -628,7 +558,45 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID = 1358,
+  TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID = 1356,
+
+  /**
+   * The number of coins to be created in refresh exceeds the limits
+   * of the exchange.
+   * private transfer keys request does not match #TALER_CNC_KAPPA - 1.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE = 1357,
+
+  /**
+   * The number of envelopes given does not match the number
+   * of denomination keys given.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISSMATCH = 1358,
+
+  /**
+   * The exchange encountered a numeric overflow totaling up
+   * the cost for the refresh operation.  This response is provided
+   * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_REFRESH_REVEAL_COST_CALCULATION_OVERFLOW = 1359,
+
+  /**
+   * The exchange's cost calculation shows that the melt amount
+   * is below the costs of the transaction.  This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_REFRESH_REVEAL_AMOUNT_INSUFFICIENT = 1360,
+
+  /**
+   * The exchange is unaware of the denomination key that was
+   * requested for one of the fresh coins.  This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_REFRESH_REVEAL_FRESH_DENOMINATION_KEY_NOT_FOUND = 1361,
 
 
   /**
