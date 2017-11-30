@@ -1279,12 +1279,13 @@ struct TALER_ReserveCloseConfirmationPS
 struct TALER_MerchantRefundConfirmationPS
 {
   /**
-   * Set TALER_SIGNATURE_REFUND_OK.
+   * Set to #TALER_SIGNATURE_MERCHANT_REFUND_OK.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
    * Hashed order id; in case frontend wants to check it.
+   * Hashed without the 0-termination.
    */
   struct GNUNET_HashCode h_order_id GNUNET_PACKED;
 
