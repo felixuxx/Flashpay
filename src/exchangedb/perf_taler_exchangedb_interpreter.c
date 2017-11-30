@@ -1244,6 +1244,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
           json_t *sndr;
           uint32_t uid;
+          struct GNUNET_TIME_Absolute now;
 
           reserve_index = state->cmd[state->i].details.insert_reserve.index_reserve;
           reserve = state->cmd[reserve_index].exposed.data.reserve;
@@ -1254,11 +1255,13 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           uid = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                           UINT32_MAX);
           GNUNET_assert (NULL != sndr);
+          now = GNUNET_TIME_absolute_get ();
+          (void) GNUNET_TIME_round_abs (&now);
           ret = state->plugin->reserves_in_insert (state->plugin->cls,
                                                    state->session,
                                                    &reserve->reserve.pub,
                                                    &reserve->reserve.balance,
-                                                   GNUNET_TIME_absolute_get (),
+                                                   now,
                                                    sndr,
                                                    &uid,
                                                    sizeof (uid));

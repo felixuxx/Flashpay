@@ -59,15 +59,18 @@ PERF_TALER_EXCHANGEDB_denomination_init ()
 
     {/* properties */
       struct TALER_Amount amount;
+      struct GNUNET_TIME_Absolute now;
 
       properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
       properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
       GNUNET_CRYPTO_eddsa_key_get_public (master_prvt,
                                           &properties.master.eddsa_pub);
-      properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get());
-      properties.expire_withdraw = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
-      properties.expire_deposit = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
-      properties.expire_legal = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
+      now = GNUNET_TIME_absolute_get();
+      (void) GNUNET_TIME_round_abs (&now);
+      properties.start = GNUNET_TIME_absolute_hton (now);
+      properties.expire_withdraw = GNUNET_TIME_absolute_hton (GNUNET_TIME_UNIT_FOREVER_ABS);
+      properties.expire_deposit = GNUNET_TIME_absolute_hton (GNUNET_TIME_UNIT_FOREVER_ABS);
+      properties.expire_legal = GNUNET_TIME_absolute_hton (GNUNET_TIME_UNIT_FOREVER_ABS);
       GNUNET_assert (GNUNET_OK ==
                      TALER_string_to_amount (CURRENCY ":1.1", &amount));
       TALER_amount_hton (&properties.value, &amount);
@@ -164,7 +167,7 @@ PERF_TALER_EXCHANGEDB_reserve_init ()
                                       &reserve->reserve.pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1000", &reserve->reserve.balance));
-  reserve->reserve.expiry = GNUNET_TIME_absolute_get_forever_ ();
+  reserve->reserve.expiry = GNUNET_TIME_UNIT_FOREVER_ABS;
   return reserve;
 }
 
@@ -256,7 +259,9 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
     GNUNET_free (eddsa_prv);
   }
   timestamp = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&timestamp);
   refund_deadline = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&refund_deadline);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.1",
                                          &amount_with_fee));

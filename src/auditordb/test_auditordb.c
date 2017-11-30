@@ -164,6 +164,7 @@ run (void *cls)
 
   struct GNUNET_TIME_Absolute now, past, future, date;
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   past = GNUNET_TIME_absolute_subtract (now,
                                         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS,
                                                                        4));
@@ -357,7 +358,7 @@ run (void *cls)
 	    (0 != memcmp (&withdraw_fee_balance2,
 			  &withdraw_fee_balance,
 			  sizeof (withdraw_fee_balance))) ) );
-	   
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_balance\n");
 

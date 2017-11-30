@@ -490,6 +490,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_DenominationPublicKey *ret_denom_pubs;
   int ret;
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_TIME_Absolute now;
 
   ret = GNUNET_SYSERR;
   RND_BLK (&refresh_session);
@@ -500,9 +501,11 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   /* create and test a refresh session */
   refresh_session.noreveal_index = MELT_NOREVEAL_INDEX;
   /* create a denomination (value: 1; fraction: 100) */
+  now = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&now);
   dkp = create_denom_key_pair (512,
                                session,
-                               GNUNET_TIME_absolute_get (),
+                               now,
                                &value,
                                &fee_withdraw,
                                &fee_deposit,
@@ -589,10 +592,13 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
     struct GNUNET_HashCode hc;
+    struct GNUNET_TIME_Absolute now;
 
+    now = GNUNET_TIME_absolute_get ();
+    GNUNET_TIME_round_abs (&now);
     new_dkp[cnt] = create_denom_key_pair (1024,
                                           session,
-                                          GNUNET_TIME_absolute_get (),
+                                          now,
                                           &value,
                                           &fee_withdraw,
                                           &fee_deposit,
@@ -1009,6 +1015,7 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
 
   now = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&now);
   past = GNUNET_TIME_absolute_subtract (now,
                                         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS,
                                                                        4));
@@ -1062,7 +1069,9 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_MasterSignatureP ms;
 
   start_date = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&start_date);
   end_date = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_MINUTES);
+  GNUNET_TIME_round_abs (&end_date);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.424242",
                                          &wire_fee));
@@ -1351,16 +1360,32 @@ wire_missing_cb (void *cls,
     memset (&h_wire,
             0,
             sizeof (h_wire));
-  if ( (GNUNET_NO != tiny) ||
-       (GNUNET_NO != done) ||
-       (0 != TALER_amount_cmp (amount,
-                               &deposit->amount_with_fee)) ||
-       (0 != memcmp (coin_pub,
-                     &deposit->coin.coin_pub,
-                     sizeof (struct TALER_CoinSpendPublicKeyP))) ||
-       (0 != memcmp (&h_wire,
-                     &deposit->h_wire,
-                     sizeof (struct GNUNET_HashCode))) )
+  if (GNUNET_NO != tiny)
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (GNUNET_NO != done)
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != TALER_amount_cmp (amount,
+                             &deposit->amount_with_fee))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != memcmp (coin_pub,
+                   &deposit->coin.coin_pub,
+                   sizeof (struct TALER_CoinSpendPublicKeyP)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != memcmp (&h_wire,
+                   &deposit->h_wire,
+                   sizeof (struct GNUNET_HashCode)))
   {
     GNUNET_break (0);
     result = 66;
@@ -1412,6 +1437,7 @@ run (void *cls)
   void *rr;
   size_t rr_size;
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_TIME_Absolute now;
 
   dkp = NULL;
   rh = NULL;
@@ -1479,12 +1505,14 @@ run (void *cls)
                                                    session,
                                                    &rr,
                                                    &rr_size));
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
                                       &value,
-                                      GNUNET_TIME_absolute_get (),
+                                      now,
                                       sndr,
                                       "TEST",
                                       4));
@@ -1502,12 +1530,14 @@ run (void *cls)
                          value.value,
                          value.fraction,
                          value.currency));
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
                                       &value,
-                                      GNUNET_TIME_absolute_get (),
+                                      now,
 				      sndr,
                                       "TEST2",
                                       5));
@@ -1533,9 +1563,11 @@ run (void *cls)
                          value.fraction * 2,
                          value.currency));
   result = 5;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   dkp = create_denom_key_pair (1024,
                                session,
-                               GNUNET_TIME_absolute_get (),
+                               now,
                                &value,
                                &fee_withdraw,
                                &fee_deposit,
@@ -1625,11 +1657,13 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fee_closing));
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
 	  plugin->insert_reserve_closed (plugin->cls,
 					 session,
 					 &reserve_pub,
-					 GNUNET_TIME_absolute_get (),
+					 now,
 					 sndr,
 					 &wire_out_wtid,
 					 &amount_with_fee,
@@ -1787,7 +1821,7 @@ run (void *cls)
                                              &deposit.merchant_pub,
                                              &deposit_cb, &deposit,
                                              2));
-
+  sleep (2); /* giv deposit time to be ready */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
                                      session,

@@ -65,6 +65,32 @@ TALER_PQ_query_param_json (const json_t *x);
 
 
 /**
+ * Generate query parameter for an absolute time value.
+ * In contrast to
+ * #GNUNET_PQ_query_param_absolute_time(), this function
+ * will abort (!) if the time given is not rounded!
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x);
+
+
+/**
+ * Generate query parameter for an absolute time value.
+ * In contrast to
+ * #GNUNET_PQ_query_param_absolute_time(), this function
+ * will abort (!) if the time given is not rounded!
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_absolute_time_nbo (const struct GNUNET_TIME_AbsoluteNBO *x);
+
+
+/**
  * Currency amount expected.
  *
  * @param name name of the field in the table
@@ -98,6 +124,36 @@ TALER_PQ_result_spec_amount (const char *name,
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_json (const char *name,
                            json_t **jp);
+
+
+/**
+ * Rounded absolute time expected.
+ * In contrast to #GNUNET_PQ_query_param_absolute_time_nbo(),
+ * this function ensures that the result is rounded and can
+ * be converted to JSON.
+ *
+ * @param name name of the field in the table
+ * @param[out] at where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_absolute_time (const char *name,
+                                    struct GNUNET_TIME_Absolute *at);
+
+
+/**
+ * Rounded absolute time expected.
+ * In contrast to #GNUNET_PQ_result_spec_absolute_time_nbo(),
+ * this function ensures that the result is rounded and can
+ * be converted to JSON.
+ *
+ * @param name name of the field in the table
+ * @param[out] at where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_absolute_time_nbo (const char *name,
+                                        struct GNUNET_TIME_AbsoluteNBO *at);
 
 
 #endif  /* TALER_PQ_LIB_H_ */

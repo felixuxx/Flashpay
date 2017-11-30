@@ -205,4 +205,127 @@ TALER_PQ_query_param_json (const json_t *x)
 }
 
 
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_round_time (void *cls,
+                  const void *data,
+                  size_t data_len,
+                  void *param_values[],
+                  int param_lengths[],
+                  int param_formats[],
+                  unsigned int param_length,
+                  void *scratch[],
+                  unsigned int scratch_length)
+{
+  const struct GNUNET_TIME_Absolute *at = data;
+  struct GNUNET_TIME_Absolute tmp;
+  struct GNUNET_TIME_AbsoluteNBO *buf;
+
+  GNUNET_break (NULL == cls);
+  if (1 != param_length)
+    return -1;
+  tmp = *at;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&tmp));
+  buf = GNUNET_new (struct GNUNET_TIME_AbsoluteNBO);
+  *buf = GNUNET_TIME_absolute_hton (tmp);
+  scratch[0] = buf;
+  param_values[0] = (void *) buf;
+  param_lengths[0] = sizeof (struct GNUNET_TIME_AbsoluteNBO);
+  param_formats[0] = 1;
+  return 1;
+}
+
+
+/**
+ * Generate query parameter for an absolute time value.
+ * In contrast to
+ * #GNUNET_PQ_query_param_absolute_time(), this function
+ * will abort (!) if the time given is not rounded!
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ * @return array entry for the query parameters to use
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x)
+{
+  struct GNUNET_PQ_QueryParam res =
+    { &qconv_round_time, NULL, x, sizeof (*x), 1 };
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_round_time_abs (void *cls,
+                      const void *data,
+                      size_t data_len,
+                      void *param_values[],
+                      int param_lengths[],
+                      int param_formats[],
+                      unsigned int param_length,
+                      void *scratch[],
+                      unsigned int scratch_length)
+{
+  const struct GNUNET_TIME_AbsoluteNBO *at = data;
+  struct GNUNET_TIME_Absolute tmp;
+
+  GNUNET_break (NULL == cls);
+  if (1 != param_length)
+    return -1;
+  tmp = GNUNET_TIME_absolute_ntoh (*at);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&tmp));
+  param_values[0] = (void *) at;
+  param_lengths[0] = sizeof (struct GNUNET_TIME_AbsoluteNBO);
+  param_formats[0] = 1;
+  return 0;
+}
+
+
+/**
+ * Generate query parameter for an absolute time value.
+ * In contrast to
+ * #GNUNET_PQ_query_param_absolute_time(), this function
+ * will abort (!) if the time given is not rounded!
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_absolute_time_nbo(const struct GNUNET_TIME_AbsoluteNBO *x)
+{
+  struct GNUNET_PQ_QueryParam res =
+    { &qconv_round_time_abs, NULL, x, sizeof (*x), 1 };
+  return res;
+}
+
+
 /* end of pq/pq_query_helper.c */

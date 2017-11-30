@@ -1612,10 +1612,10 @@ postgres_insert_denomination_info (void *cls,
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.master),
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
-    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.start),
-    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
-    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_deposit),
-    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.start),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_deposit),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
     TALER_PQ_query_param_amount_nbo (&issue->properties.value),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_deposit),
@@ -1670,13 +1670,13 @@ postgres_get_denomination_info (void *cls,
 					  &issue->properties.master),
     GNUNET_PQ_result_spec_auto_from_type ("master_sig",
 					  &issue->signature),
-    GNUNET_PQ_result_spec_absolute_time_nbo ("valid_from",
+    TALER_PQ_result_spec_absolute_time_nbo ("valid_from",
 					     &issue->properties.start),
-    GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
+    TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
 					     &issue->properties.expire_withdraw),
-    GNUNET_PQ_result_spec_absolute_time_nbo ("expire_deposit",
+    TALER_PQ_result_spec_absolute_time_nbo ("expire_deposit",
 					     &issue->properties.expire_deposit),
-    GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
+    TALER_PQ_result_spec_absolute_time_nbo ("expire_legal",
 					     &issue->properties.expire_legal),
     TALER_PQ_result_spec_amount_nbo ("coin",
 				     &issue->properties.value),
@@ -1728,7 +1728,7 @@ postgres_reserve_get (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
-    GNUNET_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
+    TALER_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
     GNUNET_PQ_result_spec_end
   };
 
@@ -1754,7 +1754,7 @@ reserves_update (void *cls,
                  const struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&reserve->expiry),
+    TALER_PQ_query_param_absolute_time (&reserve->expiry),
     TALER_PQ_query_param_amount (&reserve->balance),
     GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
     GNUNET_PQ_query_param_end
@@ -1842,7 +1842,7 @@ postgres_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
       TALER_PQ_query_param_json (sender_account_details),
       TALER_PQ_query_param_amount (balance),
-      GNUNET_PQ_query_param_absolute_time (&expiry),
+      TALER_PQ_query_param_absolute_time (&expiry),
       GNUNET_PQ_query_param_end
     };
 
@@ -1871,7 +1871,7 @@ postgres_reserves_in_insert (void *cls,
                                         wire_reference_size),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_json (sender_account_details),
-      GNUNET_PQ_query_param_absolute_time (&execution_time),
+      TALER_PQ_query_param_absolute_time (&execution_time),
       GNUNET_PQ_query_param_end
     };
 
@@ -2016,13 +2016,14 @@ postgres_insert_withdraw_info (void *cls,
     GNUNET_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
-    GNUNET_PQ_query_param_absolute_time (&now),
+    TALER_PQ_query_param_absolute_time (&now),
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
 
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   GNUNET_CRYPTO_rsa_public_key_hash (collectable->denom_pub.rsa_public_key,
 				     &denom_pub_hash);
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
@@ -2160,7 +2161,7 @@ add_bank_to_exchange (void *cls,
 					     &bt->wire_reference_size),
 	TALER_PQ_result_spec_amount ("credit",
 				     &bt->amount),
-	GNUNET_PQ_result_spec_absolute_time ("execution_date",
+	TALER_PQ_result_spec_absolute_time ("execution_date",
 					     &bt->execution_date),
 	TALER_PQ_result_spec_json ("sender_account_details",
 				   &bt->sender_account_details),
@@ -2272,7 +2273,7 @@ add_payback (void *cls,
 					      &payback->coin_blind),
 	GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
 					      &payback->coin_sig),
-	GNUNET_PQ_result_spec_absolute_time ("timestamp",
+	TALER_PQ_result_spec_absolute_time ("timestamp",
 					     &payback->timestamp),
 	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
 					      &payback->coin.denom_pub.rsa_public_key),
@@ -2327,7 +2328,7 @@ add_exchange_to_bank (void *cls,
 				     &closing->amount),
 	TALER_PQ_result_spec_amount ("closing_fee",
 				     &closing->closing_fee),
-	GNUNET_PQ_result_spec_absolute_time ("execution_date",
+	TALER_PQ_result_spec_absolute_time ("execution_date",
 					     &closing->execution_date),
 	TALER_PQ_result_spec_json ("receiver_account",
 				   &closing->receiver_account_details),
@@ -2462,11 +2463,11 @@ postgres_have_deposit (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("amount_with_fee",
 				 &deposit2.amount_with_fee),
-    GNUNET_PQ_result_spec_absolute_time ("timestamp",
+    TALER_PQ_result_spec_absolute_time ("timestamp",
 					 &deposit2.timestamp),
-    GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+    TALER_PQ_result_spec_absolute_time ("refund_deadline",
 					 &deposit2.refund_deadline),
-    GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+    TALER_PQ_result_spec_absolute_time ("wire_deadline",
 					 &deposit2.wire_deadline),
     GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
 					  &deposit2.h_contract_terms),
@@ -2623,7 +2624,7 @@ postgres_get_ready_deposit (void *cls,
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&now),
+    TALER_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   struct TALER_Amount amount_with_fee;
@@ -2641,7 +2642,7 @@ postgres_get_ready_deposit (void *cls,
 				 &amount_with_fee),
     TALER_PQ_result_spec_amount ("fee_deposit",
 				 &deposit_fee),
-    GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+    TALER_PQ_result_spec_absolute_time ("wire_deadline",
 					 &wire_deadline),
     GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
 					  &h_contract_terms),
@@ -2655,6 +2656,7 @@ postgres_get_ready_deposit (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) GNUNET_TIME_round_abs (&now);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Finding ready deposits by deadline %s (%llu)\n",
 	      GNUNET_STRINGS_absolute_time_to_string (now),
@@ -2755,7 +2757,7 @@ match_deposit_cb (void *cls,
                                    &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit",
                                    &deposit_fee),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                            &wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
@@ -2972,9 +2974,9 @@ postgres_insert_deposit (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     TALER_PQ_query_param_amount (&deposit->amount_with_fee),
-    GNUNET_PQ_query_param_absolute_time (&deposit->timestamp),
-    GNUNET_PQ_query_param_absolute_time (&deposit->refund_deadline),
-    GNUNET_PQ_query_param_absolute_time (&deposit->wire_deadline),
+    TALER_PQ_query_param_absolute_time (&deposit->timestamp),
+    TALER_PQ_query_param_absolute_time (&deposit->refund_deadline),
+    TALER_PQ_query_param_absolute_time (&deposit->wire_deadline),
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
@@ -3606,11 +3608,11 @@ add_coin_deposit (void *cls,
 				     &deposit->amount_with_fee),
 	TALER_PQ_result_spec_amount ("fee_deposit",
 				     &deposit->deposit_fee),
-	GNUNET_PQ_result_spec_absolute_time ("timestamp",
+	TALER_PQ_result_spec_absolute_time ("timestamp",
 					     &deposit->timestamp),
-	GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+	TALER_PQ_result_spec_absolute_time ("refund_deadline",
 					     &deposit->refund_deadline),
-	GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+	TALER_PQ_result_spec_absolute_time ("wire_deadline",
 					     &deposit->wire_deadline),
 	GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
 					      &deposit->merchant_pub),
@@ -3828,7 +3830,7 @@ add_coin_payback (void *cls,
 					      &payback->coin_blind),
 	GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
 					      &payback->coin_sig),
-	GNUNET_PQ_result_spec_absolute_time ("timestamp",
+	TALER_PQ_result_spec_absolute_time ("timestamp",
 					     &payback->timestamp),
 	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
 					      &payback->coin.denom_pub.rsa_public_key),
@@ -3995,7 +3997,7 @@ handle_wt_result (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
-      GNUNET_PQ_result_spec_absolute_time ("execution_date", &exec_time),
+      TALER_PQ_result_spec_absolute_time ("execution_date", &exec_time),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
@@ -4118,7 +4120,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
   struct TALER_Amount deposit_fee;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
-    GNUNET_PQ_result_spec_absolute_time ("execution_date", &exec_time),
+    TALER_PQ_result_spec_absolute_time ("execution_date", &exec_time),
     TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
     TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
     GNUNET_PQ_result_spec_end
@@ -4161,7 +4163,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     struct GNUNET_PQ_ResultSpec rs2[] = {
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
+      TALER_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
       GNUNET_PQ_result_spec_end
     };
 
@@ -4238,12 +4240,12 @@ postgres_get_wire_fee (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (type),
-    GNUNET_PQ_query_param_absolute_time (&date),
+    TALER_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_absolute_time ("start_date", start_date),
-    GNUNET_PQ_result_spec_absolute_time ("end_date", end_date),
+    TALER_PQ_result_spec_absolute_time ("start_date", start_date),
+    TALER_PQ_result_spec_absolute_time ("end_date", end_date),
     TALER_PQ_result_spec_amount ("wire_fee", wire_fee),
     GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
     GNUNET_PQ_result_spec_end
@@ -4279,8 +4281,8 @@ postgres_insert_wire_fee (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (type),
-    GNUNET_PQ_query_param_absolute_time (&start_date),
-    GNUNET_PQ_query_param_absolute_time (&end_date),
+    TALER_PQ_query_param_absolute_time (&start_date),
+    TALER_PQ_query_param_absolute_time (&end_date),
     TALER_PQ_query_param_amount (wire_fee),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
@@ -4378,7 +4380,7 @@ reserve_expired_cb (void *cls,
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount remaining_balance;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_absolute_time ("expiration_date",
+      TALER_PQ_result_spec_absolute_time ("expiration_date",
 					   &exp_date),
       TALER_PQ_result_spec_json ("account_details",
 				 &account_details),
@@ -4430,7 +4432,7 @@ postgres_get_expired_reserves (void *cls,
 			       void *rec_cls)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&now),
+    TALER_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   struct ExpiredReserveContext ectx;
@@ -4476,7 +4478,7 @@ postgres_insert_reserve_closed (void *cls,
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_absolute_time (&execution_date),
+    TALER_PQ_query_param_absolute_time (&execution_date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
     TALER_PQ_query_param_json (receiver_account),
     TALER_PQ_query_param_amount (amount_with_fee),
@@ -4695,7 +4697,7 @@ postgres_store_wire_transfer_out (void *cls,
                                   const struct TALER_Amount *amount)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&date),
+    TALER_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
     TALER_PQ_query_param_json (wire_account),
     TALER_PQ_query_param_amount (amount),
@@ -4726,17 +4728,18 @@ postgres_gc (void *cls)
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_QueryParam params_time[] = {
-    GNUNET_PQ_query_param_absolute_time (&now),
+    TALER_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_QueryParam params_ancient_time[] = {
-    GNUNET_PQ_query_param_absolute_time (&long_ago),
+    TALER_PQ_query_param_absolute_time (&long_ago),
     GNUNET_PQ_query_param_end
   };
   PGconn *conn;
   int ret;
 
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   /* Keep wire fees for 10 years, that should always
      be enough _and_ they are tiny so it does not
      matter to make this tight */
@@ -4822,7 +4825,7 @@ deposit_serial_helper_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &deposit.amount_with_fee),
-      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+      TALER_PQ_result_spec_absolute_time ("timestamp",
                                           &deposit.timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                             &deposit.merchant_pub),
@@ -4832,9 +4835,9 @@ deposit_serial_helper_cb (void *cls,
                                            &deposit.coin.coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                            &deposit.csig),
-      GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+      TALER_PQ_result_spec_absolute_time ("refund_deadline",
                                            &deposit.refund_deadline),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                            &deposit.wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                            &deposit.h_contract_terms),
@@ -5231,7 +5234,7 @@ reserves_in_serial_helper_cb (void *cls,
                                            &wire_reference_size),
       TALER_PQ_result_spec_amount ("credit",
                                    &credit),
-      GNUNET_PQ_result_spec_absolute_time("execution_date",
+      TALER_PQ_result_spec_absolute_time("execution_date",
                                           &execution_date),
       TALER_PQ_result_spec_json ("sender_account_details",
                                  &sender_account_details),
@@ -5364,7 +5367,7 @@ reserves_out_serial_helper_cb (void *cls,
                                             &reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                             &reserve_sig),
-      GNUNET_PQ_result_spec_absolute_time ("execution_date",
+      TALER_PQ_result_spec_absolute_time ("execution_date",
                                            &execution_date),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
@@ -5487,7 +5490,7 @@ wire_out_serial_helper_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("wireout_uuid",
                                     &rowid),
-      GNUNET_PQ_result_spec_absolute_time ("execution_date",
+      TALER_PQ_result_spec_absolute_time ("execution_date",
                                            &date),
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
                                             &wtid),
@@ -5612,7 +5615,7 @@ payback_serial_helper_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("payback_uuid",
                                     &rowid),
-      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+      TALER_PQ_result_spec_absolute_time ("timestamp",
                                            &timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
@@ -5750,7 +5753,7 @@ reserve_closed_serial_helper_cb (void *cls,
                                     &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
-      GNUNET_PQ_result_spec_absolute_time ("execution_date",
+      TALER_PQ_result_spec_absolute_time ("execution_date",
                                            &execution_date),
       GNUNET_PQ_result_spec_auto_from_type ("wtid",
 					    &wtid),
@@ -5864,7 +5867,7 @@ postgres_insert_payback_request (void *cls,
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     GNUNET_PQ_query_param_auto_from_type (coin_blind),
     TALER_PQ_query_param_amount (amount),
-    GNUNET_PQ_query_param_absolute_time (&timestamp),
+    TALER_PQ_query_param_absolute_time (&timestamp),
     GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
     GNUNET_PQ_query_param_end
   };
@@ -6069,7 +6072,7 @@ missing_wire_cb (void *cls,
 				   &amount),
       TALER_PQ_result_spec_json ("wire",
 				 &wire),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
 					   &deadline),
       GNUNET_PQ_result_spec_uint32 ("tiny",
 				    &tiny),
@@ -6122,8 +6125,8 @@ postgres_select_deposits_missing_wire (void *cls,
 				       void *cb_cls)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&start_date),
-    GNUNET_PQ_query_param_absolute_time (&end_date),
+    TALER_PQ_query_param_absolute_time (&start_date),
+    TALER_PQ_query_param_absolute_time (&end_date),
     GNUNET_PQ_query_param_end
   };
   struct MissingWireContext mwc = {

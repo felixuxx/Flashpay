@@ -1102,6 +1102,7 @@ run_reserve_closures (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
   struct ExpiredReserveContext erc;
+  struct GNUNET_TIME_Absolute now;
 
   task = NULL;
   reserves_idle = GNUNET_NO;
@@ -1130,9 +1131,11 @@ run_reserve_closures (void *cls)
   }
   erc.session = session;
   erc.async_cont = GNUNET_NO;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   qs = db_plugin->get_expired_reserves (db_plugin->cls,
 					session,
-					GNUNET_TIME_absolute_get (),
+					now,
 					&expired_reserve_cb,
 					&erc);
   switch (qs)

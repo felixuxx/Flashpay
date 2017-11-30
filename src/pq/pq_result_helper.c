@@ -370,4 +370,164 @@ TALER_PQ_result_spec_json (const char *name,
   return res;
 }
 
+
+
+/**
+ * Extract data from a Postgres database @a result at row @a row.
+ *
+ * @param cls closure
+ * @param result where to extract data from
+ * @param int row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
+ */
+static int
+extract_round_time (void *cls,
+                    PGresult *result,
+                    int row,
+                    const char *fname,
+                    size_t *dst_size,
+                    void *dst)
+{
+  struct GNUNET_TIME_Absolute *udst = dst;
+  const struct GNUNET_TIME_AbsoluteNBO *res;
+  struct GNUNET_TIME_Absolute tmp;
+  int fnum;
+
+  fnum = PQfnumber (result,
+		    fname);
+  if (fnum < 0)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+		   row,
+		   fnum))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (NULL != dst);
+  if (sizeof (struct GNUNET_TIME_Absolute) != *dst_size)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  res = (struct GNUNET_TIME_AbsoluteNBO *) PQgetvalue (result,
+                                                       row,
+                                                       fnum);
+  tmp = GNUNET_TIME_absolute_ntoh (*res);
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_TIME_round_abs (&tmp));
+  *udst = tmp;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Rounded absolute time expected.
+ * In contrast to #GNUNET_PQ_query_param_absolute_time_nbo(),
+ * this function ensures that the result is rounded and can
+ * be converted to JSON.
+ *
+ * @param name name of the field in the table
+ * @param[out] at where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_absolute_time (const char *name,
+                                    struct GNUNET_TIME_Absolute *at)
+{
+  struct GNUNET_PQ_ResultSpec res =
+    { &extract_round_time, NULL, NULL,
+      (void *) at, sizeof (struct GNUNET_TIME_Absolute),
+      name, NULL };
+  return res;
+}
+
+
+/**
+ * Extract data from a Postgres database @a result at row @a row.
+ *
+ * @param cls closure
+ * @param result where to extract data from
+ * @param int row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
+ */
+static int
+extract_round_time_nbo (void *cls,
+                        PGresult *result,
+                        int row,
+                        const char *fname,
+                        size_t *dst_size,
+                        void *dst)
+{
+  struct GNUNET_TIME_AbsoluteNBO *udst = dst;
+  const struct GNUNET_TIME_AbsoluteNBO *res;
+  struct GNUNET_TIME_Absolute tmp;
+  int fnum;
+
+  fnum = PQfnumber (result,
+		    fname);
+  if (fnum < 0)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+		   row,
+		   fnum))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (NULL != dst);
+  if (sizeof (struct GNUNET_TIME_AbsoluteNBO) != *dst_size)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  res = (struct GNUNET_TIME_AbsoluteNBO *) PQgetvalue (result,
+                                                       row,
+                                                       fnum);
+  tmp = GNUNET_TIME_absolute_ntoh (*res);
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_TIME_round_abs (&tmp));
+  *udst = GNUNET_TIME_absolute_hton (tmp);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Rounded absolute time in network byte order expected.
+ * In contrast to #GNUNET_PQ_query_param_absolute_time_nbo(),
+ * this function ensures that the result is rounded and can
+ * be converted to JSON.
+ *
+ * @param name name of the field in the table
+ * @param[out] at where to store the result
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_absolute_time_nbo (const char *name,
+                                        struct GNUNET_TIME_AbsoluteNBO *at)
+{
+  struct GNUNET_PQ_ResultSpec res =
+    { &extract_round_time_nbo, NULL, NULL,
+      (void *) at, sizeof (struct GNUNET_TIME_AbsoluteNBO),
+      name, NULL };
+  return res;
+}
+
+
 /* end of pq_result_helper.c */
