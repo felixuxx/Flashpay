@@ -57,7 +57,12 @@ enum TBI_OpCode
   /**
    * Expect that we have exhaustively gone over all transfers at fakebank.
    */
-  TBI_OC_EXPECT_TRANSFERS_EMPTY
+  TBI_OC_EXPECT_TRANSFERS_EMPTY,
+
+  /**
+   * Reject incoming transfer.
+   */
+  TBI_OC_REJECT
 
 };
 
@@ -110,10 +115,9 @@ struct TBI_Command
       const char *exchange_base_url;
 
       /**
-       * Wire transfer identifier to use.  Initialized to
-       * a random value.
+       * Wire transfer subject to use.
        */
-      struct TALER_WireTransferIdentifierRawP wtid;
+      const char *subject;
 
       /**
        * Which response code do we expect for this command?
@@ -185,6 +189,23 @@ struct TBI_Command
       const char *cmd_ref;
 
     } expect_transfer;
+
+    /**
+     * Execute /reject operation.
+     */
+    struct {
+
+      /**
+       * Reference to the matching transfer that is now to be rejected.
+       */
+      const char *cmd_ref;
+
+      /**
+       * Set to the API's handle during the operation.
+       */
+      struct TALER_BANK_RejectHandle *rh;
+
+    } reject;
 
   } details;
 

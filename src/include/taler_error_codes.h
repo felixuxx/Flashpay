@@ -1488,6 +1488,34 @@ enum TALER_ErrorCode
    */
   TALER_EC_TEST_RSA_SIGN_ERROR = 4005,
 
+  /* *************** Taler BANK/FAKEBANK error codes *************** */
+
+
+  /**
+   * Authentication failed for the /admin/add/incoming request.
+   * Returned with a status code of MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_BANK_TRANSFER_NOT_AUHTORIZED = 4101,
+
+  /**
+   * Authentication failed for the /history request.
+   * Returned with a status code of MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_BANK_HISTORY_NOT_AUHTORIZED = 4151,
+
+  /**
+   * The bank could not find the wire transfer that was supposed to
+   * be rejected.
+   * Returned with a status code of MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_BANK_REJECT_NOT_FOUND = 4250,
+
+  /**
+   * Authentication failed for the /reject request.
+   * Returned with a status code of MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_BANK_REJECT_NOT_AUHTORIZED = 4251,
+
 
   /**
    * End of error code range.

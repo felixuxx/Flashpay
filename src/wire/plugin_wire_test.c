@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V. & Inria
+  Copyright (C) 2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -553,12 +553,14 @@ test_prepare_wire_transfer (void *cls,
  * @param cls closure with the `struct TALER_WIRE_ExecuteHandle`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param ec error code from the bank
  * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param json detailed response from the HTTPD, or NULL if reply was not JSON
  */
 static void
 execute_cb (void *cls,
             unsigned int http_status,
+            enum TALER_ErrorCode ec,
             uint64_t serial_id,
             const json_t *json)
 {
@@ -578,13 +580,15 @@ execute_cb (void *cls,
   }
   if (NULL != emsg)
     GNUNET_asprintf (&s,
-                     "%u (%s)",
+                     "%u/%u (%s)",
                      http_status,
+                     (unsigned int) ec,
                      emsg);
   else
     GNUNET_asprintf (&s,
-                     "%u",
-                     http_status);
+                     "%u/%u",
+                     http_status,
+                     (unsigned int) ec);
   eh->cc (eh->cc_cls,
           (MHD_HTTP_OK == http_status) ? GNUNET_OK : GNUNET_SYSERR,
           serial_id,
@@ -676,6 +680,7 @@ test_execute_wire_transfer (void *cls,
   char *emsg;
   const char *json_s;
   const char *exchange_base_url;
+  char *wire_s;
 
   if (NULL == tc->ctx)
   {
@@ -728,16 +733,19 @@ test_execute_wire_transfer (void *cls,
   eh = GNUNET_new (struct TALER_WIRE_ExecuteHandle);
   eh->cc = cc;
   eh->cc_cls = cc_cls;
+  wire_s = GNUNET_STRINGS_data_to_string_alloc (&bf.wtid,
+                                                sizeof (bf.wtid));
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
                                             tc->bank_uri,
                                             &tc->auth,
                                             exchange_base_url,
-                                            &bf.wtid,
+                                            wire_s,
                                             &amount,
                                             (uint64_t) tc->exchange_account_no,
 					    (uint64_t) account_no,
                                             &execute_cb,
                                             eh);
+  GNUNET_free (wire_s);
   json_decref (wire);
   if (NULL == eh->aaih)
   {
@@ -803,6 +811,7 @@ struct TALER_WIRE_HistoryHandle
  *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
  *                    last callback is always of this status (even if `abs(num_results)` were
  *                    already returned).
+ * @param ec taler error code
  * @param dir direction of the transfer
  * @param serial_id monotonically increasing counter corresponding to the transaction
  * @param details details about the wire transfer
@@ -811,6 +820,7 @@ struct TALER_WIRE_HistoryHandle
 static void
 bhist_cb (void *cls,
           unsigned int http_status,
+          enum TALER_ErrorCode ec,
           enum TALER_BANK_Direction dir,
           uint64_t serial_id,
           const struct TALER_BANK_TransferDetails *details,
@@ -852,12 +862,17 @@ bhist_cb (void *cls,
                 sizeof (wd.wtid));
         wd.wtid_s = details->wire_transfer_subject;
       }
+      else
+      {
+        wd.wtid_s = NULL;
+      }
       GNUNET_free (subject);
       wd.account_details = details->account_details;
 
       if ( (NULL != whh->hres_cb) &&
            (GNUNET_OK !=
             whh->hres_cb (whh->hres_cb_cls,
+                          TALER_EC_NONE,
                           dir,
                           &bserial_id,
                           sizeof (bserial_id),
@@ -868,6 +883,7 @@ bhist_cb (void *cls,
   case MHD_HTTP_NO_CONTENT:
     if (NULL != whh->hres_cb)
       (void) whh->hres_cb (whh->hres_cb_cls,
+                           ec,
                            TALER_BANK_DIRECTION_NONE,
                            NULL,
                            0,
@@ -880,6 +896,7 @@ bhist_cb (void *cls,
     GNUNET_break (0);
     if (NULL != whh->hres_cb)
       (void) whh->hres_cb (whh->hres_cb_cls,
+                           ec,
                            TALER_BANK_DIRECTION_NONE,
                            NULL,
                            0,
@@ -1004,26 +1021,32 @@ struct TALER_WIRE_RejectHandle
   void *rej_cb_cls;
 
   /**
-   * Handle to task for timeout of operation.
+   * Handle for the reject operation.
    */
-  struct GNUNET_SCHEDULER_Task *timeout_task;
+  struct TALER_BANK_RejectHandle *brh;
 };
 
 
 /**
- * Rejection operation failed with timeout, notify callback
- * and clean up.
+ * Callbacks of this type are used to serve the result of asking
+ * the bank to reject an incoming wire transfer.
  *
- * @param cls closure with `struct TALER_WIRE_RejectHandle`
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_NO_CONTENT (204) for successful status request;
+ *                    #MHD_HTTP_NOT_FOUND if the rowid is unknown;
+ *                    0 if the bank's reply is bogus (fails to follow the protocol),
+ * @param ec detailed error code
  */
 static void
-timeout_reject (void *cls)
+reject_cb (void *cls,
+           unsigned int http_status,
+           enum TALER_ErrorCode ec)
 {
   struct TALER_WIRE_RejectHandle *rh = cls;
 
-  rh->timeout_task = NULL;
+  rh->brh = NULL;
   rh->rej_cb (rh->rej_cb_cls,
-              TALER_EC_NOT_IMPLEMENTED /* in the future: TALER_EC_TIMEOUT */);
+              ec);
   GNUNET_free (rh);
 }
 
@@ -1052,14 +1075,30 @@ test_reject_transfer (void *cls,
                       TALER_WIRE_RejectTransferCallback rej_cb,
                       void *rej_cb_cls)
 {
+  struct TestClosure *tc = cls;
+  const uint64_t *rowid_b64 = start_off;
   struct TALER_WIRE_RejectHandle *rh;
 
-  GNUNET_break (0); /* not implemented, just a stub! */
+  if (sizeof (uint64_t) != start_off_len)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   rh = GNUNET_new (struct TALER_WIRE_RejectHandle);
   rh->rej_cb = rej_cb;
   rh->rej_cb_cls = rej_cb_cls;
-  rh->timeout_task = GNUNET_SCHEDULER_add_now (&timeout_reject,
-                                               rh);
+  rh->brh = TALER_BANK_reject (tc->ctx,
+                               tc->bank_uri,
+                               &tc->auth,
+                               (uint64_t) tc->exchange_account_no,
+                               GNUNET_ntohll (*rowid_b64),
+                               &reject_cb,
+                               rh);
+  if (NULL == rh->brh)
+  {
+    GNUNET_free (rh);
+    return NULL;
+  }
   return rh;
 }
 
@@ -1082,7 +1121,8 @@ test_reject_transfer_cancel (void *cls,
 {
   void *ret = rh->rej_cb_cls;
 
-  GNUNET_SCHEDULER_cancel (rh->timeout_task);
+  if (NULL != rh->brh)
+    TALER_BANK_reject_cancel (rh->brh);
   GNUNET_free (rh);
   return ret;
 }

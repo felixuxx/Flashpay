@@ -48,6 +48,7 @@ run (void *cls)
     /* Add EUR:5.01 to account 1 */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "debit-1",
+      .details.admin_add_incoming.subject = "subject 1",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
@@ -68,6 +69,7 @@ run (void *cls)
       .details.history.num_results = 5 },
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "debit-2",
+      .details.admin_add_incoming.subject = "subject 2",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 3,
       .details.admin_add_incoming.debit_account_no = 2,
@@ -75,6 +77,7 @@ run (void *cls)
       .details.admin_add_incoming.amount = "KUDOS:3.21" },
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "credit-2",
+      .details.admin_add_incoming.subject = "credit 2",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 2,
       .details.admin_add_incoming.debit_account_no = 3,
@@ -105,6 +108,40 @@ run (void *cls)
     /* check transfer list is now empty */
     { .oc = TBI_OC_EXPECT_TRANSFERS_EMPTY,
       .label = "expect-empty" },
+    /* Add EUR:5.01 to account 1 */
+    { .oc = TBI_OC_ADMIN_ADD_INCOMING,
+      .label = "credit-for-reject-1",
+      .details.admin_add_incoming.subject = "subject 3",
+      .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.credit_account_no = 1,
+      .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.exchange_base_url = "https://exchange.net/",
+      .details.admin_add_incoming.amount = "KUDOS:5.01" },
+    { .oc = TBI_OC_REJECT,
+      .label = "reject-1",
+      .details.reject.cmd_ref = "credit-for-reject-1" },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-r1",
+      .details.history.account_number = 1,
+      .details.history.direction = TALER_BANK_DIRECTION_BOTH,
+      /* range is exclusive, and everything up to and including "credit-2"
+         was already killed via TBI_OC_EXPECT_TRANSFER and thus won't show
+         in the history. So to see the rejected transfer, we need to start
+         looking after "credit-2" */
+      .details.history.start_row_ref = NULL,
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-r1c",
+      .details.history.account_number = 1,
+      .details.history.direction = TALER_BANK_DIRECTION_BOTH | TALER_BANK_DIRECTION_CANCEL,
+      .details.history.start_row_ref = NULL,
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_EXPECT_TRANSFER,
+      .label = "expect-credit-reject-1",
+      .details.expect_transfer.cmd_ref = "credit-for-reject-1" },
+    /* check transfer list is now empty */
+    { .oc = TBI_OC_EXPECT_TRANSFERS_EMPTY,
+      .label = "expect-empty-2" },
     { .oc = TBI_OC_END }
   };
 

@@ -50,6 +50,7 @@ run (void *cls)
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
       .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
+      .details.admin_add_incoming.subject = "subject 1",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
@@ -58,6 +59,7 @@ run (void *cls)
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-2",
       .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
+      .details.admin_add_incoming.subject = "subject 2",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
@@ -88,6 +90,27 @@ run (void *cls)
       .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
       .details.history.start_row_ref = "deposit-1",
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_REJECT,
+      .label = "reject-1",
+      .details.reject.cmd_ref = "deposit-1" },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-r1",
+      .details.history.account_number = 2,
+      .details.history.direction = TALER_BANK_DIRECTION_CREDIT,
+      .details.history.start_row_ref = NULL,
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-r2",
+      .details.history.account_number = 2,
+      .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
+      .details.history.start_row_ref = NULL,
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-r3",
+      .details.history.account_number = 2,
+      .details.history.direction = TALER_BANK_DIRECTION_BOTH | TALER_BANK_DIRECTION_CANCEL,
+      .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
     { .oc = TBI_OC_END }
   };

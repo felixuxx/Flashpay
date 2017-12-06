@@ -282,6 +282,7 @@ reject_cb (void *cls,
  * the bank for the transaction history.
  *
  * @param cls closure with the `struct TALER_EXCHANGEDB_Session *`
+ * @param ec taler error code
  * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
@@ -290,6 +291,7 @@ reject_cb (void *cls,
  */
 static int
 history_cb (void *cls,
+            enum TALER_ErrorCode ec,
 	    enum TALER_BANK_Direction dir,
 	    const void *row_off,
 	    size_t row_off_size,
@@ -303,6 +305,12 @@ history_cb (void *cls,
   {
     hh = NULL;
 
+    if (TALER_EC_NONE != ec)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Error fetching history: %u!\n",
+                  (unsigned int) ec);
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "End of list. Committing progress!\n");
     qs = db_plugin->commit (db_plugin->cls,

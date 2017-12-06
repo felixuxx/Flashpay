@@ -88,6 +88,8 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
  * to the transfer identifier and remove the transaction from the
  * list.  If the transaction was not recorded, return #GNUNET_SYSERR.
  *
+ * Rejected transfers do NOT show with "check".
+ *
  * @param h bank instance
  * @param want_amount transfer amount desired
  * @param want_debit account that should have been debited
@@ -104,6 +106,21 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
                       uint64_t want_credit,
                       const char *exchange_base_url,
                       char **subject);
+
+
+/**
+ * Reject incoming wire transfer to account @a credit_account
+ * as identified by @a rowid.
+ *
+ * @param h fake bank handle
+ * @param rowid identifies transfer to reject
+ * @param credit_account account number of owner of credited account
+ * @return #GNUNET_YES on success, #GNUNET_NO if the wire transfer was not found
+ */
+int
+TALER_FAKEBANK_reject_transfer (struct TALER_FAKEBANK_Handle *h,
+                                uint64_t rowid,
+                                uint64_t credit_account);
 
 
 /**

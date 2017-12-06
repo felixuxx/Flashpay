@@ -81,6 +81,11 @@ struct Transaction
    * Number of this transaction.
    */
   uint64_t serial_id;
+
+  /**
+   * Flag set if the transfer was rejected.
+   */
+  int rejected;
 };
 
 
@@ -220,6 +225,31 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
+ * Reject incoming wire transfer to account @a credit_account
+ * as identified by @a rowid.
+ *
+ * @param h fake bank handle
+ * @param rowid identifies transfer to reject
+ * @param credit_account account number of owner of credited account
+ * @return #GNUNET_YES on success, #GNUNET_NO if the wire transfer was not found
+ */
+int
+TALER_FAKEBANK_reject_transfer (struct TALER_FAKEBANK_Handle *h,
+                                uint64_t rowid,
+                                uint64_t credit_account)
+{
+  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+    if ( (t->serial_id == rowid) &&
+         (t->credit_account == credit_account) )
+    {
+      t->rejected = GNUNET_YES;
+      return GNUNET_YES;
+    }
+  return GNUNET_NO;
+}
+
+
+/**
  * Check that no wire transfers were ordered (or at least none
  * that have not been taken care of via #TALER_FAKEBANK_check()).
  * If any transactions are onrecord, return #GNUNET_SYSERR.
@@ -284,6 +314,62 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_bank = NULL;
   }
   GNUNET_free (h);
+}
+
+
+/**
+ * Create and queue a bank error message with the HTTP response
+ * code @a response_code on connection @a connection.
+ *
+ * @param connection where to queue the reply
+ * @param response_code http status code to use
+ * @param ec taler error code to use
+ * @param message human readable error message
+ * @return MHD status code
+ */
+static int
+create_bank_error (struct MHD_Connection *connection,
+                   unsigned int response_code,
+                   enum TALER_ErrorCode ec,
+                   const char *message)
+{
+  json_t *json;
+  struct MHD_Response *resp;
+  void *json_str;
+  size_t json_len;
+  int ret;
+
+  json = json_pack ("{s:s, s:I}",
+                    "error",
+                    message,
+                    "ec",
+                    (json_int_t) ec);
+  json_str = json_dumps (json,
+                         JSON_INDENT(2));
+  json_decref (json);
+  if (NULL == json_str)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  json_len = strlen (json_str);
+  resp = MHD_create_response_from_buffer (json_len,
+                                          json_str,
+                                          MHD_RESPMEM_MUST_FREE);
+  if (NULL == resp)
+  {
+    GNUNET_break (0);
+    free (json_str);
+    return MHD_NO;
+  }
+  (void) MHD_add_response_header (resp,
+                                  MHD_HTTP_HEADER_CONTENT_TYPE,
+                                  "application/json");
+  ret = MHD_queue_response (connection,
+                            response_code,
+                            resp);
+  MHD_destroy_response (resp);
+  return ret;
 }
 
 
@@ -359,13 +445,13 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     break;
   }
   {
-    const char *wtid;
+    const char *subject;
     uint64_t debit_account;
     uint64_t credit_account;
     const char *base_url;
     struct TALER_Amount amount;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_string ("wtid", &wtid),
+      GNUNET_JSON_spec_string ("subject", &subject),
       GNUNET_JSON_spec_uint64 ("debit_account", &debit_account),
       GNUNET_JSON_spec_uint64 ("credit_account", &credit_account),
       TALER_JSON_spec_amount ("amount", &amount),
@@ -385,7 +471,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                               debit_account,
                                               credit_account,
                                               &amount,
-                                              wtid,
+                                              subject,
                                               base_url);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Receiving incoming wire transfer: %llu->%llu from %s\n",
@@ -434,6 +520,94 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
+ * Handle incoming HTTP request for /reject.
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request (a `struct Buffer *`)
+ * @return MHD result code
+ */
+static int
+handle_reject (struct TALER_FAKEBANK_Handle *h,
+               struct MHD_Connection *connection,
+               const char *upload_data,
+               size_t *upload_data_size,
+               void **con_cls)
+{
+  enum GNUNET_JSON_PostResult pr;
+  json_t *json;
+  struct MHD_Response *resp;
+  int ret;
+  int found;
+
+  pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                con_cls,
+                                upload_data,
+                                upload_data_size,
+                                &json);
+  switch (pr)
+  {
+  case GNUNET_JSON_PR_OUT_OF_MEMORY:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_CONTINUE:
+    return MHD_YES;
+  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_JSON_INVALID:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_SUCCESS:
+    break;
+  }
+  {
+    uint64_t serial_id;
+    uint64_t credit_account;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_uint64 ("row_id", &serial_id),
+      GNUNET_JSON_spec_uint64 ("credit_account", &credit_account),
+      GNUNET_JSON_spec_end ()
+    };
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (json,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break (0);
+      json_decref (json);
+      return MHD_NO;
+    }
+    found = TALER_FAKEBANK_reject_transfer (h,
+                                            serial_id,
+                                            credit_account);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Rejected wire transfer #%llu (to %llu)\n",
+                (unsigned long long) serial_id,
+                (unsigned long long) credit_account);
+  }
+  json_decref (json);
+
+  if (GNUNET_OK != found)
+    return create_bank_error (connection,
+                              MHD_HTTP_NOT_FOUND,
+                              TALER_EC_BANK_REJECT_NOT_FOUND,
+                              "transaction unknown");
+  /* finally build regular response */
+  resp = MHD_create_response_from_buffer (0,
+                                          NULL,
+                                          MHD_RESPMEM_PERSISTENT);
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_NO_CONTENT,
+                            resp);
+  MHD_destroy_response (resp);
+  return ret;
+}
+
+
+/**
  * Handle incoming HTTP request for /history
  *
  * @param h the fakebank handle
@@ -451,6 +625,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   const char *start;
   const char *dir;
   const char *acc;
+  const char *cancelled;
   unsigned long long account_number;
   unsigned long long start_number;
   long long count;
@@ -469,6 +644,9 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   dir = MHD_lookup_connection_value (connection,
                                      MHD_GET_ARGUMENT_KIND,
                                      "direction");
+  cancelled = MHD_lookup_connection_value (connection,
+                                           MHD_GET_ARGUMENT_KIND,
+                                           "cancelled");
   start = MHD_lookup_connection_value (connection,
                                        MHD_GET_ARGUMENT_KIND,
                                        "start");
@@ -496,7 +674,14 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
          (1 != sscanf (start,
                        "%llu",
                        &start_number)) ) ||
-       ( (NULL != dir) &&
+       (NULL == dir) ||
+       (NULL == cancelled) ||
+       ( (0 != strcasecmp (cancelled,
+                           "OMIT")) &&
+         (0 != strcasecmp (cancelled,
+                           "SHOW")) ) ||
+       ( (0 != strcasecmp (dir,
+                           "BOTH")) &&
          (0 != strcasecmp (dir,
                            "CREDIT")) &&
          (0 != strcasecmp (dir,
@@ -513,13 +698,40 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
               dir,
               (unsigned long long) account_number,
               start);
-  if (NULL == dir)
-    direction = TALER_BANK_DIRECTION_BOTH;
-  else if (0 == strcasecmp (dir,
-                            "CREDIT"))
+  if (0 == strcasecmp (dir,
+                       "CREDIT"))
+  {
     direction = TALER_BANK_DIRECTION_CREDIT;
-  else
+  }
+  else if (0 == strcasecmp (dir,
+                            "DEBIT"))
+  {
     direction = TALER_BANK_DIRECTION_DEBIT;
+  }
+  else if (0 == strcasecmp (dir,
+                            "BOTH"))
+  {
+    direction = TALER_BANK_DIRECTION_BOTH;
+  }
+  else
+  {
+    GNUNET_assert (0);
+    return MHD_NO;
+  }
+  if (0 == strcasecmp (cancelled,
+                       "OMIT"))
+  {
+    /* nothing */
+  } else if (0 == strcasecmp (cancelled,
+                              "SHOW"))
+  {
+    direction |= TALER_BANK_DIRECTION_CANCEL;
+  }
+  else
+  {
+    GNUNET_assert (0);
+    return MHD_NO;
+  }
   if (NULL == start)
   {
     if (count > 0)
@@ -557,6 +769,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   {
     json_t *trans;
     char *subject;
+    const char *sign;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Found transaction over %s from %llu to %llu\n",
@@ -564,10 +777,12 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                 (unsigned long long) pos->debit_account,
                 (unsigned long long) pos->credit_account);
 
-    if (! ( ( (account_number == pos->debit_account) &&
-              (0 != (direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
-            ( (account_number == pos->credit_account) &&
-              (0 != (direction & TALER_BANK_DIRECTION_CREDIT) ) ) ) )
+    if ( (! ( ( (account_number == pos->debit_account) &&
+                (0 != (direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
+              ( (account_number == pos->credit_account) &&
+                (0 != (direction & TALER_BANK_DIRECTION_CREDIT) ) ) ) ) ||
+         ( (0 == (direction & TALER_BANK_DIRECTION_CANCEL)) &&
+           (GNUNET_YES == pos->rejected) ) )
     {
       if (count > 0)
         pos = pos->next;
@@ -580,11 +795,15 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                      "%s %s",
                      pos->subject,
                      pos->exchange_base_url);
+    sign =
+      (account_number == pos->debit_account)
+      ? (pos->rejected ? "cancel-" : "-")
+      : (pos->rejected ? "cancel+" : "+");
     trans = json_pack ("{s:I, s:o, s:o, s:s, s:I, s:s}",
                        "row_id", (json_int_t) pos->serial_id,
                        "date", GNUNET_JSON_from_time_abs (pos->date),
                        "amount", TALER_JSON_from_amount (&pos->amount),
-                       "sign", (account_number == pos->debit_account) ? "-" : "+",
+                       "sign", sign,
                        "counterpart", (json_int_t) ( (account_number == pos->debit_account)
                                                      ? pos->credit_account
                                                      : pos->debit_account),
@@ -698,6 +917,15 @@ handle_mhd_request (void *cls,
                                       upload_data,
                                       upload_data_size,
                                       con_cls);
+  if ( (0 == strcasecmp (url,
+                         "/reject")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST)) )
+    return handle_reject (h,
+                          connection,
+                          upload_data,
+                          upload_data_size,
+                          con_cls);
   if ( (0 == strcasecmp (url,
                          "/history")) &&
        (0 == strcasecmp (method,

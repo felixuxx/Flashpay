@@ -83,6 +83,7 @@ struct TALER_WIRE_TransferDetails
  * the bank for the transaction history.
  *
  * @param cls closure
+ * @param ec taler error code
  * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
@@ -91,6 +92,7 @@ struct TALER_WIRE_TransferDetails
  */
 typedef int
 (*TALER_WIRE_HistoryResultCallback) (void *cls,
+                                     enum TALER_ErrorCode ec,
                                      enum TALER_BANK_Direction dir,
                                      const void *row_off,
                                      size_t row_off_size,

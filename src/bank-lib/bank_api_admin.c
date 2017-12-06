@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2017 GNUnet e.V.
+  Copyright (C) 2015, 2016, 2017 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -79,11 +79,13 @@ handle_admin_add_incoming_finished (void *cls,
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
   uint64_t serial_id = UINT64_MAX;
+  enum TALER_ErrorCode ec;
 
   aai->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -100,29 +102,36 @@ handle_admin_add_incoming_finished (void *cls,
       {
         GNUNET_break_op (0);
         response_code = 0;
+        ec = TALER_EC_INVALID_RESPONSE;
         break;
       }
+      ec = TALER_EC_NONE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Access denied */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   default:
     /* unexpected response code */
@@ -130,11 +139,13 @@ handle_admin_add_incoming_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
+    ec = TALER_BANK_parse_ec_ (json);
     response_code = 0;
     break;
   }
   aai->cb (aai->cb_cls,
            response_code,
+           ec,
            serial_id,
            json);
   TALER_BANK_admin_add_incoming_cancel (aai);
@@ -151,7 +162,7 @@ handle_admin_add_incoming_finished (void *cls,
  * @param bank_base_url URL of the bank (used to execute this request)
  * @param auth authentication data to send to the bank
  * @param exchange_base_url base URL of the exchange (for tracking)
- * @param wtid wire transfer identifier for the transfer
+ * @param subject wire transfer subject for the transfer
  * @param amount amount that was deposited
  * @param debit_account_no account number to withdraw from (53 bits at most)
  * @param credit_account_no account number to deposit into (53 bits at most)
@@ -166,7 +177,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                const char *bank_base_url,
                                const struct TALER_BANK_AuthenticationData *auth,
                                const char *exchange_base_url,
-                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               const char *subject,
                                const struct TALER_Amount *amount,
                                uint64_t debit_account_no,
                                uint64_t credit_account_no,
@@ -182,10 +193,10 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     return NULL;
   }
-  admin_obj = json_pack ("{s:{s:s}, s:s, s:o, s:o, s:I, s:I}",
+  admin_obj = json_pack ("{s:{s:s}, s:s, s:s, s:o, s:I, s:I}",
                          "auth", "type", "basic",
                          "exchange_url", exchange_base_url,
-                         "wtid", GNUNET_JSON_from_data_auto (wtid),
+                         "subject", subject,
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,
                          "credit_account", (json_int_t) credit_account_no);

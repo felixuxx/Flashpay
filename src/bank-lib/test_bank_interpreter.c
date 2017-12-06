@@ -110,7 +110,6 @@ static const struct TBI_Command *
 find_command (const struct InterpreterState *is,
               const char *label)
 {
-  unsigned int i;
   const struct TBI_Command *cmd;
 
   if (NULL == label)
@@ -119,7 +118,7 @@ find_command (const struct InterpreterState *is,
                 "Attempt to lookup command for empty label\n");
     return NULL;
   }
-  for (i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
+  for (unsigned int i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
     if ( (NULL != cmd->label) &&
          (0 == strcmp (cmd->label,
                        label)) )
@@ -128,6 +127,63 @@ find_command (const struct InterpreterState *is,
               "Command not found: %s\n",
               label);
   return NULL;
+}
+
+
+/**
+ * Test if the /admin/add/incoming transaction at offset @a off
+ * has been /rejected.
+ *
+ * @param is interpreter state (where we are right now)
+ * @param off offset of the command to test for rejection
+ * @return #GNUNET_YES if the command at @a off was cancelled
+ */
+static int
+test_cancelled (struct InterpreterState *is,
+                unsigned int off)
+{
+  const struct TBI_Command *cmd = &is->commands[off];
+
+  for (unsigned int i=0;i<is->ip;i++)
+  {
+    const struct TBI_Command *c = &is->commands[i];
+
+    if (TBI_OC_REJECT != c->oc)
+      continue;
+    if (0 == strcmp (c->details.reject.cmd_ref,
+                     cmd->label))
+      return GNUNET_YES;
+  }
+  return GNUNET_NO;
+}
+
+
+/**
+ * Test if the /admin/add/incoming transaction at offset @a off
+ * has been #TBI_OC_EXPECT_TRANSFER treated, and thus been
+ * forgotten by the fakebank.
+ *
+ * @param is interpreter state (where we are right now)
+ * @param off offset of the command to test for rejection
+ * @return #GNUNET_YES if the command at @a off was cancelled
+ */
+static int
+test_deleted_by_expected (struct InterpreterState *is,
+                          unsigned int off)
+{
+  const struct TBI_Command *cmd = &is->commands[off];
+
+  for (unsigned int i=0;i<is->ip;i++)
+  {
+    const struct TBI_Command *c = &is->commands[i];
+
+    if (TBI_OC_EXPECT_TRANSFER != c->oc)
+      continue;
+    if (0 == strcmp (c->details.expect_transfer.cmd_ref,
+                     cmd->label))
+      return GNUNET_YES;
+  }
+  return GNUNET_NO;
 }
 
 
@@ -214,6 +270,7 @@ build_history (struct InterpreterState *is,
   for (unsigned int off = start;off != end + inc; off += inc)
   {
     const struct TBI_Command *pos = &is->commands[off];
+    int cancelled;
 
     if (TBI_OC_ADMIN_ADD_INCOMING != pos->oc)
       continue;
@@ -229,6 +286,15 @@ build_history (struct InterpreterState *is,
       continue; /* skip until we find the marker */
     if (total >= cmd->details.history.num_results * inc)
       break; /* hit limit specified by command */
+    if (GNUNET_YES ==
+        test_deleted_by_expected (is,
+                                  off))
+      continue;
+    cancelled = test_cancelled (is,
+                                off);
+    if ( (GNUNET_YES == cancelled) &&
+         (0 == (cmd->details.history.direction & TALER_BANK_DIRECTION_CANCEL)) )
+      continue;
     if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.credit_account_no)) ||
@@ -253,6 +319,7 @@ build_history (struct InterpreterState *is,
   for (unsigned int off = start;off != end + inc; off += inc)
   {
     const struct TBI_Command *pos = &is->commands[off];
+    int cancelled;
 
     if (TBI_OC_ADMIN_ADD_INCOMING != pos->oc)
       continue;
@@ -268,6 +335,10 @@ build_history (struct InterpreterState *is,
       continue; /* skip until we find the marker */
     if (total >= cmd->details.history.num_results * inc)
       break; /* hit limit specified by command */
+    if (GNUNET_YES ==
+        test_deleted_by_expected (is,
+                                  off))
+      continue;
 
     if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (cmd->details.history.account_number ==
@@ -280,11 +351,19 @@ build_history (struct InterpreterState *is,
       continue;
     }
 
+    cancelled = test_cancelled (is,
+                                off);
+    if ( (GNUNET_YES == cancelled) &&
+         (0 == (cmd->details.history.direction & TALER_BANK_DIRECTION_CANCEL)) )
+      continue;
+
     if ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
          (cmd->details.history.account_number ==
           pos->details.admin_add_incoming.credit_account_no))
     {
       h[total].direction = TALER_BANK_DIRECTION_CREDIT;
+      if (GNUNET_YES == cancelled)
+        h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
       h[total].details.account_details
         = json_pack ("{s:s, s:s, s:I}",
                      "type",
@@ -300,6 +379,8 @@ build_history (struct InterpreterState *is,
             pos->details.admin_add_incoming.debit_account_no))
     {
       h[total].direction = TALER_BANK_DIRECTION_DEBIT;
+      if (GNUNET_YES == cancelled)
+        h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
       h[total].details.account_details
         = json_pack ("{s:s, s:s, s:I}",
                      "type",
@@ -323,17 +404,10 @@ build_history (struct InterpreterState *is,
       /* h[total].execution_date; // unknown here */
       h[total].serial_id
         = pos->details.admin_add_incoming.serial_id;
-      {
-        char *ws;
-
-        ws = GNUNET_STRINGS_data_to_string_alloc (&pos->details.admin_add_incoming.wtid,
-                                                  sizeof (struct TALER_WireTransferIdentifierRawP));
-        GNUNET_asprintf (&h[total].details.wire_transfer_subject,
-                         "%s %s",
-                         ws,
-                         pos->details.admin_add_incoming.exchange_base_url);
-        GNUNET_free (ws);
-      }
+      GNUNET_asprintf (&h[total].details.wire_transfer_subject,
+                       "%s %s",
+                       pos->details.admin_add_incoming.subject,
+                       pos->details.admin_add_incoming.exchange_base_url);
       total++;
     }
   }
@@ -489,17 +563,33 @@ interpreter_run (void *cls);
 
 
 /**
+ * Run the next command.
+ *
+ * @param is interpreter to progress
+ */
+static void
+next (struct InterpreterState *is)
+{
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
  * Function called upon completion of our /admin/add/incoming request.
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param ec taler status code
  * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
+                 enum TALER_ErrorCode ec,
                  uint64_t serial_id,
                  const json_t *json)
 {
@@ -522,9 +612,7 @@ add_incoming_cb (void *cls,
     fail (is);
     return;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next (is);
 }
 
 
@@ -538,6 +626,7 @@ add_incoming_cb (void *cls,
  *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
  *                    last callback is always of this status (even if `abs(num_results)` were
  *                    already returned).
+ * @param ec taler status code
  * @param dir direction of the transfer
  * @param serial_id monotonically increasing counter corresponding to the transaction
  * @param details details about the wire transfer
@@ -546,6 +635,7 @@ add_incoming_cb (void *cls,
 static void
 history_cb (void *cls,
             unsigned int http_status,
+            enum TALER_ErrorCode ec,
             enum TALER_BANK_Direction dir,
             uint64_t serial_id,
             const struct TALER_BANK_TransferDetails *details,
@@ -580,9 +670,7 @@ history_cb (void *cls,
       fail (is);
       return;
     }
-    is->ip++;
-    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                         is);
+    next (is);
     return;
   }
   if (GNUNET_OK !=
@@ -609,6 +697,38 @@ history_cb (void *cls,
     return;
   }
   cmd->details.history.results_obtained++;
+}
+
+
+/**
+ * Callbacks of this type are used to serve the result of asking
+ * the bank to reject an incoming wire transfer.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_NO_CONTENT (204) for successful status request;
+ *                    #MHD_HTTP_NOT_FOUND if the rowid is unknown;
+ *                    0 if the bank's reply is bogus (fails to follow the protocol),
+ * @param ec detailed error code
+ */
+static void
+reject_cb (void *cls,
+           unsigned int http_status,
+           enum TALER_ErrorCode ec)
+{
+  struct InterpreterState *is = cls;
+  struct TBI_Command *cmd = &is->commands[is->ip];
+
+  cmd->details.reject.rh = NULL;
+  if (MHD_HTTP_NO_CONTENT != http_status)
+  {
+    GNUNET_break (0);
+    fprintf (stderr,
+             "Unexpected response code %u:\n",
+             http_status);
+    fail (is);
+    return;
+  }
+  next (is);
 }
 
 
@@ -658,15 +778,13 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
-                                &cmd->details.admin_add_incoming.wtid,
-                                sizeof (cmd->details.admin_add_incoming.wtid));
+    GNUNET_break (NULL != cmd->details.admin_add_incoming.subject);
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (is->ctx,
                                        "http://localhost:8080",
                                        &auth,
                                        cmd->details.admin_add_incoming.exchange_base_url,
-                                       &cmd->details.admin_add_incoming.wtid,
+                                       cmd->details.admin_add_incoming.subject,
                                        &amount,
                                        cmd->details.admin_add_incoming.debit_account_no,
                                        cmd->details.admin_add_incoming.credit_account_no,
@@ -722,7 +840,6 @@ interpreter_run (void *cls)
                                            &amount));
     {
       char *subject;
-      char *expect;
 
       if (GNUNET_OK !=
           TALER_FAKEBANK_check (is->fakebank,
@@ -736,22 +853,17 @@ interpreter_run (void *cls)
         fail (is);
         return;
       }
-      expect = GNUNET_STRINGS_data_to_string_alloc (&ref->details.admin_add_incoming.wtid,
-                                                    sizeof (ref->details.admin_add_incoming.wtid));
-      if (0 != strcmp (subject, expect))
+      if (0 != strcmp (ref->details.admin_add_incoming.subject,
+                       subject))
       {
-        GNUNET_free (expect);
         GNUNET_free (subject);
         GNUNET_break (0);
         fail (is);
         return;
       }
       GNUNET_free (subject);
-      GNUNET_free (expect);
     }
-    is->ip++;
-    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                         is);
+    next (is);
    return;
   case TBI_OC_EXPECT_TRANSFERS_EMPTY:
     if (GNUNET_OK != TALER_FAKEBANK_check_empty (is->fakebank))
@@ -760,9 +872,27 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    is->ip++;
-    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                         is);
+    next (is);
+    return;
+  case TBI_OC_REJECT:
+    ref = find_command (is,
+                        cmd->details.reject.cmd_ref);
+    GNUNET_assert (NULL != ref);
+    GNUNET_assert (TBI_OC_ADMIN_ADD_INCOMING == ref->oc);
+    cmd->details.reject.rh
+      = TALER_BANK_reject (is->ctx,
+                           "http://localhost:8080",
+                           &auth,
+                           ref->details.admin_add_incoming.credit_account_no,
+                           ref->details.admin_add_incoming.serial_id,
+                           &reject_cb,
+                           is);
+    if (NULL == cmd->details.reject.rh)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
     return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -802,7 +932,6 @@ do_shutdown (void *cls)
 {
   struct InterpreterState *is = cls;
   struct TBI_Command *cmd;
-  unsigned int i;
 
   if (NULL != is->timeout_task)
   {
@@ -810,7 +939,7 @@ do_shutdown (void *cls)
     is->timeout_task = NULL;
   }
 
-  for (i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
+  for (unsigned int i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
   {
     switch (cmd->oc)
     {
@@ -842,6 +971,17 @@ do_shutdown (void *cls)
     case TBI_OC_EXPECT_TRANSFER:
       break;
     case TBI_OC_EXPECT_TRANSFERS_EMPTY:
+      break;
+    case TBI_OC_REJECT:
+      if (NULL != cmd->details.reject.rh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_BANK_reject_cancel (cmd->details.reject.rh);
+        cmd->details.reject.rh = NULL;
+      }
       break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

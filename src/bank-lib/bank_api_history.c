@@ -118,22 +118,37 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
       return GNUNET_SYSERR;
     }
 
+    if (0 == strcasecmp (sign,
+                         "+"))
+      direction = TALER_BANK_DIRECTION_CREDIT;
+    else if (0 == strcasecmp (sign,
+                              "-"))
+      direction = TALER_BANK_DIRECTION_DEBIT;
+    else if (0 == strcasecmp (sign,
+                              "cancel+"))
+      direction = TALER_BANK_DIRECTION_CREDIT | TALER_BANK_DIRECTION_CANCEL;
+    else if (0 == strcasecmp (sign,
+                              "cancel-"))
+      direction = TALER_BANK_DIRECTION_DEBIT | TALER_BANK_DIRECTION_CANCEL;
+    else
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (hist_spec);
+      return GNUNET_SYSERR;
+    }
     td.account_details = json_pack ("{s:s, s:s, s:I}",
                                     "type", "test",
                                     "bank_uri", hh->bank_base_url,
                                     "account_number", (json_int_t) other_account);
-    direction = (0 == strcasecmp (sign,
-                                  "+"))
-      ? TALER_BANK_DIRECTION_CREDIT
-      : TALER_BANK_DIRECTION_DEBIT;
     hh->hcb (hh->hcb_cls,
              MHD_HTTP_OK,
+             TALER_EC_NONE,
              direction,
              serial_id,
              &td,
              transaction);
-    GNUNET_JSON_parse_free (hist_spec);
     json_decref (td.account_details);
+    GNUNET_JSON_parse_free (hist_spec);
   }
   return GNUNET_OK;
 }
@@ -153,6 +168,7 @@ handle_history_finished (void *cls,
                          const json_t *json)
 {
   struct TALER_BANK_HistoryHandle *hh = cls;
+  enum TALER_ErrorCode ec;
 
   hh->job = NULL;
   switch (response_code)
@@ -166,31 +182,38 @@ handle_history_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_INVALID_RESPONSE;
       break;
     }
     response_code = MHD_HTTP_NO_CONTENT; /* signal end of list */
     break;
   case MHD_HTTP_NO_CONTENT:
+    ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Access denied */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_BANK_parse_ec_ (json);
     break;
   default:
     /* unexpected response code */
@@ -198,11 +221,13 @@ handle_history_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
+    ec = TALER_BANK_parse_ec_ (json);
     response_code = 0;
     break;
   }
   hh->hcb (hh->hcb_cls,
            response_code,
+           ec,
            TALER_BANK_DIRECTION_NONE,
            0LLU,
            NULL,
@@ -243,6 +268,8 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   struct TALER_BANK_HistoryHandle *hh;
   CURL *eh;
   char *url;
+  const char *dir;
+  const char *can;
 
   if (0 == num_results)
   {
@@ -254,36 +281,42 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     return NULL;
   }
+
+  dir = NULL;
+  if (TALER_BANK_DIRECTION_BOTH == (TALER_BANK_DIRECTION_BOTH & direction))
+    dir = "both";
+  else if (TALER_BANK_DIRECTION_CREDIT == (TALER_BANK_DIRECTION_CREDIT & direction))
+    dir = "credit";
+  else if (TALER_BANK_DIRECTION_DEBIT == (TALER_BANK_DIRECTION_BOTH & direction))
+    dir = "debit";
+  if (NULL == dir)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (TALER_BANK_DIRECTION_CANCEL == (TALER_BANK_DIRECTION_CANCEL & direction))
+    can = "show";
+  else
+    can = "omit";
   if (UINT64_MAX == start_row)
   {
-    if (TALER_BANK_DIRECTION_BOTH == direction)
-      GNUNET_asprintf (&url,
-                       "/history?auth=basic&account_number=%llu&delta=%lld",
-                       (unsigned long long) account_number,
-                       (long long) num_results);
-    else
-      GNUNET_asprintf (&url,
-                       "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s",
-                       (unsigned long long) account_number,
-                       (long long) num_results,
-                       (TALER_BANK_DIRECTION_CREDIT == direction) ? "credit" : "debit");
+    GNUNET_asprintf (&url,
+                     "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s",
+                     (unsigned long long) account_number,
+                     (long long) num_results,
+                     dir,
+                     can);
 
   }
   else
   {
-    if (TALER_BANK_DIRECTION_BOTH == direction)
-      GNUNET_asprintf (&url,
-                       "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu",
-                       (unsigned long long) account_number,
-                       (long long) num_results,
-                       (unsigned long long) start_row);
-    else
-      GNUNET_asprintf (&url,
-                       "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu&direction=%s",
-                       (unsigned long long) account_number,
-                       (long long) num_results,
-                       (unsigned long long) start_row,
-                       (TALER_BANK_DIRECTION_CREDIT == direction) ? "credit" : "debit");
+    GNUNET_asprintf (&url,
+                     "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu&direction=%s&cancelled=%s",
+                     (unsigned long long) account_number,
+                     (long long) num_results,
+                     (unsigned long long) start_row,
+                     dir,
+                     can);
   }
 
   hh = GNUNET_new (struct TALER_BANK_HistoryHandle);

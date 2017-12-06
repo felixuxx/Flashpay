@@ -159,6 +159,7 @@ timeout_cb (void *cls)
  * the bank for the transaction history.
  *
  * @param cls closure
+ * @param ec taler status code
  * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
@@ -167,6 +168,7 @@ timeout_cb (void *cls)
  */
 static int
 history_result_cb (void *cls,
+                   enum TALER_ErrorCode ec,
                    enum TALER_BANK_Direction dir,
                    const void *row_off,
                    size_t row_off_size,

@@ -830,6 +830,7 @@ check_exchange_wire_out ()
  * transactions).
  *
  * @param cls closure
+ * @param ec error code in case something went wrong
  * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
@@ -838,6 +839,7 @@ check_exchange_wire_out ()
  */
 static int
 history_debit_cb (void *cls,
+                  enum TALER_ErrorCode ec,
 		  enum TALER_BANK_Direction dir,
 		  const void *row_off,
 		  size_t row_off_size,
@@ -848,6 +850,13 @@ history_debit_cb (void *cls,
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
+    if (TALER_EC_NONE != ec)
+    {
+      /* FIXME: log properly to audit report! */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Error fetching history: %u!\n",
+                  (unsigned int) ec);
+    }
     /* end of iteration, now check wire_out to see
        if it matches #out_map */
     hh = NULL;
@@ -1069,6 +1078,7 @@ conclude_credit_history ()
  * transactions).
  *
  * @param cls closure
+ * @param ec error code in case something went wrong
  * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
@@ -1077,6 +1087,7 @@ conclude_credit_history ()
  */
 static int
 history_credit_cb (void *cls,
+                   enum TALER_ErrorCode ec,
                    enum TALER_BANK_Direction dir,
                    const void *row_off,
                    size_t row_off_size,
@@ -1087,6 +1098,13 @@ history_credit_cb (void *cls,
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
+    if (TALER_EC_NONE != ec)
+    {
+      /* FIXME: log properly to audit report! */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Error fetching history: %u!\n",
+                  (unsigned int) ec);
+    }
     /* end of operation */
     hh = NULL;
     conclude_credit_history ();
