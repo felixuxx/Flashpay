@@ -78,7 +78,7 @@ handle_admin_add_incoming_finished (void *cls,
                                     const json_t *json)
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
-  uint64_t serial_id = UINT64_MAX;
+  uint64_t row_id = UINT64_MAX;
   enum TALER_ErrorCode ec;
 
   aai->job = NULL;
@@ -90,8 +90,8 @@ handle_admin_add_incoming_finished (void *cls,
   case MHD_HTTP_OK:
     {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("serial_id",
-                                 &serial_id),
+        GNUNET_JSON_spec_uint64 ("row_id",
+                                 &row_id),
         GNUNET_JSON_spec_end()
       };
 
@@ -146,7 +146,7 @@ handle_admin_add_incoming_finished (void *cls,
   aai->cb (aai->cb_cls,
            response_code,
            ec,
-           serial_id,
+           row_id,
            json);
   TALER_BANK_admin_add_incoming_cancel (aai);
 }
