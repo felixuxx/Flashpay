@@ -81,6 +81,7 @@ run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
   void *json_str;
+  struct GNUNET_TIME_Absolute now;
 
   session = plugin->get_session (plugin->cls);
   if (NULL == session)
@@ -97,11 +98,13 @@ run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
     GNUNET_break (0); /* out of memory? */
     return GNUNET_SYSERR;
   }
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   ret = plugin->reserves_in_insert (plugin->cls,
                                     session,
                                     reserve_pub,
                                     add_value,
-                                    GNUNET_TIME_absolute_get (),
+                                    now,
                                     jdetails,
                                     json_str,
                                     strlen (json_str));
