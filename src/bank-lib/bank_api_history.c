@@ -174,6 +174,7 @@ handle_history_finished (void *cls,
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INTERNAL_INVARIANT_FAILURE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -186,6 +187,7 @@ handle_history_finished (void *cls,
       break;
     }
     response_code = MHD_HTTP_NO_CONTENT; /* signal end of list */
+    ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_NO_CONTENT:
     ec = TALER_EC_NONE;
