@@ -89,7 +89,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
     struct TALER_BANK_TransferDetails td;
     const char *sign;
     uint64_t other_account;
-    uint64_t serial_id;
+    uint64_t row_id;
     enum TALER_BANK_Direction direction;
     struct GNUNET_JSON_Specification hist_spec[] = {
       GNUNET_JSON_spec_string ("sign",
@@ -99,7 +99,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
       GNUNET_JSON_spec_absolute_time ("date",
                                       &td.execution_date),
       GNUNET_JSON_spec_uint64 ("row_id",
-                               &serial_id),
+                               &row_id),
       GNUNET_JSON_spec_string ("wt_subject",
                                (const char **) &td.wire_transfer_subject),
       GNUNET_JSON_spec_uint64 ("counterpart",
@@ -144,7 +144,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
              MHD_HTTP_OK,
              TALER_EC_NONE,
              direction,
-             serial_id,
+             row_id,
              &td,
              transaction);
     json_decref (td.account_details);

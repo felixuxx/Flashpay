@@ -132,7 +132,7 @@ struct TBI_Command
       /**
        * The serial ID for this record, as returned by the bank.
        */
-      uint64_t serial_id;
+      uint64_t row_id;
 
     } admin_add_incoming;
 

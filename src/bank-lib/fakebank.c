@@ -80,7 +80,7 @@ struct Transaction
   /**
    * Number of this transaction.
    */
-  uint64_t serial_id;
+  uint64_t row_id;
 
   /**
    * Flag set if the transfer was rejected.
@@ -190,7 +190,7 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
  * @param amount amount to transfer
  * @param subject wire transfer subject to use
  * @param exchange_base_url exchange URL
- * @return serial_id of the transfer
+ * @return row_id of the transfer
  */
 uint64_t
 TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
@@ -213,14 +213,14 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
   t->credit_account = credit_account;
   t->amount = *amount;
   t->exchange_base_url = GNUNET_strdup (exchange_base_url);
-  t->serial_id = ++h->serial_counter;
+  t->row_id = ++h->serial_counter;
   t->date = GNUNET_TIME_absolute_get ();
   t->subject = GNUNET_strdup (subject);
   GNUNET_TIME_round_abs (&t->date);
   GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
                                     h->transactions_tail,
                                     t);
-  return t->serial_id;
+  return t->row_id;
 }
 
 
@@ -239,7 +239,7 @@ TALER_FAKEBANK_reject_transfer (struct TALER_FAKEBANK_Handle *h,
                                 uint64_t credit_account)
 {
   for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
-    if ( (t->serial_id == rowid) &&
+    if ( (t->row_id == rowid) &&
          (t->credit_account == credit_account) )
     {
       t->rejected = GNUNET_YES;
@@ -421,7 +421,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   json_t *json;
   struct MHD_Response *resp;
   int ret;
-  uint64_t serial_id;
+  uint64_t row_id;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 con_cls,
@@ -467,7 +467,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       return MHD_NO;
     }
-    serial_id = TALER_FAKEBANK_make_transfer (h,
+    row_id = TALER_FAKEBANK_make_transfer (h,
                                               debit_account,
                                               credit_account,
                                               &amount,
@@ -487,8 +487,8 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     size_t json_len;
 
     json = json_pack ("{s:I}",
-                      "serial_id",
-                      (json_int_t) serial_id);
+                      "row_id",
+                      (json_int_t) row_id);
     json_str = json_dumps (json,
                            JSON_INDENT(2));
     json_decref (json);
@@ -564,10 +564,10 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
     break;
   }
   {
-    uint64_t serial_id;
+    uint64_t row_id;
     uint64_t credit_account;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_uint64 ("row_id", &serial_id),
+      GNUNET_JSON_spec_uint64 ("row_id", &row_id),
       GNUNET_JSON_spec_uint64 ("credit_account", &credit_account),
       GNUNET_JSON_spec_end ()
     };
@@ -581,11 +581,11 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     found = TALER_FAKEBANK_reject_transfer (h,
-                                            serial_id,
+                                            row_id,
                                             credit_account);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Rejected wire transfer #%llu (to %llu)\n",
-                (unsigned long long) serial_id,
+                (unsigned long long) row_id,
                 (unsigned long long) credit_account);
   }
   json_decref (json);
@@ -744,7 +744,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     for (pos = h->transactions_head;
          NULL != pos;
          pos = pos->next)
-      if (pos->serial_id == start_number)
+      if (pos->row_id  == start_number)
         break;
     if (NULL == pos)
     {
@@ -800,7 +800,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       ? (pos->rejected ? "cancel-" : "-")
       : (pos->rejected ? "cancel+" : "+");
     trans = json_pack ("{s:I, s:o, s:o, s:s, s:I, s:s}",
-                       "row_id", (json_int_t) pos->serial_id,
+                       "row_id", (json_int_t) pos->row_id,
                        "date", GNUNET_JSON_from_time_abs (pos->date),
                        "amount", TALER_JSON_from_amount (&pos->amount),
                        "sign", sign,

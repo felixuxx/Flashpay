@@ -202,7 +202,7 @@ struct History
   /**
    * Serial ID of the wire transfer.
    */
-  uint64_t serial_id;
+  uint64_t row_id;
 
   /**
    * Direction of the transfer.
@@ -275,8 +275,8 @@ build_history (struct InterpreterState *is,
     if (TBI_OC_ADMIN_ADD_INCOMING != pos->oc)
       continue;
     if ( (NULL != ref) &&
-         (ref->details.admin_add_incoming.serial_id ==
-          pos->details.admin_add_incoming.serial_id) )
+         (ref->details.admin_add_incoming.row_id ==
+          pos->details.admin_add_incoming.row_id) )
     {
       total = 0;
       ok = GNUNET_YES;
@@ -324,8 +324,8 @@ build_history (struct InterpreterState *is,
     if (TBI_OC_ADMIN_ADD_INCOMING != pos->oc)
       continue;
     if ( (NULL != ref) &&
-         (ref->details.admin_add_incoming.serial_id ==
-          pos->details.admin_add_incoming.serial_id) )
+         (ref->details.admin_add_incoming.row_id ==
+          pos->details.admin_add_incoming.row_id) )
     {
       total = 0;
       ok = GNUNET_YES;
@@ -402,8 +402,8 @@ build_history (struct InterpreterState *is,
                      TALER_string_to_amount (pos->details.admin_add_incoming.amount,
                                              &h[total].details.amount));
       /* h[total].execution_date; // unknown here */
-      h[total].serial_id
-        = pos->details.admin_add_incoming.serial_id;
+      h[total].row_id
+        = pos->details.admin_add_incoming.row_id;
       GNUNET_asprintf (&h[total].details.wire_transfer_subject,
                        "%s %s",
                        pos->details.admin_add_incoming.subject,
@@ -445,7 +445,7 @@ print_expected (struct History *h,
                 (unsigned long long) i,
                 (TALER_BANK_DIRECTION_CREDIT == h[i].direction) ? "+" : "-",
                 TALER_amount2s (&h[i].details.amount),
-                (unsigned long long) h[i].serial_id,
+                (unsigned long long) h[i].row_id,
                 h[i].details.wire_transfer_subject,
                 acc);
     if (NULL != acc)
@@ -583,21 +583,21 @@ next (struct InterpreterState *is)
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
  * @param ec taler status code
- * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param row_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
                  enum TALER_ErrorCode ec,
-                 uint64_t serial_id,
+                 uint64_t row_id,
                  const json_t *json)
 {
   struct InterpreterState *is = cls;
   struct TBI_Command *cmd = &is->commands[is->ip];
 
   cmd->details.admin_add_incoming.aih = NULL;
-  cmd->details.admin_add_incoming.serial_id = serial_id;
+  cmd->details.admin_add_incoming.row_id = row_id;
   if (cmd->details.admin_add_incoming.expected_response_code != http_status)
   {
     GNUNET_break (0);
@@ -628,7 +628,7 @@ add_incoming_cb (void *cls,
  *                    already returned).
  * @param ec taler status code
  * @param dir direction of the transfer
- * @param serial_id monotonically increasing counter corresponding to the transaction
+ * @param row_id monotonically increasing counter corresponding to the transaction
  * @param details details about the wire transfer
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
@@ -637,7 +637,7 @@ history_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
             enum TALER_BANK_Direction dir,
-            uint64_t serial_id,
+            uint64_t row_id,
             const struct TALER_BANK_TransferDetails *details,
             const json_t *json)
 {
@@ -811,7 +811,7 @@ interpreter_run (void *cls)
       ref = NULL;
     }
     if (NULL != ref)
-      rowid = ref->details.admin_add_incoming.serial_id;
+      rowid = ref->details.admin_add_incoming.row_id;
     else
       rowid = UINT64_MAX;
     cmd->details.history.hh
@@ -884,7 +884,7 @@ interpreter_run (void *cls)
                            "http://localhost:8080",
                            &auth,
                            ref->details.admin_add_incoming.credit_account_no,
-                           ref->details.admin_add_incoming.serial_id,
+                           ref->details.admin_add_incoming.row_id,
                            &reject_cb,
                            is);
     if (NULL == cmd->details.reject.rh)
