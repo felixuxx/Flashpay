@@ -70,15 +70,15 @@ TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
 				    MHD_HTTP_HEADER_ACCEPT_ENCODING);
   if (NULL == ae)
     return MHD_NO;
+  if (0 == strcmp (ae,
+                   "*"))
+    return MHD_YES;
   de = strstr (ae,
 	       "deflate");
   if (NULL == de)
     return MHD_NO;
-  if (0 == strcmp (de,
-                   "*"))
-    return MHD_YES;
   if ( ( (de == ae) ||
-	 ( de[-1] == ',') ||
+	 (de[-1] == ',') ||
 	 (de[-1] == ' ') ) &&
        ( (de[strlen ("deflate")] == '\0') ||
 	 (de[strlen ("deflate")] == ',') ||

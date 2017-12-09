@@ -2557,11 +2557,9 @@ analyze_aggregations (void *cls)
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
-  ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  ac.wire_head = NULL;
-  ac.wire_tail = NULL;
-  ac.fee_head = NULL;
-  ac.fee_tail = NULL;
+  memset (&ac,
+          0,
+          sizeof (ac));
   qsx = adb->get_wire_fee_summary (adb->cls,
 				   asession,
 				   &master_pub,
