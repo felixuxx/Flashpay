@@ -1271,11 +1271,23 @@ enum TALER_ErrorCode
    */
   TALER_EC_PROPOSAL_LOOKUP_DB_ERROR = 2502,
 
-
   /**
    * The proposal being looked up is not found on this merchant.
    */
   TALER_EC_PROPOSAL_LOOKUP_NOT_FOUND = 2503,
+
+  /**
+   * The proposal had no timestamp and the backend failed to obtain the local time.
+   * Likely to be an internal error.
+   */
+  TALER_EC_PROPOSAL_NO_LOCALTIME = 2504,
+
+  /**
+   * The order provided to the backend could not be parsed, some
+   * required fields were missing or ill-formed.
+   * Returned as a bad request.
+   */
+  TALER_EC_PROPOSAL_ORDER_PARSE_ERROR = 2505,
 
   /**
    * The client specified an unknown instance for any of the /refund operations
