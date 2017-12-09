@@ -1101,6 +1101,10 @@ handle_payback_by_reserve (void *cls,
 							GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
     }
   }
+  else
+  {
+    rev_rowid = 0; /* reported elsewhere */
+  }
   if (0 == strcmp (rev, "master signature invalid"))
   {
     report (report_bad_sig_losses,
