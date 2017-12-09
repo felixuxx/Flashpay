@@ -1073,6 +1073,9 @@ handle_payback_by_reserve (void *cls,
       report_row_inconsistency ("payback",
 				rowid,
 				"denomination key not in revocation set");
+      /* FIXME: add amount involved to some loss statistic!?
+         It's kind-of not a loss (we just paid back), OTOH, it is
+         certainly irregular and involves some amount.  */
     }
     else
     {
@@ -1105,7 +1108,8 @@ handle_payback_by_reserve (void *cls,
   {
     rev_rowid = 0; /* reported elsewhere */
   }
-  if (0 == strcmp (rev, "master signature invalid"))
+  if ( (NULL != rev) &&
+       (0 == strcmp (rev, "master signature invalid")) )
   {
     report (report_bad_sig_losses,
             json_pack ("{s:s, s:I, s:o, s:o}",
