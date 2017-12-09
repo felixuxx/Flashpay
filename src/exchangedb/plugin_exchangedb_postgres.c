@@ -3203,7 +3203,7 @@ struct GetRevealContext
   /**
    * Set to an error code if we ran into trouble.
    */
-  enum TALER_ErrorCode ec;
+  enum GNUNET_DB_QueryStatus qs;
 };
 
 
@@ -3250,13 +3250,13 @@ add_revealed_coins (void *cls,
                                   i))
     {
       GNUNET_break (0);
-      grctx->ec = GNUNET_DB_STATUS_HARD_ERROR;
+      grctx->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
     if (off != i)
     {
       GNUNET_break (0);
-      grctx->ec = GNUNET_DB_STATUS_HARD_ERROR;
+      grctx->qs = GNUNET_DB_STATUS_HARD_ERROR;
       return;
     }
   }
@@ -3316,6 +3316,15 @@ postgres_get_refresh_reveal (void *cls,
     goto cleanup;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
   default: /* can have more than one result */
+    break;
+  }
+  switch (grctx.qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    goto cleanup;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT: /* should be impossible */
     break;
   }
 
