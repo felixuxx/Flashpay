@@ -46,23 +46,23 @@ run (void *cls)
       .details.history.direction = TALER_BANK_DIRECTION_BOTH,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
-    /* Move money from Exchange to Bank */
+    /* Move money from Bank to Exchange */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
       .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
       .details.admin_add_incoming.subject = "subject 1",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.credit_account_no = 1,
-      .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
+      .details.admin_add_incoming.credit_account_no = 2,
+      .details.admin_add_incoming.debit_account_no = 1, /* Ignored */
       .details.admin_add_incoming.amount = "KUDOS:5.01" },
-    /* Move money from Exchange to Bank */
+    /* Move money from Bank to Exchange */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-2",
       .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
       .details.admin_add_incoming.subject = "subject 2",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.credit_account_no = 1,
-      .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
+      .details.admin_add_incoming.credit_account_no = 2,
+      .details.admin_add_incoming.debit_account_no = 1, /* Ignored */
       .details.admin_add_incoming.amount = "KUDOS:5.01" },
     /* Ask Exchange's incoming history */
     { .oc = TBI_OC_HISTORY,
@@ -71,7 +71,7 @@ run (void *cls)
       .details.history.direction = TALER_BANK_DIRECTION_CREDIT,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
-    /* Ask Exchange's outgoing history, 5 records into the future?? */
+    /* Ask Exchange's outgoing history, 5 records into the future */
     { .oc = TBI_OC_HISTORY,
       .label = "history-2d",
       .details.history.account_number = 2,
