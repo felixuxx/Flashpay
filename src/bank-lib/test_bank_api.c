@@ -53,7 +53,7 @@ run (void *cls)
       .details.admin_add_incoming.subject = "subject 1",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 2,
-      .details.admin_add_incoming.debit_account_no = 1, /* Ignored */
+      .details.admin_add_incoming.debit_account_no = 1,
       .details.admin_add_incoming.amount = "KUDOS:5.01" },
     /* Move money from Bank to Exchange */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
@@ -62,7 +62,7 @@ run (void *cls)
       .details.admin_add_incoming.subject = "subject 2",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 2,
-      .details.admin_add_incoming.debit_account_no = 1, /* Ignored */
+      .details.admin_add_incoming.debit_account_no = 1,
       .details.admin_add_incoming.amount = "KUDOS:5.01" },
     /* Ask Exchange's incoming history */
     { .oc = TBI_OC_HISTORY,

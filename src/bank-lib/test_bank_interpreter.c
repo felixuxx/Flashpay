@@ -779,6 +779,18 @@ interpreter_run (void *cls)
       return;
     }
     GNUNET_break (NULL != cmd->details.admin_add_incoming.subject);
+    switch (cmd->details.admin_add_incoming.debit_account_no)
+    {
+    case 1:
+      auth.details.basic.username = "Bank";
+      break;
+    case 2:
+      auth.details.basic.username = "Exchange";
+      break;
+    default:
+      GNUNET_break (0);
+      break;
+    }
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (is->ctx,
                                        "http://localhost:8080",
@@ -814,6 +826,18 @@ interpreter_run (void *cls)
       rowid = ref->details.admin_add_incoming.row_id;
     else
       rowid = UINT64_MAX;
+    switch (cmd->details.history.account_number)
+    {
+    case 1:
+      auth.details.basic.username = "Bank";
+      break;
+    case 2:
+      auth.details.basic.username = "Exchange";
+      break;
+    default:
+      GNUNET_break (0);
+      break;
+    }
     cmd->details.history.hh
       = TALER_BANK_history (is->ctx,
                             "http://localhost:8080",
@@ -879,6 +903,18 @@ interpreter_run (void *cls)
                         cmd->details.reject.cmd_ref);
     GNUNET_assert (NULL != ref);
     GNUNET_assert (TBI_OC_ADMIN_ADD_INCOMING == ref->oc);
+    switch (ref->details.admin_add_incoming.debit_account_no)
+    {
+    case 1:
+      auth.details.basic.username = "Bank";
+      break;
+    case 2:
+      auth.details.basic.username = "Exchange";
+      break;
+    default:
+      GNUNET_break (0);
+      break;
+    }
     cmd->details.reject.rh
       = TALER_BANK_reject (is->ctx,
                            "http://localhost:8080",
