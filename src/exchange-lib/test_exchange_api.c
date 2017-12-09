@@ -2382,9 +2382,18 @@ interpreter_run (void *cls)
             fail (is);
             return;
           }
-          cmd->details.refresh_melt.fresh_pks[i]
-            = find_pk (is->keys,
-                       &amount);
+          if (NULL ==
+              (cmd->details.refresh_melt.fresh_pks[i]
+               = find_pk (is->keys,
+                          &amount)))
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "Failed to find denomination key for amount `%s' at %u\n",
+                        cmd->details.reserve_withdraw.amount,
+                        is->ip);
+            fail (is);
+            return;
+          }
           fresh_pks[i] = *cmd->details.refresh_melt.fresh_pks[i];
         }
         cmd->details.refresh_melt.refresh_data
