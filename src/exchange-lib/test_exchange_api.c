@@ -26,6 +26,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
+#include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 
 
@@ -38,6 +39,11 @@
  * Is the configuration file is set to include wire format 'sepa'?
  */
 #define WIRE_SEPA 1
+
+/**
+ * Account number of the exchange at the bank.
+ */
+#define EXCHANGE_ACCOUNT_NO 2
 
 /**
  * Main execution context for the main loop.
@@ -268,14 +274,31 @@ struct Command
       const char *amount;
 
       /**
-       * Sender account details (JSON).
+       * Wire transfer subject. NULL to use public key corresponding
+       * to @e reserve_priv or @e reserve_reference.  Should only be
+       * set manually to test invalid wire transfer subjects.
        */
-      const char *sender_details;
+      const char *subject;
 
       /**
-       * Transfer information identifier (JSON).
+       * Sender (debit) account number.
        */
-      const char *transfer_details;
+      uint64_t debit_account_no;
+
+      /**
+       * Receiver (credit) account number.
+       */
+      uint64_t credit_account_no;
+
+      /**
+       * Username to use for authentication.
+       */
+      const char *auth_username;
+
+      /**
+       * Password to use for authentication.
+       */
+      const char *auth_password;
 
       /**
        * Set (by the interpreter) to the reserve's private key
@@ -286,7 +309,12 @@ struct Command
       /**
        * Set to the API's handle during the operation.
        */
-      struct TALER_EXCHANGE_AdminAddIncomingHandle *aih;
+      struct TALER_BANK_AdminAddIncomingHandle *aih;
+
+      /**
+       * Set to the wire transfer's unique ID.
+       */
+      uint64_t serial_id;
 
     } admin_add_incoming;
 
@@ -844,18 +872,21 @@ next_command (struct InterpreterState *is)
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param serial_id unique ID of the wire transfer
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
 		 enum TALER_ErrorCode ec,
+                 uint64_t serial_id,
                  const json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
   cmd->details.admin_add_incoming.aih = NULL;
+  cmd->details.admin_add_incoming.serial_id = serial_id;
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_break (0);
@@ -2037,9 +2068,6 @@ interpreter_run (void *cls)
   const struct Command *ref;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount amount;
-  struct GNUNET_TIME_Absolute execution_date;
-  json_t *sender_details;
-  json_t *transfer_details;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   is->task = NULL;
@@ -2061,80 +2089,73 @@ interpreter_run (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   case OC_ADMIN_ADD_INCOMING:
-    if (NULL !=
-        cmd->details.admin_add_incoming.reserve_reference)
     {
-      ref = find_command (is,
-                          cmd->details.admin_add_incoming.reserve_reference);
-      GNUNET_assert (NULL != ref);
-      GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
-      cmd->details.admin_add_incoming.reserve_priv
-        = ref->details.admin_add_incoming.reserve_priv;
-    }
-    else
-    {
-      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+      char *subject;
+      struct TALER_BANK_AuthenticationData auth;
 
-      priv = GNUNET_CRYPTO_eddsa_key_create ();
-      cmd->details.admin_add_incoming.reserve_priv.eddsa_priv = *priv;
-      GNUNET_free (priv);
-    }
-    GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.admin_add_incoming.reserve_priv.eddsa_priv,
-                                        &reserve_pub.eddsa_pub);
-    if (GNUNET_OK !=
-        TALER_string_to_amount (cmd->details.admin_add_incoming.amount,
-                                &amount))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to parse amount `%s' at %u\n",
-                  cmd->details.admin_add_incoming.amount,
-                  is->ip);
-      fail (is);
-      return;
-    }
-    sender_details = json_loads (cmd->details.admin_add_incoming.sender_details,
-                                 JSON_REJECT_DUPLICATES,
-                                 NULL);
-    if (NULL == sender_details)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to parse sender details `%s' at %u\n",
-                  cmd->details.admin_add_incoming.sender_details,
-                  is->ip);
-      fail (is);
-      return;
-    }
-    transfer_details = json_loads (cmd->details.admin_add_incoming.transfer_details,
-                                   JSON_REJECT_DUPLICATES,
-                                   NULL);
-    if (NULL == transfer_details)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to parse transfer details `%s' at %u\n",
-                  cmd->details.admin_add_incoming.transfer_details,
-                  is->ip);
-      fail (is);
-      return;
-    }
-    execution_date = GNUNET_TIME_absolute_get ();
-    GNUNET_TIME_round_abs (&execution_date);
-    cmd->details.admin_add_incoming.aih
-      = TALER_EXCHANGE_admin_add_incoming (exchange,
-                                           "http://localhost:18080/",
-                                           &reserve_pub,
-                                           &amount,
-                                           execution_date,
-                                           sender_details,
-                                           transfer_details,
-                                           &add_incoming_cb,
-                                           is);
-    json_decref (sender_details);
-    json_decref (transfer_details);
-    if (NULL == cmd->details.admin_add_incoming.aih)
-    {
-      GNUNET_break (0);
-      fail (is);
-      return;
+      if (NULL !=
+          cmd->details.admin_add_incoming.subject)
+      {
+        subject = GNUNET_strdup (cmd->details.admin_add_incoming.subject);
+      }
+      else
+      {
+        /* Use reserve public key as subject */
+        if (NULL !=
+            cmd->details.admin_add_incoming.reserve_reference)
+        {
+          ref = find_command (is,
+                              cmd->details.admin_add_incoming.reserve_reference);
+          GNUNET_assert (NULL != ref);
+          GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
+          cmd->details.admin_add_incoming.reserve_priv
+            = ref->details.admin_add_incoming.reserve_priv;
+        }
+        else
+        {
+          struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+
+          priv = GNUNET_CRYPTO_eddsa_key_create ();
+          cmd->details.admin_add_incoming.reserve_priv.eddsa_priv = *priv;
+          GNUNET_free (priv);
+        }
+        GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.admin_add_incoming.reserve_priv.eddsa_priv,
+                                            &reserve_pub.eddsa_pub);
+        subject = GNUNET_STRINGS_data_to_string_alloc (&reserve_pub,
+                                                       sizeof (reserve_pub));
+      }
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.admin_add_incoming.amount,
+                                  &amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse amount `%s' at %u\n",
+                    cmd->details.admin_add_incoming.amount,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      auth.method = TALER_BANK_AUTH_BASIC;
+      auth.details.basic.username = (char *) cmd->details.admin_add_incoming.auth_username;
+      auth.details.basic.password = (char *) cmd->details.admin_add_incoming.auth_password;
+      cmd->details.admin_add_incoming.aih
+        = TALER_BANK_admin_add_incoming (ctx,
+                                         "http://localhost:8082/", /* bank URL */
+                                         &auth,
+                                         "https://exchange.com/", /* exchange URL */
+                                         subject,
+                                         &amount,
+                                         cmd->details.admin_add_incoming.debit_account_no,
+                                         cmd->details.admin_add_incoming.credit_account_no,
+                                         &add_incoming_cb,
+                                         is);
+      GNUNET_free (subject);
+      if (NULL == cmd->details.admin_add_incoming.aih)
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
     }
     return;
   case OC_WITHDRAW_STATUS:
@@ -2869,7 +2890,7 @@ do_shutdown (void *cls)
                     "Command %u (%s) did not complete\n",
                     i,
                     cmd->label);
-        TALER_EXCHANGE_admin_add_incoming_cancel (cmd->details.admin_add_incoming.aih);
+        TALER_BANK_admin_add_incoming_cancel (cmd->details.admin_add_incoming.aih);
         cmd->details.admin_add_incoming.aih = NULL;
       }
       break;
@@ -3007,6 +3028,22 @@ do_shutdown (void *cls)
       {
         GNUNET_SCHEDULER_cancel (cmd->details.run_aggregator.child_death_task);
         cmd->details.run_aggregator.child_death_task = NULL;
+      }
+      break;
+    case OC_RUN_WIREWATCH:
+      if (NULL != cmd->details.run_wirewatch.wirewatch_proc)
+      {
+        GNUNET_break (0 ==
+                      GNUNET_OS_process_kill (cmd->details.run_wirewatch.wirewatch_proc,
+                                              SIGKILL));
+        GNUNET_OS_process_wait (cmd->details.run_wirewatch.wirewatch_proc);
+        GNUNET_OS_process_destroy (cmd->details.run_wirewatch.wirewatch_proc);
+        cmd->details.run_wirewatch.wirewatch_proc = NULL;
+      }
+      if (NULL != cmd->details.run_wirewatch.child_death_task)
+      {
+        GNUNET_SCHEDULER_cancel (cmd->details.run_wirewatch.child_death_task);
+        cmd->details.run_wirewatch.child_death_task = NULL;
       }
       break;
     case OC_CHECK_BANK_TRANSFER:
@@ -3190,9 +3227,14 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
-      .details.admin_add_incoming.transfer_details = "{ \"uuid\":1  }",
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
       .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-1" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-1",
@@ -3255,9 +3297,14 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "refresh-create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":424  }",
-      .details.admin_add_incoming.transfer_details = "{ \"uuid\":2  }",
+      .details.admin_add_incoming.debit_account_no = 424,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user424",
+      .details.admin_add_incoming.auth_password = "pass424",
       .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-2" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "refresh-withdraw-coin-1",
@@ -3395,10 +3442,23 @@ run (void *cls)
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 43
     },
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-aai-1",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:5.01",
+      .details.check_bank_transfer.account_debit = 42,
+      .details.check_bank_transfer.account_credit = 2
+    },
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-aai-2",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:5.01",
+      .details.check_bank_transfer.account_debit = 424,
+      .details.check_bank_transfer.account_credit = 2
+    },
 
     { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
       .label = "check_bank_empty" },
-
     { .oc = OC_DEPOSIT_WTID,
       .label = "deposit-wtid-ok",
       .expected_response_code = MHD_HTTP_OK,
@@ -3428,9 +3488,14 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-r1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42 }",
-      .details.admin_add_incoming.transfer_details = "{ \"uuid\":3  }",
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
       .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-3" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-r1",
@@ -3451,6 +3516,13 @@ run (void *cls)
     /* Run transfers. Should do nothing as refund deadline blocks it */
     { .oc = OC_RUN_AGGREGATOR,
       .label = "run-aggregator-refund" },
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-aai-3",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:5.01",
+      .details.check_bank_transfer.account_debit = 42,
+      .details.check_bank_transfer.account_credit = 2
+    },
     /* check that aggregator didn't do anything, as expected */
     { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
       .label = "check-refund-not-run" },
@@ -3501,9 +3573,14 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "payback-create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
-      .details.admin_add_incoming.transfer_details = "{ \"uuid\":4  }",
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
       .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-4" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "payback-withdraw-coin-1",
@@ -3535,9 +3612,14 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "payback-create-reserve-2",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
-      .details.admin_add_incoming.transfer_details = "{ \"uuid\":5  }",
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
       .details.admin_add_incoming.amount = "EUR:2.02" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-5" },
     /* Withdraw a 1 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "payback-withdraw-coin-2a",
@@ -3596,14 +3678,61 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "payback-create-reserve-3",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
-      .details.admin_add_incoming.transfer_details = "{ \"uuid\":6  }",
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
       .details.admin_add_incoming.amount = "EUR:1.01" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-6" },
     { .oc = OC_WITHDRAW_SIGN,
       .label = "payback-withdraw-coin-3-revoked",
       .expected_response_code = MHD_HTTP_NOT_FOUND,
       .details.reserve_withdraw.reserve_reference = "payback-create-reserve-3",
       .details.reserve_withdraw.amount = "EUR:1" },
+
+    /* check that we are empty before the rejection test */
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-pr1",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:5.01",
+      .details.check_bank_transfer.account_debit = 42,
+      .details.check_bank_transfer.account_credit = 2
+    },
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-pr2",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:2.02",
+      .details.check_bank_transfer.account_debit = 42,
+      .details.check_bank_transfer.account_credit = 2
+    },
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-pr3",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:1.01",
+      .details.check_bank_transfer.account_debit = 42,
+      .details.check_bank_transfer.account_credit = 2
+    },
+
+    { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
+      .label = "check-empty-again" },
+
+    /* Test rejection of bogus wire transfers */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "bogus-subject",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.subject = "not a reserve public key",
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
+      .details.admin_add_incoming.amount = "EUR:1.01" },
+    /* Run wirewatch to observe rejection */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-7" },
+    { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
+      .label = "check-empty-from-reject" },
 
 
     /* ************** End of payback API testing************* */

@@ -86,6 +86,13 @@ struct Transaction
    * Flag set if the transfer was rejected.
    */
   int rejected;
+
+  /**
+   * Has this transaction been subjected to #TALER_FAKEBANK_check()
+   * and should thus no longer be counted in
+   * #TALER_FAKEBANK_check_empty()?
+   */
+  int checked;
 };
 
 
@@ -150,15 +157,12 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
          (want_credit == t->credit_account) &&
          (0 == TALER_amount_cmp (want_amount,
                                  &t->amount)) &&
+         (GNUNET_NO == t->checked) &&
          (0 == strcasecmp (exchange_base_url,
                            t->exchange_base_url)) )
     {
-      GNUNET_CONTAINER_DLL_remove (h->transactions_head,
-                                   h->transactions_tail,
-                                   t);
-      *subject = t->subject;
-      GNUNET_free (t->exchange_base_url);
-      GNUNET_free (t);
+      *subject = GNUNET_strdup (t->subject);
+      t->checked = GNUNET_YES;
       return GNUNET_OK;
     }
   }
@@ -168,6 +172,8 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
   {
     char *s;
 
+    if (GNUNET_YES == t->checked)
+      continue;
     s = TALER_amount_to_string (&t->amount);
     fprintf (stderr,
              "%llu -> %llu (%s) from %s\n",
@@ -262,23 +268,35 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 {
   struct Transaction *t;
 
-  if (NULL == h->transactions_head)
+  t = h->transactions_head;
+  while (NULL != t)
+  {
+    if ( (GNUNET_YES != t->checked) &&
+         (GNUNET_YES != t->rejected) )
+      break;
+    t = t->next;
+  }
+  if (NULL == t)
     return GNUNET_OK;
-
   fprintf (stderr,
            "Expected empty transaction set, but I have:\n");
-  for (t = h->transactions_head; NULL != t; t = t->next)
+  while (NULL != t)
   {
-    char *s;
+    if ( (GNUNET_YES != t->checked) &&
+         (GNUNET_YES != t->rejected) )
+    {
+      char *s;
 
-    s = TALER_amount_to_string (&t->amount);
-    fprintf (stderr,
-             "%llu -> %llu (%s) from %s\n",
-             (unsigned long long) t->debit_account,
-             (unsigned long long) t->credit_account,
-             s,
-             t->exchange_base_url);
-    GNUNET_free (s);
+      s = TALER_amount_to_string (&t->amount);
+      fprintf (stderr,
+               "%llu -> %llu (%s) from %s\n",
+               (unsigned long long) t->debit_account,
+               (unsigned long long) t->credit_account,
+               s,
+               t->exchange_base_url);
+      GNUNET_free (s);
+    }
+    t = t->next;
   }
   return GNUNET_SYSERR;
 }
@@ -748,7 +766,9 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
         break;
     if (NULL == pos)
     {
-      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid range specified, transaction %llu not known!\n",
+                  (unsigned long long) start_number);
       return MHD_NO;
     }
     /* range is exclusive, skip the matching entry */

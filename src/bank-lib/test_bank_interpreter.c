@@ -159,35 +159,6 @@ test_cancelled (struct InterpreterState *is,
 
 
 /**
- * Test if the /admin/add/incoming transaction at offset @a off
- * has been #TBI_OC_EXPECT_TRANSFER treated, and thus been
- * forgotten by the fakebank.
- *
- * @param is interpreter state (where we are right now)
- * @param off offset of the command to test for rejection
- * @return #GNUNET_YES if the command at @a off was cancelled
- */
-static int
-test_deleted_by_expected (struct InterpreterState *is,
-                          unsigned int off)
-{
-  const struct TBI_Command *cmd = &is->commands[off];
-
-  for (unsigned int i=0;i<is->ip;i++)
-  {
-    const struct TBI_Command *c = &is->commands[i];
-
-    if (TBI_OC_EXPECT_TRANSFER != c->oc)
-      continue;
-    if (0 == strcmp (c->details.expect_transfer.cmd_ref,
-                     cmd->label))
-      return GNUNET_YES;
-  }
-  return GNUNET_NO;
-}
-
-
-/**
  * Item in the transaction history, as reconstructed from the
  * command history.
  */
@@ -286,10 +257,6 @@ build_history (struct InterpreterState *is,
       continue; /* skip until we find the marker */
     if (total >= cmd->details.history.num_results * inc)
       break; /* hit limit specified by command */
-    if (GNUNET_YES ==
-        test_deleted_by_expected (is,
-                                  off))
-      continue;
     cancelled = test_cancelled (is,
                                 off);
     if ( (GNUNET_YES == cancelled) &&
@@ -335,11 +302,6 @@ build_history (struct InterpreterState *is,
       continue; /* skip until we find the marker */
     if (total >= cmd->details.history.num_results * inc)
       break; /* hit limit specified by command */
-    if (GNUNET_YES ==
-        test_deleted_by_expected (is,
-                                  off))
-      continue;
-
     if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.credit_account_no)) &&
@@ -786,6 +748,10 @@ interpreter_run (void *cls)
       break;
     case 2:
       auth.details.basic.username = "Exchange";
+      break;
+    case 3:
+      auth.details.basic.username = "user3";
+      auth.details.basic.password = "pass3";
       break;
     default:
       GNUNET_break (0);
