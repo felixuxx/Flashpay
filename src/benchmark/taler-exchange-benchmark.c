@@ -26,6 +26,8 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
+#include "taler_bank_service.h"
+#include "taler_fakebank_lib.h"
 #include <microhttpd.h>
 #include <jansson.h>
 
@@ -118,7 +120,7 @@ struct Reserve
   /**
    * Set to the API's handle during the operation.
    */
-  struct TALER_EXCHANGE_AdminAddIncomingHandle *aih;
+  struct TALER_BANK_AdminAddIncomingHandle *aih;
 
   /**
    * How much is left in this reserve.
@@ -231,6 +233,11 @@ struct Coin
 
 };
 
+
+/**
+ * Handle to our fakebank.
+ */
+static struct TALER_FAKEBANK_Handle *fakebank;
 
 /**
  * DLL of reserves to fill.
@@ -358,11 +365,6 @@ static struct Reserve *reserves;
 static struct Coin *coins;
 
 /**
- * Transfer UUID counter, used in /admin/add/incoming
- */
-static unsigned int transfer_uuid;
-
-/**
  * This key (usually provided by merchants) is needed when depositing coins,
  * even though there is no merchant acting in the benchmark
  */
@@ -420,6 +422,16 @@ static unsigned long long num_refresh;
  * Number of /admin operations we have executed since #start_time.
  */
 static unsigned long long num_admin;
+
+/**
+ * Process for the wirewatcher.
+ */
+static struct GNUNET_OS_Process *wirewatch_proc;
+
+/**
+ * ID of task called whenever we get a SIGCHILD.
+ */
+static struct GNUNET_SCHEDULER_Task *child_death_task;
 
 
 /**
@@ -1024,6 +1036,52 @@ withdraw_coin (struct Coin *coin)
 
 
 /**
+ * Pipe used to communicate child death via signal.
+ */
+static struct GNUNET_DISK_PipeHandle *sigpipe;
+
+
+/**
+ * Signal handler called for SIGCHLD.  Triggers the
+ * respective handler by writing to the trigger pipe.
+ */
+static void
+sighandler_child_death ()
+{
+  static char c;
+  int old_errno = errno;	/* back-up errno */
+
+  GNUNET_break (1 ==
+		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
+					(sigpipe, GNUNET_DISK_PIPE_END_WRITE),
+					&c, sizeof (c)));
+  errno = old_errno;		/* restore errno */
+}
+
+
+/**
+ * Task triggered whenever we receive a SIGCHLD (child
+ * process died).
+ *
+ * @param cls closure, NULL if we need to self-restart
+ */
+static void
+maint_wirewatch_death (void *cls)
+{
+  const struct GNUNET_DISK_FileHandle *pr;
+  char c[16];
+
+  child_death_task = NULL;
+  pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+  GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
+  GNUNET_OS_process_wait (wirewatch_proc);
+  GNUNET_OS_process_destroy (wirewatch_proc);
+  wirewatch_proc = NULL;
+  continue_master_task ();
+}
+
+
+/**
  * Function called upon completion of our /admin/add/incoming request.
  * Its duty is withdrawing coins on the freshly created reserve.
  *
@@ -1031,12 +1089,14 @@ withdraw_coin (struct Coin *coin)
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param rowid unique wire transfer identifier of the bank
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
 		 enum TALER_ErrorCode ec,
+                 uint64_t rowid,
                  const json_t *full_response)
 {
   struct Reserve *r = cls;
@@ -1054,6 +1114,34 @@ add_incoming_cb (void *cls,
   GNUNET_CONTAINER_DLL_remove (empty_reserve_head,
 			       empty_reserve_tail,
 			       r);
+  if (NULL == empty_reserve_head)
+  {
+    const struct GNUNET_DISK_FileHandle *pr;
+
+    wirewatch_proc
+      = GNUNET_OS_start_process (GNUNET_NO,
+                                 GNUNET_OS_INHERIT_STD_ALL,
+                                 NULL, NULL, NULL,
+                                 "taler-exchange-wirewatch",
+                                 "taler-exchange-wirewatch",
+                                 "-c", config_file,
+                                 "-t", "test", /* use Taler's bank/fakebank */
+                                 "-T", /* exit when done */
+                                 NULL);
+    if (NULL == wirewatch_proc)
+    {
+      GNUNET_break (0);
+      fail ("could not start wirewatch process");
+      return;
+    }
+    pr = GNUNET_DISK_pipe_handle (sigpipe,
+                                  GNUNET_DISK_PIPE_END_READ);
+    child_death_task
+      = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
+                                        pr,
+                                        &maint_wirewatch_death, NULL);
+    return;
+  }
   continue_master_task ();
 }
 
@@ -1070,7 +1158,8 @@ fill_reserve (struct Reserve *r)
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_Amount reserve_amount;
-  json_t *transfer_details;
+  char *subject;
+  struct TALER_BANK_AuthenticationData auth;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
@@ -1082,25 +1171,28 @@ fill_reserve (struct Reserve *r)
   priv = GNUNET_CRYPTO_eddsa_key_create ();
   r->reserve_priv.eddsa_priv = *priv;
   GNUNET_free (priv);
-  transfer_details = json_pack ("{s:I}",
-				"uuid", (json_int_t) transfer_uuid++);
-  GNUNET_assert (NULL != transfer_details);
   GNUNET_CRYPTO_eddsa_key_get_public (&r->reserve_priv.eddsa_priv,
 				      &reserve_pub.eddsa_pub);
   r->left = reserve_amount;
   if (warm >= WARM_THRESHOLD)
     num_admin++;
-  r->aih = TALER_EXCHANGE_admin_add_incoming (exchange,
-					      exchange_admin_uri,
-					      &reserve_pub,
-					      &reserve_amount,
-					      execution_date,
-					      bank_details,
-					      transfer_details,
-					      &add_incoming_cb,
-					      r);
+  auth.method = TALER_BANK_AUTH_BASIC;
+  auth.details.basic.username = "Admin";
+  auth.details.basic.password = "x";
+  subject = GNUNET_STRINGS_data_to_string_alloc (&reserve_pub,
+                                                 sizeof (reserve_pub));
+  r->aih = TALER_BANK_admin_add_incoming (ctx,
+                                          "http://localhost:8082/",
+                                          &auth,
+                                          "https://exchange/",
+                                          subject,
+                                          &reserve_amount,
+                                          1, /* origin */
+                                          2, /* exchange account */
+                                          &add_incoming_cb,
+                                          r);
   GNUNET_assert (NULL != r->aih);
-  json_decref (transfer_details);
+  GNUNET_free (subject);
 }
 
 
@@ -1112,7 +1204,6 @@ fill_reserve (struct Reserve *r)
 static void
 benchmark_run (void *cls)
 {
-  unsigned int i;
   int refresh;
   struct Coin *coin;
 
@@ -1162,7 +1253,7 @@ benchmark_run (void *cls)
   }
 
   /* By default, pick a random valid coin to spend */
-  for (i=0;i<1000;i++)
+  for (unsigned int i=0;i<1000;i++)
   {
     coin = &coins[GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
 					    ncoins)];
@@ -1311,7 +1402,7 @@ do_shutdown (void *cls)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Cancelling %d-th reserve\n",
                   i);
-      TALER_EXCHANGE_admin_add_incoming_cancel(reserves[i].aih);
+      TALER_BANK_admin_add_incoming_cancel(reserves[i].aih);
       reserves[i].aih = NULL;
     }
   }
@@ -1366,6 +1457,11 @@ do_shutdown (void *cls)
       GNUNET_free (coin->denoms);
       coin->denoms = NULL;
     }
+  }
+  if (NULL != fakebank)
+  {
+    TALER_FAKEBANK_stop (fakebank);
+    fakebank = NULL;
   }
   if (NULL != bank_details)
   {
@@ -1543,6 +1639,7 @@ run (void *cls)
   GNUNET_assert (NULL != ctx);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   GNUNET_assert (NULL != rc);
+  fakebank = TALER_FAKEBANK_start (8082);
   exchange = TALER_EXCHANGE_connect (ctx,
                                      exchange_uri,
                                      &cert_cb, NULL,
@@ -1561,10 +1658,11 @@ main (int argc,
 {
   struct GNUNET_OS_Process *proc;
   unsigned int cnt;
+  struct GNUNET_SIGNAL_Context *shc_chld;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('a',
                                "automate",
-                               "Initialize and start the bank and exchange",
+                               "Initialize and start the exchange",
                                &run_exchange),
     GNUNET_GETOPT_option_mandatory
     (GNUNET_GETOPT_option_cfgfile (&config_file)),
@@ -1697,8 +1795,15 @@ main (int argc,
     GNUNET_free (wget);
     fprintf (stderr, "\n");
   }
+  sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO, GNUNET_NO, GNUNET_NO);
+  GNUNET_assert (NULL != sigpipe);
+  shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
+                                            &sighandler_child_death);
   GNUNET_SCHEDULER_run (&run,
                         NULL);
+  GNUNET_SIGNAL_handler_uninstall (shc_chld);
+  shc_chld = NULL;
+  GNUNET_DISK_pipe_close (sigpipe);
   if (run_exchange)
   {
     GNUNET_OS_process_kill (exchanged,
