@@ -117,6 +117,11 @@ static int delay;
 static int test_mode;
 
 /**
+ * Are we running from scratch and should re-process all transactions?
+ */
+static int reset_mode;
+
+/**
  * Next task to run, if any.
  */
 static struct GNUNET_SCHEDULER_Task *task;
@@ -443,26 +448,29 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
-						   session,
-						   &start_off,
-						   &start_off_size);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  if (! reset_mode)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to obtain starting point for montoring from database!\n");
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-  {
-    /* try again */
-    db_plugin->rollback (db_plugin->cls,
-                         session);
-    task = GNUNET_SCHEDULER_add_now (&find_transfers,
-				     NULL);
-    return;
+    qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
+                                                     session,
+                                                     &start_off,
+                                                     &start_off_size);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to obtain starting point for montoring from database!\n");
+      global_ret = GNUNET_SYSERR;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    {
+      /* try again */
+      db_plugin->rollback (db_plugin->cls,
+                           session);
+      task = GNUNET_SCHEDULER_add_now (&find_transfers,
+                                       NULL);
+      return;
+    }
   }
   delay = GNUNET_YES;
   hh = wire_plugin->get_history (wire_plugin->cls,
@@ -535,6 +543,10 @@ main (int argc,
 			       "test",
 			       "run in test mode and exit when idle",
 			       &test_mode),
+    GNUNET_GETOPT_option_flag ('r',
+			       "reset",
+			       "start fresh with all transactions in the history",
+			       &reset_mode),
     GNUNET_GETOPT_OPTION_END
   };
 
