@@ -170,19 +170,21 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
            "Did not find matching transaction!\nI have:\n");
   for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
   {
-    char *s;
-
     if (GNUNET_YES == t->checked)
       continue;
-    s = TALER_amount_to_string (&t->amount);
     fprintf (stderr,
              "%llu -> %llu (%s) from %s\n",
              (unsigned long long) t->debit_account,
              (unsigned long long) t->credit_account,
-             s,
+             TALER_amount2s (&t->amount),
              t->exchange_base_url);
-    GNUNET_free (s);
   }
+  fprintf (stderr,
+           "I wanted:\n%llu -> %llu (%s) from %s\n",
+           (unsigned long long) want_debit,
+           (unsigned long long) want_credit,
+           TALER_amount2s (want_amount),
+           exchange_base_url);
   return GNUNET_SYSERR;
 }
 
@@ -828,9 +830,10 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                                                      ? pos->credit_account
                                                      : pos->debit_account),
                        "wt_subject", subject);
+    GNUNET_assert (NULL != trans);
     GNUNET_free (subject);
-    json_array_append (history,
-                       trans);
+    GNUNET_assert (0 == json_array_append (history,
+                                           trans));
     if (count > 0)
     {
       pos = pos->next;
@@ -860,7 +863,8 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   }
 
   jresponse = json_pack ("{s:o}",
-                         "data", history);
+                         "data",
+                         history);
   if (NULL == jresponse)
   {
     GNUNET_break (0);
