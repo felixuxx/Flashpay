@@ -142,6 +142,11 @@ enum OpCode
   OC_RUN_AGGREGATOR,
 
   /**
+   * Run the wirewatcher to check for incoming transactions.
+   */
+  OC_RUN_WIREWATCH,
+
+  /**
    * Check that the fakebank has received a certain transaction.
    */
   OC_CHECK_BANK_TRANSFER,
@@ -611,6 +616,20 @@ struct Command
     struct {
 
       /**
+       * Process for the wirewatcher.
+       */
+      struct GNUNET_OS_Process *wirewatch_proc;
+
+      /**
+       * ID of task called whenever we get a SIGCHILD.
+       */
+      struct GNUNET_SCHEDULER_Task *child_death_task;
+
+    } run_wirewatch;
+
+    struct {
+
+      /**
        * Which amount do we expect to see transferred?
        */
       const char *amount;
@@ -677,7 +696,7 @@ struct Command
       const char *ref;
 
       /**
-       * Process for the aggregator.
+       * Process for the revocation process.
        */
       struct GNUNET_OS_Process *revoke_proc;
 
@@ -1405,6 +1424,14 @@ maint_child_death (void *cls)
     GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
     GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
     cmd->details.run_aggregator.aggregator_proc = NULL;
+    break;
+  case OC_RUN_WIREWATCH:
+    cmd->details.run_wirewatch.child_death_task = NULL;
+    pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+    GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
+    GNUNET_OS_process_wait (cmd->details.run_wirewatch.wirewatch_proc);
+    GNUNET_OS_process_destroy (cmd->details.run_wirewatch.wirewatch_proc);
+    cmd->details.run_wirewatch.wirewatch_proc = NULL;
     break;
   case OC_REVOKE:
     cmd->details.revoke.child_death_task = NULL;
@@ -2574,8 +2601,37 @@ interpreter_run (void *cls)
         fail (is);
         return;
       }
-      pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+      pr = GNUNET_DISK_pipe_handle (sigpipe,
+                                    GNUNET_DISK_PIPE_END_READ);
       cmd->details.run_aggregator.child_death_task
+        = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
+                                          pr,
+                                          &maint_child_death, is);
+      return;
+    }
+  case OC_RUN_WIREWATCH:
+    {
+      const struct GNUNET_DISK_FileHandle *pr;
+
+      cmd->details.run_wirewatch.wirewatch_proc
+        = GNUNET_OS_start_process (GNUNET_NO,
+                                   GNUNET_OS_INHERIT_STD_ALL,
+                                   NULL, NULL, NULL,
+                                   "taler-exchange-wirewatch",
+                                   "taler-exchange-wirewatch",
+                                   "-c", "test_exchange_api.conf",
+                                   "-t", "test", /* use Taler's bank/fakebank */
+                                   "-T", /* exit when done */
+                                   NULL);
+      if (NULL == cmd->details.run_wirewatch.wirewatch_proc)
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      pr = GNUNET_DISK_pipe_handle (sigpipe,
+                                    GNUNET_DISK_PIPE_END_READ);
+      cmd->details.run_wirewatch.child_death_task
         = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
                                           pr,
                                           &maint_child_death, is);
