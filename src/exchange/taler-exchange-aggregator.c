@@ -624,8 +624,10 @@ deposit_cb (void *cls,
                               &au->wtid,
                               sizeof (au->wtid));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting aggregation under H(WTID)=%s\n",
-              TALER_B2S (&au->wtid));
+              "Starting aggregation under H(WTID)=%s, starting amount %s at %llu\n",
+              TALER_B2S (&au->wtid),
+              TALER_amount2s (amount_with_fee),
+              (unsigned long long) row_id);
 
   au->wp = find_plugin (extract_type (au->wire));
   if (NULL == au->wp)
@@ -759,8 +761,9 @@ aggregate_cb (void *cls,
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-	      "Added row %llu to aggregation\n",
-	      (unsigned long long) row_id);
+	      "Added row %llu with %s to aggregation\n",
+	      (unsigned long long) row_id,
+              TALER_amount2s (&delta));
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
