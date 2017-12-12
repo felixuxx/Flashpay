@@ -1061,7 +1061,7 @@ TALER_FAKEBANK_start (uint16_t port)
   struct TALER_FAKEBANK_Handle *h;
 
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
-  h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG,
+  h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG | MHD_USE_DUAL_STACK,
                                   port,
                                   NULL, NULL,
                                   &handle_mhd_request, h,
