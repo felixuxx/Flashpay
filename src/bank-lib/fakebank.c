@@ -588,7 +588,7 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
     uint64_t credit_account;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_uint64 ("row_id", &row_id),
-      GNUNET_JSON_spec_uint64 ("credit_account", &credit_account),
+      GNUNET_JSON_spec_uint64 ("account_number", &credit_account),
       GNUNET_JSON_spec_end ()
     };
     if (GNUNET_OK !=

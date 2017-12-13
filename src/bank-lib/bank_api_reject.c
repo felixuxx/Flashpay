@@ -167,7 +167,7 @@ TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
   reject_obj = json_pack ("{s:{s:s}, s:I, s:I}",
                           "auth", "type", "basic",
                           "row_id", (json_int_t) rowid,
-                          "credit_account", (json_int_t) account_number);
+                          "account_number", (json_int_t) account_number);
   if (NULL == reject_obj)
   {
     GNUNET_break (0);
