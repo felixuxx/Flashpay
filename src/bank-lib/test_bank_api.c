@@ -91,7 +91,6 @@ run (void *cls)
       .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
       .details.history.start_row_ref = "deposit-1",
       .details.history.num_results = 5 },
-    /* FIXME(bug #5200): re-enable once implemented in bank
     { .oc = TBI_OC_REJECT,
       .label = "reject-1",
       .details.reject.cmd_ref = "deposit-1" },
@@ -113,7 +112,6 @@ run (void *cls)
       .details.history.direction = TALER_BANK_DIRECTION_BOTH | TALER_BANK_DIRECTION_CANCEL,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
-    */
     { .oc = TBI_OC_END }
   };
 
