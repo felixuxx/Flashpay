@@ -869,7 +869,7 @@ interpreter_run (void *cls)
                         cmd->details.reject.cmd_ref);
     GNUNET_assert (NULL != ref);
     GNUNET_assert (TBI_OC_ADMIN_ADD_INCOMING == ref->oc);
-    switch (ref->details.admin_add_incoming.debit_account_no)
+    switch (ref->details.admin_add_incoming.credit_account_no)
     {
     case 1:
       auth.details.basic.username = "Bank";
