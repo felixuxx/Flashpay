@@ -242,7 +242,7 @@ main (int argc, char *const *argv)
                                   "pass",
                                   "PASSPHRASE",
                                   "passphrase to use for authentication",
-                                  &subject)),
+                                  &password)),
     GNUNET_GETOPT_OPTION_END
   };
 
