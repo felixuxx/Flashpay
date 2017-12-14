@@ -316,7 +316,7 @@ history_cb (void *cls,
                   "Error fetching history: %u!\n",
                   (unsigned int) ec);
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "End of list. Committing progress!\n");
     qs = db_plugin->commit (db_plugin->cls,
 			    session);
@@ -427,7 +427,7 @@ find_transfers (void *cls)
   enum GNUNET_DB_QueryStatus qs;
 
   task = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for incoming wire transfers\n");
 
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
