@@ -50,7 +50,6 @@ src/exchange-tools/taler-auditor-sign
 src/exchange-tools/taler-exchange-dbinit
 src/exchange-tools/taler-exchange-keycheck
 src/exchange-tools/taler-exchange-keyup
-src/exchange-tools/taler-exchange-reservemod
 src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
 src/benchmark/taler-exchange-benchmark
@@ -92,3 +91,4 @@ contrib/auditor-report.aux
 contrib/auditor-report.log
 contrib/auditor-report.tex
 contrib/auditor-report.pdf
+src/bank-lib/taler-bank-transfer

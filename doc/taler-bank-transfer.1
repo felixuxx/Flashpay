@@ -1,0 +1,50 @@
+.TH TALER\-BANK\-TRANSFER 1 "Dec 14, 2017" "GNU Taler"
+
+.SH NAME
+taler\-bank\-transfer \- Trigger a transfer at the bank
+
+.SH SYNOPSIS
+.B taler\-bank\-transfer
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-bank\-transfer\fP is a command line tool to trigger bank transfers.
+
+.SH OPTIONS
+.B
+.IP "\-a VALUE,  \-\-amount=VALUE"
+Amount to transfer.  Given in the Taler\-typical format of CURRENCY:VALUE.FRACTION
+.B
+.IP "\-b URL,  \-\-bank=URL"
+URL at which the bank is operation.
+.B
+.IP "\-c FILENAME,  \-\-config=FILENAME"
+Use the given configuration file.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-D ACCOUNT,  \-\-debit=ACCOUNT"
+The money should be debited from ACCOUNT.  Specifies the number of the account.
+.B
+.IP "\-C ACCOUNT,  \-\-credit=ACCOUNT"
+The money should be credited to ACCOUNT.  Specifies the number of the account.
+.B
+.IP "\-s STRING,  \-\-subject=STRING"
+Use STRING for the wire transfer subject.
+.B
+.IP "\-u USERNAME,  \-\-user=USERNAME"
+Specifies the username for authentication.
+.B
+.IP "\-p PASSPHRASE,  \-\-pass=PASSPHRASE"
+Specifies the pass phrase for authentication.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-bank\-manage\fP(1), \fBtaler.conf\fP(5)

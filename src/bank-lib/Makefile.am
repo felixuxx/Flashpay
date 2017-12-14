@@ -6,6 +6,19 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+bin_PROGRAMS = \
+  taler-bank-transfer
+
+taler_bank_transfer_SOURCES = \
+  taler-bank-transfer.c
+taler_bank_transfer_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  libtalerbank.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson $(XLIB)
+
 lib_LTLIBRARIES = \
   libtalerbank.la \
   libtalerfakebank.la

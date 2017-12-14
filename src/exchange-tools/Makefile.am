@@ -15,7 +15,6 @@ endif
 bin_PROGRAMS = \
   taler-exchange-keyup \
   taler-exchange-keycheck \
-  taler-exchange-reservemod \
   taler-exchange-wire \
   taler-exchange-dbinit
 
@@ -50,23 +49,6 @@ taler_exchange_keycheck_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil  $(XLIB)
 taler_exchange_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
-
-taler_exchange_reservemod_SOURCES = \
-  taler-exchange-reservemod.c
-taler_exchange_reservemod_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetjson \
-  -lgnunetutil \
-  -ljansson $(XLIB)
-taler_exchange_reservemod_LDFLAGS = \
-  $(POSTGRESQL_LDFLAGS)
-taler_exchange_reservemod_CPPFLAGS = \
-  -I$(top_srcdir)/src/include \
-  -I$(top_srcdir)/src/pq/ \
-  $(POSTGRESQL_CPPFLAGS)
 
 taler_exchange_dbinit_SOURCES = \
   taler-exchange-dbinit.c

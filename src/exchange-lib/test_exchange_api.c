@@ -2870,13 +2870,12 @@ do_shutdown (void *cls)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd;
-  unsigned int i;
 
   fprintf (stderr,
            "Executing shutdown at `%s'\n",
            is->commands[is->ip].label);
 
-  for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
+  for (unsigned int i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
   {
     switch (cmd->oc)
     {
