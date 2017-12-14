@@ -1516,6 +1516,13 @@ enum TALER_ErrorCode
   TALER_EC_BANK_HISTORY_NOT_AUHTORIZED = 4151,
 
   /**
+   * The bank library had trouble obtaining a valid
+   * HTTP response.
+   * Returned with a status code of 0.
+   */
+  TALER_EC_BANK_HISTORY_HTTP_FAILURE = 4152,
+
+  /**
    * The bank could not find the wire transfer that was supposed to
    * be rejected.
    * Returned with a status code of MHD_HTTP_NOT_FOUND.

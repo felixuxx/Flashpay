@@ -174,7 +174,7 @@ handle_history_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INTERNAL_INVARIANT_FAILURE;
+    ec = TALER_EC_BANK_HISTORY_HTTP_FAILURE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=

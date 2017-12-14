@@ -891,9 +891,10 @@ bhist_cb (void *cls,
     GNUNET_free (whh);
     break;
   default:
-    /* FIXME: consider modifying API to pass more specific error code(s)
-       back to the application. */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Bank failed with HTTP status %u (EC: %u)\n",
+                http_status,
+                ec);
     if (NULL != whh->hres_cb)
       (void) whh->hres_cb (whh->hres_cb_cls,
                            ec,
