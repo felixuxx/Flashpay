@@ -400,13 +400,10 @@ gap. See keys-duration.
 @section Serving
 
 
-The exchange can serve HTTP over both TCP and UNIX domain socket. It
-needs this configuration @emph{twice}, because it opens one connection
-for ordinary REST calls, and one for "/admin" and "/test" REST calls,
-because the operator may want to restrict the access to "/admin".
+The exchange can serve HTTP over both TCP and UNIX domain socket.
 
-The following values are to be configured under the section
-@cite{[exchange]} and @cite{[exchange-admin]}:
+The following values are to be configured in the section
+@cite{[exchange]}:
 
 
 @itemize
@@ -425,12 +422,8 @@ The following values are to be configured under the section
 
 @item
 @cite{unixpath_mode}: number giving the mode with the access
-permissiON MASK for the @cite{unixpath} (i.e. 660 = rw-rw----).
+permission MASK for the @cite{unixpath} (i.e. 660 = rw-rw----).
 @end itemize
-
-The exchange can be started with the @cite{-D} option to disable the administrative
-functions entirely.  It is recommended that the administrative API is only
-accessible via a properly protected UNIX domain socket.
 
 
 @node Currency
@@ -673,7 +666,7 @@ get signed by every auditor he wishes (or is forced to) work with.
 
 In a normal scenario, an auditor must have some way of receiving the blob to
 sign (Website, manual delivery, ..).  Nonetheless, the exchange admin can fake
-an auditor signature - for testing purposes - by running the following command
+an auditor signature --- for testing purposes --- by running the following command
 
 @example
 taler-auditor-sign -m EXCHANGE_MASTER_PUB -r BLOB -u AUDITOR_URI -o OUTPUT_FILE

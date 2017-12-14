@@ -43,7 +43,6 @@ taler_exchange_wirewatch_LDADD = \
 
 taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
-  taler-exchange-httpd_admin.c taler-exchange-httpd_admin.h \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \
   taler-exchange-httpd_keystate.c taler-exchange-httpd_keystate.h \

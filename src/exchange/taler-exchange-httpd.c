@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_mhd.h"
-#include "taler-exchange-httpd_admin.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserve_status.h"
@@ -96,16 +95,6 @@ static unsigned int connection_timeout = 30;
 static struct MHD_Daemon *mhd;
 
 /**
- * The HTTP Daemon for /admin-requests.
- */
-static struct MHD_Daemon *mhd_admin;
-
-/**
- * Do not offer /admin API.
- */
-static int no_admin;
-
-/**
  * Initialize the database by creating tables and indices.
  */
 static int init_db;
@@ -116,31 +105,15 @@ static int init_db;
 static uint16_t serve_port;
 
 /**
- * Port to run the admin daemon on.
- */
-static uint16_t serve_admin_port;
-
-/**
  * Path for the unix domain-socket
  * to run the daemon on.
  */
 static char *serve_unixpath;
 
 /**
- * Path for the unix domain-socket
- * to run the admin daemon on.
- */
-static char *serve_admin_unixpath;
-
-/**
  * File mode for unix-domain socket.
  */
 static mode_t unixpath_mode;
-
-/**
- * File mode for unix-domain socket.
- */
-static mode_t unixpath_admin_mode;
 
 
 /**
@@ -307,76 +280,6 @@ handle_mhd_request (void *cls,
         "Only GET is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { NULL, NULL, NULL, NULL, 0, 0 }
-    };
-  static struct TEH_RequestHandler h404 =
-    {
-      "", NULL, "text/html",
-      "<html><title>404: not found</title></html>", 0,
-      &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
-    };
-  struct TEH_RequestHandler *rh;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Handling request for URL '%s'\n",
-              url);
-  if (0 == strcasecmp (method,
-                       MHD_HTTP_METHOD_HEAD))
-    method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
-  for (unsigned int i=0;NULL != handlers[i].url;i++)
-  {
-    rh = &handlers[i];
-    if ( (0 == strcasecmp (url,
-                           rh->url)) &&
-         ( (NULL == rh->method) ||
-           (0 == strcasecmp (method,
-                             rh->method)) ) )
-      return rh->handler (rh,
-                          connection,
-                          con_cls,
-                          upload_data,
-                          upload_data_size);
-  }
-  return TEH_MHD_handler_static_response (&h404,
-                                          connection,
-                                          con_cls,
-                                          upload_data,
-                                          upload_data_size);
-}
-
-
-/**
- * Handle incoming administrative HTTP request.
- *
- * @param cls closure for MHD daemon (unused)
- * @param connection the connection
- * @param url the requested url
- * @param method the method (POST, GET, ...)
- * @param version HTTP version (ignored)
- * @param upload_data request data
- * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request (a `struct Buffer *`)
- * @return MHD result code
- */
-static int
-handle_mhd_admin_request (void *cls,
-                          struct MHD_Connection *connection,
-                          const char *url,
-                          const char *method,
-                          const char *version,
-                          const char *upload_data,
-                          size_t *upload_data_size,
-                          void **con_cls)
-{
-  static struct TEH_RequestHandler handlers[] =
-    {
-      { "/admin/add/incoming", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
-      { "/admin/add/incoming", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
 #if HAVE_DEVELOPER
       /* Client crypto-interoperability test functions */
       { "/test", MHD_HTTP_METHOD_POST, "application/json",
@@ -452,12 +355,14 @@ handle_mhd_admin_request (void *cls,
       &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
     };
   struct TEH_RequestHandler *rh;
-  unsigned int i;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Handling request for URL '%s'\n",
               url);
-  for (i=0;NULL != handlers[i].url;i++)
+  if (0 == strcasecmp (method,
+                       MHD_HTTP_METHOD_HEAD))
+    method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
+  for (unsigned int i=0;NULL != handlers[i].url;i++)
   {
     rh = &handlers[i];
     if ( (0 == strcasecmp (url,
@@ -687,15 +592,6 @@ exchange_serve_process_config ()
                          &serve_port,
                          &serve_unixpath,
                          &unixpath_mode))
-  {
-    TEH_VALIDATION_done ();
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      parse_port_config ("exchange-admin",
-                         &serve_admin_port,
-                         &serve_admin_unixpath,
-                         &unixpath_admin_mode))
   {
     TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
@@ -948,23 +844,19 @@ main (int argc,
   char *logfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('C',
-                                  "connection-close",
-                                  "force HTTP connections to be closed after each request",
-                                  &TEH_exchange_connection_close),
+                               "connection-close",
+                               "force HTTP connections to be closed after each request",
+                               &TEH_exchange_connection_close),
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
-    GNUNET_GETOPT_option_flag ('D',
-                                  "disable-admin",
-                                  "do not run the /admin-HTTP server",
-                                  &no_admin),
     GNUNET_GETOPT_option_flag ('i',
-                                  "init-db",
-                                  "create database tables and indicies if necessary",
-                                  &init_db),
+                               "init-db",
+                               "create database tables and indicies if necessary",
+                               &init_db),
    GNUNET_GETOPT_option_uint ('t',
-                                  "timeout",
-                                  "SECONDS",
-                                  "after how long do connections timeout by default (in seconds)",
-                                  &connection_timeout),
+                              "timeout",
+                              "SECONDS",
+                              "after how long do connections timeout by default (in seconds)",
+                              &connection_timeout),
 #if HAVE_DEVELOPER
    GNUNET_GETOPT_option_filename ('f',
                                   "file-input",
@@ -982,7 +874,6 @@ main (int argc,
   const char *listen_pid;
   const char *listen_fds;
   int fh = -1;
-  int fh_admin = -1;
 
   if (0 >=
       GNUNET_GETOPT_run ("taler-exchange-httpd",
@@ -1018,12 +909,9 @@ main (int argc,
        (getpid() == strtol (listen_pid,
                             NULL,
                             10)) &&
-       ( (1 == strtoul (listen_fds,
-                        NULL,
-                        10)) ||
-         (2 == strtoul (listen_fds,
-                        NULL,
-                        10)) ) )
+       (1 == strtoul (listen_fds,
+                      NULL,
+                      10)) )
   {
     int flags;
 
@@ -1044,29 +932,6 @@ main (int argc,
                       flags)) )
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                            "fcntl");
-
-    if (2 == strtoul (listen_fds,
-                      NULL,
-                      10))
-    {
-      fh_admin = 4;
-      flags = fcntl (fh_admin,
-                     F_GETFD);
-      if ( (-1 == flags) &&
-           (EBADF == errno) )
-      {
-        fprintf (stderr,
-                 "Bad listen socket passed, ignored\n");
-        fh_admin = -1;
-      }
-      flags |= FD_CLOEXEC;
-      if ( (-1 != fh_admin) &&
-           (0 != fcntl (fh_admin,
-                        F_SETFD,
-                        flags)) )
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fcntl");
-    }
   }
 
   /* consider unix path */
@@ -1077,19 +942,6 @@ main (int argc,
                          unixpath_mode);
     if (-1 == fh)
       return 1;
-  }
-  if ( (-1 == fh_admin) &&
-       (0 == no_admin) &&
-       (NULL != serve_admin_unixpath) )
-  {
-    fh_admin = open_unix_path (serve_admin_unixpath,
-                               unixpath_admin_mode);
-    if (-1 == fh_admin)
-    {
-      if (-1 != fh)
-        GNUNET_break (0 == close (fh));
-      return 1;
-    }
   }
 
   mhd
@@ -1110,30 +962,6 @@ main (int argc,
     fprintf (stderr,
              "Failed to start HTTP server.\n");
     return 1;
-  }
-
-  if (0 == no_admin)
-  {
-    mhd_admin
-      = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG,
-                          (-1 == fh) ? serve_admin_port : 0,
-                          NULL, NULL,
-                          &handle_mhd_admin_request, NULL,
-                          MHD_OPTION_LISTEN_SOCKET, fh_admin,
-                          MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                          MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
-                          MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-#if HAVE_DEVELOPER
-                          MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
-#endif
-                          MHD_OPTION_END);
-    if (NULL == mhd_admin)
-    {
-      fprintf (stderr,
-               "Failed to start administrative HTTP server.\n");
-      MHD_stop_daemon (mhd);
-      return 1;
-    }
   }
 
 #if HAVE_DEVELOPER
@@ -1157,23 +985,14 @@ main (int argc,
   case GNUNET_OK:
   case GNUNET_SYSERR:
     MHD_stop_daemon (mhd);
-    if (NULL != mhd_admin)
-      MHD_stop_daemon (mhd_admin);
     break;
   case GNUNET_NO:
     {
       MHD_socket sock = MHD_quiesce_daemon (mhd);
-      MHD_socket admin_sock;
-      int admin_sock_opened = GNUNET_NO;
       pid_t chld;
       int flags;
 
       /* Set flags to make 'sock' inherited by child */
-      if (NULL != mhd_admin)
-      {
-        admin_sock = MHD_quiesce_daemon (mhd_admin);
-        admin_sock_opened = GNUNET_YES;
-      }
       flags = fcntl (sock, F_GETFD);
       GNUNET_assert (-1 != flags);
       flags &= ~FD_CLOEXEC;
@@ -1197,20 +1016,13 @@ main (int argc,
                                "dup2");
           _exit (1);
         }
-        if ( (GNUNET_YES == admin_sock_opened) &&
-             (4 != dup2 (admin_sock, 4)) )
-        {
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                               "dup2");
-          _exit (1);
-        }
         /* Tell the child that it is the desired recipient for FD #3 */
         GNUNET_snprintf (pids,
                          sizeof (pids),
                          "%u",
                          getpid ());
         setenv ("LISTEN_PID", pids, 1);
-        setenv ("LISTEN_FDS", (NULL != mhd_admin) ? "2" : "1", 1);
+        setenv ("LISTEN_FDS", "1", 1);
         /* Finally, exec the (presumably) more recent exchange binary */
         execvp ("taler-exchange-httpd",
                 argv);
@@ -1222,25 +1034,16 @@ main (int argc,
          before exiting; as the listen socket is no longer used,
          close it here */
       GNUNET_break (0 == close (sock));
-      if (GNUNET_YES == admin_sock_opened)
-        GNUNET_break (0 == close (admin_sock));
-      while ( (0 != MHD_get_daemon_info (mhd,
-                                         MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections) ||
-              ( (NULL != mhd_admin) &&
-                (0 != MHD_get_daemon_info (mhd_admin,
-                                           MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections) ) )
+      while (0 != MHD_get_daemon_info (mhd,
+                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections)
         sleep (1);
       /* Now we're really done, practice clean shutdown */
       MHD_stop_daemon (mhd);
-      if (NULL != mhd_admin)
-        MHD_stop_daemon (mhd_admin);
     }
     break;
   default:
     GNUNET_break (0);
     MHD_stop_daemon (mhd);
-    if (NULL != mhd_admin)
-      MHD_stop_daemon (mhd_admin);
     break;
   }
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
