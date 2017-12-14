@@ -10,13 +10,12 @@ lib_LTLIBRARIES = \
   libtalerexchange.la
 
 libtalerexchange_la_LDFLAGS = \
-  -version-info 3:0:0 \
+  -version-info 4:0:0 \
   -no-undefined
 
 libtalerexchange_la_SOURCES = \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
-  exchange_api_admin.c \
   exchange_api_deposit.c \
   exchange_api_payback.c \
   exchange_api_refresh.c \
