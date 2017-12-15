@@ -1502,39 +1502,68 @@ enum TALER_ErrorCode
 
   /* *************** Taler BANK/FAKEBANK error codes *************** */
 
+  /**
+   * Authentication failed for an unspecified request.
+   * To return when the view name is not available, or
+   * no specific error code is defined yet.
+   */
+  TALER_EC_BANK_NOT_AUTHORIZED = 5000,
+
+  /**
+   * The bank could not find the bank account specified
+   * in the request.  Returned with a status code of MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_BANK_UNKNOWN_ACCOUNT = 5001,
 
   /**
    * Authentication failed for the /admin/add/incoming request.
    * Returned with a status code of MHD_HTTP_FORBIDDEN.
    */
-  TALER_EC_BANK_TRANSFER_NOT_AUHTORIZED = 4101,
+  TALER_EC_BANK_TRANSFER_NOT_AUHTORIZED = 5100,
+
+  /**
+   * The wire transfer cannot be done because the debitor would
+   * reach a unallowed debit.
+   */
+  TALER_EC_BANK_TRANSFER_DEBIT = 5101,
+
+  /**
+   * The wire transfer cannot be done because the credit and
+   * debit account are the same.
+   */
+  TALER_EC_BANK_TRANSFER_SAME_ACCOUNT = 5102,
 
   /**
    * Authentication failed for the /history request.
    * Returned with a status code of MHD_HTTP_FORBIDDEN.
    */
-  TALER_EC_BANK_HISTORY_NOT_AUHTORIZED = 4151,
+  TALER_EC_BANK_HISTORY_NOT_AUHTORIZED = 5200,
 
   /**
    * The bank library had trouble obtaining a valid
    * HTTP response.
    * Returned with a status code of 0.
    */
-  TALER_EC_BANK_HISTORY_HTTP_FAILURE = 4152,
+  TALER_EC_BANK_HISTORY_HTTP_FAILURE = 5201,
 
   /**
    * The bank could not find the wire transfer that was supposed to
    * be rejected.
    * Returned with a status code of MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_BANK_REJECT_NOT_FOUND = 4250,
+  TALER_EC_BANK_REJECT_NOT_FOUND = 5300,
 
   /**
    * Authentication failed for the /reject request.
    * Returned with a status code of MHD_HTTP_FORBIDDEN.
    */
-  TALER_EC_BANK_REJECT_NOT_AUHTORIZED = 4251,
+  TALER_EC_BANK_REJECT_NOT_AUTHORIZED = 5301,
 
+  /**
+   * The client wants to reject a transaction where they are
+   * not the _credit_ party, impossible!
+   */
+  TALER_EC_BANK_REJECT_NO_RIGHTS = 5302,
 
   /**
    * End of error code range.
