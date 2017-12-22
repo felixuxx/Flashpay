@@ -1503,67 +1503,84 @@ enum TALER_ErrorCode
   /* *************** Taler BANK/FAKEBANK error codes *************** */
 
   /**
-   * Authentication failed for an unspecified request.
-   * To return when the view name is not available, or
-   * no specific error code is defined yet.
+   * The request cannot be served because the client failed to
+   * login.  To be returned along HTTP 401 Unauthorized.
    */
-  TALER_EC_BANK_NOT_AUTHORIZED = 5000,
+  TALER_EC_BANK_REJECT_LOGIN_FAILED = 5312,
 
   /**
-   * The bank could not find the bank account specified
-   * in the request.  Returned with a status code of MHD_HTTP_NOT_FOUND.
+   * The transaction cannot be rejected becasue it does not exist
+   * at the bank.  To be returned along HTTP 404 Not Found.
    */
-  TALER_EC_BANK_UNKNOWN_ACCOUNT = 5001,
+  TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND = 5301,
 
   /**
-   * Authentication failed for the /admin/add/incoming request.
-   * Returned with a status code of MHD_HTTP_FORBIDDEN.
+   * The client does not own the account credited by the transaction
+   * which is to be rejected, so it has no rights do reject it.  To be
+   * returned along HTTP 403 Forbidden.
    */
-  TALER_EC_BANK_TRANSFER_NOT_AUHTORIZED = 5100,
+  TALER_EC_BANK_REJECT_NO_RIGHTS = 5313,
 
   /**
-   * The wire transfer cannot be done because the debitor would
-   * reach a unallowed debit.
+   * The POSTed JSON at /reject was invalid.  To be returned along
+   * HTTP 400 Bad Request.
    */
-  TALER_EC_BANK_TRANSFER_DEBIT = 5101,
+  TALER_EC_BANK_REJECT_JSON_INVALID = 5306,
 
   /**
-   * The wire transfer cannot be done because the credit and
-   * debit account are the same.
+   * A URL parameter for /history was missing.  To be returned along
+   * HTTP 400 Bad Request.
    */
-  TALER_EC_BANK_TRANSFER_SAME_ACCOUNT = 5102,
+  TALER_EC_BANK_HISTORY_PARAMETER_MISSING = 5208,
 
   /**
-   * Authentication failed for the /history request.
-   * Returned with a status code of MHD_HTTP_FORBIDDEN.
+   * A URL parameter for /history was malformed.  To be returned along
+   * HTTP 400 Bad Request.
    */
-  TALER_EC_BANK_HISTORY_NOT_AUHTORIZED = 5200,
+  TALER_EC_BANK_HISTORY_PARAMETER_MALFORMED = 5209,
 
   /**
-   * The bank library had trouble obtaining a valid
-   * HTTP response.
-   * Returned with a status code of 0.
+   * The client failed to login for /history.  To be returned along
+   * HTTP 401 Unauthorized.
    */
-  TALER_EC_BANK_HISTORY_HTTP_FAILURE = 5201,
+  TALER_EC_BANK_HISTORY_LOGIN_FAILED = 5212,
 
   /**
-   * The bank could not find the wire transfer that was supposed to
-   * be rejected.
-   * Returned with a status code of MHD_HTTP_NOT_FOUND.
+   * The bank had trouble obtaining a valid HTTP response.  To be returned
+   * along status code 0.
    */
-  TALER_EC_BANK_REJECT_NOT_FOUND = 5300,
+  TALER_EC_BANK_HISTORY_HTTP_FAILURE = 5213,
 
   /**
-   * Authentication failed for the /reject request.
-   * Returned with a status code of MHD_HTTP_FORBIDDEN.
+   * The debit account for /admin/add/incoming is not known to the
+   * bank.  To be returned along HTTP 404 Not Found.
    */
-  TALER_EC_BANK_REJECT_NOT_AUTHORIZED = 5301,
+  TALER_EC_BANK_ADD_INCOMING_UNKNOWN_ACCOUNT = 5100,
 
   /**
-   * The client wants to reject a transaction where they are
-   * not the _credit_ party, impossible!
+   * The client specified the same bank account for both the credit
+   * and the debit account.  The bank will not accomplish this operation.
+   * To be returned along HTTP 403 Forbidden.
    */
-  TALER_EC_BANK_REJECT_NO_RIGHTS = 5302,
+  TALER_EC_BANK_ADD_INCOMING_SAME_ACCOUNT = 5102,
+
+  /**
+   * The operation would put the client in a debit situation which is
+   * forbidden to them.  To return along HTTP 403 Forbidden.
+   */
+  TALER_EC_BANK_ADD_INCOMING_UNALLOWED_DEBIT = 5103,
+
+  /**
+   * The client POSTed an invalid JSON.  To be returned along HTTP
+   * 400 Bad Request.
+   */
+  TALER_EC_BANK_ADD_INCOMING_JSON_INVALID = 5106,
+
+  /**
+   * The client failed to login for /admin/add/incoming.  To be returned
+   * along HTTP 401 Unauthorized.
+   */
+  TALER_EC_BANK_ADD_INCOMING_LOGIN_FAILED = 5112,
 
   /**
    * End of error code range.
