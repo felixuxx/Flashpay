@@ -207,6 +207,8 @@ void
 TALER_amount_hton (struct TALER_AmountNBO *res,
                    const struct TALER_Amount *d)
 {
+  GNUNET_assert (GNUNET_YES ==
+		 TALER_amount_is_valid (d));
   res->value = GNUNET_htonll (d->value);
   res->fraction = htonl (d->fraction);
   memcpy (res->currency,
@@ -230,6 +232,8 @@ TALER_amount_ntoh (struct TALER_Amount *res,
   memcpy (res->currency,
           dn->currency,
           TALER_CURRENCY_LEN);
+  GNUNET_assert (GNUNET_YES ==
+		 TALER_amount_is_valid (res));
 }
 
 
