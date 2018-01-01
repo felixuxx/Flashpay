@@ -1001,6 +1001,7 @@ enum TALER_ErrorCode
   TALER_EC_PAY_REFUND_DEADLINE_PAST_WIRE_TRANSFER_DEADLINE = 2114,
 
   /**
+
    * The request fails to provide coins for the payment.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
