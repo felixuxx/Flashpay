@@ -3033,6 +3033,128 @@ postgres_insert_refund (void *cls,
 
 
 /**
+ * Closure for #get_refunds_cb().
+ */
+struct SelectRefundContext
+{
+  /**
+   * Function to call on each result.
+   */
+  TALER_EXCHANGEDB_RefundCoinCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Set to #GNUNET_SYSERR on error.
+   */ 
+  int status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct SelectRefundContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+get_refunds_cb (void *cls,
+		PGresult *result,
+		unsigned int num_results)
+{
+  struct SelectRefundContext *srctx = cls;
+
+  for (unsigned int i=0;i<num_results;i++)
+  {
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    struct TALER_MerchantSignatureP merchant_sig;
+    struct GNUNET_HashCode h_contract;
+    uint64_t rtransaction_id;
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount refund_fee;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+					    &merchant_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
+					    &merchant_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract",
+					    &h_contract),
+      GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
+				    &rtransaction_id),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+				   &amount_with_fee),
+      TALER_PQ_result_spec_amount ("fee_refund",
+				   &refund_fee),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+	GNUNET_PQ_extract_result (result,
+				  rs,
+				  i))
+    {
+      GNUNET_break (0);
+      srctx->status = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_OK !=
+	srctx->cb (srctx->cb_cls,
+		   &merchant_pub,
+		   &merchant_sig,
+		   &h_contract,
+		   rtransaction_id,
+		   &amount_with_fee,
+		   &refund_fee))
+      return;
+  }
+}
+
+
+/**
+ * Select refunds by @a coin_pub.
+ *
+ * @param cls closure of plugin
+ * @param session database handle to use
+ * @param coin_pub coin to get refunds for
+ * @param cb function to call for each refund found
+ * @param cb_cls closure for @a cb
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_refunds_by_coin (void *cls,
+				 struct TALER_EXCHANGEDB_Session *session,
+				 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+				 TALER_EXCHANGEDB_RefundCoinCallback cb,
+				 void *cb_cls)
+{
+  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct SelectRefundContext srctx = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .status = GNUNET_OK
+  };
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                             "get_refunds_by_coin",
+                                             params,
+                                             &get_refunds_cb,
+                                             &srctx);
+  if (GNUNET_SYSERR == srctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Lookup refresh melt commitment data under the given @a rc.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -6236,6 +6358,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->iterate_matching_deposits = &postgres_iterate_matching_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
   plugin->insert_refund = &postgres_insert_refund;
+  plugin->select_refunds_by_coin = &postgres_select_refunds_by_coin;
   plugin->insert_melt = &postgres_insert_melt;
   plugin->get_melt = &postgres_get_melt;
   plugin->insert_refresh_reveal = &postgres_insert_refresh_reveal;
