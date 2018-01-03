@@ -1394,6 +1394,72 @@ wire_missing_cb (void *cls,
 
 
 /**
+ * Callback invoked with information about refunds applicable
+ * to a particular coin.
+ *
+ * @param cls closure with the `struct TALER_EXCHANGEDB_Refund *` we expect to get
+ * @param merchant_pub public key of merchant who authorized refund
+ * @param merchant_sig signature of merchant authorizing refund
+ * @param h_contract hash of contract being refunded
+ * @param rtransaction_id refund transaction ID
+ * @param amount_with_fee amount being refunded
+ * @param refund_fee fee the exchange keeps for the refund processing
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+check_refund_cb (void *cls,
+		 const struct TALER_MerchantPublicKeyP *merchant_pub,
+		 const struct TALER_MerchantSignatureP *merchant_sig,
+		 const struct GNUNET_HashCode *h_contract,
+		 uint64_t rtransaction_id,
+		 const struct TALER_Amount *amount_with_fee,
+		 const struct TALER_Amount *refund_fee)
+{
+  const struct TALER_EXCHANGEDB_Refund *refund = cls;
+
+  if (0 != memcmp (merchant_pub,
+		   &refund->merchant_pub,
+		   sizeof (struct TALER_MerchantPublicKeyP)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != memcmp (merchant_sig,
+		   &refund->merchant_sig,
+		   sizeof (struct TALER_MerchantSignatureP)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != memcmp (h_contract,
+		   &refund->h_contract_terms,
+		   sizeof (struct GNUNET_HashCode)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (rtransaction_id != refund->rtransaction_id)
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != TALER_amount_cmp (amount_with_fee,
+			     &refund->refund_amount))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != TALER_amount_cmp (refund_fee,
+			     &refund->refund_fee))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with config
@@ -1897,7 +1963,12 @@ run (void *cls)
           plugin->insert_refund (plugin->cls,
                                  session,
                                  &refund));
-
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+	  plugin->select_refunds_by_coin (plugin->cls,
+					  session,
+					  &refund.coin.coin_pub,
+					  &check_refund_cb,
+					  &refund));
 
   /* test payback / revocation */
   RND_BLK (&master_sig);
