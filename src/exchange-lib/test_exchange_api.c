@@ -3566,7 +3566,7 @@ run (void *cls)
       .label = "check-empty-after-refund" },
 
 
-#if 0
+#if 1
     /* Test refunded coins are never executed, even past
        refund deadline */
     { .oc = OC_ADMIN_ADD_INCOMING,

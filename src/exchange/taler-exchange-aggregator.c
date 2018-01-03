@@ -374,6 +374,7 @@ update_fees (struct WirePlugin *wp,
 				     p->start_date,
 				     p->end_date,
 				     &p->wire_fee,
+				     &p->closing_fee,
 				     &p->master_sig);
     if (qs < 0)
     {

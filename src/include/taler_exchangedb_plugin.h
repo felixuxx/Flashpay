@@ -1698,6 +1698,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param start_date when does the fee go into effect
    * @param end_date when does the fee end being valid
    * @param wire_fee how high is the wire transfer fee
+   * @param closing_fee how high is the closing fee
    * @param master_sig signature over the above by the exchange master key
    * @return transaction status code
    */
@@ -1708,6 +1709,7 @@ struct TALER_EXCHANGEDB_Plugin
                      struct GNUNET_TIME_Absolute start_date,
                      struct GNUNET_TIME_Absolute end_date,
                      const struct TALER_Amount *wire_fee,
+                     const struct TALER_Amount *closing_fee,
                      const struct TALER_MasterSignatureP *master_sig);
 
 
@@ -1721,6 +1723,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] start_date when does the fee go into effect
    * @param[out] end_date when does the fee end being valid
    * @param[out] wire_fee how high is the wire transfer fee
+   * @param[out] closing_fee how high is the closing fee
    * @param[out] master_sig signature over the above by the exchange master key
    * @return query status of the transaction
    */
@@ -1732,6 +1735,7 @@ struct TALER_EXCHANGEDB_Plugin
                    struct GNUNET_TIME_Absolute *start_date,
                    struct GNUNET_TIME_Absolute *end_date,
                    struct TALER_Amount *wire_fee,
+		   struct TALER_Amount *closing_fee,
                    struct TALER_MasterSignatureP *master_sig);
 
 

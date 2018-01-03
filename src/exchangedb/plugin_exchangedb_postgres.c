@@ -383,6 +383,9 @@ postgres_create_tables (void *cls)
                            ",wire_fee_val INT8 NOT NULL"
                            ",wire_fee_frac INT4 NOT NULL"
                            ",wire_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+                           ",closing_fee_val INT8 NOT NULL"
+                           ",closing_fee_frac INT4 NOT NULL"
+                           ",closing_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
                            ",PRIMARY KEY (wire_method, start_date)" /* this combo must be unique */
                            ");"),
@@ -1170,6 +1173,9 @@ postgres_prepare (PGconn *db_conn)
                             ",wire_fee_val"
                             ",wire_fee_frac"
                             ",wire_fee_curr"
+                            ",closing_fee_val"
+                            ",closing_fee_frac"
+                            ",closing_fee_curr"
                             ",master_sig"
                             " FROM wire_fee"
                             " WHERE wire_method=$1"
@@ -1185,10 +1191,13 @@ postgres_prepare (PGconn *db_conn)
                             ",wire_fee_val"
                             ",wire_fee_frac"
                             ",wire_fee_curr"
+                            ",closing_fee_val"
+                            ",closing_fee_frac"
+                            ",closing_fee_curr"
                             ",master_sig"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7);",
-                            7),
+                            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
+                            19),
     /* Used in #postgres_store_wire_transfer_out */
     GNUNET_PQ_make_prepare ("insert_wire_out",
                             "INSERT INTO wire_out "
@@ -4356,6 +4365,7 @@ postgres_insert_aggregation_tracking (void *cls,
  * @param[out] start_date when does the fee go into effect
  * @param[out] end_date when does the fee end being valid
  * @param[out] wire_fee how high is the wire transfer fee
+ * @param[out] closing_fee how high is the closing fee
  * @param[out] master_sig signature over the above by the exchange master key
  * @return status of the transaction
  */
@@ -4367,6 +4377,7 @@ postgres_get_wire_fee (void *cls,
                        struct GNUNET_TIME_Absolute *start_date,
                        struct GNUNET_TIME_Absolute *end_date,
                        struct TALER_Amount *wire_fee,
+		       struct TALER_Amount *closing_fee,
                        struct TALER_MasterSignatureP *master_sig)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -4378,6 +4389,7 @@ postgres_get_wire_fee (void *cls,
     TALER_PQ_result_spec_absolute_time ("start_date", start_date),
     TALER_PQ_result_spec_absolute_time ("end_date", end_date),
     TALER_PQ_result_spec_amount ("wire_fee", wire_fee),
+    TALER_PQ_result_spec_amount ("closing_fee", closing_fee),
     GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
     GNUNET_PQ_result_spec_end
   };
@@ -4398,6 +4410,7 @@ postgres_get_wire_fee (void *cls,
  * @param start_date when does the fee go into effect
  * @param end_date when does the fee end being valid
  * @param wire_fee how high is the wire transfer fee
+ * @param closing_fee how high is the closing fee
  * @param master_sig signature over the above by the exchange master key
  * @return transaction status code
  */
@@ -4408,6 +4421,7 @@ postgres_insert_wire_fee (void *cls,
                           struct GNUNET_TIME_Absolute start_date,
                           struct GNUNET_TIME_Absolute end_date,
                           const struct TALER_Amount *wire_fee,
+                          const struct TALER_Amount *closing_fee,
                           const struct TALER_MasterSignatureP *master_sig)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -4415,10 +4429,12 @@ postgres_insert_wire_fee (void *cls,
     TALER_PQ_query_param_absolute_time (&start_date),
     TALER_PQ_query_param_absolute_time (&end_date),
     TALER_PQ_query_param_amount (wire_fee),
+    TALER_PQ_query_param_amount (closing_fee),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
   struct TALER_Amount wf;
+  struct TALER_Amount cf;
   struct TALER_MasterSignatureP sig;
   struct GNUNET_TIME_Absolute sd;
   struct GNUNET_TIME_Absolute ed;
@@ -4431,6 +4447,7 @@ postgres_insert_wire_fee (void *cls,
 			      &sd,
 			      &ed,
 			      &wf,
+			      &cf,
 			      &sig);
   if (qs < 0)
     return qs;
@@ -4446,6 +4463,12 @@ postgres_insert_wire_fee (void *cls,
     if (0 != TALER_amount_cmp (wire_fee,
                                &wf))
     {
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (0 != TALER_amount_cmp (closing_fee,
+                               &cf))
+      {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }

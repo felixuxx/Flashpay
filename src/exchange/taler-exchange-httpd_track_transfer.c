@@ -352,6 +352,7 @@ track_transfer_transaction (void *cls,
   struct GNUNET_TIME_Absolute wire_fee_start_date;
   struct GNUNET_TIME_Absolute wire_fee_end_date;
   struct TALER_MasterSignatureP wire_fee_master_sig;
+  struct TALER_Amount closing_fee;
 
   ctx->is_valid = GNUNET_NO;
   ctx->wdd_head = NULL;
@@ -393,6 +394,7 @@ track_transfer_transaction (void *cls,
 				 &wire_fee_start_date,
 				 &wire_fee_end_date,
 				 &ctx->wire_fee,
+				 &closing_fee,
 				 &wire_fee_master_sig);
   if (0 >= qs)
   {

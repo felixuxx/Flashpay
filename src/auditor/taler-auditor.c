@@ -1664,9 +1664,14 @@ struct WireFeeInfo
   struct GNUNET_TIME_Absolute end_date;
 
   /**
-   * How high is the fee.
+   * How high is the wire fee.
    */
   struct TALER_Amount wire_fee;
+
+  /**
+   * How high is the closing fee.
+   */
+  struct TALER_Amount closing_fee;
 
 };
 
@@ -1815,6 +1820,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_Amount spent;
   struct TALER_Amount value;
   struct TALER_Amount merchant_loss;
+  struct TALER_Amount merchant_delta;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
@@ -2043,7 +2049,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
 
   /* Finally, update @a merchant_gain by subtracting what he "lost" from refunds */
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (merchant_gain,
+      TALER_amount_subtract (&merchant_delta,
                              merchant_gain,
                              &merchant_loss))
   {
@@ -2055,6 +2061,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                           0);
     return GNUNET_SYSERR;
   }
+  *merchant_gain = merchant_delta;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Coin %s contributes %s to contract %s\n",
               TALER_B2S (coin_pub),
@@ -2276,6 +2283,7 @@ get_wire_fee (struct AggregationContext *ac,
                          &wfi->start_date,
                          &wfi->end_date,
                          &wfi->wire_fee,
+			 &wfi->closing_fee,
                          &master_sig))
   {
     GNUNET_break (0);
@@ -2299,6 +2307,8 @@ get_wire_fee (struct AggregationContext *ac,
     wp.end_date = GNUNET_TIME_absolute_hton (wfi->end_date);
     TALER_amount_hton (&wp.wire_fee,
                        &wfi->wire_fee);
+    TALER_amount_hton (&wp.closing_fee,
+                       &wfi->closing_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
                                     &wp.purpose,
