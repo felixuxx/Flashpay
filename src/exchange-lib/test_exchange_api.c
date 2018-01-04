@@ -3566,7 +3566,6 @@ run (void *cls)
       .label = "check-empty-after-refund" },
 
 
-#if 0
     /* Test refunded coins are never executed, even past
        refund deadline */
     { .oc = OC_ADMIN_ADD_INCOMING,
@@ -3621,7 +3620,7 @@ run (void *cls)
     /* check that aggregator didn't do anything, as expected */
     { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
       .label = "check-refund-fast-not-run" },
-#endif
+
     
     /* ************** End of refund API testing************* */
 
