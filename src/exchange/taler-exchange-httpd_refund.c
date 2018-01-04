@@ -285,7 +285,6 @@ refund_transaction (void *cls,
   }
 
   /* check if we already send the money for the /deposit */
-  // FIXME: DB API...
   qs = TEH_plugin->test_deposit_done (TEH_plugin->cls,
 				      session,
 				      dep);
