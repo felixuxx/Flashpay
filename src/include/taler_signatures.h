@@ -178,6 +178,12 @@
  */
 #define TALER_SIGNATURE_MERCHANT_REFUND_OK 1105
 
+/**
+ * Signature where the merchant confirms that the user replayed
+ * a payment for a browser session.
+ */
+#define TALER_SIGNATURE_MERCHANT_PAY_SESSION 1106
+
 
 /*********************/
 /* Wallet signatures */
@@ -1288,6 +1294,31 @@ struct TALER_MerchantRefundConfirmationPS
    * Hashed without the 0-termination.
    */
   struct GNUNET_HashCode h_order_id GNUNET_PACKED;
+
+};
+
+/**
+ * Used by the merchant to confirm to the frontend that
+ * the user did a payment replay with the current browser session.
+ */
+struct TALER_MerchantPaySessionSigPS
+{
+  /**
+   * Set to #TALER_SIGNATURE_MERCHANT_PAY_SESSION.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hashed order id.
+   * Hashed without the 0-termination.
+   */
+  struct GNUNET_HashCode h_order_id GNUNET_PACKED;
+
+  /**
+   * Hashed session id.
+   * Hashed without the 0-termination.
+   */
+  struct GNUNET_HashCode h_session_id GNUNET_PACKED;
 
 };
 
