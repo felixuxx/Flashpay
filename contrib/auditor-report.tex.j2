@@ -209,7 +209,7 @@ the financial damage done to the customer).
 {% if data.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
 {% else %}
-  \begin{longtable}{p{4.5cm}|l|rl|rl}
+  \begin{longtable}{p{3.5cm}|l|rl|rl}
   {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
@@ -218,11 +218,11 @@ the financial damage done to the customer).
   \hline \hline
   {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
 \endfoot
-  \hline
-  {\bf Total} & &
-  {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
+  \hline \hline
+  \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
+  + {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
   {{ data.total_arithmetic_delta_plus.currency }} &
-  {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
+  - {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
   {{ data.total_arithmetic_delta_minus.currency }} \\
     \caption{Arithmetic inconsistencies.}
     \label{table:amount:arithmetic:inconsistencies}
@@ -327,14 +327,14 @@ any effects on its own balance, those entries are excluded from the total.
 {% if data.coin_inconsistencies|length() == 0 %}
   {\bf All coin histories were unproblematic.}
 {% else %}
-  \begin{longtable}{l|p{5.5cm}|rl|rl}
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  \begin{longtable}{p{1.8cm}|p{3cm}|rl|rl}
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
 \endfoot
   \hline
   {\bf Total} & &
@@ -696,7 +696,7 @@ impact.
   \hline \hline
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
 \endfoot
-  \hline
+  \hline \hline
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \caption{Other issues found (by table and row).}
   \label{table:misc}

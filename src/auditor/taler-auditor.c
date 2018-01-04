@@ -1703,11 +1703,6 @@ struct AggregationContext
   struct WireFeeInfo *fee_tail;
 
   /**
-   * How much did we make in aggregation fees.
-   */
-  struct TALER_Amount total_aggregation_feesX;
-
-  /**
    * Final result status.
    */
   enum GNUNET_DB_QueryStatus qs;
