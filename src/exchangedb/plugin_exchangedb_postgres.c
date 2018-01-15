@@ -3058,7 +3058,7 @@ struct SelectRefundContext
 
   /**
    * Set to #GNUNET_SYSERR on error.
-   */ 
+   */
   int status;
 };
 
@@ -6215,8 +6215,8 @@ missing_wire_cb (void *cls,
     struct TALER_Amount amount;
     json_t *wire;
     struct GNUNET_TIME_Absolute deadline;
-    /* bool? */ uint32_t tiny;
-    /* bool? */ uint32_t done;
+    uint8_t tiny;
+    uint8_t done;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
 				    &rowid),
@@ -6228,10 +6228,10 @@ missing_wire_cb (void *cls,
 				 &wire),
       TALER_PQ_result_spec_absolute_time ("wire_deadline",
 					   &deadline),
-      GNUNET_PQ_result_spec_uint32 ("tiny",
-				    &tiny),
-      GNUNET_PQ_result_spec_uint32 ("done",
-				    &done),
+      GNUNET_PQ_result_spec_auto_from_type ("tiny",
+                                            &tiny),
+      GNUNET_PQ_result_spec_auto_from_type ("done",
+                                            &done),
       GNUNET_PQ_result_spec_end
     };
 
