@@ -1,3 +1,12 @@
+Thu Dec 14 15:32:50 CET 2017
+	Replaced taler-exchange-reservemod tool with new taler-bank-transfer
+	tool (#5195).  Removed /admin/add/incoming API, replaced by new
+	taler-exchange-wirewatch tooling. (#5077).
+
+Sat Dec  9 15:21:50 CET 2071
+	Implement refresh protocol optimization, bumping protocol version
+	to v2 (#5178). -CG
+
 Thu Nov  2 17:39:40 CET 2017
 	Limit amount values to 2^53 as we always wanted (#5167). -CG
 
