@@ -102,8 +102,7 @@ making wire transfers that have been due.
 
 The total amount the exchange currently lags behind is
 {\bf  {{ wire.total_amount_lag.value }}.{{ wire.total_amount_lag.fraction }}
-      {{ wire.total_amount_lag.currency }}
-}.
+      {{ wire.total_amount_lag.currency }}}.
 
 Note that some lag is perfectly normal, as tiny amounts that are too small to be wired
 are deferred beyond the due date, hoping that additional transfers will push them above
@@ -210,7 +209,7 @@ the financial damage done to the customer).
 {% if data.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
 {% else %}
-  \begin{longtable}{p{4.5cm}|l|rl|rl}
+  \begin{longtable}{p{3.5cm}|l|rl|rl}
   {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
@@ -219,11 +218,11 @@ the financial damage done to the customer).
   \hline \hline
   {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
 \endfoot
-  \hline
-  {\bf Total} & &
-  {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
+  \hline \hline
+  \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
+  + {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
   {{ data.total_arithmetic_delta_plus.currency }} &
-  {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
+  - {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
   {{ data.total_arithmetic_delta_minus.currency }} \\
     \caption{Arithmetic inconsistencies.}
     \label{table:amount:arithmetic:inconsistencies}
@@ -328,17 +327,17 @@ any effects on its own balance, those entries are excluded from the total.
 {% if data.coin_inconsistencies|length() == 0 %}
   {\bf All coin histories were unproblematic.}
 {% else %}
-  \begin{longtable}{l|p{5.5cm}|rl|rl}
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  \begin{longtable}{p{1.8cm}|p{3cm}|rl|rl}
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c|}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
 \endfoot
   \hline
-  {\bf Total} & &
+  \multicolumn{2}{l|}{ $\sum$ {\bf Delta (Auditor-Exchange)} } &
   {{ data.total_coin_delta_plus.value }}.{{ data.total_coin_delta_plus.fraction }} &
   {{ data.total_coin_delta_plus.currency }} &
   - {{ data.total_coin_delta_minus.value }}.{{ data.total_coin_delta_minus.fraction }} &
@@ -593,7 +592,7 @@ have a clear financial impact.
   \hline
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \caption{Other wire table issues found (by table and row).}
-  \label{table:misc}
+  \label{table:wire:misc}
 \endlastfoot
 {% for item in wire.row_inconsistencies %}
   \verb! {{ item.table }} ! &
@@ -687,7 +686,7 @@ impact.
 {% if data.row_inconsistencies|length() == 0 %}
   {\bf No row inconsistencies found.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|l|p{5.5}}
+  \begin{longtable}{p{1.5cm}|l|p{5.5cm}}
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \hline \hline
 \endfirsthead
@@ -697,13 +696,13 @@ impact.
   \hline \hline
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
 \endfoot
-  \hline
+  \hline \hline
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \caption{Other issues found (by table and row).}
   \label{table:misc}
 \endlastfoot
 {% for item in data.row_inconsistencies %}
-  {{ item.table }} &
+  \verb! {{ item.table }} ! &
   {{ item.row }} &
   {{ item.diagnostic }} \\ \hline
 {% endfor %}
@@ -728,12 +727,12 @@ reserve expired.
   {\bf All expired reserves were closed.}
 {% else %}
   \begin{longtable}{p{1.5cm}|c|rl}
-  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c|}{ {\bf Balance}} \\ \hline \hline
+  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c}{ {\bf Balance}} \\ \hline \hline
 \endfirsthead
-  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c|}{ {\bf Balance}} \\ \hline \hline
+  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c}{ {\bf Balance}} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c|}{ {\bf Balance}}
+  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c}{ {\bf Balance}}
 \endfoot
   \hline
   {\bf Sum}     & &
@@ -854,7 +853,7 @@ This section lists issues with wire transfers related to timestamps.
   \label{table:wire:bad_time}
 \endlastfoot
 {% for item in wire.row_minor_inconsistencies %}
-  {\tt {{ item.table }} } & {{ item.row }} & {{ item.diagnostic }} \\ \hline
+  \verb! {{ item.table }} ! & {{ item.row }} & {{ item.diagnostic }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}

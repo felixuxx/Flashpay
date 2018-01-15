@@ -3562,7 +3562,66 @@ run (void *cls)
       .details.refund.fee = "EUR:0.01",
       .details.refund.deposit_ref = "deposit-refund-2",
     },
+    { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
+      .label = "check-empty-after-refund" },
 
+
+    /* Test refunded coins are never executed, even past
+       refund deadline */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "create-reserve-rb",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.debit_account_no = 42,
+      .details.admin_add_incoming.credit_account_no = EXCHANGE_ACCOUNT_NO,
+      .details.admin_add_incoming.auth_username = "user42",
+      .details.admin_add_incoming.auth_password = "pass42",
+      .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Run wirewatch to observe /admin/add/incoming */
+    { .oc = OC_RUN_WIREWATCH,
+      .label = "wirewatch-3b" },
+    /* Withdraw a 5 EUR coin, at fee of 1 ct */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "withdraw-coin-rb",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.reserve_withdraw.reserve_reference = "create-reserve-rb",
+      .details.reserve_withdraw.amount = "EUR:5" },
+    /* Spend 5 EUR of the 5 EUR coin (in full)
+       (merchant would receive EUR:4.99 due to 1 ct deposit fee) */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-refund-1b",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-rb",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.contract_terms = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
+      .details.deposit.refund_deadline = { 0 },
+    },
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-aai-3b",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.amount = "EUR:5.01",
+      .details.check_bank_transfer.account_debit = 42,
+      .details.check_bank_transfer.account_credit = 2
+    },
+    /* Trigger refund (before aggregator had a chance to execute
+       deposit, even though refund deadline was zero) */
+    { .oc = OC_REFUND,
+      .label = "refund-ok-fast",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.refund.amount = "EUR:5",
+      .details.refund.fee = "EUR:0.01",
+      .details.refund.deposit_ref = "deposit-refund-1b",
+    },
+    /* Run transfers. This will do the transfer as refund deadline 
+       was 0, except of course because the refund succeeded, the
+       transfer should no longer be done. */
+    { .oc = OC_RUN_AGGREGATOR,
+      .label = "run-aggregator-3b" },
+    /* check that aggregator didn't do anything, as expected */
+    { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
+      .label = "check-refund-fast-not-run" },
+
+    
     /* ************** End of refund API testing************* */
 
     /* ************** Test /payback API  ************* */

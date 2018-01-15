@@ -1,3 +1,10 @@
+Thu Jan  4 11:55:41 CET 2018
+	Fix issue #5234 (aggregator ignoring refunds).
+	Misc. minor fixes to the auditor. -CG
+
+Mon Jan  1 23:15:37 CET 2018
+	Add TALER_EXCHANGE_refund2() API call to libtalerexchange. -CG
+
 Thu Dec 14 15:32:50 CET 2017
 	Replaced taler-exchange-reservemod tool with new taler-bank-transfer
 	tool (#5195).  Removed /admin/add/incoming API, replaced by new

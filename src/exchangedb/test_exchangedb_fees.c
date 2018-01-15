@@ -86,6 +86,9 @@ main (int argc,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:1.0",
                                          &af->wire_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:1.0",
+                                         &af->closing_fee));
   sign_af (af,
            priv);
   n = GNUNET_new (struct TALER_EXCHANGEDB_AggregateFees);
@@ -94,6 +97,9 @@ main (int argc,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:0.1",
                                          &n->wire_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:0.1",
+                                         &n->closing_fee));
   sign_af (n,
            priv);
   af->next = n;

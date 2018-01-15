@@ -1062,10 +1062,12 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   struct GNUNET_TIME_Absolute start_date;
   struct GNUNET_TIME_Absolute end_date;
   struct TALER_Amount wire_fee;
+  struct TALER_Amount closing_fee;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Absolute sd;
   struct GNUNET_TIME_Absolute ed;
   struct TALER_Amount fee;
+  struct TALER_Amount fee2;
   struct TALER_MasterSignatureP ms;
 
   start_date = GNUNET_TIME_absolute_get ();
@@ -1075,6 +1077,9 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.424242",
                                          &wire_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":2.424242",
+                                         &closing_fee));
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &master_sig,
                               sizeof (master_sig));
@@ -1085,6 +1090,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
                                start_date,
                                end_date,
                                &wire_fee,
+			       &closing_fee,
                                &master_sig))
   {
     GNUNET_break (0);
@@ -1097,6 +1103,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
                                start_date,
                                end_date,
                                &wire_fee,
+			       &closing_fee,
                                &master_sig))
   {
     GNUNET_break (0);
@@ -1112,6 +1119,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
                             &sd,
                             &ed,
                             &fee,
+			    &fee2,
                             &ms))
   {
     GNUNET_break (0);
@@ -1125,6 +1133,7 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
                             &sd,
                             &ed,
                             &fee,
+			    &fee2,
                             &ms))
   {
     GNUNET_break (0);
@@ -1134,6 +1143,8 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
        (ed.abs_value_us != end_date.abs_value_us) ||
        (0 != TALER_amount_cmp (&fee,
                                &wire_fee)) ||
+       (0 != TALER_amount_cmp (&fee2,
+                               &closing_fee)) ||
        (0 != memcmp (&ms,
                      &master_sig,
                      sizeof (ms))) )
@@ -1390,6 +1401,72 @@ wire_missing_cb (void *cls,
     GNUNET_break (0);
     result = 66;
   }
+}
+
+
+/**
+ * Callback invoked with information about refunds applicable
+ * to a particular coin.
+ *
+ * @param cls closure with the `struct TALER_EXCHANGEDB_Refund *` we expect to get
+ * @param merchant_pub public key of merchant who authorized refund
+ * @param merchant_sig signature of merchant authorizing refund
+ * @param h_contract hash of contract being refunded
+ * @param rtransaction_id refund transaction ID
+ * @param amount_with_fee amount being refunded
+ * @param refund_fee fee the exchange keeps for the refund processing
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+check_refund_cb (void *cls,
+		 const struct TALER_MerchantPublicKeyP *merchant_pub,
+		 const struct TALER_MerchantSignatureP *merchant_sig,
+		 const struct GNUNET_HashCode *h_contract,
+		 uint64_t rtransaction_id,
+		 const struct TALER_Amount *amount_with_fee,
+		 const struct TALER_Amount *refund_fee)
+{
+  const struct TALER_EXCHANGEDB_Refund *refund = cls;
+
+  if (0 != memcmp (merchant_pub,
+		   &refund->merchant_pub,
+		   sizeof (struct TALER_MerchantPublicKeyP)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != memcmp (merchant_sig,
+		   &refund->merchant_sig,
+		   sizeof (struct TALER_MerchantSignatureP)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != memcmp (h_contract,
+		   &refund->h_contract_terms,
+		   sizeof (struct GNUNET_HashCode)))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (rtransaction_id != refund->rtransaction_id)
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != TALER_amount_cmp (amount_with_fee,
+			     &refund->refund_amount))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  if (0 != TALER_amount_cmp (refund_fee,
+			     &refund->refund_fee))
+  {
+    GNUNET_break (0);
+    result = 66;
+  }
+  return GNUNET_OK;
 }
 
 
@@ -1890,14 +1967,20 @@ run (void *cls)
   refund.merchant_pub = deposit.merchant_pub;
   RND_BLK (&refund.merchant_sig);
   refund.h_contract_terms = deposit.h_contract_terms;
-  refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
+  refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+						     UINT64_MAX);
   refund.refund_amount = deposit.amount_with_fee;
   refund.refund_fee = fee_refund;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refund (plugin->cls,
                                  session,
                                  &refund));
-
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+	  plugin->select_refunds_by_coin (plugin->cls,
+					  session,
+					  &refund.coin.coin_pub,
+					  &check_refund_cb,
+					  &refund));
 
   /* test payback / revocation */
   RND_BLK (&master_sig);
@@ -2127,9 +2210,11 @@ main (int argc,
                     NULL);
   plugin_name++;
   (void) GNUNET_asprintf (&testname,
-                          "test-exchange-db-%s", plugin_name);
+                          "test-exchange-db-%s",
+			  plugin_name);
   (void) GNUNET_asprintf (&config_filename,
-                          "%s.conf", testname);
+                          "%s.conf",
+			  testname);
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
@@ -2140,7 +2225,8 @@ main (int argc,
     GNUNET_free (testname);
     return 2;
   }
-  GNUNET_SCHEDULER_run (&run, cfg);
+  GNUNET_SCHEDULER_run (&run,
+			cfg);
   GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_free (config_filename);
   GNUNET_free (testname);

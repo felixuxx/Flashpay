@@ -613,7 +613,7 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
   if (GNUNET_OK != found)
     return create_bank_error (connection,
                               MHD_HTTP_NOT_FOUND,
-                              TALER_EC_BANK_REJECT_NOT_FOUND,
+                              TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND,
                               "transaction unknown");
   /* finally build regular response */
   resp = MHD_create_response_from_buffer (0,

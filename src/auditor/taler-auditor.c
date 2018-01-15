@@ -391,7 +391,7 @@ report_amount_arithmetic_inconsistency (const char *operation,
                      "profitable", (json_int_t) profitable));
   if (0 != profitable)
   {
-    target = profitable
+    target = (1 == profitable)
       ? &total_arithmetic_delta_plus
       : &total_arithmetic_delta_minus;
     GNUNET_break (GNUNET_OK ==
@@ -452,7 +452,7 @@ report_coin_arithmetic_inconsistency (const char *operation,
                      "profitable", (json_int_t) profitable));
   if (0 != profitable)
   {
-    target = profitable
+    target = (1 == profitable)
       ? &total_coin_delta_plus
       : &total_coin_delta_minus;
     GNUNET_break (GNUNET_OK ==
@@ -1664,9 +1664,14 @@ struct WireFeeInfo
   struct GNUNET_TIME_Absolute end_date;
 
   /**
-   * How high is the fee.
+   * How high is the wire fee.
    */
   struct TALER_Amount wire_fee;
+
+  /**
+   * How high is the closing fee.
+   */
+  struct TALER_Amount closing_fee;
 
 };
 
@@ -1696,11 +1701,6 @@ struct AggregationContext
    * DLL of wire fees charged by the exchange.
    */
   struct WireFeeInfo *fee_tail;
-
-  /**
-   * How much did we make in aggregation fees.
-   */
-  struct TALER_Amount total_aggregation_feesX;
 
   /**
    * Final result status.
@@ -1798,7 +1798,6 @@ struct WireCheckContext
  * @param dki denomination information about the coin
  * @param tl_head head of transaction history to verify
  * @param[out] merchant_gain amount the coin contributes to the wire transfer to the merchant
- * @param[out] merchant_fees fees the exchange charged the merchant for the transaction(s)
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -1807,14 +1806,16 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                            const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
                            const struct TALER_EXCHANGEDB_TransactionList *tl_head,
-                           struct TALER_Amount *merchant_gain,
-                           struct TALER_Amount *merchant_fees)
+                           struct TALER_Amount *merchant_gain)
 {
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
   struct TALER_Amount spent;
   struct TALER_Amount value;
   struct TALER_Amount merchant_loss;
+  struct TALER_Amount merchant_delta;
+  const struct TALER_Amount *deposit_fee;
+  int refund_deposit_fee;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
@@ -1832,14 +1833,13 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                         merchant_gain));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
-                                        merchant_fees));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
                                         &merchant_loss));
   /* Go over transaction history to compute totals; note that we do not
      know the order, so instead of subtracting we compute positive
      (deposit, melt) and negative (refund) values separately here,
      and then subtract the negative from the positive after the loop. */
+  refund_deposit_fee = GNUNET_NO;
+  deposit_fee = NULL;
   for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;NULL != tl;tl = tl->next)
   {
     const struct TALER_Amount *amount_with_fee;
@@ -1871,7 +1871,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       {
         struct TALER_Amount amount_without_fee;
 
-        if (GNUNET_OK !=
+	if (GNUNET_OK !=
             TALER_amount_subtract (&amount_without_fee,
                                    amount_with_fee,
                                    fee))
@@ -1890,14 +1890,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Detected applicable deposit of %s\n",
                     TALER_amount2s (&amount_without_fee));
-        if (GNUNET_OK !=
-            TALER_amount_add (merchant_fees,
-                              merchant_fees,
-                              fee))
-        {
-          GNUNET_break (0);
-          return GNUNET_SYSERR;
-        }
+	deposit_fee = fee;	
       }
       /* Check that the fees given in the transaction list and in dki match */
       TALER_amount_ntoh (&tmp,
@@ -1975,14 +1968,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Detected applicable refund of %s\n",
                     TALER_amount2s (amount_with_fee));
-        if (GNUNET_OK !=
-            TALER_amount_add (merchant_fees,
-                              merchant_fees,
-                              fee))
-        {
-          GNUNET_break (0);
-          return GNUNET_SYSERR;
-        }
+	refund_deposit_fee = GNUNET_YES;
       }
       /* Check that the fees given in the transaction list and in dki match */
       TALER_amount_ntoh (&tmp,
@@ -2008,9 +1994,19 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       }
       break;
     }
-
   } /* for 'tl' */
 
+  if ( (GNUNET_YES == refund_deposit_fee) &&
+       (NULL != deposit_fee) )
+  {
+    /* We had a /deposit operation AND a /refund operation,
+       and should thus not charge the merchant the /deposit fee */
+    GNUNET_assert (GNUNET_OK ==
+		   TALER_amount_add (merchant_gain,
+				     merchant_gain,
+				     deposit_fee));
+  }
+  
   /* Calculate total balance change, i.e. expenditures minus refunds */
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&spent,
@@ -2022,7 +2018,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                           coin_pub,
                                           &expenditures,
                                           &refunds,
-                                          0);
+                                          1);
     return GNUNET_SYSERR;
   }
 
@@ -2041,9 +2037,10 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     return GNUNET_SYSERR;
   }
 
-  /* Finally, update @a merchant_gain by subtracting what he "lost" from refunds */
+  /* Finally, update @a merchant_gain by subtracting what he "lost"
+     from refunds */
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (merchant_gain,
+      TALER_amount_subtract (&merchant_delta,
                              merchant_gain,
                              &merchant_loss))
   {
@@ -2052,9 +2049,10 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                           coin_pub,
                                           merchant_gain,
                                           &merchant_loss,
-                                          0);
+                                          1);
     return GNUNET_SYSERR;
   }
+  *merchant_gain = merchant_delta;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Coin %s contributes %s to contract %s\n",
               TALER_B2S (coin_pub),
@@ -2077,7 +2075,8 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param h_contract_terms which proposal was this payment about
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total (with fee)
- * @param coin_fee applicable fee for this coin
+ * @param deposit_fee applicable deposit fee for this coin, actual
+ *        fees charged may differ if coin was refunded
  */
 static void
 wire_transfer_information_cb (void *cls,
@@ -2089,12 +2088,11 @@ wire_transfer_information_cb (void *cls,
                               const struct GNUNET_HashCode *h_contract_terms,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct TALER_Amount *coin_value,
-                              const struct TALER_Amount *coin_fee)
+                              const struct TALER_Amount *deposit_fee)
 {
   struct WireCheckContext *wcc = cls;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct TALER_Amount computed_value;
-  struct TALER_Amount computed_fees;
   struct TALER_Amount coin_value_without_fee;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   const struct TALER_CoinPublicInfo *coin;
@@ -2156,18 +2154,17 @@ wire_transfer_information_cb (void *cls,
                              merchant_pub,
                              dki,
                              tl,
-                             &computed_value,
-                             &computed_fees);
+                             &computed_value);
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&coin_value_without_fee,
                              coin_value,
-                             coin_fee))
+                             deposit_fee))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_amount_arithmetic_inconsistency ("aggregation (fee structure)",
                                             rowid,
                                             coin_value,
-                                            coin_fee,
+                                            deposit_fee,
                                             -1);
     return;
   }
@@ -2181,17 +2178,6 @@ wire_transfer_information_cb (void *cls,
                                             &coin_value_without_fee,
                                             &computed_value,
                                             -1);
-  }
-  if (0 !=
-      TALER_amount_cmp (&computed_fees,
-                        coin_fee))
-  {
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    report_amount_arithmetic_inconsistency ("aggregation (fee)",
-                                            rowid,
-                                            coin_fee,
-                                            &computed_fees,
-                                            1);
   }
   edb->free_coin_transaction_list (edb->cls,
                                    tl);
@@ -2276,6 +2262,7 @@ get_wire_fee (struct AggregationContext *ac,
                          &wfi->start_date,
                          &wfi->end_date,
                          &wfi->wire_fee,
+			 &wfi->closing_fee,
                          &master_sig))
   {
     GNUNET_break (0);
@@ -2299,6 +2286,8 @@ get_wire_fee (struct AggregationContext *ac,
     wp.end_date = GNUNET_TIME_absolute_hton (wfi->end_date);
     TALER_amount_hton (&wp.wire_fee,
                        &wfi->wire_fee);
+    TALER_amount_hton (&wp.closing_fee,
+                       &wfi->closing_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
                                     &wp.purpose,

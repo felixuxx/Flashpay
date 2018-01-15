@@ -149,6 +149,8 @@ deposit_transaction (void *cls,
   {
     struct TALER_Amount amount_without_fee;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"/deposit replay, accepting again!\n");
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_subtract (&amount_without_fee,
                                           &deposit->amount_with_fee,
@@ -191,6 +193,8 @@ deposit_transaction (void *cls,
   if (0 < TALER_amount_cmp (&spent,
                             &dc->value))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+		"Deposited coin has insufficient funds left!\n");
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
 							   TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
 							   tl);
@@ -376,7 +380,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   struct GNUNET_HashCode my_h_wire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),
-    TALER_JSON_spec_amount ("f", &deposit.amount_with_fee),
+    TALER_JSON_spec_amount ("contribution", &deposit.amount_with_fee),
     TALER_JSON_spec_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),

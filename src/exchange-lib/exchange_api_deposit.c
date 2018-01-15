@@ -454,7 +454,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            " s:o," /* merchant_pub */
                            " s:o, s:o," /* refund_deadline, wire_deadline */
                            " s:o}",     /* coin_sig */
-                           "f", TALER_JSON_from_amount (amount),
+                           "contribution", TALER_JSON_from_amount (amount),
                            "wire", wire_details,
                            "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
                            "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),

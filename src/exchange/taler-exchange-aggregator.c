@@ -124,6 +124,11 @@ struct AggregationUnit
   struct GNUNET_HashCode h_wire;
 
   /**
+   * Hash code of contract we are currently looking into.
+   */
+  const struct GNUNET_HashCode *h_contract;
+
+  /**
    * Wire transfer identifier we use.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
@@ -374,6 +379,7 @@ update_fees (struct WirePlugin *wp,
 				     p->start_date,
 				     p->end_date,
 				     &p->wire_fee,
+				     &p->closing_fee,
 				     &p->master_sig);
     if (qs < 0)
     {
@@ -568,6 +574,53 @@ exchange_serve_process_config ()
 
 
 /**
+ * Callback invoked with information about refunds applicable
+ * to a particular coin.  Subtract refunded amount(s) from
+ * the aggregation unit's total amount.
+ *
+ * @param cls closure with a `struct AggregationUnit *`
+ * @param merchant_pub public key of merchant who authorized refund
+ * @param merchant_sig signature of merchant authorizing refund
+ * @param h_contract hash of contract being refunded
+ * @param rtransaction_id refund transaction ID
+ * @param amount_with_fee amount being refunded
+ * @param refund_fee fee the exchange keeps for the refund processing
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+refund_by_coin_cb (void *cls,
+		   const struct TALER_MerchantPublicKeyP *merchant_pub,
+		   const struct TALER_MerchantSignatureP *merchant_sig,
+		   const struct GNUNET_HashCode *h_contract,
+		   uint64_t rtransaction_id,
+		   const struct TALER_Amount *amount_with_fee,
+		   const struct TALER_Amount *refund_fee)
+{
+  struct AggregationUnit *au = cls;
+
+  /* TODO: potential optimization: include these conditions
+     in the SELECT! */
+  if (0 != memcmp (merchant_pub,
+		   &au->merchant_pub,
+		   sizeof (struct TALER_MerchantPublicKeyP)))
+    return GNUNET_OK; /* different merchant */
+  if (0 != memcmp (h_contract,
+		   au->h_contract,
+		   sizeof (struct GNUNET_HashCode)))
+    return GNUNET_OK; /* different contract */
+  if (GNUNET_OK !=
+      TALER_amount_subtract (&au->total_amount,
+			     &au->total_amount,
+			     amount_with_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+						
+
+/**
  * Function called with details about deposits that have been made,
  * with the goal of executing the corresponding wire transaction.
  *
@@ -609,6 +662,20 @@ deposit_cb (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   au->row_id = row_id;
+
+  au->h_contract = h_contract_terms;
+  qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
+					  au->session,
+					  coin_pub,
+					  &refund_by_coin_cb,
+					  au);
+  au->h_contract = NULL;
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  
   GNUNET_assert (NULL == au->wire);
   au->wire = json_incref ((json_t *) wire);
   if (GNUNET_OK !=
@@ -730,6 +797,20 @@ aggregate_cb (void *cls,
     /* Skip this one, but keep going! */
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
+
+  au->h_contract = h_contract_terms;
+  qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
+					  au->session,
+					  coin_pub,
+					  &refund_by_coin_cb,
+					  au);
+  au->h_contract = NULL;
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  
   if (au->rows_offset >= aggregation_limit)
   {
     /* Bug: we asked for at most #aggregation_limit results! */
