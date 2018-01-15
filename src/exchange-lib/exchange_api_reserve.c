@@ -142,11 +142,14 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       json_t *wire_account;
       void *wire_reference;
       size_t wire_reference_size;
+      struct GNUNET_TIME_Absolute timestamp;
 
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_varsize ("wire_reference",
                                   &wire_reference,
                                   &wire_reference_size),
+        GNUNET_JSON_spec_absolute_time ("timestamp",
+                                        &timestamp),
         GNUNET_JSON_spec_json ("sender_account_details",
                                &wire_account),
         GNUNET_JSON_spec_end()
@@ -173,6 +176,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       rhistory[off].details.in_details.sender_account_details = wire_account;
       rhistory[off].details.in_details.wire_reference = wire_reference;
       rhistory[off].details.in_details.wire_reference_size = wire_reference_size;
+      rhistory[off].details.in_details.timestamp = timestamp;
       /* end type==DEPOSIT */
     }
     else if (0 == strcasecmp (type,

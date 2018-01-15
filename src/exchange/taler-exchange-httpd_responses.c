@@ -711,7 +711,9 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 
   json_history = json_array ();
   ret = 0;
-  for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh; NULL != pos; pos = pos->next)
+  for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh;
+       NULL != pos;
+       pos = pos->next)
   {
     switch (pos->type)
     {
@@ -731,8 +733,9 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
       ret |= 1;
       GNUNET_assert (0 ==
                      json_array_append_new (json_history,
-                                            json_pack ("{s:s, s:O, s:o, s:o}",
+                                            json_pack ("{s:s, s:o, s:O, s:o, s:o}",
                                                        "type", "DEPOSIT",
+                                                       "timestamp", GNUNET_JSON_from_time_abs (pos->details.bank->execution_date),
                                                        "sender_account_details", pos->details.bank->sender_account_details,
                                                        "wire_reference", GNUNET_JSON_from_data (pos->details.bank->wire_reference,
                                                                                                 pos->details.bank->wire_reference_size),
