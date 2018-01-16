@@ -728,7 +728,7 @@ handle_mhd_logs (void *cls,
              sizeof (buf),
              fm,
              ap);
-  GNUNET_log_from (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log_from (GNUNET_ERROR_TYPE_INFO,
                    "libmicrohttpd",
                    "%s",
                    buf);
