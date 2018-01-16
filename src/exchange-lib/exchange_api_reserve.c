@@ -570,12 +570,15 @@ handle_reserve_status_finished (void *cls,
     break;
   }
   if (NULL != rsh->cb)
+  {
     rsh->cb (rsh->cb_cls,
              response_code,
 	     TALER_JSON_get_error_code (json),
              json,
              NULL,
              0, NULL);
+    rsh->cb = NULL;
+  }
   TALER_EXCHANGE_reserve_status_cancel (rsh);
 }
 
@@ -745,7 +748,8 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
   struct GNUNET_CRYPTO_RsaSignature *blind_sig;
   struct TALER_FreshCoin fc;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),
+    GNUNET_JSON_spec_rsa_signature ("ev_sig",
+                                    &blind_sig),
     GNUNET_JSON_spec_end()
   };
 
@@ -961,11 +965,14 @@ handle_reserve_withdraw_finished (void *cls,
     break;
   }
   if (NULL != wsh->cb)
+  {
     wsh->cb (wsh->cb_cls,
              response_code,
 	     TALER_JSON_get_error_code (json),
              NULL,
              json);
+    wsh->cb = NULL;
+  }
   TALER_EXCHANGE_reserve_withdraw_cancel (wsh);
 }
 

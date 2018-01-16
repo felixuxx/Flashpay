@@ -832,8 +832,8 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                        "wt_subject", subject);
     GNUNET_assert (NULL != trans);
     GNUNET_free (subject);
-    GNUNET_assert (0 == json_array_append (history,
-                                           trans));
+    GNUNET_assert (0 == json_array_append_new (history,
+                                               trans));
     if (count > 0)
     {
       pos = pos->next;
