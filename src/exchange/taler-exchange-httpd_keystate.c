@@ -1183,6 +1183,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
   struct TALER_ExchangeKeySetPS ks;
   struct TALER_ExchangeSignatureP sig;
   char *keys_json;
+  struct GNUNET_TIME_Relative reserve_closing_delay;
   void *keys_jsonz;
   size_t keys_jsonz_size;
   int comp;
@@ -1287,13 +1288,29 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                  GNUNET_CRYPTO_eddsa_sign (&rfc->key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                            &ks.purpose,
                                            &sig.eddsa_signature));
-
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchangedb",
+                                           "IDLE_RESERVE_EXPIRATION_TIME",
+                                           &reserve_closing_delay))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "IDLE_RESERVE_EXPIRATION_TIME");
+    /* use default */
+    reserve_closing_delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_WEEKS,
+                                                           4);
+  }
   /* Build /keys response */
-  keys = json_pack ("{s:s, s:o, s:O, s:O, s:o, s:o, s:o, s:o, s:o}",
+  keys = json_pack ("{s:s, s:o, s:o, s:O, s:O,"
+                    " s:o, s:o, s:o, s:o, s:o}",
+                    /* 1-5 */
                     "version", TALER_PROTOCOL_VERSION,
                     "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
+                    "reserve_closing_delay", GNUNET_JSON_from_time_rel (reserve_closing_delay),
                     "signkeys", rfc->sign_keys_array,
                     "payback", rfc->payback_array,
+                    /* 6-10 */
                     "denoms", rbc.denom_keys_array,
                     "auditors", rbc.auditors_array,
                     "list_issue_date", GNUNET_JSON_from_time_abs (rfc->key_state->reload_time),

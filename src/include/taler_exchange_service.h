@@ -206,6 +206,13 @@ struct TALER_EXCHANGE_Keys
   char *version;
 
   /**
+   * How long after a reserve went idle will the exchange close it?
+   * This is an approximate number, not cryptographically signed by
+   * the exchange (advisory-only, may change anytime).
+   */
+  struct GNUNET_TIME_Relative reserve_closing_delay;
+
+  /**
    * Timestamp indicating the /keys generation.
    */
   struct GNUNET_TIME_Absolute list_issue_date;

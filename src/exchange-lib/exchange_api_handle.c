@@ -575,6 +575,8 @@ decode_keys_json (const json_t *resp_obj,
                                    &pub),
       GNUNET_JSON_spec_absolute_time ("list_issue_date",
                                       &list_issue_date),
+      GNUNET_JSON_spec_relative_time ("reserve_closing_delay",
+                                      &key_data->reserve_closing_delay),
       GNUNET_JSON_spec_end()
     };
 
