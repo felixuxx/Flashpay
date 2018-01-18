@@ -482,11 +482,9 @@ To enable the wire transfer method ``sepa'', you need to set
 ``ENABLE=YES'' in section @cite{[exchange-wire-sepa]}.
 
 
-The bank account where the exchange gets money from customers is
-configured under the section @cite{[exchange-wire-incoming-sepa]}.  This
-section contains only one option: @cite{sepa_response_file}, which takes
-the path to a text file containing the exchange's bank account details
-in JSON format.
+This section contains only one option: @cite{sepa_response_file},
+which takes the path to a text file containing the exchange's bank
+account details in JSON format.
 
 The command line tool @cite{taler-exchange-wire} is used to create such a file.
 For example, the utility may be invoked as follows:
