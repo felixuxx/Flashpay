@@ -1392,7 +1392,8 @@ enum TALER_ErrorCode
 
   /**
    * The amount requested exceeds the remaining tipping balance for this tip ID.
-   * Returned with an HTTP status code of "service unavailable".
+   * Returned with an HTTP status code of "Conflict" (as it conflicts with
+   * a previous pickup operation).
    */
   TALER_EC_TIP_PICKUP_NO_FUNDS = 2801,
 
