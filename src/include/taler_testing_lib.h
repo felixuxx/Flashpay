@@ -43,6 +43,28 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
                        const struct TALER_Amount *amount);
 
 
+/**
+ * Prepare launching an exchange.  Checks that the configured
+ * port is available, runs taler-exchange-keyup,
+ * taler-auditor-sign and taler-exchange-dbinit.  Does not
+ * launch the exchange process itself.
+ *
+ * @param config_filename configuration file to use
+ * @return #GNUNET_OK on success, #GNUNET_NO if test should be skipped,
+ *         #GNUNET_SYSERR on test failure
+ */
+int
+TALER_TESTING_prepare_exchange (const char *config_filename);
+
+
+/**
+ * Remove files from previous runs
+ */
+void
+TALER_TESTING_cleanup_files (const char *config_name);
+
+
+
 /* ******************* Generic interpreter logic ****************** */
 
 /**
@@ -206,6 +228,15 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      uint64_t credit_account_no,
                                      const char *auth_username,
                                      const char *auth_password);
+
+
+/**
+ * Execute taler-exchange-wirewatch process.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_wirewatch (const char *label,
+                                  const char *config_filename);
 
 
 /**

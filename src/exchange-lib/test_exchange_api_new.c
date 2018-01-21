@@ -46,6 +46,7 @@
  */
 #define EXCHANGE_ACCOUNT_NO 2
 
+
 /**
  * Handle to access the exchange.
  */
@@ -98,6 +99,8 @@ run (void *cls,
                                          EXCHANGE_ACCOUNT_NO,
                                          "user42",
                                          "pass42"),
+    TALER_TESTING_cmd_exec_wirewatch ("exec-wirewatch",
+                                      "test_exchange_api.conf"),
     TALER_TESTING_cmd_end ()
   };
 
@@ -110,47 +113,11 @@ run (void *cls,
 
 
 
-/**
- * Remove files from previous runs
- */
-static void
-cleanup_files ()
-{
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  char *dir;
-
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_load (cfg,
-                                 "test_exchange_api.conf"))
-  {
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    exit (77);
-  }
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                          "exchange",
-                                                          "keydir",
-                                                          &dir));
-  if (GNUNET_YES ==
-      GNUNET_DISK_directory_test (dir,
-                                  GNUNET_NO))
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_DISK_directory_remove (dir));
-  GNUNET_free (dir);
-  GNUNET_CONFIGURATION_destroy (cfg);
-}
-
-
-
-
 int
 main (int argc,
       char * const *argv)
 {
   struct GNUNET_OS_Process *proc;
-  struct GNUNET_SIGNAL_Context *shc_chld;
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
   unsigned int iter;
@@ -159,18 +126,17 @@ main (int argc,
   /* These might get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api",
+  GNUNET_log_setup ("test-exchange-api-new",
                     "INFO",
                     NULL);
-  if (GNUNET_OK !=
-      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     8081))
-  {
-    fprintf (stderr,
-             "Required port %u not available, skipping.\n",
-	     8081);
+  TALER_TESTING_cleanup_files ("test_exchange_api.conf");
+  result = TALER_TESTING_prepare_exchange ("test_exchange_api.conf");
+  if (GNUNET_SYSERR == result)
+    return 1;
+  if (GNUNET_NO == result)
     return 77;
-  }
+
+  /* For fakebank */
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
 				     8082))
@@ -180,83 +146,7 @@ main (int argc,
 	     8082);
     return 77;
   }
-  cleanup_files ();
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
-                                  NULL, NULL, NULL,
-                                  "taler-exchange-keyup",
-                                  "taler-exchange-keyup",
-                                  "-c", "test_exchange_api.conf",
-                                  "-o", "auditor.in",
-                                  NULL);
-  if (NULL == proc)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
-    return 77;
-  }
-  GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_destroy (proc);
-
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
-                                  NULL, NULL, NULL,
-                                  "taler-auditor-sign",
-                                  "taler-auditor-sign",
-                                  "-c", "test_exchange_api.conf",
-                                  "-u", "http://auditor/",
-                                  "-m", "98NJW3CQHZQGQXTY3K85K531XKPAPAVV4Q5V8PYYRR00NJGZWNVG",
-                                  "-r", "auditor.in",
-                                  "-o", "test_exchange_api_home/.local/share/taler/auditors/auditor.out",
-                                  NULL);
-  if (NULL == proc)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
-    return 77;
-  }
-  GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_destroy (proc);
-
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
-                                  NULL, NULL, NULL,
-                                  "taler-exchange-dbinit",
-                                  "taler-exchange-dbinit",
-                                  "-c", "test_exchange_api.conf",
-                                  "-r",
-                                  NULL);
-  if (NULL == proc)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
-    return 77;
-  }
-  if (GNUNET_SYSERR ==
-      GNUNET_OS_process_wait_status (proc,
-                                     &type,
-                                     &code))
-  {
-    GNUNET_break (0);
-    GNUNET_OS_process_destroy (proc);
-    return 1;
-  }
-  GNUNET_OS_process_destroy (proc);
-  if ( (type == GNUNET_OS_PROCESS_EXITED) &&
-       (0 != code) )
-  {
-    fprintf (stderr,
-             "Failed to setup database\n");
-    return 77;
-  }
-  if ( (type != GNUNET_OS_PROCESS_EXITED) ||
-       (0 != code) )
-  {
-    fprintf (stderr,
-             "Unexpected error running `taler-exchange-dbinit'!\n");
-    return 1;
-  }
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
                                        GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
@@ -288,7 +178,8 @@ main (int argc,
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
 
-  result = TALER_TESTING_setup (&run, NULL);
+  result = TALER_TESTING_setup (&run,
+                                NULL);
   GNUNET_break (0 ==
                 GNUNET_OS_process_kill (exchanged,
                                         SIGTERM));

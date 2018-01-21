@@ -253,6 +253,11 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (is->timeout_task);
     is->timeout_task = NULL;
   }
+  if (NULL != is->child_death_task)
+  {
+    GNUNET_SCHEDULER_cancel (is->child_death_task);
+    is->child_death_task = NULL;
+  }
   GNUNET_free_non_null (is->commands);
 }
 

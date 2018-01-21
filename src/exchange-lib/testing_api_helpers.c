@@ -30,6 +30,164 @@
 
 
 /**
+ * Remove files from previous runs
+ */
+void
+TALER_TESTING_cleanup_files (const char *config_name)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *dir;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_name))
+  {
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    exit (77);
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                          "exchange",
+                                                          "keydir",
+                                                          &dir));
+  if (GNUNET_YES ==
+      GNUNET_DISK_directory_test (dir,
+                                  GNUNET_NO))
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_DISK_directory_remove (dir));
+  GNUNET_free (dir);
+  GNUNET_CONFIGURATION_destroy (cfg);
+}
+
+
+/**
+ * Prepare launching an exchange.  Checks that the configured
+ * port is available, runs taler-exchange-keyup,
+ * taler-auditor-sign and taler-exchange-dbinit.  Does not
+ * launch the exchange process itself.
+ *
+ * @param config_filename configuration file to use
+ * @return #GNUNET_OK on success, #GNUNET_NO if test should be skipped,
+ *         #GNUNET_SYSERR on test failure
+ */
+int
+TALER_TESTING_prepare_exchange (const char *config_filename)
+{
+  struct GNUNET_OS_Process *proc;
+  enum GNUNET_OS_ProcessStatusType type;
+  unsigned long code;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  unsigned long long port;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_filename))
+    return GNUNET_NO;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "exchange",
+                                             "PORT",
+                                             &port))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "PORT");
+    return GNUNET_NO;
+  }
+  GNUNET_CONFIGURATION_destroy (cfg);
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+				     (uint16_t) port))
+  {
+    fprintf (stderr,
+             "Required port %llu not available, skipping.\n",
+	     port);
+    return GNUNET_NO;
+  }
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-keyup",
+                                  "taler-exchange-keyup",
+                                  "-c", "test_exchange_api.conf",
+                                  "-o", "auditor.in",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    return GNUNET_NO;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-auditor-sign",
+                                  "taler-auditor-sign",
+                                  "-c", "test_exchange_api.conf",
+                                  "-u", "http://auditor/",
+                                  "-m", "98NJW3CQHZQGQXTY3K85K531XKPAPAVV4Q5V8PYYRR00NJGZWNVG",
+                                  "-r", "auditor.in",
+                                  "-o", "test_exchange_api_home/.local/share/taler/auditors/auditor.out",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    return GNUNET_NO;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-dbinit",
+                                  "taler-exchange-dbinit",
+                                  "-c", "test_exchange_api.conf",
+                                  "-r",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
+    return GNUNET_NO;
+  }
+  if (GNUNET_SYSERR ==
+      GNUNET_OS_process_wait_status (proc,
+                                     &type,
+                                     &code))
+  {
+    GNUNET_break (0);
+    GNUNET_OS_process_destroy (proc);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_OS_process_destroy (proc);
+  if ( (type == GNUNET_OS_PROCESS_EXITED) &&
+       (0 != code) )
+  {
+    fprintf (stderr,
+             "Failed to setup database\n");
+    return GNUNET_NO;
+  }
+  if ( (type != GNUNET_OS_PROCESS_EXITED) ||
+       (0 != code) )
+  {
+    fprintf (stderr,
+             "Unexpected error running `taler-exchange-dbinit'!\n");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Find denomination key matching the given amount.
  *
  * @param keys array of keys to search

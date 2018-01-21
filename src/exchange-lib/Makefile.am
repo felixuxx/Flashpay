@@ -39,6 +39,7 @@ libtalertesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalertesting_la_SOURCES = \
+  testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_fakebank_transfer.c \
   testing_api_cmd_withdraw.c \
   testing_api_helpers.c \
