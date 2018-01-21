@@ -1,0 +1,84 @@
+
+/*
+  This file is part of TALER
+  Copyright (C) 2018 Taler Systems SA
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  TALER; see the file COPYING.  If not, see
+  <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file exchange-lib/testing_api_helpers.c
+ * @brief helper functions
+ * @author Christian Grothoff
+ * @author Marcello Stanisci
+ */
+#include "platform.h"
+#include "taler_json_lib.h"
+#include <gnunet/gnunet_curl_lib.h>
+#include "exchange_api_handle.h"
+#include "taler_signatures.h"
+#include "taler_testing_lib.h"
+
+
+/**
+ * Find denomination key matching the given amount.
+ *
+ * @param keys array of keys to search
+ * @param amount coin value to look for
+ * @return NULL if no matching key was found
+ */
+const struct TALER_EXCHANGE_DenomPublicKey *
+TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
+                       const struct TALER_Amount *amount)
+{
+  struct GNUNET_TIME_Absolute now;
+  struct TALER_EXCHANGE_DenomPublicKey *pk;
+  char *str;
+
+  now = GNUNET_TIME_absolute_get ();
+  for (unsigned int i=0;i<keys->num_denom_keys;i++)
+  {
+    pk = &keys->denom_keys[i];
+    if ( (0 == TALER_amount_cmp (amount,
+                                 &pk->value)) &&
+         (now.abs_value_us >= pk->valid_from.abs_value_us) &&
+         (now.abs_value_us < pk->withdraw_valid_until.abs_value_us) )
+      return pk;
+  }
+  /* do 2nd pass to check if expiration times are to blame for failure */
+  str = TALER_amount_to_string (amount);
+  for (unsigned int i=0;i<keys->num_denom_keys;i++)
+  {
+    pk = &keys->denom_keys[i];
+    if ( (0 == TALER_amount_cmp (amount,
+                                 &pk->value)) &&
+         ( (now.abs_value_us < pk->valid_from.abs_value_us) ||
+           (now.abs_value_us > pk->withdraw_valid_until.abs_value_us) ) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Have denomination key for `%s', but with wrong expiration range %llu vs [%llu,%llu)\n",
+                  str,
+                  (unsigned long long) now.abs_value_us,
+                  (unsigned long long) pk->valid_from.abs_value_us,
+                  (unsigned long long) pk->withdraw_valid_until.abs_value_us);
+      GNUNET_free (str);
+      return NULL;
+    }
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "No denomination key for amount %s found\n",
+              str);
+  GNUNET_free (str);
+  return NULL;
+}
+
+/* end of testing_api_helpers.c */
