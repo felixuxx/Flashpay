@@ -45,6 +45,12 @@ struct TALER_TESTING_Interpreter
   struct GNUNET_SCHEDULER_Task *task;
 
   /**
+   * ID of task called whenever we get a SIGCHILD.
+   * Used for #TALER_TESTING_wait_for_sigchld().
+   */
+  struct GNUNET_SCHEDULER_Task *child_death_task;
+
+  /**
    * Main execution context for the main loop.
    */
   struct GNUNET_CURL_Context *ctx;
@@ -70,12 +76,15 @@ struct TALER_TESTING_Interpreter
    */
   int result;
 
-  /**
-   * Pipe used to communicate child death via signal.
-   */
-  struct GNUNET_DISK_PipeHandle *sigpipe;
-
 };
+
+
+/**
+ * Pipe used to communicate child death via signal.
+ * Must be global, as used in signal handler!
+ */
+static struct GNUNET_DISK_PipeHandle *sigpipe;
+
 
 
 /**
@@ -263,6 +272,67 @@ do_timeout (void *cls)
 }
 
 
+/**
+ * Task triggered whenever we receive a SIGCHLD (child
+ * process died).
+ *
+ * @param cls closure
+ */
+static void
+maint_child_death (void *cls)
+{
+  struct TALER_TESTING_Interpreter *is = cls;
+  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
+  const struct GNUNET_DISK_FileHandle *pr;
+  struct GNUNET_OS_Process **processp;
+  char c[16];
+
+  is->child_death_task = NULL;
+  pr = GNUNET_DISK_pipe_handle (sigpipe,
+                                GNUNET_DISK_PIPE_END_READ);
+  GNUNET_break (0 <
+                GNUNET_DISK_file_read (pr,
+                                       &c,
+                                       sizeof (c)));
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_process (cmd,
+                                       NULL,
+                                       &processp))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_OS_process_wait (*processp);
+  GNUNET_OS_process_destroy (*processp);
+  *processp = NULL;
+  TALER_TESTING_interpreter_next (is);
+}
+
+
+/**
+ * Wait until we receive SIGCHLD signal.
+ * Then obtain the process trait of the current
+ * command, wait on the the zombie and continue
+ * with the next command.
+ */
+void
+TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is)
+{
+  const struct GNUNET_DISK_FileHandle *pr;
+
+  GNUNET_assert (NULL == is->child_death_task);
+  pr = GNUNET_DISK_pipe_handle (sigpipe,
+                                GNUNET_DISK_PIPE_END_READ);
+  is->child_death_task
+    = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
+                                      pr,
+                                      &maint_child_death,
+                                      is);
+
+}
+
+
 void
 TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands)
@@ -298,6 +368,25 @@ struct MainContext
 };
 
 
+/**
+ * Signal handler called for SIGCHLD.  Triggers the
+ * respective handler by writing to the trigger pipe.
+ */
+static void
+sighandler_child_death ()
+{
+  static char c;
+  int old_errno = errno;	/* back-up errno */
+
+  GNUNET_break (1 ==
+		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
+					(sigpipe,
+                                         GNUNET_DISK_PIPE_END_WRITE),
+					&c, sizeof (c)));
+  errno = old_errno;		/* restore errno */
+}
+
+
 static void
 main_wrapper (void *cls)
 {
@@ -326,12 +415,21 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     .main_cb_cls = main_cb_cls,
     .is = &is
   };
+  struct GNUNET_SIGNAL_Context *shc_chld;
 
   memset (&is,
           0,
           sizeof (is));
+  sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO,
+                              GNUNET_NO, GNUNET_NO);
+  GNUNET_assert (NULL != sigpipe);
+  shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
+                                            &sighandler_child_death);
   GNUNET_SCHEDULER_run (&main_wrapper,
                         &main_ctx);
+  GNUNET_SIGNAL_handler_uninstall (shc_chld);
+  GNUNET_DISK_pipe_close (sigpipe);
+  sigpipe = NULL;
   return is.result;
 }
 

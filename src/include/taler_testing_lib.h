@@ -162,6 +162,16 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_end (void);
 
 
+/**
+ * Wait until we receive SIGCHLD signal.
+ * Then obtain the process trait of the current
+ * command, wait on the the zombie and continue
+ * with the next command.
+ */
+void
+TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is);
+
+
 void
 TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands);
@@ -270,6 +280,28 @@ int
 TALER_TESTING_get_trait_reserve_priv (const struct TALER_TESTING_Command *cmd,
                                       const char *selector,
                                       struct TALER_ReservePrivateKeyP **reserve_priv);
+
+
+
+/**
+ * Obtain location where a command stores a pointer to a process
+ *
+ * @param cmd command to extract trait from
+ * @param selector which process to pick if @a cmd has multiple on offer
+ * @param coin_priv[out] set to address of the pointer to the process
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
+                                 const char *selector,
+                                 struct GNUNET_OS_Process ***processp);
+
+
+
+
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_process (const char *selector,
+                                  struct GNUNET_OS_Process **processp);
 
 
 /**

@@ -51,12 +51,6 @@
  */
 // static struct TALER_EXCHANGE_Handle *exchange;
 
-
-/**
- * Pipe used to communicate child death via signal.
- */
-static struct GNUNET_DISK_PipeHandle *sigpipe;
-
 /**
  * Handle to the exchange process.
  */
@@ -112,24 +106,6 @@ run (void *cls,
                      commands);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
-}
-
-
-/**
- * Signal handler called for SIGCHLD.  Triggers the
- * respective handler by writing to the trigger pipe.
- */
-static void
-sighandler_child_death ()
-{
-  static char c;
-  int old_errno = errno;	/* back-up errno */
-
-  GNUNET_break (1 ==
-		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
-					(sigpipe, GNUNET_DISK_PIPE_END_WRITE),
-					&c, sizeof (c)));
-  errno = old_errno;		/* restore errno */
 }
 
 
@@ -311,17 +287,8 @@ main (int argc,
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
-  sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO,
-                              GNUNET_NO, GNUNET_NO);
-  GNUNET_assert (NULL != sigpipe);
-  shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
-                                            &sighandler_child_death);
 
   result = TALER_TESTING_setup (&run, NULL);
-
-  GNUNET_SIGNAL_handler_uninstall (shc_chld);
-  shc_chld = NULL;
-  GNUNET_DISK_pipe_close (sigpipe);
   GNUNET_break (0 ==
                 GNUNET_OS_process_kill (exchanged,
                                         SIGTERM));

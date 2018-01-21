@@ -44,8 +44,8 @@ TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
                                  struct GNUNET_OS_Process ***processp)
 {
   return cmd->traits (cmd->cls,
-                      (void **) coin_priv,
-                      TALER_TESTING_TRAIT_COIN_PRIVATE_KEY,
+                      (void **) processp,
+                      TALER_TESTING_TRAIT_PROCESS,
                       selector);
 }
 
@@ -57,7 +57,7 @@ TALER_TESTING_make_trait_process (const char *selector,
   struct TALER_TESTING_Trait ret = {
     .selector = selector,
     .trait_name = TALER_TESTING_TRAIT_PROCESS,
-    .ptr = (const void *) process
+    .ptr = (const void *) processp
   };
 
   return ret;
