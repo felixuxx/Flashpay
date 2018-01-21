@@ -82,6 +82,10 @@ do_shutdown (void *cls)
   }
 }
 
+#define CONFIG_FILE "test_exchange_api.conf"
+
+#define RUN_WIREWATCH(label) TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+
 
 /**
  * Main function that will tell the interpreter what to do.
@@ -99,8 +103,7 @@ run (void *cls,
                                          EXCHANGE_ACCOUNT_NO,
                                          "user42",
                                          "pass42"),
-    TALER_TESTING_cmd_exec_wirewatch ("exec-wirewatch",
-                                      "test_exchange_api.conf"),
+    RUN_WIREWATCH ("exec-wirewatch-1"),
     TALER_TESTING_cmd_end ()
   };
 
@@ -129,8 +132,8 @@ main (int argc,
   GNUNET_log_setup ("test-exchange-api-new",
                     "INFO",
                     NULL);
-  TALER_TESTING_cleanup_files ("test_exchange_api.conf");
-  result = TALER_TESTING_prepare_exchange ("test_exchange_api.conf");
+  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  result = TALER_TESTING_prepare_exchange (CONFIG_FILE);
   if (GNUNET_SYSERR == result)
     return 1;
   if (GNUNET_NO == result)
@@ -152,7 +155,7 @@ main (int argc,
                                        NULL, NULL, NULL,
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
-                                       "-c", "test_exchange_api.conf",
+                                       "-c", CONFIG_FILE,
                                        "-i",
                                        NULL);
   /* give child time to start and bind against the socket */
