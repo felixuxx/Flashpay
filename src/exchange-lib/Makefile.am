@@ -40,6 +40,8 @@ libtalertesting_la_LDFLAGS = \
   -no-undefined
 libtalertesting_la_SOURCES = \
   testing_api_cmd_fakebank_transfer.c \
+  testing_api_cmd_withdraw.c \
+  testing_api_helpers.c \
   testing_api_loop.c \
   testing_api_traits.c \
   testing_api_trait_blinding_key.c \

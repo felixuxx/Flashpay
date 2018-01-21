@@ -25,6 +25,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "taler_testing_lib.h"
 
 
 struct WithdrawState
@@ -50,6 +51,16 @@ struct WithdrawState
   const struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
+   * Exchange we should use for the withdrawal.
+   */
+  struct TALER_EXCHANGE_Handle *exchange;
+
+  /**
+   * Interpreter state (during command).
+   */
+  struct TALER_TESTING_Interpreter *is;
+
+  /**
    * Set (by the interpreter) to the exchange's signature over the
    * coin's public key.
    */
@@ -65,34 +76,101 @@ struct WithdrawState
    */
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
 
+  /**
+   * Expected HTTP response code to the request.
+   */
+  unsigned int expected_response_code;
+
 };
 
 
-  /**
-   * Runs the command.  Note that upon return, the interpreter
-   * will not automatically run the next command, as the command
-   * may continue asynchronously in other scheduler tasks.  Thus,
-   * the command must ensure to eventually call
-   * #TALER_TESTING_interpreter_next() or
-   * #TALER_TESTING_interpreter_fail().
-   *
-   * @param i interpreter state
-   */
+/**
+ * Function called upon completion of our /reserve/withdraw request.
+ *
+ * @param cls closure with the withdraw state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param sig signature over the coin, NULL on error
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
 static void
-withdraw_run (void *cls,
-              struct TALER_TESTING_Interpreter *i)
+reserve_withdraw_cb (void *cls,
+                     unsigned int http_status,
+		     enum TALER_ErrorCode ec,
+                     const struct TALER_DenominationSignature *sig,
+                     const json_t *full_response)
 {
   struct WithdrawState *ws = cls;
-  struct TALER_ReservePrivateKeyP rp;
-  struct TALER_TESTING_Command *create_reserve;
+  struct TALER_TESTING_Interpreter *is = ws->is;
+
+  ws->wsh = NULL;
+  if (ws->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                TALER_TESTING_interpreter_get_current_label (is));
+    json_dumpf (full_response,
+                stderr,
+                0);
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    if (NULL == sig)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    ws->sig.rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+    break;
+  case MHD_HTTP_FORBIDDEN:
+    /* nothing to check */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    /* nothing to check */
+    break;
+  default:
+    /* Unsupported status code (by test harness) */
+    GNUNET_break (0);
+    break;
+  }
+  TALER_TESTING_interpreter_next (is);
+}
+
+
+/**
+ * Runs the command.  Note that upon return, the interpreter
+ * will not automatically run the next command, as the command
+ * may continue asynchronously in other scheduler tasks.  Thus,
+ * the command must ensure to eventually call
+ * #TALER_TESTING_interpreter_next() or
+ * #TALER_TESTING_interpreter_fail().
+ *
+ * @param is interpreter state
+ */
+static void
+withdraw_run (void *cls,
+              const struct TALER_TESTING_Command *cmd,
+              struct TALER_TESTING_Interpreter *is)
+{
+  struct WithdrawState *ws = cls;
+  struct TALER_ReservePrivateKeyP *rp;
+  const struct TALER_TESTING_Command *create_reserve;
 
   create_reserve
-    = TALER_TESTING_interpreter_lookup_command (i,
+    = TALER_TESTING_interpreter_lookup_command (is,
                                                 ws->reserve_reference);
   if (NULL == create_reserve)
   {
     GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (i);
+    TALER_TESTING_interpreter_fail (is);
     return;
   }
   if (GNUNET_OK !=
@@ -101,11 +179,24 @@ withdraw_run (void *cls,
                                             &rp))
   {
     GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (i);
+    TALER_TESTING_interpreter_fail (is);
     return;
   }
-  // ... trigger withdraw
-  // ... eventually: TALER_TESTING_interpreter_next (i);
+  TALER_planchet_setup_random (&ws->ps);
+  ws->is = is;
+  ws->wsh
+    = TALER_EXCHANGE_reserve_withdraw (ws->exchange,
+                                       ws->pk,
+                                       rp,
+                                       &ws->ps,
+                                       &reserve_withdraw_cb,
+                                       ws);
+  if (NULL == ws->wsh)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
 }
 
 
@@ -116,10 +207,25 @@ withdraw_run (void *cls,
  * @param cls closure
  */
 static void
-withdraw_cleanup (void *cls)
+withdraw_cleanup (void *cls,
+                  const struct TALER_TESTING_Command *cmd)
 {
   struct WithdrawState *ws = cls;
 
+  if (NULL != ws->wsh)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Command %s did not complete\n",
+                cmd->label);
+    TALER_EXCHANGE_reserve_withdraw_cancel (ws->wsh);
+    ws->wsh = NULL;
+  }
+  if (NULL != ws->sig.rsa_signature)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (ws->sig.rsa_signature);
+    ws->sig.rsa_signature = NULL;
+  }
+  GNUNET_free (ws);
 }
 
 
@@ -142,17 +248,15 @@ withdraw_traits (void *cls,
                  const char *selector)
 {
   struct WithdrawState *ws = cls;
-  struct TALER_INTERPRETER_Trait traits[] = {
+  struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_coin_priv (NULL /* only one coin */,
                                         &ws->ps.coin_priv),
-#if 0
-    TALER_TESTING_make_trait_coin_blinding_key (NULL /* only one coin */,
-                                                &ws->ps.blinding_key),
-    TALER_TESTING_make_trait_coin_denomination_key (NULL /* only one coin */,
-                                                    ws->pk),
-    TALER_TESTING_make_trait_coin_denomination_sig (NULL /* only one coin */,
-                                                    &ws->sig),
-#endif
+    TALER_TESTING_make_trait_blinding_key (NULL /* only one coin */,
+                                           &ws->ps.blinding_key),
+    TALER_TESTING_make_trait_denom_pub (NULL /* only one coin */,
+                                        ws->pk),
+    TALER_TESTING_make_trait_denom_sig (NULL /* only one coin */,
+                                        &ws->sig),
     TALER_TESTING_trait_end ()
   };
 
@@ -169,15 +273,73 @@ withdraw_traits (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount (const char *label,
+                                   struct TALER_EXCHANGE_Handle *exchange,
                                    const char *reserve_reference,
-                                   const char *amount)
+                                   const char *amount,
+                                   unsigned int expected_response_code)
 {
   struct TALER_TESTING_Command cmd;
   struct WithdrawState *ws;
 
   ws = GNUNET_new (struct WithdrawState);
   ws->reserve_reference = reserve_reference;
-  // convert amount -> ws->amount;
+
+  if (GNUNET_OK !=
+      TALER_string_to_amount (amount,
+                              &ws->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                amount,
+                label);
+    GNUNET_assert (0);
+  }
+  ws->pk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
+                                  &ws->amount);
+  if (NULL == ws->pk)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to determine denomination key at %s\n",
+                label);
+    GNUNET_assert (0);
+  }
+  ws->expected_response_code = expected_response_code;
+  ws->exchange = exchange;
+  cmd.cls = ws;
+  cmd.label = label;
+  cmd.run = &withdraw_run;
+  cmd.cleanup = &withdraw_cleanup;
+  cmd.traits = &withdraw_traits;
+  return cmd;
+}
+
+
+/**
+ * Create withdraw command.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_denomination (const char *label,
+                                         struct TALER_EXCHANGE_Handle *exchange,
+                                         const char *reserve_reference,
+                                         const struct TALER_EXCHANGE_DenomPublicKey *dk,
+                                         unsigned int expected_response_code)
+{
+  struct TALER_TESTING_Command cmd;
+  struct WithdrawState *ws;
+
+  if (NULL == dk)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Denomination key not specified at %s\n",
+                label);
+    GNUNET_assert (0);
+  }
+  ws = GNUNET_new (struct WithdrawState);
+  ws->reserve_reference = reserve_reference;
+  ws->pk = dk;
+  ws->expected_response_code = expected_response_code;
+  ws->exchange = exchange;
   cmd.cls = ws;
   cmd.label = label;
   cmd.run = &withdraw_run;

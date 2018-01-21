@@ -28,6 +28,21 @@
 #include "taler_json_lib.h"
 #include <microhttpd.h>
 
+
+/* ********************* Helper functions *********************** */
+
+/**
+ * Find denomination key matching the given amount.
+ *
+ * @param keys array of keys to search
+ * @param amount coin value to look for
+ * @return NULL if no matching key was found
+ */
+const struct TALER_EXCHANGE_DenomPublicKey *
+TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
+                       const struct TALER_Amount *amount);
+
+
 /* ******************* Generic interpreter logic ****************** */
 
 /**
@@ -115,6 +130,18 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *i,
 struct GNUNET_CURL_Context *
 TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is);
 
+/**
+ * Obtain current label.
+ */
+const char *
+TALER_TESTING_interpreter_get_current_label (struct TALER_TESTING_Interpreter *is);
+
+/**
+ * Obtain main execution context for the main loop.
+ */
+struct GNUNET_CURL_Context *
+TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is);
+
 
 /**
  * Current command is done, run the next one.
@@ -184,6 +211,17 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    unsigned int expected_response_code);
 
 
+
+/**
+ * Create withdraw command.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_denomination (const char *label,
+                                         struct TALER_EXCHANGE_Handle *exchange,
+                                         const char *reserve_reference,
+                                         const struct TALER_EXCHANGE_DenomPublicKey *dk,
+                                         unsigned int expected_response_code);
 
 
 /* ********************** Generic trait logic for implementing traits ******************* */

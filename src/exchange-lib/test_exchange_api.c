@@ -1497,13 +1497,12 @@ static const struct TALER_EXCHANGE_DenomPublicKey *
 find_pk (const struct TALER_EXCHANGE_Keys *keys,
          const struct TALER_Amount *amount)
 {
-  unsigned int i;
   struct GNUNET_TIME_Absolute now;
   struct TALER_EXCHANGE_DenomPublicKey *pk;
   char *str;
 
   now = GNUNET_TIME_absolute_get ();
-  for (i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i=0;i<keys->num_denom_keys;i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
@@ -1514,7 +1513,7 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
   }
   /* do 2nd pass to check if expiration times are to blame for failure */
   str = TALER_amount_to_string (amount);
-  for (i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i=0;i<keys->num_denom_keys;i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,

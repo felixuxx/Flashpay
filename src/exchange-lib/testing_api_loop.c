@@ -167,6 +167,18 @@ TALER_TESTING_cmd_end (void)
 
 
 /**
+ * Obtain current label.
+ */
+const char *
+TALER_TESTING_interpreter_get_current_label (struct TALER_TESTING_Interpreter *is)
+{
+  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
+
+  return cmd->label;
+}
+
+
+/**
  * Run the main interpreter loop that performs exchange operations.
  *
  * @param cls contains the `struct TALER_TESTING_Interpreter`
