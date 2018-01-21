@@ -71,6 +71,17 @@ int
 TALER_TESTING_url_port_free (const char *url);
 
 
+/**
+ * Prepare launching a fakebank.  Check that the configuration
+ * file has the right option, and that the port is avaiable.
+ * If everything is OK, return the configured URL of the fakebank.
+ *
+ * @param config_filename configuration file to use
+ * @return NULL on error, fakebank URL otherwise
+ */
+char *
+TALER_TESTING_prepare_fakebank (const char *config_filename);
+
 
 /* ******************* Generic interpreter logic ****************** */
 

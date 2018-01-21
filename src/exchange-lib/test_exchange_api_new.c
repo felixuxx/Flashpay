@@ -30,16 +30,17 @@
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
 
+/**
+ * Configuration file we use.  One (big) configuration is used
+ * for the various components for this test.
+ */
+#define CONFIG_FILE "test_exchange_api.conf"
 
 /**
- * Is the configuration file is set to include wire format 'test'?
+ * URL of the fakebank.  Obtained from CONFIG_FILE's "exchange-wire-test:BANK_URI" option.
  */
-#define WIRE_TEST 1
+static char *fakebank_url;
 
-/**
- * Is the configuration file is set to include wire format 'sepa'?
- */
-#define WIRE_SEPA 1
 
 /**
  * Account number of the exchange at the bank.
@@ -52,39 +53,35 @@
 #define USER_ACCOUNT_NO 42
 
 /**
- *
+ * User name. Never checked by fakebank.
  */
 #define USER_LOGIN_NAME "user42"
 
 /**
- *
+ * User password. Never checked by fakebank.
  */
 #define USER_LOGIN_PASS "pass42"
 
 /**
+ * Execute the taler-exchange-wirewatch command with
+ * our configuration file.
  *
- */
-#define FAKEBANK_URL "http://localhost:8082/"
-
-/**
- *
- */
-#define CONFIG_FILE "test_exchange_api.conf"
-
-/**
- *
+ * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
    TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
 
 /**
+ * Run wire transfer of funds from some user's account to the
+ * exchange.
  *
+ * @param label label to use for the command.
+ * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-     FAKEBANK_URL, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
+     fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
      USER_LOGIN_NAME, USER_LOGIN_PASS)
-
 
 
 /**
@@ -105,7 +102,7 @@ run (void *cls,
 
   TALER_TESTING_run_with_fakebank (is,
                                    commands,
-                                   FAKEBANK_URL);
+                                   fakebank_url);
 }
 
 
@@ -119,8 +116,7 @@ main (int argc,
   GNUNET_log_setup ("test-exchange-api-new",
                     "INFO",
                     NULL);
-  if (GNUNET_OK !=
-      TALER_TESTING_url_port_free (FAKEBANK_URL))
+  if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE)))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE))

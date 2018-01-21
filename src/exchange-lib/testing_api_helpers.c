@@ -95,6 +95,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "PORT");
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_NO;
   }
   GNUNET_CONFIGURATION_destroy (cfg);
@@ -322,6 +323,48 @@ TALER_TESTING_url_port_free (const char *url)
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
+}
+
+
+/**
+ * Prepare launching a fakebank.  Check that the configuration
+ * file has the right option, and that the port is avaiable.
+ * If everything is OK, return the configured URL of the fakebank.
+ *
+ * @param config_filename configuration file to use
+ * @return NULL on error, fakebank URL otherwise
+ */
+char *
+TALER_TESTING_prepare_fakebank (const char *config_filename)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *fakebank_url;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_filename))
+    return NULL;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange-wire-test",
+                                             "BANK_URI",
+                                             &fakebank_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchange-wire-test",
+                               "BANK_URI");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return NULL;
+  }
+  GNUNET_CONFIGURATION_destroy (cfg);
+  if (GNUNET_OK !=
+      TALER_TESTING_url_port_free (fakebank_url))
+  {
+    GNUNET_free (fakebank_url);
+    return NULL;
+  }
+  return fakebank_url;
 }
 
 /* end of testing_api_helpers.c */
