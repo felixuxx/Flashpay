@@ -157,27 +157,37 @@ fakebank_transfer_run (void *cls,
   else
   {
     /* Use reserve public key as subject */
-#if FIXME_NEEDS_TRAIT
     if (NULL != fts->reserve_reference)
     {
-      ref = find_command (is,
-                          fts->reserve_reference);
-      GNUNET_assert (NULL != ref);
-      GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
-      // FIXME: needs trait...
-      fts->reserve_priv = ref->details.admin_add_incoming.reserve_priv;
+      const struct TALER_TESTING_Command *ref;
+      struct TALER_ReservePrivateKeyP *reserve_priv;
+
+      ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                      fts->reserve_reference);
+      if (NULL == ref)
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_reserve_priv (ref,
+                                                NULL,
+                                                &reserve_priv))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
     }
     else
     {
-#endif
       struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
 
       priv = GNUNET_CRYPTO_eddsa_key_create ();
       fts->reserve_priv.eddsa_priv = *priv;
       GNUNET_free (priv);
-#if FIXME_NEEDS_TRAIT
     }
-#endif
     GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
                                         &reserve_pub.eddsa_pub);
     subject = GNUNET_STRINGS_data_to_string_alloc (&reserve_pub,

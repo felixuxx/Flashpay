@@ -257,6 +257,81 @@ TALER_TESTING_get_trait_coin_priv (const struct TALER_TESTING_Command *cmd,
 
 
 
+/**
+ * @param selector
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_blinding_key (const char *selector,
+                                       const struct TALER_DenominationBlindingKeyP *blinding_key);
+
+
+/**
+ * Obtain a coin's blinding key from a @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param selector which coin to pick if @a cmd has multiple on offer
+ * @param blinding_key[out] set to the blinding key of the coin
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_blinding_key (const struct TALER_TESTING_Command *cmd,
+                                      const char *selector,
+                                      struct TALER_DenominationBlindingKeyP **blinding_key);
+
+
+
+
+/**
+ * @param selector
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_denom_pub (const char *selector,
+                                    const struct TALER_EXCHANGE_DenomPublicKey *dpk);
+
+
+/**
+ * Obtain a coin private key from a @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param selector which coin to pick if @a cmd has multiple on offer
+ * @param dpk[out] set to a denomination key of the coin
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_denom_pub (const struct TALER_TESTING_Command *cmd,
+                                   const char *selector,
+                                   struct TALER_EXCHANGE_DenomPublicKey **dpk);
+
+
+/**
+ * Obtain a coin denomination signature from a @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param selector which coin to pick if @a cmd has multiple on offer
+ * @param sig[out] set to a denomination signature over the coin
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_denom_sig (const struct TALER_TESTING_Command *cmd,
+                                   const char *selector,
+                                   struct TALER_DenominationSignature **dpk);
+
+
+/**
+ * @param selector
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_denom_sig (const char *selector,
+                                    const struct TALER_DenominationSignature *sig);
+
+
+
+
+
+
+
+
+
 
 
 #endif

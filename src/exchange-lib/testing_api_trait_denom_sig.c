@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_coin_priv.c
+ * @file exchange-lib/testing_api_trait_denom_sig.c
  * @brief main interpreter loop for testcases
  * @author Christian Grothoff
  * @author Marcello Stanisci
@@ -27,41 +27,41 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-#define TALER_TESTING_TRAIT_COIN_PRIVATE_KEY "coin-private-key"
+#define TALER_TESTING_TRAIT_DENOM_SIG "denomination-signature"
 
 
 /**
- * Obtain a coin private key from a @a cmd.
+ * Obtain a denomination signature from a @a cmd.
  *
  * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on offer
- * @param coin_priv[out] set to the private key of the coin
+ * @param selector which signature to pick if @a cmd has multiple on offer
+ * @param denom_sig[out] set to the signature
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_coin_priv (const struct TALER_TESTING_Command *cmd,
+TALER_TESTING_get_trait_denom_sig (const struct TALER_TESTING_Command *cmd,
                                    const char *selector,
-                                   struct TALER_CoinSpendPrivateKeyP **coin_priv)
+                                   struct TALER_DenominationSignature **denom_sig)
 {
   return cmd->traits (cmd->cls,
-                      (void **) coin_priv,
-                      TALER_TESTING_TRAIT_COIN_PRIVATE_KEY,
+                      (void **) denom_sig,
+                      TALER_TESTING_TRAIT_DENOM_SIG,
                       selector);
 }
 
 
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_coin_priv (const char *selector,
-                                    const struct TALER_CoinSpendPrivateKeyP *coin_priv)
+TALER_TESTING_make_trait_denom_sig (const char *selector,
+                                    const struct TALER_DenominationSignature *denom_sig)
 {
   struct TALER_TESTING_Trait ret = {
     .selector = selector,
-    .trait_name = TALER_TESTING_TRAIT_COIN_PRIVATE_KEY,
-    .ptr = (const void *) coin_priv
+    .trait_name = TALER_TESTING_TRAIT_DENOM_SIG,
+    .ptr = (const void *) denom_sig
   };
 
   return ret;
 }
 
 
-/* end of testing_api_trait_coin_priv.c */
+/* end of testing_api_trait_denom_sig.c */
