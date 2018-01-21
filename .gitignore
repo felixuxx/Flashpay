@@ -92,3 +92,4 @@ contrib/auditor-report.log
 contrib/auditor-report.tex
 contrib/auditor-report.pdf
 src/bank-lib/taler-bank-transfer
+src/exchange-lib/test_exchange_api_new

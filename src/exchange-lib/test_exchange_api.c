@@ -3612,7 +3612,7 @@ run (void *cls)
       .details.refund.fee = "EUR:0.01",
       .details.refund.deposit_ref = "deposit-refund-1b",
     },
-    /* Run transfers. This will do the transfer as refund deadline 
+    /* Run transfers. This will do the transfer as refund deadline
        was 0, except of course because the refund succeeded, the
        transfer should no longer be done. */
     { .oc = OC_RUN_AGGREGATOR,
@@ -3621,7 +3621,7 @@ run (void *cls)
     { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
       .label = "check-refund-fast-not-run" },
 
-    
+
     /* ************** End of refund API testing************* */
 
     /* ************** Test /payback API  ************* */

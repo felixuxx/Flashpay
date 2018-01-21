@@ -7,12 +7,12 @@ if USE_COVERAGE
 endif
 
 lib_LTLIBRARIES = \
-  libtalerexchange.la
+  libtalerexchange.la \
+  libtalertesting.la
 
 libtalerexchange_la_LDFLAGS = \
   -version-info 4:0:0 \
   -no-undefined
-
 libtalerexchange_la_SOURCES = \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
@@ -25,8 +25,27 @@ libtalerexchange_la_SOURCES = \
   exchange_api_track_transaction.c \
   exchange_api_track_transfer.c \
   exchange_api_wire.c
-
 libtalerexchange_la_LIBADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+
+libtalertesting_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -no-undefined
+libtalertesting_la_SOURCES = \
+  testing_api_loop.c \
+  testing_api_traits.c \
+  testing_api_cmd_fakebank_transfer.c \
+  testing_api_trait_reserve_priv.c \
+  testing_api_trait_coin_priv.c
+
+libtalertesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
@@ -45,16 +64,32 @@ endif
 
 check_PROGRAMS = \
   test_exchange_api \
-  test_exchange_api_keys_cherry_picking
+  test_exchange_api_keys_cherry_picking \
+  test_exchange_api_new
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 TESTS = \
-  $(check_PROGRAMS)
+  test_exchange_api \
+  test_exchange_api_keys_cherry_picking
 
 test_exchange_api_SOURCES = \
   test_exchange_api.c
 test_exchange_api_LDADD = \
+  libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+test_exchange_api_new_SOURCES = \
+  test_exchange_api_new.c
+test_exchange_api_new_LDADD = \
+  libtalertesting.la \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \

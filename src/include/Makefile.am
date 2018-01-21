@@ -23,6 +23,7 @@ talerinclude_HEADERS = \
   taler_exchangedb_plugin.h \
   taler_fakebank_lib.h \
   taler_json_lib.h \
+  taler_testing_lib.h \
   taler_util.h \
   taler_pq_lib.h \
   taler_signatures.h \
