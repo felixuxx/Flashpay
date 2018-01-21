@@ -231,6 +231,34 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
 
 
 /**
+ * Create fakebank_transfer command with custom subject.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
+                                                  const char *amount,
+                                                  uint64_t debit_account_no,
+                                                  uint64_t credit_account_no,
+                                                  const char *auth_username,
+                                                  const char *auth_password,
+                                                  const char *subject);
+
+
+/**
+ * Create fakebank_transfer command with custom subject.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
+                                              const char *amount,
+                                              uint64_t debit_account_no,
+                                              uint64_t credit_account_no,
+                                              const char *auth_username,
+                                              const char *auth_password,
+                                              const char *ref);
+
+
+/**
  * Execute taler-exchange-wirewatch process.
  *
  */

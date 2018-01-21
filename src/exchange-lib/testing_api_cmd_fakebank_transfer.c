@@ -318,4 +318,86 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
 }
 
 
+/**
+ * Create fakebank_transfer command with custom subject.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
+                                                  const char *amount,
+                                                  uint64_t debit_account_no,
+                                                  uint64_t credit_account_no,
+                                                  const char *auth_username,
+                                                  const char *auth_password,
+                                                  const char *subject)
+{
+  struct TALER_TESTING_Command cmd;
+  struct FakebankTransferState *fts;
+
+  fts = GNUNET_new (struct FakebankTransferState);
+  fts->credit_account_no = credit_account_no;
+  fts->debit_account_no = debit_account_no;
+  fts->auth_username = auth_username;
+  fts->auth_password = auth_password;
+  fts->subject = subject;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (amount,
+                              &fts->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                amount,
+                label);
+    GNUNET_assert (0);
+  }
+  cmd.cls = fts;
+  cmd.label = label;
+  cmd.run = &fakebank_transfer_run;
+  cmd.cleanup = &fakebank_transfer_cleanup;
+  cmd.traits = &fakebank_transfer_traits;
+  return cmd;
+}
+
+
+/**
+ * Create fakebank_transfer command with custom subject.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
+                                              const char *amount,
+                                              uint64_t debit_account_no,
+                                              uint64_t credit_account_no,
+                                              const char *auth_username,
+                                              const char *auth_password,
+                                              const char *ref)
+{
+  struct TALER_TESTING_Command cmd;
+  struct FakebankTransferState *fts;
+
+  fts = GNUNET_new (struct FakebankTransferState);
+  fts->credit_account_no = credit_account_no;
+  fts->debit_account_no = debit_account_no;
+  fts->auth_username = auth_username;
+  fts->auth_password = auth_password;
+  fts->reserve_reference = ref;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (amount,
+                              &fts->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                amount,
+                label);
+    GNUNET_assert (0);
+  }
+  cmd.cls = fts;
+  cmd.label = label;
+  cmd.run = &fakebank_transfer_run;
+  cmd.cleanup = &fakebank_transfer_cleanup;
+  cmd.traits = &fakebank_transfer_traits;
+  return cmd;
+}
+
+
 /* end of testing_api_cmd_fakebank_transfer.c */
