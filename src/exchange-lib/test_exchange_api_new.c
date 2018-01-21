@@ -46,49 +46,49 @@
  */
 #define EXCHANGE_ACCOUNT_NO 2
 
-
 /**
- * Handle to access the exchange.
+ * Account number of some user.
  */
-// static struct TALER_EXCHANGE_Handle *exchange;
+#define USER_ACCOUNT_NO 42
 
 /**
- * Handle to the exchange process.
- */
-static struct GNUNET_OS_Process *exchanged;
-
-
-/**
- * Handle to our fakebank.
- */
-static struct TALER_FAKEBANK_Handle *fakebank;
-
-
-
-
-/**
- * Function run when the test terminates (good or bad).
- * Cleans up our state.
  *
- * @param cls NULL
  */
-static void
-do_shutdown (void *cls)
-{
-  if (NULL != fakebank)
-  {
-    TALER_FAKEBANK_stop (fakebank);
-    fakebank = NULL;
-  }
-}
+#define USER_LOGIN_NAME "user42"
 
+/**
+ *
+ */
+#define USER_LOGIN_PASS "pass42"
+
+/**
+ *
+ */
+#define FAKEBANK_URL "http://localhost:8082/"
+
+/**
+ *
+ */
 #define CONFIG_FILE "test_exchange_api.conf"
 
-#define RUN_WIREWATCH(label) TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+/**
+ *
+ */
+#define CMD_EXEC_WIREWATCH(label) \
+   TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+
+/**
+ *
+ */
+#define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
+   TALER_TESTING_cmd_fakebank_transfer (label, amount, \
+     FAKEBANK_URL, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
+     USER_LOGIN_NAME, USER_LOGIN_PASS)
+
 
 
 /**
- * Main function that will tell the interpreter what to do.
+ * Main function that will tell the interpreter what commands to run.
  *
  * @param cls closure
  */
@@ -97,97 +97,50 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_fakebank_transfer ("create-reserve-1",
-                                         "EUR:5.01",
-                                         42,
-                                         EXCHANGE_ACCOUNT_NO,
-                                         "user42",
-                                         "pass42"),
-    RUN_WIREWATCH ("exec-wirewatch-1"),
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
+                              "EUR:5.01"),
+    CMD_EXEC_WIREWATCH ("exec-wirewatch-1"),
     TALER_TESTING_cmd_end ()
   };
 
-  fakebank = TALER_FAKEBANK_start (8082);
-  TALER_TESTING_run (is,
-                     commands);
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
-                                 NULL);
+  TALER_TESTING_run_with_fakebank (is,
+                                   commands,
+                                   FAKEBANK_URL);
 }
-
 
 
 int
 main (int argc,
       char * const *argv)
 {
-  struct GNUNET_OS_Process *proc;
-  enum GNUNET_OS_ProcessStatusType type;
-  unsigned long code;
-  unsigned int iter;
-  int result;
-
-  /* These might get in the way... */
+  /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-exchange-api-new",
                     "INFO",
                     NULL);
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
-  result = TALER_TESTING_prepare_exchange (CONFIG_FILE);
-  if (GNUNET_SYSERR == result)
-    return 1;
-  if (GNUNET_NO == result)
-    return 77;
-
-  /* For fakebank */
   if (GNUNET_OK !=
-      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     8082))
-  {
-    fprintf (stderr,
-             "Required port %u not available, skipping.\n",
-	     8082);
+      TALER_TESTING_url_port_free (FAKEBANK_URL))
     return 77;
+  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE))
+  {
+  case GNUNET_SYSERR:
+    GNUNET_break (0);
+    return 1;
+  case GNUNET_NO:
+    return 77;
+  case GNUNET_OK:
+    if (GNUNET_OK !=
+        TALER_TESTING_setup_with_exchange (&run,
+                                           NULL,
+                                           CONFIG_FILE))
+      return 1;
+  default:
+    GNUNET_break (0);
+    return 1;
   }
-
-  exchanged = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
-                                       NULL, NULL, NULL,
-                                       "taler-exchange-httpd",
-                                       "taler-exchange-httpd",
-                                       "-c", CONFIG_FILE,
-                                       "-i",
-                                       NULL);
-  /* give child time to start and bind against the socket */
-  fprintf (stderr,
-           "Waiting for `taler-exchange-httpd' to be ready");
-  iter = 0;
-  do
-    {
-      if (10 == iter)
-      {
-	fprintf (stderr,
-		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");
-	GNUNET_OS_process_kill (exchanged,
-				SIGTERM);
-	GNUNET_OS_process_wait (exchanged);
-	GNUNET_OS_process_destroy (exchanged);
-	return 77;
-      }
-      fprintf (stderr, ".");
-      sleep (1);
-      iter++;
-    }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
-  fprintf (stderr, "\n");
-
-  result = TALER_TESTING_setup (&run,
-                                NULL);
-  GNUNET_break (0 ==
-                GNUNET_OS_process_kill (exchanged,
-                                        SIGTERM));
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_OS_process_wait (exchanged));
-  GNUNET_OS_process_destroy (exchanged);
-  return (GNUNET_OK == result) ? 0 : 1;
+  return 0;
 }
+
+/* end of test_exchange_api_new.c */

@@ -239,4 +239,89 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   return NULL;
 }
 
+
+/**
+ * Initialize scheduler loop and curl context for the testcase
+ * including starting and stopping the exchange using the given
+ * configuration file.
+ */
+int
+TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
+                                   void *main_cb_cls,
+                                   const char *config_file)
+{
+  int result;
+  unsigned int iter;
+  struct GNUNET_OS_Process *exchanged;
+
+  exchanged = GNUNET_OS_start_process (GNUNET_NO,
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-exchange-httpd",
+                                       "taler-exchange-httpd",
+                                       "-c", config_file,
+                                       "-i",
+                                       NULL);
+  /* give child time to start and bind against the socket */
+  fprintf (stderr,
+           "Waiting for `taler-exchange-httpd' to be ready");
+  iter = 0;
+  do
+    {
+      if (10 == iter)
+      {
+	fprintf (stderr,
+		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");
+	GNUNET_OS_process_kill (exchanged,
+				SIGTERM);
+	GNUNET_OS_process_wait (exchanged);
+	GNUNET_OS_process_destroy (exchanged);
+	return 77;
+      }
+      fprintf (stderr, ".");
+      sleep (1);
+      iter++;
+    }
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
+  fprintf (stderr, "\n");
+
+  result = TALER_TESTING_setup (main_cb,
+                                main_cb_cls);
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (exchanged,
+                                        SIGTERM));
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_OS_process_wait (exchanged));
+  GNUNET_OS_process_destroy (exchanged);
+  return result;
+}
+
+
+/**
+ * Test port in URL string for availability.
+ */
+int
+TALER_TESTING_url_port_free (const char *url)
+{
+  const char *port;
+  long pnum;
+
+  port = strrchr (url,
+                  (unsigned char) ':');
+  if (NULL == port)
+    pnum = 80;
+  else
+    pnum = strtol (port + 1, NULL, 10);
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+				     pnum))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Port %u not available.\n",
+                (unsigned int) pnum);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
 /* end of testing_api_helpers.c */

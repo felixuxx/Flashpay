@@ -64,6 +64,13 @@ void
 TALER_TESTING_cleanup_files (const char *config_name);
 
 
+/**
+ * Test port in URL string for availability.
+ */
+int
+TALER_TESTING_url_port_free (const char *url);
+
+
 
 /* ******************* Generic interpreter logic ****************** */
 
@@ -165,6 +172,9 @@ struct GNUNET_CURL_Context *
 TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is);
 
 
+struct TALER_FAKEBANK_Handle *
+TALER_TESTING_interpreter_get_fakebank (struct TALER_TESTING_Interpreter *is);
+
 /**
  * Current command is done, run the next one.
  */
@@ -199,6 +209,13 @@ TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands);
 
 
+
+void
+TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
+                                 struct TALER_TESTING_Command *commands,
+                                 const char *bank_url);
+
+
 typedef void
 (*TALER_TESTING_Main)(void *cls,
                       struct TALER_TESTING_Interpreter *is);
@@ -210,6 +227,17 @@ typedef void
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls);
+
+
+/**
+ * Initialize scheduler loop and curl context for the testcase
+ * including starting and stopping the exchange using the given
+ * configuration file.
+ */
+int
+TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
+                                   void *main_cb_cls,
+                                   const char *config_file);
 
 
 
@@ -224,6 +252,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      const char *amount,
+                                     const char *bank_url,
                                      uint64_t debit_account_no,
                                      uint64_t credit_account_no,
                                      const char *auth_username,
@@ -237,6 +266,7 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
                                                   const char *amount,
+                                                  const char *bank_url,
                                                   uint64_t debit_account_no,
                                                   uint64_t credit_account_no,
                                                   const char *auth_username,
@@ -251,6 +281,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
                                               const char *amount,
+                                              const char *bank_url,
                                               uint64_t debit_account_no,
                                               uint64_t credit_account_no,
                                               const char *auth_username,

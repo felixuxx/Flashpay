@@ -26,6 +26,8 @@
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
+#include "taler_fakebank_lib.h"
+
 
 /**
  * Global state of the interpreter, used by a command
@@ -59,6 +61,12 @@ struct TALER_TESTING_Interpreter
    * Context for running the CURL event loop.
    */
   struct GNUNET_CURL_RescheduleContext *rc;
+
+  /**
+   * Handle to our fakebank, if #TALER_TESTING_run_with_fakebank() was used.
+   * Otherwise NULL.
+   */
+  struct TALER_FAKEBANK_Handle *fakebank;
 
   /**
    * Task run on timeout.
@@ -123,9 +131,46 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
  * Obtain main execution context for the main loop.
  */
 struct GNUNET_CURL_Context *
-TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *i)
+TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is)
 {
-  return i->ctx;
+  return is->ctx;
+}
+
+
+struct TALER_FAKEBANK_Handle *
+TALER_TESTING_interpreter_get_fakebank (struct TALER_TESTING_Interpreter *is)
+{
+  return is->fakebank;
+}
+
+
+void
+TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
+                                 struct TALER_TESTING_Command *commands,
+                                 const char *bank_url)
+{
+  const char *port;
+  long pnum;
+
+  port = strrchr (bank_url,
+                  (unsigned char) ':');
+  if (NULL == port)
+    pnum = 80;
+  else
+    pnum = strtol (port + 1, NULL, 10);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Staring Fakebank on port %u (%s)\n",
+              (unsigned int) pnum,
+              bank_url);
+  is->fakebank = TALER_FAKEBANK_start ((uint16_t) pnum);
+  if (NULL == is->fakebank)
+  {
+    GNUNET_break (0);
+    is->result = GNUNET_SYSERR;
+    return;
+  }
+  TALER_TESTING_run (is,
+                     commands);
 }
 
 
@@ -257,6 +302,11 @@ do_shutdown (void *cls)
   {
     GNUNET_SCHEDULER_cancel (is->child_death_task);
     is->child_death_task = NULL;
+  }
+  if (NULL != is->fakebank)
+  {
+    TALER_FAKEBANK_stop (is->fakebank);
+    is->fakebank = NULL;
   }
   GNUNET_free_non_null (is->commands);
 }

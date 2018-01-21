@@ -55,6 +55,7 @@ libtalertesting_la_SOURCES = \
 libtalertesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \

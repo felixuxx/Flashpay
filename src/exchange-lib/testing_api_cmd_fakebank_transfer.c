@@ -55,6 +55,11 @@ struct FakebankTransferState
   const char *subject;
 
   /**
+   * URL to use for the bank.
+   */
+  const char *bank_url;
+
+  /**
    * Sender (debit) account number.
    */
   uint64_t debit_account_no;
@@ -200,7 +205,7 @@ fakebank_transfer_run (void *cls,
   fts->is = is;
   fts->aih
     = TALER_BANK_admin_add_incoming (TALER_TESTING_interpreter_get_context (is),
-                                     "http://localhost:8082/", /* bank URL: FIXME */
+                                     fts->bank_url,
                                      &auth,
                                      "https://exchange.com/", /* exchange URL: FIXME */
                                      subject,
@@ -286,6 +291,7 @@ fakebank_transfer_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      const char *amount,
+                                     const char *bank_url,
                                      uint64_t debit_account_no,
                                      uint64_t credit_account_no,
                                      const char *auth_username,
@@ -295,6 +301,7 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
+  fts->bank_url = bank_url;
   fts->credit_account_no = credit_account_no;
   fts->debit_account_no = debit_account_no;
   fts->auth_username = auth_username;
@@ -325,6 +332,7 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
                                                   const char *amount,
+                                                  const char *bank_url,
                                                   uint64_t debit_account_no,
                                                   uint64_t credit_account_no,
                                                   const char *auth_username,
@@ -335,6 +343,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
+  fts->bank_url = bank_url;
   fts->credit_account_no = credit_account_no;
   fts->debit_account_no = debit_account_no;
   fts->auth_username = auth_username;
@@ -366,6 +375,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
                                               const char *amount,
+                                              const char *bank_url,
                                               uint64_t debit_account_no,
                                               uint64_t credit_account_no,
                                               const char *auth_username,
@@ -376,6 +386,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
+  fts->bank_url = bank_url;
   fts->credit_account_no = credit_account_no;
   fts->debit_account_no = debit_account_no;
   fts->auth_username = auth_username;
