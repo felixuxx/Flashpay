@@ -1457,6 +1457,38 @@ enum TALER_ErrorCode
    */
   TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2810,
 
+  /**
+   * The instance for check-payment is unknown, likely
+   * a buggy frontend or misconfigured instances.
+   */
+  TALER_EC_CHECK_PAYMENT_INSTANCE_UNKNOWN = 2910,
+
+  /**
+   * We failed to contract terms from our merchant database.
+   * The response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_CHECK_PAYMENT_DB_FETCH_CONTRACT_TERMS_ERROR = 2911,
+
+  /**
+   * We failed to contract terms from our merchant database.
+   * The response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_CHECK_PAYMENT_DB_FETCH_ORDER_ERROR = 2912,
+
+  /**
+   * The order id we're checking is unknown, likely
+   * the frontend did not create the order first.
+   */
+  TALER_EC_CHECK_PAYMENT_ORDER_ID_UNKNOWN = 2913,
+
+  /**
+   * Failed computing a hash code (likely server out-of-memory).
+   * This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_CHECK_PAYMENT_FAILED_COMPUTE_PROPOSAL_HASH = 2014,
 
   /* ********** /test API error codes ************* */
 
