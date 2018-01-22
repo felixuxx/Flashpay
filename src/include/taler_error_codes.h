@@ -1001,7 +1001,6 @@ enum TALER_ErrorCode
   TALER_EC_PAY_REFUND_DEADLINE_PAST_WIRE_TRANSFER_DEADLINE = 2114,
 
   /**
-
    * The request fails to provide coins for the payment.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
@@ -1075,10 +1074,18 @@ enum TALER_ErrorCode
 
   /**
    * We got different currencies for the wire fee and the maximum wire
-   * fee.  This response is provided with HTTP status code
+   * fee.  This response is provided with HTTP status code of
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PAY_WIRE_FEE_CURRENCY_MISSMATCH = 2125,
+
+  /**
+   * The merchant refuses to abort and refund the payment
+   * operation as the payment succeeded already.
+   * This response is provided with HTTP status code of
+   * MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_PAY_ABORT_REFUND_REFUSED_PAYMENT_COMPLETE = 2126,
 
 
   /**
