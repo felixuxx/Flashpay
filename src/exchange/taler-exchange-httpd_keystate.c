@@ -1682,6 +1682,10 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
 
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &hc);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Looking for denom: '%s..'\n",
+              TALER_B2S (&hc));
+
   return TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                  &hc,
                                                  use);

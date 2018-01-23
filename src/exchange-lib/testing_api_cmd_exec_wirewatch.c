@@ -122,11 +122,11 @@ static int
 wirewatch_traits (void *cls,
                   void **ret,
                   const char *trait,
-                  const char *selector)
+                  unsigned int index)
 {
   struct WirewatchState *ws = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (NULL,
+    TALER_TESTING_make_trait_process (0,
                                       &ws->wirewatch_proc),
     TALER_TESTING_trait_end ()
   };
@@ -134,7 +134,7 @@ wirewatch_traits (void *cls,
   return TALER_TESTING_get_trait (traits,
                                   ret,
                                   trait,
-                                  selector);
+                                  index);
 }
 
 

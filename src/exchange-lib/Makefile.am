@@ -34,14 +34,26 @@ libtalerexchange_la_LIBADD = \
   -ljansson \
   $(XLIB)
 
-
 libtalertesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalertesting_la_SOURCES = \
+  testing_api_cmd_exec_aggregator.c \
   testing_api_cmd_exec_wirewatch.c \
+  testing_api_cmd_exec_keyup.c \
+  testing_api_cmd_exec_auditor-sign.c \
   testing_api_cmd_fakebank_transfer.c \
   testing_api_cmd_withdraw.c \
+  testing_api_cmd_wire.c \
+  testing_api_cmd_refund.c \
+  testing_api_cmd_status.c \
+  testing_api_cmd_deposit.c \
+  testing_api_cmd_refresh.c \
+  testing_api_cmd_track.c \
+  testing_api_cmd_bank_check.c \
+  testing_api_cmd_payback.c \
+  testing_api_cmd_signal.c \
+  testing_api_cmd_check_keys.c \
   testing_api_helpers.c \
   testing_api_loop.c \
   testing_api_traits.c \
@@ -50,7 +62,12 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_denom_pub.c \
   testing_api_trait_denom_sig.c \
   testing_api_trait_process.c \
-  testing_api_trait_reserve_priv.c
+  testing_api_trait_reserve_priv.c \
+  testing_api_trait_number.c \
+  testing_api_trait_fresh_coin.c \
+  testing_api_trait_string.c \
+  testing_api_trait_key_peer.c \
+  testing_api_trait_wtid.c
 
 libtalertesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
@@ -71,13 +88,17 @@ endif
 endif
 
 check_PROGRAMS = \
+  test_exchange_api_keys_cherry_picking_new \
+  test_exchange_api_new \
   test_exchange_api \
-  test_exchange_api_keys_cherry_picking \
-  test_exchange_api_new
+  test_exchange_api_keys_cherry_picking
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
+# FIXME: uncomment those.
 TESTS = \
+  test_exchange_api_keys_cherry_picking_new \
+  test_exchange_api_new \
   test_exchange_api \
   test_exchange_api_keys_cherry_picking
 
@@ -104,6 +125,19 @@ test_exchange_api_new_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+test_exchange_api_keys_cherry_picking_new_SOURCES = \
+  test_exchange_api_keys_cherry_picking_new.c
+test_exchange_api_keys_cherry_picking_new_LDADD = \
+  libtalertesting.la \
+  libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson

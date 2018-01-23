@@ -2,18 +2,21 @@
   This file is part of TALER
   Copyright (C) 2018 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3, or (at your
+  option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file exchange-lib/testing_api_cmd_fakebank_transfer.c
  * @brief implementation of a fakebank wire transfer command
@@ -104,14 +107,17 @@ struct FakebankTransferState
 
 
 /**
- * Function called upon completion of our /admin/add/incoming request.
+ * Function called upon completion of our /admin/add/incoming
+ * request.
  *
  * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
+ *        successful status request; 0 if the exchange's reply is
+ *        bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param serial_id unique ID of the wire transfer
- * @param full_response full response from the exchange (for logging, in case of errors)
+ * @param full_response full response from the exchange (for
+ *        logging, in case of errors)
  */
 static void
 add_incoming_cb (void *cls,
@@ -167,8 +173,8 @@ fakebank_transfer_run (void *cls,
       const struct TALER_TESTING_Command *ref;
       struct TALER_ReservePrivateKeyP *reserve_priv;
 
-      ref = TALER_TESTING_interpreter_lookup_command (is,
-                                                      fts->reserve_reference);
+      ref = TALER_TESTING_interpreter_lookup_command
+        (is, fts->reserve_reference);
       if (NULL == ref)
       {
         GNUNET_break (0);
@@ -177,7 +183,7 @@ fakebank_transfer_run (void *cls,
       }
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_priv (ref,
-                                                NULL,
+                                                0,
                                                 &reserve_priv))
       {
         GNUNET_break (0);
@@ -193,27 +199,27 @@ fakebank_transfer_run (void *cls,
       fts->reserve_priv.eddsa_priv = *priv;
       GNUNET_free (priv);
     }
-    GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
-                                        &reserve_pub.eddsa_pub);
-    subject = GNUNET_STRINGS_data_to_string_alloc (&reserve_pub,
-                                                   sizeof (reserve_pub));
+    GNUNET_CRYPTO_eddsa_key_get_public
+      (&fts->reserve_priv.eddsa_priv, &reserve_pub.eddsa_pub);
+    subject = GNUNET_STRINGS_data_to_string_alloc
+      (&reserve_pub, sizeof (reserve_pub));
   }
 
   auth.method = TALER_BANK_AUTH_BASIC;
   auth.details.basic.username = (char *) fts->auth_username;
   auth.details.basic.password = (char *) fts->auth_password;
   fts->is = is;
-  fts->aih
-    = TALER_BANK_admin_add_incoming (TALER_TESTING_interpreter_get_context (is),
-                                     fts->bank_url,
-                                     &auth,
-                                     "https://exchange.com/", /* exchange URL: FIXME */
-                                     subject,
-                                     &fts->amount,
-                                     fts->debit_account_no,
-                                     fts->credit_account_no,
-                                     &add_incoming_cb,
-                                     fts);
+  fts->aih = TALER_BANK_admin_add_incoming
+    (TALER_TESTING_interpreter_get_context (is),
+     fts->bank_url,
+     &auth,
+     "https://exchange.com/", /* exchange URL: FIXME */
+     subject,
+     &fts->amount,
+     fts->debit_account_no,
+     fts->credit_account_no,
+     &add_incoming_cb,
+     fts);
   GNUNET_free (subject);
   if (NULL == fts->aih)
   {
@@ -263,11 +269,11 @@ static int
 fakebank_transfer_traits (void *cls,
                           void **ret,
                           const char *trait,
-                          const char *selector)
+                          unsigned int index)
 {
   struct FakebankTransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_reserve_priv (NULL,
+    TALER_TESTING_make_trait_reserve_priv (0,
                                            &fts->reserve_priv),
     TALER_TESTING_trait_end ()
   };
@@ -275,12 +281,13 @@ fakebank_transfer_traits (void *cls,
   if (NULL != fts->subject)
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR; /* we do NOT create a reserve private key */
+    /* we do NOT create a reserve private key */
+    return GNUNET_SYSERR; 
   }
   return TALER_TESTING_get_trait (traits,
                                   ret,
                                   trait,
-                                  selector);
+                                  index);
 }
 
 
@@ -330,14 +337,15 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
  *
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
-                                                  const char *amount,
-                                                  const char *bank_url,
-                                                  uint64_t debit_account_no,
-                                                  uint64_t credit_account_no,
-                                                  const char *auth_username,
-                                                  const char *auth_password,
-                                                  const char *subject)
+TALER_TESTING_cmd_fakebank_transfer_with_subject
+  (const char *label,
+   const char *amount,
+   const char *bank_url,
+   uint64_t debit_account_no,
+   uint64_t credit_account_no,
+   const char *auth_username,
+   const char *auth_password,
+   const char *subject)
 {
   struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
@@ -373,14 +381,15 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
  *
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
-                                              const char *amount,
-                                              const char *bank_url,
-                                              uint64_t debit_account_no,
-                                              uint64_t credit_account_no,
-                                              const char *auth_username,
-                                              const char *auth_password,
-                                              const char *ref)
+TALER_TESTING_cmd_fakebank_transfer_with_ref
+  (const char *label,
+   const char *amount,
+   const char *bank_url,
+   uint64_t debit_account_no,
+   uint64_t credit_account_no,
+   const char *auth_username,
+   const char *auth_password,
+   const char *ref)
 {
   struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;

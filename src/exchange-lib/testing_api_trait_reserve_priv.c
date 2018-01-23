@@ -39,22 +39,22 @@
  */
 int
 TALER_TESTING_get_trait_reserve_priv (const struct TALER_TESTING_Command *cmd,
-                                      const char *selector,
+                                      unsigned int index,
                                       struct TALER_ReservePrivateKeyP **reserve_priv)
 {
   return cmd->traits (cmd->cls,
                       (void **) reserve_priv,
                       TALER_TESTING_TRAIT_RESERVE_PRIVATE_KEY,
-                      selector);
+                      index);
 }
 
 
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_priv (const char *selector,
+TALER_TESTING_make_trait_reserve_priv (unsigned int index,
                                        const struct TALER_ReservePrivateKeyP *reserve_priv)
 {
   struct TALER_TESTING_Trait ret = {
-    .selector = selector,
+    .index = index,
     .trait_name = TALER_TESTING_TRAIT_RESERVE_PRIVATE_KEY,
     .ptr = (const void *) reserve_priv
   };

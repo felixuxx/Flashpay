@@ -2,18 +2,21 @@
   This file is part of TALER
   Copyright (C) 2018 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published
+  by the Free Software Foundation; either version 3, or (at your
+  option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file exchange-lib/testing_api_loop.c
  * @brief main interpreter loop for testcases
@@ -28,72 +31,11 @@
 #include "taler_testing_lib.h"
 #include "taler_fakebank_lib.h"
 
-
-/**
- * Global state of the interpreter, used by a command
- * to access information about other commands.
- */
-struct TALER_TESTING_Interpreter
-{
-
-  /**
-   * Commands the interpreter will run.
-   */
-  struct TALER_TESTING_Command *commands;
-
-  /**
-   * Interpreter task (if one is scheduled).
-   */
-  struct GNUNET_SCHEDULER_Task *task;
-
-  /**
-   * ID of task called whenever we get a SIGCHILD.
-   * Used for #TALER_TESTING_wait_for_sigchld().
-   */
-  struct GNUNET_SCHEDULER_Task *child_death_task;
-
-  /**
-   * Main execution context for the main loop.
-   */
-  struct GNUNET_CURL_Context *ctx;
-
-  /**
-   * Context for running the CURL event loop.
-   */
-  struct GNUNET_CURL_RescheduleContext *rc;
-
-  /**
-   * Handle to our fakebank, if #TALER_TESTING_run_with_fakebank() was used.
-   * Otherwise NULL.
-   */
-  struct TALER_FAKEBANK_Handle *fakebank;
-
-  /**
-   * Task run on timeout.
-   */
-  struct GNUNET_SCHEDULER_Task *timeout_task;
-
-  /**
-   * Instruction pointer.  Tells #interpreter_run() which
-   * instruction to run next.
-   */
-  unsigned int ip;
-
-  /**
-   * Result of the testcases, #GNUNET_OK on success
-   */
-  int result;
-
-};
-
-
 /**
  * Pipe used to communicate child death via signal.
  * Must be global, as used in signal handler!
  */
 static struct GNUNET_DISK_PipeHandle *sigpipe;
-
-
 
 /**
  * Lookup command by label.
@@ -103,8 +45,9 @@ static struct GNUNET_DISK_PipeHandle *sigpipe;
  * @return NULL if command was not found
  */
 const struct TALER_TESTING_Command *
-TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
-                                          const char *label)
+TALER_TESTING_interpreter_lookup_command
+  (struct TALER_TESTING_Interpreter *is,
+   const char *label)
 {
   const struct TALER_TESTING_Command *cmd;
 
@@ -131,23 +74,35 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
  * Obtain main execution context for the main loop.
  */
 struct GNUNET_CURL_Context *
-TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_get_context
+  (struct TALER_TESTING_Interpreter *is)
 {
   return is->ctx;
 }
 
 
 struct TALER_FAKEBANK_Handle *
-TALER_TESTING_interpreter_get_fakebank (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_get_fakebank
+  (struct TALER_TESTING_Interpreter *is)
 {
   return is->fakebank;
 }
 
 
+/**
+ * Run tests starting the "fakebank" first.  The "fakebank"
+ * is a C minimalist version of the human-oriented Python bank,
+ * which is also part of the Taler project.
+ *
+ * @param is pointer to the interpreter state
+ * @param commands the list of commands to execute
+ * @param bank_url the url the fakebank is supposed to run on
+ */
 void
-TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
-                                 struct TALER_TESTING_Command *commands,
-                                 const char *bank_url)
+TALER_TESTING_run_with_fakebank
+  (struct TALER_TESTING_Interpreter *is,
+   struct TALER_TESTING_Command *commands,
+   const char *bank_url)
 {
   const char *port;
   long pnum;
@@ -159,7 +114,7 @@ TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
   else
     pnum = strtol (port + 1, NULL, 10);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Staring Fakebank on port %u (%s)\n",
+              "Starting Fakebank on port %u (%s)\n",
               (unsigned int) pnum,
               bank_url);
   is->fakebank = TALER_FAKEBANK_start ((uint16_t) pnum);
@@ -192,8 +147,7 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *i)
   if (GNUNET_SYSERR == i->result)
     return; /* ignore, we already failed! */
   i->ip++;
-  i->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                      i);
+  i->task = GNUNET_SCHEDULER_add_now (&interpreter_run, i);
 }
 
 
@@ -201,21 +155,25 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *i)
  * Current command failed, clean up and fail the test case.
  */
 void
-TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *i)
+TALER_TESTING_interpreter_fail
+  (struct TALER_TESTING_Interpreter *is)
 {
-  i->result = GNUNET_SYSERR;
+  // FIXME: disconnect from the exchange.
+  is->result = GNUNET_SYSERR;
+  // this cleans up too.
   GNUNET_SCHEDULER_shutdown ();
 }
 
 
 /**
  * Create command array terminator.
+ *
+ * @return a end-command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_end (void)
 {
   static struct TALER_TESTING_Command cmd;
-
   return cmd;
 }
 
@@ -224,7 +182,8 @@ TALER_TESTING_cmd_end (void)
  * Obtain current label.
  */
 const char *
-TALER_TESTING_interpreter_get_current_label (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_get_current_label
+  (struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
@@ -278,6 +237,10 @@ do_shutdown (void *cls)
   for (unsigned int j=0;NULL != (cmd = &is->commands[j])->label;j++)
     cmd->cleanup (cmd->cls,
                   cmd);
+  if (NULL != is->exchange)
+  {
+    TALER_EXCHANGE_disconnect (is->exchange);
+  }
   if (NULL != is->task)
   {
     GNUNET_SCHEDULER_cancel (is->task);
@@ -351,7 +314,7 @@ maint_child_death (void *cls)
                                        sizeof (c)));
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_process (cmd,
-                                       NULL,
+                                       0,
                                        &processp))
   {
     GNUNET_break (0);
@@ -361,6 +324,14 @@ maint_child_death (void *cls)
   GNUNET_OS_process_wait (*processp);
   GNUNET_OS_process_destroy (*processp);
   *processp = NULL;
+
+  if (GNUNET_OK == is->reload_keys)
+  {
+    GNUNET_break (0 == GNUNET_OS_process_kill
+    (is->exchanged, SIGUSR1));
+    sleep (5); /* make sure signal was received and processed */
+  }
+
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -372,7 +343,8 @@ maint_child_death (void *cls)
  * with the next command.
  */
 void
-TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_wait_for_sigchld
+  (struct TALER_TESTING_Interpreter *is)
 {
   const struct GNUNET_DISK_FileHandle *pr;
 
@@ -384,41 +356,65 @@ TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is)
                                       pr,
                                       &maint_child_death,
                                       is);
-
 }
 
 
+/**
+ * Run the testsuite.  FIXME: explain why the commands are
+ * copied into the state.
+ *
+ * @param is the interpreter state
+ * @param commands the list of command to execute
+ */
 void
 TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands)
 {
   unsigned int i;
-
+  /* get the number of commands */
   for (i=0;NULL != commands[i].label;i++) ;
+
   is->commands = GNUNET_new_array (i + 1,
                                    struct TALER_TESTING_Command);
   memcpy (is->commands,
           commands,
           sizeof (struct TALER_TESTING_Command) * i);
-  is->timeout_task
-    = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
-                                    (GNUNET_TIME_UNIT_SECONDS, 300),
-                                    &do_timeout,
-                                    is);
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
-                                 is);
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                      is);
+  is->timeout_task = GNUNET_SCHEDULER_add_delayed
+    (GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 300),
+     &do_timeout, is);
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
 }
 
 
+/**
+ * Information used by the wrapper around the main
+ * "run" method.
+ */
 struct MainContext
 {
+  /**
+   * Main "run" method.
+   */
   TALER_TESTING_Main main_cb;
 
+  /**
+   * Closure for "run".
+   */
   void *main_cb_cls;
 
+  /**
+   * Interpreter state.
+   */
   struct TALER_TESTING_Interpreter *is;
+
+  /**
+   * Configuration filename.  The wrapper uses it to fetch
+   * the exchange port number; We could have passed the port
+   * number here, but having the config filename seems more
+   * generic.
+   */
+  const char *config_filename;
 
 };
 
@@ -433,58 +429,170 @@ sighandler_child_death ()
   static char c;
   int old_errno = errno;	/* back-up errno */
 
-  GNUNET_break (1 ==
-		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
-					(sigpipe,
-                                         GNUNET_DISK_PIPE_END_WRITE),
-					&c, sizeof (c)));
+  GNUNET_break (1 == GNUNET_DISK_file_write
+    (GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_WRITE),
+     &c, sizeof (c)));
   errno = old_errno;		/* restore errno */
 }
 
 
+/**
+ * Called once a connection to the exchange has been
+ * established.
+ *
+ * @param cls closure, typically, the "run" method containing
+ *        all the commands to be run, and a closure for it.
+ * @param keys the exchange's keys.
+ * @param compat protocol compatibility information.
+ */
+void
+cert_cb (void *cls,
+         const struct TALER_EXCHANGE_Keys *keys,
+	 enum TALER_EXCHANGE_VersionCompatibility compat)
+{
+  struct MainContext *main_ctx = cls;
+
+  if (NULL == keys)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Got NULL response for /keys\n");
+  
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Got %d DK from /keys\n",
+              keys->num_denom_keys);
+
+  main_ctx->is->key_generation++;
+  main_ctx->is->keys = keys;
+  
+  /* /keys has been called for some reason and
+   * the interpreter is already running. */
+  if (GNUNET_YES == main_ctx->is->working)
+    return;
+
+  main_ctx->is->working = GNUNET_YES;
+
+  /* Very first start of tests, call "run()" */
+  if (1 == main_ctx->is->key_generation)
+  {
+    main_ctx->main_cb (main_ctx->main_cb_cls,
+                       main_ctx->is);
+    return;
+  }
+
+  /* Tests already started, just trigger the
+   * next command. */
+  GNUNET_SCHEDULER_add_now (&interpreter_run,
+                            main_ctx->is);
+}
+
+
+/**
+ * Initialize scheduler loop and curl context for the testcase,
+ * and responsible to run the "run" method.
+ *
+ * @param cls closure, typically the "run" method, the
+ *        interpreter state and a closure for "run".
+ */
 static void
 main_wrapper (void *cls)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *exchange_url;
+  long long unsigned int exchange_port;
 
-  is->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
-                              &is->rc);
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK != GNUNET_CONFIGURATION_load
+    (cfg, main_ctx->config_filename))
+    return;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "exchange",
+                                             "PORT",
+                                             &exchange_port))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "PORT");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return;
+  }
+  GNUNET_asprintf (&exchange_url,
+                   "http://localhost:%llu/",
+                   exchange_port);
+
+  is->ctx = GNUNET_CURL_init
+    (&GNUNET_CURL_gnunet_scheduler_reschedule, &is->rc);
   GNUNET_assert (NULL != is->ctx);
   is->rc = GNUNET_CURL_gnunet_rc_create (is->ctx);
-  main_ctx->main_cb (main_ctx->main_cb_cls,
-                     main_ctx->is);
+
+  GNUNET_assert ( NULL !=
+    (is->exchange = TALER_EXCHANGE_connect (is->ctx,
+                                            exchange_url,
+                                            cert_cb,
+                                            main_ctx)) );
+  GNUNET_free (exchange_url);
+  GNUNET_CONFIGURATION_destroy (cfg);
+
 }
 
 
 /**
- * Initialize scheduler loop and curl context for the testcase.
+ * Install signal handlers plus schedules the main wrapper
+ * around the "run" method.
+ *
+ * @param main_cb the "run" method which coontains all the
+ *        commands.
+ * @param main_cb_cls a closure for "run", typically NULL.
+ * @param config_filename configuration filename.
+ * @param exchanged exchange process handle: will be put in the
+ *        state as some commands - e.g. revoke - need to send
+ *        signal to it, for example to let it know to reload the
+ *        key state..
+ *
+ * @return FIXME: not sure what 'is.result' is at this stage.
  */
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
-                     void *main_cb_cls)
+                     void *main_cb_cls,
+                     const char *config_filename,
+                     struct GNUNET_OS_Process *exchanged)
 {
   struct TALER_TESTING_Interpreter is;
   struct MainContext main_ctx = {
     .main_cb = main_cb,
     .main_cb_cls = main_cb_cls,
-    .is = &is
+    /* needed to init the curl ctx */
+    .is = &is,
+    /* needed to read values like exchange port
+     * number and construct the exchange url.  The
+     * port number _could_ have been passed here, but
+     * we prefer to stay "general" as other values might
+     * need to be passed around in the future. */
+    .config_filename = config_filename
   };
   struct GNUNET_SIGNAL_Context *shc_chld;
-
+  /* zero-ing the state */
   memset (&is,
           0,
           sizeof (is));
+  is.exchanged = exchanged;
   sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO,
                               GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);
-  shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
-                                            &sighandler_child_death);
+  shc_chld = GNUNET_SIGNAL_handler_install
+    (GNUNET_SIGCHLD, &sighandler_child_death);
   GNUNET_SCHEDULER_run (&main_wrapper,
                         &main_ctx);
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   GNUNET_DISK_pipe_close (sigpipe);
   sigpipe = NULL;
+
+  /*FIXME: ?? */
   return is.result;
 }
 

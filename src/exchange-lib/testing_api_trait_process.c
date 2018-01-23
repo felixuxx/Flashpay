@@ -40,22 +40,22 @@
  */
 int
 TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
-                                 const char *selector,
+                                 unsigned int index,
                                  struct GNUNET_OS_Process ***processp)
 {
   return cmd->traits (cmd->cls,
                       (void **) processp,
                       TALER_TESTING_TRAIT_PROCESS,
-                      selector);
+                      index);
 }
 
 
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_process (const char *selector,
+TALER_TESTING_make_trait_process (unsigned int index,
                                   struct GNUNET_OS_Process **processp)
 {
   struct TALER_TESTING_Trait ret = {
-    .selector = selector,
+    .index = index,
     .trait_name = TALER_TESTING_TRAIT_PROCESS,
     .ptr = (const void *) processp
   };

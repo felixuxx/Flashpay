@@ -40,22 +40,22 @@
  */
 int
 TALER_TESTING_get_trait_blinding_key (const struct TALER_TESTING_Command *cmd,
-                                      const char *selector,
+                                      unsigned int index,
                                       struct TALER_DenominationBlindingKeyP **blinding_key)
 {
   return cmd->traits (cmd->cls,
                       (void **) blinding_key,
                       TALER_TESTING_TRAIT_BLINDING_KEY,
-                      selector);
+                      index);
 }
 
 
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_blinding_key (const char *selector,
+TALER_TESTING_make_trait_blinding_key (unsigned int index,
                                        const struct TALER_DenominationBlindingKeyP *blinding_key)
 {
   struct TALER_TESTING_Trait ret = {
-    .selector = selector,
+    .index = index,
     .trait_name = TALER_TESTING_TRAIT_BLINDING_KEY,
     .ptr = (const void *) blinding_key
   };

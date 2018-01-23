@@ -1124,6 +1124,9 @@ exchange_keys_revoke_by_dki (void *cls,
     rc->ok = GNUNET_SYSERR;
     return GNUNET_SYSERR;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Successfully revoking denom '%s..'\n",
+              TALER_B2S (rc->hc));
   return GNUNET_NO;
 }
 

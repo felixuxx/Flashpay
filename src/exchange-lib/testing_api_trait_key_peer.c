@@ -9,17 +9,17 @@
 
   TALER is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
+
 /**
- * @file exchange-lib/testing_api_trait_denom_pub.c
- * @brief main interpreter loop for testcases
- * @author Christian Grothoff
+ * @file exchange-lib/testing_api_trait_key_peer.c
+ * @brief traits to offer peer's (private) keys
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -29,51 +29,54 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-#define TALER_TESTING_TRAIT_DENOM_PUB "denomination-public-key"
+/**
+ * NOTE: calling it "peer" key to make clear it is _not a coin_
+ *       key.
+ */
 
+#define TALER_TESTING_TRAIT_KEY_PEER "key-peer"
 
 /**
- * Obtain a denomination public key from a @a cmd.
+ * Obtain a private key from a "peer".  Used e.g. to obtain
+ * a merchant's priv to sign a /track request.
  *
- * @param cmd command to extract trait from
+ * @param index (tipically zero) which key to return if they
+ *        exist in an array.
  * @param selector which coin to pick if @a cmd has multiple on
- *        offer
- * @param denom_pub[out] set to the blinding key of the coin
+ * offer
+ * @param priv[out] set to the key coming from @a cmd.
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_denom_pub
+TALER_TESTING_get_trait_peer_key
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_EXCHANGE_DenomPublicKey **denom_pub)
+   const struct GNUNET_CRYPTO_EddsaPrivateKey **priv)
 {
   return cmd->traits (cmd->cls,
-                      (void **) denom_pub,
-                      TALER_TESTING_TRAIT_DENOM_PUB,
+                      (void **) priv,
+                      TALER_TESTING_TRAIT_KEY_PEER,
                       index);
 }
 
-
 /**
- * Make a trait for a denomination public key.
+ * @param index (tipically zero) which key to return if they
+ *        exist in an array.
+ * @param priv which object should be returned
  *
- * @param selector in case the trait provides multiple
- *        objects, this parameter extracts a particular one.
- * @param denom_pub pointer to the data to be returned from
- *        this trait
+ * @return the trait, to be put in the traits array of the command
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_pub
+TALER_TESTING_make_trait_peer_key
   (unsigned int index,
-   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub)
+   struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_DENOM_PUB,
-    .ptr = (const void *) denom_pub
+    .trait_name = TALER_TESTING_TRAIT_KEY_PEER,
+    .ptr = (const void *) priv
   };
-
   return ret;
 }
 
-/* end of testing_api_trait_denom_pub.c */
+/* end of testing_api_trait_key_peer.c */

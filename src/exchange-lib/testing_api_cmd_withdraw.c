@@ -2,16 +2,18 @@
   This file is part of TALER
   Copyright (C) 2018 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3, or (at your
+  option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
 /**
@@ -85,14 +87,17 @@ struct WithdrawState
 
 
 /**
- * Function called upon completion of our /reserve/withdraw request.
+ * Function called upon completion of our /reserve/withdraw
+ * request.
  *
  * @param cls closure with the withdraw state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
+ *        successful status request; 0 if the exchange's reply is
+ *        bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sig signature over the coin, NULL on error
- * @param full_response full response from the exchange (for logging, in case of errors)
+ * @param full_response full response from the exchange (for
+ *        logging, in case of errors)
  */
 static void
 reserve_withdraw_cb (void *cls,
@@ -164,9 +169,8 @@ withdraw_run (void *cls,
   struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
 
-  create_reserve
-    = TALER_TESTING_interpreter_lookup_command (is,
-                                                ws->reserve_reference);
+  create_reserve = TALER_TESTING_interpreter_lookup_command
+    (is, ws->reserve_reference);
   if (NULL == create_reserve)
   {
     GNUNET_break (0);
@@ -175,7 +179,7 @@ withdraw_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_priv (create_reserve,
-                                            NULL,
+                                            0,
                                             &rp))
   {
     GNUNET_break (0);
@@ -245,38 +249,72 @@ static int
 withdraw_traits (void *cls,
                  void **ret,
                  const char *trait,
-                 const char *selector)
+                 unsigned int index)
 {
   struct WithdrawState *ws = cls;
+  const struct TALER_TESTING_Command *reserve_cmd;
+  struct TALER_ReservePrivateKeyP *reserve_priv;
+
+  /* We offer the reserve key where these coins were withdrawn
+   * from. */
+  reserve_cmd = TALER_TESTING_interpreter_lookup_command
+    (ws->is, ws->reserve_reference);
+
+  if (NULL == reserve_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (ws->is);
+    return GNUNET_SYSERR;  
+  }
+
+  if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
+    (reserve_cmd, 0, &reserve_priv))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (ws->is);
+    return GNUNET_SYSERR;  
+  }
+
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_coin_priv (NULL /* only one coin */,
+    TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
                                         &ws->ps.coin_priv),
-    TALER_TESTING_make_trait_blinding_key (NULL /* only one coin */,
+    TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
                                            &ws->ps.blinding_key),
-    TALER_TESTING_make_trait_denom_pub (NULL /* only one coin */,
+    TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
                                         ws->pk),
-    TALER_TESTING_make_trait_denom_sig (NULL /* only one coin */,
+    TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
                                         &ws->sig),
+    TALER_TESTING_make_trait_reserve_priv (0,
+                                           reserve_priv),
     TALER_TESTING_trait_end ()
   };
 
   return TALER_TESTING_get_trait (traits,
                                   ret,
                                   trait,
-                                  selector);
+                                  index);
 }
 
 
 /**
- * Create withdraw command.
+ * Create a withdraw command.
  *
+ * @param label command label, used by other commands to
+ *        reference this.
+ * @param exchange handle to the exchange.
+ * @param amount how much we withdraw.
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ *
+ * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_amount (const char *label,
-                                   struct TALER_EXCHANGE_Handle *exchange,
-                                   const char *reserve_reference,
-                                   const char *amount,
-                                   unsigned int expected_response_code)
+TALER_TESTING_cmd_withdraw_amount
+  (const char *label,
+   struct TALER_EXCHANGE_Handle *exchange,
+   const char *reserve_reference,
+   const char *amount,
+   unsigned int expected_response_code)
 {
   struct TALER_TESTING_Command cmd;
   struct WithdrawState *ws;
@@ -294,8 +332,9 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
                 label);
     GNUNET_assert (0);
   }
-  ws->pk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
-                                  &ws->amount);
+  ws->pk = TALER_TESTING_find_pk
+    (TALER_EXCHANGE_get_keys (exchange),
+     &ws->amount);
   if (NULL == ws->pk)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -319,11 +358,12 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  *
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_denomination (const char *label,
-                                         struct TALER_EXCHANGE_Handle *exchange,
-                                         const char *reserve_reference,
-                                         const struct TALER_EXCHANGE_DenomPublicKey *dk,
-                                         unsigned int expected_response_code)
+TALER_TESTING_cmd_withdraw_denomination
+  (const char *label,
+   struct TALER_EXCHANGE_Handle *exchange,
+   const char *reserve_reference,
+   const struct TALER_EXCHANGE_DenomPublicKey *dk,
+   unsigned int expected_response_code)
 {
   struct TALER_TESTING_Command cmd;
   struct WithdrawState *ws;
@@ -347,9 +387,6 @@ TALER_TESTING_cmd_withdraw_denomination (const char *label,
   cmd.traits = &withdraw_traits;
   return cmd;
 }
-
-
-
 
 
 /* end of testing_api_cmd_withdraw.c */

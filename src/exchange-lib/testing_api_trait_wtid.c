@@ -9,17 +9,17 @@
 
   TALER is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
+
 /**
- * @file exchange-lib/testing_api_trait_denom_pub.c
- * @brief main interpreter loop for testcases
- * @author Christian Grothoff
+ * @file exchange-lib/testing_api_trait_number.c
+ * @brief traits to offer numbers
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -29,51 +29,46 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-#define TALER_TESTING_TRAIT_DENOM_PUB "denomination-public-key"
-
+#define TALER_TESTING_TRAIT_WTID "wtid"
 
 /**
- * Obtain a denomination public key from a @a cmd.
+ * Obtain a WTID value from @a cmd.
  *
  * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
+ * @param index which WTID to pick if @a cmd has multiple on
  *        offer
- * @param denom_pub[out] set to the blinding key of the coin
+ * @param wtid[out] set to the wanted WTID.
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_denom_pub
+TALER_TESTING_get_trait_wtid
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_EXCHANGE_DenomPublicKey **denom_pub)
+   struct TALER_WireTransferIdentifierRawP **wtid)
 {
   return cmd->traits (cmd->cls,
-                      (void **) denom_pub,
-                      TALER_TESTING_TRAIT_DENOM_PUB,
+                      (void **) wtid,
+                      TALER_TESTING_TRAIT_WTID,
                       index);
 }
 
-
 /**
- * Make a trait for a denomination public key.
+ * @param index associate the object with this index
+ * @param wtid which object should be returned
  *
- * @param selector in case the trait provides multiple
- *        objects, this parameter extracts a particular one.
- * @param denom_pub pointer to the data to be returned from
- *        this trait
+ * @return the trait, to be put in the traits array of the command
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_pub
+TALER_TESTING_make_trait_wtid
   (unsigned int index,
-   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub)
+   struct TALER_WireTransferIdentifierRawP *wtid)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_DENOM_PUB,
-    .ptr = (const void *) denom_pub
+    .trait_name = TALER_TESTING_TRAIT_WTID,
+    .ptr = (const void *) wtid
   };
-
   return ret;
 }
 
-/* end of testing_api_trait_denom_pub.c */
+/* end of testing_api_trait_number.c */
