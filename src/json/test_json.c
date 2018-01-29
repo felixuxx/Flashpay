@@ -36,14 +36,14 @@ test_amount ()
   struct TALER_Amount a1;
   struct TALER_Amount a2;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount (NULL, &a2),
+    TALER_JSON_spec_amount ("amount", &a2),
     GNUNET_JSON_spec_end()
   };
 
   GNUNET_assert (GNUNET_OK ==
 		 TALER_string_to_amount ("EUR:4.3",
 					 &a1));
-  j = TALER_JSON_from_amount (&a1);
+  j = json_pack("{s:o}", "amount", TALER_JSON_from_amount (&a1));
   GNUNET_assert (NULL != j);
   GNUNET_assert (GNUNET_OK ==
 		 GNUNET_JSON_parse (j, spec,

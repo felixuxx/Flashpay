@@ -35,25 +35,15 @@
 json_t *
 TALER_JSON_from_amount (const struct TALER_Amount *amount)
 {
-  json_t *j;
+  char *amount_str = TALER_amount_to_string (amount);
 
-  if ( (amount->value != (uint64_t) ((json_int_t) amount->value)) ||
-       (0 > ((json_int_t) amount->value)) )
+  GNUNET_assert (NULL != amount_str);
+
   {
-    /* Theoretically, json_int_t can be a 32-bit "long", or we might
-       have a 64-bit value which converted to a 63-bit signed long
-       long causes problems here.  So we check.  Note that depending
-       on the platform, the compiler may be able to statically tell
-       that at least the first check is always false. */
-    GNUNET_break (0);
-    return NULL;
+    json_t *j = json_string (amount_str);
+    GNUNET_free (amount_str);
+    return j;
   }
-  j = json_pack ("{s:s, s:I, s:I}",
-                 "currency", amount->currency,
-                 "value", (json_int_t) amount->value,
-                 "fraction", (json_int_t) amount->fraction);
-  GNUNET_assert (NULL != j);
-  return j;
 }
 
 
@@ -92,6 +82,20 @@ parse_amount (void *cls,
   json_int_t value;
   json_int_t fraction;
   const char *currency;
+
+  if (json_is_string (root))
+  {
+    if (GNUNET_OK !=
+        TALER_string_to_amount (json_string_value (root), r_amount))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  }
+
+  /* Also allow the legacy { value, fraction, currency} format.
+     This might be removed in the future. */
 
   memset (r_amount,
           0,
@@ -178,6 +182,17 @@ parse_amount_nbo (void *cls,
   json_int_t value;
   json_int_t fraction;
   const char *currency;
+
+  if (json_is_string (root))
+  {
+    if (GNUNET_OK !=
+        TALER_string_to_amount_nbo (json_string_value (root), r_amount))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  }
 
   memset (&amount,
           0,
