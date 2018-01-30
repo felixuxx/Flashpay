@@ -38,7 +38,7 @@
  * Input for the wire transfer details.
  */
 static const char *json_proto =
-  "{  \"type\":\"test\", \"bank_uri\":\"http://localhost:8088/\", \"account_number\":42 }";
+  "{  \"type\":\"test\", \"bank_url\":\"http://localhost:8088/\", \"account_number\":42 }";
 
 
 /**

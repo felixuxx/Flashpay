@@ -956,7 +956,7 @@ MAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
  *
  * @param h handle for the exchange
  * @param path Taler API path (i.e. "/reserve/withdraw")
- * @return the full URI to use with cURL
+ * @return the full URL to use with cURL
  */
 char *
 MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
@@ -972,7 +972,7 @@ MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  *
  * @param base_url base URL of the exchange (i.e. "http://exchange/")
  * @param path Taler API path (i.e. "/reserve/withdraw")
- * @return the full URI to use with cURL
+ * @return the full URL to use with cURL
  */
 char *
 MAH_path_to_url2 (const char *base_url,

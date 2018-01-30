@@ -12,7 +12,7 @@
 # -m, --merchant (generate configuration for the merchant)
 # -t, --trusted (generate configuration for exchange and merchant, with exchange set as trusted with merchant)
 # -w WIREFORMAT, --wire=WIREFORMAT (which wire plugin should we use)
-# --bank-uri=URI (only for WIREFORMAT='test')
+# --bank-url=URL (only for WIREFORMAT='test')
 # --exchange-bank-account=NUMBER (only for WIREFORMAT='test')
 # --merchant-bank-account=NUMBER (only for WIREFORMAT='test')
 
@@ -27,13 +27,13 @@ ARG_JM=
 ARG_M=0
 ARG_T=0
 ARG_W=test
-ARG_BANK_URI=
+ARG_BANK_URL=
 ARG_EXCHANGE_BANK_ACCOUNT=
 ARG_MERCHANT_BANK_ACCOUNT=
 
 ##################################
 # read the options
-TEMP=`getopt -o c:C:ef:hj:J:mtw: --long config:,currency:,exchange,wirefee:,help,wire-json-exchange:,wire-json-merchant:,merchant,trusted,wire:,bank-uri:,exchange-bank-account:,merchant-bank-account: -n 'taler-config-generate' -- "$@"`
+TEMP=`getopt -o c:C:ef:hj:J:mtw: --long config:,currency:,exchange,wirefee:,help,wire-json-exchange:,wire-json-merchant:,merchant,trusted,wire:,bank-url:,exchange-bank-account:,merchant-bank-account: -n 'taler-config-generate' -- "$@"`
 eval set -- "$TEMP"
 
 ####################################################
@@ -70,8 +70,8 @@ while true ; do
         -w|--wire)
             ARG_W="$2"
             shift 2 ;;
-        --bank-uri)
-            ARG_BANK_URI="$2"
+        --bank-url)
+            ARG_BANK_URL="$2"
             shift 2 ;;
         --exchange-bank-account)
             ARG_EXCHANGE_BANK_ACCOUNT="$2"
@@ -111,19 +111,19 @@ fi
 # Assemble JSON description of wireformat for "test" if we can
 if (test "test" = "$ARG_W")
 then
-  if (test ! -z "$ARG_BANK_URI" -a ! -z "$ARG_MERCHANT_BANK_ACCOUNT")
+  if (test ! -z "$ARG_BANK_URL" -a ! -z "$ARG_MERCHANT_BANK_ACCOUNT")
   then
-    ARG_JM="{\"type\":\"test\",\"bank_uri\":\"$ARG_BANK_URI\",\"account_number\":$ARG_MERCHANT_BANK_ACCOUNT}"
+    ARG_JM="{\"type\":\"test\",\"bank_url\":\"$ARG_BANK_URL\",\"account_number\":$ARG_MERCHANT_BANK_ACCOUNT}"
 #    echo "Account detail: $ARG_JM"
   else
-    echo "Bank URI or account not given, skipping JSON generation for merchant"
+    echo "Bank URL or account not given, skipping JSON generation for merchant"
   fi
-  if (test ! -z "$ARG_BANK_URI" -a ! -z "$ARG_EXCHANGE_BANK_ACCOUNT")
+  if (test ! -z "$ARG_BANK_URL" -a ! -z "$ARG_EXCHANGE_BANK_ACCOUNT")
   then
-    ARG_JE="{\"type\":\"test\",\"bank_uri\":\"$ARG_BANK_URI\",\"account_number\":$ARG_EXCHANGE_BANK_ACCOUNT}"
+    ARG_JE="{\"type\":\"test\",\"bank_url\":\"$ARG_BANK_URL\",\"account_number\":$ARG_EXCHANGE_BANK_ACCOUNT}"
 #    echo "Account detail: $ARG_JE"
   else
-    echo "Bank URI or account not given, skipping JSON generation for exchange"
+    echo "Bank URL or account not given, skipping JSON generation for exchange"
   fi
 else
   echo "Wire format is not 'test', not auto-generating JSON"
@@ -185,9 +185,9 @@ then
     $CS -s exchange-wire-$WMETHOD -o ENABLE -V YES || exit 1
 
 # If possible, initialize outgoing wire account details ('test' method only)
-    if (test "test" = "$WMETHOD" -a ! -z "$ARG_BANK_URI")
+    if (test "test" = "$WMETHOD" -a ! -z "$ARG_BANK_URL")
     then
-      $CS -s exchange-wire-test -o BANK_URI -V "$ARG_BANK_URI" || exit 1
+      $CS -s exchange-wire-test -o BANK_URL -V "$ARG_BANK_URL" || exit 1
     else
       echo "Skipped generating wire account details for exchange"
     fi
@@ -236,7 +236,7 @@ then
   if (test 1 = "$ARG_E")
   then
     EPORT=`$CS -s exchange -o PORT`
-    $CS -s merchant-exchange-test -o URI -V "http://localhost:$EPORT/" || exit
+    $CS -s merchant-exchange-test -o URL -V "http://localhost:$EPORT/" || exit
     $CS -s merchant-exchange-test -o MASTER_KEY -V `$CS -s exchange -o MASTER_PUBLIC_KEY`
   else
     echo "Need to be configuring exchange as well for -t to be useful."

@@ -37,7 +37,7 @@
 #define CONFIG_FILE "test_exchange_api.conf"
 
 /**
- * URL of the fakebank.  Obtained from CONFIG_FILE's "exchange-wire-test:BANK_URI" option.
+ * URL of the fakebank.  Obtained from CONFIG_FILE's "exchange-wire-test:BANK_URL" option.
  */
 static char *fakebank_url;
 

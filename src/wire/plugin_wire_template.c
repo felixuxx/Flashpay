@@ -33,9 +33,9 @@ struct TemplateClosure
 {
 
   /**
-   * URI of the bank for sending funds to the bank.
+   * URL of the bank for sending funds to the bank.
    */
-  char *bank_uri;
+  char *bank_url;
 
   /**
    * Which currency do we support?
@@ -285,12 +285,12 @@ libtaler_plugin_wire_template_init (void *cls)
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange-wire-template",
-                                             "bank_uri",
-                                             &tc->bank_uri))
+                                             "bank_url",
+                                             &tc->bank_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange-wire-template",
-                               "bank_uri");
+                               "bank_url");
     GNUNET_free (tc);
     return NULL;
   }
@@ -303,7 +303,7 @@ libtaler_plugin_wire_template_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "CURRENCY");
-    GNUNET_free (tc->bank_uri);
+    GNUNET_free (tc->bank_url);
     GNUNET_free (tc);
     return NULL;
   }
@@ -336,7 +336,7 @@ libtaler_plugin_wire_template_done (void *cls)
   struct TALER_WIRE_Plugin *plugin = cls;
   struct TemplateClosure *tc = plugin->cls;
 
-  GNUNET_free (tc->bank_uri);
+  GNUNET_free (tc->bank_url);
   GNUNET_free (tc->currency);
   GNUNET_free (tc);
   GNUNET_free (plugin);

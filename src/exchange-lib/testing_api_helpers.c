@@ -348,12 +348,12 @@ TALER_TESTING_prepare_fakebank (const char *config_filename)
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange-wire-test",
-                                             "BANK_URI",
+                                             "BANK_URL",
                                              &fakebank_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                "exchange-wire-test",
-                               "BANK_URI");
+                               "BANK_URL");
     GNUNET_CONFIGURATION_destroy (cfg);
     return NULL;
   }

@@ -212,7 +212,7 @@ struct TALER_BANK_TransferDetails
 
   /**
    * Wire transfer subject.  Usually a reserve public key
-   * followed by the BASE URI of the exchange.
+   * followed by the base URL of the exchange.
    */
   char *wire_transfer_subject;
 

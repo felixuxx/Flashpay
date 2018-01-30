@@ -288,7 +288,7 @@ static unsigned int pool_size = 100;
 static char *config_file;
 
 /**
- * Configuation object (used to get BANK_URI)
+ * Configuation object (used to get BANK_URL)
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
 
@@ -371,15 +371,15 @@ static struct Coin *coins;
 static struct TALER_MerchantPrivateKeyP merchant_priv;
 
 /**
- * URI under which the exchange is reachable during the benchmark.
+ * URL under which the exchange is reachable during the benchmark.
  */
-static char *exchange_uri;
+static char *exchange_url;
 
 /**
- * URI under which the administrative exchange is reachable during the
+ * URL under which the administrative exchange is reachable during the
  * benchmark.
  */
-static char *exchange_admin_uri;
+static char *exchange_admin_url;
 
 /**
  * Used currency (read from /keys' output)
@@ -1641,7 +1641,7 @@ run (void *cls)
   GNUNET_assert (NULL != rc);
   fakebank = TALER_FAKEBANK_start (8082);
   exchange = TALER_EXCHANGE_connect (ctx,
-                                     exchange_uri,
+                                     exchange_url,
                                      &cert_cb, NULL,
                                      TALER_EXCHANGE_OPTION_END);
   if (NULL == exchange)
@@ -1667,15 +1667,15 @@ main (int argc,
     GNUNET_GETOPT_option_mandatory
     (GNUNET_GETOPT_option_cfgfile (&config_file)),
     GNUNET_GETOPT_option_string ('e',
-                                 "exchange-uri",
-                                 "URI",
-                                 "URI of the exchange",
-                                 &exchange_uri),
+                                 "exchange-url",
+                                 "URL",
+                                 "URL of the exchange",
+                                 &exchange_url),
     GNUNET_GETOPT_option_string ('E',
-                                 "exchange-admin-uri",
-                                 "URI",
-                                 "URI of the administrative interface of the exchange",
-                                 &exchange_admin_uri),
+                                 "exchange-admin-url",
+                                 "URL",
+                                 "URL of the administrative interface of the exchange",
+                                 &exchange_admin_url),
     GNUNET_GETOPT_option_help ("tool to benchmark the Taler exchange"),
     GNUNET_GETOPT_option_uint ('s',
                                "pool-size",
@@ -1712,14 +1712,14 @@ main (int argc,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
 		"Number of iterations below WARM_THRESHOLD of %llu\n",
 		WARM_THRESHOLD);
-  if ( (NULL == exchange_uri) ||
-       (0 == strlen (exchange_uri) ))
+  if ( (NULL == exchange_url) ||
+       (0 == strlen (exchange_url) ))
   {
-    GNUNET_free_non_null (exchange_uri);
-    exchange_uri = GNUNET_strdup ("http://localhost:8081/");
+    GNUNET_free_non_null (exchange_url);
+    exchange_url = GNUNET_strdup ("http://localhost:8081/");
   }
-  if (NULL == exchange_admin_uri)
-    exchange_admin_uri = GNUNET_strdup ("http://localhost:18080/");
+  if (NULL == exchange_admin_url)
+    exchange_admin_url = GNUNET_strdup ("http://localhost:18080/");
   if (run_exchange)
   {
     char *wget;
@@ -1773,8 +1773,8 @@ main (int argc,
 
     GNUNET_asprintf (&wget,
 		     "wget -q -t 1 -T 1 %s%skeys -o /dev/null -O /dev/null",
-		     exchange_uri,
-		     (exchange_uri[strlen (exchange_uri)-1] == '/') ? "" : "/");
+		     exchange_url,
+		     (exchange_url[strlen (exchange_url)-1] == '/') ? "" : "/");
     cnt = 0;
     do {
       fprintf (stderr, ".");

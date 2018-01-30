@@ -958,7 +958,7 @@ handle_mhd_request (void *cls,
                            connection,
                            con_cls);
 
-  /* Unexpected URI path, just close the connection. */
+  /* Unexpected URL path, just close the connection. */
   /* we're rather impolite here, but it's a testcase. */
   GNUNET_break_op (0);
   return MHD_NO;

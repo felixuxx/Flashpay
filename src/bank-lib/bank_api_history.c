@@ -138,7 +138,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
     }
     td.account_details = json_pack ("{s:s, s:s, s:I}",
                                     "type", "test",
-                                    "bank_uri", hh->bank_base_url,
+                                    "bank_url", hh->bank_base_url,
                                     "account_number", (json_int_t) other_account);
     hh->hcb (hh->hcb_cls,
              MHD_HTTP_OK,

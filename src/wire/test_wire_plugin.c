@@ -73,7 +73,7 @@ static struct TestBlock tests[] = {
   },
   {
     .plugin_name = "test",
-    .json_proto = "{  \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":42 }",
+    .json_proto = "{  \"type\":\"test\", \"bank_url\":\"http://localhost/\", \"account_number\":42 }",
     .round_in = "KUDOS:0.123456",
     .round_out = "KUDOS:0.12",
     .currency = "KUDOS"

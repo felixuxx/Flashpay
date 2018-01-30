@@ -41,9 +41,9 @@ struct TestClosure
   char *currency;
 
   /**
-   * URI of our bank.
+   * URL of our bank.
    */
-  char *bank_uri;
+  char *bank_url;
 
   /**
    * Authentication information.
@@ -187,12 +187,12 @@ test_amount_round (void *cls,
  * Compute purpose for signing.
  *
  * @param account number of the account
- * @param bank_uri URI of the bank
+ * @param bank_url URL of the bank
  * @param[out] wsd purpose to be signed
  */
 static void
 compute_purpose (uint64_t account,
-                 const char *bank_uri,
+                 const char *bank_url,
                  struct TALER_MasterWireDetailsPS *wsd)
 {
   struct GNUNET_HashContext *hc;
@@ -208,8 +208,8 @@ compute_purpose (uint64_t account,
 				   &n,
                                    sizeof (n));
   GNUNET_CRYPTO_hash_context_read (hc,
-				   bank_uri,
-				   strlen (bank_uri) + 1);
+				   bank_url,
+				   strlen (bank_url) + 1);
   GNUNET_CRYPTO_hash_context_finish (hc,
 				     &wsd->h_sepa_details);
 }
@@ -236,7 +236,7 @@ test_wire_validate (void *cls,
   struct TestClosure *tc = cls;
   json_error_t error;
   json_int_t account_no;
-  const char *bank_uri;
+  const char *bank_url;
   const char *sig_s;
   struct TALER_MasterWireDetailsPS wsd;
   struct TALER_MasterSignatureP sig;
@@ -248,7 +248,7 @@ test_wire_validate (void *cls,
 		      0,
 		      "{s:I, s:s}",
 		      "account_number", &account_no,
-                      "bank_uri", &bank_uri))
+                      "bank_url", &bank_url))
   {
     char *dump;
 
@@ -270,14 +270,14 @@ test_wire_validate (void *cls,
                      account_no);
     return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_ACCOUNT_NUMBER;
   }
-  if ( (NULL != tc->bank_uri) &&
-       (0 != strcmp (bank_uri,
-                     tc->bank_uri)) )
+  if ( (NULL != tc->bank_url) &&
+       (0 != strcmp (bank_url,
+                     tc->bank_url)) )
   {
     GNUNET_asprintf (emsg,
-                     "Wire specifies bank URI `%s', but this exchange only supports `%s'\n",
-                     bank_uri,
-                     tc->bank_uri);
+                     "Wire specifies bank URL `%s', but this exchange only supports `%s'\n",
+                     bank_url,
+                     tc->bank_url);
     return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_BANK;
   }
   if (NULL == master_pub)
@@ -298,7 +298,7 @@ test_wire_validate (void *cls,
     return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE;
   }
   compute_purpose (account_no,
-                   bank_uri,
+                   bank_url,
                    &wsd);
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (sig_s,
@@ -616,7 +616,7 @@ test_sign_wire_details (void *cls,
                         struct TALER_MasterSignatureP *sig)
 {
   struct TALER_MasterWireDetailsPS wsd;
-  const char *bank_uri;
+  const char *bank_url;
   const char *type;
   json_int_t account;
   json_error_t err;
@@ -627,7 +627,7 @@ test_sign_wire_details (void *cls,
                       0 /* flags */,
                       "{s:s, s:s, s:I}",
                       "type", &type,
-                      "bank_uri", &bank_uri,
+                      "bank_url", &bank_url,
                       "account_number", &account))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -644,7 +644,7 @@ test_sign_wire_details (void *cls,
     return GNUNET_SYSERR;
   }
   compute_purpose (account,
-                   bank_uri,
+                   bank_url,
                    &wsd);
   GNUNET_CRYPTO_eddsa_sign (&key->eddsa_priv,
 			    &wsd.purpose,
@@ -736,7 +736,7 @@ test_execute_wire_transfer (void *cls,
   wire_s = GNUNET_STRINGS_data_to_string_alloc (&bf.wtid,
                                                 sizeof (bf.wtid));
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
-                                            tc->bank_uri,
+                                            tc->bank_url,
                                             &tc->auth,
                                             exchange_base_url,
                                             wire_s,
@@ -972,7 +972,7 @@ test_get_history (void *cls,
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
   whh->hh = TALER_BANK_history (tc->ctx,
-                                tc->bank_uri,
+                                tc->bank_url,
                                 &tc->auth,
                                 (uint64_t) tc->exchange_account_no,
                                 direction,
@@ -1089,7 +1089,7 @@ test_reject_transfer (void *cls,
   rh->rej_cb = rej_cb;
   rh->rej_cb_cls = rej_cb_cls;
   rh->brh = TALER_BANK_reject (tc->ctx,
-                               tc->bank_uri,
+                               tc->bank_url,
                                &tc->auth,
                                (uint64_t) tc->exchange_account_no,
                                GNUNET_ntohll (*rowid_b64),
@@ -1150,12 +1150,12 @@ libtaler_plugin_wire_test_init (void *cls)
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "exchange-wire-test",
-                                               "BANK_URI",
-                                               &tc->bank_uri))
+                                               "BANK_URL",
+                                               &tc->bank_url))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange-wire-test",
-                                 "BANK_URI");
+                                 "BANK_URL");
       GNUNET_free (tc);
       return NULL;
     }
@@ -1168,7 +1168,7 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange-wire-test",
                                  "EXCHANGE_ACCOUNT_NUMBER");
-      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc->bank_url);
       GNUNET_free (tc);
       return NULL;
     }
@@ -1181,7 +1181,7 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "taler",
                                  "CURRENCY");
-      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc->bank_url);
       GNUNET_free (tc);
       return NULL;
     }
@@ -1194,7 +1194,7 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange-wire-test",
                                  "USERNAME");
-      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc->bank_url);
       GNUNET_free (tc);
       return NULL;
     }
@@ -1207,7 +1207,7 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange-wire-test",
                                  "PASSWORD");
-      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc->bank_url);
       GNUNET_free (tc);
       GNUNET_free (user);
       return NULL;
@@ -1222,7 +1222,7 @@ libtaler_plugin_wire_test_init (void *cls)
     {
       GNUNET_break (0);
       GNUNET_free (tc->currency);
-      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc->bank_url);
       GNUNET_free (tc->auth.details.basic.username);
       GNUNET_free (tc->auth.details.basic.password);
       GNUNET_free (tc);
@@ -1287,7 +1287,7 @@ libtaler_plugin_wire_test_done (void *cls)
     break;
   }
   GNUNET_free_non_null (tc->currency);
-  GNUNET_free_non_null (tc->bank_uri);
+  GNUNET_free_non_null (tc->bank_url);
   GNUNET_free (tc);
   GNUNET_free (plugin);
   return NULL;

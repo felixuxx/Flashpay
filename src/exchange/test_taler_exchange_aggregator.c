@@ -434,7 +434,7 @@ do_deposit (struct Command *cmd)
   /* Build JSON for wire details */
   deposit.receiver_wire_account = json_pack ("{s:s, s:s, s:I}",
                                              "type", "test",
-                                             "bank_uri", "http://localhost:8082/",
+                                             "bank_url", "http://localhost:8082/",
                                              "account_number", (json_int_t) cmd->details.deposit.merchant_account);
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_hash (deposit.receiver_wire_account,
