@@ -281,7 +281,7 @@ main (int argc,
   if (0 == dks_len)
   {
     fprintf (stderr,
-             "Denomination list has length zero, signature not produced.\n");
+             "Failed to produce auditor signature, denomination list is empty.\n");
     GNUNET_DISK_file_close (fh);
     GNUNET_free (eddsa_priv);
     return 2;
