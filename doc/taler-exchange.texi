@@ -449,7 +449,7 @@ To enable the wire transfer method ``test'', you need to set
 
 The bank account where the exchange gets money from customers is
 configured under the section @cite{[exchange-wire-test]}.  It must
-contain the options ``EXCHANGE_ACCOUNT_NO'' and ``BANK_URI''.
+contain the options ``EXCHANGE_ACCOUNT_NO'' and ``BANK_URL''.
 For basic authentication, it must additionally contain the
 ``USERNAME'' and ``PASSWORD'' of the exchange's account at the bank.
 
@@ -463,7 +463,7 @@ For example, the utility may be invoked as follows:
 
 @example
 $ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
-10, "bank_uri": "https://bank.demo.taler.net", "type": "test"@}' -t
+10, "bank_url": "https://bank.demo.taler.net", "type": "test"@}' -t
 test -o exchange.json
 @end example
 
@@ -491,7 +491,7 @@ For example, the utility may be invoked as follows:
 
 @example
 $ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
-10, "bank_uri": "https://bank.demo.taler.net", "type": "sepa"@}' -t
+10, "bank_url": "https://bank.demo.taler.net", "type": "sepa"@}' -t
 sepa -o exchange.json
 @end example
 
@@ -516,7 +516,7 @@ options under @cite{[exchange-wire-outgoing-sepa]}: (NOT YET SUPPORTED).
 @cite{exchange_account_numer}: which bank account number has the exchange
 
 @item
-@cite{bank_uri}: base URL of the bank hosting the exchange bank account
+@cite{bank_url}: base URL of the bank hosting the exchange bank account
 @end itemize
 @end quotation
 
@@ -667,7 +667,7 @@ sign (Website, manual delivery, ..).  Nonetheless, the exchange admin can fake
 an auditor signature --- for testing purposes --- by running the following command
 
 @example
-taler-auditor-sign -m EXCHANGE_MASTER_PUB -r BLOB -u AUDITOR_URI -o OUTPUT_FILE
+taler-auditor-sign -m EXCHANGE_MASTER_PUB -r BLOB -u AUDITOR_URL -o OUTPUT_FILE
 @end example
 
 Those arguments are all mandatory.
@@ -677,14 +677,14 @@ Those arguments are all mandatory.
 public key.  Tipically, this value lies in the configuration option
 @code{[exchange]/master_public_key}.
 @item @code{BLOB} the blob generated in the previous step.
-@item @code{AUDITOR_URI} the URI that identifies the auditor.
+@item @code{AUDITOR_URL} the URL that identifies the auditor.
 @item @code{OUTPUT_FILE} where on the disk the signed blob is to be saved.
 @end itemize
 
 @code{OUTPUT_FILE} must then be copied into the directory specified
 by the option @code{AUDITOR_BASE_DIR} under the section @code{[exchangedb]}.
 Assuming @code{AUDITOR_BASE_DIR = $@{HOME@}/.local/share/taler/auditors}, the
-following command will "add" the auditor identified by @code{AUDITOR_URI} to
+following command will "add" the auditor identified by @code{AUDITOR_URL} to
 the exchange.
 
 @example
@@ -692,7 +692,7 @@ cp OUTPUT_FILE $@{HOME@}/.local/share/taler/auditors
 @end example
 
 If the auditor has been correctly added, the exchange's @code{/keys} response
-must contain an entry in the @code{auditors} array mentioning the auditor's URI.
+must contain an entry in the @code{auditors} array mentioning the auditor's URL.
 
 
 @c FIXME: reference section about where keys are stored.
