@@ -229,20 +229,20 @@ TALER_urlencode (const char *s)
  * Grow a string in a buffer with the given size.
  * The buffer is re-allocated if necessary.
  *
- * @param s string buffer
+ * @param s pointer to string buffer
  * @param p the string to append
  * @param n pointer to the allocated size of n
  * @returns pointer to the resulting buffer,
  *          might differ from @a s (!!)
  */
 static char *
-grow_string (char *s, const char *p, size_t *n)
+grow_string (char **s, const char *p, size_t *n)
 {
-  for (; strlen (s) + strlen (p) >= *n; *n *= 2);
-  s = GNUNET_realloc (s, *n);
+  for (; strlen (*s) + strlen (p) >= *n; *n *= 2);
+  *s = GNUNET_realloc (*s, *n);
   GNUNET_assert (NULL != s);
-  strncat (s, p, *n);
-  return s;
+  strncat (*s, p, *n);
+  return *s;
 }
 
 
@@ -252,16 +252,16 @@ grow_string (char *s, const char *p, size_t *n)
  *
  * Ensures that slashes are removed or added when joining paths.
  *
- * @param s string buffer
+ * @param s pointer to string buffer
  * @param p the string to append
  * @param n pointer to the allocated size of n
  * @returns pointer to the resulting buffer,
  *          might differ from @a s (!!)
  */
 static char *
-grow_string_path (char *s, const char *p, size_t *n)
+grow_string_path (char **s, const char *p, size_t *n)
 {
-  char a = (0 == strlen (s)) ? '\0' : s[strlen (s) - 1];
+  char a = (0 == strlen (*s)) ? '\0' : (*s)[strlen (*s) - 1];
   char b = (0 == strlen (p)) ? '\0' : p[0];
 
   if ( (a == '/') && (b == '/'))
@@ -270,7 +270,7 @@ grow_string_path (char *s, const char *p, size_t *n)
   }
   else if ( (a != '/') && (b != '/'))
   {
-    if (NULL == (s = grow_string (s, "/", n)))
+    if (NULL == (*s = grow_string (s, "/", n)))
       return NULL;
   }
   return grow_string (s, p, n);
@@ -299,9 +299,9 @@ TALER_url_join (const char *base_url,
 
   GNUNET_assert (NULL != res);
 
-  grow_string (res, base_url, &n);
+  grow_string (&res, base_url, &n);
 
-  grow_string_path (res, path, &n);
+  grow_string_path (&res, path, &n);
 
   va_start (args, path);
 
@@ -314,12 +314,12 @@ TALER_url_join (const char *base_url,
     value = va_arg (args, char *);
     if (NULL == value)
       continue;
-    grow_string (res, (0 == iparam) ? "?" : "&", &n);
+    grow_string (&res, (0 == iparam) ? "?" : "&", &n);
     iparam++;
-    grow_string (res, key, &n);
-    grow_string (res, "=", &n);
+    grow_string (&res, key, &n);
+    grow_string (&res, "=", &n);
     enc = TALER_urlencode (value);
-    grow_string (res, enc, &n);
+    grow_string (&res, enc, &n);
     GNUNET_free (enc);
   }
 
@@ -352,13 +352,13 @@ url_absolute_raw_va (const char *proto,
   char *enc;
   unsigned int iparam = 0;
 
-  grow_string (res, proto, &n);
-  grow_string (res, "://", &n);
-  grow_string (res, host, &n);
+  grow_string (&res, proto, &n);
+  grow_string (&res, "://", &n);
+  grow_string (&res, host, &n);
 
-  grow_string_path (res, prefix, &n);
+  grow_string_path (&res, prefix, &n);
 
-  grow_string_path (res, path, &n);
+  grow_string_path (&res, path, &n);
 
   while (1) {
     char *key;
@@ -369,12 +369,12 @@ url_absolute_raw_va (const char *proto,
     value = va_arg (args, char *);
     if (NULL == value)
       continue;
-    grow_string (res, (0 == iparam) ? "?" : "&", &n);
+    grow_string (&res, (0 == iparam) ? "?" : "&", &n);
     iparam++;
-    grow_string (res, key, &n);
-    grow_string (res, "=", &n);
+    grow_string (&res, key, &n);
+    grow_string (&res, "=", &n);
     enc = TALER_urlencode (value);
-    grow_string (res, enc, &n);
+    grow_string (&res, enc, &n);
     GNUNET_free (enc);
   }
 
