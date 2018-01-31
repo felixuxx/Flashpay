@@ -453,7 +453,7 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
   }
 
   va_start (args, path);
-  result = TALER_url_absolute_raw (proto, host, prefix, path, args);
+  result = url_absolute_raw_va (proto, host, prefix, path, args);
   va_end (args);
   return result;
 }
