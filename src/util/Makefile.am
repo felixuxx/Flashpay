@@ -57,11 +57,13 @@ libtalerutil_la_LDFLAGS = \
 
 TESTS = \
  test_amount \
- test_crypto
+ test_crypto \
+ test_url
 
 check_PROGRAMS = \
  test_amount \
- test_crypto
+ test_crypto \
+ test_url
 
 
 test_amount_SOURCES = \
@@ -73,5 +75,11 @@ test_amount_LDADD = \
 test_crypto_SOURCES = \
   test_crypto.c
 test_crypto_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
+
+test_url_SOURCES = \
+  test_url.c
+test_url_LDADD = \
   -lgnunetutil \
   libtalerutil.la

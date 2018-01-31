@@ -22,6 +22,7 @@
 #define TALER_UTIL_H
 
 #include <gnunet/gnunet_util_lib.h>
+#include <microhttpd.h>
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
 
@@ -132,6 +133,64 @@ TALER_getopt_get_amount (char shortName,
  */
 const struct GNUNET_OS_ProjectData *
 TALER_project_data_default (void);
+
+
+/**
+ * URL-encode a string according to rfc3986.
+ *
+ * @param s string to encode
+ * @returns the urlencoded string, the caller must free it with GNUNET_free
+ */
+char *
+TALER_urlencode (const char *s);
+
+
+/**
+ * Make an absolute URL with query parameters.
+ *
+ * @param base_url absolute base URL to use
+ * @param path path of the url
+ * @param ... NULL-terminated key-value pairs (char *) for query parameters,
+ *        only the value will be url-encoded
+ * @returns the URL, must be freed with #GNUNET_free
+ */
+char *
+TALER_url_join (const char *base_url,
+                const char *path,
+                ...);
+
+
+/**
+ * Make an absolute URL for the given parameters.
+ *
+ * @param proto protocol for the URL (typically https)
+ * @param host hostname for the URL
+ * @param prefix prefix for the URL
+ * @param path path for the URL
+ * @param ... NULL-terminated key-value pairs (char *) for query parameters,
+ *        the value will be url-encoded
+ * @returns the URL, must be freed with #GNUNET_free
+ */
+char *
+TALER_url_absolute_raw (const char *proto,
+                        const char *host,
+                        const char *prefix,
+                        const char *path,
+                        ...);
+
+
+/**
+ * Make an absolute URL for a given MHD connection.
+ *
+ * @param path path of the url
+ * @param ... NULL-terminated key-value pairs (char *) for query parameters,
+ *        the value will be url-encoded
+ * @returns the URL, must be freed with #GNUNET_free
+ */
+char *
+TALER_url_absolute_mhd (struct MHD_Connection *connection,
+                        const char *path,
+                        ...);
 
 
 #endif
