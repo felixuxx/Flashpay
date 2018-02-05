@@ -583,7 +583,8 @@ postgres_prepare (PGconn *db_conn)
                             ",sender_account_details"
                             ",execution_date"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7);",
+                            "($1, $2, $3, $4, $5, $6, $7) "
+                            "ON CONFLICT DO NOTHING;",
                             7),
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
@@ -1870,9 +1871,8 @@ postgres_reserves_in_insert (void *cls,
       return GNUNET_DB_STATUS_SOFT_ERROR;
     }
   }
-  /* Create new incoming transaction, SQL "primary key" logic
-     is used to guard against duplicates.  If a duplicate is
-     detected, we just "succeed" with no changes. */
+  /* Create new incoming transaction, "ON CONFLICT DO NOTHING"
+     is used to guard against duplicates. */
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
