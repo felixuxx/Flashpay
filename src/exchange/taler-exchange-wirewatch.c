@@ -392,15 +392,13 @@ history_cb (void *cls,
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
-    db_plugin->rollback (db_plugin->cls,
-			 session);
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
   {
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Got DB soft error for reserve_in_insert\n");
     /* try again */
     task = GNUNET_SCHEDULER_add_now (&find_transfers,
 				     NULL);
@@ -469,8 +467,6 @@ find_transfers (void *cls)
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       /* try again */
-      db_plugin->rollback (db_plugin->cls,
-                           session);
       task = GNUNET_SCHEDULER_add_now (&find_transfers,
                                        NULL);
       return;
