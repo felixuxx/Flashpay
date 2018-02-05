@@ -306,6 +306,9 @@ history_cb (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_ReservePublicKeyP reserve_pub;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Got history callback, direction %u!\n", (unsigned int) dir);
+
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     hh = NULL;
@@ -353,6 +356,7 @@ history_cb (void *cls,
     {
       GNUNET_free_non_null (last_row_off);
       last_row_off = GNUNET_malloc (row_off_size);
+      last_row_off_size = row_off_size;
     }
     memcpy (last_row_off,
             row_off,
@@ -472,6 +476,7 @@ find_transfers (void *cls)
       return;
     }
   }
+  GNUNET_assert ((NULL == start_off) || ((NULL != start_off) && (start_off_size != 0)));
   delay = GNUNET_YES;
   hh = wire_plugin->get_history (wire_plugin->cls,
 				 TALER_BANK_DIRECTION_CREDIT,
