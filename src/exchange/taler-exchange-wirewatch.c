@@ -80,8 +80,8 @@ static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 static int global_ret;
 
 /**
- * Encoded offset in the wire transfer list that we
- * processed last.
+ * Encoded offset in the wire transfer list from where
+ * to start the next query with the bank.
  */
 static void *last_row_off;
 
@@ -89,17 +89,6 @@ static void *last_row_off;
  * Number of bytes in #last_row_off.
  */
 static size_t last_row_off_size;
-
-/**
- * Encoded offset in the wire transfer list from where
- * to start the next query with the bank.
- */
-static void *start_off;
-
-/**
- * Number of bytes in #start_off.
- */
-static size_t start_off_size;
 
 /**
  * Which wire plugin are we watching?
@@ -169,8 +158,8 @@ shutdown_task (void *cls)
   db_plugin = NULL;
   TALER_WIRE_plugin_unload (wire_plugin);
   wire_plugin = NULL;
-  GNUNET_free_non_null (start_off);
-  start_off = NULL;
+  GNUNET_free_non_null (last_row_off);
+  last_row_off = NULL;
 }
 
 
@@ -270,13 +259,8 @@ reject_cb (void *cls,
   GNUNET_free (rtc->wtid_s);
   qs = db_plugin->commit (db_plugin->cls,
                           rtc->session);
+  GNUNET_break (0 <= qs);
   GNUNET_free (rtc);
-  if (0 <= qs)
-  {
-    GNUNET_free_non_null (start_off);
-    start_off = last_row_off;
-    start_off_size = last_row_off_size;
-  }
   task = GNUNET_SCHEDULER_add_now (&find_transfers,
                                    NULL);
 }
@@ -323,12 +307,6 @@ history_cb (void *cls,
                 "End of list. Committing progress!\n");
     qs = db_plugin->commit (db_plugin->cls,
 			    session);
-    if (0 <= qs)
-    {
-      GNUNET_free_non_null (start_off);
-      start_off = last_row_off;
-      start_off_size = last_row_off_size;
-    }
     if ( (GNUNET_YES == delay) &&
          (test_mode) )
     {
@@ -458,8 +436,8 @@ find_transfers (void *cls)
   {
     qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
                                                      session,
-                                                     &start_off,
-                                                     &start_off_size);
+                                                     &last_row_off,
+                                                     &last_row_off_size);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -476,12 +454,12 @@ find_transfers (void *cls)
       return;
     }
   }
-  GNUNET_assert ((NULL == start_off) || ((NULL != start_off) && (start_off_size != 0)));
+  GNUNET_assert ((NULL == last_row_off) || ((NULL != last_row_off) && (last_row_off_size != 0)));
   delay = GNUNET_YES;
   hh = wire_plugin->get_history (wire_plugin->cls,
 				 TALER_BANK_DIRECTION_CREDIT,
-				 start_off,
-				 start_off_size,
+				 last_row_off,
+				 last_row_off_size,
 				 1024,
 				 &history_cb,
 				 session);
