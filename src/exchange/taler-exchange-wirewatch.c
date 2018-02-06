@@ -352,6 +352,7 @@ history_cb (void *cls,
                 "Wire transfer over %s has invalid subject `%s', sending it back!\n",
                 TALER_amount2s (&details->amount),
                 details->wtid_s);
+    GNUNET_break (0 != row_off_size);
     if (last_row_off_size != row_off_size)
     {
       GNUNET_free_non_null (last_row_off);
@@ -405,10 +406,13 @@ history_cb (void *cls,
     return GNUNET_SYSERR;
   }
 
+  GNUNET_break (0 != row_off_size);
+
   if (last_row_off_size != row_off_size)
   {
     GNUNET_free_non_null (last_row_off);
     last_row_off = GNUNET_malloc (row_off_size);
+    last_row_off_size = row_off_size;
   }
   memcpy (last_row_off,
 	  row_off,
