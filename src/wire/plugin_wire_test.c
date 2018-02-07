@@ -956,7 +956,7 @@ test_get_history (void *cls,
        (sizeof (uint64_t) != start_off_len) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Wire plugin 'test' got start offset of wrong size (%llu instead of %llu)\n"
+                "Wire plugin 'test' got start offset of wrong size (%llu instead of %llu)\n",
                 (unsigned long long) start_off_len, (unsigned long long) sizeof (uint64_t));
     GNUNET_break (0);
     /* Probably something is wrong with the DB, some other component
