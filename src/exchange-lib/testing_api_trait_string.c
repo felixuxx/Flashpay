@@ -34,6 +34,7 @@
 #define TALER_TESTING_TRAIT_CONTRACT_TERMS "contract-terms"
 #define TALER_TESTING_TRAIT_TRANSFER_SUBJECT "transfer-subject"
 #define TALER_TESTING_TRAIT_AMOUNT "amount"
+#define TALER_TESTING_TRAIT_URL "url"
 
 /**
  * Obtain contract terms from @a cmd.
@@ -204,6 +205,51 @@ TALER_TESTING_make_trait_amount
   };
   return ret;
 }
+
+
+/**
+ * Obtain a url from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which url is to be picked, in case
+ *        multiple are offered.
+ * @param amount[out] where to write the url.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_url
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const char **url)
+{
+  return cmd->traits (cmd->cls,
+                      (void **) url,
+                      TALER_TESTING_TRAIT_URL,
+                      index);
+}
+
+/**
+ * Offer url in a trait.
+ *
+ * @param index which url is to be picked, in case
+ *        multiple are offered.
+ * @param url the url to offer
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_url
+  (unsigned int index,
+   const char *url)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_URL,
+    .ptr = (const void *) url
+  };
+  return ret;
+}
+
+
 
 
 /* end of testing_api_trait_string.c */

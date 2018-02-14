@@ -89,7 +89,7 @@ wirewatch_run (void *cls,
  */
 static void
 wirewatch_cleanup (void *cls,
-                  const struct TALER_TESTING_Command *cmd)
+                   const struct TALER_TESTING_Command *cmd)
 {
   struct WirewatchState *ws = cls;
 
@@ -141,6 +141,10 @@ wirewatch_traits (void *cls,
 /**
  * Execute taler-exchange-wirewatch process.
  *
+ * @param label command label
+ * @param config_filename configuration filename
+ *
+ * @return the command
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_wirewatch (const char *label,

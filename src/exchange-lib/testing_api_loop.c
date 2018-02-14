@@ -537,7 +537,6 @@ main_wrapper (void *cls)
                                             main_ctx)) );
   GNUNET_free (exchange_url);
   GNUNET_CONFIGURATION_destroy (cfg);
-
 }
 
 
@@ -586,6 +585,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install
     (GNUNET_SIGCHLD, &sighandler_child_death);
+  /* Blocking */
   GNUNET_SCHEDULER_run (&main_wrapper,
                         &main_ctx);
   GNUNET_SIGNAL_handler_uninstall (shc_chld);

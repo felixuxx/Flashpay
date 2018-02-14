@@ -1251,4 +1251,33 @@ TALER_TESTING_get_trait_amount
    unsigned int index,
    const char **amount);
 
+
+/**
+ * Offer url in a trait.
+ *
+ * @param index which url is to be picked, in case
+ *        multiple are offered.
+ * @param url the url to offer
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_url
+  (unsigned int index,
+   const char *url);
+
+/**
+ * Obtain a url from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which url is to be picked, in case
+ *        multiple are offered.
+ * @param amount[out] where to write the url.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_url
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const char **url);
+
 #endif
