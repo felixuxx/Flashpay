@@ -302,8 +302,13 @@ maint_child_death (void *cls)
   struct TALER_TESTING_Interpreter *is = cls;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct GNUNET_DISK_FileHandle *pr;
+
   struct GNUNET_OS_Process **processp;
   char c[16];
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Got SIGCHLD for `%s'.\n",
+              cmd->label);
 
   is->child_death_task = NULL;
   pr = GNUNET_DISK_pipe_handle (sigpipe,
@@ -321,17 +326,29 @@ maint_child_death (void *cls)
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Got the dead child process handle"
+              ", waiting for termination ...\n");
+
   GNUNET_OS_process_wait (*processp);
   GNUNET_OS_process_destroy (*processp);
   *processp = NULL;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "... definitively terminated\n");
+
   if (GNUNET_OK == is->reload_keys)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Triggering key state reload at exchange\n");
     GNUNET_break (0 == GNUNET_OS_process_kill
     (is->exchanged, SIGUSR1));
     sleep (5); /* make sure signal was received and processed */
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Dead child, go on with next command.\n");
   TALER_TESTING_interpreter_next (is);
 }
 

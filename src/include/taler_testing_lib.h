@@ -1280,4 +1280,33 @@ TALER_TESTING_get_trait_url
    unsigned int index,
    const char **url);
 
+
+/**
+ * Obtain a order id from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which order id is to be picked, in case
+ *        multiple are offered.
+ * @param order_id[out] where to write the order id.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_order_id
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const char **order_id);
+
+/**
+ * Offer order id in a trait.
+ *
+ * @param index which order id is to be picked, in case
+ *        multiple are offered.
+ * @param order_id the url to offer
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_url
+  (unsigned int index,
+   const char *order_id);
+
 #endif

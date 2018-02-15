@@ -35,6 +35,7 @@
 #define TALER_TESTING_TRAIT_TRANSFER_SUBJECT "transfer-subject"
 #define TALER_TESTING_TRAIT_AMOUNT "amount"
 #define TALER_TESTING_TRAIT_URL "url"
+#define TALER_TESTING_TRAIT_ORDER_ID "order-id"
 
 /**
  * Obtain contract terms from @a cmd.
@@ -250,6 +251,47 @@ TALER_TESTING_make_trait_url
 }
 
 
+/**
+ * Obtain a order id from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which order id is to be picked, in case
+ *        multiple are offered.
+ * @param order_id[out] where to write the order id.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_order_id
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const char **order_id)
+{
+  return cmd->traits (cmd->cls,
+                      (void **) order_id,
+                      TALER_TESTING_TRAIT_ORDER_ID,
+                      index);
+}
+
+/**
+ * Offer order id in a trait.
+ *
+ * @param index which order id is to be picked, in case
+ *        multiple are offered.
+ * @param order_id the url to offer
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_order_id
+  (unsigned int index,
+   const char *order_id)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_URL,
+    .ptr = (const void *) order_id 
+  };
+  return ret;
+}
 
 
 /* end of testing_api_trait_string.c */
