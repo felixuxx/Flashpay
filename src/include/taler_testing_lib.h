@@ -1305,7 +1305,7 @@ TALER_TESTING_get_trait_order_id
  * @return the trait, to be put in the traits array of the command
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_url
+TALER_TESTING_make_trait_order_id
   (unsigned int index,
    const char *order_id);
 
