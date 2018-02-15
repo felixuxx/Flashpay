@@ -287,7 +287,7 @@ TALER_TESTING_make_trait_order_id
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_URL,
+    .trait_name = TALER_TESTING_TRAIT_ORDER_ID,
     .ptr = (const void *) order_id 
   };
   return ret;
