@@ -1309,4 +1309,27 @@ TALER_TESTING_make_trait_order_id
   (unsigned int index,
    const char *order_id);
 
+
+/**
+ * Obtain an amount from a @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param selector which amount to pick if @a cmd has multiple
+ *        on offer
+ * @param amount[out] set to the amount
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_amount_obj (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  struct TALER_Amount **amount);
+
+
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_amount_obj (
+  unsigned int index,
+  const struct TALER_Amount *amount);
+
+
 #endif

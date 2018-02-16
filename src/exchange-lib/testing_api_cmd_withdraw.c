@@ -286,6 +286,11 @@ withdraw_traits (void *cls,
                                         &ws->sig),
     TALER_TESTING_make_trait_reserve_priv (0,
                                            reserve_priv),
+    TALER_TESTING_make_trait_amount_obj (0,
+                                         &ws->amount),
+    TALER_TESTING_make_trait_url (
+      0, MAH_path_to_url (ws->exchange, "/")),
+
     TALER_TESTING_trait_end ()
   };
 
