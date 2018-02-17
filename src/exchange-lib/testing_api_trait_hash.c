@@ -52,6 +52,7 @@ TALER_TESTING_get_trait_hash
                       index);
 }
 
+
 /**
  * @param index associate the hash code with this index
  * @param hash which hash code should be returned

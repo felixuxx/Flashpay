@@ -1167,6 +1167,33 @@ TALER_TESTING_make_trait_peer_key
 
 
 /**
+ * Obtain a public key from a "peer".  Used e.g. to obtain
+ * a merchant's public key to use backend's API.
+ *
+ * @param index (tipically zero) which key to return if they
+ *        exist in an array.
+ * @param pub[out] set to the key coming from @a cmd.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_peer_key_pub
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct GNUNET_CRYPTO_EddsaPublicKey **pub);
+
+/**
+ * @param index (tipically zero) which key to return if they
+ *        exist in an array.
+ * @param pub which object should be returned
+ *
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_peer_key_pub
+  (unsigned int index,
+   struct GNUNET_CRYPTO_EddsaPublicKey *pub);
+
+/**
  * Obtain a transfer subject from @a cmd.
  *
  * @param cmd command to extract trait from

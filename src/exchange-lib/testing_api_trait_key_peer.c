@@ -29,12 +29,8 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-/**
- * NOTE: calling it "peer" key to make clear it is _not a coin_
- *       key.
- */
-
 #define TALER_TESTING_TRAIT_KEY_PEER "key-peer"
+#define TALER_TESTING_TRAIT_KEY_PEER_PUB "key-peer-pub"
 
 /**
  * Obtain a private key from a "peer".  Used e.g. to obtain
@@ -78,5 +74,48 @@ TALER_TESTING_make_trait_peer_key
   };
   return ret;
 }
+
+
+/**
+ * Obtain a public key from a "peer".  Used e.g. to obtain
+ * a merchant's public key to use backend's API.
+ *
+ * @param index (tipically zero) which key to return if they
+ *        exist in an array.
+ * @param pub[out] set to the key coming from @a cmd.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_peer_key_pub
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct GNUNET_CRYPTO_EddsaPublicKey **pub)
+{
+  return cmd->traits (cmd->cls,
+                      (void **) pub,
+                      TALER_TESTING_TRAIT_KEY_PEER_PUB,
+                      index);
+}
+
+/**
+ * @param index (tipically zero) which key to return if they
+ *        exist in an array.
+ * @param pub which object should be returned
+ *
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_peer_key_pub
+  (unsigned int index,
+   struct GNUNET_CRYPTO_EddsaPublicKey *pub)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_KEY_PEER_PUB,
+    .ptr = (const void *) pub
+  };
+  return ret;
+}
+
 
 /* end of testing_api_trait_key_peer.c */
