@@ -190,6 +190,7 @@ fakebank_transfer_run (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
+      fts->reserve_priv.eddsa_priv = reserve_priv->eddsa_priv;
     }
     else
     {
