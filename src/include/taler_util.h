@@ -31,6 +31,9 @@
 #define TALER_LOG_DEBUG(...)                                  \
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, __VA_ARGS__)
 
+#define TALER_LOG_INFO(...)                                  \
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, __VA_ARGS__)
+
 #define TALER_LOG_WARNING(...)                                \
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING, __VA_ARGS__)
 

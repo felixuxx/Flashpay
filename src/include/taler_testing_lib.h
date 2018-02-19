@@ -882,7 +882,7 @@ TALER_TESTING_get_trait_reserve_priv
  * @param cmd command to extract trait from
  * @param selector which process to pick if @a cmd has multiple
  * on offer
- * @param coin_priv[out] set to address of the pointer to the
+ * @param processp[out] set to address of the pointer to the
  * process
  * @return #GNUNET_OK on success
  */

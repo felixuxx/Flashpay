@@ -148,8 +148,6 @@ check_bank_transfer_traits (void *cls,
                             const char *trait,
                             unsigned int index)
 {
-
-
   struct BankCheckState *bcs = cls; 
 
   GNUNET_assert (GNUNET_OK == 
@@ -162,6 +160,7 @@ check_bank_transfer_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_transfer_subject (0, bcs->subject),
     TALER_TESTING_make_trait_wtid (0, &bcs->wtid),
+    TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
     TALER_TESTING_trait_end ()
   };
 
