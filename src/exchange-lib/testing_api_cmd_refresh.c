@@ -245,7 +245,7 @@ reveal_cb (void *cls,
     rrs->fresh_coins = GNUNET_new_array
       (num_coins, struct FreshCoin);
 
-    struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
+    const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
     unsigned int i;
     if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
       (melt_cmd, 0, &fresh_pks))
@@ -670,7 +670,7 @@ refresh_melt_run (void *cls,
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
     struct TALER_DenominationSignature *melt_sig;
-    struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
+    const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
     unsigned int i;
 
     const struct MeltDetails *md = &rms->melted_coin;

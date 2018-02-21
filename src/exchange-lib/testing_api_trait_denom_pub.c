@@ -45,7 +45,7 @@ int
 TALER_TESTING_get_trait_denom_pub
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_EXCHANGE_DenomPublicKey **denom_pub)
+   const struct TALER_EXCHANGE_DenomPublicKey **denom_pub)
 {
   return cmd->traits (cmd->cls,
                       (void **) denom_pub,

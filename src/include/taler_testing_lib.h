@@ -991,7 +991,7 @@ int
 TALER_TESTING_get_trait_denom_pub
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_EXCHANGE_DenomPublicKey **dpk);
+   const struct TALER_EXCHANGE_DenomPublicKey **dpk);
 
 
 /**

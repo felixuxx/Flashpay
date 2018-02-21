@@ -143,7 +143,7 @@ deposit_run (void *cls,
   struct TALER_TESTING_Command *this_cmd;
   struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Absolute refund_deadline;

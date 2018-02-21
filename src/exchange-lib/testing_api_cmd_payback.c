@@ -217,7 +217,7 @@ payback_run (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_DenominationBlindingKeyP *blinding_key;
-  struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   struct TALER_DenominationSignature *coin_sig;
   struct TALER_PlanchetSecretsP planchet;
 
@@ -373,7 +373,7 @@ revoke_run (void *cls,
 {
   struct RevokeState *rs = cls;
   const struct TALER_TESTING_Command *coin_cmd;
-  struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
 
   rs->is = is;
   /* Get denom pub from trait */
