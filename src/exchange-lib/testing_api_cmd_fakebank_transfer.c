@@ -107,6 +107,19 @@ struct FakebankTransferState
    * Exchange URL.
    */
   const char *exchange_url;
+
+  /**
+   * Merchant instance.  Sometimes used to get the tip reserve
+   * private key by reading the appropriate config section.
+   */
+  const char *instance;
+
+  /**
+   * Configuration filename.  Used to get the tip reserve key
+   * filename, used to obtain a public key to write in the
+   * transfer subject.
+   */
+  const char *config_filename;
 };
 
 
@@ -198,11 +211,58 @@ fakebank_transfer_run (void *cls,
     }
     else
     {
+      if (NULL != fts->instance)
+      {
+        GNUNET_assert (NULL != fts->config_filename);
+        char *section;
+        char *keys;
+        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+        struct GNUNET_CONFIGURATION_Handle *cfg;
+        cfg = GNUNET_CONFIGURATION_create ();
+        GNUNET_asprintf (&section,
+                         "merchant-instance-%s",
+                         fts->instance);
+        if (GNUNET_OK !=
+            GNUNET_CONFIGURATION_get_value_string
+              (cfg,
+               section,
+               "TIP_RESERVE_PRIV_FILENAME",
+               &keys))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Configuration fails to specify reserve"
+                      " private key filename in section %s\n",
+                      section);
+          GNUNET_free (section);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        priv = GNUNET_CRYPTO_eddsa_key_create_from_file (keys);
+        if (NULL == priv)
+        {
+          GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                     section,
+                                     "TIP_RESERVE_PRIV_FILENAME",
+                                     "Failed to read private key");
+          GNUNET_free (keys);
+          GNUNET_free (section);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        fts->reserve_priv.eddsa_priv = *priv;
+        GNUNET_free (priv);
+        GNUNET_CONFIGURATION_destroy (cfg);
+      }
+      else
+      {
+      /* No referenced reserve, no instance to take priv
+       * from, no explicit subject given: create new key! */
       struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
 
       priv = GNUNET_CRYPTO_eddsa_key_create ();
       fts->reserve_priv.eddsa_priv = *priv;
       GNUNET_free (priv);
+      }
     }
     GNUNET_CRYPTO_eddsa_key_get_public
       (&fts->reserve_priv.eddsa_priv, &reserve_pub.eddsa_pub);
@@ -412,6 +472,54 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
   fts->auth_password = auth_password;
   fts->reserve_reference = ref;
   fts->exchange_url = exchange_url;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (amount,
+                              &fts->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                amount,
+                label);
+    GNUNET_assert (0);
+  }
+  cmd.cls = fts;
+  cmd.label = label;
+  cmd.run = &fakebank_transfer_run;
+  cmd.cleanup = &fakebank_transfer_cleanup;
+  cmd.traits = &fakebank_transfer_traits;
+  return cmd;
+}
+
+
+/**
+ * Create fakebank_transfer command with custom subject.
+ *
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_with_instance
+  (const char *label,
+   const char *amount,
+   const char *bank_url,
+   uint64_t debit_account_no,
+   uint64_t credit_account_no,
+   const char *auth_username,
+   const char *auth_password,
+   const char *instance,
+   const char *exchange_url,
+   const char *config_filename)
+{
+  struct TALER_TESTING_Command cmd;
+  struct FakebankTransferState *fts;
+
+  fts = GNUNET_new (struct FakebankTransferState);
+  fts->bank_url = bank_url;
+  fts->credit_account_no = credit_account_no;
+  fts->debit_account_no = debit_account_no;
+  fts->auth_username = auth_username;
+  fts->auth_password = auth_password;
+  fts->instance = instance;
+  fts->exchange_url = exchange_url;
+  fts->config_filename = config_filename;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))
