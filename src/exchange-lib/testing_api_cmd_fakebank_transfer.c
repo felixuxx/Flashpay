@@ -103,6 +103,10 @@ struct FakebankTransferState
    */
   uint64_t serial_id;
 
+  /**
+   * Exchange URL.
+   */
+  const char *exchange_url;
 };
 
 
@@ -214,7 +218,7 @@ fakebank_transfer_run (void *cls,
     (TALER_TESTING_interpreter_get_context (is),
      fts->bank_url,
      &auth,
-     "https://exchange.com/", /* exchange URL: FIXME */
+     fts->exchange_url,
      subject,
      &fts->amount,
      fts->debit_account_no,
@@ -303,7 +307,8 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      uint64_t debit_account_no,
                                      uint64_t credit_account_no,
                                      const char *auth_username,
-                                     const char *auth_password)
+                                     const char *auth_password,
+                                     const char *exchange_url)
 {
   struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
@@ -314,6 +319,7 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
   fts->debit_account_no = debit_account_no;
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
+  fts->exchange_url = exchange_url;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))
@@ -346,7 +352,8 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
    uint64_t credit_account_no,
    const char *auth_username,
    const char *auth_password,
-   const char *subject)
+   const char *subject,
+   const char *exchange_url)
 {
   struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
@@ -358,6 +365,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->subject = subject;
+  fts->exchange_url = exchange_url;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))
@@ -390,7 +398,8 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
    uint64_t credit_account_no,
    const char *auth_username,
    const char *auth_password,
-   const char *ref)
+   const char *ref,
+   const char *exchange_url)
 {
   struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
@@ -402,6 +411,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->reserve_reference = ref;
+  fts->exchange_url = exchange_url;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))

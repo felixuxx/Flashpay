@@ -103,7 +103,7 @@ static char *fakebank_url;
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
      fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
-     USER_LOGIN_NAME, USER_LOGIN_PASS)
+     USER_LOGIN_NAME, USER_LOGIN_PASS, "https://exchange.com/")
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -116,7 +116,7 @@ static char *fakebank_url;
    TALER_TESTING_cmd_fakebank_transfer_with_subject \
      (label, amount, fakebank_url, USER_ACCOUNT_NO, \
       EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-      subject)
+      subject, "https://exchange.com/")
 
 /**
  * Main function that will tell the interpreter what commands to

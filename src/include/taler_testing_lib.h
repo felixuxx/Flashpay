@@ -396,7 +396,8 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      uint64_t debit_account_no,
                                      uint64_t credit_account_no,
                                      const char *auth_username,
-                                     const char *auth_password);
+                                     const char *auth_password,
+                                     const char *exchange_url);
 
 
 /**
@@ -412,7 +413,8 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
    uint64_t credit_account_no,
    const char *auth_username,
    const char *auth_password,
-   const char *subject);
+   const char *subject,
+   const char *exchange_url);
 
 
 /**
@@ -428,7 +430,8 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
    uint64_t credit_account_no,
    const char *auth_username,
    const char *auth_password,
-   const char *ref);
+   const char *ref,
+   const char *exchange_url);
 
 
 /**
