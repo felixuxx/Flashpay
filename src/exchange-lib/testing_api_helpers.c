@@ -2,16 +2,18 @@
   This file is part of TALER
   Copyright (C) 2018 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 3, or
+  (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
 /**
@@ -49,10 +51,11 @@ TALER_TESTING_cleanup_files (const char *config_name)
     exit (77);
   }
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                          "exchange",
-                                                          "keydir",
-                                                          &dir));
+                 GNUNET_CONFIGURATION_get_value_filename
+                   (cfg,
+                    "exchange",
+                    "keydir",
+                    &dir));
   if (GNUNET_YES ==
       GNUNET_DISK_directory_test (dir,
                                   GNUNET_NO))
@@ -70,8 +73,8 @@ TALER_TESTING_cleanup_files (const char *config_name)
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
- * @return #GNUNET_OK on success, #GNUNET_NO if test should be skipped,
- *         #GNUNET_SYSERR on test failure
+ * @return #GNUNET_OK on success, #GNUNET_NO if test should be
+ *         skipped, #GNUNET_SYSERR on test failure
  */
 int
 TALER_TESTING_prepare_exchange (const char *config_filename)
@@ -95,7 +98,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+		"Failed to run `taler-exchange-keyup`,"
+                " is your PATH correct?\n");
     return GNUNET_NO;
   }
   GNUNET_OS_process_wait (proc);
@@ -152,7 +156,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-sign`, is your PATH correct?\n");
+		"Failed to run `taler-auditor-sign`,"
+                " is your PATH correct?\n");
     return GNUNET_NO;
   }
   GNUNET_OS_process_wait (proc);
@@ -169,7 +174,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
+		"Failed to run `taler-exchange-dbinit`,"
+                " is your PATH correct?\n");
     return GNUNET_NO;
   }
   if (GNUNET_SYSERR ==
@@ -193,7 +199,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename)
        (0 != code) )
   {
     fprintf (stderr,
-             "Unexpected error running `taler-exchange-dbinit'!\n");
+             "Unexpected error running"
+             " `taler-exchange-dbinit'!\n");
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -222,10 +229,12 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          (now.abs_value_us >= pk->valid_from.abs_value_us) &&
-         (now.abs_value_us < pk->withdraw_valid_until.abs_value_us) )
+         (now.abs_value_us <
+          pk->withdraw_valid_until.abs_value_us) )
       return pk;
   }
-  /* do 2nd pass to check if expiration times are to blame for failure */
+  /* do 2nd pass to check if expiration times are to blame for
+   * failure */
   str = TALER_amount_to_string (amount);
   for (unsigned int i=0;i<keys->num_denom_keys;i++)
   {
@@ -233,14 +242,18 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          ( (now.abs_value_us < pk->valid_from.abs_value_us) ||
-           (now.abs_value_us > pk->withdraw_valid_until.abs_value_us) ) )
+           (now.abs_value_us >
+            pk->withdraw_valid_until.abs_value_us) ) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Have denomination key for `%s', but with wrong expiration range %llu vs [%llu,%llu)\n",
-                  str,
-                  (unsigned long long) now.abs_value_us,
-                  (unsigned long long) pk->valid_from.abs_value_us,
-                  (unsigned long long) pk->withdraw_valid_until.abs_value_us);
+      GNUNET_log
+        (GNUNET_ERROR_TYPE_WARNING,
+         "Have denomination key for `%s', but with wrong"
+         " expiration range %llu vs [%llu,%llu)\n",
+         str,
+         (unsigned long long) now.abs_value_us,
+         (unsigned long long) pk->valid_from.abs_value_us,
+         (unsigned long long)
+           pk->withdraw_valid_until.abs_value_us);
       GNUNET_free (str);
       return NULL;
     }
@@ -322,7 +335,8 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
       if (10 == iter)
       {
 	fprintf (stderr,
-		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");
+		 "Failed to launch `taler-exchange-httpd'"
+                 " (or `wget')\n");
 	GNUNET_OS_process_kill (exchanged,
 				SIGTERM);
 	GNUNET_OS_process_wait (exchanged);
@@ -333,7 +347,9 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
       sleep (1);
       iter++;
     }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
+  while (0 != system
+    ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys"
+     " -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
 
   result = TALER_TESTING_setup (main_cb,

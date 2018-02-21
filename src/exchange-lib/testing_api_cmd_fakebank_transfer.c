@@ -219,6 +219,16 @@ fakebank_transfer_run (void *cls,
         struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
         struct GNUNET_CONFIGURATION_Handle *cfg;
         cfg = GNUNET_CONFIGURATION_create ();
+
+        if (GNUNET_OK !=
+            GNUNET_CONFIGURATION_load (cfg,
+                                       fts->config_filename))
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+
         GNUNET_asprintf (&section,
                          "merchant-instance-%s",
                          fts->instance);
