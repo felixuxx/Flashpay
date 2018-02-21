@@ -1376,32 +1376,4 @@ struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount_obj (
   unsigned int index,
   const struct TALER_Amount *amount);
-
-
-/**
- * Obtain a hash code from @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index which hash code to pick if @a cmd has multiple on
- *        offer
- * @param wtid[out] set to the wanted hash code.
- * @return #GNUNET_OK on success
- */
-int
-TALER_TESTING_get_trait_hash
-  (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   struct GNUNET_HashCode **hash);
-
-/**
- * @param index associate the hash code with this index
- * @param hash which hash code should be returned
- *
- * @return the trait, to be put in the traits array of the command
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_hash
-  (unsigned int index,
-   struct GNUNET_HashCode *hash);
-
 #endif
