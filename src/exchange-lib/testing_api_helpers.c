@@ -431,9 +431,8 @@ TALER_TESTING_prepare_fakebank (const char *config_filename)
   char *fakebank_url;
 
   cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_load (cfg,
-                                 config_filename))
+  if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
+                                              config_filename))
     return NULL;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,

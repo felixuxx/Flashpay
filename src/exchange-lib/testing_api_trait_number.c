@@ -29,7 +29,8 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-#define TALER_TESTING_TRAIT_NUMBER "number"
+#define TALER_TESTING_TRAIT_UINT "uint"
+#define TALER_TESTING_TRAIT_UINT64 "uint-64"
 
 /**
  * Obtain a "number" value from @a cmd.
@@ -48,7 +49,7 @@ TALER_TESTING_get_trait_uint
 {
   return cmd->traits (cmd->cls,
                       (void **) n,
-                      TALER_TESTING_TRAIT_NUMBER,
+                      TALER_TESTING_TRAIT_UINT,
                       index);
 }
 
@@ -65,10 +66,52 @@ TALER_TESTING_make_trait_uint
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_NUMBER,
+    .trait_name = TALER_TESTING_TRAIT_UINT,
     .ptr = (const void *) n
   };
   return ret;
 }
+
+/**
+ * Obtain a "number" value from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param selector which coin to pick if @a cmd has multiple on
+ * offer
+ * @param n[out] set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_uint64
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const uint64_t **n)
+{
+  return cmd->traits (cmd->cls,
+                      (void **) n,
+                      TALER_TESTING_TRAIT_UINT64,
+                      index);
+}
+
+/**
+ * @param selector associate the object with this "tag"
+ * @param n which object should be returned
+ *
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_uint64
+  (unsigned int index,
+   const uint64_t *n)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_UINT64,
+    .ptr = (const void *) n
+  };
+  return ret;
+}
+
+
 
 /* end of testing_api_trait_number.c */

@@ -28,7 +28,8 @@ talerinclude_HEADERS = \
   taler_pq_lib.h \
   taler_signatures.h \
   taler_wire_lib.h \
-  taler_wire_plugin.h
+  taler_wire_plugin.h \
+  taler_testing_bank_lib.h
 
 endif
 

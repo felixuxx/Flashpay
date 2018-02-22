@@ -31,6 +31,7 @@
 #include "taler_fakebank_lib.h"
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
+#include "taler_testing_bank_lib.h"
 
 /**
  *
@@ -348,17 +349,19 @@ fakebank_transfer_traits (void *cls,
 {
   struct FakebankTransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_reserve_priv (0,
-                                           &fts->reserve_priv),
+    TALER_TESTING_make_trait_reserve_priv
+      (0, &fts->reserve_priv),
+    TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT
+      (&fts->debit_account_no),
+    TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT
+      (&fts->credit_account_no),
+    TALER_TESTING_make_trait_url (0, fts->exchange_url),
+    TALER_TESTING_make_trait_transfer_subject (0, fts->subject),
+    TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
+    TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
     TALER_TESTING_trait_end ()
   };
 
-  if (NULL != fts->subject)
-  {
-    GNUNET_break (0);
-    /* we do NOT create a reserve private key */
-    return GNUNET_SYSERR; 
-  }
   return TALER_TESTING_get_trait (traits,
                                   ret,
                                   trait,

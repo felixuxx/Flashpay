@@ -47,12 +47,12 @@ struct BankCheckState
   /**
    * Expected account number that gave money
    */
-  unsigned int debit_account;
+  uint64_t debit_account;
  
   /**
    * Expected account number that received money
    */
-  unsigned int credit_account;
+  uint64_t credit_account;
 
   /**
    * Wire transfer subject (set by fakebank-lib).
@@ -69,6 +69,11 @@ struct BankCheckState
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
+
+  /**
+   * FIXME.
+   */
+  const char *deposit_reference;
 };
 
 /**
@@ -84,26 +89,72 @@ check_bank_transfer_run (void *cls,
                          struct TALER_TESTING_Interpreter *is)
 {
   struct BankCheckState *bcs = cls;
+
   struct TALER_Amount amount;
+  const uint64_t *debit_account;
+  const uint64_t *credit_account;
+  const char *exchange_base_url;
 
 
-  if (GNUNET_OK !=
-      TALER_string_to_amount (bcs->amount,
-                              &amount))
+  if (NULL == bcs->deposit_reference)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %u\n",
-                bcs->amount,
-                is->ip);
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    debit_account = &bcs->debit_account;
+    credit_account = &bcs->credit_account;
+    exchange_base_url = bcs->exchange_base_url;
+
+    if (GNUNET_OK !=
+        TALER_string_to_amount (bcs->amount,
+                                &amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse amount `%s' at %u\n",
+                  bcs->amount,
+                  is->ip);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
   }
+
+  if (NULL != bcs->deposit_reference)
+  {
+    const struct TALER_TESTING_Command *deposit_cmd;
+    const struct TALER_Amount *amount_ptr;
+
+    TALER_LOG_INFO ("`%s' uses reference (%s)\n",
+                    TALER_TESTING_interpreter_get_current_label
+                      (is),
+                    bcs->deposit_reference);
+    deposit_cmd = TALER_TESTING_interpreter_lookup_command
+      (is, bcs->deposit_reference);
+
+    if (NULL == deposit_cmd)
+      TALER_TESTING_FAIL (is);
+
+    GNUNET_assert
+      (GNUNET_OK == TALER_TESTING_get_trait_amount_obj
+        (deposit_cmd, 0, &amount_ptr));
+    amount = *amount_ptr;
+
+    GNUNET_assert
+      (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
+        (deposit_cmd, &debit_account));
+
+    GNUNET_assert
+      (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
+        (deposit_cmd, &credit_account));
+
+    GNUNET_assert
+      (GNUNET_OK == TALER_TESTING_get_trait_url
+        (deposit_cmd, 0, &exchange_base_url)); // check 0 works!
+
+  }
+
   if (GNUNET_OK !=
       TALER_FAKEBANK_check (is->fakebank,
                             &amount,
-                            bcs->debit_account,
-                            bcs->credit_account,
-                            bcs->exchange_base_url,
+                            *debit_account,
+                            *credit_account,
+                            exchange_base_url,
                             &bcs->subject))
   {
     GNUNET_break (0);
@@ -189,8 +240,8 @@ TALER_TESTING_cmd_check_bank_transfer
   (const char *label,
    const char *exchange_base_url,
    const char *amount,
-   unsigned int debit_account,
-   unsigned int credit_account)
+   uint64_t debit_account,
+   uint64_t credit_account)
 {
   struct BankCheckState *bcs;
   struct TALER_TESTING_Command cmd;
@@ -205,7 +256,6 @@ TALER_TESTING_cmd_check_bank_transfer
   cmd.cls = bcs;
   cmd.run = &check_bank_transfer_run;
   cmd.cleanup = &check_bank_transfer_cleanup;
-  // traits?
   cmd.traits = &check_bank_transfer_traits;
 
   return cmd;
@@ -263,5 +313,29 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
   cmd.run = &check_bank_empty_run;
   cmd.cleanup = &check_bank_empty_cleanup;
   
+  return cmd;
+}
+
+
+/**
+ * FIXME.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_bank_transfer_with_ref
+  (const char *label,
+   const char *deposit_reference)
+{
+
+  struct BankCheckState *bcs;
+  struct TALER_TESTING_Command cmd;
+
+  bcs = GNUNET_new (struct BankCheckState);
+  bcs->deposit_reference = deposit_reference;
+  cmd.label = label;
+  cmd.cls = bcs;
+  cmd.run = &check_bank_transfer_run;
+  cmd.cleanup = &check_bank_transfer_cleanup;
+  cmd.traits = &check_bank_transfer_traits;
+
   return cmd;
 }

@@ -198,7 +198,7 @@ deposit_wtid_cb
         return;
       }
 
-      char *transfer_subject;
+      const char *transfer_subject;
 
       if (GNUNET_OK != TALER_TESTING_get_trait_transfer_subject
         (bank_transfer_cmd, 0, &transfer_subject))

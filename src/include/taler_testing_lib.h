@@ -27,12 +27,44 @@
 #define TALER_TESTING_LIB_H
 
 #include "taler_util.h"
+#include "taler_exchange_service.h"
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
 #include <microhttpd.h>
 
 
 /* ********************* Helper functions ********************* */
+
+/**
+ * Print failing line number and trigger shutdown.  Useful
+ * quite any time after the command "run" method has been called.
+ */
+#define TALER_TESTING_FAIL(is) \
+  do \
+  {\
+    GNUNET_break (0); \
+    TALER_TESTING_interpreter_fail (is); \
+    return; \
+  } while (0)
+
+
+#define TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT(cmd,out) \
+  TALER_TESTING_get_trait_uint64 (cmd, 0, out)
+
+#define TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT(data) \
+  TALER_TESTING_make_trait_uint64 (0, data)
+
+#define TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT(cmd,out) \
+  TALER_TESTING_get_trait_uint64 (cmd, 1, out)
+
+#define TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT(data) \
+  TALER_TESTING_make_trait_uint64 (1, data)
+
+#define TALER_TESTING_GET_TRAIT_ROW_ID(cmd,out) \
+  TALER_TESTING_get_trait_uint64 (cmd, 3, out)
+
+#define TALER_TESTING_MAKE_TRAIT_ROW_ID(data) \
+  TALER_TESTING_make_trait_uint64 (3, data)
 
 /**
  * Allocate and return a piece of wire-details.  Mostly, it adds
@@ -747,8 +779,16 @@ TALER_TESTING_cmd_check_bank_transfer
   (const char *label,
    const char *exchange_base_url,
    const char *amount,
-   unsigned int debit_account,
-   unsigned int credit_account);
+   uint64_t debit_account,
+   uint64_t credit_account);
+
+/**
+ * FIXME.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_bank_transfer_with_ref
+  (const char *label,
+   const char *deposit_reference);
 
 /**
  * Check bank's balance is zero.
@@ -1017,6 +1057,33 @@ TALER_TESTING_make_trait_denom_sig
   (unsigned int index,
    const struct TALER_DenominationSignature *sig);
 
+
+/**
+ * @param selector associate the object with this "tag"
+ * @param i which object should be returned
+ *
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_uint64
+  (unsigned int index,
+   const uint64_t *i);
+
+/**
+ * Obtain a "number" value from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param selector which coin to pick if @a cmd has multiple on
+ * offer
+ * @param n[out] set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_uint64
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const uint64_t **n);
+
 /**
  * @param selector associate the object with this "tag"
  * @param i which object should be returned
@@ -1225,7 +1292,7 @@ int
 TALER_TESTING_get_trait_transfer_subject
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   char **transfer_subject);
+   const char **transfer_subject);
 
 
 /**
@@ -1239,7 +1306,7 @@ TALER_TESTING_get_trait_transfer_subject
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_transfer_subject
   (unsigned int index,
-   char *transfer_subject);
+   const char *transfer_subject);
 
 
 /**
@@ -1369,11 +1436,42 @@ int
 TALER_TESTING_get_trait_amount_obj (
   const struct TALER_TESTING_Command *cmd,
   unsigned int index,
-  struct TALER_Amount **amount);
+  const struct TALER_Amount **amount);
 
 
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount_obj (
   unsigned int index,
   const struct TALER_Amount *amount);
+
+/**
+ * Offer reference to a bank transfer which has been
+ * rejected.
+ *
+ * @param index which reference is to be picked, in case
+ *        multiple are offered.
+ * @param rejected_reference the url to offer
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_rejected
+  (unsigned int index,
+   const char *rejected);
+
+/**
+ * Obtain the reference from a bank transfer which has
+ * been rejected.
+ *
+ * @param cmd command to extract trait from
+ * @param index which reference is to be picked, in case
+ *        multiple are offered.
+ * @param rejected_reference[out] where to write the order id.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_rejected
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const char **rejected_reference);
+
 #endif

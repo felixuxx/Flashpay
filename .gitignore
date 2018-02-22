@@ -35,7 +35,9 @@ doc/doxygen/doxygen_sqlite3.db
 src/auditor/taler-auditor
 src/auditor/taler-auditor-sign
 src/bank-lib/test_bank_api
+src/bank-lib/test_bank_api_new
 src/bank-lib/test_bank_api_with_fakebank
+src/bank-lib/test_bank_api_with_fakebank_new
 src/exchange-lib/test_exchange_api_new
 src/exchange-lib/test_exchange_api
 src/exchange-lib/test_exchange_api_home/.local/share/taler/exchange/live-keys/
@@ -65,6 +67,7 @@ src/util/test_crypto
 src/util/test_json
 src/util/test_wireformats
 src/util/taler-arm
+src/util/test_url
 doc/paper/llncs.cls
 doc/paper/taler.bbl
 doc/paper/taler.blg

@@ -36,6 +36,7 @@
 #define TALER_TESTING_TRAIT_AMOUNT "amount"
 #define TALER_TESTING_TRAIT_URL "url"
 #define TALER_TESTING_TRAIT_ORDER_ID "order-id"
+#define TALER_TESTING_TRAIT_REJECTED "rejected"
 
 /**
  * Obtain contract terms from @a cmd.
@@ -135,7 +136,7 @@ int
 TALER_TESTING_get_trait_transfer_subject
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   char **transfer_subject)
+   const char **transfer_subject)
 {
   return cmd->traits (cmd->cls,
                       (void **) transfer_subject,
@@ -154,7 +155,7 @@ TALER_TESTING_get_trait_transfer_subject
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_transfer_subject
   (unsigned int index,
-   char *transfer_subject)
+   const char *transfer_subject)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -292,6 +293,51 @@ TALER_TESTING_make_trait_order_id
   };
   return ret;
 }
+
+/**
+ * Obtain the reference from a bank transfer which has
+ * been rejected.
+ *
+ * @param cmd command to extract trait from
+ * @param index which reference is to be picked, in case
+ *        multiple are offered.
+ * @param rejected_reference[out] where to write the order id.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_rejected
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const char **rejected_reference)
+{
+  return cmd->traits (cmd->cls,
+                      (void **) rejected_reference,
+                      TALER_TESTING_TRAIT_REJECTED,
+                      index);
+}
+
+/**
+ * Offer reference to a bank transfer which has been
+ * rejected.
+ *
+ * @param index which reference is to be picked, in case
+ *        multiple are offered.
+ * @param rejected_reference the url to offer
+ * @return the trait, to be put in the traits array of the command
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_rejected
+  (unsigned int index,
+   const char *rejected)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_REJECTED,
+    .ptr = (const void *) rejected 
+  };
+  return ret;
+}
+
 
 
 /* end of testing_api_trait_string.c */

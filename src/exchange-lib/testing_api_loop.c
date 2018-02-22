@@ -504,6 +504,22 @@ cert_cb (void *cls,
                             main_ctx->is);
 }
 
+/**
+ * Initialize scheduler loop and curl context for the testcase,
+ * and responsible to run the "run" method.
+ *
+ * @param cls closure, typically the "run" method, the
+ *        interpreter state and a closure for "run".
+ */
+static void
+main_wrapper_exchange_agnostic (void *cls)
+{
+  struct MainContext *main_ctx = cls;
+
+  main_ctx->main_cb (main_ctx->main_cb_cls,
+                     main_ctx->is);
+}
+
 
 /**
  * Initialize scheduler loop and curl context for the testcase,
@@ -513,7 +529,7 @@ cert_cb (void *cls,
  *        interpreter state and a closure for "run".
  */
 static void
-main_wrapper (void *cls)
+main_wrapper_exchange_connect (void *cls)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
@@ -542,11 +558,6 @@ main_wrapper (void *cls)
                    "http://localhost:%llu/",
                    exchange_port);
 
-  is->ctx = GNUNET_CURL_init
-    (&GNUNET_CURL_gnunet_scheduler_reschedule, &is->rc);
-  GNUNET_assert (NULL != is->ctx);
-  is->rc = GNUNET_CURL_gnunet_rc_create (is->ctx);
-
   GNUNET_assert ( NULL !=
     (is->exchange = TALER_EXCHANGE_connect (is->ctx,
                                             exchange_url,
@@ -568,7 +579,8 @@ main_wrapper (void *cls)
  * @param exchanged exchange process handle: will be put in the
  *        state as some commands - e.g. revoke - need to send
  *        signal to it, for example to let it know to reload the
- *        key state..
+ *        key state.. if NULL, the interpreter will run without
+ *        trying to connect to the exchange first.
  *
  * @return FIXME: not sure what 'is.result' is at this stage.
  */
@@ -585,10 +597,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     /* needed to init the curl ctx */
     .is = &is,
     /* needed to read values like exchange port
-     * number and construct the exchange url.  The
-     * port number _could_ have been passed here, but
-     * we prefer to stay "general" as other values might
-     * need to be passed around in the future. */
+     * number to construct the exchange url.*/
     .config_filename = config_filename
   };
   struct GNUNET_SIGNAL_Context *shc_chld;
@@ -602,16 +611,26 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install
     (GNUNET_SIGCHLD, &sighandler_child_death);
+
+  is.ctx = GNUNET_CURL_init
+    (&GNUNET_CURL_gnunet_scheduler_reschedule, &is.rc);
+  GNUNET_assert (NULL != is.ctx);
+  is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
+
   /* Blocking */
-  GNUNET_SCHEDULER_run (&main_wrapper,
-                        &main_ctx);
+
+  if (NULL != exchanged)
+    GNUNET_SCHEDULER_run (&main_wrapper_exchange_connect,
+                          &main_ctx);
+  else
+     GNUNET_SCHEDULER_run (&main_wrapper_exchange_agnostic,
+                           &main_ctx);
+
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   GNUNET_DISK_pipe_close (sigpipe);
   sigpipe = NULL;
 
-  /*FIXME: ?? */
   return is.result;
 }
-
 
 /* end of testing_api_loop.c */
