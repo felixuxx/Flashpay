@@ -140,6 +140,33 @@ reject_run (void *cls,
 
 
 /**
+ * @param cls closure
+ * @param ret[out] result (could be anything)
+ * @param trait name of the trait
+ * @param selector more detailed information about which object
+ *                 to return in case there were multiple generated
+ *                 by the command
+ * @return #GNUNET_OK on success
+ */
+static int
+reject_traits (void *cls,
+               void **ret,
+               const char *trait,
+               unsigned int index)
+{
+  struct RejectState *rs = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_rejected (0, rs->deposit_reference),
+    TALER_TESTING_trait_end ()
+  };
+
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+/**
  * FIXME.
  */
 struct TALER_TESTING_Command
@@ -158,6 +185,7 @@ TALER_TESTING_cmd_bank_reject (const char *label,
   cmd.run = &reject_run;
   cmd.cleanup = &reject_cleanup;
   cmd.label = label;
+  cmd.traits = &reject_traits;
 
   return cmd;
 

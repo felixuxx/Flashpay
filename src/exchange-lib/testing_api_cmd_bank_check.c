@@ -200,17 +200,19 @@ check_bank_transfer_traits (void *cls,
                             unsigned int index)
 {
   struct BankCheckState *bcs = cls; 
+  struct TALER_WireTransferIdentifierRawP *wtid_ptr;
 
-  GNUNET_assert (GNUNET_OK == 
-    GNUNET_STRINGS_string_to_data
+  if (GNUNET_OK != GNUNET_STRINGS_string_to_data
       (bcs->subject,
        strlen (bcs->subject),
        &bcs->wtid,
-       sizeof (struct TALER_WireTransferIdentifierRawP)));
+       sizeof (struct TALER_WireTransferIdentifierRawP)))
+    wtid_ptr = NULL;
+  wtid_ptr = &bcs->wtid;
 
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_transfer_subject (0, bcs->subject),
-    TALER_TESTING_make_trait_wtid (0, &bcs->wtid),
+    TALER_TESTING_make_trait_wtid (0, wtid_ptr),
     TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
     TALER_TESTING_trait_end ()
   };
@@ -298,6 +300,22 @@ check_bank_empty_run (void *cls,
 }
 
 /**
+ * FIXME.
+ */
+static int
+check_bank_empty_traits (void *cls,
+                         void **ret,
+                         const char *trait,
+                         unsigned int index)
+{
+  /**
+   * Some commands (notably "bank history") could randomly
+   * look for traits; this way makes sure we don't segfault.
+   */
+  return GNUNET_SYSERR;
+}                         
+
+/**
  * Check bank's balance is zero.
  *
  * @param credit_account the account that received money
@@ -312,6 +330,7 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
   cmd.label = label;
   cmd.run = &check_bank_empty_run;
   cmd.cleanup = &check_bank_empty_cleanup;
+  cmd.traits = &check_bank_empty_traits;
   
   return cmd;
 }
@@ -331,6 +350,7 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
 
   bcs = GNUNET_new (struct BankCheckState);
   bcs->deposit_reference = deposit_reference;
+
   cmd.label = label;
   cmd.cls = bcs;
   cmd.run = &check_bank_transfer_run;

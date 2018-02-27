@@ -112,24 +112,29 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
                 unsigned int off)
 {
   const char *rejected_reference; 
+  const struct TALER_TESTING_Command *current_cmd;
 
+  current_cmd = &is->commands[off];
+  TALER_LOG_INFO ("Is `%s' rejected?\n", current_cmd->label);
   for (unsigned int i=0;i<is->ip;i++)
   {
     const struct TALER_TESTING_Command *c = &is->commands[i];
 
     
     #warning "Errors reported here are NOT fatal"
-    /* We use the exposure of a reference to a reject
-     * command as a signal to understand if the current
-     * command was cancelled; so errors about "reject traits"
-     * not found are NOT fatal here */
-
+    /* Rejected wire transfers have hold a reference to a
+     * reject command to mark them as rejected. So errors
+     * about "reject traits" not found are NOT fatal here */
     if (GNUNET_OK != TALER_TESTING_get_trait_rejected
         (c, 0, &rejected_reference))
       continue;
+
+    TALER_LOG_INFO ("Command `%s' was rejected by `%s'.\n",
+                    current_cmd->label,
+                    c->label);
+
     if (0 == strcmp (rejected_reference,
-                     TALER_TESTING_interpreter_get_current_label
-                       (is)))
+                     current_cmd->label))
       return GNUNET_YES;
   }
   return GNUNET_NO;

@@ -722,6 +722,7 @@ track_transfer_run (void *cls,
       TALER_TESTING_interpreter_fail (tts->is);
       return;     
     }
+    GNUNET_assert (NULL != wtid_ptr);
   }
   tts->tth = TALER_EXCHANGE_track_transfer (tts->exchange,
                                             wtid_ptr,
