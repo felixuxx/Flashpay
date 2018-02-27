@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange/testing_api_cmd_status.c
  * @brief Implement the /reserve/status test command.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -35,7 +33,7 @@ struct StatusState
    * Label to the command which created the reserve to check,
    * needed to resort the reserve key.
    */
-   const char *reserve_reference;
+  const char *reserve_reference;
 
   /**
    * Handle to a /reserve/status operation.
@@ -63,6 +61,7 @@ struct StatusState
   struct TALER_TESTING_Interpreter *is;
 };
 
+
 /**
  * Check exchange returned expected values.
  *
@@ -78,7 +77,7 @@ struct StatusState
  *        history, 0 on error
  * @param history detailed transaction history, NULL on error
  */
-void
+static void
 reserve_status_cb
   (void *cls,
    unsigned int http_status,
@@ -90,7 +89,7 @@ reserve_status_cb
 {
   struct StatusState *ss = cls;
   struct TALER_Amount eb;
-  
+
   ss->rsh = NULL;
   if (ss->expected_response_code != http_status)
   {
@@ -123,10 +122,16 @@ reserve_status_cb
  * of the array returned by "/reserve/status" and checks if that
  * element correspond to itself (= the command exposing the check-
  * method).
+ *
+ * IDEA: Maybe realize this via another trait, some kind of
+ * "reserve history update trait" which returns information about
+ * how the command changes the history (provided only by commands
+ * that change reserve balances)?
  */
 
   TALER_TESTING_interpreter_next (ss->is);
 }
+
 
 /**
  * Run the command.
@@ -135,12 +140,11 @@ reserve_status_cb
  * @param cmd the command to execute, a /wire one.
  * @param i the interpreter state.
  */
-void
+static void
 status_run (void *cls,
             const struct TALER_TESTING_Command *cmd,
             struct TALER_TESTING_Interpreter *is)
 {
-
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
   struct TALER_ReservePrivateKeyP *reserve_priv;
@@ -170,7 +174,7 @@ status_run (void *cls,
     return;
   }
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv, 
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &reserve_pub.eddsa_pub);
   ss->rsh
     = TALER_EXCHANGE_reserve_status (ss->exchange,
@@ -179,13 +183,14 @@ status_run (void *cls,
                                      ss);
 }
 
+
 /**
  * Cleanup the state.
  *
  * @param cls closure, typically a #struct WireState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 status_cleanup (void *cls,
                 const struct TALER_TESTING_Command *cmd)
 {

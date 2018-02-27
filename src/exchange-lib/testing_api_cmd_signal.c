@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_cmd_signal.c
  * @brief command(s) to send signals to processes.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -43,6 +41,7 @@ struct SignalState
 
 };
 
+
 /**
  * Run the command.
  *
@@ -50,7 +49,7 @@ struct SignalState
  * @param cmd the command to execute, a /wire one.
  * @param is the interpreter state.
  */
-void
+static void
 signal_run (void *cls,
             const struct TALER_TESTING_Command *cmd,
             struct TALER_TESTING_Interpreter *is)
@@ -73,7 +72,7 @@ signal_run (void *cls,
  * @param cls closure, typically a #struct SignalState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 signal_cleanup (void *cls,
                 const struct TALER_TESTING_Command *cmd)
 {
@@ -81,6 +80,7 @@ signal_cleanup (void *cls,
 
   GNUNET_free (ss);
 }
+
 
 /**
  * Send a signal to a process.
@@ -99,10 +99,8 @@ TALER_TESTING_cmd_signal (const char *label,
   struct TALER_TESTING_Command cmd;
 
   ss = GNUNET_new (struct SignalState);
-
   ss->process = process;
   ss->signal = signal;
-
   cmd.cls = ss;
   cmd.label = label;
   cmd.run = &signal_run;

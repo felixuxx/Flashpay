@@ -48,6 +48,7 @@ struct CheckKeysState
 
 };
 
+
 /**
  * Run the command.
  *
@@ -55,7 +56,7 @@ struct CheckKeysState
  * @param cmd the command to execute, a /wire one.
  * @param is the interpreter state.
  */
-void
+static void
 check_keys_run (void *cls,
                 const struct TALER_TESTING_Command *cmd,
                 struct TALER_TESTING_Interpreter *is)
@@ -92,8 +93,10 @@ check_keys_run (void *cls,
   {
     /* Did not get the expected number of denomination keys! */
     GNUNET_break (0);
-    fprintf (stderr, "Got %u keys in step %s\n",
-             is->keys->num_denom_keys, cmd->label);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Got %u keys in step %s\n",
+                is->keys->num_denom_keys,
+                cmd->label);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
@@ -107,7 +110,7 @@ check_keys_run (void *cls,
  * @param cls closure, typically a #struct SignalState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 check_keys_cleanup (void *cls,
                     const struct TALER_TESTING_Command *cmd)
 {
@@ -115,6 +118,7 @@ check_keys_cleanup (void *cls,
 
   GNUNET_free (cks);
 }
+
 
 /**
  * Make a "check keys" command.
@@ -132,22 +136,16 @@ TALER_TESTING_cmd_check_keys
    unsigned int num_denom_keys,
    struct TALER_EXCHANGE_Handle *exchange)
 {
-
   struct CheckKeysState *cks;
   struct TALER_TESTING_Command cmd;
 
   cks = GNUNET_new (struct CheckKeysState);
-
   cks->generation = generation;
   cks->num_denom_keys = num_denom_keys;
   cks->exchange = exchange;
-
   cmd.cls = cks;
   cmd.label = label;
   cmd.run = &check_keys_run;
   cmd.cleanup = &check_keys_cleanup;
-
   return cmd;
-
-
 }
