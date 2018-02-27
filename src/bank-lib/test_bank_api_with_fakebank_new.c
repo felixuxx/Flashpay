@@ -206,7 +206,7 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-merchant-api-with-fakebank-new",
+  GNUNET_log_setup ("test-bank-api-with-fakebank-new",
                     "DEBUG",
                     NULL);
   if (NULL ==
