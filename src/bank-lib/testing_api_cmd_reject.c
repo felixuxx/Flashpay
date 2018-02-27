@@ -111,12 +111,12 @@ reject_run (void *cls,
   const struct TALER_TESTING_Command *deposit_cmd;
   const uint64_t *credit_account;
   const uint64_t *row_id;
-  extern struct TALER_BANK_AuthenticationData *AUTHS;
+  extern struct TALER_BANK_AuthenticationData AUTHS[];
 
   deposit_cmd = TALER_TESTING_interpreter_lookup_command
     (is, rs->deposit_reference);
 
-  if (NULL != deposit_cmd)
+  if (NULL == deposit_cmd)
     TALER_TESTING_FAIL (is);
 
   GNUNET_assert
@@ -126,7 +126,8 @@ reject_run (void *cls,
   GNUNET_assert
     (GNUNET_OK == TALER_TESTING_GET_TRAIT_ROW_ID
       (deposit_cmd, &row_id));
-
+  TALER_LOG_INFO ("Account %llu rejects deposit\n",
+                  *credit_account);
   rs->rh = TALER_BANK_reject (is->ctx,
                               rs->bank_url,
                               &AUTHS[*credit_account -1],
