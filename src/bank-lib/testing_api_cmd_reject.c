@@ -156,6 +156,7 @@ TALER_TESTING_cmd_bank_reject (const char *label,
   cmd.cls = rs;
   cmd.run = &reject_run;
   cmd.cleanup = &reject_cleanup;
+  cmd.label = label;
 
   return cmd;
 
