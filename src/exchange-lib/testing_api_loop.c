@@ -535,7 +535,6 @@ main_wrapper_exchange_connect (void *cls)
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   char *exchange_url;
-  long long unsigned int exchange_port;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
@@ -543,21 +542,17 @@ main_wrapper_exchange_connect (void *cls)
     return;
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
+      GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
-                                             "PORT",
-                                             &exchange_port))
+                                             "BASE_URL",
+                                             &exchange_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "PORT");
+                               "BASE_URL");
     GNUNET_CONFIGURATION_destroy (cfg);
     return;
   }
-  GNUNET_asprintf (&exchange_url,
-                   "http://localhost:%llu/",
-                   exchange_port);
-
   GNUNET_assert ( NULL !=
     (is->exchange = TALER_EXCHANGE_connect (is->ctx,
                                             exchange_url,

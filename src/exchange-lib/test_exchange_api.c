@@ -2141,7 +2141,7 @@ interpreter_run (void *cls)
         = TALER_BANK_admin_add_incoming (ctx,
                                          "http://localhost:8082/", /* bank URL */
                                          &auth,
-                                         "https://exchange.com/", /* exchange URL */
+                                         "http://localhost:8081/", /* exchange URL */
                                          subject,
                                          &amount,
                                          cmd->details.admin_add_incoming.debit_account_no,
@@ -3414,42 +3414,42 @@ run (void *cls)
 
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-499c",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:4.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-99c1",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:0.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-99c2",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:0.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-9c",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:0.08",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 43
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-aai-1",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:5.01",
       .details.check_bank_transfer.account_debit = 42,
       .details.check_bank_transfer.account_credit = 2
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-aai-2",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:5.01",
       .details.check_bank_transfer.account_debit = 424,
       .details.check_bank_transfer.account_credit = 2
@@ -3516,7 +3516,7 @@ run (void *cls)
       .label = "run-aggregator-refund" },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-aai-3",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:5.01",
       .details.check_bank_transfer.account_debit = 42,
       .details.check_bank_transfer.account_credit = 2
@@ -3548,7 +3548,7 @@ run (void *cls)
     /* Check that deposit did run */
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-pre-refund",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:4.97",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
@@ -3597,7 +3597,7 @@ run (void *cls)
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-aai-3b",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:5.01",
       .details.check_bank_transfer.account_debit = 42,
       .details.check_bank_transfer.account_credit = 2
@@ -3752,21 +3752,21 @@ run (void *cls)
     /* check that we are empty before the rejection test */
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-pr1",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:5.01",
       .details.check_bank_transfer.account_debit = 42,
       .details.check_bank_transfer.account_credit = 2
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-pr2",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:2.02",
       .details.check_bank_transfer.account_debit = 42,
       .details.check_bank_transfer.account_credit = 2
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-pr3",
-      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
+      .details.check_bank_transfer.exchange_base_url = "http://localhost:8081/",
       .details.check_bank_transfer.amount = "EUR:1.01",
       .details.check_bank_transfer.account_debit = 42,
       .details.check_bank_transfer.account_credit = 2
