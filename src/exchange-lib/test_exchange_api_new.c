@@ -49,11 +49,11 @@
 static char *fakebank_url;
 
 /**
- * FIXME: what about putting exchange_url also global
- * here?  Right now, the exchange port is being "bounced"
- * between functions before exchange_url is constructed
- * and TALER_EXCHANGE_connect() is called with that.
+ * Exchange base URL as it appears in the configuration.  Note
+ * that it might differ from the one where the exchange actually
+ * listens from.
  */
+static char *exchange_url;
 
 /**
  * Account number of the exchange at the bank.
@@ -103,7 +103,7 @@ static char *fakebank_url;
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
      fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
-     USER_LOGIN_NAME, USER_LOGIN_PASS, "https://exchange.com/")
+     USER_LOGIN_NAME, USER_LOGIN_PASS, exchange_url)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -116,7 +116,7 @@ static char *fakebank_url;
    TALER_TESTING_cmd_fakebank_transfer_with_subject \
      (label, amount, fakebank_url, USER_ACCOUNT_NO, \
       EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-      subject, "https://exchange.com/")
+      subject, exchange_url)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -391,23 +391,23 @@ run (void *cls,
      * Check all the transfers took place.
      */
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-499c", "https://exchange.com/",
+      ("check_bank_transfer-499c", exchange_url,
        "EUR:4.98", 2, 42),
 
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c1", "https://exchange.com/",
+      ("check_bank_transfer-99c1", exchange_url,
        "EUR:0.98", 2, 42),
 
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c2", "https://exchange.com/",
+      ("check_bank_transfer-99c2", exchange_url,
        "EUR:0.98", 2, 42),
 
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c", "https://exchange.com/",
+      ("check_bank_transfer-99c", exchange_url,
        "EUR:0.08", 2, 43),
 
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-1", "https://exchange.com/",
+      ("check_bank_transfer-aai-1", exchange_url,
        "EUR:5.01", 42, 2),
 
     /**
@@ -415,7 +415,7 @@ run (void *cls,
      * command with debit account == 424.
      */
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-2", "https://exchange.com/",
+      ("check_bank_transfer-aai-2", exchange_url,
        "EUR:5.01", 42, 2),
 
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
@@ -486,7 +486,7 @@ run (void *cls,
      */
 
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pre-refund", "https://exchange.com/",
+      ("check_bank_transfer-pre-refund", exchange_url,
        "EUR:5.01", 42, 2),
 
     TALER_TESTING_cmd_check_bank_empty
@@ -520,7 +520,7 @@ run (void *cls,
      * Check that deposit did run.
      */
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pre-refund", "https://exchange.com/",
+      ("check_bank_transfer-pre-refund", exchange_url,
        "EUR:4.97", 2, 42),
 
     /**
@@ -549,7 +549,7 @@ run (void *cls,
                                        MHD_HTTP_OK),
 
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-3b", "https://exchange.com/",
+      ("check_bank_transfer-aai-3b", exchange_url,
        "EUR:5.01", 42, 2),
 
 
@@ -706,13 +706,13 @@ run (void *cls,
 
     /* check that we are empty before the rejection test */
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pr1", "https://exchange.com/",
+      ("check_bank_transfer-pr1", exchange_url,
        "EUR:5.01", 42, 2),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pr2", "https://exchange.com/",
+      ("check_bank_transfer-pr2", exchange_url,
        "EUR:2.02", 42, 2),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pr3", "https://exchange.com/",
+      ("check_bank_transfer-pr3", exchange_url,
        "EUR:1.01", 42, 2),
 
     TALER_TESTING_cmd_check_bank_empty ("check-empty-again"),
@@ -759,7 +759,8 @@ main (int argc,
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE))
+  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+                                          &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

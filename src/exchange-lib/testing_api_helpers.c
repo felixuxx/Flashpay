@@ -73,11 +73,15 @@ TALER_TESTING_cleanup_files (const char *config_name)
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
+ * @param base_url[out] will be set to the exchange base url,
+ *        if the config has any; otherwise it will be set to
+ *        NULL.
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
 int
-TALER_TESTING_prepare_exchange (const char *config_filename)
+TALER_TESTING_prepare_exchange (const char *config_filename,
+                                char **base_url)
 {
   struct GNUNET_OS_Process *proc;
   enum GNUNET_OS_ProcessStatusType type;
@@ -109,6 +113,18 @@ TALER_TESTING_prepare_exchange (const char *config_filename)
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
     (cfg, config_filename))
     return GNUNET_SYSERR;
+
+   if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchange",
+                               "BASE_URL");
+    *base_url = NULL;
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
