@@ -36,21 +36,21 @@
 
 struct HistoryState
 {
-   const char *bank_url;
+  const char *bank_url;
 
-   uint64_t account_no;
+  uint64_t account_no;
 
-   enum TALER_BANK_Direction direction;
+  enum TALER_BANK_Direction direction;
 
-   const char *start_row_reference;
+  const char *start_row_reference;
 
-   unsigned int num_results;
+  unsigned int num_results;
 
-   struct TALER_BANK_HistoryHandle *hh;
+  struct TALER_BANK_HistoryHandle *hh;
 
-   uint64_t results_obtained;
+  uint64_t results_obtained;
 
-   int failed;
+  int failed;
 };
 
 /**
