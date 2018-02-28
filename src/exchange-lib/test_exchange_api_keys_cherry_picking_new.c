@@ -50,7 +50,7 @@
 /**
  * Exchange base URL; mainly purpose is to make the compiler happy.
  */
-char *exchange_url;
+static char *exchange_url;
 
 /**
  * Main function that will tell the interpreter what commands to
