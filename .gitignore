@@ -45,6 +45,7 @@ src/exchange-lib/test_exchange_api_home/.local/share/taler/exchange/wirefees/
 src/exchange-lib/test_exchange_api_home/.local/share/taler/auditor/
 src/exchange-lib/test_exchange_api_home/.local/share/taler/auditors/
 src/exchange-lib/auditor.in
+src/exchange-lib/test_exchange_api_twisted
 src/exchange/taler-exchange-aggregator
 src/exchange/test_taler_exchange_aggregator-postgres
 src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
