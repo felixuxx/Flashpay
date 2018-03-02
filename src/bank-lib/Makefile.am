@@ -88,6 +88,28 @@ check_PROGRAMS = \
   test_bank_api_with_fakebank \
   test_bank_api_with_fakebank_new
 
+if HAVE_TWISTER
+  check_PROGRAMS += \
+    test_bank_api_twisted
+
+test_bank_api_twisted_SOURCES = \
+  test_bank_api_twisted.c
+test_bank_api_twisted_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  -ltalertesting \
+  -ltalertwistertesting \
+  -ltalerfakebank \
+  -ltalerbank \
+  -ltalerexchange \
+  -ltalerjson \
+  -ltalerutil \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+endif
+
+
 TESTS = \
   $(check_PROGRAMS)
 
