@@ -91,17 +91,35 @@ endif
 check_PROGRAMS = \
   test_exchange_api_keys_cherry_picking_new \
   test_exchange_api_new \
-  test_exchange_api \
-  test_exchange_api_keys_cherry_picking
+  test_exchange_api_keys_cherry_picking \
+  test_exchange_api
+
+if HAVE_TWISTER
+  check_PROGRAMS += \
+    test_exchange_api_twisted
+
+test_exchange_api_twisted_SOURCES = \
+  test_exchange_api_twisted.c
+test_exchange_api_twisted_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  -ltalertesting \
+  -ltalertwistertesting \
+  -ltalerfakebank \
+  -ltalerbank \
+  -ltalerexchange \
+  -ltalerjson \
+  -ltalerutil \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+endif
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
-# FIXME: uncomment those.
 TESTS = \
-  test_exchange_api_keys_cherry_picking_new \
-  test_exchange_api_new \
-  test_exchange_api \
-  test_exchange_api_keys_cherry_picking
+  $(check_PROGRAMS)
 
 test_exchange_api_SOURCES = \
   test_exchange_api.c

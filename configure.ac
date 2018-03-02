@@ -274,7 +274,6 @@ AS_IF([test $microhttpd = 0],
 *** You need libmicrohttpd >= 0.9.39 to build this program.
 *** ]])])
 
-
 # check for libjansson (Jansson JSON library)
 jansson=0
 AC_MSG_CHECKING([for jansson])
@@ -379,6 +378,27 @@ CFLAGS=$CFLAGS_SAVE
 LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
 
+# check for libtalertwistertesting
+twistertesting=0
+AC_MSG_CHECKING([for talerwtistertesting])
+AC_ARG_WITH([twister],
+            [AS_HELP_STRING([--with-twister=PFX], [base of libtalertwistertesting])],
+            [AC_MSG_RESULT([given as $with_twister])],
+            [AC_MSG_RESULT([not given])
+             with_twister=yes])
+AS_CASE([$with_twister],
+        [yes], [],
+        [no], [AC_MSG_WARN([no twister-testing will be compiled])],
+        [LDFLAGS="-L$with_twister/lib $LDFLAGS"
+         CPPFLAGS="-I$with_twister/include $CPPFLAGS"])
+AC_CHECK_LIB(talertwistertesting,TALER_TESTING_run_twister,
+  [AC_CHECK_HEADER([taler/taler_twister_testing_lib.h],[twistertesting=1],,
+                   [#ifdef HAVE_GNUNET_PLATFORM_H
+                      #include <gnunet/platform.h>
+                    #endif])]
+  ,,[-ltalerexchange -ltalerbank])
+
+AM_CONDITIONAL(HAVE_TWISTER, test x$twistertesting = x1)
 
 # should developer logic be compiled (not-for-production code)?
 AC_MSG_CHECKING(whether to compile developer logic)
