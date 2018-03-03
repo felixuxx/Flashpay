@@ -84,6 +84,12 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
 
+    TALER_TESTING_cmd_bank_history ("history-0",
+                                    bank_url,
+                                    EXCHANGE_ACCOUNT_NUMBER,
+                                    TALER_BANK_DIRECTION_BOTH,
+                                    NULL,
+                                    5),
     /**
      * End the suite.  Fixme: better to have a label for this
      * too, as it shows a "(null)" token on logs.
