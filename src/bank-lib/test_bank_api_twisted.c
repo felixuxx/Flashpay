@@ -141,9 +141,9 @@ main (int argc,
   GNUNET_free (bank_url);
 
   if (GNUNET_OK == ret)
-    return 1;
+    return 0;
 
-  return 0;
+  return 1;
 }
 
 /* end of test_bank_api_twisted.c */
