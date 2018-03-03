@@ -36,13 +36,14 @@
 #include <taler/taler_fakebank_lib.h>
 #include <taler/taler_testing_lib.h>
 #include <taler/taler_twister_testing_lib.h>
+#include <taler/taler_testing_bank_lib.h>
 #include <taler/taler_twister_service.h>
 
 /**
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_bank_api_twisted.conf"
+#define CONFIG_FILE "bank_twisted.conf"
 
 /**
  * (real) Twister URL.  Used at startup time to check if it runs.
@@ -50,9 +51,20 @@
 static char *twister_url;
 
 /**
+ * URL of the twister where all the connections to the
+ * bank that have to be proxied should be addressed to.
+ */
+#define TWISTED_BANK_URL twister_url
+
+/**
  * URL of the bank.
  */
 static char *bank_url;
+
+/**
+ * Bank process.
+ */
+static struct GNUNET_OS_Process *bankd;
 
 /**
  * Twister process.
@@ -79,7 +91,7 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  TALER_TESTING_run_with_fakebank (is, commands);
+  TALER_TESTING_run (is, commands);
 }
 
 /**
@@ -115,7 +127,7 @@ main (int argc,
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
       (CONFIG_FILE)))
     return 77;
-
+  
   if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
     return 77;
 
