@@ -98,4 +98,5 @@ contrib/auditor-report.log
 contrib/auditor-report.tex
 contrib/auditor-report.pdf
 src/bank-lib/taler-bank-transfer
+src/bank-lib/test_bank_api_twisted
 src/exchange-lib/test_exchange_api_new
