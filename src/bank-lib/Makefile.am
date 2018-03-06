@@ -89,9 +89,9 @@ check_PROGRAMS = \
   test_bank_api_with_fakebank_new
 
 if HAVE_TWISTER
-  check_PROGRAMS += \
-    test_bank_api_twisted
-    test_bank_api_with_fakebank_twisted
+check_PROGRAMS += \
+  test_bank_api_twisted \
+  test_bank_api_with_fakebank_twisted
 
 test_bank_api_with_fakebank_twisted_SOURCES = \
   test_bank_api_with_fakebank_twisted.c
@@ -109,6 +109,7 @@ test_bank_api_with_fakebank_twisted_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson
+endif
 
 test_bank_api_twisted_SOURCES = \
   test_bank_api_twisted.c
@@ -126,7 +127,6 @@ test_bank_api_twisted_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson
-endif
 
 
 TESTS = \
