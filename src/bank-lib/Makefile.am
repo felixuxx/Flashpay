@@ -93,6 +93,23 @@ if HAVE_TWISTER
     test_bank_api_twisted
     test_bank_api_with_fakebank_twisted
 
+test_bank_api_with_fakebank_twisted_SOURCES = \
+  test_bank_api_with_fakebank_twisted.c
+test_bank_api_with_fakebank_twisted_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  -ltalertesting \
+  -ltalertwistertesting \
+  -ltalerbanktesting \
+  -ltalerfakebank \
+  -ltalerbank \
+  -ltalerexchange \
+  -ltalerjson \
+  -ltalerutil \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
 test_bank_api_twisted_SOURCES = \
   test_bank_api_twisted.c
 test_bank_api_twisted_LDADD = \
