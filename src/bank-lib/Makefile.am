@@ -91,6 +91,7 @@ check_PROGRAMS = \
 if HAVE_TWISTER
   check_PROGRAMS += \
     test_bank_api_twisted
+    test_bank_api_with_fakebank_twisted
 
 test_bank_api_twisted_SOURCES = \
   test_bank_api_twisted.c
