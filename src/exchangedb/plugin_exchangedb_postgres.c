@@ -1560,7 +1560,6 @@ postgres_start (void *cls,
                      PQerrorMessage (session->conn));
     GNUNET_break (0);
     PQclear (result);
-    session->transaction_name = NULL;
     return GNUNET_SYSERR;
   }
   PQclear (result);
@@ -4852,19 +4851,13 @@ postgres_start_deferred_wire_out (void *cls,
   PGresult *result;
   ExecStatusType ex;
 
-  result = PQexec (session->conn,
-                   "START TRANSACTION ISOLATION LEVEL SERIALIZABLE");
-  if (PGRES_COMMAND_OK !=
-      (ex = PQresultStatus (result)))
-  {
-    TALER_LOG_ERROR ("Failed to start transaction (%s): %s\n",
-                     PQresStatus (ex),
-                     PQerrorMessage (session->conn));
-    GNUNET_break (0);
-    PQclear (result);
+  postgres_preflight (cls,
+                      session);
+  if (GNUNET_OK !=
+      postgres_start (cls,
+                      session,
+                      "deferred wire out"))
     return GNUNET_SYSERR;
-  }
-  PQclear (result);
   result = PQexec (session->conn,
                    "SET CONSTRAINTS wire_out_ref DEFERRED");
   if (PGRES_COMMAND_OK !=
@@ -4875,6 +4868,8 @@ postgres_start_deferred_wire_out (void *cls,
                      PQerrorMessage (session->conn));
     GNUNET_break (0);
     PQclear (result);
+    postgres_rollback (cls,
+                       session);
     return GNUNET_SYSERR;
   }
   PQclear (result);
