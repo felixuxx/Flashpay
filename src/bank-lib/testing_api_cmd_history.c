@@ -111,7 +111,7 @@ static int
 test_cancelled (struct TALER_TESTING_Interpreter *is,
                 unsigned int off)
 {
-  const char *rejected_reference; 
+  const char *rejected_reference;
   const struct TALER_TESTING_Command *current_cmd;
 
   current_cmd = &is->commands[off];
@@ -120,7 +120,7 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
   {
     const struct TALER_TESTING_Command *c = &is->commands[i];
 
-    
+
     #warning "Errors reported here are NOT fatal"
     /* Rejected wire transfers have hold a reference to a
      * reject command to mark them as rejected. So errors
@@ -275,7 +275,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
       if (*row_id_start == *row_id)
       {
         /* Doesn't count, start is excluded from output. */
-        total = 0; 
+        total = 0;
         ok = GNUNET_YES;
         continue;
       }
@@ -294,7 +294,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                       " transfer from history\n");
       continue;
     }
-    
+
     const uint64_t *credit_account_no;
     const uint64_t *debit_account_no;
 
@@ -308,9 +308,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
     TALER_LOG_INFO ("Potential history element:"
                     " %llu->%llu; my account: %llu\n",
-                    *debit_account_no,
-                    *credit_account_no,
-                    hs->account_no);
+                    (unsigned long long) *debit_account_no,
+                    (unsigned long long) *credit_account_no,
+                    (unsigned long long) hs->account_no);
 
     if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (hs->account_no == *credit_account_no)) ||
@@ -348,9 +348,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
     {
 
       if (*row_id_start == *row_id)
-      { 
+      {
         /* Doesn't count, start is excluded from output. */
-        total = 0; 
+        total = 0;
         ok = GNUNET_YES;
         continue;
       }
@@ -380,9 +380,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
     TALER_LOG_INFO ("Potential history bit:"
                     " %llu->%llu; my account: %llu\n",
-                    *debit_account_no,
-                    *credit_account_no,
-                    hs->account_no);
+                    (unsigned long long) *debit_account_no,
+                    (unsigned long long) *credit_account_no,
+                    (unsigned long long) hs->account_no);
 
     if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (hs->account_no == *credit_account_no)) &&
@@ -653,7 +653,7 @@ history_run (void *cls,
   if (NULL != hs->start_row_reference)
   {
     const struct TALER_TESTING_Command *history_cmd;
-    
+
     history_cmd = TALER_TESTING_interpreter_lookup_command
       (is, hs->start_row_reference);
 
@@ -665,8 +665,9 @@ history_run (void *cls,
       TALER_TESTING_FAIL (is);
     row_id = *row_id_ptr;
 
-    TALER_LOG_DEBUG ("row id (from trait) is %llu\n", row_id);
-  
+    TALER_LOG_DEBUG ("row id (from trait) is %llu\n",
+                     (unsigned long long) row_id);
+
   }
 
   auth = &AUTHS[hs->account_no - 1];
