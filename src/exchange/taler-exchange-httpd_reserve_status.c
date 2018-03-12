@@ -78,7 +78,7 @@ struct ReserveStatusContext
 
 
 /**
- * Function implementing /reserve/status transaction.  
+ * Function implementing /reserve/status transaction.
  * Execute a /reserve/status.  Given the public key of a reserve,
  * return the associated transaction history.  Runs the
  * transaction logic; IF it returns a non-error code, the transaction
@@ -144,6 +144,7 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
   rsc.rh = NULL;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "get reserve status",
 			      &mhd_ret,
 			      &reserve_status_transaction,
 			      &rsc))

@@ -1152,11 +1152,14 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
+   * @param name unique name identifying the transaction (for debugging),
+   *             must point to a constant
    * @return #GNUNET_OK on success
    */
   int
   (*start) (void *cls,
-            struct TALER_EXCHANGEDB_Session *session);
+            struct TALER_EXCHANGEDB_Session *session,
+            const char *name);
 
 
   /**
@@ -1169,6 +1172,19 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*commit) (void *cls,
              struct TALER_EXCHANGEDB_Session *session);
+
+
+  /**
+   * Do a pre-flight check that we are not in an uncommitted transaction.
+   * If we are, try to commit the previous transaction and output a warning.
+   * Does not return anything, as we will continue regardless of the outcome.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param session the database connection
+   */
+  void
+  (*preflight) (void *cls,
+                struct TALER_EXCHANGEDB_Session *session);
 
 
   /**
@@ -1397,7 +1413,7 @@ struct TALER_EXCHANGEDB_Plugin
 			    const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			    TALER_EXCHANGEDB_RefundCoinCallback cb,
 			    void *cb_cls);
-  
+
 
   /**
    * Mark a deposit as tiny, thereby declaring that it cannot be

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2017 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2017, 2018 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -59,6 +59,11 @@ struct TALER_EXCHANGEDB_Session
    * Postgres connection handle.
    */
   PGconn *conn;
+
+  /**
+   * Name of the current transaction, for debugging.
+   */
+  const char *transaction_name;
 
 };
 
@@ -1533,11 +1538,14 @@ postgres_get_session (void *cls)
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session the database connection
+ * @param name unique name identifying the transaction (for debugging)
+   *             must point to a constant
  * @return #GNUNET_OK on success
  */
 static int
 postgres_start (void *cls,
-                struct TALER_EXCHANGEDB_Session *session)
+                struct TALER_EXCHANGEDB_Session *session,
+                const char *name)
 {
   PGresult *result;
   ExecStatusType ex;
@@ -1552,9 +1560,11 @@ postgres_start (void *cls,
                      PQerrorMessage (session->conn));
     GNUNET_break (0);
     PQclear (result);
+    session->transaction_name = NULL;
     return GNUNET_SYSERR;
   }
   PQclear (result);
+  session->transaction_name = name;
   return GNUNET_OK;
 }
 
@@ -1577,6 +1587,7 @@ postgres_rollback (void *cls,
   GNUNET_break (PGRES_COMMAND_OK ==
                 PQresultStatus (result));
   PQclear (result);
+  session->transaction_name = NULL;
 }
 
 
@@ -1594,10 +1605,50 @@ postgres_commit (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "do_commit",
-                                             params);
+  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                           "do_commit",
+                                           params);
+  session->transaction_name = NULL;
+  return qs;
+}
+
+
+/**
+ * Do a pre-flight check that we are not in an uncommitted transaction.
+ * If we are, try to commit the previous transaction and output a warning.
+ * Does not return anything, as we will continue regardless of the outcome.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session the database connection
+ */
+static void
+postgres_preflight (void *cls,
+                    struct TALER_EXCHANGEDB_Session *session)
+{
+  PGresult *result;
+  ExecStatusType status;
+
+  if (NULL == session->transaction_name)
+    return; /* all good */
+  result = PQexec (session->conn,
+                   "COMMIT");
+  status = PQresultStatus (result);
+  if (PGRES_COMMAND_OK == status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "BUG: Preflight check committed transaction `%s'!\n",
+                session->transaction_name);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "BUG: Preflight check failed to commit transaction `%s'!\n",
+                session->transaction_name);
+  }
+  session->transaction_name = NULL;
+  PQclear (result);
 }
 
 
@@ -6363,6 +6414,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->create_tables = &postgres_create_tables;
   plugin->start = &postgres_start;
   plugin->commit = &postgres_commit;
+  plugin->preflight = &postgres_preflight;
   plugin->rollback = &postgres_rollback;
   plugin->insert_denomination_info = &postgres_insert_denomination_info;
   plugin->get_denomination_info = &postgres_get_denomination_info;

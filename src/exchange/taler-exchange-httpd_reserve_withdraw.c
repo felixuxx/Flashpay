@@ -492,6 +492,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
 
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "run reserve withdraw",
 			      &mhd_ret,
 			      &withdraw_transaction,
 			      &wc))

@@ -141,7 +141,7 @@ reply_track_transfer_details (struct MHD_Connection *connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                               "no keys");
   }
-    
+
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
@@ -327,7 +327,7 @@ handle_transaction_data (void *cls,
 /**
  * Execute a "/track/transfer".  Returns the transaction information
  * associated with the given wire transfer identifier.
- * 
+ *
  * If it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
  * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
@@ -474,6 +474,7 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
     return MHD_YES; /* parse error */
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "run track transfer",
 			      &mhd_ret,
 			      &track_transfer_transaction,
 			      &ctx))

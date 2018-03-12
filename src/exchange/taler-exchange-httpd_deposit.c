@@ -289,6 +289,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   dc.deposit = deposit;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "execute deposit",
 			      &mhd_ret,
 			      &deposit_transaction,
 			      &dc))

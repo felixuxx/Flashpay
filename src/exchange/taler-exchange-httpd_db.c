@@ -41,6 +41,7 @@
  * errors, generates an error message for @a connection.
  *
  * @param connection MHD connection to run @a cb for
+ * @param name name of the transaction (for debugging)
  * @param[out] set to MHD response code, if transaction failed
  * @param cb callback implementing transaction logic
  * @param cb_cls closure for @a cb, must be read-only!
@@ -48,6 +49,7 @@
  */
 int
 TEH_DB_run_transaction (struct MHD_Connection *connection,
+                        const char *name,
 			int *mhd_ret,
 			TEH_DB_TransactionCallback cb,
 			void *cb_cls)
@@ -64,13 +66,16 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
 						       TALER_EC_DB_SETUP_FAILED);
     return GNUNET_SYSERR;
   }
+  TEH_plugin->preflight (TEH_plugin->cls,
+                         session);
   for (unsigned int retries = 0;retries < MAX_TRANSACTION_COMMIT_RETRIES; retries++)
   {
     enum GNUNET_DB_QueryStatus qs;
 
     if (GNUNET_OK !=
 	TEH_plugin->start (TEH_plugin->cls,
-			   session))
+			   session,
+                           name))
     {
       GNUNET_break (0);
       if (NULL != mhd_ret)

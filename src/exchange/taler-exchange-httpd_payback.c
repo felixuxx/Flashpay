@@ -396,6 +396,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   pc.coin = coin;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "run payback",
 			      &mhd_ret,
 			      &payback_transaction,
 			      &pc))

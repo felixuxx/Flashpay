@@ -452,6 +452,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   }
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "run refund",
 			      &mhd_ret,
 			      &refund_transaction,
 			      (void *) refund))

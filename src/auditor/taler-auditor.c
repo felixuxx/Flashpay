@@ -1890,7 +1890,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Detected applicable deposit of %s\n",
                     TALER_amount2s (&amount_without_fee));
-	deposit_fee = fee;	
+	deposit_fee = fee;
       }
       /* Check that the fees given in the transaction list and in dki match */
       TALER_amount_ntoh (&tmp,
@@ -2006,7 +2006,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
 				     merchant_gain,
 				     deposit_fee));
   }
-  
+
   /* Calculate total balance change, i.e. expenditures minus refunds */
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&spent,
@@ -3906,8 +3906,11 @@ transact (Analysis analysis,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  edb->preflight (edb->cls,
+                  esession);
   ret = edb->start (edb->cls,
-                    esession);
+                    esession,
+                    "auditor");
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
@@ -3918,7 +3921,7 @@ transact (Analysis analysis,
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     qs = edb->commit (edb->cls,
-                       esession);
+                      esession);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

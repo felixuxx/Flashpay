@@ -203,6 +203,7 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
   ctx.mlist = json_array ();
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "run link",
 			      &mhd_ret,
 			      &refresh_link_transaction,
 			      &ctx))

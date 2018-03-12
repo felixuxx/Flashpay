@@ -422,9 +422,12 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  db_plugin->preflight (db_plugin->cls,
+                        session);
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
-                        session))
+                        session,
+                        "wirewatch check for incoming wire transfers"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");

@@ -52,8 +52,9 @@ typedef enum GNUNET_DB_QueryStatus
  * attempts to commit the transaction.  Upon soft failures,
  * retries @a cb a few times.  Upon hard or persistent soft
  * errors, generates an error message for @a connection.
- * 
+ *
  * @param connection MHD connection to run @a cb for
+ * @param name name of the transaction (for debugging)
  * @param[out] set to MHD response code, if transaction failed
  * @param cb callback implementing transaction logic
  * @param cb_cls closure for @a cb, must be read-only!
@@ -61,6 +62,7 @@ typedef enum GNUNET_DB_QueryStatus
  */
 int
 TEH_DB_run_transaction (struct MHD_Connection *connection,
+                        const char *name,
 			int *mhd_ret,
 			TEH_DB_TransactionCallback cb,
 			void *cb_cls);

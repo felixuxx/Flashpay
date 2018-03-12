@@ -447,7 +447,8 @@ do_deposit (struct Command *cmd)
   /* finally, actually perform the DB operation */
   if ( (GNUNET_OK !=
         plugin->start (plugin->cls,
-                       session)) ||
+                       session,
+                       "aggregator-test-1")) ||
        (GNUNET_OK !=
         plugin->insert_deposit (plugin->cls,
                                 session,
@@ -1150,7 +1151,8 @@ run (void *cls)
 				     &issue.properties.denom_hash);
   if ( (GNUNET_OK !=
         plugin->start (plugin->cls,
-                       session)) ||
+                       session,
+                       "aggregator-test-2")) ||
        (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         plugin->insert_denomination_info (plugin->cls,
                                           session,

@@ -1159,7 +1159,8 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
       case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
         GNUNET_break (GNUNET_OK ==
                       state->plugin->start (state->plugin->cls,
-                                            state->session));
+                                            state->session,
+                                            "perf-interpreter"));
         break;
 
       case PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION:

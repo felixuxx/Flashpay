@@ -1545,7 +1545,8 @@ run (void *cls)
 
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session));
+                         session,
+                         "test-1"));
 
   /* test DB is empty */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
@@ -1909,7 +1910,8 @@ run (void *cls)
                           session));
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session));
+                         session,
+                         "test-2"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_tiny (plugin->cls,
 				     session,
@@ -1928,7 +1930,8 @@ run (void *cls)
                                      &deposit));
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session));
+                         session,
+                         "test-3"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->test_deposit_done (plugin->cls,
                                      session,
@@ -1992,9 +1995,12 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls,
                           session));
+  plugin->preflight (plugin->cls,
+                     session);
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session));
+                         session,
+                         "test-4"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->insert_denomination_revocation (plugin->cls,
                                                   session,
@@ -2002,9 +2008,12 @@ run (void *cls)
                                                   &master_sig));
   plugin->rollback (plugin->cls,
                     session);
+  plugin->preflight (plugin->cls,
+                     session);
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session));
+                         session,
+                         "test-5"));
   {
     struct TALER_MasterSignatureP msig;
     uint64_t rev_rowid;
@@ -2164,6 +2173,8 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           test_wire_fees (session));
 
+  plugin->preflight (plugin->cls,
+                     session);
 
   result = 0;
 

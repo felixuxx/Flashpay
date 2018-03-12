@@ -711,6 +711,7 @@ reload_keys_denom_iter (void *cls,
     arc.revocation_master_sig = revocation_master_sig;
     if (GNUNET_OK !=
 	TEH_DB_run_transaction (NULL,
+                                "add denomination key revocations",
 				NULL,
 				&add_revocations_transaction,
 				&arc))
@@ -739,6 +740,7 @@ reload_keys_denom_iter (void *cls,
 
   if (GNUNET_OK !=
       TEH_DB_run_transaction (NULL,
+                              "add denomination key",
 			      NULL,
 			      &add_denomination_transaction,
 			      (void *) dki))

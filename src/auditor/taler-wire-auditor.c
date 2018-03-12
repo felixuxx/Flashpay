@@ -1412,8 +1412,11 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  edb->preflight (edb->cls,
+                  esession);
   ret = edb->start (edb->cls,
-                    esession);
+                    esession,
+                    "wire auditor");
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);

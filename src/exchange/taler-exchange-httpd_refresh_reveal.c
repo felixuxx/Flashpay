@@ -587,6 +587,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     /* do transactional work */
     if (GNUNET_OK ==
         TEH_DB_run_transaction (connection,
+                                "run reveal",
                                 &res,
                                 &refresh_reveal_transaction,
                                 rctx))

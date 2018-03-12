@@ -120,25 +120,25 @@ struct DepositWtidContext
    * Public key of the merchant.
    */
   const struct TALER_MerchantPublicKeyP *merchant_pub;
-  
+
   /**
    * Set by #handle_wtid data to the wire transfer ID.
-   */ 
+   */
   struct TALER_WireTransferIdentifierRawP wtid;
-  
+
   /**
    * Set by #handle_wtid data to the coin's contribution to the wire transfer.
-   */ 
+   */
   struct TALER_Amount coin_contribution;
-  
+
   /**
    * Set by #handle_wtid data to the fee charged to the coin.
-   */ 
+   */
   struct TALER_Amount coin_fee;
 
   /**
    * Set by #handle_wtid data to the wire transfer execution time.
-   */ 
+   */
   struct GNUNET_TIME_Absolute execution_time;
 
   /**
@@ -289,9 +289,10 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
   ctx.pending = GNUNET_NO;
   ctx.tps = tps;
   ctx.merchant_pub = merchant_pub;
-  
+
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
+                              "handle track transaction",
 			      &mhd_ret,
 			      &track_transaction_transaction,
 			      &ctx))

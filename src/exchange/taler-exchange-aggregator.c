@@ -618,7 +618,7 @@ refund_by_coin_cb (void *cls,
   }
   return GNUNET_OK;
 }
-						
+
 
 /**
  * Function called with details about deposits that have been made,
@@ -675,7 +675,7 @@ deposit_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  
+
   GNUNET_assert (NULL == au->wire);
   au->wire = json_incref ((json_t *) wire);
   if (GNUNET_OK !=
@@ -810,7 +810,7 @@ aggregate_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  
+
   if (au->rows_offset >= aggregation_limit)
   {
     /* Bug: we asked for at most #aggregation_limit results! */
@@ -1203,9 +1203,12 @@ run_reserve_closures (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  db_plugin->preflight (db_plugin->cls,
+                        session);
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
-			session))
+			session,
+                        "aggregator reserve closures"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
@@ -1413,7 +1416,8 @@ run_aggregation (void *cls)
        transaction to mark all* of the selected deposits as minor! */
     if (GNUNET_OK !=
         db_plugin->start (db_plugin->cls,
-                          session))
+                          session,
+                          "aggregator mark tiny transactions"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to start database transaction!\n");
@@ -1767,9 +1771,12 @@ run_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  db_plugin->preflight (db_plugin->cls,
+                        session);
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
-                        session))
+                        session,
+                        "aggregator run transfer"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
