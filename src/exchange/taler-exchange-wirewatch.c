@@ -160,6 +160,7 @@ shutdown_task (void *cls)
   wire_plugin = NULL;
   GNUNET_free_non_null (last_row_off);
   last_row_off = NULL;
+  last_row_off_size = 0;
 }
 
 
@@ -384,8 +385,6 @@ history_cb (void *cls,
     return GNUNET_SYSERR;
   }
 
-  GNUNET_break (0 != row_off_size);
-
   if (last_row_off_size != row_off_size)
   {
     GNUNET_free_non_null (last_row_off);
@@ -457,7 +456,9 @@ find_transfers (void *cls)
       return;
     }
   }
-  GNUNET_assert ((NULL == last_row_off) || ((NULL != last_row_off) && (last_row_off_size != 0)));
+  GNUNET_assert ( (NULL == last_row_off) ||
+                  ( (NULL != last_row_off) &&
+                    (0 != last_row_off_size) ) );
   delay = GNUNET_YES;
   hh = wire_plugin->get_history (wire_plugin->cls,
 				 TALER_BANK_DIRECTION_CREDIT,
