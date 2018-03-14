@@ -344,7 +344,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                        NULL);
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for `taler-exchange-httpd' to be ready");
+           "Waiting for `taler-exchange-httpd' to be ready\n");
   iter = 0;
   do
     {
@@ -359,14 +359,13 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
 	GNUNET_OS_process_destroy (exchanged);
 	return 77;
       }
-      fprintf (stderr, ".");
+      fprintf (stderr, ".\n");
       sleep (1);
       iter++;
     }
   while (0 != system
     ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys"
      " -o /dev/null -O /dev/null"));
-  fprintf (stderr, "\n");
 
   result = TALER_TESTING_setup (main_cb,
                                 main_cb_cls,
