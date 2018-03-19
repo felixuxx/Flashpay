@@ -395,7 +395,8 @@ AC_CHECK_LIB(talertwistertesting,TALER_TESTING_run_twister,
   [AC_CHECK_HEADER([taler/taler_twister_testing_lib.h],[twistertesting=1],,
                    [#ifdef HAVE_GNUNET_PLATFORM_H
                       #include <gnunet/platform.h>
-                    #endif])]
+                    #endif
+                    ])]
   ,,[-ltalerexchange -ltalerbank])
 
 AM_CONDITIONAL(HAVE_TWISTER, test x$twistertesting = x1)

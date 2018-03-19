@@ -38,6 +38,7 @@ src/bank-lib/test_bank_api
 src/bank-lib/test_bank_api_new
 src/bank-lib/test_bank_api_with_fakebank
 src/bank-lib/test_bank_api_with_fakebank_new
+src/bank-lib/test_bank_api_with_fakebank_twisted
 src/exchange-lib/test_exchange_api_new
 src/exchange-lib/test_exchange_api
 src/exchange-lib/test_exchange_api_home/.local/share/taler/exchange/live-keys/
