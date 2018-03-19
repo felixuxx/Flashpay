@@ -475,10 +475,10 @@ cert_cb (void *cls,
                 "Got NULL response for /keys\n");
   
   }
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Got %d DK from /keys\n",
-              keys->num_denom_keys);
+  else
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Got %d DK from /keys\n",
+                keys->num_denom_keys);
 
   main_ctx->is->key_generation++;
   main_ctx->is->keys = keys;
