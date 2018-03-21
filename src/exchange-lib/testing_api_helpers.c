@@ -142,7 +142,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
   GNUNET_asprintf (&signed_keys_out,
                    "%s/.local/share/taler/auditors/auditor.out",
                    test_home_dir);
-
+  GNUNET_free (test_home_dir);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
@@ -177,6 +177,9 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
     GNUNET_free (signed_keys_out);
     return GNUNET_NO;
   }
+
+
+  GNUNET_free (signed_keys_out);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
 
@@ -194,7 +197,6 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 		"Failed to run `taler-exchange-dbinit`,"
                 " is your PATH correct?\n");
 
-    GNUNET_free (signed_keys_out);
     return GNUNET_NO;
   }
   if (GNUNET_SYSERR ==
@@ -204,7 +206,6 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
   {
     GNUNET_break (0);
     GNUNET_OS_process_destroy (proc);
-    GNUNET_free (signed_keys_out);
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_destroy (proc);
@@ -213,7 +214,6 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
   {
     fprintf (stderr,
              "Failed to setup database\n");
-    GNUNET_free (signed_keys_out);
     return GNUNET_NO;
   }
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
@@ -222,11 +222,9 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
     fprintf (stderr,
              "Unexpected error running"
              " `taler-exchange-dbinit'!\n");
-    GNUNET_free (signed_keys_out);
     return GNUNET_SYSERR;
   }
 
-  GNUNET_free (signed_keys_out);
   return GNUNET_OK;
 }
 

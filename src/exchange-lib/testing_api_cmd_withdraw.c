@@ -280,7 +280,6 @@ withdraw_traits (void *cls,
     TALER_TESTING_interpreter_fail (ws->is);
     return GNUNET_SYSERR;  
   }
-  ws->exchange_url = MAH_path_to_url (ws->exchange, "/");
 
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
@@ -391,6 +390,8 @@ TALER_TESTING_cmd_withdraw_denomination
   ws->pk = dk;
   ws->expected_response_code = expected_response_code;
   ws->exchange = exchange;
+  ws->exchange_url = MAH_path_to_url (ws->exchange, "/");
+
   cmd.cls = ws;
   cmd.label = label;
   cmd.run = &withdraw_run;
