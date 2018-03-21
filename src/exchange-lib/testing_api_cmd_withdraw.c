@@ -58,6 +58,11 @@ struct WithdrawState
   struct TALER_EXCHANGE_Handle *exchange;
 
   /**
+   * Exchange base URL.
+   */
+  char *exchange_url;
+
+  /**
    * Interpreter state (during command).
    */
   struct TALER_TESTING_Interpreter *is;
@@ -229,6 +234,7 @@ withdraw_cleanup (void *cls,
     GNUNET_CRYPTO_rsa_signature_free (ws->sig.rsa_signature);
     ws->sig.rsa_signature = NULL;
   }
+  GNUNET_free_non_null (ws->exchange_url);
   GNUNET_free (ws);
 }
 
@@ -274,6 +280,7 @@ withdraw_traits (void *cls,
     TALER_TESTING_interpreter_fail (ws->is);
     return GNUNET_SYSERR;  
   }
+  ws->exchange_url = MAH_path_to_url (ws->exchange, "/");
 
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
@@ -288,8 +295,7 @@ withdraw_traits (void *cls,
                                            reserve_priv),
     TALER_TESTING_make_trait_amount_obj (0,
                                          &ws->amount),
-    TALER_TESTING_make_trait_url (
-      0, MAH_path_to_url (ws->exchange, "/")),
+    TALER_TESTING_make_trait_url (0, ws->exchange_url),
 
     TALER_TESTING_trait_end ()
   };
