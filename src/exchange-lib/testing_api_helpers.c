@@ -175,10 +175,12 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 		"Failed to run `taler-auditor-sign`,"
                 " is your PATH correct?\n");
     GNUNET_free (signed_keys_out);
+    GNUNET_free (exchange_master_pub);
     return GNUNET_NO;
   }
 
 
+  GNUNET_free (exchange_master_pub);
   GNUNET_free (signed_keys_out);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
