@@ -126,12 +126,12 @@ TALER_TESTING_prepare_bank (const char *config_filename)
 
   cfg = GNUNET_CONFIGURATION_create ();
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg, config_filename))
+  if (GNUNET_OK != GNUNET_CONFIGURATION_load
+      (cfg, config_filename))
     BANK_FAIL ();
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_number
-    (cfg, "bank",
-     "HTTP_PORT", &port))
+    (cfg, "bank", "HTTP_PORT", &port))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "bank",
