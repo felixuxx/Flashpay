@@ -167,8 +167,10 @@ parse_fees (json_t *fees)
         free_fees (fm);
         return NULL;
       }
-      if (idx < len)
+      if (idx + 1 < len)
         wa->next = &fe->fee_list[idx + 1];
+      else
+        wa->next = NULL;
     }
   }
   return fm;

@@ -76,6 +76,16 @@ sign_account_data (void *cls,
                          JSON_INDENT(2));
   json_decref (wire);
   GNUNET_assert (NULL != json_out);
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create_for_file (ai->wire_response_filename))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "mkdir",
+                              ai->wire_response_filename);
+    global_ret = 1;
+    free (json_out);
+    return;
+  }
 
   out = fopen (ai->wire_response_filename,
                "w+");
@@ -85,6 +95,7 @@ sign_account_data (void *cls,
                               "fopen",
                               ai->wire_response_filename);
     global_ret = 1;
+    free (json_out);
     return;
   }
   fprintf (out,
