@@ -72,23 +72,23 @@ auditor_sign_run (void *cls,
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
     (cfg, ass->config_filename))
   {
-    GNUNET_break (0); 
-    TALER_TESTING_interpreter_fail (is); 
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
     return;
   }
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "paths",
-                                             "TALER_TEST_HOME",
-                                             &test_home_dir))
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "paths",
+                                               "TALER_TEST_HOME",
+                                               &test_home_dir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "paths",
                                "TALER_TEST_HOME");
     GNUNET_CONFIGURATION_destroy (cfg);
-    GNUNET_break (0); 
-    TALER_TESTING_interpreter_fail (is); 
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
     return;
   }
 
@@ -108,8 +108,8 @@ auditor_sign_run (void *cls,
                                "MASTER_PUBLIC_KEY");
     GNUNET_CONFIGURATION_destroy (cfg);
 
-    GNUNET_break (0); 
-    TALER_TESTING_interpreter_fail (is); 
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
     return;
   }
 

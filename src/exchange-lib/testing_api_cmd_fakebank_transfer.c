@@ -231,18 +231,16 @@ fakebank_transfer_run (void *cls,
         }
 
         GNUNET_asprintf (&section,
-                         "merchant-instance-%s",
+                         "instance-%s",
                          fts->instance);
         if (GNUNET_OK !=
-            GNUNET_CONFIGURATION_get_value_string
-              (cfg,
-               section,
-               "TIP_RESERVE_PRIV_FILENAME",
-               &keys))
+            GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                     section,
+                                                     "TIP_RESERVE_PRIV_FILENAME",
+                                                     &keys))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Configuration fails to specify reserve"
-                      " private key filename in section %s\n",
+                      "Configuration fails to specify reserve private key filename in section %s\n",
                       section);
           GNUNET_free (section);
           TALER_TESTING_interpreter_fail (is);

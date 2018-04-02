@@ -127,10 +127,10 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
   }
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "paths",
-                                             "TALER_TEST_HOME",
-                                             &test_home_dir))
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "paths",
+                                               "TALER_TEST_HOME",
+                                               &test_home_dir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "paths",

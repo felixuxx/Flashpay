@@ -265,12 +265,12 @@ exchange_serve_process_config ()
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
-                                             "currency",
+                                             "CURRENCY",
                                              &exchange_currency_string))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
-                               "currency");
+                               "CURRENCY");
     return GNUNET_SYSERR;
   }
   if (strlen (exchange_currency_string) >= TALER_CURRENCY_LEN)

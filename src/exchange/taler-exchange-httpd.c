@@ -472,13 +472,12 @@ parse_port_config (const char *section,
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                section,
-                                               "unixpath_mode",
+                                               "UNIXPATH_MODE",
                                                &modestring))
     {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  section,
-                                 "unixpath_mode",
-                                 "unixpath_mode required");
+                                 "UNIXPATH_MODE");
       return GNUNET_SYSERR;
     }
     errno = 0;
@@ -487,8 +486,8 @@ parse_port_config (const char *section,
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  section,
-                                 "unixpath_mode",
-                                 "unixpath_mode required");
+                                 "UNIXPATH_MODE",
+                                 "must be octal number");
       GNUNET_free (modestring);
       return GNUNET_SYSERR;
     }
@@ -526,7 +525,7 @@ exchange_serve_process_config ()
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
-                                             "currency",
+                                             "CURRENCY",
                                              &TEH_exchange_currency_string))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
@@ -545,7 +544,7 @@ exchange_serve_process_config ()
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
-                                             "master_public_key",
+                                             "MASTER_PUBLIC_KEY",
                                              &TEH_master_public_key_str))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
