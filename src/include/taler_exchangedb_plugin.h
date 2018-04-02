@@ -1878,6 +1878,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wire_account details about the receiver account of the wire transfer,
    *        including 'url' in payto://-format
    * @param amount amount that was transmitted
+   * @param exchange_account_section configuration section of the exchange specifying the
+   *        exchange's bank account being used
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1886,6 +1888,7 @@ struct TALER_EXCHANGEDB_Plugin
                              struct GNUNET_TIME_Absolute date,
                              const struct TALER_WireTransferIdentifierRawP *wtid,
                              const json_t *wire_account,
+                             const char *exchange_account_section,
                              const struct TALER_Amount *amount);
 
 
@@ -1984,11 +1987,32 @@ struct TALER_EXCHANGEDB_Plugin
                                         void *cb_cls);
 
   /**
+   * Select inbound wire transfers into reserves_in above @a serial_id
+   * in monotonically increasing order by @a account_name.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param account_name name of the account for which we do the selection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_reserves_in_above_serial_id_by_account)(void *cls,
+                                                   struct TALER_EXCHANGEDB_Session *session,
+                                                   const char *account_name,
+                                                   uint64_t serial_id,
+                                                   TALER_EXCHANGEDB_ReserveInCallback cb,
+                                                   void *cb_cls);
+
+  /**
    * Select withdraw operations from reserves_out above @a serial_id
    * in monotonically increasing order.
    *
    * @param cls closure
    * @param session database connection
+   * @param account_name name of the account for which we do the selection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
@@ -2000,7 +2024,6 @@ struct TALER_EXCHANGEDB_Plugin
                                          uint64_t serial_id,
                                          TALER_EXCHANGEDB_WithdrawCallback cb,
                                          void *cb_cls);
-
 
   /**
    * Function called to select outgoing wire transfers the exchange
@@ -2019,6 +2042,26 @@ struct TALER_EXCHANGEDB_Plugin
                                      uint64_t serial_id,
                                      TALER_EXCHANGEDB_WireTransferOutCallback cb,
                                      void *cb_cls);
+
+  /**
+   * Function called to select outgoing wire transfers the exchange
+   * executed, ordered by serial ID (monotonically increasing).
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param account_name name to select by
+   * @param serial_id lowest serial ID to include (select larger or equal)
+   * @param cb function to call for ONE unfinished item
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_wire_out_above_serial_id_by_account)(void *cls,
+                                                struct TALER_EXCHANGEDB_Session *session,
+                                                const char *account_name,
+                                                uint64_t serial_id,
+                                                TALER_EXCHANGEDB_WireTransferOutCallback cb,
+                                                void *cb_cls);
 
 
   /**

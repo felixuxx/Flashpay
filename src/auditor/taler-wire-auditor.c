@@ -861,11 +861,12 @@ check_exchange_wire_out ()
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute next_timestamp;
 
-  qs = edb->select_wire_out_above_serial_id (edb->cls,
-					     esession,
-					     pp.last_wire_out_serial_id,
-					     &wire_out_cb,
-					     NULL);
+  qs = edb->select_wire_out_above_serial_id_by_account (edb->cls,
+                                                        esession,
+                                                        wp_section_name,
+                                                        pp.last_wire_out_serial_id,
+                                                        &wire_out_cb,
+                                                        NULL);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1439,11 +1440,12 @@ process_next_account (void *cls)
 
   in_map = GNUNET_CONTAINER_multihashmap_create (1024,
 						 GNUNET_YES);
-  qs = edb->select_reserves_in_above_serial_id (edb->cls,
-						esession,
-						pp.last_reserve_in_serial_id,
-						&reserve_in_cb,
-						NULL);
+  qs = edb->select_reserves_in_above_serial_id_by_account (edb->cls,
+                                                           esession,
+                                                           wp_section_name,
+                                                           pp.last_reserve_in_serial_id,
+                                                           &reserve_in_cb,
+                                                           NULL);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

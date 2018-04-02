@@ -1273,6 +1273,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                          wire_out_date,
                                          &wire_out_wtid,
                                          wire_out_account,
+                                         "my-config-section",
                                          &wire_out_amount))
     {
       json_decref (wire_out_account);
@@ -2187,7 +2188,8 @@ run (void *cls)
   result = 0;
 
  drop:
-  if (0 != result)
+  if ( (0 != result) &&
+       (NULL != session) )
     plugin->rollback (plugin->cls,
                       session);
   if (NULL != rh)

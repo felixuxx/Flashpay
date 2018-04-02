@@ -368,6 +368,7 @@ postgres_create_tables (void *cls)
                            ",execution_date INT8 NOT NULL"
                            ",wtid_raw BYTEA UNIQUE NOT NULL CHECK (LENGTH(wtid_raw)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
                            ",wire_target TEXT NOT NULL"
+                           ",exchange_account_section TEXT NOT NULL"
                            ",amount_val INT8 NOT NULL"
                            ",amount_frac INT4 NOT NULL"
                            ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -621,6 +622,22 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE reserve_in_serial_id>=$1"
                             " ORDER BY reserve_in_serial_id;",
                             1),
+    /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
+       transactions for reserves with serial id '\geq' the given parameter */
+    GNUNET_PQ_make_prepare ("audit_reserves_in_get_transactions_incr_by_account",
+                            "SELECT"
+                            " reserve_pub"
+                            ",wire_reference"
+                            ",credit_val"
+                            ",credit_frac"
+                            ",credit_curr"
+                            ",execution_date"
+                            ",sender_account_details"
+                            ",reserve_in_serial_id"
+                            " FROM reserves_in"
+                            " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
+                            " ORDER BY reserve_in_serial_id;",
+                            2),
     /* Used in #postgres_get_reserve_history() to obtain inbound transactions
        for a reserve */
     GNUNET_PQ_make_prepare ("reserves_in_get_transactions",
@@ -1215,12 +1232,13 @@ postgres_prepare (PGconn *db_conn)
                             "(execution_date"
                             ",wtid_raw"
                             ",wire_target"
+                            ",exchange_account_section"
                             ",amount_val"
                             ",amount_frac"
                             ",amount_curr"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
+                            "($1, $2, $3, $4, $5, $6, $7);",
+                            7),
     /* Used in #postgres_wire_prepare_data_insert() to store
        wire transfer information before actually committing it with the bank */
     GNUNET_PQ_make_prepare ("wire_prepare_data_insert",
@@ -1290,6 +1308,20 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE wireout_uuid>=$1"
                             " ORDER BY wireout_uuid ASC;",
                             1),
+    /* Used in #postgres_select_wire_out_above_serial_id_by_account() */
+    GNUNET_PQ_make_prepare ("audit_get_wire_incr_by_account",
+                            "SELECT"
+                            " wireout_uuid"
+                            ",execution_date"
+                            ",wtid_raw"
+                            ",wire_target"
+                            ",amount_val"
+                            ",amount_frac"
+                            ",amount_curr"
+                            " FROM wire_out"
+                            " WHERE wireout_uuid>=$1 AND exchange_account_section=$2"
+                            " ORDER BY wireout_uuid ASC;",
+                            2),
     /* Used in #postgres_insert_payback_request() to store payback
        information */
     GNUNET_PQ_make_prepare ("payback_insert",
@@ -4883,6 +4915,8 @@ postgres_start_deferred_wire_out (void *cls,
  * @param date time of the wire transfer
  * @param wtid subject of the wire transfer
  * @param wire_account details about the receiver account of the wire transfer
+ * @param exchange_account_section configuration section of the exchange specifying the
+ *        exchange's bank account being used
  * @param amount amount that was transmitted
  * @return transaction status code
  */
@@ -4892,12 +4926,14 @@ postgres_store_wire_transfer_out (void *cls,
                                   struct GNUNET_TIME_Absolute date,
                                   const struct TALER_WireTransferIdentifierRawP *wtid,
                                   const json_t *wire_account,
+                                  const char *exchange_account_section,
                                   const struct TALER_Amount *amount)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
     TALER_PQ_query_param_json (wire_account),
+    GNUNET_PQ_query_param_string (exchange_account_section),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_end
   };
@@ -5508,6 +5544,49 @@ postgres_select_reserves_in_above_serial_id (void *cls,
 
 
 /**
+ * Select inbound wire transfers into reserves_in above @a serial_id
+ * in monotonically increasing order by account.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param account_name name of the account to select by
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_reserves_in_above_serial_id_by_account (void *cls,
+                                                        struct TALER_EXCHANGEDB_Session *session,
+                                                        const char *account_name,
+                                                        uint64_t serial_id,
+                                                        TALER_EXCHANGEDB_ReserveInCallback cb,
+                                                        void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_string (account_name),
+    GNUNET_PQ_query_param_end
+  };
+  struct ReservesInSerialContext risc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "audit_reserves_in_get_transactions_incr_by_account",
+					     params,
+					     &reserves_in_serial_helper_cb,
+					     &risc);
+  if (GNUNET_OK != risc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Closure for #reserves_out_serial_helper_cb().
  */
 struct ReservesOutSerialContext
@@ -5754,6 +5833,49 @@ postgres_select_wire_out_above_serial_id (void *cls,
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
 					     "audit_get_wire_incr",
+					     params,
+					     &wire_out_serial_helper_cb,
+					     &wosc);
+  if (GNUNET_OK != wosc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Function called to select all wire transfers the exchange
+ * executed by account.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param account_name account to select
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call for ONE unfinished item
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_wire_out_above_serial_id_by_account (void *cls,
+                                                     struct TALER_EXCHANGEDB_Session *session,
+                                                     const char *account_name,
+                                                     uint64_t serial_id,
+                                                     TALER_EXCHANGEDB_WireTransferOutCallback cb,
+                                                     void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_string (account_name),
+    GNUNET_PQ_query_param_end
+  };
+  struct WireOutSerialContext wosc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "audit_get_wire_incr_by_account",
 					     params,
 					     &wire_out_serial_helper_cb,
 					     &wosc);
@@ -6448,19 +6570,36 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->start_deferred_wire_out = &postgres_start_deferred_wire_out;
   plugin->store_wire_transfer_out = &postgres_store_wire_transfer_out;
   plugin->gc = &postgres_gc;
-  plugin->select_deposits_above_serial_id = &postgres_select_deposits_above_serial_id;
-  plugin->select_refreshs_above_serial_id = &postgres_select_refreshs_above_serial_id;
-  plugin->select_refunds_above_serial_id = &postgres_select_refunds_above_serial_id;
-  plugin->select_reserves_in_above_serial_id = &postgres_select_reserves_in_above_serial_id;
-  plugin->select_reserves_out_above_serial_id = &postgres_select_reserves_out_above_serial_id;
-  plugin->select_wire_out_above_serial_id = &postgres_select_wire_out_above_serial_id;
-  plugin->select_payback_above_serial_id = &postgres_select_payback_above_serial_id;
-  plugin->select_reserve_closed_above_serial_id = &postgres_select_reserve_closed_above_serial_id;
-  plugin->insert_payback_request = &postgres_insert_payback_request;
-  plugin->get_reserve_by_h_blind = &postgres_get_reserve_by_h_blind;
-  plugin->insert_denomination_revocation = &postgres_insert_denomination_revocation;
-  plugin->get_denomination_revocation = &postgres_get_denomination_revocation;
-  plugin->select_deposits_missing_wire = &postgres_select_deposits_missing_wire;
+  plugin->select_deposits_above_serial_id
+    = &postgres_select_deposits_above_serial_id;
+  plugin->select_refreshs_above_serial_id
+    = &postgres_select_refreshs_above_serial_id;
+  plugin->select_refunds_above_serial_id
+    = &postgres_select_refunds_above_serial_id;
+  plugin->select_reserves_in_above_serial_id
+    = &postgres_select_reserves_in_above_serial_id;
+  plugin->select_reserves_in_above_serial_id_by_account
+    = &postgres_select_reserves_in_above_serial_id_by_account;
+  plugin->select_reserves_out_above_serial_id
+    = &postgres_select_reserves_out_above_serial_id;
+  plugin->select_wire_out_above_serial_id
+    = &postgres_select_wire_out_above_serial_id;
+  plugin->select_wire_out_above_serial_id_by_account
+    = &postgres_select_wire_out_above_serial_id_by_account;
+  plugin->select_payback_above_serial_id
+    = &postgres_select_payback_above_serial_id;
+  plugin->select_reserve_closed_above_serial_id
+    = &postgres_select_reserve_closed_above_serial_id;
+  plugin->insert_payback_request
+    = &postgres_insert_payback_request;
+  plugin->get_reserve_by_h_blind
+    = &postgres_get_reserve_by_h_blind;
+  plugin->insert_denomination_revocation
+    = &postgres_insert_denomination_revocation;
+  plugin->get_denomination_revocation
+    = &postgres_get_denomination_revocation;
+  plugin->select_deposits_missing_wire
+    = &postgres_select_deposits_missing_wire;
   return plugin;
 }
 

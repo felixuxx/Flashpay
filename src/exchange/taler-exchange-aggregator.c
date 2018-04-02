@@ -723,7 +723,10 @@ deposit_cb (void *cls,
     GNUNET_free (url);
   }
   if (NULL == au->wa)
+  {
+    GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
+  }
 
   /* make sure we have current fees */
   au->execution_time = GNUNET_TIME_absolute_get ();
@@ -1570,6 +1573,7 @@ prepare_cb (void *cls,
 					     au->execution_time,
 					     &au->wtid,
 					     au->wire,
+                                             au->wa->section_name,
 					     &au->final_amount);
   cleanup_au ();
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
