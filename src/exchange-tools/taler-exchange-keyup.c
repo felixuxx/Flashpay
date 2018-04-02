@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 GNUnet e.V.
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -499,23 +499,23 @@ exchange_keys_update_signkeys ()
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "exchange_keys",
+                                           "exchange",
                                            "signkey_duration",
                                            &signkey_duration))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
+                               "exchange",
                                "signkey_duration");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "exchange_keys",
+                                           "exchange",
                                            "legal_duration",
                                            &legal_duration))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
+                               "exchange",
                                "legal_duration",
                                "fails to specify valid timeframe");
     return GNUNET_SYSERR;
@@ -523,7 +523,7 @@ exchange_keys_update_signkeys ()
   if (signkey_duration.rel_value_us > legal_duration.rel_value_us)
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
+                               "exchange",
                                "legal_duration",
                                "must be longer than signkey_duration");
     return GNUNET_SYSERR;
@@ -926,10 +926,13 @@ create_wire_fee_for_method (void *cls,
 
   if (GNUNET_OK != *ret)
     return;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Setting up wire fees for `%s'\n",
+              wiremethod);
   last_date = GNUNET_TIME_absolute_add (lookahead_sign_stamp,
                                         max_duration_spend);
   GNUNET_asprintf (&section,
-                   "exchange-wire-%s",
+                   "fees-%s",
                    wiremethod);
   GNUNET_asprintf (&fn,
                    "%s%s.fee",
@@ -1049,6 +1052,43 @@ create_wire_fee_for_method (void *cls,
  * Output the wire fee structure.  Must be run after #max_duration_spend
  * was initialized.
  *
+ * @param cls pointer to `int`, set to #GNUNET_SYSERR on error
+ * @param ai information about enabled accounts
+ */
+static void
+create_wire_fee_by_account (void *cls,
+                            const struct TALER_EXCHANGEDB_AccountInfo *ai)
+{
+  int *ret = cls;
+  struct TALER_WIRE_Plugin *plugin;
+
+  if (GNUNET_NO == ai->credit_enabled)
+    return;
+  plugin = TALER_WIRE_plugin_load (kcfg,
+                                   ai->plugin_name);
+  if (NULL == plugin)
+  {
+    fprintf (stderr,
+             "Failed to load wire plugin `%s' configured for account `%s'\n",
+             ai->plugin_name,
+             ai->section_name);
+    *ret = GNUNET_SYSERR;
+    return;
+  }
+  /* We may call this function repeatedly for the same method
+     if there are multiple accounts with plugins using the
+     same method, but except for some minor performance loss,
+     this is harmless. */
+  create_wire_fee_for_method (ret,
+                              plugin->method);
+  TALER_WIRE_plugin_unload (plugin);
+}
+
+
+/**
+ * Output the wire fee structure.  Must be run after #max_duration_spend
+ * was initialized.
+ *
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -1057,9 +1097,9 @@ create_wire_fees ()
   int ret;
 
   ret = GNUNET_OK;
-  TALER_WIRE_find_enabled (kcfg,
-                           &create_wire_fee_for_method,
-                           &ret);
+  TALER_EXCHANGEDB_find_accounts (kcfg,
+                                  &create_wire_fee_by_account,
+                                  &ret);
   return ret;
 }
 
@@ -1305,12 +1345,12 @@ run (void *cls,
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "exchange_keys",
+                                           "exchange",
                                            "lookahead_sign",
                                            &lookahead_sign))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
+                               "exchange",
                                "lookahead_sign");
     global_ret = 1;
     return;
@@ -1318,7 +1358,7 @@ run (void *cls,
   if (0 == lookahead_sign.rel_value_us)
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
+                               "exchange",
                                "lookahead_sign",
                                _("must not be zero"));
     global_ret = 1;

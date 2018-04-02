@@ -472,40 +472,32 @@ struct TALER_EXCHANGE_WireAggregateFees
 
 
 /**
- * Function called with information about the wire fees
- * for each wire method.
- *
- * @param cls closure
- * @param wire_method name of the wire method (i.e. "sepa")
- * @param fees fee structure for this method
+ * Information about a wire account of the exchange.
  */
-typedef void
-(*TALER_EXCHANGE_WireFeeCallback)(void *cls,
-                                  const char *wire_method,
-                                  const struct TALER_EXCHANGE_WireAggregateFees *fees);
+struct TALER_EXCHANGE_WireAccount
+{
+  /**
+   * payto://-URL of the exchange.
+   */
+  const char *url;
 
+  /**
+   * Salt used to generate @e master_sig.
+   */
+  const char *salt;
 
-/**
- * Obtain information about wire fees encoded in @a obj
- * by wire method.
- *
- * @param master_pub public key to use to verify signatures, NULL to not verify
- * @param obj wire information as encoded in the #TALER_EXCHANGE_WireResultCallback
- * @param cb callback to invoke for the fees
- * @param cb_cls closure for @a cb
- * @return #GNUNET_OK in success, #GNUNET_SYSERR if @a obj is ill-formed
- */
-int
-TALER_EXCHANGE_wire_get_fees (const struct TALER_MasterPublicKeyP *master_pub,
-                              const json_t *obj,
-                              TALER_EXCHANGE_WireFeeCallback cb,
-                              void *cb_cls);
+  /**
+   * Signature of the exchange over the account (was checked by the API).
+   */
+  struct TALER_MasterSignatureP master_sig;
 
+  /**
+   * Linked list of wire fees the exchange charges for
+   * accounts of the wire method matching @e url.
+   */
+  const struct TALER_EXCHANGE_WireAggregateFees *fees;
 
-/**
- * @brief A Wire format inquiry handle
- */
-struct TALER_EXCHANGE_WireHandle;
+};
 
 
 /**
@@ -519,15 +511,21 @@ struct TALER_EXCHANGE_WireHandle;
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param obj the received JSON reply, if successful this should be the wire
- *            format details as provided by /wire, or NULL if the
- *            reply was not in JSON format.
+ * @param accounts_len length of the @a accounts array
+ * @param accounts list of wire accounts of the exchange, NULL on error
  */
 typedef void
 (*TALER_EXCHANGE_WireResultCallback) (void *cls,
                                       unsigned int http_status,
 				      enum TALER_ErrorCode ec,
-                                      const json_t *obj);
+                                      unsigned int accounts_len,
+                                      const struct TALER_EXCHANGE_WireAccount *accounts);
+
+
+/**
+ * @brief A Wire format inquiry handle
+ */
+struct TALER_EXCHANGE_WireHandle;
 
 
 /**
@@ -843,9 +841,9 @@ struct TALER_EXCHANGE_ReserveHistory
      */
     struct {
       /**
-       * Sender account information for the incoming transfer.
+       * Sender account payto://-URL of the incoming transfer.
        */
-      json_t *sender_account_details;
+      char *sender_url;
 
       /**
        * Information that uniquely identifies the wire transfer.

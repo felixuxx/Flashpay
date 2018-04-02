@@ -42,6 +42,7 @@ lib_LTLIBRARIES = \
   libtalerexchangedb.la
 
 libtalerexchangedb_la_SOURCES = \
+  exchangedb_accounts.c \
   exchangedb_auditorkeys.c \
   exchangedb_denomkeys.c \
   exchangedb_fees.c \
@@ -111,7 +112,8 @@ test_exchangedb_postgres_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -lgnunetutil -ljansson
+  -ljansson \
+  -lgnunetutil
 
 test_perf_taler_exchangedb_SOURCES = \
   test_perf_taler_exchangedb.c \
@@ -121,8 +123,8 @@ test_perf_taler_exchangedb_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -ljansson \
-  -lgnunetutil
+  -lgnunetutil \
+  -ljansson
 
 perf_exchangedb_SOURCES = \
   perf_taler_exchangedb.c \
@@ -132,8 +134,8 @@ perf_exchangedb_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -ljansson \
-  -lgnunetutil
+  -lgnunetutil \
+  -ljansson
 
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \

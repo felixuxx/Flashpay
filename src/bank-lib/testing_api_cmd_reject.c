@@ -127,7 +127,7 @@ reject_run (void *cls,
     (GNUNET_OK == TALER_TESTING_GET_TRAIT_ROW_ID
       (deposit_cmd, &row_id));
   TALER_LOG_INFO ("Account %llu rejects deposit\n",
-                  *credit_account);
+                  (unsigned long long) *credit_account);
   rs->rh = TALER_BANK_reject (is->ctx,
                               rs->bank_url,
                               &AUTHS[*credit_account -1],
@@ -180,7 +180,7 @@ TALER_TESTING_cmd_bank_reject (const char *label,
   rs = GNUNET_new (struct RejectState);
   rs->bank_url = bank_url;
   rs->deposit_reference = deposit_reference;
-  
+
   cmd.cls = rs;
   cmd.run = &reject_run;
   cmd.cleanup = &reject_cleanup;

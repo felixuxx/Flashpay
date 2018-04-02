@@ -204,6 +204,7 @@ PERF_TALER_EXCHANGEDB_reserve_free (struct PERF_TALER_EXCHANGEDB_Reserve *reserv
 
 /**
  * Generate a dummy deposit for testing purposes
+ *
  * @param dki the denomination key used to sign the key
  */
 struct TALER_EXCHANGEDB_Deposit *
@@ -214,19 +215,12 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
   struct GNUNET_HashCode h_wire;
-  const char wire[] = "{"
-    "\"type\":\"SEPA\","
-    "\"IBAN\":\"DE67830654080004822650\","
-    "\"NAME\":\"GNUNET E.\","
-    "\"BIC\":\"GENODEF1SRL\""
-    "}";
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount deposit_fee;
 
-  GNUNET_assert (NULL !=
-                 (deposit = GNUNET_malloc (sizeof (struct TALER_EXCHANGEDB_Deposit) + sizeof (wire))));
+  deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &h_contract_terms);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
@@ -253,9 +247,8 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
 
     eddsa_prv = GNUNET_CRYPTO_eddsa_key_create ();
     GNUNET_assert(NULL != eddsa_prv);
-    GNUNET_CRYPTO_eddsa_key_get_public (
-      eddsa_prv,
-      &merchant_pub.eddsa_pub);
+    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_prv,
+                                        &merchant_pub.eddsa_pub);
     GNUNET_free (eddsa_prv);
   }
   timestamp = GNUNET_TIME_absolute_get ();
@@ -280,7 +273,10 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   deposit->csig = csig;
   deposit->h_contract_terms = h_contract_terms;
   deposit->h_wire = h_wire;
-  deposit->receiver_wire_account = json_loads (wire, 0, NULL);
+  deposit->receiver_wire_account
+    = json_pack ("{s:s, s:s}",
+                 "url", "payto://sepa/DE67830654080004822650",
+                 "salt", "this-is-a-salt-value");
   deposit->timestamp = timestamp;
   deposit->refund_deadline = refund_deadline;
   deposit->amount_with_fee = amount_with_fee;
@@ -301,7 +297,7 @@ PERF_TALER_EXCHANGEDB_deposit_copy (const struct TALER_EXCHANGEDB_Deposit *depos
 
   copy = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
   *copy = *deposit;
-  json_incref (copy->receiver_wire_account);
+  copy->receiver_wire_account = json_incref (deposit->receiver_wire_account);
   copy->coin.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (deposit->coin.denom_pub.rsa_public_key);
   copy->coin.denom_sig.rsa_signature =

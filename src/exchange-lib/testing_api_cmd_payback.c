@@ -31,7 +31,7 @@
 
 struct RevokeState
 {
-  /** 
+  /**
    * Expected HTTP status code.
    */
   unsigned int expected_response_code;
@@ -65,7 +65,7 @@ struct RevokeState
 
 struct PaybackState
 {
-  /** 
+  /**
    * Expected HTTP status code.
    */
   unsigned int expected_response_code;
@@ -154,7 +154,7 @@ payback_cb (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  
+
   if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
     (reserve_cmd, 0, &reserve_priv))
   {
@@ -201,6 +201,7 @@ payback_cb (void *cls,
   TALER_TESTING_interpreter_next (is);
 }
 
+
 /**
  * Run the command.
  *
@@ -208,7 +209,7 @@ payback_cb (void *cls,
  * @param cmd the command to execute, a /wire one.
  * @param is the interpreter state.
  */
-void
+static void
 payback_run (void *cls,
              const struct TALER_TESTING_Command *cmd,
              struct TALER_TESTING_Interpreter *is)
@@ -230,7 +231,7 @@ payback_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return;  
+    return;
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
@@ -238,7 +239,7 @@ payback_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return; 
+    return;
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_blinding_key
@@ -246,7 +247,7 @@ payback_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return; 
+    return;
   }
   planchet.coin_priv = *coin_priv;
   planchet.blinding_key = *blinding_key;
@@ -256,7 +257,7 @@ payback_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return; 
+    return;
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_denom_sig
@@ -264,13 +265,13 @@ payback_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return; 
+    return;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to get '%s..' paid back\n",
               TALER_B2S (&denom_pub->h_key));
-  
+
   ps->ph = TALER_EXCHANGE_payback (ps->exchange,
                                    denom_pub,
                                    coin_sig,
@@ -280,13 +281,14 @@ payback_run (void *cls,
   GNUNET_assert (NULL != ps->ph);
 }
 
+
 /**
  * Cleanup the state.
  *
  * @param cls closure, typically a #struct WireState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 revoke_cleanup (void *cls,
                 const struct TALER_TESTING_Command *cmd)
 {
@@ -302,9 +304,10 @@ revoke_cleanup (void *cls,
     rs->revoke_proc = NULL;
   }
 
-  GNUNET_free (rs->dhks);
+  GNUNET_free_non_null (rs->dhks);
   GNUNET_free (rs);
 }
+
 
 /**
  * Cleanup the state.
@@ -312,7 +315,7 @@ revoke_cleanup (void *cls,
  * @param cls closure, typically a #struct WireState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 payback_cleanup (void *cls,
                  const struct TALER_TESTING_Command *cmd)
 {
@@ -324,6 +327,7 @@ payback_cleanup (void *cls,
   }
   GNUNET_free (ps);
 }
+
 
 /**
  * Extract information from a command that is useful for other
@@ -366,7 +370,7 @@ revoke_traits (void *cls,
  * @param cmd the command to execute, a /wire one.
  * @param is the interpreter state.
  */
-void
+static void
 revoke_run (void *cls,
             const struct TALER_TESTING_Command *cmd,
             struct TALER_TESTING_Interpreter *is)
@@ -384,7 +388,7 @@ revoke_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return;  
+    return;
   }
 
   GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_denom_pub
@@ -395,8 +399,8 @@ revoke_run (void *cls,
               TALER_B2S (&denom_pub->h_key));
 
   rs->dhks = GNUNET_STRINGS_data_to_string_alloc
-    (&denom_pub->h_key, sizeof (struct GNUNET_HashCode)); 
-  
+    (&denom_pub->h_key, sizeof (struct GNUNET_HashCode));
+
   rs->revoke_proc = GNUNET_OS_start_process
     (GNUNET_NO,
      GNUNET_OS_INHERIT_STD_ALL,
@@ -441,7 +445,7 @@ TALER_TESTING_cmd_payback (const char *label,
 {
   struct PaybackState *ps;
   struct TALER_TESTING_Command cmd;
-  
+
   ps = GNUNET_new (struct PaybackState);
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
@@ -454,6 +458,7 @@ TALER_TESTING_cmd_payback (const char *label,
 
   return cmd;
 }
+
 
 /**
  * Make a /revoke command.

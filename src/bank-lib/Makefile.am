@@ -32,7 +32,8 @@ libtalerbank_la_SOURCES = \
   bank_api_admin.c \
   bank_api_common.c bank_api_common.h \
   bank_api_history.c \
-  bank_api_reject.c
+  bank_api_reject.c \
+  bank_api_parse.c
 
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
@@ -148,6 +149,7 @@ test_bank_api_new_SOURCES = \
 
 test_bank_api_new_LDADD = \
   $(top_builddir)/src/exchange-lib/libtalertesting.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   libtalerbanktesting.la \
   -ltalerexchange \
   -lgnunetutil \

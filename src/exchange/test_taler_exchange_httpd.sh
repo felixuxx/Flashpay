@@ -25,7 +25,9 @@ unset XDG_DATA_HOME
 unset XDG_CONFIG_HOME
 #
 # Setup keys.
-taler-exchange-keyup -c test_taler_exchange_httpd.conf
+taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
+# Setup wire accounts.
+taler-exchange-wire -c test_taler_exchange_httpd.conf || exit 1
 # Run Exchange HTTPD (in background)
 taler-exchange-httpd -c test_taler_exchange_httpd.conf -i &
 # Give HTTP time to start

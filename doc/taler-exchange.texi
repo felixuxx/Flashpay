@@ -13,7 +13,7 @@ This manual is for the GNU Taler Exchange
 (version @value{VERSION}, @value{UPDATED}),
 a payment service provider for GNU Taler.
 
-Copyright @copyright{} 2014-2017 GNUnet e.V. and INRIA
+Copyright @copyright{} 2014-2018 Taler Systems SA
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -260,7 +260,7 @@ GNU libunistring @geq{} 0.9.3
 libcurl @geq{} 7.26 (or libgnurl @geq{} 7.26)
 
 @item
-GNU libmicrohttpd @geq{} 0.9.52
+GNU libmicrohttpd @geq{} 0.9.59
 
 @item
 GNU libgcrypt @geq{} 1.6
@@ -354,6 +354,8 @@ description of some of the options.
 
 The exchange works with three types of keys:
 
+@c FIXME: explain better!
+
 @itemize
 
 @item
@@ -366,34 +368,18 @@ The exchange works with three types of keys:
 @cite{denomination keys} (see section @cite{Coins})
 @end itemize
 
-@cite{master key}: in section @cite{[exchange]}, edit the two following values:
-
-
-@itemize
-
-@item
-@cite{master_priv_file}: Path to the exchange's master private file.
-
-@item
-@cite{master_public_key}: Must specify the exchange's master public key.
-@end itemize
-
-@cite{sign keys}: the following two options under
-@cite{[exchange_keys]} section control @cite{sign keys}:
-
+@c FIXME: text here.
 
 @itemize
+@item
+@cite{MASTER_PRIV_FILE}: Path to the exchange's master private file.
 
 @item
-@cite{signkey_duration}: How long should one signing key be used?
-
-@item
-@cite{lookahead_sign}: How much time we want to cover with our
-@cite{signkeys}? Note that if @cite{signkey_duration} is bigger than
-@cite{lookahead_sign}, @cite{taler-exchange-keyup} will generate a
-quantity of @cite{signkeys} which is sufficient to cover all the
-gap. See keys-duration.
+@cite{MASTER_PUBLIC_KEY}: Must specify the exchange's master public key.
 @end itemize
+
+
+
 
 
 @node Serving
@@ -436,98 +422,147 @@ option @cite{currency} in section @cite{[taler]}.
 @node Bank account
 @section Bank account
 
+To configure a bank account in Taler, we need to furnish four
+pieces of information:
+@itemize
+@item
+  The @code{payto://} URL of the bank account, which uniquely idenfies
+  the account. Examples for such URLs include
+  @code{payto://sepa/CH9300762011623852957} for a bank account
+  in the single European payment area (SEPA) or
+  @code{payto://x-taler-bank/localhost:8080/2} for the 2nd bank
+  account a the Taler bank demonstrator running at @code{localhost}
+  on port 8080.  The first part of the URL following @code{payto://}
+  (``sepa'' or ``x-taler-bank'') is called the wire method.
+@item
+  A matching wire plugin that implements a protocol to interact
+  with the banking system.  For example, the EBICS plugin can
+  be used for SEPA transfers, or the ``taler-bank'' plugin can
+  interact with the Taler bank demonstrator.  A wire plugin
+  only supports one particular wire method. Thus, you must make
+  sure to pick a plugin that supports the wire method used in the
+  URL.
+@item
+  A file containing the signed JSON-encoded bank account details
+  for the /wire API.  This is necessary as Taler supports offline
+  signing for bank accounts for additional security.
+@item
+  Finally, the plugin needs to be provided resources for
+  authentication to the respective banking service.  The format
+  in which the authentication information must be provided
+  depends on the wire plugin.
+@end itemize
+
+You can configure multiple accounts for an exchange by creating
+sections starting with ``account-'' for the section name.  You can
+ENABLE for each account whether it should be used, and for what
+(incoming or outgoing wire transfers):
+
+@setsyntax ini
+@example
+
+[account-1]
+URL = "payto://sepa/CH9300762011623852957"
+WIRE_RESPONSE = $@{TALER_CONFIG_HOME@}/account-1.json
+PLUGIN = ebics
+
+# Use for exchange-aggregator (outgoing transfers)
+ENABLE_DEBIT = YES
+# Use for exchange-wirewatch (and listed in /wire)
+ENABLE_CREDIT = YES
+
+# ... add authentication options here
+@end example
+
+The command line tool @cite{taler-exchange-wire} is used to create
+the @code{account-1.json} file.
+For example, the utility may be invoked as follows to create
+all of the WIRE_RESPONSE files (in the locations specified by the configuration):
+
+@example
+$ taler-exchange-wire
+@end example
+
+The generated file will be echoed by the exchange when serving
+/wire@footnote{https://api.taler.net/api-exchange.html#wire-req}
+requests.
+
+
 @menu
-* Wiremethod-test::
-* Wiremethod-sepa::
+* Wire plugin ``taler_bank''::
+* Wire plugin ``ebics''::
+* Wire fee structure::
 @end menu
 
-@node Wiremethod-test
-@subsection Wiremethod-test
+@node Wire plugin ``taler_bank''
+@subsection Wire plugin ``taler_bank''
+@cindex x-taler-bank
+@cindex taler_bank plugin
 
-To enable the wire transfer method ``test'', you need to set
-``ENABLE=YES'' in section @cite{[exchange-wire-test]}.
+The @code{taler_bank} plugin implements the wire method ``x-taler-bank''.
 
-The bank account where the exchange gets money from customers is
-configured under the section @cite{[exchange-wire-test]}.  It must
-contain the options ``EXCHANGE_ACCOUNT_NO'' and ``BANK_URL''.
-For basic authentication, it must additionally contain the
-``USERNAME'' and ``PASSWORD'' of the exchange's account at the bank.
+The format of the @code{payto://} URL is @code{payto://x-taler-bank/HOSTNAME:PORT},
+possibly followed by other parameters like the amount and wire transfer subject
+as per the @code{payto://} standard.
 
-For incoming transfers, the section must additional contain the
-option: @cite{test_response_file}, which takes
-the path to a text file containing the exchange's bank account details
-in JSON format.
+For basic authentication, the @code{taler_bank} plugin only supports
+simple password-based authentication.  For this, the configuration
+must contain the ``USERNAME'' and ``PASSWORD'' of the respective
+account at the bank.
 
-The command line tool @cite{taler-exchange-wire} is used to create such a file.
-For example, the utility may be invoked as follows:
-
+@setsyntax ini
 @example
-$ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
-10, "bank_url": "https://bank.demo.taler.net", "type": "test"@}' -t
-test -o exchange.json
+[account-2]
+URL = "payto://test/localhost:8080"
+USERNAME = exchange
+PASSWORD = super-secure
 @end example
 
-Note that the value given to option @cite{-t} must match the value in
-the JSON's field @code{"type"}.
 
-The generated file will be echoed by the exchange when serving
-/wire@footnote{https://api.taler.net/api-exchange.html#wire-req}
-requests.
+@node Wire plugin ``ebics''
+@subsection Wire plugin ``ebics''
 
+The ``ebics'' wire plugin is not fully implemented and today
+does not support actual wire transfers.
 
-@node Wiremethod-sepa
-@subsection Wiremethod-sepa
-
-To enable the wire transfer method ``sepa'', you need to set
-``ENABLE=YES'' in section @cite{[exchange-wire-sepa]}.
-
-
-This section contains only one option: @cite{sepa_response_file},
-which takes the path to a text file containing the exchange's bank
-account details in JSON format.
-
-The command line tool @cite{taler-exchange-wire} is used to create such a file.
-For example, the utility may be invoked as follows:
-
-@example
-$ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
-10, "bank_url": "https://bank.demo.taler.net", "type": "sepa"@}' -t
-sepa -o exchange.json
-@end example
-
-Note that the value given to option @cite{-t} must match the value in the JSON's field @code{"type"}.
-
-The generated file will be echoed by the exchange when serving
-/wire@footnote{https://api.taler.net/api-exchange.html#wire-req}
-requests.
-
-This exchange's outgoing bank account is used to give money to merchants, after
-successful
-deposits@footnote{https://api.taler.net/api-exchange.html#deposit-par}
-operations. The outgoing bank account is configured by the following
-options under @cite{[exchange-wire-outgoing-sepa]}: (NOT YET SUPPORTED).
-
-@quotation
-
-
-@itemize
-
-@item
-@cite{exchange_account_numer}: which bank account number has the exchange
-
-@item
-@cite{bank_url}: base URL of the bank hosting the exchange bank account
-@end itemize
-@end quotation
 
 @cartouche
 @quotation Note
-The rationale behind having two bank accounts is that the exchange operator, as a security
+The rationale behind having multiple bank accounts is that the exchange operator, as a security
 measure, may want to instruct the bank that the incoming bank account is only supposed to
 @emph{receive} money.
 @end quotation
 @end cartouche
 
+
+@node Wire fee structure
+@subsection Wire fee structure
+@cindex wire fee
+@cindex fee
+
+For each wire method (``sepa'' or ``x-taler-wire'', but not per plugin!) the
+exchange configuration must specify applicable wire fees.  This is done
+in configuration sections of the format @code{fee-METHOD}.  There are two
+types of fees, simple wire fees and closing fees.  Wire fees apply whenever
+the aggregator transfers funds to a merchant.  Closing fees apply whenever
+the exchange closes a reserve (sending back funds to the customer).  The
+fees must be constant for a full year, which is specified as part of the name
+of the option.
+
+@setsyntax ini
+@example
+[fee-iban]
+WIRE-FEE-2018 = EUR:0.01
+WIRE-FEE-2019 = EUR:0.01
+CLOSING-FEE-2018 = EUR:0.01
+CLOSING-FEE-2019 = EUR:0.01
+
+[fee-x-taler-bank]
+WIRE-FEE-2018 = KUDOS:0.01
+WIRE-FEE-2019 = KUDOS:0.01
+CLOSING-FEE-2018 = KUDOS:0.01
+CLOSING-FEE-2019 = KUDOS:0.01
+@end example
 
 
 @node Database
@@ -546,18 +581,18 @@ possible in two ways:
 via an environment variable: @cite{TALER_EXCHANGEDB_POSTGRES_CONFIG}.
 
 @item
-via configuration option @cite{db_conn_str}, under section @cite{[exchangedb-BACKEND]}. For example, the demo exchange is configured as follows:
+via configuration option @cite{CONFIG}, under section @cite{[exchangedb-BACKEND]}. For example, the demo exchange is configured as follows:
 @end itemize
 
 @setsyntax ini
 @example
 [exchange]
 ...
-db = postgres
+DB = postgres
 ...
 
 [exchangedb-postgres]
-db_conn_str = postgres:///talerdemo
+CONFIG = postgres:///talerdemo
 @end example
 
 @node Coins denomination keys
@@ -638,6 +673,25 @@ number of keys which is sufficient to cover a period of
 key will get a starting time of @cite{t}, and the @cite{j}-th key will
 get a starting time of @cite{x + duration_withdraw}, where @cite{x} is
 the starting time of the @cite{(j-1)}-th key.
+
+To change these settings, edit the following
+values in section @cite{[exchange]}:
+
+@itemize
+@item
+@cite{SIGNKEY_DURATION}: How long should one signing key be used?
+
+@item
+@cite{LOOKAHEAD_SIGN}: How much time we want to cover with our
+signing keys? Note that if @cite{SIGNKEY_DURATION} is bigger than
+@cite{LOOKAHEAD_SIGN}, @code{taler-exchange-keyup} will generate a
+quantity of signing keys which is sufficient to cover all the
+gap.
+@end itemize
+
+@c FIXME: LEGAL_DURATION not covered!
+@c FIXME: LOOKAHEAD_PROVIDE not covered!
+
 
 @node Deployment
 @chapter Deployment

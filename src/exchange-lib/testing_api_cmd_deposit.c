@@ -50,9 +50,9 @@ struct DepositState
   unsigned int coin_index;
 
   /**
-   * JSON string describing the merchant's "wire details".
+   * payto://-URL of the merchant's bank account.
    */
-  char *wire_details;
+  json_t *wire_details;
 
   /**
    * JSON string describing what a proposal is about.
@@ -126,6 +126,7 @@ deposit_cb (void *cls,
   TALER_TESTING_interpreter_next (ds->is);
 }
 
+
 /**
  * Run the command.
  *
@@ -133,7 +134,7 @@ deposit_cb (void *cls,
  * @param cmd the command to execute, a /wire one.
  * @param i the interpreter state.
  */
-void
+static void
 deposit_run (void *cls,
              const struct TALER_TESTING_Command *cmd,
              struct TALER_TESTING_Interpreter *is)
@@ -153,7 +154,6 @@ deposit_run (void *cls,
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
   json_t *contract_terms;
-  json_t *wire;
   struct TALER_Amount amount;
 
   ds->is = is;
@@ -166,7 +166,7 @@ deposit_run (void *cls,
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);  
+    TALER_TESTING_interpreter_fail (is);
     return;
   }
 
@@ -213,21 +213,6 @@ deposit_run (void *cls,
                  TALER_JSON_hash (contract_terms,
                                   &h_contract_terms));
   json_decref (contract_terms);
-
-  wire = json_loads (ds->wire_details,
-                     JSON_REJECT_DUPLICATES,
-                     NULL);
-  if (NULL == wire)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse wire details `%s' at %u/%s\n",
-                ds->wire_details,
-                is->ip,
-                this_cmd->label);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-  
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -267,8 +252,9 @@ deposit_run (void *cls,
     dr.purpose.purpose = htonl
       (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
     dr.h_contract_terms = h_contract_terms;
-    GNUNET_assert (GNUNET_OK == TALER_JSON_hash
-      (wire, &dr.h_wire));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_wire_signature_hash (ds->wire_details,
+                                                   &dr.h_wire));
     dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
     dr.refund_deadline = GNUNET_TIME_absolute_hton
       (refund_deadline);
@@ -286,7 +272,7 @@ deposit_run (void *cls,
     (ds->exchange,
      &amount,
      wire_deadline,
-     wire,
+     ds->wire_details,
      &h_contract_terms,
      &coin_pub,
      denom_pub_sig,
@@ -301,13 +287,12 @@ deposit_run (void *cls,
   if (NULL == ds->dh)
   {
     GNUNET_break (0);
-    json_decref (wire);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  json_decref (wire);
   return;
 }
+
 
 /**
  * Cleanup the state.
@@ -315,7 +300,7 @@ deposit_run (void *cls,
  * @param cls closure, typically a #struct WireState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 deposit_cleanup (void *cls,
                  const struct TALER_TESTING_Command *cmd)
 {
@@ -331,9 +316,10 @@ deposit_cleanup (void *cls,
     ds->dh = NULL;
   }
 
-  GNUNET_free (ds->wire_details);
+  json_decref (ds->wire_details);
   GNUNET_free (ds);
 }
+
 
 /**
  * Extract information from a command that is useful for other
@@ -354,7 +340,7 @@ deposit_traits (void *cls,
                 unsigned int index)
 {
   struct DepositState *ds = cls;
-  const struct TALER_TESTING_Command *coin_cmd; 
+  const struct TALER_TESTING_Command *coin_cmd;
   /* Will point to coin cmd internals. */
   struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
 
@@ -382,7 +368,7 @@ deposit_traits (void *cls,
     TALER_TESTING_make_trait_contract_terms (0, ds->contract_terms),
     TALER_TESTING_make_trait_peer_key
       (0, &ds->merchant_priv.eddsa_priv),
-    TALER_TESTING_trait_end ()  
+    TALER_TESTING_trait_end ()
   };
 
   return TALER_TESTING_get_trait (traits,
@@ -402,8 +388,8 @@ deposit_traits (void *cls,
  *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        withdrawals are implemented.
- * @param wire_details bank details of the merchant performing the
- *        deposit
+ * @param wire_details JSON details of the wire account of the merchant performing the
+ *        deposit, reference is captured by this command
  * @param contract_terms contract terms to be signed over by the
  *        coin
  * @param refund_deadline refund deadline, zero means 'no refunds'
@@ -419,7 +405,7 @@ TALER_TESTING_cmd_deposit
    struct TALER_EXCHANGE_Handle *exchange,
    const char *coin_reference,
    unsigned int coin_index,
-   char *wire_details,
+   json_t *wire_details,
    const char *contract_terms,
    struct GNUNET_TIME_Relative refund_deadline,
    const char *amount,
@@ -427,7 +413,7 @@ TALER_TESTING_cmd_deposit
 {
   struct TALER_TESTING_Command cmd;
   struct DepositState *ds;
-  
+
   ds = GNUNET_new (struct DepositState);
   ds->exchange = exchange;
   ds->coin_reference = coin_reference;

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2017 Inria
+  Copyright (C) 2015-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -24,6 +24,8 @@
 #include "taler_crypto_lib.h"
 #include "taler_util.h"
 #include "taler_wire_lib.h"
+#include "taler_json_lib.h"
+#include "taler_exchangedb_lib.h"
 #include "taler_signatures.h"
 
 
@@ -33,24 +35,64 @@
 static char *masterkeyfile;
 
 /**
- * Account holder information in JSON format.
+ * Private key for signing.
  */
-static json_t *account_holder;
-
-/**
- * Which wire method is this for?
- */
-static char *method;
-
-/**
- * Where to write the result.
- */
-static char *output_filename;
+static struct TALER_MasterPrivateKeyP master_priv;
 
 /**
  * Return value from main().
  */
 static int global_ret;
+
+
+/**
+ * Function called with information about a wire account.  Signs
+ * the account's wire details and writes out the JSON file to disk.
+ *
+ * @param cls closure
+ * @param ai account information
+ */
+static void
+sign_account_data (void *cls,
+                   const struct TALER_EXCHANGEDB_AccountInfo *ai)
+{
+  json_t *wire;
+  char *json_out;
+  FILE *out;
+
+  if (GNUNET_NO == ai->credit_enabled)
+    return;
+  if (NULL == ai->wire_response_filename)
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ai->section_name,
+                               "WIRE_RESPONSE");
+    global_ret = 1;
+    return;
+  }
+  wire = TALER_JSON_wire_signature_make (ai->payto_url,
+                                         &master_priv);
+  json_out = json_dumps (wire,
+                         JSON_INDENT(2));
+  json_decref (wire);
+  GNUNET_assert (NULL != json_out);
+
+  out = fopen (ai->wire_response_filename,
+               "w+");
+  if (NULL == out)
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "fopen",
+                              ai->wire_response_filename);
+    global_ret = 1;
+    return;
+  }
+  fprintf (out,
+	   "%s",
+	   json_out);
+  fclose (out);
+  free (json_out);
+}
 
 
 /**
@@ -68,11 +110,6 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
-  struct TALER_MasterPrivateKeyP key;
-  struct TALER_MasterSignatureP sig;
-  char *json_out;
-  struct GNUNET_HashCode salt;
-  struct TALER_WIRE_Plugin *plugin;
 
   if ( (NULL == masterkeyfile) &&
        (GNUNET_OK !=
@@ -86,7 +123,8 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (GNUNET_YES != GNUNET_DISK_file_test (masterkeyfile))
+  if (GNUNET_YES !=
+      GNUNET_DISK_file_test (masterkeyfile))
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Exchange master private key `%s' does not exist yet, creating it!\n",
                 masterkeyfile);
@@ -99,97 +137,11 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (NULL == method)
-  {
-    json_t *test;
-    const char *m;
-
-    test = json_object_get(account_holder,
-                           "type");
-    if ( (NULL == test) ||
-         (NULL == (m = json_string_value (test))))
-    {
-      fprintf (stderr,
-               "Required -t argument missing\n");
-      global_ret = 1;
-      return;
-    }
-    method = GNUNET_strdup (m);
-  }
-  else
-  {
-    json_object_set_new (account_holder,
-                         "type",
-                         json_string (method));
-  }
-  key.eddsa_priv = *eddsa_priv;
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
-                              &salt,
-                              sizeof (salt));
-  plugin = TALER_WIRE_plugin_load (cfg,
-                                   method);
-  if (NULL == plugin)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Wire transfer method `%s' not supported\n",
-                method);
-    GNUNET_free (method);
-    global_ret = 1;
-    return;
-  }
-  GNUNET_free (method);
-  if (GNUNET_OK !=
-      plugin->sign_wire_details (plugin->cls,
-                                 account_holder,
-                                 &key,
-                                 &salt,
-                                 &sig))
-  {
-    /* sign function should have logged applicable errors */
-    json_decref (account_holder);
-    TALER_WIRE_plugin_unload (plugin);
-    global_ret = 1;
-    return;
-  }
-  TALER_WIRE_plugin_unload (plugin);
+  master_priv.eddsa_priv = *eddsa_priv;
+  TALER_EXCHANGEDB_find_accounts (cfg,
+                                  &sign_account_data,
+                                  NULL);
   GNUNET_free (eddsa_priv);
-
-  /* add signature and salt to JSON message */
-  json_object_set_new (account_holder,
-                       "salt",
-                       GNUNET_JSON_from_data (&salt,
-                                              sizeof (salt)));
-  json_object_set_new (account_holder,
-                       "sig",
-                       GNUNET_JSON_from_data (&sig,
-                                              sizeof (sig)));
-
-  /* dump result to stdout */
-  json_out = json_dumps (account_holder,
-                         JSON_INDENT(2));
-  json_decref (account_holder);
-  GNUNET_assert (NULL != json_out);
-
-  if (NULL != output_filename)
-  {
-    if (NULL != stdout)
-      fclose (stdout);
-    stdout = fopen (output_filename,
-		    "w+");
-    if (NULL == stdout)
-    {
-      fprintf (stderr,
-               "Failed to open `%s': %s\n",
-               output_filename,
-               STRERROR (errno));
-      return;
-    }
-  }
-  fprintf (stdout,
-	   "%s",
-	   json_out);
-  fflush (stdout);
-  free (json_out);
 }
 
 
@@ -206,27 +158,11 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_mandatory
-    (GNUNET_JSON_getopt ('j',
-                         "json",
-                         "JSON",
-                         "account information in JSON format",
-                         &account_holder)),
     GNUNET_GETOPT_option_filename ('m',
                                    "master-key",
                                    "FILENAME",
                                    "master key file (private key)",
                                    &masterkeyfile),
-    GNUNET_GETOPT_option_string ('t',
-                                 "type",
-                                 "METHOD",
-                                 "which wire transfer method (i.e. 'test' or 'sepa') is this for?",
-                                 &method),
-    GNUNET_GETOPT_option_filename ('o',
-                                   "output",
-                                   "FILENAME",
-                                   "where to write the result",
-                                   &output_filename),
     GNUNET_GETOPT_OPTION_END
   };
 

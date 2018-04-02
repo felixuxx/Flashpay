@@ -21,7 +21,6 @@
  */
 #ifndef TALER_EXCHANGEDB_PLUGIN_H
 #define TALER_EXCHANGEDB_PLUGIN_H
-
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_db_lib.h>
@@ -52,9 +51,10 @@ struct TALER_EXCHANGEDB_BankTransfer
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Detailed wire information about the sending account.
+   * Detailed wire information about the sending account
+   * in "payto://" format.
    */
-  json_t *sender_account_details;
+  char *sender_account_details;
 
   /**
    * Data uniquely identifying the wire transfer (wire transfer-type specific)
@@ -97,9 +97,10 @@ struct TALER_EXCHANGEDB_ClosingTransfer
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Detailed wire information about the receiving account.
+   * Detailed wire information about the receiving account
+   * in payto://-format.
    */
-  json_t *receiver_account_details;
+  char *receiver_account_details;
 
   /**
    * Detailed wire transfer information that uniquely identifies the
@@ -361,6 +362,7 @@ struct TALER_EXCHANGEDB_Deposit
 
   /**
    * Detailed information about the receiver for executing the transaction.
+   * Includes URL in payto://-format and salt.
    */
   json_t *receiver_wire_account;
 
@@ -638,7 +640,8 @@ struct TALER_EXCHANGEDB_Session;
  * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
- * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
+ * @param receiver_wire_account wire details for the merchant, includes
+ *        'url' in payto://-format; NULL from iterate_matching_deposits()
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 typedef enum GNUNET_DB_QueryStatus
@@ -687,7 +690,8 @@ typedef void
  *        to get a refund
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
- * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
+ * @param receiver_wire_account wire details for the merchant including 'url' in payto://-format;
+ *        NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -837,7 +841,7 @@ typedef int
  * @param rowid unique serial ID for the refresh session in our DB
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
- * @param sender_account_details information about the sender's bank account
+ * @param sender_account_details information about the sender's bank account, in payto://-format
  * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
  * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
@@ -848,7 +852,7 @@ typedef int
                                       uint64_t rowid,
                                       const struct TALER_ReservePublicKeyP *reserve_pub,
                                       const struct TALER_Amount *credit,
-                                      const json_t *sender_account_details,
+                                      const char *sender_account_details,
                                       const void *wire_reference,
                                       size_t wire_reference_size,
                                       struct GNUNET_TIME_Absolute execution_date);
@@ -923,8 +927,8 @@ typedef void
  * @param cls closure
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param wire_method which wire plugin was used for the transfer?
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param account_details which account did the transfer go to?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param coin_pub which public key was this payment about
@@ -935,8 +939,8 @@ typedef void
 (*TALER_EXCHANGEDB_WireTransferDataCallback)(void *cls,
                                              uint64_t rowid,
                                              const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                             const char *wire_method,
                                              const struct GNUNET_HashCode *h_wire,
+                                             const json_t *account_details,
                                              struct GNUNET_TIME_Absolute exec_time,
                                              const struct GNUNET_HashCode *h_contract_terms,
                                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -952,7 +956,7 @@ typedef void
  * @param rowid identifier of the respective row in the database
  * @param date timestamp of the wire transfer (roughly)
  * @param wtid wire transfer subject
- * @param wire wire transfer details of the receiver
+ * @param wire wire transfer details of the receiver, including "url" in payto://-format
  * @param amount amount that was wired
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
@@ -1019,7 +1023,7 @@ typedef int
  * @param amount_with_fee how much did we debit the reserve
  * @param closing_fee how much did we charge for closing the reserve
  * @param reserve_pub public key of the reserve
- * @param receiver_account where did we send the funds
+ * @param receiver_account where did we send the funds, in payto://-format
  * @param wtid identifier used for the wire transfer
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -1030,7 +1034,7 @@ typedef int
 					  const struct TALER_Amount *amount_with_fee,
 					  const struct TALER_Amount *closing_fee,
 					  const struct TALER_ReservePublicKeyP *reserve_pub,
-					  const json_t *receiver_account,
+					  const char *receiver_account,
 					  const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
@@ -1040,7 +1044,7 @@ typedef int
  * @param cls closure
  * @param reserve_pub public key of the reserve
  * @param left amount left in the reserve
- * @param account_details information about the reserve's bank account
+ * @param account_details information about the reserve's bank account, in payto://-format
  * @param expiration_date when did the reserve expire
  * @return transaction status code to pass on
  */
@@ -1048,7 +1052,7 @@ typedef enum GNUNET_DB_QueryStatus
 (*TALER_EXCHANGEDB_ReserveExpiredCallback)(void *cls,
 					   const struct TALER_ReservePublicKeyP *reserve_pub,
 					   const struct TALER_Amount *left,
-					   const json_t *account_details,
+					   const char *account_details,
 					   struct GNUNET_TIME_Absolute expiration_date);
 
 
@@ -1082,7 +1086,7 @@ typedef void
  * @param rowid deposit table row of the coin's deposit
  * @param coin_pub public key of the coin
  * @param amount value of the deposit, including fee
- * @param wire where should the funds be wired
+ * @param wire where should the funds be wired, including 'url' in payto://-format
  * @param deadline what was the requested wire transfer deadline
  * @param tiny did the exchange defer this transfer because it is too small?
  * @param done did the exchange claim that it made a transfer?
@@ -1259,7 +1263,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
-   * @param sender_account_details information about the sender's bank account
+   * @param sender_account_details information about the sender's bank account, in payto://-format
    * @param wire_reference unique reference identifying the wire transfer (binary blob)
    * @param wire_reference_size number of bytes in @a wire_reference
    * @return transaction status code
@@ -1270,7 +1274,8 @@ struct TALER_EXCHANGEDB_Plugin
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
                          struct GNUNET_TIME_Absolute execution_time,
-                         const json_t *sender_account_details,
+                         const char *sender_account_details,
+                         const char *exchange_account_name,
                          const void *wire_reference,
                          size_t wire_reference_size);
 
@@ -1287,6 +1292,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_latest_reserve_in_reference)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *db,
+                                     const char *exchange_account_name,
                                      void **wire_reference,
                                      size_t *wire_reference_size);
 
@@ -1781,7 +1787,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param reserve_pub which reserve is this about?
    * @param execution_date when did we perform the transfer?
-   * @param receiver_account to which account do we transfer?
+   * @param receiver_account to which account do we transfer, in payto://-format
    * @param wtid identifier for the wire transfer
    * @param amount_with_fee amount we charged to the reserve
    * @param closing_fee how high is the closing fee
@@ -1792,7 +1798,7 @@ struct TALER_EXCHANGEDB_Plugin
 			   struct TALER_EXCHANGEDB_Session *session,
 			   const struct TALER_ReservePublicKeyP *reserve_pub,
 			   struct GNUNET_TIME_Absolute execution_date,
-			   const json_t *receiver_account,
+			   const char *receiver_account,
 			   const struct TALER_WireTransferIdentifierRawP *wtid,
 			   const struct TALER_Amount *amount_with_fee,
 			   const struct TALER_Amount *closing_fee);
@@ -1869,7 +1875,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param date time of the wire transfer
    * @param wtid subject of the wire transfer
-   * @param wire_account details about the receiver account of the wire transfer
+   * @param wire_account details about the receiver account of the wire transfer,
+   *        including 'url' in payto://-format
    * @param amount amount that was transmitted
    * @return transaction status code
    */

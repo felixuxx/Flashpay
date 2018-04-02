@@ -99,6 +99,7 @@ history_traits (void *cls,
   return GNUNET_SYSERR;
 }
 
+
 /**
  * Test if the /admin/add/incoming transaction at offset @a off
  * has been /rejected.
@@ -115,7 +116,8 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
   const struct TALER_TESTING_Command *current_cmd;
 
   current_cmd = &is->commands[off];
-  TALER_LOG_INFO ("Is `%s' rejected?\n", current_cmd->label);
+  TALER_LOG_INFO ("Is `%s' rejected?\n",
+                  current_cmd->label);
   for (unsigned int i=0;i<is->ip;i++)
   {
     const struct TALER_TESTING_Command *c = &is->commands[i];
@@ -140,6 +142,7 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
   return GNUNET_NO;
 }
 
+
 /**
  * Free history @a h of length @a h_len.
  *
@@ -153,10 +156,11 @@ free_history (struct History *h,
   for (uint64_t off = 0;off<h_len;off++)
   {
     GNUNET_free (h[off].details.wire_transfer_subject);
-    json_decref (h[off].details.account_details);
+    GNUNET_free (h[off].details.account_url);
   }
   GNUNET_free_non_null (h);
 }
+
 
 /**
  * Log which history we expected.
@@ -178,10 +182,6 @@ print_expected (struct History *h,
               "Expected history:\n");
   for (uint64_t i=0;i<h_len;i++)
   {
-    char *acc;
-
-    acc = json_dumps (h[i].details.account_details,
-                      JSON_COMPACT);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "H(%llu): %s%s (serial: %llu, subject: %s, to: %s)\n",
                 (unsigned long long) i,
@@ -189,11 +189,10 @@ print_expected (struct History *h,
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 h[i].details.wire_transfer_subject,
-                acc);
-    if (NULL != acc)
-      free (acc);
+                h[i].details.account_url);
   }
 }
+
 
 /**
  * Build history of transactions matching the current
@@ -409,15 +408,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
       h[total].direction = TALER_BANK_DIRECTION_CREDIT;
       if (GNUNET_YES == cancelled)
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
-      h[total].details.account_details
-        = json_pack ("{s:s, s:s, s:I}",
-                     "type",
-                     "test",
-                     "bank_url",
-                     hs->bank_url,
-                     "account_number",
-                     (json_int_t) *debit_account_no);
-      GNUNET_assert (NULL != h[total].details.account_details);
+      GNUNET_asprintf (&h[total].details.account_url,
+                       "payto://x-taler-bank/%s/%llu",
+                       hs->bank_url,
+                       (unsigned long long) *debit_account_no);
     }
     if ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
            (hs->account_no == *debit_account_no))
@@ -425,15 +419,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
       h[total].direction = TALER_BANK_DIRECTION_DEBIT;
       if (GNUNET_YES == cancelled)
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
-      h[total].details.account_details
-        = json_pack ("{s:s, s:s, s:I}",
-                     "type",
-                     "test",
-                     "bank_url",
-                     hs->bank_url,
-                     "account_number",
-                     (json_int_t) *credit_account_no);
-      GNUNET_assert (NULL != h[total].details.account_details);
+      GNUNET_asprintf (&h[total].details.account_url,
+                       "payto://x-taler-bank/%s/%llu",
+                       hs->bank_url,
+                       (unsigned long long) *credit_account_no);
     }
     if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (hs->account_no == *credit_account_no)) ||
@@ -533,8 +522,8 @@ check_result (struct TALER_TESTING_Interpreter *is,
                      details->wire_transfer_subject)) ||
        (0 != TALER_amount_cmp (&h[off].details.amount,
                                &details->amount)) ||
-       (1 != json_equal (h[off].details.account_details,
-                         details->account_details)) )
+       (0 != strcasecmp (h[off].details.account_url,
+                         details->account_url)) )
   {
     GNUNET_break (0);
     print_expected (h, total, off);

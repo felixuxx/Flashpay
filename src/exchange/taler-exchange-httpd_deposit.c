@@ -402,9 +402,12 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                              &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == json) )
+  if ( (GNUNET_NO == res) ||
+       (NULL == json) )
     return MHD_YES;
-  memset (&deposit, 0, sizeof (deposit));
+  memset (&deposit,
+          0,
+          sizeof (deposit));
   res = TEH_PARSE_json_data (connection,
                              json,
                              spec);
@@ -426,7 +429,6 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
 
   if (TALER_EC_NONE !=
       (ec = TEH_json_validate_wireformat (wire,
-                                          GNUNET_NO,
                                           &emsg)))
   {
     GNUNET_JSON_parse_free (spec);
@@ -446,8 +448,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                            "timestamp");
   }
   if (GNUNET_OK !=
-      TALER_JSON_hash (wire,
-                       &my_h_wire))
+      TALER_JSON_wire_signature_hash (wire,
+                                      &my_h_wire))
   {
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
     GNUNET_JSON_parse_free (spec);

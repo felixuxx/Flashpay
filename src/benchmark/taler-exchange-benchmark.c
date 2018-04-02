@@ -895,8 +895,8 @@ spend_coin (struct Coin *coin,
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.h_contract_terms = h_contract_terms;
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (merchant_details,
-                                  &dr.h_wire));
+                 TALER_JSON_wire_signature_hash (merchant_details,
+                                                 &dr.h_wire));
 
   dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);

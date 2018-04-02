@@ -4,7 +4,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
-  exchange-signkeys.conf \
   coins.conf
 
 if USE_COVERAGE
@@ -34,6 +33,8 @@ taler_exchange_wire_SOURCES = \
   taler-exchange-wire.c
 taler_exchange_wire_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 GNUnet e.V.
+  Copyright (C) 2016, 2017, 2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -54,9 +54,58 @@ struct RejectContext
 
 
 /**
- * Handle to the plugin.
+ * Information we keep for each supported account.
  */
-static struct TALER_WIRE_Plugin *wire_plugin;
+struct WireAccount
+{
+  /**
+   * Accounts are kept in a DLL.
+   */
+  struct WireAccount *next;
+
+  /**
+   * Plugins are kept in a DLL.
+   */
+  struct WireAccount *prev;
+
+  /**
+   * Handle to the plugin.
+   */
+  struct TALER_WIRE_Plugin *wire_plugin;
+
+  /**
+   * Name of the section that configures this account.
+   */
+  char *section_name;
+
+  /**
+   * Are we running from scratch and should re-process all transactions
+   * for this account?
+   */
+  int reset_mode;
+
+  /**
+   * Until when is processing this wire plugin delayed?
+   */
+  struct GNUNET_TIME_Absolute delayed_until;
+
+};
+
+
+/**
+ * Head of list of loaded wire plugins.
+ */
+static struct WireAccount *wa_head;
+
+/**
+ * Tail of list of loaded wire plugins.
+ */
+static struct WireAccount *wa_tail;
+
+/**
+ * Wire plugin we are currently using.
+ */
+static struct WireAccount *wa_pos;
 
 /**
  * Which currency is used by this exchange?
@@ -89,11 +138,6 @@ static void *last_row_off;
  * Number of bytes in #last_row_off.
  */
 static size_t last_row_off_size;
-
-/**
- * Which wire plugin are we watching?
- */
-static char *type;
 
 /**
  * Should we delay the next request to the wire plugin a bit?
@@ -134,6 +178,8 @@ static struct TALER_WIRE_RejectHandle *rt;
 static void
 shutdown_task (void *cls)
 {
+  struct WireAccount *wa;
+
   if (NULL != task)
   {
     GNUNET_SCHEDULER_cancel (task);
@@ -141,26 +187,69 @@ shutdown_task (void *cls)
   }
   if (NULL != hh)
   {
-    wire_plugin->get_history_cancel (wire_plugin->cls,
-				     hh);
+    wa_pos->wire_plugin->get_history_cancel (wa_pos->wire_plugin->cls,
+                                             hh);
     hh = NULL;
   }
   if (NULL != rt)
   {
     char *wtid_s;
 
-    wtid_s = wire_plugin->reject_transfer_cancel (wire_plugin->cls,
-                                                  rt);
+    wtid_s = wa_pos->wire_plugin->reject_transfer_cancel (wa_pos->wire_plugin->cls,
+                                                          rt);
     rt = NULL;
     GNUNET_free (wtid_s);
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   db_plugin = NULL;
-  TALER_WIRE_plugin_unload (wire_plugin);
-  wire_plugin = NULL;
+  while (NULL != (wa = wa_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (wa_head,
+                                 wa_tail,
+                                 wa);
+    TALER_WIRE_plugin_unload (wa->wire_plugin);
+    GNUNET_free (wa->section_name);
+    GNUNET_free (wa);
+  }
+  wa_pos = NULL;
   GNUNET_free_non_null (last_row_off);
   last_row_off = NULL;
   last_row_off_size = 0;
+}
+
+
+/**
+ * Function called with information about a wire account.  Adds the
+ * account to our list (if it is enabled and we can load the plugin).
+ *
+ * @param cls closure, NULL
+ * @param ai account information
+ */
+static void
+add_account_cb (void *cls,
+                const struct TALER_EXCHANGEDB_AccountInfo *ai)
+{
+  struct WireAccount *wa;
+
+  (void) cls;
+  if (GNUNET_YES != ai->credit_enabled)
+    return; /* not enabled for us, skip */
+  wa = GNUNET_new (struct WireAccount);
+  wa->reset_mode = reset_mode;
+  wa->wire_plugin = TALER_WIRE_plugin_load (cfg,
+                                            ai->plugin_name);
+  if (NULL == wa->wire_plugin)
+  {
+    fprintf (stderr,
+             "Failed to load wire plugin for `%s'\n",
+             ai->plugin_name);
+    GNUNET_free (wa);
+    return;
+  }
+  wa->section_name = GNUNET_strdup (ai->section_name);
+  GNUNET_CONTAINER_DLL_insert (wa_head,
+                               wa_tail,
+                               wa);
 }
 
 
@@ -173,12 +262,6 @@ shutdown_task (void *cls)
 static int
 exchange_serve_process_config ()
 {
-  if (NULL == type)
-  {
-    fprintf (stderr,
-             "Option `-t' to specify wire plugin is mandatory.\n");
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -206,17 +289,16 @@ exchange_serve_process_config ()
              "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
-  if (NULL ==
-      (wire_plugin = TALER_WIRE_plugin_load (cfg,
-					     type)))
+  TALER_EXCHANGEDB_find_accounts (cfg,
+                                  &add_account_cb,
+                                  NULL);
+  if (NULL == wa_head)
   {
     fprintf (stderr,
-             "Failed to load wire plugin for `%s'\n",
-             type);
+             "No wire accounts configured for credit!\n");
     TALER_EXCHANGEDB_plugin_unload (db_plugin);
     return GNUNET_SYSERR;
   }
-
   return GNUNET_OK;
 }
 
@@ -292,12 +374,11 @@ history_cb (void *cls,
   struct TALER_ReservePublicKeyP reserve_pub;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Got history callback, direction %u!\n", (unsigned int) dir);
-
+              "Got history callback, direction %u!\n",
+              (unsigned int) dir);
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     hh = NULL;
-
     if (TALER_EC_NONE != ec)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -309,18 +390,27 @@ history_cb (void *cls,
     qs = db_plugin->commit (db_plugin->cls,
 			    session);
     if ( (GNUNET_YES == delay) &&
-         (test_mode) )
+         (test_mode) &&
+         (NULL == wa_pos->next) )
     {
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_OK;
     }
     if (GNUNET_YES == delay)
-      task = GNUNET_SCHEDULER_add_delayed (DELAY,
-					   &find_transfers,
-					   NULL);
-    else
-      task = GNUNET_SCHEDULER_add_now (&find_transfers,
-				       NULL);
+    {
+      wa_pos->delayed_until
+        = GNUNET_TIME_relative_to_absolute (DELAY);
+      GNUNET_free_non_null (last_row_off);
+      last_row_off = NULL;
+      last_row_off_size = 0;
+      wa_pos = wa_pos->next;
+      if (NULL == wa_pos)
+        wa_pos = wa_head;
+      GNUNET_assert (NULL != wa_pos);
+    }
+    task = GNUNET_SCHEDULER_add_at (wa_pos->delayed_until,
+                                    &find_transfers,
+                                    NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
   if (NULL != details->wtid_s)
@@ -344,11 +434,12 @@ history_cb (void *cls,
     rtc = GNUNET_new (struct RejectContext);
     rtc->session = session;
     rtc->wtid_s = GNUNET_strdup (details->wtid_s);
-    rt = wire_plugin->reject_transfer (wire_plugin->cls,
-                                       row_off,
-                                       row_off_size,
-                                       &reject_cb,
-                                       rtc);
+    rt = wa_pos->wire_plugin->reject_transfer (wa_pos->wire_plugin->cls,
+                                               wa_pos->section_name,
+                                               row_off,
+                                               row_off_size,
+                                               &reject_cb,
+                                               rtc);
     return GNUNET_SYSERR; /* will continue later... */
   }
 
@@ -366,7 +457,8 @@ history_cb (void *cls,
 				      &reserve_pub,
 				      &details->amount,
 				      details->execution_date,
-				      details->account_details,
+				      details->account_url,
+                                      wa_pos->section_name,
 				      row_off,
 				      row_off_size);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -434,10 +526,11 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  if (! reset_mode)
+  if (! wa_pos->reset_mode)
   {
     qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
                                                      session,
+                                                     wa_pos->section_name,
                                                      &last_row_off,
                                                      &last_row_off_size);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -456,17 +549,19 @@ find_transfers (void *cls)
       return;
     }
   }
+  wa_pos->reset_mode = GNUNET_NO;
   GNUNET_assert ( (NULL == last_row_off) ||
                   ( (NULL != last_row_off) &&
                     (0 != last_row_off_size) ) );
   delay = GNUNET_YES;
-  hh = wire_plugin->get_history (wire_plugin->cls,
-				 TALER_BANK_DIRECTION_CREDIT,
-				 last_row_off,
-				 last_row_off_size,
-				 1024,
-				 &history_cb,
-				 session);
+  hh = wa_pos->wire_plugin->get_history (wa_pos->wire_plugin->cls,
+                                         wa_pos->section_name,
+                                         TALER_BANK_DIRECTION_CREDIT,
+                                         last_row_off,
+                                         last_row_off_size,
+                                         1024,
+                                         &history_cb,
+                                         session);
   if (NULL == hh)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -501,7 +596,8 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-
+  wa_pos = wa_head;
+  GNUNET_assert (NULL != wa_pos);
   task = GNUNET_SCHEDULER_add_now (&find_transfers,
                                    NULL);
   GNUNET_SCHEDULER_add_shutdown (&shutdown_task,
@@ -521,11 +617,6 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_string ('t',
-				 "type",
-				 "PLUGINNAME",
-				 "which wire plugin to use",
-				 &type),
     GNUNET_GETOPT_option_flag ('T',
 			       "test",
 			       "run in test mode and exit when idle",

@@ -47,24 +47,21 @@ TEH_VALIDATION_done (void);
  * a wire address.
  *
  * @param wire the JSON wire format object
- * @param ours #GNUNET_YES if the signature should match our master key
  * @param[out] emsg set to error message if we return an error code
  * @return #TALER_EC_NONE if correctly formatted; otherwise error code
  */
 enum TALER_ErrorCode
 TEH_json_validate_wireformat (const json_t *wire,
-                              int ours,
                               char **emsg);
 
 
 /**
- * Obtain JSON of the supported wire methods for a given
- * account name prefix.
+ * Obtain JSON response for /wire
  *
- * @return JSON array with the supported validation methods
+ * @return JSON object with the supported wire transfer options, NULL on error
  */
 json_t *
-TEH_VALIDATION_get_wire_methods (void);
+TEH_VALIDATION_get_wire_response (void);
 
 
 #endif

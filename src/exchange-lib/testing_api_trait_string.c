@@ -30,7 +30,6 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-#define TALER_TESTING_TRAIT_WIRE_DETAILS "wire-details"
 #define TALER_TESTING_TRAIT_CONTRACT_TERMS "contract-terms"
 #define TALER_TESTING_TRAIT_TRANSFER_SUBJECT "transfer-subject"
 #define TALER_TESTING_TRAIT_AMOUNT "amount"
@@ -75,49 +74,6 @@ TALER_TESTING_make_trait_contract_terms
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_CONTRACT_TERMS,
     .ptr = (const void *) contract_terms
-  };
-  return ret;
-}
-
-
-/**
- * Obtain wire details from @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param wire_details[out] where to write the wire details.
- * @return #GNUNET_OK on success
- */
-int
-TALER_TESTING_get_trait_wire_details
-  (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const char **wire_details)
-{
-  return cmd->traits (cmd->cls,
-                      (void **) wire_details,
-                      TALER_TESTING_TRAIT_WIRE_DETAILS,
-                      index);
-}
-
-/**
- * Offer wire details in a trait.
- *
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param wire_details wire details to offer
- * @return the trait, to be put in the traits array of the command
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_wire_details
-  (unsigned int index,
-   const char *wire_details)
-{
-  struct TALER_TESTING_Trait ret = {
-    .index = index,
-    .trait_name = TALER_TESTING_TRAIT_WIRE_DETAILS,
-    .ptr = (const void *) wire_details
   };
   return ret;
 }
@@ -289,7 +245,7 @@ TALER_TESTING_make_trait_order_id
   struct TALER_TESTING_Trait ret = {
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_ORDER_ID,
-    .ptr = (const void *) order_id 
+    .ptr = (const void *) order_id
   };
   return ret;
 }
@@ -333,7 +289,7 @@ TALER_TESTING_make_trait_rejected
   struct TALER_TESTING_Trait ret = {
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_REJECTED,
-    .ptr = (const void *) rejected 
+    .ptr = (const void *) rejected
   };
   return ret;
 }

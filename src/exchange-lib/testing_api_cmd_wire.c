@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"
+#include "taler_wire_lib.h"
 #include "taler_testing_lib.h"
 
 struct WireState
@@ -71,19 +72,6 @@ struct WireState
 
 
 /**
- * Check all the expected values have been returned by /wire.
- *
- * @param cls closure
- * @param wire_method name of the wire method (i.e. "sepa")
- * @param fees fee structure for this method
- */
-static void
-check_method_and_fee_cb
-  (void *cls,
-   const char *wire_method,
-   const struct TALER_EXCHANGE_WireAggregateFees *fees);
-
-/**
  * Callbacks called with the result(s) of a wire format inquiry
  * request to the exchange.
  *
@@ -92,23 +80,20 @@ check_method_and_fee_cb
  *                    for successful request; 0 if the exchange's
  *                    reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param obj the received JSON reply, if successful this should
- *            be the wire format details as provided by /wire.
+ * @param accounts_len length of the @a accounts array
+ * @param accounts list of wire accounts of the exchange, NULL on error
  */
 static void
 wire_cb (void *cls,
          unsigned int http_status,
 	 enum TALER_ErrorCode ec,
-         const json_t *obj)
+         unsigned int accounts_len,
+         const struct TALER_EXCHANGE_WireAccount *accounts)
 {
   struct WireState *ws = cls;
-  struct TALER_TESTING_Command *cmd
-    = &ws->is->commands[ws->is->ip];
+  struct TALER_TESTING_Command *cmd = &ws->is->commands[ws->is->ip];
+  struct TALER_Amount expected_fee;
 
-  /**
-   * The handle has been free'd by GNUnet curl-lib. FIXME:
-   * shouldn't GNUnet nullify it once it frees it?
-   */
   ws->wh = NULL;
   if (ws->expected_response_code != http_status)
   {
@@ -117,73 +102,53 @@ wire_cb (void *cls,
     return;
   }
 
-  if (GNUNET_OK != TALER_EXCHANGE_wire_get_fees
-       (&TALER_EXCHANGE_get_keys (ws->exchange)->master_pub,
-        obj,
-        // will check synchronously.
-        &check_method_and_fee_cb,
-        ws))
+  if (MHD_HTTP_OK == http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Wire fee extraction in command %s failed\n",
-                cmd->label);
-    json_dumpf (obj, stderr, 0);
-    TALER_TESTING_interpreter_fail (ws->is);
-    return;
-  }
+    for (unsigned int i=0;i<accounts_len;i++)
+    {
+      char *method;
 
-  if (ws->method_found != GNUNET_OK)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "/wire does not offer method '%s'\n",
-                ws->expected_method);
-    TALER_TESTING_interpreter_fail (ws->is);
-    return;
+      method = TALER_WIRE_payto_get_method (accounts[i].url);
+      if (0 == strcmp (ws->expected_method,
+                       method))
+      {
+        ws->method_found = GNUNET_OK;
+        if (NULL != ws->expected_fee)
+        {
+          GNUNET_assert (GNUNET_OK ==
+                         TALER_string_to_amount (ws->expected_fee,
+                                                 &expected_fee));
+          for (const struct TALER_EXCHANGE_WireAggregateFees *waf = accounts[i].fees;
+               NULL != waf;
+               waf = waf->next)
+          {
+            if (0 != TALER_amount_cmp (&waf->wire_fee,
+                                       &expected_fee))
+              {
+                GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                            "Wire fee missmatch to command %s\n",
+                            cmd->label);
+                TALER_TESTING_interpreter_fail (ws->is);
+                GNUNET_free (method);
+                return;
+              }
+          }
+        }
+      }
+      GNUNET_free (method);
+    }
+    if (GNUNET_OK != ws->method_found)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "/wire does not offer method '%s'\n",
+                  ws->expected_method);
+      TALER_TESTING_interpreter_fail (ws->is);
+      return;
+    }
   }
   TALER_TESTING_interpreter_next (ws->is);
 }
 
-/**
- * Check all the expected values have been returned by /wire.
- *
- * @param cls closure
- * @param wire_method name of the wire method (i.e. "sepa")
- * @param fees fee structure for this method
- */
-static void
-check_method_and_fee_cb
-  (void *cls,
-   const char *wire_method,
-   const struct TALER_EXCHANGE_WireAggregateFees *fees)
-{
-  struct WireState *ws = cls;
-  struct TALER_TESTING_Command *cmd
-    = &ws->is->commands[ws->is->ip]; // ugly?
-  struct TALER_Amount expected_fee;
-
-  if (0 == strcmp (ws->expected_method, wire_method))
-    ws->method_found = GNUNET_OK;
-
-  if ( ws->expected_fee && (ws->method_found == GNUNET_OK) )
-  {
-    GNUNET_assert (GNUNET_OK == TALER_string_to_amount
-                     (ws->expected_fee,
-                      &expected_fee));
-    while (NULL != fees)
-    {
-      if (0 != TALER_amount_cmp (&fees->wire_fee,
-                                 &expected_fee))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Wire fee missmatch to command %s\n",
-                    cmd->label);
-        TALER_TESTING_interpreter_fail (ws->is);
-        return;
-      }
-      fees = fees->next;
-    }
-  }
-}
 
 /**
  * Run the command.

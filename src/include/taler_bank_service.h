@@ -217,9 +217,9 @@ struct TALER_BANK_TransferDetails
   char *wire_transfer_subject;
 
   /**
-   * The other account that was involved
+   * payto://-URL of the other account that was involved
    */
-  json_t *account_details;
+  char *account_url;
 };
 
 
@@ -346,5 +346,30 @@ TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
 void
 TALER_BANK_reject_cancel (struct TALER_BANK_RejectHandle *rh);
 
+
+/**
+ * Convenience method for parsing configuration section with bank
+ * authentication data.  The section must contain an option
+ * "METHOD", plus other options that depend on the METHOD specified.
+ *
+ * @param cfg configuration to parse
+ * @param section the section with the configuration data
+ * @param auth[out] set to the configuration data found
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           const char *section,
+                           struct TALER_BANK_AuthenticationData *auth);
+
+
+/**
+ * Free memory inside of @a auth (but not auth itself).
+ * Dual to #TALER_BANK_auth_parse_cfg().
+ *
+ * @param auth authentication data to free
+ */
+void
+TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth);
 
 #endif  /* _TALER_BANK_SERVICE_H */

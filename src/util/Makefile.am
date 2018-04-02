@@ -43,6 +43,7 @@ libtalerutil_wallet_la_LDFLAGS = \
 libtalerutil_la_SOURCES = \
   amount.c \
   crypto.c \
+  crypto_wire.c \
   util.c \
   os_installation.c
 

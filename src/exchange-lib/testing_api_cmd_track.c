@@ -183,7 +183,7 @@ deposit_wtid_cb
     tts->wtid = *wtid;
     if (NULL != tts->bank_transfer_reference)
     {
-      const struct TALER_TESTING_Command *bank_transfer_cmd; 
+      const struct TALER_TESTING_Command *bank_transfer_cmd;
       char *ws;
 
       ws = GNUNET_STRINGS_data_to_string_alloc (wtid,
@@ -205,7 +205,7 @@ deposit_wtid_cb
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
-        return;       
+        return;
       }
 
       if (0 != strcmp (ws, transfer_subject))
@@ -248,14 +248,13 @@ track_transaction_run (void *cls,
   const struct TALER_TESTING_Command *transaction_cmd;
   struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  const char *wire_details;
   const char *contract_terms;
-  json_t *j_wire_details;
+  const json_t *wire_details;
   json_t *j_contract_terms;
   struct GNUNET_HashCode h_wire_details;
   struct GNUNET_HashCode h_contract_terms;
   const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
-  
+
   tts->is = is;
   transaction_cmd = TALER_TESTING_interpreter_lookup_command
     (tts->is, tts->transaction_reference);
@@ -264,7 +263,7 @@ track_transaction_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
-    return;  
+    return;
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
@@ -272,7 +271,7 @@ track_transaction_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
-    return;  
+    return;
   }
 
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
@@ -296,31 +295,31 @@ track_transaction_run (void *cls,
   }
 
   /* Parse them.. */
-  j_wire_details = json_loads
-    (wire_details, JSON_REJECT_DUPLICATES, NULL);
   j_contract_terms = json_loads
     (contract_terms, JSON_REJECT_DUPLICATES, NULL);
-  
-  if ((NULL == j_wire_details) || (NULL == j_contract_terms))
+
+  if ((NULL == wire_details) || (NULL == j_contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
-    return;  
+    return;
   }
 
   /* Should not fail here, json has been parsed already */
   GNUNET_assert
-    ( (GNUNET_OK == TALER_JSON_hash (j_wire_details,
-                                      &h_wire_details)) &&
-      (GNUNET_OK == TALER_JSON_hash (j_contract_terms,
-                                      &h_contract_terms)) );
+    ( (GNUNET_OK ==
+       TALER_JSON_wire_signature_hash (wire_details,
+                                       &h_wire_details)) &&
+      (GNUNET_OK ==
+       TALER_JSON_hash (j_contract_terms,
+                        &h_contract_terms)) );
 
   if (GNUNET_OK != TALER_TESTING_get_trait_peer_key
     (transaction_cmd, 0, &merchant_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
-    return; 
+    return;
   }
 
   tts->tth = TALER_EXCHANGE_track_transaction
@@ -580,7 +579,7 @@ track_transfer_cb
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);
-      return;    
+      return;
     }
 
     /**
@@ -594,8 +593,7 @@ track_transfer_cb
     if (NULL != tts->wire_details_reference)
     {
       const struct TALER_TESTING_Command *wire_details_cmd;
-      const char *wire_details;
-      json_t *j_wire_details;
+      const json_t *wire_details;
       struct GNUNET_HashCode h_wire_details;
 
       if (NULL == (wire_details_cmd
@@ -615,13 +613,9 @@ track_transfer_cb
         return;
       }
 
-      j_wire_details = json_loads
-        (wire_details, JSON_REJECT_DUPLICATES, NULL);
-
-      GNUNET_assert (NULL != j_wire_details);
-
-      GNUNET_assert (GNUNET_OK == TALER_JSON_hash
-        (j_wire_details, &h_wire_details));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_JSON_wire_signature_hash (wire_details,
+                                                     &h_wire_details));
 
       if (0 != memcmp (&h_wire_details,
                        h_wire,
@@ -647,7 +641,7 @@ track_transfer_cb
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
-        return;      
+        return;
       }
 
       if (GNUNET_OK != TALER_TESTING_get_trait_amount
@@ -657,7 +651,7 @@ track_transfer_cb
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      
+
       GNUNET_assert (GNUNET_OK == TALER_string_to_amount
         (total_amount_from_reference_str,
          &total_amount_from_reference));
@@ -699,7 +693,7 @@ track_transfer_run (void *cls,
    * WTID */
   memset (&wtid, 0, sizeof (wtid));
   wtid_ptr = &wtid;
-  
+
   tts->is = is;
   if (NULL != tts->wtid_reference)
   {
@@ -720,7 +714,7 @@ track_transfer_run (void *cls,
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (tts->is);
-      return;     
+      return;
     }
     GNUNET_assert (NULL != wtid_ptr);
   }
@@ -756,7 +750,7 @@ TALER_TESTING_cmd_track_transfer_empty
 {
   struct TrackTransferState *tts;
   struct TALER_TESTING_Command cmd;
-  
+
   tts = GNUNET_new (struct TrackTransferState);
 
   tts->wtid_reference = wtid_reference;
@@ -769,7 +763,7 @@ TALER_TESTING_cmd_track_transfer_empty
   cmd.run = &track_transfer_run;
   cmd.cleanup = &track_transfer_cleanup;
 
-  return cmd; 
+  return cmd;
 }
 
 /**
@@ -801,7 +795,7 @@ TALER_TESTING_cmd_track_transfer
 {
   struct TrackTransferState *tts;
   struct TALER_TESTING_Command cmd;
-  
+
   tts = GNUNET_new (struct TrackTransferState);
 
   tts->wtid_reference = wtid_reference;
@@ -816,5 +810,5 @@ TALER_TESTING_cmd_track_transfer
   cmd.run = &track_transfer_run;
   cmd.cleanup = &track_transfer_cleanup;
 
-  return cmd; 
+  return cmd;
 }

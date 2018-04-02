@@ -59,10 +59,11 @@ src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
 src/benchmark/taler-exchange-benchmark
 src/benchmark/test_benchmark_home/.local/share/taler/exchange/live-keys/
+src/benchmark/test_benchmark_home/.local/share/taler/exchange/wirefees/
 src/json/test_json
-src/wire/test_sepa_wireformat
-src/wire/test_wire_plugin
-src/wire/test_wire_plugin_transactions_test
+src/wire-plugins/test_ebics_wireformat
+src/wire-plugins/test_wire_plugin
+src/wire-plugins/test_wire_plugin_transactions_taler_bank
 src/pq/test_pq
 src/util/test_amount
 src/util/test_crypto

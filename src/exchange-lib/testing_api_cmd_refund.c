@@ -139,7 +139,7 @@ refund_run (void *cls,
             const struct TALER_TESTING_Command *cmd,
             struct TALER_TESTING_Interpreter *is)
 {
-  struct RefundState *rs = cls; 
+  struct RefundState *rs = cls;
   struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin;
   const char *contract_terms;
@@ -193,7 +193,7 @@ refund_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return; 
+    return;
   }
 
   j_contract_terms = json_loads
@@ -201,8 +201,9 @@ refund_run (void *cls,
 
   /* Very unlikely to fail */
   GNUNET_assert (NULL != j_contract_terms);
-  GNUNET_assert (GNUNET_OK == TALER_JSON_hash
-    (j_contract_terms, &h_contract_terms));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_hash (j_contract_terms,
+                                  &h_contract_terms));
 
   json_decref (j_contract_terms);
 
@@ -222,7 +223,7 @@ refund_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return; 
+    return;
   }
 
   rs->rh = TALER_EXCHANGE_refund

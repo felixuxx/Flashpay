@@ -1243,19 +1243,18 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           unsigned int reserve_index;
           int ret;
           struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
-          json_t *sndr;
+          char *sndr;
           uint32_t uid;
           struct GNUNET_TIME_Absolute now;
 
           reserve_index = state->cmd[state->i].details.insert_reserve.index_reserve;
           reserve = state->cmd[reserve_index].exposed.data.reserve;
-          sndr = json_pack ("{s:i}",
-                            "account",
-                            (int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                                            UINT32_MAX));
+          GNUNET_asprintf (&sndr,
+                           "payto://x-taler-test/localhost:8080/%u",
+                           (unsigned int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                                                    UINT32_MAX));
           uid = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                           UINT32_MAX);
-          GNUNET_assert (NULL != sndr);
           now = GNUNET_TIME_absolute_get ();
           (void) GNUNET_TIME_round_abs (&now);
           ret = state->plugin->reserves_in_insert (state->plugin->cls,
@@ -1264,10 +1263,11 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                    &reserve->reserve.balance,
                                                    now,
                                                    sndr,
+                                                   "account-1",
                                                    &uid,
                                                    sizeof (uid));
           GNUNET_assert (GNUNET_SYSERR != ret);
-          json_decref (sndr);
+          GNUNET_free (sndr);
         }
         break;
 

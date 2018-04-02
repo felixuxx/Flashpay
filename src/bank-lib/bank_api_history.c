@@ -136,10 +136,12 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
       GNUNET_JSON_parse_free (hist_spec);
       return GNUNET_SYSERR;
     }
-    td.account_details = json_pack ("{s:s, s:s, s:I}",
-                                    "type", "test",
-                                    "bank_url", hh->bank_base_url,
-                                    "account_number", (json_int_t) other_account);
+    GNUNET_asprintf (&td.account_url,
+                     ('/' == hh->bank_base_url[strlen(hh->bank_base_url)-1])
+                     ? "payto://x-taler-bank/%s%llu"
+                     : "payto://x-taler-bank/%s/%llu",
+                     hh->bank_base_url,
+                     (unsigned long long) other_account);
     hh->hcb (hh->hcb_cls,
              MHD_HTTP_OK,
              TALER_EC_NONE,
@@ -147,7 +149,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
              row_id,
              &td,
              transaction);
-    json_decref (td.account_details);
+    GNUNET_free (td.account_url);
     GNUNET_JSON_parse_free (hist_spec);
   }
   return GNUNET_OK;

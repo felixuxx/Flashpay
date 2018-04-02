@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 GNUnet e.V.
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,6 +28,7 @@
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_track_transfer.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler_wire_lib.h"
 
 
 /**
@@ -236,8 +237,8 @@ struct WtidTransactionContext
  * @param cls our context for transmission
  * @param rowid which row in the DB is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param wire_method which wire plugin was used
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param wire where the funds were sent
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param coin_pub which public key was this payment about
@@ -248,8 +249,8 @@ static void
 handle_transaction_data (void *cls,
                          uint64_t rowid,
                          const struct TALER_MerchantPublicKeyP *merchant_pub,
-                         const char *wire_method,
                          const struct GNUNET_HashCode *h_wire,
+                         const json_t *wire,
                          struct GNUNET_TIME_Absolute exec_time,
                          const struct GNUNET_HashCode *h_contract_terms,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -259,15 +260,22 @@ handle_transaction_data (void *cls,
   struct WtidTransactionContext *ctx = cls;
   struct TALER_Amount delta;
   struct TEH_TrackTransferDetail *wdd;
+  char *wire_method;
 
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
+  if (NULL == (wire_method = TALER_JSON_wire_to_method (wire)))
+  {
+    GNUNET_break (0);
+    ctx->is_valid = GNUNET_SYSERR;
+    return;
+  }
   if (GNUNET_NO == ctx->is_valid)
   {
     ctx->merchant_pub = *merchant_pub;
     ctx->h_wire = *h_wire;
     ctx->exec_time = exec_time;
-    ctx->wire_method = GNUNET_strdup (wire_method);
+    ctx->wire_method = wire_method;
     ctx->is_valid = GNUNET_YES;
     if (GNUNET_OK !=
         TALER_amount_subtract (&ctx->total,
@@ -292,8 +300,10 @@ handle_transaction_data (void *cls,
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
+      GNUNET_free (wire_method);
       return;
     }
+    GNUNET_free (wire_method);
     if (GNUNET_OK !=
         TALER_amount_subtract (&delta,
                                deposit_value,

@@ -416,28 +416,35 @@ TALER_TESTING_url_port_free (const char *url)
   return GNUNET_OK;
 }
 
+
 /**
- * Allocate and return a piece of wire-details.  Mostly, it adds
- * the bank_url to the JSON.
+ * Allocate and return a piece of wire-details.  Combines
+ * the @a account_no and the @a bank_url to a
+ * @a payto://-URL and adds some salt to create the JSON.
  *
- * @param template the wire-details template.
+ * @param account_no account number
  * @param bank_url the bank_url
- *
- * @return the filled out and stringified wire-details.  To
- *         be manually free'd.
+ * @return JSON describing the account, including the
+ *         payto://-URL of the account, must be manually decref'd
  */
-char *
-TALER_TESTING_make_wire_details (const char *template,
+json_t *
+TALER_TESTING_make_wire_details (unsigned long long account_no,
                                  const char *bank_url)
 {
-  json_t *jtemplate;
+  char *payto;
+  json_t *ret;
 
-  GNUNET_assert (NULL != (jtemplate = json_loads
-    (template, JSON_REJECT_DUPLICATES, NULL)));
-  GNUNET_assert (0 == json_object_set
-    (jtemplate, "bank_url", json_string (bank_url)));
-  return json_dumps (jtemplate, JSON_COMPACT);
+  GNUNET_asprintf (&payto,
+                   "payto://x-taler-bank/%s/%llu",
+                   bank_url,
+                   account_no);
+  ret = json_pack ("{s:s, s:s}",
+                   "url", payto,
+                   "salt", "test-salt (must be constant for aggregation tests)");
+  GNUNET_free (payto);
+  return ret;
 }
+
 
 /**
  * Prepare launching a fakebank.  Check that the configuration
@@ -445,13 +452,18 @@ TALER_TESTING_make_wire_details (const char *template,
  * If everything is OK, return the configured URL of the fakebank.
  *
  * @param config_filename configuration file to use
+ * @param config_section which account to use (must match x-taler-bank)
  * @return NULL on error, fakebank URL otherwise
  */
 char *
-TALER_TESTING_prepare_fakebank (const char *config_filename)
+TALER_TESTING_prepare_fakebank (const char *config_filename,
+                                const char *config_section)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *payto_url;
   char *fakebank_url;
+  const char *start;
+  const char *end;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
@@ -459,17 +471,37 @@ TALER_TESTING_prepare_fakebank (const char *config_filename)
     return NULL;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange-wire-test",
-                                             "BANK_URL",
-                                             &fakebank_url))
+                                             config_section,
+                                             "URL",
+                                             &payto_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                               "exchange-wire-test",
-                               "BANK_URL");
+                               config_section,
+                               "URL");
     GNUNET_CONFIGURATION_destroy (cfg);
     return NULL;
   }
   GNUNET_CONFIGURATION_destroy (cfg);
+  if (0 != strncasecmp (payto_url,
+                        "payto://x-taler-bank/",
+                        strlen ("payto://x-taler-bank/")))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_WARNING,
+                               config_section,
+                               "URL",
+                               "expected `x-taler-bank' payto://-URL");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (payto_url);
+    return NULL;
+  }
+  start = &payto_url [strlen ("payto://x-taler-bank/")];
+  end = strchr (start,
+                (unsigned char) '/');
+  if (NULL == end)
+    end = &start[strlen (start)];
+  fakebank_url = GNUNET_strndup (start,
+                                 end - start);
+  GNUNET_free (payto_url);
   if (GNUNET_OK !=
       TALER_TESTING_url_port_free (fakebank_url))
   {

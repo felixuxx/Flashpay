@@ -139,7 +139,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      json_t *wire_account;
+      const char *wire_url;
       void *wire_reference;
       size_t wire_reference_size;
       struct GNUNET_TIME_Absolute timestamp;
@@ -150,8 +150,8 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                                   &wire_reference_size),
         GNUNET_JSON_spec_absolute_time ("timestamp",
                                         &timestamp),
-        GNUNET_JSON_spec_json ("sender_account_details",
-                               &wire_account),
+        GNUNET_JSON_spec_string ("sender_account_url",
+                                 &wire_url),
         GNUNET_JSON_spec_end()
       };
 
@@ -173,7 +173,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      rhistory[off].details.in_details.sender_account_details = wire_account;
+      rhistory[off].details.in_details.sender_url = GNUNET_strdup (wire_url);
       rhistory[off].details.in_details.wire_reference = wire_reference;
       rhistory[off].details.in_details.wire_reference_size = wire_reference_size;
       rhistory[off].details.in_details.timestamp = timestamp;
@@ -361,8 +361,8 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       TALER_amount_hton (&rcc.closing_amount,
 			 &amount);
       if (GNUNET_OK !=
-          TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
-                           &rcc.h_wire))
+          TALER_JSON_wire_signature_hash (rhistory[off].details.close_details.receiver_account_details,
+                                          &rcc.h_wire))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
@@ -440,8 +440,7 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
     {
     case TALER_EXCHANGE_RTT_DEPOSIT:
       GNUNET_free_non_null (rhistory[i].details.in_details.wire_reference);
-      if (NULL != rhistory[i].details.in_details.sender_account_details)
-        json_decref (rhistory[i].details.in_details.sender_account_details);
+      GNUNET_free_non_null (rhistory[i].details.in_details.sender_url);
       break;
     case TALER_EXCHANGE_RTT_WITHDRAWAL:
       break;

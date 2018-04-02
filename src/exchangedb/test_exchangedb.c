@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2017 GNUnet e.V.
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -703,8 +703,8 @@ static void
 cb_wt_never (void *cls,
              uint64_t serial_id,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
-             const char *wire_method,
              const struct GNUNET_HashCode *h_wire,
+             const json_t *wire,
              struct GNUNET_TIME_Absolute exec_time,
              const struct GNUNET_HashCode *h_contract_terms,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -747,8 +747,8 @@ static void
 cb_wt_check (void *cls,
              uint64_t rowid,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
-             const char *wire_method,
              const struct GNUNET_HashCode *h_wire,
+             const json_t *wire,
              struct GNUNET_TIME_Absolute exec_time,
              const struct GNUNET_HashCode *h_contract_terms,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -759,8 +759,9 @@ cb_wt_check (void *cls,
   GNUNET_assert (0 == memcmp (merchant_pub,
                               &merchant_pub_wt,
                               sizeof (struct TALER_MerchantPublicKeyP)));
-  GNUNET_assert (0 == strcmp (wire_method,
-                              "SEPA"));
+  GNUNET_assert (0 == strcmp (json_string_value (json_object_get (wire,
+                                                                  "url")),
+                              "payto://sepa/DE67830654080004822650"));
   GNUNET_assert (0 == memcmp (h_wire,
                               &h_wire_wt,
                               sizeof (struct GNUNET_HashCode)));
@@ -842,8 +843,8 @@ deposit_cb (void *cls,
   deposit_rowid = rowid;
   if (NULL != wire)
     GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_hash (wire,
-                                    &h_wire));
+                   TALER_JSON_wire_signature_hash (wire,
+                                                   &h_wire));
   if ( (0 != memcmp (merchant_pub,
                      &deposit->merchant_pub,
                      sizeof (struct TALER_MerchantPublicKeyP))) ||
@@ -960,7 +961,7 @@ audit_reserve_in_cb (void *cls,
                      uint64_t rowid,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
                      const struct TALER_Amount *credit,
-                     const json_t *sender_account_details,
+                     const char *sender_account_details,
                      const void *wire_reference,
                      size_t wire_reference_size,
                      struct GNUNET_TIME_Absolute execution_date)
@@ -1156,8 +1157,6 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
 }
 
 
-static json_t *wire_out_account;
-
 static  struct TALER_Amount wire_out_amount;
 
 
@@ -1204,11 +1203,11 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   auditor_row_cnt = 0;
-  memset (&wire_out_wtid, 42, sizeof (wire_out_wtid));
+  memset (&wire_out_wtid,
+          42,
+          sizeof (wire_out_wtid));
   wire_out_date = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&wire_out_date);
-  wire_out_account = json_loads ("{ \"account\":\"1\" }", 0, NULL);
-  GNUNET_assert (NULL != wire_out_account);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1",
                                          &wire_out_amount));
@@ -1262,13 +1261,25 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
 
   /* Now let's fix the transient constraint violation by
      putting in the WTID into the wire_out table */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->store_wire_transfer_out (plugin->cls,
-                                           session,
-                                           wire_out_date,
-                                           &wire_out_wtid,
-                                           wire_out_account,
-                                           &wire_out_amount));
+  {
+    json_t *wire_out_account;
+
+    wire_out_account = json_pack ("{s:s,s:s}",
+                                  "url", "payto://x-taler-bank/localhost:8080/1",
+                                  "salt", "this-is-my-salt");
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+        plugin->store_wire_transfer_out (plugin->cls,
+                                         session,
+                                         wire_out_date,
+                                         &wire_out_wtid,
+                                         wire_out_account,
+                                         &wire_out_amount))
+    {
+      json_decref (wire_out_account);
+      FAILIF (1);
+    }
+    json_decref (wire_out_account);
+  }
   /* And now the commit should still succeed! */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls,
@@ -1365,8 +1376,8 @@ wire_missing_cb (void *cls,
 
   if (NULL != wire)
     GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_hash (wire,
-                                    &h_wire));
+                   TALER_JSON_wire_signature_hash (wire,
+                                                   &h_wire));
   else
     memset (&h_wire,
             0,
@@ -1500,16 +1511,8 @@ run (void *cls)
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_EXCHANGEDB_TransactionList *tlp;
   json_t *wire;
-  json_t *sndr;
+  const char *sndr = "payto://x-taler-bank/localhost:8080/1";
   unsigned int matched;
-  const char * const json_wire_str =
-      "{ \"type\":\"SEPA\", \
-\"IBAN\":\"DE67830654080004822650\",                    \
-\"name\":\"GNUnet e.V.\",                               \
-\"bic\":\"GENODEF1SLR\",                                 \
-\"wire_transfer_deadline\":\"1449930207000\",                                \
-\"r\":123456789,                                     \
-\"address\": \"foobar\"}";
   unsigned int cnt;
   void *rr;
   size_t rr_size;
@@ -1518,9 +1521,11 @@ run (void *cls)
 
   dkp = NULL;
   rh = NULL;
-  wire = NULL;
   session = NULL;
   deposit.coin.denom_sig.rsa_signature = NULL;
+  wire = json_pack ("{s:s, s:s}",
+                    "url", "payto://sepa/DE67830654080004822650",
+                    "salt", "this-is-a-salt-value");
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (NULL ==
@@ -1576,11 +1581,10 @@ run (void *cls)
                                          &amount_with_fee));
 
   result = 4;
-  sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
-  GNUNET_assert (NULL != sndr);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
+                                                   "account-1",
                                                    &rr,
                                                    &rr_size));
   now = GNUNET_TIME_absolute_get ();
@@ -1592,11 +1596,13 @@ run (void *cls)
                                       &value,
                                       now,
                                       sndr,
+                                      "account-1",
                                       "TEST",
                                       4));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
+                                                   "account-1",
                                                    &rr,
                                                    &rr_size));
   FAILIF (4 != rr_size);
@@ -1617,23 +1623,25 @@ run (void *cls)
                                       &value,
                                       now,
 				      sndr,
+                                      "account-1",
                                       "TEST2",
                                       5));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
+                                                   "account-1",
                                                    &rr,
                                                    &rr_size));
   GNUNET_free (rr);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
+                                                   "account-1",
                                                    &rr,
                                                    &rr_size));
   FAILIF (5 != rr_size);
   FAILIF (0 != memcmp ("TEST2", rr, 5));
   GNUNET_free (rr);
-  json_decref (sndr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
@@ -1731,7 +1739,6 @@ run (void *cls)
 		 TALER_amount_add (&amount_with_fee,
 				   &value,
 				   &value));
-  sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fee_closing));
@@ -1753,7 +1760,6 @@ run (void *cls)
 			 0,
                          value.currency));
 
-  json_decref (sndr);
   result = 7;
   qs = plugin->get_reserve_history (plugin->cls,
                                     session,
@@ -1840,17 +1846,18 @@ run (void *cls)
   FAILIF (3 != auditor_row_cnt);
 
   /* Tests for deposits */
-  memset (&deposit, 0, sizeof (deposit));
+  memset (&deposit,
+          0,
+          sizeof (deposit));
   RND_BLK (&deposit.coin.coin_pub);
   deposit.coin.denom_pub = dkp->pub;
   deposit.coin.denom_sig = cbc.sig;
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);
   RND_BLK (&deposit.h_contract_terms);
-  wire = json_loads (json_wire_str, 0, NULL);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (wire,
-                                  &deposit.h_wire));
+                 TALER_JSON_wire_signature_hash (wire,
+                                                 &deposit.h_wire));
   deposit.receiver_wire_account = wire;
   deposit.amount_with_fee = value;
   deposit.deposit_fee = fee_deposit;
@@ -1897,7 +1904,8 @@ run (void *cls)
                                              session,
                                              &deposit.h_wire,
                                              &deposit.merchant_pub,
-                                             &deposit_cb, &deposit,
+                                             &deposit_cb,
+                                             &deposit,
                                              2));
   sleep (2); /* giv deposit time to be ready */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -2179,8 +2187,9 @@ run (void *cls)
   result = 0;
 
  drop:
-  if (NULL != wire)
-    json_decref (wire);
+  if (0 != result)
+    plugin->rollback (plugin->cls,
+                      session);
   if (NULL != rh)
     plugin->free_reserve_history (plugin->cls,
                                   rh);
@@ -2196,6 +2205,7 @@ run (void *cls)
   if (NULL != cbc2.sig.rsa_signature)
     GNUNET_CRYPTO_rsa_signature_free (cbc2.sig.rsa_signature);
   dkp = NULL;
+  json_decref (wire);
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }

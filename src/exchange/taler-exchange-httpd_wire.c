@@ -74,20 +74,20 @@ fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
 
 
 /**
- * Obtain fee structure for @a wire_plugin_name wire transfers.
+ * Obtain fee structure for @a method wire transfers.
  *
- * @param wire_plugin_name name of the plugin to load fees for
+ * @param method method to load fees for
  * @return JSON object (to be freed by caller) with fee structure
  */
 json_t *
-TEH_WIRE_get_fees (const char *wire_plugin_name)
+TEH_WIRE_get_fees (const char *method)
 {
   struct TALER_EXCHANGEDB_AggregateFees *af;
   json_t *j;
   struct GNUNET_TIME_Absolute now;
 
   af = TALER_EXCHANGEDB_fees_read (cfg,
-                                   wire_plugin_name);
+                                   method);
   now = GNUNET_TIME_absolute_get ();
   while ( (NULL != af) &&
           (af->end_date.abs_value_us < now.abs_value_us) )
@@ -101,7 +101,7 @@ TEH_WIRE_get_fees (const char *wire_plugin_name)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to find current wire transfer fees for `%s'\n",
-                wire_plugin_name);
+                method);
     return NULL;
   }
   j = fees_to_json (af);
@@ -143,9 +143,8 @@ TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
 int
 TEH_WIRE_init ()
 {
-  wire_methods = TEH_VALIDATION_get_wire_methods ();
-  if ( (NULL == wire_methods) ||
-       (0 == json_object_size (wire_methods)) )
+  wire_methods = TEH_VALIDATION_get_wire_response ();
+  if (NULL == wire_methods)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to find properly configured wire transfer method\n");
@@ -156,7 +155,7 @@ TEH_WIRE_init ()
 
 
 /**
- * Initialize libgcrypt.
+ * Clean up wire subsystem.
  */
 void  __attribute__ ((destructor))
 TEH_wire_cleanup ()

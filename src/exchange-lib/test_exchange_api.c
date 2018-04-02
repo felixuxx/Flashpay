@@ -36,9 +36,12 @@
 #define WIRE_TEST 1
 
 /**
- * Is the configuration file is set to include wire format 'sepa'?
+ * Is the configuration file is set to include wire format 'ebics'?
+ * Requires that EBICS /history function is implemented, which it
+ * is currently not.  Once it is, set ENABLE_CREDIT to YES in the
+ * configuration and then set this option to 1.
  */
-#define WIRE_SEPA 1
+#define WIRE_EBICS 0
 
 /**
  * Account number of the exchange at the bank.
@@ -1539,12 +1542,15 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
 }
 
 
+#if LEGACY
+/* Tests the *old* /wire API, the _modern_ testcase was adapted,
+   but little point in right now adapting the old testcase */
 /**
  * Function called with information about the wire fees
  * for each wire method.
  *
  * @param cls closure
- * @param wire_method name of the wire method (i.e. "sepa")
+ * @param wire_method name of the wire method (i.e. "ebics")
  * @param fees fee structure for this method
  */
 static void
@@ -1556,9 +1562,9 @@ check_fee_cb (void *cls,
   struct Command *cmd = &is->commands[is->ip];
   struct TALER_Amount expected_amount;
 
-  GNUNET_break ( (0 == strcasecmp ("test",
+  GNUNET_break ( (0 == strcasecmp ("x-taler-bank",
                                    wire_method)) ||
-                 (0 == strcasecmp ("sepa",
+                 (0 == strcasecmp ("ebics",
                                    wire_method)) );
   if (GNUNET_OK !=
       TALER_string_to_amount (cmd->details.wire.expected_fee,
@@ -1582,6 +1588,7 @@ check_fee_cb (void *cls,
     fees = fees->next;
   }
 }
+#endif
 
 
 /**
@@ -1592,14 +1599,15 @@ check_fee_cb (void *cls,
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param obj the received JSON reply, if successful this should be the wire
- *            format details as provided by /wire.
+ * @param accounts_len length of the @a accounts array
+ * @param accounts list of wire accounts of the exchange, NULL on error
  */
 static void
 wire_cb (void *cls,
          unsigned int http_status,
 	 enum TALER_ErrorCode ec,
-         const json_t *obj)
+         unsigned int accounts_len,
+         const struct TALER_EXCHANGE_WireAccount *accounts)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1611,7 +1619,9 @@ wire_cb (void *cls,
                 "Unexpected response code %u to command %s\n",
                 http_status,
                 cmd->label);
+#if LEGACY
     json_dumpf (obj, stderr, 0);
+#endif
     fail (is);
     return;
   }
@@ -1619,6 +1629,7 @@ wire_cb (void *cls,
   {
   case MHD_HTTP_OK:
     {
+#if LEGACY
       json_t *method;
 
       method = json_object_get (obj,
@@ -1646,6 +1657,7 @@ wire_cb (void *cls,
         fail (is);
         return;
       }
+#endif
     }
     break;
   default:
@@ -1760,8 +1772,8 @@ wire_deposits_cb (void *cls,
                            JSON_REJECT_DUPLICATES,
                            NULL);
         GNUNET_assert (GNUNET_OK ==
-                       TALER_JSON_hash (wire,
-                                        &hw));
+                       TALER_JSON_wire_signature_hash (wire,
+                                                       &hw));
         json_decref (wire);
         if (0 != memcmp (&hw,
                          h_wire,
@@ -2331,13 +2343,15 @@ interpreter_run (void *cls)
       {
         struct TALER_DepositRequestPS dr;
 
-        memset (&dr, 0, sizeof (dr));
+        memset (&dr,
+                0,
+                sizeof (dr));
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.h_contract_terms = h_contract_terms;
         GNUNET_assert (GNUNET_OK ==
-                       TALER_JSON_hash (wire,
-                                        &dr.h_wire));
+                       TALER_JSON_wire_signature_hash (wire,
+                                                       &dr.h_wire));
         dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
         dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
         TALER_amount_hton (&dr.amount_with_fee,
@@ -2581,8 +2595,8 @@ interpreter_run (void *cls)
                          NULL);
       GNUNET_assert (NULL != wire);
       GNUNET_assert (GNUNET_OK ==
-                     TALER_JSON_hash (wire,
-                                      &h_wire));
+                     TALER_JSON_wire_signature_hash (wire,
+                                                     &h_wire));
       json_decref (wire);
       contract_terms = json_loads (ref->details.deposit.contract_terms,
                              JSON_REJECT_DUPLICATES,
@@ -2640,7 +2654,6 @@ interpreter_run (void *cls)
                                    "taler-exchange-wirewatch",
                                    "taler-exchange-wirewatch",
                                    "-c", "test_exchange_api.conf",
-                                   "-t", "test", /* use Taler's bank/fakebank */
                                    "-T", /* exit when done */
                                    NULL);
       if (NULL == cmd->details.run_wirewatch.wirewatch_proc)
@@ -3204,15 +3217,15 @@ run (void *cls)
       .label = "wire-test",
       /* expecting 'test' method in response */
       .expected_response_code = MHD_HTTP_OK,
-      .details.wire.format = "test",
+      .details.wire.format = "x-taler-bank",
       .details.wire.expected_fee = "EUR:0.01" },
 #endif
-#if WIRE_SEPA
+#if WIRE_EBICS
     { .oc = OC_WIRE,
       .label = "wire-sepa",
-      /* expecting 'sepa' method in response */
+      /* expecting 'ebics' method in response */
       .expected_response_code = MHD_HTTP_OK,
-      .details.wire.format = "sepa",
+      .details.wire.format = "ebics",
       .details.wire.expected_fee = "EUR:0.01" },
 #endif
     /* *************** end of /wire testing ************** */
@@ -3252,7 +3265,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }" },
 
     /* Try to overdraw funds ... */
@@ -3268,7 +3281,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":43  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/43\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }" },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        transaction ID) */
@@ -3277,7 +3290,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }" },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        proposal) */
@@ -3286,7 +3299,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }" },
 
     /* ***************** /refresh testing ******************** */
@@ -3316,7 +3329,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }" },
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
@@ -3357,7 +3370,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-reveal-1-idempotency",
       .details.deposit.coin_idx = 0,
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }" },
 
     /* Test successfully spending coins from the refresh operation:
@@ -3368,7 +3381,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:0.1",
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":43  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/43\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }" },
 
     /* Test running a failing melt operation (same operation again must fail) */
@@ -3507,7 +3520,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-r1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
       .details.deposit.refund_deadline = { 60LL * 1000 * 1000 } /* 60 s */,
     },
@@ -3539,7 +3552,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:4.99",
       .details.deposit.coin_ref = "withdraw-coin-r1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\" : [ { \"name\":\"more ice cream\", \"value\":\"EUR:5\" } ] }",
     },
     /* Run transfers. This will do the transfer as refund deadline was 0 */
@@ -3591,9 +3604,9 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-rb",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract_terms = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
       .details.deposit.refund_deadline = { 0 },
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }"
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-aai-3b",
@@ -3695,7 +3708,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:0.5",
       .details.deposit.coin_ref = "payback-withdraw-coin-2a",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"    }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"more ice cream\", \"value\":1 } ] }" },
     { .oc = OC_REVOKE,
       .label = "revoke-2",
@@ -3716,7 +3729,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_NOT_FOUND,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "payback-withdraw-coin-2b",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\",   \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"more ice cream\", \"value\":1 } ] }" },
 
     /* Test deposit fails after payback, with proof in payback */
@@ -3727,7 +3740,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_NOT_FOUND,
       .details.deposit.amount = "EUR:0.5",
       .details.deposit.coin_ref = "payback-withdraw-coin-2a",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_url\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"url\":\"payto://x-taler-bank/localhost:8082/42\", \"salt\":\"my salt\"  }",
       .details.deposit.contract_terms = "{ \"items\": [ { \"name\":\"extra ice cream\", \"value\":1 } ] }" },
 
 
@@ -3999,6 +4012,7 @@ main (int argc,
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
+
   result = GNUNET_NO;
   sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO, GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);

@@ -22,7 +22,6 @@
 #define TALER_WIRE_PLUGIN_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include <jansson.h>
 #include "taler_util.h"
 #include "taler_error_codes.h"
 #include "taler_bank_service.h" /* for `enum TALER_BANK_Direction` and `struct TALER_BANK_TransferDetails` */
@@ -72,9 +71,9 @@ struct TALER_WIRE_TransferDetails
   char *wtid_s;
 
   /**
-   * The other account that was involved
+   * payto://-URL of the other account that was involved
    */
-  json_t *account_details;
+  char *account_url;
 };
 
 
@@ -161,6 +160,13 @@ struct TALER_WIRE_Plugin
   char *library_name;
 
   /**
+   * Which wire method (payto://METHOD/") is supported by this plugin?
+   * For example, "sepa" or "x-taler-bank".
+   */
+  const char *method;
+
+
+  /**
    * Round amount DOWN to the amount that can be transferred via the wire
    * method.  For example, Taler may support 0.000001 EUR as a unit of
    * payment, but SEPA only supports 0.01 EUR.  This function would
@@ -177,62 +183,27 @@ struct TALER_WIRE_Plugin
 
 
   /**
-   * Obtain wire transfer details in the plugin-specific format
-   * from the configuration.
-   *
-   * @param cls closure
-   * @param cfg configuration with details about wire accounts
-   * @param account_name which section in the configuration should we parse
-   * @return NULL if @a cfg fails to have valid wire details for @a account_name
-   */
-  json_t *
-  (*get_wire_details)(void *cls,
-                      const struct GNUNET_CONFIGURATION_Handle *cfg,
-                      const char *account_name);
-
-
-  /**
-   * Sign wire transfer details in the plugin-specific format.
-   *
-   * @param cls closure
-   * @param in wire transfer details in JSON format
-   * @param key private signing key to use
-   * @param salt salt to add
-   * @param[out] sig where to write the signature
-   * @return #GNUNET_OK on success
-   */
-  int
-  (*sign_wire_details)(void *cls,
-                       const json_t *in,
-                       const struct TALER_MasterPrivateKeyP *key,
-                       const struct GNUNET_HashCode *salt,
-                       struct TALER_MasterSignatureP *sig);
-
-
-  /**
-   * Check if the given wire format JSON object is correctly formatted
+   * Check if the given payto:// URL is correctly formatted for this plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param wire the JSON wire format object
-   * @param master_pub public key of the exchange to verify against
-   * @param[out] emsg set to an error message, unless we return #TALER_EC_NONE;
-   *             error message must be freed by the caller using GNUNET_free()
+   * @param account_url the payto:// URL
    * @return #TALER_EC_NONE if correctly formatted
    */
   enum TALER_ErrorCode
   (*wire_validate) (void *cls,
-                    const json_t *wire,
-                    const struct TALER_MasterPublicKeyP *master_pub,
-                    char **emsg);
+                    const char *account_url);
 
 
   /**
    * Prepare for exeuction of a wire transfer.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param wire valid wire account information
+   * @param origin_account_section configuration section specifying the origin
+   *        account of the exchange to use
+   * @param destination_account_url payto:// URL identifying where to send the money
    * @param amount amount to transfer, already rounded
-   * @param exchange_base_url base URL of this exchange
+   * @param exchange_base_url base URL of this exchange (included in subject
+   *        to facilitate use of tracking API by merchant backend)
    * @param wtid wire transfer identifier to use
    * @param ptc function to call with the prepared data to persist
    * @param ptc_cls closure for @a ptc
@@ -240,12 +211,14 @@ struct TALER_WIRE_Plugin
    */
   struct TALER_WIRE_PrepareHandle *
   (*prepare_wire_transfer) (void *cls,
-                            const json_t *wire,
+                            const char *origin_account_section,
+                            const char *destination_account_url,
                             const struct TALER_Amount *amount,
                             const char *exchange_base_url,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             TALER_WIRE_PrepareTransactionCallback ptc,
                             void *ptc_cls);
+
 
   /**
    * Abort preparation of a wire transfer. For example,
@@ -305,6 +278,8 @@ struct TALER_WIRE_Plugin
    * (with negative @a num_results).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param account_section specifies the configuration section which
+   *        identifies the account for which we should get the history
    * @param direction what kinds of wire transfers should be returned
    * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
    * @param start_off_len number of bytes in @a start_off
@@ -316,12 +291,14 @@ struct TALER_WIRE_Plugin
    */
   struct TALER_WIRE_HistoryHandle *
   (*get_history) (void *cls,
+                  const char *account_section,
                   enum TALER_BANK_Direction direction,
                   const void *start_off,
                   size_t start_off_len,
                   int64_t num_results,
                   TALER_WIRE_HistoryResultCallback hres_cb,
                   void *hres_cb_cls);
+
 
   /**
    * Cancel going over the account's history.
@@ -345,6 +322,8 @@ struct TALER_WIRE_Plugin
    * results returned by @e get_history.
    *
    * @param cls plugin's closure
+   * @param account_section specifies the configuration section which
+   *        identifies the account to use to reject the transfer
    * @param start_off offset of the wire transfer in plugin-specific format
    * @param start_off_len number of bytes in @a start_off
    * @param rej_cb function to call with the result of the operation
@@ -353,10 +332,12 @@ struct TALER_WIRE_Plugin
    */
   struct TALER_WIRE_RejectHandle *
   (*reject_transfer)(void *cls,
+                     const char *account_section,
                      const void *start_off,
                      size_t start_off_len,
                      TALER_WIRE_RejectTransferCallback rej_cb,
                      void *rej_cb_cls);
+
 
   /**
    * Cancel ongoing reject operation.  Note that the rejection may still

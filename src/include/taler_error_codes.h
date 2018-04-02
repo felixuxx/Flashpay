@@ -165,7 +165,15 @@ enum TALER_ErrorCode
    */
   TALER_EC_INTERNAL_LOGIC_ERROR = 1011,
 
+  /**
+   * The method specified in a payto:// URL is not one we expected.
+   */
+  TALER_EC_PAYTO_WRONG_METHOD = 1012,
 
+  /**
+   * The PAYTO URL is malformed.
+   */
+  TALER_EC_PAYTO_MALFORMED = 1013,
 
   /* ********** request-specific error codes ************* */
 
@@ -1534,6 +1542,20 @@ enum TALER_ErrorCode
    * is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_TEST_RSA_SIGN_ERROR = 4005,
+
+
+  /**
+   * The JSON in the server's response was malformed.  This response
+   * is provided with HTTP status code of 0.
+   */
+  TALER_EC_SERVER_JSON_INVALID = 5000,
+
+  /**
+   * A signature in the server's response was malformed.  This response
+   * is provided with HTTP status code of 0.
+   */
+  TALER_EC_SERVER_SIGNATURE_INVALID = 5001,
+
 
   /* *************** Taler BANK/FAKEBANK error codes *************** */
 

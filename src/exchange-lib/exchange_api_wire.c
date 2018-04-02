@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
+#include "taler_wire_lib.h"
 #include "taler_signatures.h"
 #include "taler_wire_plugin.h"
 #include "exchange_api_handle.h"
@@ -63,66 +64,133 @@ struct TALER_EXCHANGE_WireHandle
    */
   void *cb_cls;
 
-  /**
-   * Set to the "methods" JSON array returned by the
-   * /wire request.
-   */
-  json_t *methods;
-
-  /**
-   * Current iteration offset in the @e methods array.
-   */
-  unsigned int methods_off;
-
 };
 
 
 /**
- * Verify that the signature on the "200 OK" response
- * for /wire/METHOD from the exchange is valid.
- *
- * @param wh wire handle with key material
- * @param method method to verify the reply for
- * @param json json reply with the signature
- * @return #GNUNET_SYSERR if @a json is invalid,
- *         #GNUNET_NO if the method is unknown,
- *         #GNUNET_OK if the json is valid
+ * List of wire fees by method.
  */
-static int
-verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
-                                 const char *method,
-                                 const json_t *json)
+struct FeeMap
 {
-  const struct TALER_EXCHANGE_Keys *key_state;
-  struct TALER_WIRE_Plugin *plugin;
-  char *lib_name;
-  char *emsg;
-  enum TALER_ErrorCode ec;
+  /**
+   * Next entry in list.
+   */
+  struct FeeMap *next;
 
-  key_state = TALER_EXCHANGE_get_keys (wh->exchange);
-  (void) GNUNET_asprintf (&lib_name,
-                          "libtaler_plugin_wire_%s",
-                          method);
-  plugin = GNUNET_PLUGIN_load (lib_name,
-                               NULL);
-  if (NULL == plugin)
+  /**
+   * Wire method this fee structure is for.
+   */
+  char *method;
+
+  /**
+   * Array of wire fees, also linked list, but allocated
+   * only once.
+   */
+  struct TALER_EXCHANGE_WireAggregateFees *fee_list;
+};
+
+
+/**
+ * Frees @a fm.
+ *
+ * @param fm memory to release
+ */
+static void
+free_fees (struct FeeMap *fm)
+{
+  while (NULL != fm)
   {
-    GNUNET_free (lib_name);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Wire transfer method `%s' not supported\n",
-                method);
-    return GNUNET_NO;
+    struct FeeMap *fe = fm->next;
+
+    GNUNET_free (fm->fee_list);
+    GNUNET_free (fm->method);
+    GNUNET_free (fm);
+    fm = fe;
   }
-  plugin->library_name = lib_name;
-  ec = plugin->wire_validate (plugin->cls,
-                              json,
-                              &key_state->master_pub,
-                              &emsg);
-  GNUNET_free_non_null (emsg);
-  GNUNET_PLUGIN_unload (lib_name,
-                        plugin);
-  GNUNET_free (lib_name);
-  return (TALER_EC_NONE == ec) ? GNUNET_OK : GNUNET_SYSERR;
+}
+
+
+/**
+ * Parse wire @a fees and return map.
+ *
+ * @param fees json AggregateTransferFee to parse
+ * @return NULL on error
+ */
+static struct FeeMap *
+parse_fees (json_t *fees)
+{
+  struct FeeMap *fm = NULL;
+  const char *key;
+  json_t *fee_array;
+
+  json_object_foreach (fees, key, fee_array) {
+    struct FeeMap *fe = GNUNET_new (struct FeeMap);
+    int len;
+    unsigned int idx;
+    json_t *fee;
+
+    if (0 == (len = json_array_size (fee_array)))
+    {
+      GNUNET_break_op (0);
+      GNUNET_free (fe);
+      continue; /* skip */
+    }
+    fe->method = GNUNET_strdup (key);
+    fe->next = fm;
+    fe->fee_list = GNUNET_new_array (len,
+                                     struct TALER_EXCHANGE_WireAggregateFees);
+    fm = fe;
+    json_array_foreach (fee_array, idx, fee)
+    {
+      struct TALER_EXCHANGE_WireAggregateFees *wa = &fe->fee_list[idx];
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("sig",
+                                     &wa->master_sig),
+        TALER_JSON_spec_amount ("wire_fee",
+                                &wa->wire_fee),
+        TALER_JSON_spec_amount ("closing_fee",
+                              &wa->closing_fee),
+        GNUNET_JSON_spec_absolute_time ("start_date",
+                                        &wa->start_date),
+        GNUNET_JSON_spec_absolute_time ("end_date",
+                                        &wa->end_date),
+        GNUNET_JSON_spec_end()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (fee,
+                             spec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_break_op (0);
+        free_fees (fm);
+        return NULL;
+      }
+      if (idx < len)
+        wa->next = &fe->fee_list[idx + 1];
+    }
+  }
+  return fm;
+}
+
+
+/**
+ * Find fee by @a method.
+ *
+ * @param fm map to look in
+ * @param method key to look for
+ * @return NULL if fee is not specified in @a fm
+ */
+static const struct TALER_EXCHANGE_WireAggregateFees *
+lookup_fee (const struct FeeMap *fm,
+            const char *method)
+{
+  for (;NULL != fm; fm = fm->next)
+    if (0 == strcasecmp (fm->method,
+                         method))
+      return fm->fee_list;
+  return NULL;
 }
 
 
@@ -140,70 +208,131 @@ handle_wire_finished (void *cls,
                       const json_t *json)
 {
   struct TALER_EXCHANGE_WireHandle *wh = cls;
-  json_t *keep = NULL;
+  enum TALER_ErrorCode ec;
 
   wh->job = NULL;
+  ec = TALER_EC_NONE;
   switch (response_code)
   {
   case 0:
     break;
   case MHD_HTTP_OK:
     {
-      const struct TALER_EXCHANGE_Keys *keys;
-      const struct TALER_MasterPublicKeyP *master_pub;
-      const char *key;
-      json_t *method;
-      int ret;
+      json_t *accounts;
+      json_t *fees;
+      int num_accounts;
+      struct FeeMap *fm;
+      const struct TALER_EXCHANGE_Keys *key_state;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_json ("accounts", &accounts),
+        GNUNET_JSON_spec_json ("fees", &fees),
+        GNUNET_JSON_spec_end()
+      };
 
-      /* We 'keep' methods that we support and that are well-formed;
-         we fail (by setting response_code=0) if any method that we do
-         support fails to verify. */
-      keep = json_object ();
-      json_object_foreach ((json_t *) json, key, method) {
-        ret = verify_wire_method_signature_ok (wh,
-                                               key,
-                                               method);
-        if (GNUNET_SYSERR == ret)
-        {
-          /* bogus reply */
-          GNUNET_break_op (0);
-          response_code = 0;
-        }
-        /* GNUNET_NO: not understood by us, simply skip! */
-        if (GNUNET_OK == ret)
-        {
-          /* supported and valid, keep! */
-          json_object_set (keep,
-                           key,
-                           method);
-        }
-      }
-      /* check fees */
-      keys = TALER_EXCHANGE_get_keys (wh->exchange);
-      if (NULL == keys)
-        master_pub = NULL;
-      else
-        master_pub = &keys->master_pub;
       if (GNUNET_OK !=
-          TALER_EXCHANGE_wire_get_fees (master_pub,
-                                        keep,
-                                        NULL,
-                                        NULL))
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
       {
         /* bogus reply */
         GNUNET_break_op (0);
         response_code = 0;
-      }
-      if (0 != response_code)
-      {
-        /* all supported methods were valid, use 'keep' for 'json' */
+        ec = TALER_EC_SERVER_JSON_INVALID;
         break;
       }
-      /* some supported methods were invalid, release 'keep', preserve
-         full 'json' for application-level error handling. */
-      json_decref (keep);
-      keep = NULL;
-    }
+      if (0 == (num_accounts = json_array_size (accounts)))
+      {
+        /* bogus reply */
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        response_code = 0;
+        ec = TALER_EC_SERVER_JSON_INVALID;
+        break;
+      }
+      if (NULL == (fm = parse_fees (fees)))
+      {
+        /* bogus reply */
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        response_code = 0;
+        ec = TALER_EC_SERVER_JSON_INVALID;
+        break;
+      }
+
+      key_state = TALER_EXCHANGE_get_keys (wh->exchange);
+      /* parse accounts */
+      {
+        struct TALER_EXCHANGE_WireAccount was[num_accounts];
+
+        for (unsigned int i=0;i<num_accounts;i++)
+        {
+          struct TALER_EXCHANGE_WireAccount *wa = &was[i];
+          json_t *account;
+          struct GNUNET_JSON_Specification spec_account[] = {
+            GNUNET_JSON_spec_string ("url", &wa->url),
+            GNUNET_JSON_spec_string ("salt", &wa->salt),
+            GNUNET_JSON_spec_fixed_auto ("master_sig", &wa->master_sig),
+            GNUNET_JSON_spec_end()
+          };
+          char *method;
+
+          account = json_array_get (accounts,
+                                    i);
+          if (GNUNET_OK !=
+              TALER_JSON_wire_signature_check (account,
+                                               &key_state->master_pub))
+          {
+            /* bogus reply */
+            GNUNET_break_op (0);
+            response_code = 0;
+            ec = TALER_EC_SERVER_SIGNATURE_INVALID;
+            break;
+          }
+          if (GNUNET_OK !=
+              GNUNET_JSON_parse (account,
+                                 spec_account,
+                                 NULL, NULL))
+          {
+            /* bogus reply */
+            GNUNET_break_op (0);
+            response_code = 0;
+            ec = TALER_EC_SERVER_JSON_INVALID;
+            break;
+          }
+          if (NULL == (method = TALER_WIRE_payto_get_method (wa->url)))
+          {
+            /* bogus reply */
+            GNUNET_break_op (0);
+            response_code = 0;
+            ec = TALER_EC_SERVER_JSON_INVALID;
+            break;
+          }
+          if (NULL == (wa->fees = lookup_fee (fm,
+                                              method)))
+          {
+            /* bogus reply */
+            GNUNET_break_op (0);
+            response_code = 0;
+            ec = TALER_EC_SERVER_JSON_INVALID;
+            GNUNET_free (method);
+            break;
+          }
+          GNUNET_free (method);
+        } /* end 'for all accounts */
+        if ( (0 != response_code) &&
+             (NULL != wh->cb) )
+        {
+          wh->cb (wh->cb_cls,
+                  response_code,
+                  TALER_EC_NONE,
+                  num_accounts,
+                  was);
+          wh->cb = NULL;
+        }
+      } /* end of 'parse accounts */
+      free_fees (fm);
+      GNUNET_JSON_parse_free (spec);
+    } /* end of MHD_HTTP_OK */
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -226,12 +355,12 @@ handle_wire_finished (void *cls,
     response_code = 0;
     break;
   }
-  wh->cb (wh->cb_cls,
-          response_code,
-	  TALER_JSON_get_error_code (json),
-          (NULL != keep) ? keep : json);
-  if (NULL != keep)
-    json_decref (keep);
+  if (NULL != wh->cb)
+    wh->cb (wh->cb_cls,
+            response_code,
+            (0 == response_code) ? ec : TALER_JSON_get_error_code (json),
+            0,
+            NULL);
   TALER_EXCHANGE_wire_cancel (wh);
 }
 
@@ -306,156 +435,8 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh)
     GNUNET_CURL_job_cancel (wh->job);
     wh->job = NULL;
   }
-  if (NULL != wh->methods)
-  {
-    json_decref (wh->methods);
-    wh->methods = NULL;
-  }
   GNUNET_free (wh->url);
   GNUNET_free (wh);
-}
-
-
-/**
- * Parse wire @a fee and store the result in @a af.
- *
- * @param[out] af where to write the result
- * @param fee json AggregateTransferFee to parse
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
-static int
-parse_json_fees (struct TALER_EXCHANGE_WireAggregateFees *af,
-                 json_t *fee)
-{
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig",
-                                 &af->master_sig),
-    TALER_JSON_spec_amount ("wire_fee",
-                            &af->wire_fee),
-    TALER_JSON_spec_amount ("closing_fee",
-                            &af->closing_fee),
-    GNUNET_JSON_spec_absolute_time ("start_date",
-                                    &af->start_date),
-    GNUNET_JSON_spec_absolute_time ("end_date",
-                                    &af->end_date),
-    GNUNET_JSON_spec_end()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (fee,
-                         spec,
-                         NULL,
-                         NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Check the #TALER_SIGNATURE_MASTER_WIRE_FEES signature.
- *
- * @param af record to check
- * @param wire_method wire method to check against
- * @param master_pub expected signing key
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
- */
-static int
-check_sig (const struct TALER_EXCHANGE_WireAggregateFees *af,
-           const char *wire_method,
-           const struct TALER_MasterPublicKeyP *master_pub)
-{
-  struct TALER_MasterWireFeePS wp;
-
-  wp.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES);
-  wp.purpose.size = htonl (sizeof (wp));
-  GNUNET_CRYPTO_hash (wire_method,
-                      strlen (wire_method) + 1,
-                      &wp.h_wire_method);
-  wp.start_date = GNUNET_TIME_absolute_hton (af->start_date);
-  wp.end_date = GNUNET_TIME_absolute_hton (af->end_date);
-  TALER_amount_hton (&wp.wire_fee,
-                     &af->wire_fee);
-  TALER_amount_hton (&wp.closing_fee,
-                     &af->closing_fee);
-  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
-                                     &wp.purpose,
-                                     &af->master_sig.eddsa_signature,
-                                     &master_pub->eddsa_pub);
-}
-
-
-/**
- * Obtain information about wire fees encoded in @a obj
- * by wire method.
- *
- * @param master_pub public key to use to verify signatures, NULL to not verify
- * @param obj wire information as encoded in the #TALER_EXCHANGE_WireResultCallback
- * @param cb callback to invoke for the fees
- * @param cb_cls closure for @a cb
- * @return #GNUNET_OK in success, #GNUNET_SYSERR if @a obj is ill-formed
- */
-int
-TALER_EXCHANGE_wire_get_fees (const struct TALER_MasterPublicKeyP *master_pub,
-                              const json_t *obj,
-                              TALER_EXCHANGE_WireFeeCallback cb,
-                              void *cb_cls)
-{
-  const char *wire_method;
-  json_t *value;
-
-  json_object_foreach (((json_t *) obj), wire_method, value)
-  {
-    json_t *fees;
-    size_t num_fees;
-
-    fees = json_object_get (value, "fees");
-    if ( (NULL == fees) ||
-         (! json_is_array (fees)) )
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-    num_fees = json_array_size (fees);
-    if (num_fees > 1024)
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-    {
-      struct TALER_EXCHANGE_WireAggregateFees af[num_fees + 1];
-
-      for (size_t i=0;i<num_fees;i++)
-      {
-        af[i].next = &af[i+1];
-        if (GNUNET_OK !=
-            parse_json_fees (&af[i],
-                             json_array_get (fees,
-                                             i)))
-        {
-          GNUNET_break_op (0);
-          return GNUNET_SYSERR;
-        }
-        if ( (NULL != master_pub) &&
-             (GNUNET_OK !=
-              check_sig (&af[i],
-                         wire_method,
-                         master_pub)) )
-        {
-          GNUNET_break_op (0);
-          return GNUNET_SYSERR;
-        }
-      }
-      af[num_fees - 1].next = NULL;
-      if (NULL != cb)
-        cb (cb_cls,
-            wire_method,
-            &af[0]);
-    }
-  }
-  return GNUNET_OK;
 }
 
 

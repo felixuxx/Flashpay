@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015, 2016, 2017 GNUnet e.V. and Inria
+  (C) 2015-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file wire/test_wire_plugin_transactions_test.c
- * @brief Tests performing actual transactions with the TEST wire plugin against FAKEBANK
+ * @file wire/test_wire_plugin_transactions_taler-bank.c
+ * @brief Tests performing actual transactions with the taler-bank wire plugin against FAKEBANK
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -24,7 +24,6 @@
 #include "taler_wire_plugin.h"
 #include "taler_fakebank_lib.h"
 #include <gnunet/gnunet_json_lib.h>
-#include <jansson.h>
 
 
 /**
@@ -35,21 +34,14 @@
 
 
 /**
- * Input for the wire transfer details.
+ * Destination account to use.
  */
-static const char *json_proto =
-  "{  \"type\":\"test\", \"bank_url\":\"http://localhost:8088/\", \"account_number\":42 }";
-
+static const char *dest_account = "payto://x-taler-bank/localhost:8088/42";
 
 /**
- * Private key used to sign wire details.
+ * Origin account, section in the configuration file.
  */
-static struct TALER_MasterPrivateKeyP priv_key;
-
-/**
- * Public key matching #priv_key.
- */
-static struct TALER_MasterPublicKeyP pub_key;
+static const char *my_account = "account-test";
 
 /**
  * Our configuration.
@@ -250,6 +242,7 @@ confirmation_cb (void *cls,
   }
   serial_target = serial_id;
   hh = plugin->get_history (plugin->cls,
+                            my_account,
                             TALER_BANK_DIRECTION_BOTH,
                             NULL, 0,
                             5,
@@ -294,7 +287,6 @@ prepare_cb (void *cls,
 static void
 run (void *cls)
 {
-  json_t *wire;
   struct TALER_Amount amount;
 
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -308,18 +300,15 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("KUDOS:5.01",
                                          &amount));
-  wire = json_loads (json_proto,
-                     0,
-                     NULL);
   fb = TALER_FAKEBANK_start (8088);
   ph = plugin->prepare_wire_transfer (plugin->cls,
-                                      wire,
+                                      my_account,
+                                      dest_account,
                                       &amount,
                                       "https://exchange.net/",
                                       &wtid,
                                       &prepare_cb,
                                       NULL);
-  json_decref (wire);
 }
 
 
@@ -327,23 +316,16 @@ int
 main (int argc,
       const char *const argv[])
 {
-  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
-
   GNUNET_log_setup ("test-wire-plugin-transactions-test",
                     "WARNING",
                     NULL);
   cfg = GNUNET_CONFIGURATION_create ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CONFIGURATION_load (cfg,
-                                            "test_wire_plugin_transactions_test.conf"));
-  pk = GNUNET_CRYPTO_eddsa_key_create_from_file ("test_wire_plugin_key.priv");
-  priv_key.eddsa_priv = *pk;
-  GNUNET_free (pk);
-  GNUNET_CRYPTO_eddsa_key_get_public (&priv_key.eddsa_priv,
-                                      &pub_key.eddsa_pub);
+                                            "test_wire_plugin_transactions_taler-bank.conf"));
   global_ret = GNUNET_OK;
   plugin = TALER_WIRE_plugin_load (cfg,
-                                   "test");
+                                   "taler_bank");
   GNUNET_assert (NULL != plugin);
   GNUNET_SCHEDULER_run (&run,
                         NULL);
@@ -353,4 +335,4 @@ main (int argc,
   return 0;
 }
 
-/* end of test_wire_plugin_transactions_test.c */
+/* end of test_wire_plugin_transactions_taler-bank.c */

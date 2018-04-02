@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017 Taler Systems SA
+  Copyright (C) 2017-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -40,6 +40,45 @@
  */
 #define GRACE_PERIOD GNUNET_TIME_UNIT_HOURS
 
+
+/**
+ * Information we keep for each supported account.
+ */
+struct WireAccount
+{
+  /**
+   * Accounts are kept in a DLL.
+   */
+  struct WireAccount *next;
+
+  /**
+   * Plugins are kept in a DLL.
+   */
+  struct WireAccount *prev;
+
+  /**
+   * Handle to the plugin.
+   */
+  struct TALER_WIRE_Plugin *wire_plugin;
+
+  /**
+   * Name of the section that configures this account.
+   */
+  char *section_name;
+
+  /**
+   * We should check for inbound transactions to this account.
+   */
+  int watch_credit;
+
+  /**
+   * We should check for outbound transactions from this account.
+   */
+  int watch_debit;
+
+};
+
+
 /**
  * Return value from main().
  */
@@ -49,11 +88,6 @@ static int global_ret;
  * Command-line option "-r": restart audit from scratch
  */
 static int restart;
-
-/**
- * Name of the wire plugin to load to access the exchange's bank account.
- */
-static char *wire_plugin;
 
 /**
  * Handle to access the exchange's database.
@@ -104,9 +138,25 @@ static struct TALER_AUDITORDB_Session *asession;
 static struct TALER_MasterPublicKeyP master_pub;
 
 /**
+ * Head of list of wire accounts we still need to look at.
+ */
+static struct WireAccount *wa_head;
+
+/**
+ * Tail of list of wire accounts we still need to look at.
+ */
+static struct WireAccount *wa_tail;
+
+/**
  * Handle to the wire plugin for wire operations.
  */
 static struct TALER_WIRE_Plugin *wp;
+
+/**
+ * Name of the section that configures the account
+ * we are currently processing (matches #wp).
+ */
+static char *wp_section_name;
 
 /**
  * Active wire request for the transaction history.
@@ -289,7 +339,8 @@ free_rii (void *cls,
 		 GNUNET_CONTAINER_multihashmap_remove (in_map,
 						       key,
 						       rii));
-  json_decref (rii->details.account_details);
+  GNUNET_free (rii->details.account_url);
+  GNUNET_free_non_null (rii->details.wtid_s); /* field not used (yet) */
   GNUNET_free (rii);
   return GNUNET_OK;
 }
@@ -314,7 +365,8 @@ free_roi (void *cls,
 		 GNUNET_CONTAINER_multihashmap_remove (out_map,
 						       key,
 						       roi));
-  json_decref (roi->details.account_details);
+  GNUNET_free (roi->details.account_url);
+  GNUNET_free_non_null (roi->details.wtid_s); /* field not used (yet) */
   GNUNET_free (roi);
   return GNUNET_OK;
 }
@@ -328,6 +380,8 @@ free_roi (void *cls,
 static void
 do_shutdown (void *cls)
 {
+  struct WireAccount *wa;
+
   if (NULL != report_row_inconsistencies)
   {
     json_t *report;
@@ -407,6 +461,20 @@ do_shutdown (void *cls)
     TALER_WIRE_plugin_unload (wp);
     wp = NULL;
   }
+  if (NULL != wp_section_name)
+  {
+    GNUNET_free (wp_section_name);
+    wp_section_name = NULL;
+  }
+  while (NULL != (wa = wa_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (wa_head,
+                                 wa_tail,
+                                 wa);
+    TALER_WIRE_plugin_unload (wa->wire_plugin);
+    GNUNET_free (wa->section_name);
+    GNUNET_free (wa);
+  }
   if (NULL != adb)
   {
     TALER_AUDITORDB_plugin_unload (adb);
@@ -470,6 +538,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
     qs = adb->update_wire_auditor_progress (adb->cls,
                                             asession,
                                             &master_pub,
+                                            wp_section_name,
                                             &pp,
                                             in_wire_off,
                                             out_wire_off,
@@ -478,6 +547,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
     qs = adb->insert_wire_auditor_progress (adb->cls,
                                             asession,
                                             &master_pub,
+                                            wp_section_name,
                                             &pp,
                                             in_wire_off,
                                             out_wire_off,
@@ -583,37 +653,44 @@ wire_out_cb (void *cls,
                                     amount));
     return GNUNET_OK;
   }
-  if (! json_equal ((json_t *) wire,
-		    roi->details.account_details))
   {
-    /* Destination bank account is wrong in actual wire transfer, so
-       we should count the wire transfer as entirely spurious, and
-       additionally consider the justified wire transfer as missing. */
-    report (report_wire_out_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
-                       "row", (json_int_t) rowid,
-                       "amount_wired", TALER_JSON_from_amount (&roi->details.amount),
-                       "amount_justified", TALER_JSON_from_amount (&zero),
-                       "wtid", GNUNET_JSON_from_data_auto (wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
-                       "diagnostic", "recevier account missmatch"));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_amount_out_plus,
-                                    &total_bad_amount_out_plus,
-                                    &roi->details.amount));
-    report (report_wire_out_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
-                       "row", (json_int_t) rowid,
-                       "amount_wired", TALER_JSON_from_amount (&zero),
-                       "amount_justified", TALER_JSON_from_amount (amount),
-                       "wtid", GNUNET_JSON_from_data_auto (wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
-                       "diagnostic", "receiver account missmatch"));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_amount_out_minus,
-                                    &total_bad_amount_out_minus,
-                                    amount));
-    goto cleanup;
+    char *payto_url;
+
+    payto_url = TALER_JSON_wire_to_payto (wire);
+    if (0 != strcasecmp (payto_url,
+                         roi->details.account_url))
+    {
+      /* Destination bank account is wrong in actual wire transfer, so
+         we should count the wire transfer as entirely spurious, and
+         additionally consider the justified wire transfer as missing. */
+      report (report_wire_out_inconsistencies,
+              json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                         "row", (json_int_t) rowid,
+                         "amount_wired", TALER_JSON_from_amount (&roi->details.amount),
+                         "amount_justified", TALER_JSON_from_amount (&zero),
+                         "wtid", GNUNET_JSON_from_data_auto (wtid),
+                         "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
+                         "diagnostic", "recevier account missmatch"));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_bad_amount_out_plus,
+                                      &total_bad_amount_out_plus,
+                                      &roi->details.amount));
+      report (report_wire_out_inconsistencies,
+              json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+                         "row", (json_int_t) rowid,
+                         "amount_wired", TALER_JSON_from_amount (&zero),
+                         "amount_justified", TALER_JSON_from_amount (amount),
+                         "wtid", GNUNET_JSON_from_data_auto (wtid),
+                         "timestamp", GNUNET_STRINGS_absolute_time_to_string (date),
+                         "diagnostic", "receiver account missmatch"));
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_bad_amount_out_minus,
+                                      &total_bad_amount_out_minus,
+                                      amount));
+      GNUNET_free (payto_url);
+      goto cleanup;
+    }
+    GNUNET_free (payto_url);
   }
   if (0 != TALER_amount_cmp (&roi->details.amount,
 			     amount))
@@ -765,6 +842,16 @@ wire_missing_cb (void *cls,
 
 
 /**
+ * Start processing the next wire account.
+ * Shuts down if we are done.
+ *
+ * @param cls NULL
+ */
+static void
+process_next_account (void *cls);
+
+
+/**
  * Go over the "wire_out" table of the exchange and
  * verify that all wire outs are in that table.
  */
@@ -818,9 +905,8 @@ check_exchange_wire_out ()
   }
   pp.last_timestamp = next_timestamp;
 
-  /* conclude with: */
-  commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
-  GNUNET_SCHEDULER_shutdown ();
+  /* continue with next account: */
+  process_next_account (NULL);
 }
 
 
@@ -892,7 +978,7 @@ history_debit_cb (void *cls,
   roi->details.amount = details->amount;
   roi->details.execution_date = details->execution_date;
   roi->details.wtid = details->wtid;
-  roi->details.account_details = json_incref ((json_t *) details->account_details);
+  roi->details.account_url = GNUNET_strdup (details->account_url);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (out_map,
 					 &roi->subject_hash,
@@ -936,6 +1022,7 @@ process_debits ()
   out_map = GNUNET_CONTAINER_multihashmap_create (1024,
 						  GNUNET_YES);
   hh = wp->get_history (wp->cls,
+                        wp_section_name,
                         TALER_BANK_DIRECTION_DEBIT,
                         out_wire_off,
                         wire_off_size,
@@ -965,7 +1052,7 @@ process_debits ()
  * @param rowid unique serial ID for the refresh session in our DB
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
- * @param sender_account_details information about the sender's bank account
+ * @param sender_url payto://-URL of the sender's bank account
  * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
  * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
@@ -976,7 +1063,7 @@ reserve_in_cb (void *cls,
 	       uint64_t rowid,
 	       const struct TALER_ReservePublicKeyP *reserve_pub,
 	       const struct TALER_Amount *credit,
-	       const json_t *sender_account_details,
+	       const char *sender_url,
 	       const void *wire_reference,
 	       size_t wire_reference_size,
 	       struct GNUNET_TIME_Absolute execution_date)
@@ -997,7 +1084,7 @@ reserve_in_cb (void *cls,
   memcpy (&rii->details.wtid,
           reserve_pub,
           sizeof (*reserve_pub));
-  rii->details.account_details = json_incref ((json_t *) sender_account_details);
+  rii->details.account_url = GNUNET_strdup (sender_url);
   rii->rowid = rowid;
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (in_map,
@@ -1011,7 +1098,8 @@ reserve_in_cb (void *cls,
                        "row", (json_int_t) rowid,
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&rii->row_off_hash),
                        "diagnostic", "duplicate wire offset"));
-    json_decref (rii->details.account_details);
+    GNUNET_free (rii->details.account_url);
+    GNUNET_free_non_null (rii->details.wtid_s); /* field not used (yet) */
     GNUNET_free (rii);
     return GNUNET_OK;
   }
@@ -1228,8 +1316,8 @@ history_credit_cb (void *cls,
     }
     goto cleanup;
   }
-  if (! json_equal (details->account_details,
-		    rii->details.account_details))
+  if (0 != strcasecmp (details->account_url,
+                       rii->details.account_url))
   {
     report (report_missattribution_in_inconsistencies,
             json_pack ("{s:s, s:o, s:o}",
@@ -1267,6 +1355,167 @@ history_credit_cb (void *cls,
 
 
 /**
+ * Start processing the next wire account.
+ * Shuts down if we are done.
+ *
+ * @param cls NULL
+ */
+static void
+process_next_account (void *cls)
+{
+  struct WireAccount *wa;
+  enum GNUNET_DB_QueryStatus qs;
+  int ret;
+
+  (void) cls;
+  if (NULL == (wa = wa_head))
+  {
+    commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  GNUNET_CONTAINER_DLL_remove (wa_head,
+                               wa_tail,
+                               wa);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Starting audit of account `%s'\n",
+              wa->section_name);
+  /* setup globals */
+  if (NULL != wp)
+    TALER_WIRE_plugin_unload (wp);
+  wp = wa->wire_plugin;
+  GNUNET_free_non_null (wp_section_name);
+  wp_section_name = wa->section_name;
+  GNUNET_free (wa);
+
+  ret = adb->start (adb->cls,
+                    asession);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  edb->preflight (edb->cls,
+                  esession);
+  ret = edb->start (edb->cls,
+                    esession,
+                    "wire auditor");
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  qsx = adb->get_wire_auditor_progress (adb->cls,
+                                        asession,
+                                        &master_pub,
+                                        wp_section_name,
+                                        &pp,
+                                        &in_wire_off,
+                                        &out_wire_off,
+                                        &wire_off_size);
+  if (0 > qsx)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                _("First analysis using this auditor, starting audit from scratch\n"));
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                _("Resuming audit at %llu/%llu\n"),
+                (unsigned long long) pp.last_reserve_in_serial_id,
+                (unsigned long long) pp.last_wire_out_serial_id);
+  }
+
+  in_map = GNUNET_CONTAINER_multihashmap_create (1024,
+						 GNUNET_YES);
+  qs = edb->select_reserves_in_above_serial_id (edb->cls,
+						esession,
+						pp.last_reserve_in_serial_id,
+						&reserve_in_cb,
+						NULL);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "No new incoming transactions available, skipping CREDIT phase\n");
+    process_debits ();
+    return;
+  }
+  hh = wp->get_history (wp->cls,
+                        wp_section_name,
+                        TALER_BANK_DIRECTION_CREDIT,
+                        in_wire_off,
+                        wire_off_size,
+                        INT64_MAX,
+                        &history_credit_cb,
+                        NULL);
+  if (NULL == hh)
+  {
+    fprintf (stderr,
+             "Failed to obtain bank transaction history\n");
+    commit (GNUNET_DB_STATUS_HARD_ERROR);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+}
+
+
+/**
+ * Function called with information about a wire account.  Adds the
+ * account to our list for processing (if it is enabled and we can
+ * load the plugin).
+ *
+ * @param cls closure, NULL
+ * @param ai account information
+ */
+static void
+process_account_cb (void *cls,
+                    const struct TALER_EXCHANGEDB_AccountInfo *ai)
+{
+  struct WireAccount *wa;
+  struct TALER_WIRE_Plugin *wp;
+
+  wp = TALER_WIRE_plugin_load (cfg,
+                               ai->plugin_name);
+  if (NULL == wp)
+  {
+    fprintf (stderr,
+             "Failed to load wire plugin `%s'\n",
+             ai->plugin_name);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  wa = GNUNET_new (struct WireAccount);
+  wa->wire_plugin = wp;
+  wa->section_name = GNUNET_strdup (ai->section_name);
+  wa->watch_debit = ai->debit_enabled;
+  wa->watch_credit = ai->credit_enabled;
+  GNUNET_CONTAINER_DLL_insert (wa_head,
+                               wa_tail,
+                               wa);
+}
+
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -1281,8 +1530,6 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
   static const struct TALER_MasterPublicKeyP zeromp;
-  enum GNUNET_DB_QueryStatus qs;
-  int ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
@@ -1390,40 +1637,6 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  wp = TALER_WIRE_plugin_load (cfg,
-                               wire_plugin);
-  if (NULL == wp)
-  {
-    fprintf (stderr,
-             "Failed to load wire plugin `%s'\n",
-             wire_plugin);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting audit\n");
-  ret = adb->start (adb->cls,
-                    asession);
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (0);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  edb->preflight (edb->cls,
-                  esession);
-  ret = edb->start (edb->cls,
-                    esession,
-                    "wire auditor");
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (0);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
   GNUNET_assert (NULL !=
 		 (report_wire_out_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
@@ -1462,71 +1675,9 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &zero));
-
-  qsx = adb->get_wire_auditor_progress (adb->cls,
-                                        asession,
-                                        &master_pub,
-                                        &pp,
-                                        &in_wire_off,
-                                        &out_wire_off,
-                                        &wire_off_size);
-  if (0 > qsx)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _("First analysis using this auditor, starting audit from scratch\n"));
-  }
-  else
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _("Resuming audit at %llu/%llu\n"),
-                (unsigned long long) pp.last_reserve_in_serial_id,
-                (unsigned long long) pp.last_wire_out_serial_id);
-  }
-
-  in_map = GNUNET_CONTAINER_multihashmap_create (1024,
-						 GNUNET_YES);
-  qs = edb->select_reserves_in_above_serial_id (edb->cls,
-						esession,
-						pp.last_reserve_in_serial_id,
-						&reserve_in_cb,
-						NULL);
-  if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "No new incoming transactions available, skipping CREDIT phase\n");
-    process_debits ();
-    return;
-  }
-  hh = wp->get_history (wp->cls,
-                        TALER_BANK_DIRECTION_CREDIT,
-                        in_wire_off,
-                        wire_off_size,
-                        INT64_MAX,
-                        &history_credit_cb,
-                        NULL);
-  if (NULL == hh)
-  {
-    fprintf (stderr,
-             "Failed to obtain bank transaction history\n");
-    commit (GNUNET_DB_STATUS_HARD_ERROR);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+  TALER_EXCHANGEDB_find_accounts (cfg,
+                                  &process_account_cb,
+                                  NULL);
 }
 
 
@@ -1552,12 +1703,6 @@ main (int argc,
                                "restart",
                                "restart audit from the beginning (required on first run)",
                                &restart),
-    GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_string ('w',
-				  "wire",
-				  "PLUGINNAME",
-				  "name of the wire plugin to use",
-				  &wire_plugin)),
     GNUNET_GETOPT_OPTION_END
   };
 

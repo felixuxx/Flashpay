@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017 Inria and GNUnet e.V.
+  (C) 2016, 2017, 2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -403,7 +403,9 @@ do_deposit (struct Command *cmd)
   struct TALER_MerchantPrivateKeyP merchant_priv;
   int ret;
 
-  memset (&deposit, 0, sizeof (deposit));
+  memset (&deposit,
+          0,
+          sizeof (deposit));
   /* we derive the merchant's private key from the
      name, to ensure that the same name always
      results in the same key pair. */
@@ -432,13 +434,21 @@ do_deposit (struct Command *cmd)
   }
   fake_coin (&deposit.coin);
   /* Build JSON for wire details */
-  deposit.receiver_wire_account = json_pack ("{s:s, s:s, s:I}",
-                                             "type", "test",
-                                             "bank_url", "http://localhost:8082/",
-                                             "account_number", (json_int_t) cmd->details.deposit.merchant_account);
+  {
+    char *str;
+
+    GNUNET_asprintf (&str,
+                     "payto://x-taler-bank/localhost:8082/%llu",
+                     (unsigned long long) cmd->details.deposit.merchant_account);
+    deposit.receiver_wire_account
+      = json_pack ("{s:s, s:s}",
+                   "salt", "this-is-a-salt-value",
+                   "url", str);
+    GNUNET_free (str);
+  }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (deposit.receiver_wire_account,
-                                  &deposit.h_wire));
+                 TALER_JSON_wire_signature_hash (deposit.receiver_wire_account,
+                                                 &deposit.h_wire));
   deposit.timestamp = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&deposit.timestamp);
   deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.wire_deadline);

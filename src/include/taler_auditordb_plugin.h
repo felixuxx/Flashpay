@@ -382,6 +382,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
+   * @param account_name name of the wire account we are auditing
    * @param pp where is the auditor in processing
    * @param in_wire_off how far are we in the incoming wire transaction history
    * @param out_wire_off how far are we in the outgoing wire transaction history
@@ -392,6 +393,7 @@ struct TALER_AUDITORDB_Plugin
   (*insert_wire_auditor_progress)(void *cls,
                                   struct TALER_AUDITORDB_Session *session,
                                   const struct TALER_MasterPublicKeyP *master_pub,
+                                  const char *account_name,
                                   const struct TALER_AUDITORDB_WireProgressPoint *pp,
                                   const void *in_wire_off,
                                   const void *out_wire_off,
@@ -405,6 +407,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
+   * @param account_name name of the wire account we are auditing
    * @param pp where is the auditor in processing
    * @param in_wire_off how far are we in the incoming wire transaction history
    * @param out_wire_off how far are we in the outgoing wire transaction history
@@ -415,6 +418,7 @@ struct TALER_AUDITORDB_Plugin
   (*update_wire_auditor_progress)(void *cls,
                                   struct TALER_AUDITORDB_Session *session,
                                   const struct TALER_MasterPublicKeyP *master_pub,
+                                  const char *account_name,
                                   const struct TALER_AUDITORDB_WireProgressPoint *pp,
                                   const void *in_wire_off,
                                   const void *out_wire_off,
@@ -428,6 +432,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
+   * @param account_name name of the wire account we are auditing
    * @param[out] pp set to where the auditor is in processing
    * @param[out] in_wire_off how far are we in the incoming wire transaction history
    * @param[out] out_wire_off how far are we in the outgoing wire transaction history
@@ -438,6 +443,7 @@ struct TALER_AUDITORDB_Plugin
   (*get_wire_auditor_progress)(void *cls,
                                struct TALER_AUDITORDB_Session *session,
                                const struct TALER_MasterPublicKeyP *master_pub,
+                               const char *account_name,
                                struct TALER_AUDITORDB_WireProgressPoint *pp,
                                void **in_wire_off,
                                void **out_wire_off,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017 Inria and GNUnet e.V.
+  (C) 2016, 2017, 2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -499,7 +499,6 @@ interpreter (void *cls)
                                  "taler-exchange-wirewatch",
                                  "taler-exchange-wirewatch",
                                  "-c", config_filename,
-                                 "-t", "test",
                                  "-T", /* run in test mode, exit instead of looping */
                                  NULL);
     if (NULL == cmd->details.wirewatch.wirewatch_proc)

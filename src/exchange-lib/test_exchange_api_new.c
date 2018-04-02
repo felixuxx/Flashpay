@@ -43,6 +43,14 @@
 #define CONFIG_FILE "test_exchange_api.conf"
 
 /**
+ * Is the configuration file is set to include wire format 'ebics'?
+ * Requires that EBICS /history function is implemented, which it
+ * is currently not.  Once it is, set ENABLE_CREDIT to YES in the
+ * configuration and then set this option to 1.
+ */
+#define WIRE_EBICS 0
+
+/**
  * URL of the fakebank.  Obtained from CONFIG_FILE's
  * "exchange-wire-test:BANK_URI" option.
  */
@@ -145,23 +153,23 @@ run (void *cls,
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
 
     /**
-     * Check if 'test' wire method is offered by the exchange.
+     * Check if 'x-taler-bank' wire method is offered by the exchange.
      */
-    TALER_TESTING_cmd_wire ("wire-test-1",
+    TALER_TESTING_cmd_wire ("wire-taler-bank-1",
                             is->exchange,
-                            "test",
+                            "x-taler-bank",
                             NULL,
                             MHD_HTTP_OK),
-
+#if WIRE_EBICS
     /**
-     * Check if 'sepa' wire method is offered by the exchange.
+     * Check if 'ebics' wire method is offered by the exchange.
      */
     TALER_TESTING_cmd_wire ("wire-sepa-1",
                             is->exchange,
-                            "sepa",
+                            "ebics",
                             NULL,
                             MHD_HTTP_OK),
-
+#endif
     /****** End of "wire" testing ******/
 
     /******  Start of withdraw and spend testing ******/
@@ -188,9 +196,8 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-simple", is->exchange, "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_OK),
 
@@ -208,9 +215,8 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-1", is->exchange, "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details
-         ("{\"type\":\"test\",\"account_number\":43}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (43,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
 
@@ -225,9 +231,8 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-1", is->exchange, "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\", \"account_number\":43}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (43,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
 
@@ -236,12 +241,11 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-2", is->exchange, "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\", \"account_number\":43}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (43,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
-    
+
     /******  End of withdraw and spend testing ******/
 
     /******  Start of refresh testing ******/
@@ -254,7 +258,7 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),
- 
+
     /**
      * Make previous command effective.
      */
@@ -277,9 +281,8 @@ run (void *cls,
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-partial", is->exchange,
        "refresh-withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
@@ -297,7 +300,7 @@ run (void *cls,
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-1", is->exchange,
        "refresh-melt-1", MHD_HTTP_OK),
-    
+
     /**
      * Do it again to check idempotency
      */
@@ -318,9 +321,8 @@ run (void *cls,
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-refreshed-1a", is->exchange,
        "refresh-reveal-1-idempotency", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":3}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
@@ -331,9 +333,8 @@ run (void *cls,
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-refreshed-1b", is->exchange,
        "refresh-reveal-1", 4,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":43}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (43,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":3}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:0.1", MHD_HTTP_OK),
@@ -463,9 +464,8 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1", is->exchange, "withdraw-coin-r1", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\", \"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\","
                     "\"value\":\"EUR:5\"}]}",
        GNUNET_TIME_UNIT_MINUTES, "EUR:5", MHD_HTTP_OK),
@@ -502,9 +502,8 @@ run (void *cls,
      * 1 ct deposit fee) */
     TALER_TESTING_cmd_deposit
       ("deposit-refund-2", is->exchange, "withdraw-coin-r1", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\", \"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"more ice cream\","
                     "\"value\":\"EUR:5\"}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:4.99", MHD_HTTP_OK),
@@ -555,9 +554,8 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1b", is->exchange, "withdraw-coin-rb", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\", \"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\","
                     "\"value\":\"EUR:5\"}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_OK),
@@ -602,7 +600,7 @@ run (void *cls,
                                        is->exchange,
                                        "payback-create-reserve-1",
                                        "EUR:5",
-                                       MHD_HTTP_OK), 
+                                       MHD_HTTP_OK),
 
     TALER_TESTING_cmd_revoke ("revoke-1", MHD_HTTP_OK,
                               "payback-withdraw-coin-1",
@@ -648,9 +646,8 @@ run (void *cls,
     TALER_TESTING_cmd_deposit
       ("payback-deposit-partial", is->exchange,
        "payback-withdraw-coin-2a", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:0.5", MHD_HTTP_OK),
 
@@ -670,9 +667,8 @@ run (void *cls,
     TALER_TESTING_cmd_deposit
       ("payback-deposit-revoked", is->exchange,
        "payback-withdraw-coin-2b", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_NOT_FOUND),
 
@@ -685,9 +681,8 @@ run (void *cls,
     TALER_TESTING_cmd_deposit
       ("payback-deposit-partial-after-payback", is->exchange,
        "payback-withdraw-coin-2a", 0,
-       TALER_TESTING_make_wire_details
-         ("{ \"type\":\"test\",\"account_number\":42}",
-          fakebank_url),
+       TALER_TESTING_make_wire_details (42,
+                                        fakebank_url),
        "{\"items\":[{\"name\":\"extra ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:0.5", MHD_HTTP_NOT_FOUND),
 
@@ -740,6 +735,7 @@ run (void *cls,
                                    fakebank_url);
 }
 
+
 int
 main (int argc,
       char * const *argv)
@@ -753,7 +749,8 @@ main (int argc,
   if (NULL == (fakebank_url
        /* Check fakebank port is available and config cares
         * about bank url. */
-       = TALER_TESTING_prepare_fakebank (CONFIG_FILE)))
+               = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                                 "account-2")))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it

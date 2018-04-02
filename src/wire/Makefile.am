@@ -8,114 +8,15 @@ endif
 
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
-pkgcfg_DATA = \
-  wire-sepa.conf \
-  wire-test.conf
-
-
-EXTRA_DIST = \
-  wire-sepa.conf \
-  wire-test.conf \
-  test_wire_plugin.conf \
-  test_wire_plugin_transactions_test.conf \
-  test_wire_plugin_key.priv \
-  test_wire_plugin_test.json \
-  test_wire_plugin_sepa.json 
-
-plugindir = $(libdir)/taler
-
-plugin_LTLIBRARIES = \
-  libtaler_plugin_wire_sepa.la \
-  libtaler_plugin_wire_test.la
-
-noinst_LTLIBRARIES = \
-  libtaler_plugin_wire_template.la
-
 lib_LTLIBRARIES = \
   libtalerwire.la
 
-
-libtaler_plugin_wire_test_la_SOURCES = \
-  plugin_wire_test.c
-libtaler_plugin_wire_test_la_LIBADD = \
-  $(LTLIBINTL)
-libtaler_plugin_wire_test_la_LDFLAGS = \
-  $(TALER_PLUGIN_LDFLAGS) \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetcurl \
-  -lgnunetutil $(XLIB)
-
-
-libtaler_plugin_wire_sepa_la_SOURCES = \
-  plugin_wire_sepa.c
-libtaler_plugin_wire_sepa_la_LIBADD = \
-  $(LTLIBINTL)
-libtaler_plugin_wire_sepa_la_LDFLAGS = \
-  $(TALER_PLUGIN_LDFLAGS) \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetjson \
-  -lgnunetutil $(XLIB)
-
-
-libtaler_plugin_wire_template_la_SOURCES = \
-  plugin_wire_template.c
-libtaler_plugin_wire_template_la_LIBADD = \
-  $(LTLIBINTL)
-libtaler_plugin_wire_template_la_LDFLAGS = \
-  $(TALER_PLUGIN_LDFLAGS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil $(XLIB)
-
-
 libtalerwire_la_SOURCES = \
-  wire.c
+  wire.c \
+  wire_helper.c
 libtalerwire_la_LIBADD = \
   -lgnunetutil \
   $(XLIB)
 libtalerwire_la_LDFLAGS = \
   -version-info 1:0:0 \
   -export-dynamic -no-undefined
-
-
-AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
-
-TESTS = \
- test_sepa_wireformat \
- test_wire_plugin
-
-check_PROGRAMS= \
- test_sepa_wireformat \
- test_wire_plugin \
- test_wire_plugin_transactions_test
-
-
-test_sepa_wireformat_SOURCES = \
-  test_sepa_wireformat.c
-test_sepa_wireformat_LDADD = \
-  -lgnunetutil \
-  -ljansson \
-  libtalerwire.la \
-  $(top_builddir)/src/util/libtalerutil.la
-
-
-test_wire_plugin_SOURCES = \
-  test_wire_plugin.c
-test_wire_plugin_LDADD = \
-  -lgnunetjson \
-  -lgnunetutil \
-  -ljansson \
-  libtalerwire.la \
-  $(top_builddir)/src/util/libtalerutil.la
-
-
-test_wire_plugin_transactions_test_SOURCES = \
-  test_wire_plugin_transactions_test.c
-test_wire_plugin_transactions_test_LDADD = \
-  -lgnunetjson \
-  -lgnunetutil \
-  -ljansson \
-  libtalerwire.la \
-  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/util/libtalerutil.la

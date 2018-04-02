@@ -66,19 +66,21 @@
 #define TALER_TESTING_MAKE_TRAIT_ROW_ID(data) \
   TALER_TESTING_make_trait_uint64 (3, data)
 
+
 /**
- * Allocate and return a piece of wire-details.  Mostly, it adds
- * the bank_url to the JSON.
+ * Allocate and return a piece of wire-details.  Combines
+ * the @a account_no and the @a bank_url to a
+ * @a payto://-URL and adds some salt to create the JSON.
  *
- * @param template the wire-details template.
+ * @param account_no account number
  * @param bank_url the bank_url
- *
- * @return the filled out and stringified wire-details.  To
- *         be manually free'd.
+ * @return JSON describing the account, including the
+ *         payto://-URL of the account, must be manually decref'd
  */
-char *
-TALER_TESTING_make_wire_details (const char *template,
+json_t *
+TALER_TESTING_make_wire_details (unsigned long long account_no,
                                  const char *bank_url);
+
 
 /**
  * Find denomination key matching the given amount.
@@ -130,10 +132,12 @@ TALER_TESTING_url_port_free (const char *url);
  * If everything is OK, return the configured URL of the fakebank.
  *
  * @param config_filename configuration file to use
+ * @param config_section which account to use (must match x-taler-bank)
  * @return NULL on error, fakebank URL otherwise
  */
 char *
-TALER_TESTING_prepare_fakebank (const char *config_filename);
+TALER_TESTING_prepare_fakebank (const char *config_filename,
+                                const char *config_section);
 
 
 /* ******************* Generic interpreter logic ************ */
@@ -613,8 +617,8 @@ TALER_TESTING_cmd_status (const char *label,
  *        coins, this parameter selects which one in that array
  *        This value is currently ignored, as only one-coin
  *        withdrawals are implemented.
- * @param wire_details bank details of the merchant performing the
- *        deposit
+ * @param wire_details JSON including payto://-URL of the merchant performing the
+ *        deposit, reference is captured by this command
  * @param contract_terms contract terms to be signed over by the
  *        coin
  * @param refund_deadline refund deadline
@@ -625,12 +629,12 @@ TALER_TESTING_cmd_status (const char *label,
  * @return the deposit command to be run by the interpreter
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit 
+TALER_TESTING_cmd_deposit
   (const char *label,
    struct TALER_EXCHANGE_Handle *exchange,
    const char *coin_reference,
    unsigned int coin_index,
-   char *wire_details,
+   json_t *wire_details,
    const char *contract_terms,
    struct GNUNET_TIME_Relative refund_deadline,
    const char *amount,
@@ -1209,7 +1213,7 @@ int
 TALER_TESTING_get_trait_wire_details
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   const char **wire_details);
+   const json_t **wire_details);
 
 
 /**
@@ -1223,7 +1227,7 @@ TALER_TESTING_get_trait_wire_details
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wire_details
   (unsigned int index,
-   const char *wire_details);
+   const json_t *wire_details);
 
 /**
  * Obtain a private key from a "peer".  Used e.g. to obtain
@@ -1300,11 +1304,11 @@ TALER_TESTING_get_trait_transfer_subject
 
 
 /**
- * Offer wire details in a trait.
+ * Offer wire wire transfer subject in a trait.
  *
  * @param index always (?) zero, as one command sticks
  *        to one bank account
- * @param wire_details wire details to offer
+ * @param transfer_subject wire transfer subject to offer
  * @return the trait, to be put in the traits array of the command
  */
 struct TALER_TESTING_Trait

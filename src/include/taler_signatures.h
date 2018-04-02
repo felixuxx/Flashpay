@@ -62,18 +62,6 @@
 #define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY 1025
 
 /**
- * Signature where the Exchange confirms its SEPA details in
- * the /wire response.
- */
-#define TALER_SIGNATURE_MASTER_SEPA_DETAILS 1026
-
-/**
- * Signature where the Exchange confirms its TEST details in
- * the /wire response.
- */
-#define TALER_SIGNATURE_MASTER_TEST_DETAILS 1027
-
-/**
  * Fees charged per (aggregate) wire transfer to the merchant.
  */
 #define TALER_SIGNATURE_MASTER_WIRE_FEES 1028
@@ -82,6 +70,12 @@
  * The given revocation key was revoked and must no longer be used.
  */
 #define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED 1029
+
+/**
+ * Signature where the Exchange confirms its SEPA details in
+ * the /wire response.
+ */
+#define TALER_SIGNATURE_MASTER_WIRE_DETAILS 1030
 
 /*********************************************/
 /* Exchange online signatures (with signing key) */
@@ -891,16 +885,15 @@ struct TALER_MasterWireDetailsPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_MASTER_SEPA_DETAILS or
-   * #TALER_SIGNATURE_MASTER_TEST_DETAILS.
+   * Purpose is #TALER_SIGNATURE_MASTER_WIRE_DETAILS.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the account holder's name, IBAN and BIC
-   * code (all as 0-terminated strings).
+   * Hash over the account holder's payto:// URL and
+   * the salt, as done by #TALER_wire_signature_hash().
    */
-  struct GNUNET_HashCode h_sepa_details GNUNET_PACKED;
+  struct GNUNET_HashCode h_wire_details GNUNET_PACKED;
 
 };
 

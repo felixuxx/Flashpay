@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2018 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -33,14 +33,14 @@ struct TemplateClosure
 {
 
   /**
-   * URL of the bank for sending funds to the bank.
-   */
-  char *bank_url;
-
-  /**
    * Which currency do we support?
    */
   char *currency;
+
+  /**
+   * Which configuration do we use to lookup accounts?
+   */
+  struct GNUNET_CONFIGURATION_Handle *cfg;
 
 };
 
@@ -74,42 +74,17 @@ template_amount_round (void *cls,
 
 
 /**
- * Obtain wire transfer details in the plugin-specific format
- * from the configuration.
- *
- * @param cls closure
- * @param cfg configuration with details about wire accounts
- * @param account_name which section in the configuration should we parse
- * @return NULL if @a cfg fails to have valid wire details for @a account_name
- */
-static json_t *
-template_get_wire_details (void *cls,
-                           const struct GNUNET_CONFIGURATION_Handle *cfg,
-                           const char *account_name)
-{
-  GNUNET_break (0);
-  return NULL;
-}
-
-
-/**
- * Check if the given wire format JSON object is correctly formatted
+ * Check if the given payto:// URL is correctly formatted for this plugin
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param wire the JSON wire format object
- * @param master_pub public key of the exchange to verify against
- * @param[out] emsg set to an error message, unless we return #TALER_EC_NONE;
- *             error message must be freed by the caller using GNUNET_free()
+ * @param account_url the payto:// URL
  * @return #TALER_EC_NONE if correctly formatted
  */
 static enum TALER_ErrorCode
 template_wire_validate (void *cls,
-                        const json_t *wire,
-                        const struct TALER_MasterPublicKeyP *master_pub,
-                        char **emsg)
+                        const char *account_url)
 {
-  GNUNET_asprintf (emsg,
-                   "Not implemented");
+  GNUNET_break (0);
   return TALER_EC_NOT_IMPLEMENTED;
 }
 
@@ -118,7 +93,9 @@ template_wire_validate (void *cls,
  * Prepare for exeuction of a wire transfer.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param wire valid wire account information
+ * @param origin_account_section configuration section specifying the origin
+ *        account of the exchange to use
+ * @param destination_account_url payto:// URL identifying where to send the money
  * @param amount amount to transfer, already rounded
  * @param exchange_base_url base URL of the exchange (for tracking)
  * @param wtid wire transfer identifier to use
@@ -128,7 +105,8 @@ template_wire_validate (void *cls,
  */
 static struct TALER_WIRE_PrepareHandle *
 template_prepare_wire_transfer (void *cls,
-                                const json_t *wire,
+                                const char *origin_account_section,
+                                const char *destination_account_url,
                                 const struct TALER_Amount *amount,
                                 const char *exchange_base_url,
                                 const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -178,28 +156,6 @@ template_execute_wire_transfer (void *cls,
 
 
 /**
- * Sign wire transfer details in the plugin-specific format.
- *
- * @param cls closure
- * @param in wire transfer details in JSON format
- * @param key private signing key to use
- * @param salt salt to add
- * @param[out] sig where to write the signature
- * @return #GNUNET_OK on success
- */
-static int
-template_sign_wire_details (void *cls,
-                            const json_t *in,
-                            const struct TALER_MasterPrivateKeyP *key,
-                            const struct GNUNET_HashCode *salt,
-                            struct TALER_MasterSignatureP *sig)
-{
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
-}
-
-
-/**
  * Abort execution of a wire transfer. For example, because we are
  * shutting down.  Note that if an execution is aborted, it may or
  * may not still succeed. The caller MUST run @e
@@ -230,6 +186,8 @@ template_execute_wire_transfer_cancel (void *cls,
  * (with negative @a num_results).
  *
  * @param cls the @e cls of this struct with the plugin-specific state
+ * @param account_section specifies the configuration section which
+ *        identifies the account for which we should get the history
  * @param direction what kinds of wire transfers should be returned
  * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
  * @param start_off_len number of bytes in @a start_off; must be `sizeof(uint64_t)`.
@@ -241,6 +199,7 @@ template_execute_wire_transfer_cancel (void *cls,
  */
 static struct TALER_WIRE_HistoryHandle *
 template_get_history (void *cls,
+                      const char *account_section,
                       enum TALER_BANK_Direction direction,
                       const void *start_off,
                       size_t start_off_len,
@@ -268,6 +227,59 @@ template_get_history_cancel (void *cls,
 
 
 /**
+ * Reject an incoming wire transfer that was obtained from the
+ * history. This function can be used to transfer funds back to
+ * the sender if the WTID was malformed (i.e. due to a typo).
+ *
+ * Calling `reject_transfer` twice on the same wire transfer should
+ * be idempotent, i.e. not cause the funds to be wired back twice.
+ * Furthermore, the transfer should henceforth be removed from the
+ * results returned by @e get_history.
+ *
+ * @param cls plugin's closure
+ * @param account_section specifies the configuration section which
+ *        identifies the account to use to reject the transfer
+ * @param start_off offset of the wire transfer in plugin-specific format
+ * @param start_off_len number of bytes in @a start_off
+ * @param rej_cb function to call with the result of the operation
+ * @param rej_cb_cls closure for @a rej_cb
+ * @return handle to cancel the operation
+ */
+static struct TALER_WIRE_RejectHandle *
+template_reject_transfer (void *cls,
+                          const char *account_section,
+                          const void *start_off,
+                          size_t start_off_len,
+                          TALER_WIRE_RejectTransferCallback rej_cb,
+                          void *rej_cb_cls)
+{
+  GNUNET_break (0);
+  return NULL;
+}
+
+
+/**
+ * Cancel ongoing reject operation.  Note that the rejection may still
+ * proceed. Basically, if this function is called, the rejection may
+ * have happened or not.  This function is usually used during shutdown
+ * or system upgrades.  At a later point, the application must call
+ * @e reject_transfer again for this wire transfer, unless the
+ * @e get_history shows that the wire transfer no longer exists.
+ *
+ * @param cls plugins' closure
+ * @param rh operation to cancel
+ * @return closure of the callback of the operation
+ */
+static void *
+template_reject_transfer_cancel (void *cls,
+                                 struct TALER_WIRE_RejectHandle *rh)
+{
+  GNUNET_break (0);
+  return NULL;
+}
+
+
+/**
  * Initialize template-wire subsystem.
  *
  * @param cls a configuration instance
@@ -281,19 +293,7 @@ libtaler_plugin_wire_template_init (void *cls)
   struct TALER_WIRE_Plugin *plugin;
 
   tc = GNUNET_new (struct TemplateClosure);
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange-wire-template",
-                                             "bank_url",
-                                             &tc->bank_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-wire-template",
-                               "bank_url");
-    GNUNET_free (tc);
-    return NULL;
-  }
+  tc->cfg = cfg;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -303,16 +303,14 @@ libtaler_plugin_wire_template_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "CURRENCY");
-    GNUNET_free (tc->bank_url);
     GNUNET_free (tc);
     return NULL;
   }
 
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = tc;
+  plugin->method = "FIXME-REPLACE-BY-METHOD";
   plugin->amount_round = &template_amount_round;
-  plugin->get_wire_details = &template_get_wire_details;
-  plugin->sign_wire_details = &template_sign_wire_details;
   plugin->wire_validate = &template_wire_validate;
   plugin->prepare_wire_transfer = &template_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &template_prepare_wire_transfer_cancel;
@@ -320,6 +318,8 @@ libtaler_plugin_wire_template_init (void *cls)
   plugin->execute_wire_transfer_cancel = &template_execute_wire_transfer_cancel;
   plugin->get_history = &template_get_history;
   plugin->get_history_cancel = &template_get_history_cancel;
+  plugin->reject_transfer = &template_reject_transfer;
+  plugin->reject_transfer_cancel = &template_reject_transfer_cancel;
   return plugin;
 }
 
@@ -336,7 +336,6 @@ libtaler_plugin_wire_template_done (void *cls)
   struct TALER_WIRE_Plugin *plugin = cls;
   struct TemplateClosure *tc = plugin->cls;
 
-  GNUNET_free (tc->bank_url);
   GNUNET_free (tc->currency);
   GNUNET_free (tc);
   GNUNET_free (plugin);

@@ -61,6 +61,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_coin_priv.c \
   testing_api_trait_denom_pub.c \
   testing_api_trait_denom_sig.c \
+  testing_api_trait_json.c \
   testing_api_trait_process.c \
   testing_api_trait_reserve_priv.c \
   testing_api_trait_number.c \
@@ -69,8 +70,8 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_key_peer.c \
   testing_api_trait_wtid.c \
   testing_api_trait_amount.c
-
 libtalertesting_la_LIBADD = \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \

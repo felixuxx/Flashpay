@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 GNUnet e.V. & Inria
+  Copyright (C) 2016, 2017, 2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file plugin_wire_sepa.c
+ * @file plugin_wire_ebics.c
  * @brief wire plugin for transfers using SEPA/EBICS
  * @author Florian Dold
  * @author Christian Grothoff
@@ -31,13 +31,18 @@
  * Type of the "cls" argument given to each of the functions in
  * our API.
  */
-struct SepaClosure
+struct EbicsClosure
 {
 
   /**
    * Which currency do we support?
    */
   char *currency;
+
+  /**
+   * Configuration we use to lookup account information.
+   */
+  struct GNUNET_CONFIGURATION_Handle *cfg;
 
 };
 
@@ -54,10 +59,10 @@ struct SepaClosure
  *         #GNUNET_SYSERR if the amount or currency was invalid
  */
 static int
-sepa_amount_round (void *cls,
-                   struct TALER_Amount *amount)
+ebics_amount_round (void *cls,
+                    struct TALER_Amount *amount)
 {
-  struct SepaClosure *sc = cls;
+  struct EbicsClosure *sc = cls;
   uint32_t delta;
 
   if (NULL == sc->currency)
@@ -81,7 +86,7 @@ sepa_amount_round (void *cls,
 /**
  * Entry in the country table.
  */
-struct table_entry
+struct CountryTableEntry
 {
   /**
    * 2-Character international country code.
@@ -100,7 +105,7 @@ struct table_entry
 /**
  * List of country codes.
  */
-static const struct table_entry country_table[] =
+static const struct CountryTableEntry country_table[] =
   {
     { "AE", "U.A.E." },
     { "AF", "Afghanistan" },
@@ -259,8 +264,8 @@ static int
 cmp_country_code (const void *ptr1,
                   const void *ptr2)
 {
-  const struct table_entry *cc1 = ptr1;
-  const struct table_entry *cc2 = ptr2;
+  const struct CountryTableEntry *cc1 = ptr1;
+  const struct CountryTableEntry *cc2 = ptr2;
 
   return strncmp (cc1->code,
                   cc2->code,
@@ -280,20 +285,21 @@ validate_iban (const char *iban)
 {
   char cc[2];
   char ibancpy[35];
-  struct table_entry cc_entry;
+  struct CountryTableEntry cc_entry;
   unsigned int len;
   char *nbuf;
-  unsigned int i;
-  unsigned int j;
   unsigned long long dividend;
   unsigned long long remainder;
   int nread;
   int ret;
+  unsigned int i;
+  unsigned int j;
 
   len = strlen (iban);
   if (len > 34)
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "IBAN number too long to be valid\n");
     return GNUNET_NO;
   }
   strncpy (cc, iban, 2);
@@ -305,11 +311,14 @@ validate_iban (const char *iban)
   if (NULL ==
       bsearch (&cc_entry,
                country_table,
-               sizeof (country_table) / sizeof (struct table_entry),
-               sizeof (struct table_entry),
+               sizeof (country_table) / sizeof (struct CountryTableEntry),
+               sizeof (struct CountryTableEntry),
                &cmp_country_code))
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Country code `%c%c' not supported\n",
+                cc[0],
+                cc[1]);
     return GNUNET_NO;
   }
   nbuf = GNUNET_malloc ((len * 2) + 1);
@@ -354,309 +363,89 @@ validate_iban (const char *iban)
   GNUNET_free (nbuf);
   if (1 == remainder)
     return GNUNET_YES;
-  GNUNET_break_op (0); /* checksum wrong */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "IBAN checksum wrong\n");
   return GNUNET_NO;
 }
 
 
 /**
- * Compute purpose for signing.
- *
- * @param sepa_name name of the account holder
- * @param iban bank account number in IBAN format
- * @param bic bank identifier
- * @param[out] wsd purpose to be signed
+ * Information about an account extracted from a payto://-URL.
  */
-static void
-compute_purpose (const char *sepa_name,
-                 const char *iban,
-                 const char *bic,
-                 struct TALER_MasterWireDetailsPS *wsd)
+struct Account
 {
-  struct GNUNET_HashContext *hc;
+  /**
+   * The IBAN number.
+   */
+  char *iban;
 
-  wsd->purpose.size = htonl (sizeof (struct TALER_MasterWireDetailsPS));
-  wsd->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SEPA_DETAILS);
-  hc = GNUNET_CRYPTO_hash_context_start ();
-  GNUNET_CRYPTO_hash_context_read (hc,
-				   "sepa",
-				   strlen ("sepa") + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-				   sepa_name,
-				   strlen (sepa_name) + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-				   iban,
-				   strlen (iban) + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-				   bic,
-				   strlen (bic) + 1);
-  GNUNET_CRYPTO_hash_context_finish (hc,
-				     &wsd->h_sepa_details);
-}
+};
 
 
 /**
- * Verify that the signature in the @a json for /wire/sepa is valid.
+ * Parse payto:// account URL (only account information,
+ * wire subject and amount are ignored).
  *
- * @param json json reply with the signature
- * @param master_pub public key of the exchange to verify against
- * @return #GNUNET_SYSERR if @a json is invalid,
- *         #GNUNET_NO if the method is unknown,
- *         #GNUNET_OK if the json is valid
- */
-static int
-verify_wire_sepa_signature_ok (const json_t *json,
-                               const struct TALER_MasterPublicKeyP *master_pub)
-{
-  struct TALER_MasterSignatureP exchange_sig;
-  struct TALER_MasterWireDetailsPS mp;
-  const char *name;
-  const char *iban;
-  const char *bic;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
-    GNUNET_JSON_spec_string ("name", &name),
-    GNUNET_JSON_spec_string ("iban", &iban),
-    GNUNET_JSON_spec_string ("bic", &bic),
-    GNUNET_JSON_spec_end()
-  };
-
-  if (NULL == master_pub)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Skipping signature check as master public key not given\n");
-    return GNUNET_OK;
-  }
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json, spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  compute_purpose (name,
-                   iban,
-                   bic,
-                   &mp);
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SEPA_DETAILS,
-                                  &mp.purpose,
-                                  &exchange_sig.eddsa_signature,
-                                  &master_pub->eddsa_pub))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_JSON_parse_free (spec);
-  return GNUNET_OK;
-}
-
-
-/**
- * Check if the given wire format JSON object is correctly formatted
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param wire the JSON wire format object
- * @param master_pub public key of the exchange to verify against
- * @param[out] emsg set to an error message, unless we return #TALER_EC_NONE;
- *             error message must be freed by the caller using GNUNET_free()
- * @return #TALER_EC_NONE if correctly formatted
+ * @param account_url URL to parse
+ * @param account[out] set to information, can be NULL
+ * @return #TALER_EC_NONE if @a account_url is well-formed
  */
 static enum TALER_ErrorCode
-sepa_wire_validate (void *cls,
-                    const json_t *wire,
-                    const struct TALER_MasterPublicKeyP *master_pub,
-                    char **emsg)
+parse_payto (const char *account_url,
+             struct Account *account)
 {
-  json_error_t error;
-  const char *type;
   const char *iban;
-  const char *name;
-  const char *bic;
+  const char *q;
+  char *result;
 
-  *emsg = NULL;
-  if (0 != json_unpack_ex
-      ((json_t *) wire,
-       &error, 0,
-       "{"
-       "s:s," /* type: sepa */
-       "s:s," /* iban: IBAN */
-       "s:s," /* name: beneficiary name */
-       "s:s" /* bic: beneficiary bank's BIC */
-       "}",
-       "type", &type,
-       "iban", &iban,
-       "name", &name,
-       "bic", &bic))
+#define PREFIX "payto://sepa/"
+  if (0 != strncasecmp (account_url,
+                        PREFIX,
+                        strlen (PREFIX)))
+    return TALER_EC_PAYTO_WRONG_METHOD;
+  iban = &account_url[strlen (PREFIX)];
+  q = strchr (iban,
+              '?');
+  if (NULL != q)
   {
-    char *dump;
-
-    dump = json_dumps (wire, 0);
-    GNUNET_asprintf (emsg,
-                     "JSON parsing failed at %s:%u: %s (%s): %s\n",
-                     __FILE__, __LINE__,
-                     error.text,
-                     error.source,
-                     dump);
-    free (dump);
-    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON;
+    result = GNUNET_strndup (iban,
+                             q - iban);
   }
-  if (0 != strcasecmp (type,
-                       "sepa"))
+  else
   {
-    GNUNET_asprintf (emsg,
-                     "Transfer type `%s' invalid for SEPA wire plugin\n",
-                     type);
-    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE;
+    result = GNUNET_strdup (iban);
   }
-  if (1 != validate_iban (iban))
-  {
-    GNUNET_asprintf (emsg,
-                     "IBAN `%s' invalid\n",
-                     iban);
-    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_ACCOUNT_NUMBER;
-  }
-  /* FIXME: don't parse again, integrate properly... */
   if (GNUNET_OK !=
-      verify_wire_sepa_signature_ok (wire,
-                                     master_pub))
+      validate_iban (result))
   {
-    GNUNET_asprintf (emsg,
-                     "Signature using public key `%s' invalid\n",
-                     TALER_B2S (master_pub));
-    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE;
+    GNUNET_free (result);
+    return TALER_EC_PAYTO_MALFORMED;
+  }
+  if (NULL != account)
+  {
+    account->iban = result;
+  }
+  else
+  {
+    GNUNET_free (result);
   }
   return TALER_EC_NONE;
 }
 
 
 /**
- * Obtain wire transfer details in the plugin-specific format
- * from the configuration.
+ * Check if the given payto:// URL is correctly formatted for this plugin
  *
- * @param cls closure
- * @param cfg configuration with details about wire accounts
- * @param account_name which section in the configuration should we parse
- * @return NULL if @a cfg fails to have valid wire details for @a account_name
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param account_url the payto:// URL
+ * @return #TALER_EC_NONE if correctly formatted
  */
-static json_t *
-sepa_get_wire_details (void *cls,
-                       const struct GNUNET_CONFIGURATION_Handle *cfg,
-                       const char *account_name)
+static enum TALER_ErrorCode
+ebics_wire_validate (void *cls,
+                     const char *account_url)
 {
-  char *sepa_wire_file;
-  json_error_t err;
-  json_t *ret;
-  char *emsg;
-
-  /* Fetch reply */
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               account_name,
-                                               "SEPA_RESPONSE_FILE",
-                                               &sepa_wire_file))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                               account_name,
-                               "SEPA_RESPONSE_FILE");
-    return NULL;
-  }
-  ret = json_load_file (sepa_wire_file,
-                        JSON_REJECT_DUPLICATES,
-                        &err);
-  if (NULL == ret)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse JSON in %s: %s (%s:%u)\n",
-                sepa_wire_file,
-                err.text,
-                err.source,
-                err.line);
-    GNUNET_free (sepa_wire_file);
-    return NULL;
-  }
-  if (TALER_EC_NONE !=
-      sepa_wire_validate (cls,
-                          ret,
-                          NULL,
-                          &emsg))
-    {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to validate SEPA data in %s: %s\n",
-                sepa_wire_file,
-                emsg);
-    GNUNET_free (emsg);
-    GNUNET_free (sepa_wire_file);
-    json_decref (ret);
-    return NULL;
-  }
-  GNUNET_free (sepa_wire_file);
-  return ret;
-}
-
-
-/**
- * Sign wire transfer details in the plugin-specific format.
- *
- * @param cls closure
- * @param in wire transfer details in JSON format
- * @param key private signing key to use
- * @param salt salt to add
- * @param[out] sig where to write the signature
- * @return #GNUNET_OK on success
- */
-static int
-sepa_sign_wire_details (void *cls,
-                        const json_t *in,
-                        const struct TALER_MasterPrivateKeyP *key,
-                        const struct GNUNET_HashCode *salt,
-                        struct TALER_MasterSignatureP *sig)
-{
-  struct TALER_MasterWireDetailsPS wsd;
-  const char *sepa_name;
-  const char *iban;
-  const char *bic;
-  const char *type;
-  json_error_t err;
-
-  if (0 !=
-      json_unpack_ex ((json_t *) in,
-                      &err,
-                      0 /* flags */,
-                      "{s:s, s:s, s:s, s:s}",
-                      "type", &type,
-                      "name", &sepa_name,
-                      "iban", &iban,
-                      "bic", &bic))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to unpack JSON: %s (at %u)\n",
-                err.text,
-                err.position);
-    return GNUNET_SYSERR;
-  }
-  if (0 != strcmp (type,
-                   "sepa"))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "`type' must be `sepa' for SEPA wire details\n");
-    return GNUNET_SYSERR;
-  }
-  if (1 != validate_iban (iban))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "IBAN invalid in SEPA wire details\n");
-    return GNUNET_SYSERR;
-  }
-  compute_purpose (sepa_name,
-                   iban,
-                   bic,
-                   &wsd);
-  GNUNET_CRYPTO_eddsa_sign (&key->eddsa_priv,
-			    &wsd.purpose,
-			    &sig->eddsa_signature);
-  return GNUNET_OK;
+  return parse_payto (account_url,
+                      NULL);
 }
 
 
@@ -673,13 +462,14 @@ sepa_sign_wire_details (void *cls,
  * @return NULL on failure
  */
 static struct TALER_WIRE_PrepareHandle *
-sepa_prepare_wire_transfer (void *cls,
-                            const json_t *wire,
-                            const struct TALER_Amount *amount,
-                            const char *exchange_base_url,
-                            const struct TALER_WireTransferIdentifierRawP *wtid,
-                            TALER_WIRE_PrepareTransactionCallback psc,
-                            void *psc_cls)
+ebics_prepare_wire_transfer (void *cls,
+                             const char *origin_account_section,
+                             const char *destination_account_url,
+                             const struct TALER_Amount *amount,
+                             const char *exchange_base_url,
+                             const struct TALER_WireTransferIdentifierRawP *wtid,
+                             TALER_WIRE_PrepareTransactionCallback psc,
+                             void *psc_cls)
 {
   GNUNET_break (0); // FIXME: not implemented
   return NULL;
@@ -694,7 +484,7 @@ sepa_prepare_wire_transfer (void *cls,
  * @param pth preparation to cancel
  */
 static void
-sepa_prepare_wire_transfer_cancel (void *cls,
+ebics_prepare_wire_transfer_cancel (void *cls,
                                    struct TALER_WIRE_PrepareHandle *pth)
 {
   GNUNET_break (0); // FIXME: not implemented
@@ -712,11 +502,11 @@ sepa_prepare_wire_transfer_cancel (void *cls,
  * @return NULL on error
  */
 static struct TALER_WIRE_ExecuteHandle *
-sepa_execute_wire_transfer (void *cls,
-                            const char *buf,
-                            size_t buf_size,
-                            TALER_WIRE_ConfirmationCallback cc,
-                            void *cc_cls)
+ebics_execute_wire_transfer (void *cls,
+                             const char *buf,
+                             size_t buf_size,
+                             TALER_WIRE_ConfirmationCallback cc,
+                             void *cc_cls)
 {
   GNUNET_break (0); // FIXME: not implemented
   return NULL;
@@ -736,8 +526,8 @@ sepa_execute_wire_transfer (void *cls,
  * @param eh execution to cancel
  */
 static void
-sepa_execute_wire_transfer_cancel (void *cls,
-                                   struct TALER_WIRE_ExecuteHandle *eh)
+ebics_execute_wire_transfer_cancel (void *cls,
+                                    struct TALER_WIRE_ExecuteHandle *eh)
 {
   GNUNET_break (0); // FIXME: not implemented
 }
@@ -754,6 +544,8 @@ sepa_execute_wire_transfer_cancel (void *cls,
  * (with negative @a num_results).
  *
  * @param cls the @e cls of this struct with the plugin-specific state
+ * @param account_section specifies the configuration section which
+ *        identifies the account for which we should get the history
  * @param direction what kinds of wire transfers should be returned
  * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
  * @param start_off_len number of bytes in @a start_off; must be `sizeof(uint64_t)`.
@@ -764,13 +556,14 @@ sepa_execute_wire_transfer_cancel (void *cls,
  * @param hres_cb_cls closure for the above callback
  */
 static struct TALER_WIRE_HistoryHandle *
-sepa_get_history (void *cls,
-                  enum TALER_BANK_Direction direction,
-                  const void *start_off,
-                  size_t start_off_len,
-                  int64_t num_results,
-                  TALER_WIRE_HistoryResultCallback hres_cb,
-                  void *hres_cb_cls)
+ebics_get_history (void *cls,
+                   const char *account_section,
+                   enum TALER_BANK_Direction direction,
+                   const void *start_off,
+                   size_t start_off_len,
+                   int64_t num_results,
+                   TALER_WIRE_HistoryResultCallback hres_cb,
+                   void *hres_cb_cls)
 {
   GNUNET_break (0);
   return NULL;
@@ -784,8 +577,8 @@ sepa_get_history (void *cls,
  * @param whh operation to cancel
  */
 static void
-sepa_get_history_cancel (void *cls,
-			 struct TALER_WIRE_HistoryHandle *whh)
+ebics_get_history_cancel (void *cls,
+                          struct TALER_WIRE_HistoryHandle *whh)
 {
   GNUNET_break (0);
 }
@@ -843,6 +636,8 @@ timeout_reject (void *cls)
  * results returned by @e get_history.
  *
  * @param cls plugin's closure
+ * @param account_section specifies the configuration section which
+ *        identifies the account to use to reject the transfer
  * @param start_off offset of the wire transfer in plugin-specific format
  * @param start_off_len number of bytes in @a start_off
  * @param rej_cb function to call with the result of the operation
@@ -850,11 +645,12 @@ timeout_reject (void *cls)
  * @return handle to cancel the operation
  */
 static struct TALER_WIRE_RejectHandle *
-sepa_reject_transfer (void *cls,
-                      const void *start_off,
-                      size_t start_off_len,
-                      TALER_WIRE_RejectTransferCallback rej_cb,
-                      void *rej_cb_cls)
+ebics_reject_transfer (void *cls,
+                       const char *account_section,
+                       const void *start_off,
+                       size_t start_off_len,
+                       TALER_WIRE_RejectTransferCallback rej_cb,
+                       void *rej_cb_cls)
 {
   struct TALER_WIRE_RejectHandle *rh;
 
@@ -881,8 +677,8 @@ sepa_reject_transfer (void *cls,
  * @return closure of the callback of the operation
  */
 static void *
-sepa_reject_transfer_cancel (void *cls,
-                             struct TALER_WIRE_RejectHandle *rh)
+ebics_reject_transfer_cancel (void *cls,
+                              struct TALER_WIRE_RejectHandle *rh)
 {
   void *ret = rh->rej_cb_cls;
 
@@ -893,63 +689,60 @@ sepa_reject_transfer_cancel (void *cls,
 
 
 /**
- * Initialize sepa-wire subsystem.
+ * Initialize ebics-wire subsystem.
  *
  * @param cls a configuration instance
  * @return NULL on error, otherwise a `struct TALER_WIRE_Plugin`
  */
 void *
-libtaler_plugin_wire_sepa_init (void *cls)
+libtaler_plugin_wire_ebics_init (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
-  struct SepaClosure *sc;
+  struct EbicsClosure *sc;
   struct TALER_WIRE_Plugin *plugin;
 
-  sc = GNUNET_new (struct SepaClosure);
-  if (NULL != cfg)
+  sc = GNUNET_new (struct EbicsClosure);
+  sc->cfg = cfg;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "taler",
+                                             "CURRENCY",
+                                             &sc->currency))
   {
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "taler",
-                                               "CURRENCY",
-                                               &sc->currency))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "taler",
-                                 "CURRENCY");
-      GNUNET_free (sc);
-      return NULL;
-    }
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
+    GNUNET_free (sc);
+    return NULL;
   }
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = sc;
-  plugin->amount_round = &sepa_amount_round;
-  plugin->get_wire_details = &sepa_get_wire_details;
-  plugin->sign_wire_details = &sepa_sign_wire_details;
-  plugin->wire_validate = &sepa_wire_validate;
-  plugin->prepare_wire_transfer = &sepa_prepare_wire_transfer;
-  plugin->prepare_wire_transfer_cancel = &sepa_prepare_wire_transfer_cancel;
-  plugin->execute_wire_transfer = &sepa_execute_wire_transfer;
-  plugin->execute_wire_transfer_cancel = &sepa_execute_wire_transfer_cancel;
-  plugin->get_history = &sepa_get_history;
-  plugin->get_history_cancel = &sepa_get_history_cancel;
-  plugin->reject_transfer = &sepa_reject_transfer;
-  plugin->reject_transfer_cancel = &sepa_reject_transfer_cancel;
+  plugin->method = "sepa";
+  plugin->amount_round = &ebics_amount_round;
+  plugin->wire_validate = &ebics_wire_validate;
+  plugin->prepare_wire_transfer = &ebics_prepare_wire_transfer;
+  plugin->prepare_wire_transfer_cancel = &ebics_prepare_wire_transfer_cancel;
+  plugin->execute_wire_transfer = &ebics_execute_wire_transfer;
+  plugin->execute_wire_transfer_cancel = &ebics_execute_wire_transfer_cancel;
+  plugin->get_history = &ebics_get_history;
+  plugin->get_history_cancel = &ebics_get_history_cancel;
+  plugin->reject_transfer = &ebics_reject_transfer;
+  plugin->reject_transfer_cancel = &ebics_reject_transfer_cancel;
   return plugin;
 }
 
 
 /**
- * Shutdown Sepa wire subsystem.
+ * Shutdown Ebics wire subsystem.
  *
  * @param cls a `struct TALER_WIRE_Plugin`
  * @return NULL (always)
  */
 void *
-libtaler_plugin_wire_sepa_done (void *cls)
+libtaler_plugin_wire_ebics_done (void *cls)
 {
   struct TALER_WIRE_Plugin *plugin = cls;
-  struct SepaClosure *sc = plugin->cls;
+  struct EbicsClosure *sc = plugin->cls;
 
   GNUNET_free_non_null (sc->currency);
   GNUNET_free (sc);
@@ -957,4 +750,4 @@ libtaler_plugin_wire_sepa_done (void *cls)
   return NULL;
 }
 
-/* end of plugin_wire_sepa.c */
+/* end of plugin_wire_ebics.c */

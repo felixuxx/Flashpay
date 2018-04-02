@@ -231,6 +231,7 @@ postgres_create_tables (void *cls)
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+                            ",account_name TEXT NOT NULL"
 			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_timestamp INT8 NOT NULL"
@@ -521,13 +522,14 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
 			    "INSERT INTO wire_auditor_progress "
 			    "(master_pub"
+                            ",account_name"
 			    ",last_wire_reserve_in_serial_id"
 			    ",last_wire_wire_out_serial_id"
                             ",last_timestamp"
                             ",wire_in_off"
                             ",wire_out_off"
-			    ") VALUES ($1,$2,$3,$4,$5,$6);",
-			    6),
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+			    7),
     /* Used in #postgres_update_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
 			    "UPDATE wire_auditor_progress SET "
@@ -536,8 +538,8 @@ postgres_prepare (PGconn *db_conn)
                             ",last_timestamp=$3"
                             ",wire_in_off=$4"
                             ",wire_out_off=$5"
-			    " WHERE master_pub=$6",
-			    6),
+			    " WHERE master_pub=$6 AND account_name=$7",
+			    7),
     /* Used in #postgres_get_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
 			    "SELECT"
@@ -547,8 +549,8 @@ postgres_prepare (PGconn *db_conn)
                             ",wire_in_off"
                             ",wire_out_off"
 			    " FROM wire_auditor_progress"
-			    " WHERE master_pub=$1;",
-			    1),
+			    " WHERE master_pub=$1 AND account_name=$2;",
+			    2),
     /* Used in #postgres_insert_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_insert",
 			    "INSERT INTO auditor_reserves "
@@ -1342,6 +1344,7 @@ postgres_get_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
+ * @param account_name name of the wire account we are auditing
  * @param pp where is the auditor in processing
  * @return transaction status code
  */
@@ -1349,6 +1352,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
                                        const struct TALER_MasterPublicKeyP *master_pub,
+                                       const char *account_name,
                                        const struct TALER_AUDITORDB_WireProgressPoint *pp,
                                        const void *in_wire_off,
                                        const void *out_wire_off,
@@ -1356,6 +1360,7 @@ postgres_insert_wire_auditor_progress (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
@@ -1379,6 +1384,7 @@ postgres_insert_wire_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
+ * @param account_name name of the wire account we are auditing
  * @param pp where is the auditor in processing
  * @return transaction status code
  */
@@ -1386,6 +1392,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
                                        const struct TALER_MasterPublicKeyP *master_pub,
+                                       const char *account_name,
                                        const struct TALER_AUDITORDB_WireProgressPoint *pp,
                                        const void *in_wire_off,
                                        const void *out_wire_off,
@@ -1400,6 +1407,7 @@ postgres_update_wire_auditor_progress (void *cls,
     GNUNET_PQ_query_param_fixed_size (out_wire_off,
                                       wire_off_size),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
   };
 
@@ -1415,6 +1423,7 @@ postgres_update_wire_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
+ * @param account_name name of the wire account we are auditing
  * @param[out] pp set to where the auditor is in processing
  * @return transaction status code
  */
@@ -1422,6 +1431,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_progress (void *cls,
                                     struct TALER_AUDITORDB_Session *session,
                                     const struct TALER_MasterPublicKeyP *master_pub,
+                                    const char *account_name,
                                     struct TALER_AUDITORDB_WireProgressPoint *pp,
                                     void **in_wire_off,
                                     void **out_wire_off,
@@ -1431,6 +1441,7 @@ postgres_get_wire_auditor_progress (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -2594,12 +2605,12 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "auditordb-postgres",
-                                               "db_conn_str",
+                                               "CONFIG",
                                                &pg->connection_cfg_str))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "auditordb-postgres",
-                                 "db_conn_str");
+                                 "CONFIG");
       GNUNET_free (pg);
       return NULL;
     }

@@ -11,12 +11,14 @@ lib_LTLIBRARIES = \
 
 libtalerjson_la_SOURCES = \
   json.c \
-  json_helper.c
+  json_helper.c \
+  json_wire.c
 libtalerjson_la_LDFLAGS = \
   -version-info 1:0:1 \
   -export-dynamic -no-undefined
 libtalerjson_la_LIBADD = \
   -lgnunetjson \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson \

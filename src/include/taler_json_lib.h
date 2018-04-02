@@ -126,6 +126,65 @@ enum TALER_ErrorCode
 TALER_JSON_get_error_code (const json_t *json);
 
 
+/* **************** /wire account offline signing **************** */
+
+/**
+ * Compute the hash of the given wire details.   The resulting
+ * hash is what is put into the contract.
+ *
+ * @param wire_s wire details to hash
+ * @param hc[out] set to the hash
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
+ */
+int
+TALER_JSON_wire_signature_hash (const json_t *wire_s,
+                                struct GNUNET_HashCode *hc);
+
+/**
+ * Check the signature in @a wire_s.
+ *
+ * @param wire_s signed wire information of an exchange
+ * @param master_pub master public key of the exchange
+ * @return #GNUNET_OK if signature is valid
+ */
+int
+TALER_JSON_wire_signature_check (const json_t *wire_s,
+                                 const struct TALER_MasterPublicKeyP *master_pub);
+
+
+/**
+ * Create a signed wire statement for the given account.
+ *
+ * @param payto_url account specification
+ * @param master_priv private key to sign with, NULL to not sign
+ */
+json_t *
+TALER_JSON_wire_signature_make (const char *payto_url,
+                                const struct TALER_MasterPrivateKeyP *master_priv);
+
+
+/**
+ * Obtain the wire method associated with the given
+ * wire account details.  @a wire_s must contain a payto://-URL
+ * under 'url'.
+ *
+ * @return NULL on error
+ */
+char *
+TALER_JSON_wire_to_method (const json_t *wire_s);
+
+
+/**
+ * Obtain the payto://-URL associated with the given
+ * wire account details.  @a wire_s must contain a payto://-URL
+ * under 'url'.
+ *
+ * @return NULL on error
+ */
+char *
+TALER_JSON_wire_to_payto (const json_t *wire_s);
+
+
 #endif /* TALER_JSON_LIB_H_ */
 
 /* End of taler_json_lib.h */

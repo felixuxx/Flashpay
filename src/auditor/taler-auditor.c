@@ -761,7 +761,7 @@ handle_reserve_in (void *cls,
                    uint64_t rowid,
                    const struct TALER_ReservePublicKeyP *reserve_pub,
                    const struct TALER_Amount *credit,
-                   const json_t *sender_account_details,
+                   const char *sender_account_details,
                    const void *wire_reference,
                    size_t wire_reference_size,
                    struct GNUNET_TIME_Absolute execution_date)
@@ -1193,7 +1193,7 @@ handle_reserve_closed (void *cls,
 		       const struct TALER_Amount *amount_with_fee,
 		       const struct TALER_Amount *closing_fee,
 		       const struct TALER_ReservePublicKeyP *reserve_pub,
-		       const json_t *receiver_account,
+		       const char *receiver_account,
 		       const struct TALER_WireTransferIdentifierRawP *transfer_details)
 {
   struct ReserveContext *rc = cls;
@@ -1774,11 +1774,6 @@ struct WireCheckContext
   struct GNUNET_TIME_Absolute date;
 
   /**
-   * Wire method used for the transfer.
-   */
-  const char *method;
-
-  /**
    * Database transaction status.
    */
   enum GNUNET_DB_QueryStatus qs;
@@ -2069,8 +2064,8 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param cls a `struct WireCheckContext`
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param wire_method which wire plugin was used for the transfer?
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param account_details where did we transfer the funds?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param coin_pub which public key was this payment about
@@ -2082,8 +2077,8 @@ static void
 wire_transfer_information_cb (void *cls,
                               uint64_t rowid,
                               const struct TALER_MerchantPublicKeyP *merchant_pub,
-                              const char *wire_method,
                               const struct GNUNET_HashCode *h_wire,
+                              const json_t *account_details,
                               struct GNUNET_TIME_Absolute exec_time,
                               const struct GNUNET_HashCode *h_contract_terms,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -2097,6 +2092,29 @@ wire_transfer_information_cb (void *cls,
   struct TALER_EXCHANGEDB_TransactionList *tl;
   const struct TALER_CoinPublicInfo *coin;
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_HashCode hw;
+
+  if (GNUNET_OK !=
+      TALER_JSON_wire_signature_hash (account_details,
+                                      &hw))
+  {
+    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "failed to compute hash of given wire data");
+    return;
+  }
+  if (0 !=
+      memcmp (&hw,
+              h_wire,
+              sizeof (struct GNUNET_HashCode)))
+  {
+    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "database contains wrong hash code for wire details");
+    return;
+  }
 
   /* Obtain coin's transaction history */
   qs = edb->get_coin_transactions (edb->cls,
@@ -2183,8 +2201,9 @@ wire_transfer_information_cb (void *cls,
                                    tl);
 
   /* Check other details of wire transfer match */
-  if (0 != strcmp (wire_method,
-                   wcc->method))
+  if (0 != memcmp (h_wire,
+                   &wcc->h_wire,
+                   sizeof (struct GNUNET_HashCode)))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
@@ -2360,12 +2379,12 @@ check_wire_out_cb (void *cls,
 {
   struct AggregationContext *ac = cls;
   struct WireCheckContext wcc;
-  json_t *method;
   struct TALER_WIRE_Plugin *plugin;
   const struct TALER_Amount *wire_fee;
   struct TALER_Amount final_amount;
   struct TALER_Amount exchange_gain;
   enum GNUNET_DB_QueryStatus qs;
+  char *method;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_wire_out_serial_id);
@@ -2376,26 +2395,23 @@ check_wire_out_cb (void *cls,
               TALER_B2S (wtid),
               TALER_amount2s (amount),
               GNUNET_STRINGS_absolute_time_to_string (date));
-  wcc.ac = ac;
-  method = json_object_get (wire,
-                            "type");
-  if ( (NULL == method) ||
-       (! json_is_string (method)) )
+  if (NULL == (method = TALER_JSON_wire_to_method (wire)))
   {
     report_row_inconsistency ("wire_out",
                               rowid,
-                              "specified wire address lacks type");
+                              "specified wire address lacks method");
     return GNUNET_OK;
   }
-  wcc.method = json_string_value (method);
+
+  wcc.ac = ac;
   wcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   wcc.date = date;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (amount->currency,
                                         &wcc.total_deposits));
   if (GNUNET_OK !=
-      TALER_JSON_hash (wire,
-                       &wcc.h_wire))
+      TALER_JSON_wire_signature_hash (wire,
+                                      &wcc.h_wire))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -2409,6 +2425,7 @@ check_wire_out_cb (void *cls,
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     ac->qs = qs;
+    GNUNET_free (method);
     return GNUNET_SYSERR;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != wcc.qs)
@@ -2417,17 +2434,19 @@ check_wire_out_cb (void *cls,
     report_row_inconsistency ("wire_out",
                               rowid,
                               "audit of associated transactions failed");
+    GNUNET_free (method);
     return GNUNET_OK;
   }
 
   /* Subtract aggregation fee from total */
   wire_fee = get_wire_fee (ac,
-                           wcc.method,
+                           method,
                            date);
   if (NULL == wire_fee)
   {
     GNUNET_break (0);
     ac->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    GNUNET_free (method);
     return GNUNET_SYSERR;
   }
   if (GNUNET_SYSERR ==
@@ -2440,18 +2459,20 @@ check_wire_out_cb (void *cls,
                                             &wcc.total_deposits,
                                             wire_fee,
                                             -1);
+    GNUNET_free (method);
     return GNUNET_OK;
   }
 
   /* Round down to amount supported by wire method */
   plugin = get_wire_plugin (ac,
-                            wcc.method);
+                            method);
   if (NULL == plugin)
   {
     GNUNET_break (0);
+    GNUNET_free (method);
     return GNUNET_SYSERR;
   }
-
+  GNUNET_free (method);
   GNUNET_break (GNUNET_SYSERR !=
                 plugin->amount_round (plugin->cls,
                                       &final_amount));
@@ -3408,8 +3429,8 @@ deposit_cb (void *cls,
   dr.purpose.size = htonl (sizeof (dr));
   dr.h_contract_terms = *h_contract_terms;
   if (GNUNET_OK !=
-      TALER_JSON_hash (receiver_wire_account,
-                       &dr.h_wire))
+      TALER_JSON_wire_signature_hash (receiver_wire_account,
+                                      &dr.h_wire))
   {
     GNUNET_break (0);
     cc->qs = GNUNET_DB_STATUS_HARD_ERROR;

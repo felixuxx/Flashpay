@@ -1,4 +1,4 @@
-.TH TALER\-EXCHANGE\-WIRE 1 "Apr 2, 2016" "GNU Taler"
+.TH TALER\-EXCHANGE\-WIRE 1 "Mar 18, 2018" "GNU Taler"
 
 .SH NAME
 taler\-exchange\-wire \- Create the master-key signed responses to /wire.
@@ -13,18 +13,8 @@ taler\-exchange\-wire \- Create the master-key signed responses to /wire.
 
 .SH OPTIONS
 .B
-.IP "\-j JSON,  \-\-json=JSON"
-Gives JSON with all of the relevant account details in a method-specific format.
-.B
-.IP "\-t METHOD,  \-\-type=METHOD"
-Specifies the wire transfer method to use. Common are 'test' and 'sepa'.
-.B
 .IP "\-m MASTERKEYFILE,  \-\-master=MASTERKEYFILE"
 Specifies the name of the file containing the exchange's master key.
-.B
-.IP "\-o FILENAME,  \-\-output=FILENAME"
-Where to write the SEPA_RESPONSE_FILE.
-.B
 .IP "\-h, \-\-help"
 Print short help on options.
 .B

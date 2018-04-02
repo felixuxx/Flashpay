@@ -210,9 +210,10 @@ main (int argc,
                     "DEBUG",
                     NULL);
   if (NULL ==
-    (fakebank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE)))
+      (fakebank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                                      "account-1")))
     return 77;
-  
+
   return (GNUNET_OK == TALER_TESTING_setup (&run,
                                             NULL,
                                             CONFIG_FILE,

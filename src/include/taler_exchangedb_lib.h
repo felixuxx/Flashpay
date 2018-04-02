@@ -406,4 +406,72 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
 void
 TALER_EXCHANGEDB_fees_free (struct TALER_EXCHANGEDB_AggregateFees *af);
 
+
+/**
+ * Information about an account from the configuration.
+ */
+struct TALER_EXCHANGEDB_AccountInfo
+{
+  /**
+   * Section in the configuration file that specifies the
+   * account. Must start with "account-".
+   */
+  const char *section_name;
+
+  /**
+   * Name of the wire plugin that should be used to access
+   * the account.
+   */
+  const char *plugin_name;
+
+  /**
+   * payto://-URL of the account.
+   */
+  const char *payto_url;
+
+  /**
+   * Filename containing the signed /wire response, or NULL
+   * if not given.
+   */
+  const char *wire_response_filename;
+
+  /**
+   * #GNUNET_YES if this account is enabed to be debited
+   * by the taler-exchange-aggregator.
+   */
+  int debit_enabled;
+
+  /**
+   * #GNUNET_YES if this account is enabed to be credited by wallets
+   * and needs to be watched by the taler-exchange-wirewatch.
+   * Also, the account will only be included in /wire if credit
+   * is enabled.
+   */
+  int credit_enabled;
+};
+
+
+/**
+ * Function called with information about a wire account.
+ *
+ * @param cls closure
+ * @param ai account information
+ */
+typedef void
+(*TALER_EXCHANGEDB_AccountCallback)(void *cls,
+                                    const struct TALER_EXCHANGEDB_AccountInfo *ai);
+
+/**
+ * Parse the configuration to find account information.
+ *
+ * @param cfg configuration to use
+ * @param cb callback to invoke
+ * @param cb_cls closure for @a cb
+ */
+void
+TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                                TALER_EXCHANGEDB_AccountCallback cb,
+                                void *cb_cls);
+
+
 #endif

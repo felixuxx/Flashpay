@@ -24,7 +24,6 @@
 #include "taler_wire_lib.h"
 #include "taler_wire_plugin.h"
 #include <gnunet/gnunet_json_lib.h>
-#include <jansson.h>
 
 
 /**
@@ -38,11 +37,6 @@ struct TestBlock {
   const char *plugin_name;
 
   /**
-   * JSON template expected by the plugin for an account definition.
-   */
-  const char *json_proto;
-
-  /**
    * Amount to give to the rounding function.
    */
   const char *round_in;
@@ -54,7 +48,7 @@ struct TestBlock {
 
   /**
    * Currency to give to the plugin.
-   */ 
+   */
   const char *currency;
 };
 
@@ -65,34 +59,22 @@ struct TestBlock {
  */
 static struct TestBlock tests[] = {
   {
-    .plugin_name = "sepa",
-    .json_proto = "{  \"type\":\"sepa\", \"iban\":\"DE67830654080004822650\", \"name\":\"GNUnet e.V.\", \"bic\":\"GENODEF1SLR\" }",
+    .plugin_name = "ebics",
     .round_in = "EUR:0.123456",
     .round_out = "EUR:0.12",
     .currency = "EUR"
   },
   {
-    .plugin_name = "test",
-    .json_proto = "{  \"type\":\"test\", \"bank_url\":\"http://localhost/\", \"account_number\":42 }",
+    .plugin_name = "taler_bank",
     .round_in = "KUDOS:0.123456",
     .round_out = "KUDOS:0.12",
     .currency = "KUDOS"
   },
   {
-    NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL
   }
 };
 
-
-/**
- * Private key used to sign wire details.
- */
-static struct TALER_MasterPrivateKeyP priv_key;
-
-/**
- * Public key matching #priv_key.
- */
-static struct TALER_MasterPublicKeyP pub_key;
 
 /**
  * Our configuration.
@@ -105,73 +87,19 @@ static struct GNUNET_CONFIGURATION_Handle *cfg;
  *
  * @param test details of the test
  * @param plugin plugin to test
- * @param wire wire details for testing
  * @return #GNUNET_OK on success
  */
 static int
 run_test (const struct TestBlock *test,
-          struct TALER_WIRE_Plugin *plugin,
-          json_t *wire)
+          struct TALER_WIRE_Plugin *plugin)
 {
   struct GNUNET_HashCode salt;
-  struct TALER_MasterSignatureP sig;
-  json_t *lwire;
   struct TALER_Amount in;
   struct TALER_Amount expect;
-  char *emsg;
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &salt,
                               sizeof (salt));
-  if (GNUNET_OK !=
-      plugin->sign_wire_details (plugin->cls,
-                                 wire,
-                                 &priv_key,
-                                 &salt,
-                                 &sig))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  json_object_set_new (wire,
-                       "salt",
-                       GNUNET_JSON_from_data (&salt,
-                                              sizeof (salt)));
-  json_object_set_new (wire,
-                       "sig",
-                       GNUNET_JSON_from_data (&sig,
-                                              sizeof (sig)));
-  if (TALER_EC_NONE !=
-      plugin->wire_validate (plugin->cls,
-                             wire,
-                             &pub_key,
-                             &emsg))
-  {
-    GNUNET_break (0);
-    GNUNET_free (emsg);
-    return GNUNET_SYSERR;
-  }
-  /* load wire details from file */
-  lwire = plugin->get_wire_details (plugin->cls,
-                                    cfg,
-                                    test->plugin_name);
-  if (NULL == lwire)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (TALER_EC_NONE !=
-      plugin->wire_validate (plugin->cls,
-                             lwire,
-                             &pub_key,
-                             &emsg))
-  {
-    GNUNET_break (0);
-    GNUNET_free (emsg);
-    json_decref (lwire);
-    return GNUNET_SYSERR;
-  }
-  json_decref (lwire);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (test->round_in,
                                          &in));
@@ -214,12 +142,9 @@ int
 main (int argc,
       const char *const argv[])
 {
-  json_t *wire;
   int ret;
   struct TALER_WIRE_Plugin *plugin;
   const struct TestBlock *test;
-  unsigned int i;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
 
   GNUNET_log_setup ("test-wire-plugin",
                     "WARNING",
@@ -228,13 +153,8 @@ main (int argc,
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CONFIGURATION_load (cfg,
                                             "test_wire_plugin.conf"));
-  pk = GNUNET_CRYPTO_eddsa_key_create_from_file ("test_wire_plugin_key.priv");
-  priv_key.eddsa_priv = *pk;
-  GNUNET_free (pk);
-  GNUNET_CRYPTO_eddsa_key_get_public (&priv_key.eddsa_priv,
-                                      &pub_key.eddsa_pub);
   ret = GNUNET_OK;
-  for (i=0;NULL != (test = &tests[i])->plugin_name;i++)
+  for (unsigned int i=0;NULL != (test = &tests[i])->plugin_name;i++)
   {
     GNUNET_CONFIGURATION_set_value_string (cfg,
 					   "taler",
@@ -243,10 +163,7 @@ main (int argc,
     plugin = TALER_WIRE_plugin_load (cfg,
                                      test->plugin_name);
     GNUNET_assert (NULL != plugin);
-    wire = json_loads (test->json_proto, 0, NULL);
-    GNUNET_assert (NULL != wire);
-    ret = run_test (test, plugin, wire);
-    json_decref (wire);
+    ret = run_test (test, plugin);
     TALER_WIRE_plugin_unload (plugin);
     if (GNUNET_OK != ret)
     {

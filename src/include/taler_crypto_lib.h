@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2017 Taler Systems SA
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -728,6 +728,53 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
                               const struct TALER_RefreshCommitmentEntry *rcs,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct TALER_Amount *amount_with_fee);
+
+
+/* **************** /wire account offline signing **************** */
+
+
+/**
+ * Compute the hash of the given wire details.   The resulting
+ * hash is what is put into the contract.
+ *
+ * @param payto_url bank account
+ * @param salt salt used to eliminate brute-force inversion
+ * @param hc[out] set to the hash
+ */
+void
+TALER_wire_signature_hash (const char *payto_url,
+                           const char *salt,
+                           struct GNUNET_HashCode *hc);
+
+/**
+ * Check the signature in @a wire_s.
+ *
+ * @param payto_url URL that is signed
+ * @param salt the salt used to salt the @a payto_url when hashing
+ * @param master_pub master public key of the exchange
+ * @param master_sig signature of the exchange
+ * @return #GNUNET_OK if signature is valid
+ */
+int
+TALER_wire_signature_check (const char *payto_url,
+                            const char *salt,
+                            const struct TALER_MasterPublicKeyP *master_pub,
+                            const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Create a signed wire statement for the given account.
+ *
+ * @param payto_url account specification
+ * @param salt the salt used to salt the @a payto_url when hashing
+ * @param master_priv private key to sign with
+ * @param master_sig[out] where to write the signature
+ */
+void
+TALER_wire_signature_make (const char *payto_url,
+                           const char *salt,
+                           const struct TALER_MasterPrivateKeyP *master_priv,
+                           struct TALER_MasterSignatureP *master_sig);
 
 
 #endif

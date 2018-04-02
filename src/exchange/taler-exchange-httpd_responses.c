@@ -148,7 +148,7 @@ TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
 			 JSON_INDENT(2));
   if (NULL == json_str)
   {
-    GNUNET_break (0);
+    GNUNET_assert (0);
     return MHD_NO;
   }
   json_len = strlen (json_str);
@@ -733,10 +733,10 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
       ret |= 1;
       GNUNET_assert (0 ==
                      json_array_append_new (json_history,
-                                            json_pack ("{s:s, s:o, s:O, s:o, s:o}",
+                                            json_pack ("{s:s, s:o, s:s, s:o, s:o}",
                                                        "type", "DEPOSIT",
                                                        "timestamp", GNUNET_JSON_from_time_abs (pos->details.bank->execution_date),
-                                                       "sender_account_details", pos->details.bank->sender_account_details,
+                                                       "sender_account_url", pos->details.bank->sender_account_details,
                                                        "wire_reference", GNUNET_JSON_from_data (pos->details.bank->wire_reference,
                                                                                                 pos->details.bank->wire_reference_size),
                                                        "amount", TALER_JSON_from_amount (&pos->details.bank->amount))));
@@ -858,14 +858,9 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 	TALER_amount_hton (&rcc.closing_fee,
 			   &pos->details.closing->closing_fee);
 	rcc.reserve_pub = pos->details.closing->reserve_pub;
-	if (GNUNET_OK !=
-            TALER_JSON_hash (pos->details.closing->receiver_account_details,
-                             &rcc.h_wire))
-        {
-          GNUNET_break (0);
-          json_decref (json_history);
-          return NULL;
-        }
+        GNUNET_CRYPTO_hash (pos->details.closing->receiver_account_details,
+                            strlen (pos->details.closing->receiver_account_details) + 1,
+                            &rcc.h_wire);
 	rcc.wtid = pos->details.closing->wtid;
 	if (GNUNET_OK !=
 	    TEH_KS_sign (&rcc.purpose,

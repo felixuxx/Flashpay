@@ -42,8 +42,7 @@ common_free_reserve_history (void *cls,
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
       bt = rh->details.bank;
-      if (NULL != bt->sender_account_details)
-        json_decref (bt->sender_account_details);
+      GNUNET_free_non_null (bt->sender_account_details);
       GNUNET_free_non_null (bt->wire_reference);
       GNUNET_free (bt);
       break;
@@ -61,8 +60,7 @@ common_free_reserve_history (void *cls,
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       closing = rh->details.closing;
-      if (NULL != closing->receiver_account_details)
-        json_decref (closing->receiver_account_details);
+      GNUNET_free_non_null (closing->receiver_account_details);
       GNUNET_free (closing);
       break;
     }
@@ -92,7 +90,7 @@ common_free_coin_transaction_list (void *cls,
     switch (list->type)
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
-      json_decref (list->details.deposit->receiver_wire_account);
+      GNUNET_free_non_null (list->details.deposit->receiver_wire_account);
       if (NULL != list->details.deposit->coin.denom_pub.rsa_public_key)
         GNUNET_CRYPTO_rsa_public_key_free (list->details.deposit->coin.denom_pub.rsa_public_key);
       if (NULL != list->details.deposit->coin.denom_sig.rsa_signature)
