@@ -158,7 +158,13 @@ void
 TALER_TESTING_interpreter_fail
   (struct TALER_TESTING_Interpreter *is)
 {
+  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
+
   // FIXME: disconnect from the exchange.
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Failed at command `%s'\n",
+              cmd->label);
+
   is->result = GNUNET_SYSERR;
   // this cleans up too.
   GNUNET_SCHEDULER_shutdown ();
@@ -473,7 +479,7 @@ cert_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Got NULL response for /keys\n");
-  
+
   }
   else
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -482,7 +488,7 @@ cert_cb (void *cls,
 
   main_ctx->is->key_generation++;
   main_ctx->is->keys = keys;
-  
+
   /* /keys has been called for some reason and
    * the interpreter is already running. */
   if (GNUNET_YES == main_ctx->is->working)
