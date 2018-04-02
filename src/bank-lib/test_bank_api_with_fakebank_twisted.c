@@ -75,9 +75,7 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_bank_history ("history-0",
                                     fakebank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -110,6 +108,7 @@ purge_process (struct GNUNET_OS_Process *process)
   GNUNET_OS_process_destroy (process);
 }
 
+
 int
 main (int argc,
       char * const *argv)
@@ -122,13 +121,14 @@ main (int argc,
                     "DEBUG", NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
-      (CONFIG_FILE)))
+               (CONFIG_FILE,
+                "account-1")))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
       (CONFIG_FILE)))
     return 77;
-  
+
   if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
     return 77;
 

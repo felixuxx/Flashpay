@@ -179,7 +179,8 @@ main (int argc,
                     "DEBUG", NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
-      (CONFIG_FILE)))
+               (CONFIG_FILE,
+                "account-2")))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
