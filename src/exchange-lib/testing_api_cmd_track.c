@@ -519,16 +519,15 @@ track_transfer_cb
     return;
   }
 
-  switch (http_status)
-  {
-
-  if (
-    (NULL == tts->expected_total_amount) ||
-      (NULL == tts->expected_wire_fee))
+  if ( (NULL == tts->expected_total_amount) ||
+       (NULL == tts->expected_wire_fee) )
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Expected amount and fee not specified, "
                 "likely to segfault...\n");
 
+
+  switch (http_status)
+  {
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         TALER_string_to_amount (tts->expected_total_amount,
