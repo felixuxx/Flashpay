@@ -127,7 +127,7 @@ reject_run (void *cls,
     (GNUNET_OK == TALER_TESTING_GET_TRAIT_ROW_ID
       (deposit_cmd, &row_id));
   TALER_LOG_INFO ("Account %llu rejects deposit\n",
-                  *credit_account);
+                  (unsigned long long) *credit_account);
   rs->rh = TALER_BANK_reject (is->ctx,
                               rs->bank_url,
                               &AUTHS[*credit_account -1],
