@@ -246,10 +246,10 @@ reject_cb (void *cls,
   rt = NULL;
   if (TALER_EC_NONE != ec)
   {
-    fprintf (stderr,
-             "Failed to wire back transfer `%s': %d\n",
-             rtc->wtid_s,
-             ec);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to wire back transfer `%s': %d\n",
+                rtc->wtid_s,
+                ec);
     GNUNET_free (rtc->wtid_s);
     db_plugin->rollback (db_plugin->cls,
 			 rtc->session);
@@ -312,6 +312,8 @@ history_cb (void *cls,
     if ( (GNUNET_YES == delay) &&
          (test_mode) )
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Shutdown due to test mode!\n");
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_OK;
     }
