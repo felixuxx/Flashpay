@@ -1912,7 +1912,10 @@ postgres_reserves_in_insert (void *cls,
 					     "reserve_create",
 					     params);
     if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
       return qs;
+    }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       /* Maybe DB did not detect serializiability error already,
@@ -1938,7 +1941,10 @@ postgres_reserves_in_insert (void *cls,
 					     "reserves_in_add_transaction",
 					     params);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
       return qs;
+    }
   }
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == reserve_exists)
@@ -1957,7 +1963,7 @@ postgres_reserves_in_insert (void *cls,
                           balance))
     {
       /* currency overflow or incompatible currency */
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Attempt to deposit incompatible amount into reserve\n");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }

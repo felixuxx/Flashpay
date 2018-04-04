@@ -292,8 +292,8 @@ history_cb (void *cls,
   struct TALER_ReservePublicKeyP reserve_pub;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Got history callback, direction %u!\n", (unsigned int) dir);
-
+              "Got history callback, direction %u!\n",
+              (unsigned int) dir);
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     hh = NULL;
@@ -308,6 +308,7 @@ history_cb (void *cls,
                 "End of list. Committing progress!\n");
     qs = db_plugin->commit (db_plugin->cls,
 			    session);
+    GNUNET_break (0 <= qs);
     if ( (GNUNET_YES == delay) &&
          (test_mode) )
     {
