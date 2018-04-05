@@ -869,6 +869,12 @@ bhist_cb (void *cls,
       GNUNET_free (subject);
       wd.account_details = details->account_details;
 
+      GNUNET_break (NULL != whh->hh);
+
+      /* Once we get the sentinel element, the handle becomes invalid. */
+      if (TALER_BANK_DIRECTION_NONE == dir)
+        whh->hh = NULL;
+
       if ( (NULL != whh->hres_cb) &&
            (GNUNET_OK !=
             whh->hres_cb (whh->hres_cb_cls,
@@ -1007,7 +1013,11 @@ static void
 test_get_history_cancel (void *cls,
 			 struct TALER_WIRE_HistoryHandle *whh)
 {
-  TALER_BANK_history_cancel (whh->hh);
+  if (NULL != whh->hh)
+  {
+    TALER_BANK_history_cancel (whh->hh);
+    whh->hh = NULL;
+  }
   GNUNET_free (whh);
 }
 
