@@ -156,7 +156,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
 
 /**
  * Function called when we're done processing the
- * HTTP /admin/add/incoming request.
+ * HTTP /history request.
  *
  * @param cls the `struct TALER_BANK_HistoryHandle`
  * @param response_code HTTP response code, 0 on error
