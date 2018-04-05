@@ -867,7 +867,7 @@ keys_completed_cb (void *cls,
       {
         /* offsets will map 1:1 */
         unsigned int off = aold->denom_keys[j] - kd_old.denom_keys;
-
+        /* FIXME(#5315): this should not be an assert! */
         GNUNET_assert (off < kd_old.num_denom_keys);
         anew->denom_keys[j] = &kd.denom_keys[off];
       }
@@ -1127,7 +1127,7 @@ request_keys (struct TALER_EXCHANGE_Handle *exchange)
   GNUNET_assert (NULL == exchange->kr);
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
-  if (GNUNET_YES == MAH_handle_is_ready (exchange))
+  if (GNUNET_YES == MAH_handle_is_ready (exchange) && !TALER_EXCHANGE_API_DISABLE_CHERRYPICKING)
   {
     char *arg;
 
