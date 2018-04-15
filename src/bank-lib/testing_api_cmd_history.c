@@ -123,7 +123,8 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
     const struct TALER_TESTING_Command *c = &is->commands[i];
 
 
-    #warning "Errors reported here are NOT fatal"
+    /* XXX: Errors reported here are NOT fatal */
+
     /* Rejected wire transfers have hold a reference to a
      * reject command to mark them as rejected. So errors
      * about "reject traits" not found are NOT fatal here */

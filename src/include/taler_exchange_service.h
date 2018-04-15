@@ -32,6 +32,13 @@
 
 
 /**
+ * Temporarily disable cherrypicking until it's fixed.
+ * See #5315.
+ */
+#define TALER_EXCHANGE_API_DISABLE_CHERRYPICKING 1
+
+
+/**
  * List of possible options to be passed to
  * #TALER_EXCHANGE_connect().
  */

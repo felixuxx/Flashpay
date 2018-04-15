@@ -84,7 +84,12 @@ run (void *cls,
                               SIGUSR1),
 
     TALER_TESTING_cmd_check_keys ("check-keys-2",
-                                  2, 8,
+                                  2,
+#if TALER_EXCHANGE_API_DISABLE_CHERRYPICKING
+                                  12,
+#else
+                                  8,
+#endif
                                   is->exchange),
 
 

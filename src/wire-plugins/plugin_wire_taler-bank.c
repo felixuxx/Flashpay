@@ -905,7 +905,11 @@ bhist_cb (void *cls,
                           sizeof (bserial_id),
                           &wd)) )
         whh->hres_cb = NULL;
-      return; /* do NOT yet clean up! */
+      GNUNET_break (NULL != whh->hh);
+      /* Once we get the sentinel element, the handle becomes invalid. */
+      if (TALER_BANK_DIRECTION_NONE == dir)
+        whh->hh = NULL;
+      return;
     }
   case MHD_HTTP_NO_CONTENT:
     if (NULL != whh->hres_cb)

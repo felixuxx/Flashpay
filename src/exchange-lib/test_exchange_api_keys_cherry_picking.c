@@ -579,7 +579,11 @@ run (void *cls)
     /* Re-download and check /keys */
     { .oc = OC_CHECK_KEYS,
       .details.check_keys.generation = 2,
+#if TALER_EXCHANGE_API_DISABLE_CHERRYPICKING
+      .details.check_keys.num_denom_keys = 12
+#else
       .details.check_keys.num_denom_keys = 8
+#endif
     },
     { .oc = OC_END }
   };
