@@ -33,6 +33,7 @@ GTAGS
 src/lib/test_exchange_api
 doc/doxygen/doxygen_sqlite3.db
 src/auditor/taler-auditor
+src/auditor/taler-auditor-dbinit
 src/auditor/taler-auditor-sign
 src/bank-lib/test_bank_api
 src/bank-lib/test_bank_api_new

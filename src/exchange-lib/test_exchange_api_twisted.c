@@ -219,4 +219,4 @@ main (int argc,
   return 0;
 }
 
-/* end of test_exchange_api_new.c */
+/* end of test_exchange_api_twisted.c */

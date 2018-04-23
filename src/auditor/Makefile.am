@@ -14,7 +14,23 @@ pkgcfg_DATA = \
 bin_PROGRAMS = \
   taler-auditor \
   taler-wire-auditor \
-  taler-auditor-sign
+  taler-auditor-sign \
+  taler-auditor-dbinit
+
+taler_auditor_dbinit_SOURCES = \
+  taler-auditor-dbinit.c
+taler_auditor_dbinit_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  -lgnunetutil  $(XLIB)
+taler_auditor_dbinit_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS)
+taler_auditor_dbinit_CPPFLAGS = \
+  -I$(top_srcdir)/src/include \
+  -I$(top_srcdir)/src/pq/ \
+  $(POSTGRESQL_CPPFLAGS)
 
 taler_auditor_SOURCES = \
   taler-auditor.c
