@@ -185,6 +185,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
 
+  /* Reset exchange database.  */
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
@@ -215,7 +216,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
        (0 != code) )
   {
     fprintf (stderr,
-             "Failed to setup database\n");
+             "Failed to setup (exchange) database\n");
     return GNUNET_NO;
   }
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
@@ -224,6 +225,51 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
     fprintf (stderr,
              "Unexpected error running"
              " `taler-exchange-dbinit'!\n");
+    return GNUNET_SYSERR;
+  }
+
+
+  /* Reset auditor database.  */
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-auditor-dbinit",
+                                  "taler-auditor-dbinit",
+                                  "-c", config_filename,
+                                  "-r",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-auditor-dbinit`,"
+                " is your PATH correct?\n");
+
+    return GNUNET_NO;
+  }
+  if (GNUNET_SYSERR ==
+      GNUNET_OS_process_wait_status (proc,
+                                     &type,
+                                     &code))
+  {
+    GNUNET_break (0);
+    GNUNET_OS_process_destroy (proc);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_OS_process_destroy (proc);
+  if ( (type == GNUNET_OS_PROCESS_EXITED) &&
+       (0 != code) )
+  {
+    fprintf (stderr,
+             "Failed to setup (auditor) database\n");
+    return GNUNET_NO;
+  }
+  if ( (type != GNUNET_OS_PROCESS_EXITED) ||
+       (0 != code) )
+  {
+    fprintf (stderr,
+             "Unexpected error running"
+             " `taler-auditor-dbinit'!\n");
     return GNUNET_SYSERR;
   }
 
