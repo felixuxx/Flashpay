@@ -94,6 +94,7 @@ run (void *cls,
        "subject 1",
        "http://exchange.com/"),
 
+    /* bank gives to exchange */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-2",
        "KUDOS:5.01",

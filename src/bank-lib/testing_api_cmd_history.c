@@ -184,7 +184,7 @@ print_expected (struct History *h,
   for (uint64_t i=0;i<h_len;i++)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "H(%llu): %s%s (serial: %llu, subject: %s, to: %s)\n",
+                "H(%llu): %s%s (serial: %llu, subject: %s, counterpart: %s)\n",
                 (unsigned long long) i,
                 (TALER_BANK_DIRECTION_CREDIT == h[i].direction) ? "+" : "-",
                 TALER_amount2s (&h[i].details.amount),
@@ -409,8 +409,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
       h[total].direction = TALER_BANK_DIRECTION_CREDIT;
       if (GNUNET_YES == cancelled)
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
+
       GNUNET_asprintf (&h[total].details.account_url,
-                       "payto://x-taler-bank/%s/%llu",
+                       ('/' == hs->bank_url[strlen(hs->bank_url) -1])
+                       ? "payto://x-taler-bank/%s%llu"
+                       : "payto://x-taler-bank/%s/%llu",
                        hs->bank_url,
                        (unsigned long long) *debit_account_no);
     }
@@ -420,8 +423,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
       h[total].direction = TALER_BANK_DIRECTION_DEBIT;
       if (GNUNET_YES == cancelled)
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
+
       GNUNET_asprintf (&h[total].details.account_url,
-                       "payto://x-taler-bank/%s/%llu",
+                       ('/' == hs->bank_url[strlen(hs->bank_url) -1])
+                       ? "payto://x-taler-bank/%s%llu"
+                       : "payto://x-taler-bank/%s/%llu",
                        hs->bank_url,
                        (unsigned long long) *credit_account_no);
     }
