@@ -935,7 +935,7 @@ create_wire_fee_for_method (void *cls,
                    "fees-%s",
                    wiremethod);
   GNUNET_asprintf (&fn,
-                   "%s%s.fee",
+                   "%s/%s.fee",
                    feedir,
                    wiremethod);
   af_head = NULL;
