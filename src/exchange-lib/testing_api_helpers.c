@@ -355,39 +355,57 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
   int result;
   unsigned int iter;
   struct GNUNET_OS_Process *exchanged;
-
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long port;
+  char *serve;
+  char *wget_cmd;
+  char *base_url;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
                                  config_filename))
     return GNUNET_NO;
+
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
+      GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
-                                             "PORT",
-                                             &port))
+                                             "SERVE",
+                                             &serve))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "PORT");
+                               "SERVE");
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_NO;
   }
 
-  GNUNET_CONFIGURATION_destroy (cfg);
-  if (GNUNET_OK !=
-      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     (uint16_t) port))
+  if (0 == strcmp ("http", serve))
   {
-    fprintf (stderr,
-             "Required port %llu not available, skipping.\n",
-	     port);
-    return GNUNET_NO;
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_number (cfg,
+                                               "exchange",
+                                               "PORT",
+                                               &port))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "PORT");
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_NO;
+    }
+  
+    GNUNET_CONFIGURATION_destroy (cfg);
+    if (GNUNET_OK !=
+        GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+  				     (uint16_t) port))
+    {
+      fprintf (stderr,
+               "Required port %llu not available, skipping.\n",
+  	     port);
+      return GNUNET_NO;
+    }
   }
-
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
                                        GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
@@ -396,6 +414,25 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                        "-c", config_filename,
                                        "-i",
                                        NULL);
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_NO;
+  }
+
+  GNUNET_asprintf (&wget_cmd,
+                   "wget -q -t 1 -T 1 %skeys"
+                   " -o /dev/null -O /dev/null",
+                   base_url); // make sure ends with '/'
+
   /* give child time to start and bind against the socket */
   fprintf (stderr,
            "Waiting for `taler-exchange-httpd' to be ready\n");
@@ -417,9 +454,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
       sleep (1);
       iter++;
     }
-  while (0 != system
-    ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys"
-     " -o /dev/null -O /dev/null"));
+  while (0 != system (wget_cmd));
 
   result = TALER_TESTING_setup (main_cb,
                                 main_cb_cls,
