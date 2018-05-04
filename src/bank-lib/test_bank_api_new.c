@@ -164,7 +164,7 @@ main(int argc,
     return 77;
 
   if (NULL == (bankd =
-      TALER_TESTING_run_bank (CONFIG_FILE)))
+      TALER_TESTING_run_bank (CONFIG_FILE, bank_url)))
     return 77;
   
   ret = TALER_TESTING_setup (&run,

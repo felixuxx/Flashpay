@@ -57,11 +57,63 @@ struct TALER_BANK_AuthenticationData AUTHS[] = {
  *         be started.
  */
 struct GNUNET_OS_Process *
-TALER_TESTING_run_bank (const char *config_filename)
+TALER_TESTING_run_bank (const char *config_filename,
+                        const char *bank_url)
 {
+
+  /* to fetch: dbname+serving_method+base_url */
+
 
   struct GNUNET_OS_Process *bank_proc;
   unsigned int iter;
+  char *wget_cmd;
+  char *database;
+  char *serve_cfg;
+  char *serve_arg;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_filename))
+  {
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    exit (77);
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "bank",
+                                             "database",
+                                             &database))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "bank",
+                               "database");
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    exit (77);
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "bank",
+                                             "serve",
+                                             &serve_cfg))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "bank",
+                               "serve");
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    exit (77);
+  }
+
+  serve_arg = "serve-http";
+  if (0 != strcmp ("http", serve_cfg))
+    serve_arg = "serve-uwsgi";
 
   bank_proc = GNUNET_OS_start_process
     (GNUNET_NO,
@@ -70,10 +122,15 @@ TALER_TESTING_run_bank (const char *config_filename)
      "taler-bank-manage",
      "taler-bank-manage",
      "-c", config_filename,
-     "--with-db=postgres:///talercheck",
-     "serve-http", NULL);
+     "--with-db", database,
+     serve_arg, NULL);
   if (NULL == bank_proc)
     BANK_FAIL ();
+
+  GNUNET_asprintf (&wget_cmd,
+                   "wget -q -t 1 -T 1 %s"
+                   " -o /dev/null -O /dev/null",
+                   bank_url);
 
   /* give child time to start and bind against the socket */
   fprintf (stderr,
@@ -96,9 +153,7 @@ TALER_TESTING_run_bank (const char *config_filename)
       sleep (1);
       iter++;
     }
-                                   /*FIXME: no hardcode port*/
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/" \
-                      " -o /dev/null -O /dev/null"));
+  while (0 != system (wget_cmd));
   fprintf (stderr, "\n");
 
   return bank_proc;

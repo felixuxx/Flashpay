@@ -85,7 +85,7 @@ run (void *cls,
   struct TALER_TESTING_Command commands[] = {
 
     TALER_TESTING_cmd_bank_history ("history-0",
-                                    bank_url,
+                                    twister_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     NULL,
@@ -124,10 +124,12 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api-twisted",
                     "DEBUG", NULL);
 
-  if (NULL == (bank_url = TALER_TESTING_prepare_bank (CONFIG_FILE)))
+  if (NULL == (bank_url = TALER_TESTING_prepare_bank
+      (CONFIG_FILE)))
     return 77;
 
-  if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE)))
+  if (NULL == (bankd = TALER_TESTING_run_bank
+      (CONFIG_FILE, bank_url)))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
