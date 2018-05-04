@@ -16,6 +16,7 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file exchange-lib/testing_api_helpers.c
  * @brief helper functions
@@ -380,7 +381,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
     return GNUNET_NO;
   }
 
-  if (0 == strcmp ("http", serve))
+  if (0 == strcmp ("tcp", serve))
   {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
@@ -395,7 +396,6 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
       return GNUNET_NO;
     }
   
-    GNUNET_CONFIGURATION_destroy (cfg);
     if (GNUNET_OK !=
         GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
   				     (uint16_t) port))
@@ -427,6 +427,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_NO;
   }
+  GNUNET_CONFIGURATION_destroy (cfg);
 
   GNUNET_asprintf (&wget_cmd,
                    "wget -q -t 1 -T 1 %skeys"
