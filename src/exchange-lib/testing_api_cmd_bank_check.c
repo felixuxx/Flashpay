@@ -98,6 +98,7 @@ check_bank_transfer_run (void *cls,
 
   if (NULL == bcs->deposit_reference)
   {
+    TALER_LOG_INFO ("Deposit reference NOT given\n");
     debit_account = &bcs->debit_account;
     credit_account = &bcs->credit_account;
     exchange_base_url = bcs->exchange_base_url;
@@ -120,9 +121,10 @@ check_bank_transfer_run (void *cls,
     const struct TALER_TESTING_Command *deposit_cmd;
     const struct TALER_Amount *amount_ptr;
 
-    TALER_LOG_INFO ("`%s' uses reference (%s)\n",
+    TALER_LOG_INFO ("`%s' uses reference (%s/%p)\n",
                     TALER_TESTING_interpreter_get_current_label
                       (is),
+                    bcs->deposit_reference,
                     bcs->deposit_reference);
     deposit_cmd = TALER_TESTING_interpreter_lookup_command
       (is, bcs->deposit_reference);
@@ -253,6 +255,8 @@ TALER_TESTING_cmd_check_bank_transfer
   bcs->amount = amount;
   bcs->debit_account = debit_account;
   bcs->credit_account = credit_account;
+
+  bcs->deposit_reference = NULL;
 
   cmd.label = label;
   cmd.cls = bcs;
