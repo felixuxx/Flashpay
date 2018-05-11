@@ -702,7 +702,7 @@ taler_bank_execute_wire_transfer (void *cls,
       return NULL;
     }
     auth.details.basic.password = &auth.details.basic.username[slen];
-    slen = strlen (auth.details.basic.username) + 1;
+    slen = strlen (auth.details.basic.password) + 1;
     GNUNET_assert (left >= slen);
     left -= slen;
     if (0 != left)
