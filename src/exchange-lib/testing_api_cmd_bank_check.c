@@ -210,7 +210,8 @@ check_bank_transfer_traits (void *cls,
        &bcs->wtid,
        sizeof (struct TALER_WireTransferIdentifierRawP)))
     wtid_ptr = NULL;
-  wtid_ptr = &bcs->wtid;
+  else
+    wtid_ptr = &bcs->wtid;
 
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_transfer_subject (0, bcs->subject),
