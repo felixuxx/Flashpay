@@ -692,6 +692,7 @@ taler_bank_execute_wire_transfer (void *cls,
   }
   else
   {
+    auth.method = TALER_BANK_AUTH_BASIC;
     auth.details.basic.username = (char *) &exchange_base_url[slen];
     slen = strlen (auth.details.basic.username) + 1;
     GNUNET_assert (left >= slen);
