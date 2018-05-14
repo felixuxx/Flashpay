@@ -56,6 +56,20 @@ struct MeltDetails
  */
 struct RefreshMeltState
 {
+
+  /**
+   * if set to GNUNET_YES, then two /refresh/melt operations
+   * will be performed.  This is needed to trigger the code
+   * path that manages those already-made requests.  Note: it
+   * is not possible to just copy-and-paste a test refresh melt
+   * CMD to have the same effect, because every data preparation
+   * generates new planchets that (in turn) make the whole "hash"
+   * different from any previous one, therefore NOT allowing the
+   * exchange to pick any previous /rerfesh/melt operation from
+   * the database.
+   */
+  unsigned int double_melt;
+
   /**
    * Fixme: figure out this data purpose.
    */
@@ -628,6 +642,18 @@ melt_cb (void *cls,
     return;
   }
   rms->noreveal_index = noreveal_index;
+
+  if (GNUNET_YES == rms->double_melt)
+  {
+    TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
+                     rms->is->commands[rms->is->ip].label);
+    rms->rmh = TALER_EXCHANGE_refresh_melt
+      (rms->exchange, rms->refresh_data_length,
+       rms->refresh_data, &melt_cb, rms);
+    rms->double_melt = GNUNET_NO;
+    return;
+  }
+
   TALER_TESTING_interpreter_next (rms->is);
 }
 
@@ -856,6 +882,49 @@ TALER_TESTING_cmd_refresh_melt
   rms->melted_coin = md;
   rms->expected_response_code = expected_response_code;
   rms->exchange = exchange;
+
+  cmd.label = label;
+  cmd.cls = rms;
+  cmd.run = &refresh_melt_run;
+  cmd.cleanup = &refresh_melt_cleanup;
+  cmd.traits = &refresh_melt_traits;
+  
+  return cmd;
+}
+
+/**
+ * Create a "refresh melt" command, that does TWO /refresh/melt
+ * requests.
+ *
+ * @param label command label
+ * @param exchange connection to the exchange
+ * @param amount Fixme
+ * @param coin_reference reference to a command that will provide
+ *        a coin to refresh
+ * @param expected_response_code expected HTTP code
+ */
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_melt_double
+  (const char *label,
+   struct TALER_EXCHANGE_Handle *exchange,
+   const char *amount,
+   const char *coin_reference,
+   unsigned int expected_response_code)
+{
+  struct RefreshMeltState *rms;
+  struct MeltDetails md;
+  struct TALER_TESTING_Command cmd;
+
+  md.coin_reference = coin_reference;
+  md.amount = amount;
+
+  rms = GNUNET_new (struct RefreshMeltState);
+  rms->amount = amount;
+  rms->melted_coin = md;
+  rms->expected_response_code = expected_response_code;
+  rms->exchange = exchange;
+  rms->double_melt = GNUNET_YES;
 
   cmd.label = label;
   cmd.cls = rms;

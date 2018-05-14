@@ -660,6 +660,26 @@ TALER_TESTING_cmd_refresh_melt
    const char *coin_reference,
    unsigned int expected_response_code);
 
+/**
+ * Create a "refresh melt" command, that does TWO /refresh/melt
+ * requests.
+ *
+ * @param label command label
+ * @param exchange connection to the exchange
+ * @param amount Fixme
+ * @param coin_reference reference to a command that will provide
+ *        a coin to refresh
+ * @param expected_response_code expected HTTP code
+ */
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_melt_double
+  (const char *label,
+   struct TALER_EXCHANGE_Handle *exchange,
+   const char *amount,
+   const char *coin_reference,
+   unsigned int expected_response_code);
+
 
 /**
  * Create a "refresh reveal" command.

@@ -259,9 +259,12 @@ refresh_melt_transaction (void *cls,
                              &rm);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
+    TALER_LOG_DEBUG ("Found already-melted coin\n");
     *mhd_ret = reply_refresh_melt_success (connection,
 					   &rmc->refresh_session.rc,
 					   rm.session.noreveal_index);
+    /* FIXME: is it normal to return "hard error" upon
+     * _finding_ some data into the database?  */
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 > qs)

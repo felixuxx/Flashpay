@@ -114,7 +114,7 @@ static struct GNUNET_OS_Process *twisterd;
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
      fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
-     USER_LOGIN_NAME, USER_LOGIN_PASS, EXCHANGE_URL)
+     USER_LOGIN_NAME, USER_LOGIN_PASS, exchange_url)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -141,6 +141,48 @@ run (void *cls,
 {
 
   struct TALER_TESTING_Command commands[] = {
+
+    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve",
+                              "EUR:5.01"),
+
+    /**
+     * Make previous command effective.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch"),
+
+    /**
+     * Withdraw EUR:5.
+     */
+    TALER_TESTING_cmd_withdraw_amount
+      ("refresh-withdraw-coin",
+       is->exchange,
+       "refresh-create-reserve",
+       "EUR:5",
+       MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_deposit
+      ("refresh-deposit-partial",
+       is->exchange,
+       "refresh-withdraw-coin",
+       0,
+       TALER_TESTING_make_wire_details
+         (42,
+          fakebank_url),
+       "{\"items\":[{\"name\":\"ice cream\",\
+                     \"value\":\"EUR:1\"}]}",
+       GNUNET_TIME_UNIT_ZERO,
+       "EUR:1",
+       MHD_HTTP_OK),
+
+    /**
+     * Melt the rest of the coin's value
+     * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
+    TALER_TESTING_cmd_refresh_melt
+      ("refresh-melt",
+       is->exchange,
+       "EUR:4",
+       "refresh-withdraw-coin",
+       MHD_HTTP_OK),
 
     /**
      * End the suite.  Fixme: better to have a label for this
