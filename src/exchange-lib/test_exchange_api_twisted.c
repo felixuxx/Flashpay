@@ -142,13 +142,15 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
 
-    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve",
-                              "EUR:5.01"),
+    CMD_TRANSFER_TO_EXCHANGE
+      ("refresh-create-reserve",
+       "EUR:5.01"),
 
     /**
      * Make previous command effective.
      */
-    CMD_EXEC_WIREWATCH ("wirewatch"),
+    CMD_EXEC_WIREWATCH
+      ("wirewatch"),
 
     /**
      * Withdraw EUR:5.
@@ -184,10 +186,18 @@ run (void *cls,
        "refresh-withdraw-coin",
        MHD_HTTP_OK),
 
-    /**
-     * End the suite.  Fixme: better to have a label for this
-     * too, as it shows a "(null)" token on logs.
-     */
+    /* Trigger 409 Conflict.  */
+    TALER_TESTING_cmd_flip_upload
+      ("flip-upload",
+       CONFIG_FILE,
+       "transfer_privs.0"),
+
+    TALER_TESTING_cmd_refresh_reveal
+      ("refresh-(flipped-)reveal",
+       is->exchange,
+       "refresh-melt",
+       MHD_HTTP_CONFLICT),
+
     TALER_TESTING_cmd_end ()
   };
 

@@ -530,7 +530,7 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_REVEAL_SIGNING_ERROR = 1351,
 
   /**
-   * The exchange is unaware of the refresh sessino specified in
+   * The exchange is unaware of the refresh session specified in
    * the request.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
