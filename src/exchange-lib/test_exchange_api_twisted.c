@@ -209,8 +209,10 @@ run (void *cls,
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-r1",
        "EUR:5.01"),
+
     CMD_EXEC_WIREWATCH
       ("wirewatch-r1"),
+
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-r1",
        is->exchange,
@@ -232,9 +234,16 @@ run (void *cls,
        "EUR:5",
        MHD_HTTP_OK),
 
+    TALER_TESTING_cmd_modify_object_ul
+      ("hack-currency",
+       CONFIG_FILE,
+       /* Will make currency missmatch */
+       "refund_amount",
+       "USD:5"),
+
     TALER_TESTING_cmd_refund
       ("refund-ok",
-       MHD_HTTP_OK,
+       MHD_HTTP_BAD_REQUEST,
        "EUR:5",
        "EUR:0.01",
        "deposit-refund-1"),
