@@ -198,13 +198,14 @@ run (void *cls,
        "refresh-melt",
        MHD_HTTP_CONFLICT),
 
-       /* Next chunk, refund conflicts (contract hash missmatch,
-                                        original deposit does not exist,
-                                        currency missmatch);
+       /* Next chunk, refund conflicts
+       
+         (contract hash missmatch [!],
+          original deposit does not exist,
+          currency missmatch) V;
           
           'refund_transaction()' has many of the relevant cases;
        */
-
 
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-r1",
@@ -262,10 +263,38 @@ run (void *cls,
 
     TALER_TESTING_cmd_refund
       ("refund-bad-sig",
-       MHD_HTTP_BAD_REQUEST,
+       MHD_HTTP_UNAUTHORIZED,
        "EUR:5",
        "EUR:0.01",
        "deposit-refund-1"),
+
+    /* This deposit CMD is used to provide "good" traits
+     * to the next refund CMD, where 'good' means that the
+     * POST /refund will pass the signature verification,
+     * but the handler will then NOT judge the deposit as
+     * refundable - actually it won't be found since it will
+     * fail as double-spending attempt.  */
+
+    TALER_TESTING_cmd_deposit
+      ("deposit-refund-to-fail",
+       is->exchange,
+       "withdraw-coin-r1",
+       0, /* coin index.  */
+       TALER_TESTING_make_wire_details
+         (42,
+          fakebank_url),
+       "{\"items\":[{\"name\":\"ice skate\","
+                    "\"value\":\"EUR:5\"}]}",
+       GNUNET_TIME_UNIT_MINUTES,
+       "EUR:5",
+       MHD_HTTP_FORBIDDEN),
+
+    TALER_TESTING_cmd_refund
+      ("refund-deposit-not-found",
+       MHD_HTTP_BAD_REQUEST,
+       "EUR:5",
+       "EUR:0.01",
+       "deposit-refund-to-fail"),
 
     TALER_TESTING_cmd_end ()
   };

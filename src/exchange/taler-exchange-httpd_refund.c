@@ -243,6 +243,7 @@ refund_transaction (void *cls,
   /* handle if deposit was NOT found */
   if (GNUNET_NO == deposit_found)
   {
+    TALER_LOG_WARNING ("Deposit to /refund was not found\n");
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_transaction_unknown (connection,
