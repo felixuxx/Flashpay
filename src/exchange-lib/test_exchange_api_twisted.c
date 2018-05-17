@@ -198,6 +198,40 @@ run (void *cls,
        "refresh-melt",
        MHD_HTTP_CONFLICT),
 
+       /* Next chunk, refund conflicts (contract hash missmatch,
+                                        original deposit does not exist,
+                                        currency missmatch);
+          
+          'refund_transaction()' has many of the relevant cases;
+       */
+
+
+    CMD_TRANSFER_TO_EXCHANGE
+      ("create-reserve-r1",
+       "EUR:5.01"),
+    CMD_EXEC_WIREWATCH
+      ("wirewatch-r1"),
+    TALER_TESTING_cmd_withdraw_amount
+      ("withdraw-coin-r1",
+       is->exchange,
+       "create-reserve-r1",
+       "EUR:5",
+       MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_deposit
+      ("deposit-refund-1",
+       is->exchange,
+       "withdraw-coin-r1",
+       0,
+       TALER_TESTING_make_wire_details
+         (42,
+          fakebank_url),
+       "{\"items\":[{\"name\":\"ice cream\","
+                    "\"value\":\"EUR:5\"}]}",
+       GNUNET_TIME_UNIT_MINUTES,
+       "EUR:5",
+       MHD_HTTP_OK),
+
     TALER_TESTING_cmd_end ()
   };
 
