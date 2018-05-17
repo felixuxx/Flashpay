@@ -242,10 +242,17 @@ run (void *cls,
        "USD:5"),
 
     TALER_TESTING_cmd_refund
-      ("refund-ok",
+      ("refund-currency-missmatch",
        MHD_HTTP_BAD_REQUEST,
        "EUR:5",
        "EUR:0.01",
+       "deposit-refund-1"),
+
+    TALER_TESTING_cmd_refund
+      ("refund-above-amount",
+       MHD_HTTP_BAD_REQUEST,
+       "EUR:5",
+       "EUR:10",
        "deposit-refund-1"),
 
     TALER_TESTING_cmd_end ()
