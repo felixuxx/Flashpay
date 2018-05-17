@@ -232,6 +232,13 @@ run (void *cls,
        "EUR:5",
        MHD_HTTP_OK),
 
+    TALER_TESTING_cmd_refund
+      ("refund-ok",
+       MHD_HTTP_OK,
+       "EUR:5",
+       "EUR:0.01",
+       "deposit-refund-1"),
+
     TALER_TESTING_cmd_end ()
   };
 
