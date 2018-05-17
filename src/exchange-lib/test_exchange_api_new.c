@@ -496,6 +496,10 @@ run (void *cls,
       ("refund-ok", MHD_HTTP_OK,
        "EUR:5", "EUR:0.01", "deposit-refund-1"),
 
+    TALER_TESTING_cmd_refund
+      ("refund-ok-double", MHD_HTTP_OK,
+       "EUR:5", "EUR:0.01", "deposit-refund-1"),
+
     /**
      * Spend 4.99 EUR of the refunded 4.99 EUR coin (1ct gone
      * due to refund) (merchant would receive EUR:4.98 due to

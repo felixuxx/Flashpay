@@ -303,6 +303,9 @@ run (void *cls,
        "EUR:0.000001",
        "deposit-refund-1"),
 
+    /* Last CMD be "money gone".  Do
+     * aggregate before exec'ing it (!).  */
+
     TALER_TESTING_cmd_end ()
   };
 
