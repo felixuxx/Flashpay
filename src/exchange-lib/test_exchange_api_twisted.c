@@ -255,6 +255,18 @@ run (void *cls,
        "EUR:10",
        "deposit-refund-1"),
 
+    TALER_TESTING_cmd_flip_upload
+      ("flip-upload",
+       CONFIG_FILE,
+       "merchant_sig"),
+
+    TALER_TESTING_cmd_refund
+      ("refund-bad-sig",
+       MHD_HTTP_BAD_REQUEST,
+       "EUR:5",
+       "EUR:0.01",
+       "deposit-refund-1"),
+
     TALER_TESTING_cmd_end ()
   };
 
