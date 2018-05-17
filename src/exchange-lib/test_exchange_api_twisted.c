@@ -296,6 +296,13 @@ run (void *cls,
        "EUR:0.01",
        "deposit-refund-1"),
 
+    TALER_TESTING_cmd_refund
+      ("refund-fee-too-low",
+       MHD_HTTP_BAD_REQUEST,
+       "EUR:5",
+       "EUR:0.000001",
+       "deposit-refund-1"),
+
     TALER_TESTING_cmd_end ()
   };
 
