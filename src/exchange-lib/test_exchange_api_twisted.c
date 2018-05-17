@@ -201,7 +201,7 @@ run (void *cls,
        /* Next chunk, refund conflicts
        
          (contract hash missmatch [!],
-          original deposit does not exist,
+          original deposit does not exist V,
           currency missmatch) V;
           
           'refund_transaction()' has many of the relevant cases;
@@ -235,18 +235,11 @@ run (void *cls,
        "EUR:5",
        MHD_HTTP_OK),
 
-    TALER_TESTING_cmd_modify_object_ul
-      ("hack-currency",
-       CONFIG_FILE,
-       /* Will make currency missmatch */
-       "refund_amount",
-       "USD:5"),
-
     TALER_TESTING_cmd_refund
       ("refund-currency-missmatch",
-       MHD_HTTP_BAD_REQUEST,
-       "EUR:5",
-       "EUR:0.01",
+       MHD_HTTP_PRECONDITION_FAILED,
+       "USD:5",
+       "USD:0.01",
        "deposit-refund-1"),
 
     TALER_TESTING_cmd_refund
@@ -291,7 +284,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_refund
       ("refund-deposit-not-found",
-       MHD_HTTP_BAD_REQUEST,
+       MHD_HTTP_NOT_FOUND,
        "EUR:5",
        "EUR:0.01",
        "deposit-refund-to-fail"),

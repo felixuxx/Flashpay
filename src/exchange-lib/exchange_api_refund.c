@@ -180,6 +180,10 @@ handle_refund_finished (void *cls,
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */
     break;
+  case MHD_HTTP_PRECONDITION_FAILED:
+    /* Client request was inconsistent; might be a currency missmatch
+       problem.  */
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */

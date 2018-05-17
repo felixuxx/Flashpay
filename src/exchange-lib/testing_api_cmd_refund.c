@@ -227,8 +227,12 @@ refund_run (void *cls,
   }
 
   rs->rh = TALER_EXCHANGE_refund
-    (rs->exchange, &refund_amount, &refund_fee, &h_contract_terms,
-     &coin, rs->refund_transaction_id,
+    (rs->exchange,
+     &refund_amount,
+     &refund_fee,
+     &h_contract_terms,
+     &coin,
+     rs->refund_transaction_id,
      (const struct TALER_MerchantPrivateKeyP *) merchant_priv,
      &refund_cb, rs);
 
