@@ -184,6 +184,10 @@ handle_refund_finished (void *cls,
     /* Client request was inconsistent; might be a currency missmatch
        problem.  */
     break;
+  case MHD_HTTP_CONFLICT:
+    /* Two refund requests were made about the same deposit, but
+       carrying different refund transaction ids.  */
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */

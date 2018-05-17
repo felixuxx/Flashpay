@@ -298,3 +298,42 @@ TALER_TESTING_cmd_refund (const char *label,
 
   return cmd;
 }
+
+/**
+ * Create a /refund test command, allows to specify refund
+ * transaction id.  Mainly used to create conflicting requests.
+ *
+ * @param label command label
+ * @param expected_response_code expected HTTP status code
+ * @param refund_amount the amount to ask a refund for
+ * @param refund_fee expected refund fee
+ * @param coin_reference reference to a command that can
+ *        provide a coin to be refunded.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refund_with_id
+  (const char *label,
+   unsigned int expected_response_code,
+   const char *refund_amount,
+   const char *refund_fee,
+   const char *coin_reference,
+   uint64_t refund_transaction_id)
+{
+  struct RefundState *rs;
+  struct TALER_TESTING_Command cmd;
+
+  rs = GNUNET_new (struct RefundState);
+
+  rs->expected_response_code = expected_response_code;
+  rs->refund_amount = refund_amount;
+  rs->refund_fee = refund_fee;
+  rs->coin_reference = coin_reference;
+  rs->refund_transaction_id = refund_transaction_id;
+
+  cmd.cls = rs;
+  cmd.label = label;
+  cmd.run = &refund_run;
+  cmd.cleanup = &refund_cleanup;
+
+  return cmd;
+}
