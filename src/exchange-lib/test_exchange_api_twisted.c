@@ -276,6 +276,9 @@ run (void *cls,
        TALER_TESTING_make_wire_details
          (42,
           fakebank_url),
+       /* This parameter will make any comparison about
+          h_contract_terms fail, when /refund will be handled.
+          So in other words, this is h_contract missmatch.  */
        "{\"items\":[{\"name\":\"ice skate\","
                     "\"value\":\"EUR:5\"}]}",
        GNUNET_TIME_UNIT_MINUTES,
@@ -302,9 +305,6 @@ run (void *cls,
        "EUR:5",
        "EUR:0.000001",
        "deposit-refund-1"),
-
-    /* Last CMD be "money gone".  Do
-     * aggregate before exec'ing it (!).  */
 
     TALER_TESTING_cmd_end ()
   };
