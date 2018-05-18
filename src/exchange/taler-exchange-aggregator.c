@@ -1124,6 +1124,7 @@ expired_reserve_cb (void *cls,
 	  reserve_pub,
 	  GNUNET_MIN (sizeof (wtid),
 		      sizeof (*reserve_pub)));
+
   qs = db_plugin->insert_reserve_closed (db_plugin->cls,
 					 session,
 					 reserve_pub,

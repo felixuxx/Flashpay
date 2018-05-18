@@ -625,6 +625,13 @@ run (void *cls,
                               "EUR:5.0",
                               MHD_HTTP_OK),
 
+    /* Re-withdraw from this reserve */
+    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2",
+                                       is->exchange,
+                                       "payback-create-reserve-1",
+                                       "EUR:1",
+                                       MHD_HTTP_OK),
+
     /**
      * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
      * config, then withdraw two coin, partially spend one, and
