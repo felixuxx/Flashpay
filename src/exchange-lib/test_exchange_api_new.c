@@ -640,7 +640,7 @@ run (void *cls,
                                        is->exchange,
                                        "payback-create-reserve-1",
                                        "EUR:10",
-                                       MHD_HTTP_OK),
+                                       MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_status ("payback-reserve-status-2",
                               is->exchange,
