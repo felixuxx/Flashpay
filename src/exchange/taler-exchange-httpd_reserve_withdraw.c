@@ -48,11 +48,15 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
 
   json_history = TEH_RESPONSE_compile_reserve_history (rh,
 						       &balance);
-  if (NULL == json_history)
+  if ((NULL == json_history)
+      /* Address the case where the ptr is not null, but
+       * it fails "internally" to dump as string (= corrupted).  */
+      || (0 == json_dumpb (json_history, NULL, 0, 0)))
     return TEH_RESPONSE_reply_internal_error (connection,
 					      TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
+
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o, s:o}",
@@ -279,6 +283,25 @@ withdraw_transaction (void *cls,
 							   TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
+
+      #if 0
+      /**
+       * WARNING:
+       *
+       * This check below is useless, as when a reserve gets
+       * closed, the database records that operation's amount
+       * as the _entire_ amount that was left into the reserve.
+       * This means that the closing fee is _included_ in what
+       * the database has, so it makes no sense to further
+       * subtract it from the 'withdraw_total'.  On the other
+       * hand, the reserve-closing logic is careful to NOT wire
+       * transfer all the reserve amount back to the bank, but
+       * it does subtract the closing fee first from it.
+       *
+       * NOTE: this if-0'd out chunk of code is left around for
+       * internal review.
+       */
+
       if (GNUNET_OK !=
           TALER_amount_add (&withdraw_total,
                             &withdraw_total,
@@ -288,6 +311,7 @@ withdraw_transaction (void *cls,
                                                          TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
+      #endif
 
       res |= 2;
       break;
@@ -323,6 +347,7 @@ withdraw_transaction (void *cls,
   if (0 < TALER_amount_cmp (&wc->amount_required,
                             &balance))
   {
+    GNUNET_break_op (0);
     *mhd_ret = reply_reserve_withdraw_insufficient_funds (connection,
 							  rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
