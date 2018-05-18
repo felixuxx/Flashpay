@@ -634,6 +634,14 @@ run (void *cls,
                                        "EUR:1",
                                        MHD_HTTP_OK),
 
+    /* This withdrawal will test the logic to create
+     * a "payback" element to insert into the reserve's history.  */
+    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2-over",
+                                       is->exchange,
+                                       "payback-create-reserve-1",
+                                       "EUR:10",
+                                       MHD_HTTP_OK),
+
     TALER_TESTING_cmd_status ("payback-reserve-status-2",
                               is->exchange,
                               "payback-create-reserve-1",
@@ -663,9 +671,6 @@ run (void *cls,
        "short-lived-reserve",
        "EUR:1",
        MHD_HTTP_FORBIDDEN),
-
-    /* Should also test a "insufficient funds" error
-     * after payback happened.  */
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_short-lived_transfer",
