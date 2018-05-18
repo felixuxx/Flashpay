@@ -42,6 +42,8 @@
  */
 #define CONFIG_FILE "test_exchange_api.conf"
 
+#define CONFIG_FILE_EXPIRE_RESERVE_NOW "test_exchange_api_expire_reserve_now.conf"
+
 /**
  * Is the configuration file is set to include wire format 'ebics'?
  * Requires that EBICS /history function is implemented, which it
@@ -637,6 +639,47 @@ run (void *cls,
                               "payback-create-reserve-1",
                               "EUR:3.99",
                               MHD_HTTP_OK),
+
+    /**
+     * These commands should close the reserve because
+     * the aggregator is given a config file that ovverrides
+     * the reserve expiration time (making it now-ish)
+     */
+    CMD_TRANSFER_TO_EXCHANGE
+      ("short-lived-reserve",
+       "EUR:5.01"),
+
+    TALER_TESTING_cmd_exec_wirewatch
+      ("short-lived-aggregation",
+       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+
+    TALER_TESTING_cmd_exec_aggregator
+      ("close-reserves",
+       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+
+    TALER_TESTING_cmd_withdraw_amount
+      ("expired-withdraw",
+       is->exchange,
+       "short-lived-reserve",
+       "EUR:1",
+       MHD_HTTP_FORBIDDEN),
+
+    /* Should also test a "insufficient funds" error
+     * after payback happened.  */
+
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_short-lived_transfer",
+       exchange_url,
+       "EUR:5.01",
+       42,
+       2),
+
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_short-lived_reimburse",
+       exchange_url,
+       "EUR:5",
+       2,
+       42),
 
     /**
      * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per

@@ -835,6 +835,7 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       {
+
 	struct TALER_ReserveCloseConfirmationPS rcc;
 	struct TALER_ExchangePublicKeyP pub;
 	struct TALER_ExchangeSignatureP sig;
@@ -880,7 +881,7 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 	}
 	GNUNET_assert (0 ==
 		       json_array_append_new (json_history,
-					      json_pack ("{s:s, s:O, s:o, s:o, s:o, s:o, s:o, s:o}",
+					      json_pack ("{s:s, s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
 							 "type", "CLOSING",
 							 "receiver_account_details", pos->details.closing->receiver_account_details,
 							 "wtid", GNUNET_JSON_from_data_auto (&pos->details.closing->wtid),
@@ -893,6 +894,7 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
       break;
     }
   }
+
   if (0 == (1 & ret))
   {
     GNUNET_break (0);

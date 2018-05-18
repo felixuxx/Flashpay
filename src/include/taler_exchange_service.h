@@ -912,7 +912,7 @@ struct TALER_EXCHANGE_ReserveHistory
       /**
        * Receiver account information for the outgoing wire transfer.
        */
-      json_t *receiver_account_details;
+      const char *receiver_account_details;
 
       /**
        * Wire transfer details for the outgoing wire transfer.

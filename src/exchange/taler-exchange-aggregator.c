@@ -1133,6 +1133,7 @@ expired_reserve_cb (void *cls,
 					 &wtid,
 					 left,
 					 closing_fee);
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Closing reserve %s over %s (%d, %d)\n",
               TALER_B2S (reserve_pub),

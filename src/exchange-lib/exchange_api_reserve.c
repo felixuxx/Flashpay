@@ -333,7 +333,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       struct TALER_ReserveCloseConfirmationPS rcc;
       struct GNUNET_TIME_Absolute timestamp;
       struct GNUNET_JSON_Specification closing_spec[] = {
-        GNUNET_JSON_spec_json ("receiver_account_details",
+        GNUNET_JSON_spec_string ("receiver_account_details",
 			       &rhistory[off].details.close_details.receiver_account_details),
         GNUNET_JSON_spec_fixed_auto ("wtid",
 				     &rhistory[off].details.close_details.wtid),
@@ -360,13 +360,9 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       }
       TALER_amount_hton (&rcc.closing_amount,
 			 &amount);
-      if (GNUNET_OK !=
-          TALER_JSON_wire_signature_hash (rhistory[off].details.close_details.receiver_account_details,
-                                          &rcc.h_wire))
-      {
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
-      }
+      GNUNET_CRYPTO_hash (rhistory[off].details.close_details.receiver_account_details,
+                          strlen (rhistory[off].details.close_details.receiver_account_details) + 1,
+                          &rcc.h_wire);
       rcc.wtid = rhistory[off].details.close_details.wtid;
       rcc.purpose.size = htonl (sizeof (rcc));
       rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);
@@ -377,7 +373,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       key_state = TALER_EXCHANGE_get_keys (exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
-                                           &rhistory[off].details.payback_details.exchange_pub))
+                                           &rhistory[off].details.close_details.exchange_pub))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
@@ -385,8 +381,8 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED,
                                       &rcc.purpose,
-                                      &rhistory[off].details.payback_details.exchange_sig.eddsa_signature,
-                                      &rhistory[off].details.payback_details.exchange_pub.eddsa_pub))
+                                      &rhistory[off].details.close_details.exchange_sig.eddsa_signature,
+                                      &rhistory[off].details.close_details.exchange_pub.eddsa_pub))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
@@ -447,8 +443,7 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
     case TALER_EXCHANGE_RTT_PAYBACK:
       break;
     case TALER_EXCHANGE_RTT_CLOSE:
-      if (NULL != rhistory[i].details.close_details.receiver_account_details)
-        json_decref (rhistory[i].details.close_details.receiver_account_details);
+      // should we free "receiver_account_details" ?
       break;
     }
   }
