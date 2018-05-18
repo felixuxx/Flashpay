@@ -148,6 +148,13 @@ TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
 			 JSON_INDENT(2));
   if (NULL == json_str)
   {
+    /**
+     * This log helps to figure out which
+     * function called this one and assert-failed.
+     */
+    TALER_LOG_ERROR ("Aborting json-packing for HTTP code: %u\n",
+                     response_code);
+
     GNUNET_assert (0);
     return MHD_NO;
   }
