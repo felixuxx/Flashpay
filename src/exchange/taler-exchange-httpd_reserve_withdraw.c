@@ -284,35 +284,6 @@ withdraw_transaction (void *cls,
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
 
-      #if 0
-      /**
-       * WARNING:
-       *
-       * This check below is useless, as when a reserve gets
-       * closed, the database records that operation's amount
-       * as the _entire_ amount that was left into the reserve.
-       * This means that the closing fee is _included_ in what
-       * the database has, so it makes no sense to further
-       * subtract it from the 'withdraw_total'.  On the other
-       * hand, the reserve-closing logic is careful to NOT wire
-       * transfer all the reserve amount back to the bank, but
-       * it does subtract the closing fee first from it.
-       *
-       * NOTE: this if-0'd out chunk of code is left around for
-       * internal review.
-       */
-
-      if (GNUNET_OK !=
-          TALER_amount_add (&withdraw_total,
-                            &withdraw_total,
-                            &pos->details.closing->closing_fee))
-      {
-        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                         TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      }
-      #endif
-
       res |= 2;
       break;
     }
