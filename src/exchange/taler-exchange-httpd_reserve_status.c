@@ -154,9 +154,10 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
   if (NULL == rsc.rh)
     return TEH_RESPONSE_reply_json_pack (connection,
                                          MHD_HTTP_NOT_FOUND,
-                                         "{s:s, s:s}",
+                                         "{s:s, s:s, s:I}",
                                          "error", "Reserve not found",
-                                         "parameter", "withdraw_pub");
+                                         "parameter", "withdraw_pub",
+                                         "code", (json_int_t) TALER_EC_RESERVE_STATUS_UNKNOWN);
   mhd_ret = reply_reserve_status_success (connection,
 					  rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,

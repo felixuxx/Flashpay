@@ -80,6 +80,4 @@ TALER_JSON_get_error_code (const json_t *json)
   return TALER_EC_INVALID;
 }
 
-
-
 /* End of json/json.c */

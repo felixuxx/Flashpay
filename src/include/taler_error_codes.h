@@ -299,6 +299,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_RESERVE_STATUS_DB_ERROR = 1150,
 
+  /**
+   * The reserve status was requested using a unknown key,
+   * to be returned with 404 Not Found.
+   */
+  TALER_EC_RESERVE_STATUS_UNKNOWN = 1151,
+
 
   /**
    * The respective coin did not have sufficient residual value
