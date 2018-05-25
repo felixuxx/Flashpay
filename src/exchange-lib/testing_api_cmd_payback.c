@@ -29,6 +29,10 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 
+
+/**
+ * State for a "revoke" CMD.
+ */
 struct RevokeState
 {
   /**
@@ -52,7 +56,7 @@ struct RevokeState
   struct GNUNET_OS_Process *revoke_proc;
 
   /**
-   * Configuration filename.
+   * Configuration file name.
    */
   const char *config_filename;
 
@@ -63,6 +67,10 @@ struct RevokeState
 
 };
 
+
+/**
+ * State for a "pay back" CMD.
+ */
 struct PaybackState
 {
   /**
@@ -71,8 +79,8 @@ struct PaybackState
   unsigned int expected_response_code;
 
   /**
-   * Command that offers a reserve private key plus a
-   * coin to be paid back.
+   * Command that offers a reserve private key,
+   * plus a coin to be paid back.
    */
   const char *coin_reference;
 
@@ -95,24 +103,22 @@ struct PaybackState
    * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_PaybackHandle *ph;
-
 };
 
 /**
- * Check the result of the payback request.
+ * Check the result of the payback request: checks whether
+ * the HTTP response code is good, and that the coin that
+ * was paid back belonged to the right reserve.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request; 0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param amount amount the exchange will wire back for this coin
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
+ * @param amount amount the exchange will wire back for this coin.
  * @param timestamp what time did the exchange receive the
  *        /payback request
- * @param reserve_pub public key of the reserve receiving the
- *        payback
- * @param full_response full response from the exchange (for
- *        logging, in case of errors)
+ * @param reserve_pub public key of the reserve affected by the
+ *        payback.
+ * @param full_response raw response from the exchange.
  */
 static void
 payback_cb (void *cls,
@@ -205,8 +211,8 @@ payback_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 static void
@@ -310,9 +316,10 @@ revoke_cleanup (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Cleanup the "payback" CMD state, and possibly cancel
+ * a pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 static void
@@ -330,8 +337,7 @@ payback_cleanup (void *cls,
 
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer internal data from a "revoke" CMD to other CMDs.
  *
  * @param cls closure
  * @param ret[out] result (could be anything)
@@ -364,10 +370,12 @@ revoke_traits (void *cls,
 }
 
 /**
- * Run the command.
+ * Run the "revoke" command.  The core of the function
+ * is to call the "keyup" utility passing it the base32
+ * encoding of the denomination to revoke.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 static void
@@ -411,7 +419,6 @@ revoke_run (void *cls,
      "-r", rs->dhks,
      NULL);
 
-
   if (NULL == rs->revoke_proc)
   {
     GNUNET_break (0);
@@ -427,15 +434,15 @@ revoke_run (void *cls,
 
 
 /**
- * Make a /payback command.
+ * Make a "payback" command.
  *
  * @param label the command label
  * @param expected_response_code expected HTTP status code
  * @param coin_reference reference to any command which
- *        offers a reserve private key
+ *        offers a coin & reserve private key.
  * @param amount denomination to pay back.
  *
- * @return a /revoke command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_payback (const char *label,
@@ -461,15 +468,15 @@ TALER_TESTING_cmd_payback (const char *label,
 
 
 /**
- * Make a /revoke command.
+ * Make a "revoke" command.
  *
- * @param label the command label
- * @param expected_response_code expected HTTP status code
- * @param coin_reference reference to any command which offers
- *        a coin trait
+ * @param label the command label.
+ * @param expected_response_code expected HTTP status code.
+ * @param coin_reference reference to a CMD that will offer the
+ *        denomination to revoke.
  * @param config_filename configuration file name.
  *
- * @return a /revoke command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_revoke (const char *label,
