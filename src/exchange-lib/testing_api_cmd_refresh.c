@@ -31,9 +31,7 @@
 #include "taler_signatures.h"
 
 /**
- * Structure specifying details about a coin to be melted.
- * Used in a NULL-terminated array as part of command
- * specification.
+ * Data for a coin to be melted.
  */
 struct MeltDetails
 {
@@ -52,15 +50,15 @@ struct MeltDetails
 
 
 /**
- * State for a "refresh melt" operation.
+ * State for a "refresh melt" command.
  */
 struct RefreshMeltState
 {
 
   /**
    * if set to GNUNET_YES, then two /refresh/melt operations
-   * will be performed.  This is needed to trigger the code
-   * path that manages those already-made requests.  Note: it
+   * will be performed.  This is needed to trigger the logic
+   * that manages those already-made requests.  Note: it
    * is not possible to just copy-and-paste a test refresh melt
    * CMD to have the same effect, because every data preparation
    * generates new planchets that (in turn) make the whole "hash"
@@ -71,7 +69,8 @@ struct RefreshMeltState
   unsigned int double_melt;
 
   /**
-   * Fixme: figure out this data purpose.
+   * Amount to be melted.  FIXME: this value is useless
+   * here as the @a melted_coin field (below) has already it.
    */
   const char *amount;
 
@@ -81,7 +80,7 @@ struct RefreshMeltState
   struct MeltDetails melted_coin;
 
   /**
-   * Data used in the refresh operation.
+   * "Crypto data" used in the refresh operation.
    */
   char *refresh_data;
 
@@ -116,20 +115,19 @@ struct RefreshMeltState
   unsigned int expected_response_code;
 
   /**
-   * Array of the public keys corresponding to
-   * the @e fresh_amounts, set by the interpreter.
+   * Array of the denomination public keys
+   * corresponding to the @e fresh_amounts.
    */
   struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
 
   /**
-   * Set by the interpreter (upon completion) to the
-   * noreveal index selected by the exchange.
+   * Set by the melt callback as it comes from the exchange.
    */
   uint16_t noreveal_index;
 };
 
 /**
- * State for a "refresh reveal" operation.
+ * State for a "refresh reveal" CMD.
  */
 struct RefreshRevealState
 {
@@ -144,13 +142,16 @@ struct RefreshRevealState
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
 
   /**
-   * Number of fresh coins withdrawn, set by the interpreter.
-   * Length of the @e fresh_coins array.
+   * Number of fresh coins withdrawn, set by the
+   * reveal callback as it comes from the exchange,
+   * it is the length of the @e fresh_coins array.
    */
   unsigned int num_fresh_coins;
 
   /**
-   * Information about coins withdrawn, set by the interpreter.
+   * Convenience struct to keep in one place all the
+   * data related to one fresh coin, set by the reveal callback
+   * as it comes from the exchange.
    */
   struct FreshCoin *fresh_coins;
 
@@ -171,7 +172,7 @@ struct RefreshRevealState
 };
 
 /**
- * State for a "refresh link" operation.
+ * State for a "refresh link" CMD.
  */
 struct RefreshLinkState
 {
@@ -181,7 +182,7 @@ struct RefreshLinkState
   const char *reveal_reference;
 
   /**
-   * Link handle while operation is running.
+   * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
 
@@ -203,22 +204,21 @@ struct RefreshLinkState
 
 
 /**
- * Function called with the result of the /refresh/reveal operation.
+ * "refresh reveal" request callback; it checks that the response
+ * code is expected and copies into its command's state the data
+ * coming from the exchange, namely the fresh coins.
  *
- * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request.  0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
  * @param num_coins number of fresh coins created, length of the
  *        @a sigs and @a coin_privs arrays, 0 if the operation
- *        failed
+ *        failed.
  * @param coin_privs array of @a num_coins private keys for the
- *        coins that were created, NULL on error
- * @param sigs array of signature over @a num_coins coins, NULL on
- *        error
- * @param full_response full response from the exchange (for
- *        logging, in case of errors)
+ *        coins that were created, NULL on error.
+ * @param sigs array of signature over @a num_coins coins,
+ *        NULL on error.
+ * @param full_response raw exchange response.
  */
 static void
 reveal_cb (void *cls,
@@ -291,7 +291,7 @@ reveal_cb (void *cls,
  * Run the command.
  *
  * @param cls closure.
- * @param cmd the command to execute, a /wire one.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 void
@@ -331,7 +331,8 @@ refresh_reveal_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Free the state from a "refresh reveal" CMD, and possibly
+ * cancel a pending operation thereof.
  *
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
@@ -353,7 +354,7 @@ refresh_reveal_cleanup (void *cls,
     rrs->rrh = NULL;
   }
 
-  { /* Not sure why block-ing this */
+  { /* FIXME: why block-ing this? */
     unsigned int j;
 
     for (j=0; j < rrs->num_fresh_coins; j++)
@@ -368,23 +369,23 @@ refresh_reveal_cleanup (void *cls,
 
 
 /**
- * Function called with the result of a /refresh/link operation.
+ * "refresh link" operation callback, checks that HTTP response
+ * code is expected _and_ that all the linked coins were actually
+ * withdrawn by the "refresh reveal" CMD.
  *
- * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request 0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param cls closure. 
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code
  * @param num_coins number of fresh coins created, length of the
  *        @a sigs and @a coin_privs arrays, 0 if the operation
- *        failed
+ *        failed.
  * @param coin_privs array of @a num_coins private keys for the
- *        coins that were created, NULL on error
+ *        coins that were created, NULL on error.
  * @param sigs array of signature over @a num_coins coins, NULL on
- *        error
- * @param pubs array of public keys for the @a sigs, NULL on error
- * @param full_response full response from the exchange (for
- *        logging, in case of errors)
+ *        error.
+ * @param pubs array of public keys for the @a sigs,
+ *        NULL on error.
+ * @param full_response raw response from the exchange.
  */
 static void
 link_cb (void *cls,
@@ -504,9 +505,9 @@ link_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure
- * @param cmd the command to execute, a /wire one.
- * @param i the interpreter state.
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
  */
 void
 refresh_link_run (void *cls,
@@ -581,7 +582,8 @@ refresh_link_run (void *cls,
 }
 
 /**
- * Cleanup the state.
+ * Free the state of the "refresh link" CMD, and possibly
+ * cancel a operation thereof.
  *
  * @param cls closure
  * @param cmd the command which is being cleaned up.
@@ -606,19 +608,17 @@ refresh_link_cleanup (void *cls,
 
 
 /**
- * Function called with the result of the /refresh/melt operation.
+ * Callback for a "refresh melt" operation; checks if the HTTP
+ * response code is okay and re-run the melt operation if the
+ * CMD was set to do so.
  *
- * @param cls closure with the interpreter state
- * @param http_status HTTP response code, never #MHD_HTTP_OK (200)
- *        as for successful intermediate response this callback is
- *       skipped. 0 if the exchange's reply is bogus (fails to
- *       follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
  * @param noreveal_index choice by the exchange in the
- *        cut-and-choose protocol, UINT16_MAX on error
- * @param exchange_pub public key the exchange used for signing
- * @param full_response full response from the exchange (for
- *        logging, in case of errors)
+ *        cut-and-choose protocol, UINT16_MAX on error.
+ * @param exchange_pub public key the exchange used for signing.
+ * @param full_response raw response body from the exchange.
  */
 static void
 melt_cb (void *cls,
@@ -660,9 +660,9 @@ melt_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
- * @param i the interpreter state.
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
  */
 void
 refresh_melt_run (void *cls,
@@ -793,7 +793,8 @@ refresh_melt_run (void *cls,
 }
 
 /**
- * Cleanup the state.
+ * Free the "refresh melt" CMD state, and possibly cancel a
+ * pending operation thereof.
  *
  * @param cls closure, typically a #struct RefreshMeltState.
  * @param cmd the command which is being cleaned up.
@@ -820,16 +821,16 @@ refresh_melt_cleanup (void *cls,
 }
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer internal data to the "refresh melt" CMD.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *        to return in case there were multiple generated
- *        by the command
- * @return #GNUNET_OK on success
+ *        by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 refresh_melt_traits (void *cls,
@@ -854,14 +855,15 @@ refresh_melt_traits (void *cls,
 /**
  * Create a "refresh melt" command.
  *
- * @param label command label
- * @param exchange connection to the exchange
- * @param amount Fixme
- * @param coin_reference reference to a command that will provide
- *        a coin to refresh
- * @param expected_response_code expected HTTP code
+ * @param label command label.
+ * @param exchange connection to the exchange.
+ * @param amount amount to be melted.
+ * @param coin_reference reference to a command
+ *        that will provide a coin to refresh.
+ * @param expected_response_code expected HTTP code.
+ *
+ * @return the command.
  */
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt
   (const char *label,
@@ -893,17 +895,19 @@ TALER_TESTING_cmd_refresh_melt
 }
 
 /**
- * Create a "refresh melt" command, that does TWO /refresh/melt
- * requests.
+ * Create a "refresh melt" CMD that does TWO /refresh/melt
+ * requests.  This was needed to test the replay of a valid melt
+ * request, see #5312.
  *
  * @param label command label
  * @param exchange connection to the exchange
- * @param amount Fixme
+ * @param amount FIXME not used.
  * @param coin_reference reference to a command that will provide
  *        a coin to refresh
  * @param expected_response_code expected HTTP code
+ *
+ * @return the command.
  */
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt_double
   (const char *label,
@@ -936,16 +940,16 @@ TALER_TESTING_cmd_refresh_melt_double
 }
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer internal data from a "refresh reveal" CMD.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *        to return in case there were multiple generated
- *        by the command
- * @return #GNUNET_OK on success
+ *        by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 refresh_reveal_traits (void *cls,
@@ -996,12 +1000,12 @@ refresh_reveal_traits (void *cls,
 /**
  * Create a "refresh reveal" command.
  *
- * @param label command label
- * @param exchange connection to the exchange
- * @param melt_reference reference to a "refresh melt" command
- * @param expected_response_code expected HTTP response code
+ * @param label command label.
+ * @param exchange connection to the exchange.
+ * @param melt_reference reference to a "refresh melt" command.
+ * @param expected_response_code expected HTTP response code.
  *
- * @return the "refresh reveal" command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal
@@ -1031,9 +1035,9 @@ TALER_TESTING_cmd_refresh_reveal
 /**
  * Create a "refresh link" command.
  *
- * @param label command label
- * @param exchange connection to the exchange
- * @param melt_reference reference to a "refresh melt" command
+ * @param label command label.
+ * @param exchange connection to the exchange.
+ * @param reveal_reference reference to a "refresh reveal" CMD.
  * @param expected_response_code expected HTTP response code
  *
  * @return the "refresh link" command
