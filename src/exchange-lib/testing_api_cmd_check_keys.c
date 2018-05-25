@@ -29,15 +29,21 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 
+
+/**
+ * State for a "check keys" CMD.
+ */
 struct CheckKeysState
 {
   /**
-   * FIXME
+   * How many times the /keys response was received by the
+   * exchange under test.
    */
   unsigned int generation;
 
   /**
-   * FIXME
+   * How many denomination keys the exchange is supposed to
+   * have.
    */
   unsigned int num_denom_keys;
 
@@ -50,10 +56,10 @@ struct CheckKeysState
 
 
 /**
- * Run the command.
+ * Run the "check keys" command.
  *
- * @param cls closure, typically a #struct SignalState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command currently being executed.
  * @param is the interpreter state.
  */
 static void
@@ -107,7 +113,7 @@ check_keys_run (void *cls,
 /**
  * Cleanup the state.
  *
- * @param cls closure, typically a #struct SignalState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 static void
@@ -121,11 +127,15 @@ check_keys_cleanup (void *cls,
 
 
 /**
- * Make a "check keys" command.
+ * Make a "check keys" command.  This type of command
+ * checks whether the number of denomination keys from
+ * @a exchange matches @a num_denom_keys.
  *
  * @param label command label
- * @param generation FIXME
- * @param num_denom_keys FIXME
+ * @param generation how many /keys responses are expected to
+ *        have been returned when this CMD will be run.
+ * @param num_denom_keys expected number of denomination keys.
+ * @param exchange connection handle to the exchange to test.
  *
  * @return the command.
  */
@@ -149,3 +159,5 @@ TALER_TESTING_cmd_check_keys
   cmd.cleanup = &check_keys_cleanup;
   return cmd;
 }
+
+/* end of testing_api_cmd_check_keys.c */

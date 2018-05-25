@@ -64,7 +64,7 @@ run (void *cls,
 {
   struct TALER_TESTING_Command commands[] = {
 
-    /* Send signal to the exchange to see if it reacts */
+    /* Trigger keys reloading from disk.  */
     TALER_TESTING_cmd_signal ("signal-reaction-1",
                               is->exchanged,
                               SIGUSR1),
@@ -73,7 +73,8 @@ run (void *cls,
                                   1, 4,
                                   is->exchange),
 
-    TALER_TESTING_cmd_exec_keyup ("keyup-2", /* 1st keyup happens at start-up */
+    /* 1st keyup happens at start-up */
+    TALER_TESTING_cmd_exec_keyup ("keyup-2", 
                                   CONFIG_FILE_EXTENDED),
 
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
@@ -91,12 +92,6 @@ run (void *cls,
                                   8,
 #endif
                                   is->exchange),
-
-
-    /**
-     * End the suite.  Fixme: better to have a label for this
-     * too, as it shows "(null)" in logs.
-     */
     TALER_TESTING_cmd_end ()
   };
 
