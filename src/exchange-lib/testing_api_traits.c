@@ -74,6 +74,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Trait %s/%u not found.\n",
               trait, index);
+
   return GNUNET_SYSERR;
 }
 
