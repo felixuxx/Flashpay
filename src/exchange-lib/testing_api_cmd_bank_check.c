@@ -31,11 +31,16 @@
 #include "taler_testing_lib.h"
 #include "taler_fakebank_lib.h"
 
+
+/**
+ * State for a "bank check" CMD.
+ */
 struct BankCheckState
 {
 
   /**
-   * Exchange base URL (Fixme: why?)
+   * Base URL of the exchange supposed to be
+   * involved in the bank transaction.
    */
   const char *exchange_base_url;
 
@@ -45,12 +50,12 @@ struct BankCheckState
   const char *amount;
 
   /**
-   * Expected account number that gave money
+   * Expected debit bank account.
    */
   uint64_t debit_account;
  
   /**
-   * Expected account number that received money
+   * Expected credit bank account.
    */
   uint64_t credit_account;
 
@@ -60,8 +65,7 @@ struct BankCheckState
   char *subject;
 
   /**
-   * Binary form of the transfer subject.  Some commands expect
-   * it - via appropriate traits - to be in binary form.
+   * Binary form of the wire transfer subject.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
 
@@ -71,7 +75,9 @@ struct BankCheckState
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * FIXME.
+   * Reference to a CMD that provides all the data
+   * needed to issue the bank check.  If NULL, that data
+   * must exist here in the state.
    */
   const char *deposit_reference;
 };
@@ -79,8 +85,8 @@ struct BankCheckState
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 void
@@ -167,9 +173,9 @@ check_bank_transfer_run (void *cls,
 }
 
 /**
- * Cleanup the state.
+ * Free the state of a "bank check" CMD.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 void
@@ -184,16 +190,16 @@ check_bank_transfer_cleanup
 }
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer internal data from a "bank check" CMD state.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ *                 by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 check_bank_transfer_traits (void *cls,
@@ -229,14 +235,15 @@ check_bank_transfer_traits (void *cls,
 
 
 /**
- * Command to check whether a particular wire transfer has been
- * made or not.
+ * Make a "bank check" CMD.  It checks whether a
+ * particular wire transfer has been made or not.
  *
- * @param label the command label
- * @param exchange_base_url base url of the exchange (Fixme: why?)
- * @param amount the amount expected to be transferred
- * @param debit_account the account that gave money
- * @param credit_account the account that received money
+ * @param label the command label.
+ * @param exchange_base_url base url of the exchange involved in
+ *        the wire transfer.
+ * @param amount the amount expected to be transferred.
+ * @param debit_account the account that gave money.
+ * @param credit_account the account that received money.
  *
  * @return the command
  */
@@ -269,9 +276,9 @@ TALER_TESTING_cmd_check_bank_transfer
 }
 
 /**
- * Cleanup the state.
+ * Cleanup the state, only defined to respect the API.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 void
@@ -285,8 +292,8 @@ check_bank_empty_cleanup
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 void
@@ -304,8 +311,10 @@ check_bank_empty_run (void *cls,
   TALER_TESTING_interpreter_next (is);
 }
 
+
 /**
- * FIXME.
+ * Some commands (notably "bank history") could randomly
+ * look for traits; this way makes sure we don't segfault.
  */
 static int
 check_bank_empty_traits (void *cls,
@@ -313,17 +322,14 @@ check_bank_empty_traits (void *cls,
                          const char *trait,
                          unsigned int index)
 {
-  /**
-   * Some commands (notably "bank history") could randomly
-   * look for traits; this way makes sure we don't segfault.
-   */
   return GNUNET_SYSERR;
 }                         
 
 /**
- * Check bank's balance is zero.
+ * Checks wheter all the wire transfers got "checked"
+ * by the "bank check" CMD.
  *
- * @param credit_account the account that received money
+ * @param label command label.
  *
  * @return the command
  */
@@ -342,7 +348,13 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
 
 
 /**
- * FIXME.
+ * Define a "bank check" CMD that takes the input
+ * data from another CMD that offers it.
+ *
+ * @param label command label.
+ * @param deposit_reference reference to a CMD that is
+ *        able to provide the "check bank transfer" operation
+ *        input data.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer_with_ref
