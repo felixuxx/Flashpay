@@ -773,6 +773,10 @@ continues to directly use the coin in other transactions, merchants
 and the exchange could link the various transactions as they all share
 the same public key for the coin.  We call a coin {\em dirty} if its
 public key is known to anyone but the owner.
+% FIXME, I'd say: "a coin is dirty if anyone _other than_ the owner
+% gets to know its public key"; '.. but the owner ..' sounds like a
+% new actor knows the key and the owner does not, which never happens,
+% right?
 
 To avoid linkability of transactions, Taler allows the owner of a
 dirty coin to exchange it for a {\em fresh} coin using the {\em coin
@@ -780,6 +784,10 @@ dirty coin to exchange it for a {\em fresh} coin using the {\em coin
 coin may want to exchange it if the respective denomination key is
 about to expire.  The {\em coin refreshing protocol}, allows the owner
 of a coin to {\em melt} it for fresh coins of the same total value with a
+% FIXME: this way it sounds like if I refresh a half-spent coin,
+% then I can melt it for the 'same total value', so the reader might
+% be misled into thinking that after refreshing a half-spent coin
+% the fresh coin will "regain" its old value.
 new public-private key pairs.  Refreshing does not use the ordinary
 spending operation as the owner of a coin should not have to pay
 (income) taxes for refreshing.  However, to ensure that refreshing is
@@ -791,6 +799,7 @@ assures that the owner stays the same.
 The refresh protocol has two key properties: First, the exchange is
 unable to link the fresh coin's public key to the public key of the
 dirty coin.  Second, it is assured that the owner of the dirty coin
+% FIXME: better this way? "Second, it is assured that ONLY the owner..."
 can determine the private key of the fresh coin, thereby preventing
 the refresh protocol from being used to transfer ownership.
 
