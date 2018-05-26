@@ -28,6 +28,10 @@
 #include "taler_testing_lib.h"
 
 
+
+/**
+ * State for a "wirewatch" CMD.
+ */
 struct WirewatchState
 {
 
@@ -37,22 +41,17 @@ struct WirewatchState
   struct GNUNET_OS_Process *wirewatch_proc;
 
   /**
-   * Which configuration file should we pass to the process?
+   * Configuration file used by the wirewatcher.
    */
   const char *config_filename;
-
 };
 
-
 /**
- * Runs the command.  Note that upon return, the interpreter
- * will not automatically run the next command, as the command
- * may continue asynchronously in other scheduler tasks.  Thus,
- * the command must ensure to eventually call
- * #TALER_TESTING_interpreter_next() or
- * #TALER_TESTING_interpreter_fail().
+ * Run the command; use the `taler-exchange-wirewatch' program.
  *
- * @param is interpreter state
+ * @param cls closure.
+ * @param cmd command currently being executed.
+ * @param is interpreter state.
  */
 static void
 wirewatch_run (void *cls,
@@ -81,10 +80,11 @@ wirewatch_run (void *cls,
 
 
 /**
- * Clean up after the command.  Run during forced termination
- * (CTRL-C) or test failure or test success.
+ * Free the state of a "wirewatch" CMD, and possibly
+ * kills its process if it did not terminate regularly.
  *
- * @param cls closure
+ * @param cls closure.
+ * @param cmd the command being freed.
  */
 static void
 wirewatch_cleanup (void *cls,
@@ -106,16 +106,16 @@ wirewatch_cleanup (void *cls,
 
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer "wirewatch" CMD internal data to other commands.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ *                 by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 wirewatch_traits (void *cls,
@@ -138,12 +138,12 @@ wirewatch_traits (void *cls,
 
 
 /**
- * Execute taler-exchange-wirewatch process.
+ * Make a "wirewatch" CMD.
  *
- * @param label command label
- * @param config_filename configuration filename
+ * @param label command label.
+ * @param config_filename configuration filename.
  *
- * @return the command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_wirewatch (const char *label,
