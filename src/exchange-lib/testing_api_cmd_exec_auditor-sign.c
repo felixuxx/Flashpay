@@ -30,16 +30,20 @@
 #include "taler_testing_lib.h"
 
 
+
+/**
+ * State for a "auditor sign" CMD.
+ */
 struct AuditorSignState
 {
 
   /**
-   * Process for the "auditor sign" command.
+   * Handle to the process making the signature.
    */
   struct GNUNET_OS_Process *auditor_sign_proc;
 
   /**
-   * Which configuration file should we pass to the process?
+   * Configuration file used by the command.
    */
   const char *config_filename;
 
@@ -47,14 +51,11 @@ struct AuditorSignState
 
 
 /**
- * Runs the command.  Note that upon return, the interpreter
- * will not automatically run the next command, as the command
- * may continue asynchronously in other scheduler tasks.  Thus,
- * the command must ensure to eventually call
- * #TALER_TESTING_interpreter_next() or
- * #TALER_TESTING_interpreter_fail().
+ * Run the command; calls the `taler-auditor-sign' program.
  *
- * @param is interpreter state
+ * @param cls closure.
+ * @param cmd the command.
+ * @param is interpreter state.
  */
 static void
 auditor_sign_run (void *cls,
@@ -139,10 +140,11 @@ auditor_sign_run (void *cls,
 
 
 /**
- * Clean up after the command.  Run during forced termination
- * (CTRL-C) or test failure or test success.
+ * Free the state of a "auditor sign" CMD, and possibly
+ * kill its process if it did not terminate correctly.
  *
- * @param cls closure
+ * @param cls closure.
+ * @param cmd the command being freed.
  */
 static void
 auditor_sign_cleanup (void *cls,
@@ -163,16 +165,16 @@ auditor_sign_cleanup (void *cls,
 
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer "auditor sign" CMD internal data to other commands.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ *                 by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 auditor_sign_traits (void *cls,
@@ -194,7 +196,7 @@ auditor_sign_traits (void *cls,
 
 
 /**
- * Execute taler-auditor-sign process.
+ * Make a "auditor sign" CMD.
  *
  * @param label command label
  * @param config_filename configuration filename
