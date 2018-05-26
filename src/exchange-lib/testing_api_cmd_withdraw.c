@@ -30,6 +30,10 @@
 #include "taler_testing_lib.h"
 
 
+
+/**
+ * State for a "withdraw" CMD.
+ */
 struct WithdrawState
 {
 
@@ -92,17 +96,15 @@ struct WithdrawState
 
 
 /**
- * Function called upon completion of our /reserve/withdraw
- * request.
+ * "reserve withdraw" operation callback; checks that the
+ * response code is expected and store the exchange signature
+ * in the state.
  *
- * @param cls closure with the withdraw state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request; 0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param sig signature over the coin, NULL on error
- * @param full_response full response from the exchange (for
- *        logging, in case of errors)
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
+ * @param sig signature over the coin, NULL on error.
+ * @param full_response raw response.
  */
 static void
 reserve_withdraw_cb (void *cls,
@@ -156,14 +158,11 @@ reserve_withdraw_cb (void *cls,
 
 
 /**
- * Runs the command.  Note that upon return, the interpreter
- * will not automatically run the next command, as the command
- * may continue asynchronously in other scheduler tasks.  Thus,
- * the command must ensure to eventually call
- * #TALER_TESTING_interpreter_next() or
- * #TALER_TESTING_interpreter_fail().
+ * Run the command.
  *
- * @param is interpreter state
+ * @param cls closure.
+ * @param cmd the commaind being run.
+ * @param is interpreter state.
  */
 static void
 withdraw_run (void *cls,
@@ -210,10 +209,11 @@ withdraw_run (void *cls,
 
 
 /**
- * Clean up after the command.  Run during forced termination
- * (CTRL-C) or test failure or test success.
+ * Free the state of a "withdraw" CMD, and possibly cancel
+ * a pending operation thereof.
  *
- * @param cls closure
+ * @param cls closure.
+ * @param cmd the command being freed.
  */
 static void
 withdraw_cleanup (void *cls,
@@ -240,7 +240,7 @@ withdraw_cleanup (void *cls,
 
 
 /**
- * Extract information from a command that is useful for other
+ * Offer internal data to a "withdraw" CMD state to other
  * commands.
  *
  * @param cls closure
@@ -249,6 +249,7 @@ withdraw_cleanup (void *cls,
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
  *                 by the command
+ *
  * @return #GNUNET_OK on success
  */
 static int
@@ -307,10 +308,10 @@ withdraw_traits (void *cls,
 
 
 /**
- * Create a withdraw command.
+ * Create a withdraw command, letting the caller specify
+ * the desired amount as string.
  *
- * @param label command label, used by other commands to
- *        reference this.
+ * @param label command label.
  * @param exchange handle to the exchange.
  * @param amount how much we withdraw.
  * @param expected_response_code which HTTP response code
@@ -366,8 +367,17 @@ TALER_TESTING_cmd_withdraw_amount
 
 
 /**
- * Create withdraw command.
+ * Create withdraw command, letting the caller specify the
+ * amount by a denomination key.
  *
+ * @param label command label.
+ * @param exchange connection handle to the exchange.
+ * @param reserve_reference reference to the reserve to withdraw
+ *        from; will provide reserve priv to sign the request.
+ * @param dk denomination public key.
+ * @param expected_response_code expected HTTP response code.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_denomination
@@ -401,6 +411,5 @@ TALER_TESTING_cmd_withdraw_denomination
   cmd.traits = &withdraw_traits;
   return cmd;
 }
-
 
 /* end of testing_api_cmd_withdraw.c */
