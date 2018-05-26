@@ -34,7 +34,7 @@
 #include "taler_testing_bank_lib.h"
 
 /**
- *
+ * State for a "fakebank transfer" CMD.
  */
 struct FakebankTransferState
 {
@@ -90,7 +90,7 @@ struct FakebankTransferState
   struct TALER_ReservePrivateKeyP reserve_priv;
 
   /**
-   * Set to the API's handle during the operation.
+   * Handle to the pending request at the fakebank.
    */
   struct TALER_BANK_AdminAddIncomingHandle *aih;
 
@@ -105,7 +105,7 @@ struct FakebankTransferState
   uint64_t serial_id;
 
   /**
-   * Exchange URL.
+   * Exchange URL.  FIXME: explaing this data purpose.
    */
   const char *exchange_url;
 
