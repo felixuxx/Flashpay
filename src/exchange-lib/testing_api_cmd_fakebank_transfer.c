@@ -40,36 +40,32 @@ struct FakebankTransferState
 {
 
   /**
-   * Label to another admin_add_incoming command if we
-   * should deposit into an existing reserve, NULL if
-   * a fresh reserve should be created.
+   * Label of any command that can trait-offer a reserve priv.
    */
   const char *reserve_reference;
 
   /**
-   * String describing the amount to add to the reserve.
+   * Wire transfer amount.
    */
   struct TALER_Amount amount;
 
   /**
-   * Wire transfer subject. NULL to use public key corresponding
-   * to @e reserve_priv or @e reserve_reference.  Should only be
-   * set manually to test invalid wire transfer subjects.
+   * Wire transfer subject.
    */
   const char *subject;
 
   /**
-   * URL to use for the bank.
+   * Base URL of the bank serving the request.
    */
   const char *bank_url;
 
   /**
-   * Sender (debit) account number.
+   * Money sender account number.
    */
   uint64_t debit_account_no;
 
   /**
-   * Receiver (credit) account number.
+   * Money receiver account number.
    */
   uint64_t credit_account_no;
 
@@ -85,7 +81,7 @@ struct FakebankTransferState
 
   /**
    * Set (by the interpreter) to the reserve's private key
-   * we used to fill the reserve.
+   * we used to make a wire transfer subject line with.
    */
   struct TALER_ReservePrivateKeyP reserve_priv;
 
@@ -95,7 +91,7 @@ struct FakebankTransferState
   struct TALER_BANK_AdminAddIncomingHandle *aih;
 
   /**
-   * Interpreter state while command is running.
+   * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
 
@@ -105,7 +101,7 @@ struct FakebankTransferState
   uint64_t serial_id;
 
   /**
-   * Exchange URL.  FIXME: explaing this data purpose.
+   * Exchange URL.  FIXME: explaing is needed.
    */
   const char *exchange_url;
 
@@ -117,16 +113,17 @@ struct FakebankTransferState
 
   /**
    * Configuration filename.  Used to get the tip reserve key
-   * filename, used to obtain a public key to write in the
-   * transfer subject.
+   * filename (used to obtain a public key to write in the
+   * transfer subject).
    */
   const char *config_filename;
 };
 
 
 /**
- * Function called upon completion of our /admin/add/incoming
- * request.
+ * This callback will process the fakebank response to the wire
+ * transfer.  It just checks whether the HTTP response code is
+ * acceptable.
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
@@ -160,14 +157,11 @@ add_incoming_cb (void *cls,
 
 
 /**
- * Runs the command.  Note that upon return, the interpreter
- * will not automatically run the next command, as the command
- * may continue asynchronously in other scheduler tasks.  Thus,
- * the command must ensure to eventually call
- * #TALER_TESTING_interpreter_next() or
- * #TALER_TESTING_interpreter_fail().
+ * Run the "fakebank transfer" CMD.
  *
- * @param is interpreter state
+ * @param cls closure.
+ * @param cmd CMD being run.
+ * @param is interpreter state.
  */
 static void
 fakebank_transfer_run (void *cls,
@@ -234,13 +228,15 @@ fakebank_transfer_run (void *cls,
                          "instance-%s",
                          fts->instance);
         if (GNUNET_OK !=
-            GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                     section,
-                                                     "TIP_RESERVE_PRIV_FILENAME",
-                                                     &keys))
+            GNUNET_CONFIGURATION_get_value_filename
+              (cfg,
+               section,
+               "TIP_RESERVE_PRIV_FILENAME",
+               &keys))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Configuration fails to specify reserve private key filename in section %s\n",
+                      "Configuration fails to specify reserve"
+                      " private key filename in section %s\n",
                       section);
           GNUNET_free (section);
           TALER_TESTING_interpreter_fail (is);
@@ -249,10 +245,11 @@ fakebank_transfer_run (void *cls,
         priv = GNUNET_CRYPTO_eddsa_key_create_from_file (keys);
         if (NULL == priv)
         {
-          GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                     section,
-                                     "TIP_RESERVE_PRIV_FILENAME",
-                                     "Failed to read private key");
+          GNUNET_log_config_invalid
+            (GNUNET_ERROR_TYPE_ERROR,
+             section,
+             "TIP_RESERVE_PRIV_FILENAME",
+             "Failed to read private key");
           GNUNET_free (keys);
           GNUNET_free (section);
           TALER_TESTING_interpreter_fail (is);
@@ -305,10 +302,11 @@ fakebank_transfer_run (void *cls,
 
 
 /**
- * Clean up after the command.  Run during forced termination
- * (CTRL-C) or test failure or test success.
+ * Free the state of a "fakebank transfer" CMD, and possibly
+ * cancel a pending operation thereof.
  *
  * @param cls closure
+ * @param cmd current CMD being cleaned up.
  */
 static void
 fakebank_transfer_cleanup (void *cls,
@@ -328,16 +326,17 @@ fakebank_transfer_cleanup (void *cls,
 
 
 /**
- * Extract information from a command that is useful for other
+ * Offer internal data from a "fakebank transfer" CMD to other
  * commands.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ *                 by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 fakebank_transfer_traits (void *cls,
@@ -366,20 +365,39 @@ fakebank_transfer_traits (void *cls,
                                   index);
 }
 
-
 /**
- * Create fakebank_transfer command.
+ * Create fakebank_transfer command, the subject line will be
+ * derived from a randomly created reserve priv.  Note that that
+ * reserve priv will then be offered as trait.
  *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param bank_url base URL of the bank that implements this
+ *        wire transer.  For simplicity, both credit and debit
+ *        bank account exist at the same bank.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param exchange_url which exchange is involved in this transfer.
+ *        This data is used for tracking purposes (FIXME: explain
+ *        _how_).
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer (const char *label,
-                                     const char *amount,
-                                     const char *bank_url,
-                                     uint64_t debit_account_no,
-                                     uint64_t credit_account_no,
-                                     const char *auth_username,
-                                     const char *auth_password,
-                                     const char *exchange_url)
+TALER_TESTING_cmd_fakebank_transfer
+  (const char *label,
+   const char *amount,
+   const char *bank_url,
+   uint64_t debit_account_no,
+   uint64_t credit_account_no,
+   const char *auth_username,
+   const char *auth_password,
+   const char *exchange_url)
 {
   struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
@@ -409,10 +427,29 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
   return cmd;
 }
 
-
 /**
- * Create fakebank_transfer command with custom subject.
+ * Create "fakebank transfer" CMD, letting the caller specifying
+ * the subject line.
  *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param bank_url base URL of the bank that implements this
+ *        wire transer.  For simplicity, both credit and debit
+ *        bank account exist at the same bank.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ *
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param subject wire transfer's subject line.
+ * @param exchange_url which exchange is involved in this transfer.
+ *        This data is used for tracking purposes (FIXME: explain
+ *        _how_).
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_subject
@@ -457,8 +494,27 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
 
 
 /**
- * Create fakebank_transfer command with custom subject.
+ * Create "fakebank transfer" CMD, letting the caller specify
+ * a reference to a command that can offer a reserve private key.
+ * This private key will then be used to construct the subject line
+ * of the wire transfer.
  *
+ * @param label command label.
+ * @param amount the amount to transfer.
+ * @param bank_url base URL of the bank running the transfer.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param ref reference to a command that can offer a reserve
+ *        private key.
+ * @param exchange_url the exchage involved in the transfer,
+ *        tipically receiving the money in order to fuel a reserve.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref
@@ -503,8 +559,35 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
 
 
 /**
- * Create fakebank_transfer command with custom subject.
+ * Create "fakebank transfer" CMD, letting the caller specifying
+ * the merchant instance.  This version is useful when a tip
+ * reserve should be topped up, in fact the interpreter will need
+ * the "tipping instance" in order to get the instance public key
+ * and make a wire transfer subject out of it.
  *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param bank_url base URL of the bank that implements this
+ *        wire transer.  For simplicity, both credit and debit
+ *        bank account exist at the same bank.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ *
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param instance the instance that runs the tipping.  Under this
+ *        instance, the configuration file will provide the private
+ *        key of the tipping reserve.  This data will then used to
+ *        construct the wire transfer subject line.
+ * @param exchange_url which exchange is involved in this transfer.
+ *        This data is used for tracking purposes (FIXME: explain
+ *        _how_).
+ * @param config_filename configuration file to use.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_instance
@@ -548,6 +631,5 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
   cmd.traits = &fakebank_transfer_traits;
   return cmd;
 }
-
 
 /* end of testing_api_cmd_fakebank_transfer.c */
