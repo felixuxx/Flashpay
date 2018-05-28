@@ -36,12 +36,12 @@
  * Obtain a private key from a "peer".  Used e.g. to obtain
  * a merchant's priv to sign a /track request.
  *
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
+ * @param cmd command that is offering the key.
+ * @param index (tipically zero) which key to return if there
+ *        are multiple on offer.
  * @param priv[out] set to the key coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_peer_key
@@ -56,11 +56,14 @@ TALER_TESTING_get_trait_peer_key
 }
 
 /**
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
- * @param priv which object should be returned
+ * Offer private key, typically done when CMD_1 needs it to
+ * sign a request.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index (tipically zero) which key to return if there are
+ *        multiple on offer.
+ * @param priv which object should be offered.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key
@@ -80,10 +83,12 @@ TALER_TESTING_make_trait_peer_key
  * Obtain a public key from a "peer".  Used e.g. to obtain
  * a merchant's public key to use backend's API.
  *
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
+ * @param cmd command offering the key.
+ * @param index (tipically zero) which key to return if there
+ *        are multiple on offer.
  * @param pub[out] set to the key coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_peer_key_pub
@@ -98,11 +103,14 @@ TALER_TESTING_get_trait_peer_key_pub
 }
 
 /**
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
- * @param pub which object should be returned
+ * Offer public key.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index (tipically zero) which key to return if there
+ *        are multiple on offer.  NOTE: if one key is offered, it
+ *        is mandatory to set this as zero.
+ * @param pub which object should be returned.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key_pub
