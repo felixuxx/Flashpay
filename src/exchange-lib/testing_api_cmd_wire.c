@@ -170,7 +170,7 @@ wire_run (void *cls,
           struct TALER_TESTING_Interpreter *is)
 {
   struct WireState *ws = cls;
-  ws->is = i;
+  ws->is = is;
   ws->wh = TALER_EXCHANGE_wire (ws->exchange,
                                 &wire_cb,
                                 ws);
