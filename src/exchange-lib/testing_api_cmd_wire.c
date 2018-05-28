@@ -30,6 +30,10 @@
 #include "taler_wire_lib.h"
 #include "taler_testing_lib.h"
 
+
+/**
+ * State for a "wire" CMD.
+ */
 struct WireState
 {
 
@@ -39,7 +43,7 @@ struct WireState
   struct TALER_EXCHANGE_WireHandle *wh;
 
   /**
-   * Which wire-method we expect are offered by the exchange.
+   * Which wire-method we expect is offered by the exchange.
    */
   const char *expected_method;
 
@@ -72,16 +76,16 @@ struct WireState
 
 
 /**
- * Callbacks called with the result(s) of a wire format inquiry
- * request to the exchange.
+ * Check whether the HTTP response code is acceptable, that
+ * the expected wire method is offered by the exchange, and
+ * that the wire fee is acceptable too.
  *
- * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200)
- *                    for successful request; 0 if the exchange's
- *                    reply is bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param accounts_len length of the @a accounts array
- * @param accounts list of wire accounts of the exchange, NULL on error
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
+ * @param accounts_len length of the @a accounts array.
+ * @param accounts list of wire accounts of the exchange,
+ *        NULL on error.
  */
 static void
 wire_cb (void *cls,
@@ -91,7 +95,8 @@ wire_cb (void *cls,
          const struct TALER_EXCHANGE_WireAccount *accounts)
 {
   struct WireState *ws = cls;
-  struct TALER_TESTING_Command *cmd = &ws->is->commands[ws->is->ip];
+  struct TALER_TESTING_Command *cmd = \
+    &ws->is->commands[ws->is->ip];
   struct TALER_Amount expected_fee;
 
   ws->wh = NULL;
@@ -115,23 +120,25 @@ wire_cb (void *cls,
         ws->method_found = GNUNET_OK;
         if (NULL != ws->expected_fee)
         {
-          GNUNET_assert (GNUNET_OK ==
-                         TALER_string_to_amount (ws->expected_fee,
-                                                 &expected_fee));
-          for (const struct TALER_EXCHANGE_WireAggregateFees *waf = accounts[i].fees;
+          GNUNET_assert
+            (GNUNET_OK ==
+             TALER_string_to_amount (ws->expected_fee,
+                                     &expected_fee));
+          const struct TALER_EXCHANGE_WireAggregateFees *waf; 
+          for (waf = accounts[i].fees;
                NULL != waf;
                waf = waf->next)
           {
             if (0 != TALER_amount_cmp (&waf->wire_fee,
                                        &expected_fee))
-              {
-                GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                            "Wire fee missmatch to command %s\n",
-                            cmd->label);
-                TALER_TESTING_interpreter_fail (ws->is);
-                GNUNET_free (method);
-                return;
-              }
+            {
+              GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                          "Wire fee missmatch to command %s\n",
+                          cmd->label);
+              TALER_TESTING_interpreter_fail (ws->is);
+              GNUNET_free (method);
+              return;
+            }
           }
         }
       }
@@ -153,14 +160,14 @@ wire_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
- * @param i the interpreter state.
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
  */
 void
 wire_run (void *cls,
           const struct TALER_TESTING_Command *cmd,
-          struct TALER_TESTING_Interpreter *i)
+          struct TALER_TESTING_Interpreter *is)
 {
   struct WireState *ws = cls;
   ws->is = i;
@@ -171,9 +178,10 @@ wire_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Cleanup the state of a "wire" CMD, and possibly cancel a
+ * pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 void
@@ -195,7 +203,7 @@ wire_cleanup (void *cls,
 }
 
 /**
- * Create a /wire command.
+ * Create a "wire" command.
  *
  * @param label the command label.
  * @param exchange the exchange to connect to.
@@ -205,7 +213,7 @@ wire_cleanup (void *cls,
  * @param expected_response_code the HTTP response the exchange
  *        should return.
  *
- * @return the command to be executed by the interpreter.
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire (const char *label,
