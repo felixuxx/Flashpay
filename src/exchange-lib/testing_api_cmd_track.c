@@ -18,29 +18,30 @@
 */
 
 /**
- * @file exchange/testing_api_cmd_status.c
- * @brief Implement the /reserve/status test command.
+ * @file exchange/testing_api_cmd_track.c
+ * @brief Implement the testing CMDs for the /track operations.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 
+/**
+ * State for a "track transaction" CMD.
+ */
 struct TrackTransactionState
 {
 
   /**
-   * Which #OC_CHECK_BANK_TRANSFER wtid should this match? NULL
-   * for none.
+   * If non NULL, will provide a WTID to be compared against
+   * the one returned by the "track transaction" operation.
    */
   const char *bank_transfer_reference;
 
   /**
-   * Wire transfer identifier, set if #MHD_HTTP_OK was the
-   * response code.
+   * The WTID associated by the transaction being tracked.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
 
@@ -51,17 +52,18 @@ struct TrackTransactionState
 
   /**
    * Reference to any operation that can provide a transaction.
-   * Tipically a /deposit operation.
+   * Will be the transaction to track.
    */
   const char *transaction_reference;
 
   /**
-   * Index of the coin involved in the transaction.
+   * Index of the coin involved in the transaction.  Recall:
+   * at the exchange, the tracking is done _per coin_.
    */
   unsigned int coin_index;
 
   /**
-   * Handle to the deposit wtid request.
+   * Handle to the "track transaction" pending operation.
    */
   struct TALER_EXCHANGE_TrackTransactionHandle *tth;
 
@@ -76,11 +78,15 @@ struct TrackTransactionState
   struct TALER_TESTING_Interpreter *is;
 };
 
+
+/**
+ * State for a "track transfer" CMD.
+ */
 struct TrackTransferState
 {
 
   /**
-   * Expected amount for this WTID.
+   * Expected amount for the WTID being tracked.
    */
   const char *expected_total_amount;
 
@@ -96,31 +102,38 @@ struct TrackTransferState
 
   /**
    * Reference to any operation that can provide a WTID.
+   * Will be the WTID to track.
    */
   const char *wtid_reference;
 
   /**
    * Reference to any operation that can provide wire details.
+   * Those wire details will then be matched against the credit
+   * bank account of the tracked WTID.  This way we can test that
+   * a wire transfer paid back one particular bank account.
    */
   const char *wire_details_reference;
 
   /**
    * Reference to any operation that can provide an amount.
+   * This way we can check that the transferred amount matches
+   * our expectations.
    */
   const char *total_amount_reference;
 
   /**
-   * Index to the WTID to pick.
+   * Index to the WTID to pick, in case @a wtid_reference has
+   * many on offer.
    */
   unsigned int index;
 
   /**
-   * Handle to the deposit wtid request.
+   * Handle to a pending "track transfer" operation.
    */
   struct TALER_EXCHANGE_TrackTransferHandle *tth;
 
   /**
-   * Handle to the exchange.
+   * Connection handle to the exchange.
    */
   struct TALER_EXCHANGE_Handle *exchange;
 
@@ -132,24 +145,25 @@ struct TrackTransferState
 
 
 /**
- * Function called with detailed wire transfer data.
+ * Checks what is returned by the "track transaction" operation.
+ * Checks that the HTTP response code is acceptable, and - if the
+ * right reference is non NULL - that the wire transfer subject
+ * line matches our expectations.
  *
- * @param cls closure
- * @param http_status HTTP status code we got, 0 on exchange
- *        protocol violation
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param exchange_pub public key the exchange used for signing
+ * @param cls closure.
+ * @param http_status HTTP status code we got.
+ * @param ec taler-specific error code.
  * @param json original json reply (may include signatures, those
- *        have then been validated already)
- * @param wtid wire transfer identifier used by the exchange, NULL
- *        if exchange did not yet execute the transaction
+ *        have then been validated already).
+ * @param wtid wire transfer identifier, NULL if exchange did not
+ *        execute the transaction yet.
  * @param execution_time actual or planned execution time for the
- *        wire transfer
+ *        wire transfer.
  * @param coin_contribution contribution to the @a total_amount of
- *        the deposited coin (may be NULL)
+ *        the deposited coin (can be NULL).
  * @param total_amount total amount of the wire transfer, or NULL
  *        if the exchange could not provide any @a wtid (set only
- *        if @a http_status is #MHD_HTTP_OK)
+ *        if @a http_status is #MHD_HTTP_OK).
  */
 static void
 deposit_wtid_cb
@@ -186,8 +200,10 @@ deposit_wtid_cb
       const struct TALER_TESTING_Command *bank_transfer_cmd;
       char *ws;
 
+      /* _this_ wire transfer subject line.  */
       ws = GNUNET_STRINGS_data_to_string_alloc (wtid,
                                                 sizeof (*wtid));
+
       bank_transfer_cmd = TALER_TESTING_interpreter_lookup_command
         (is, tts->bank_transfer_reference);
 
@@ -198,6 +214,7 @@ deposit_wtid_cb
         return;
       }
 
+      /* expected wire transfer subject line.  */
       const char *transfer_subject;
 
       if (GNUNET_OK != TALER_TESTING_get_trait_transfer_subject
@@ -207,7 +224,8 @@ deposit_wtid_cb
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-
+      
+      /* Compare that expected and gotten subjects match.  */
       if (0 != strcmp (ws, transfer_subject))
       {
         GNUNET_break (0);
@@ -235,8 +253,8 @@ deposit_wtid_cb
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /track/transaction one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 void
@@ -335,9 +353,10 @@ track_transaction_run (void *cls,
 }
 
 /**
- * Cleanup the state.
+ * Cleanup the state from a "track transaction" CMD, and possibly
+ * cancel a operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 void
@@ -361,16 +380,16 @@ track_transaction_cleanup
 
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer internal data from a "track transaction" CMD.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ *                 by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 track_transaction_traits (void *cls,
@@ -392,18 +411,19 @@ track_transaction_traits (void *cls,
 }
 
 /**
- * Create a /track/transaction command.
+ * Create a "track transaction" command.
  *
  * @param label the command label.
  * @param exchange the exchange to connect to.
- * @param transaction_reference reference to a deposit operation.
- * @param coin_index index of the coin involved in the transaction
+ * @param transaction_reference reference to a deposit operation,
+ *        will be used to get the input data for the track.
+ * @param coin_index index of the coin involved in the transaction.
  * @param expected_response_code expected HTTP response code.
- * @param bank_transfer_reference which #OC_CHECK_BANK_TRANSFER
- *        wtid should this match? NULL
-   * for none
+ * @param bank_transfer_reference reference to a command that
+ *        can offer a WTID so as to check that against what WTID
+ *        the tracked operation has.  Set as NULL if not needed.
  *
- * @return the command to be executed by the interpreter.
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transaction
@@ -431,11 +451,11 @@ TALER_TESTING_cmd_track_transaction
   cmd.traits = &track_transaction_traits;
 
   return cmd;
-
 }
 
 /**
- * Cleanup the state.
+ * Cleanup the state for a "track transfer" CMD, and possibly
+ * cancel a pending operation thereof.
  *
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
@@ -461,28 +481,28 @@ track_transfer_cleanup (void *cls,
 }
 
 /**
- * Function called with detailed wire transfer data, including all
- * of the coin transactions that were combined into the wire
- * transfer.
+ * Check whether the HTTP response code from a "track transfer"
+ * operation is acceptable, and all other values like total amount,
+ * wire fees and hashed wire details as well.
  *
- * @param cls closure
- * @param http_status HTTP status code we got, 0 on exchange
- *        protocol violation
- * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param cls closure.
+ * @param http_status HTTP status code we got.
+ * @param ec taler-specific error code.
  * @param exchange_pub public key the exchange used for signing
+ *        the response.
  * @param json original json reply (may include signatures, those
- *        have then been validated already)
+ *        have then been validated already).
  * @param h_wire hash of the wire transfer address the transfer
- *        went to, or NULL on error
+ *        went to, or NULL on error.
  * @param execution_time time when the exchange claims to have
- *        performed the wire transfer
+ *        performed the wire transfer.
  * @param total_amount total amount of the wire transfer, or NULL
  *        if the exchange could not provide any @a wtid (set only
- *        if @a http_status is #MHD_HTTP_OK)
- * @param wire_fee wire fee that was charged by the exchange
- * @param details_length length of the @a details array
+ *        if @a http_status is "200 OK").
+ * @param wire_fee wire fee that was charged by the exchange.
+ * @param details_length length of the @a details array.
  * @param details array with details about the combined
- *        transactions
+ *        transactions.
  */
 static void
 track_transfer_cb
@@ -523,7 +543,6 @@ track_transfer_cb
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Expected amount and fee not specified, "
                 "likely to segfault...\n");
-
 
   switch (http_status)
   {
@@ -571,6 +590,7 @@ track_transfer_cb
       return;
     }
 
+    /* FIXME: this block does nothing.  Remove?  */
     wtid_cmd = TALER_TESTING_interpreter_lookup_command
       (is, tts->wtid_reference);
 
@@ -612,9 +632,10 @@ track_transfer_cb
         return;
       }
 
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_JSON_wire_signature_hash (wire_details,
-                                                     &h_wire_details));
+      GNUNET_assert
+        (GNUNET_OK == TALER_JSON_wire_signature_hash
+          (wire_details,
+           &h_wire_details));
 
       if (0 != memcmp (&h_wire_details,
                        h_wire,
@@ -674,7 +695,7 @@ track_transfer_cb
  * Run the command.
  *
  * @param cls closure.
- * @param cmd the command to execute, a /track/transfer one.
+ * @param cmd the command under execution.
  * @param is the interpreter state.
  */
 void
@@ -683,7 +704,6 @@ track_transfer_run (void *cls,
                     struct TALER_TESTING_Interpreter *is)
 {
   /* looking for a wtid to track .. */
-
   struct TrackTransferState *tts = cls;
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_WireTransferIdentifierRawP *wtid_ptr;
@@ -721,23 +741,26 @@ track_transfer_run (void *cls,
                                             wtid_ptr,
                                             &track_transfer_cb,
                                             tts);
-
   GNUNET_assert (NULL != tts->tth);
 }
 
 /**
- * Make a /track/transfer command, expecting the transfer
- * not being done (yet).
+ * Make a "track transfer" CMD where no "expected"-arguments,
+ * except the HTTP response code, are given.  The best use case
+ * is when what matters to check is the HTTP response code, e.g.
+ * when a bogus WTID was passed.
  *
  * @param label the command label
- * @param exchange connection to the exchange
+ * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
- *        a wtid
- * @param index in case there are multiple wtid offered, this
- *        parameter selects a particular one
- * @param expected_response_code expected HTTP response code
+ *        a wtid.  If NULL is given, then a all zeroed WTID is
+ *        used that will at 99.9999% probability NOT match any
+ *        existing WTID known to the exchange.
+ * @param index index number of the WTID to track, in case there
+ *        are multiple on offer.
+ * @param expected_response_code expected HTTP response code.
  *
- * @return the command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty
@@ -766,18 +789,18 @@ TALER_TESTING_cmd_track_transfer_empty
 }
 
 /**
- * Make a /track/transfer command, specifying which amount and
+ * Make a "track transfer" command, specifying which amount and
  * wire fee are expected.
  *
- * @param label the command label
- * @param exchange connection to the exchange
+ * @param label the command label.
+ * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
- *        a wtid
- * @param index in case there are multiple wtid offered, this
- *        parameter selects a particular one
- * @param expected_response_code expected HTTP response code
- * @param expected_amount how much money we expect being
- *        moved with this wire-transfer.
+ *        a wtid.  Will be the one tracked.
+ * @param index in case there are multiple WTID offered, this
+ *        parameter selects a particular one.
+ * @param expected_response_code expected HTTP response code.
+ * @param expected_amount how much money we expect being moved
+ *        with this wire-transfer.
  * @param expected_wire_fee expected wire fee.
  *
  * @return the command
@@ -811,3 +834,5 @@ TALER_TESTING_cmd_track_transfer
 
   return cmd;
 }
+
+/* end of testing_api_cmd_track.c */
