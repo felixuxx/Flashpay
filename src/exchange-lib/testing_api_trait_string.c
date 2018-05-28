@@ -19,8 +19,7 @@
 
 /**
  * @file exchange-lib/testing_api_trait_string.c
- * @brief offers strings traits.  Mostly used to offer
- *        stringified JSONs.
+ * @brief offers strings traits.
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -40,12 +39,12 @@
 /**
  * Obtain contract terms from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank account
+ * @param cmd command to extract the contract terms from.
+ * @param index contract terms index number.
  * @param contract_terms[out] where to write the contract
  *        terms.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_contract_terms
@@ -60,10 +59,12 @@ TALER_TESTING_get_trait_contract_terms
 }
 
 /**
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param contract_terms contract terms to offer
- * @return the trait, to be put in the traits array of the command
+ * Offer contract terms.
+ *
+ * @param index contract terms index number.
+ * @param contract_terms contract terms to offer.
+ * 
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_contract_terms
@@ -82,11 +83,13 @@ TALER_TESTING_make_trait_contract_terms
 /**
  * Obtain a transfer subject from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank transfer
- * @param transfer_subject[out] where to write the wire details.
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the subject from.
+ * @param index index number associated with the transfer
+ *        subject to offer.
+ * @param transfer_subject[out] where to write the offered
+ *        transfer subject.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_transfer_subject
@@ -101,12 +104,13 @@ TALER_TESTING_get_trait_transfer_subject
 }
 
 /**
- * Offer wire details in a trait.
+ * Offer transfer subject.
  *
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param wire_details wire details to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index index number associated with the transfer
+ *        subject being offered.
+ * @param transfer_subject transfer subject to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_transfer_subject
@@ -125,11 +129,12 @@ TALER_TESTING_make_trait_transfer_subject
 /**
  * Obtain an amount from @a cmd.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the amount from.
  * @param index which amount is to be picked, in case
  *        multiple are offered.
  * @param amount[out] where to write the wire details.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_amount
@@ -146,10 +151,11 @@ TALER_TESTING_get_trait_amount
 /**
  * Offer amount in a trait.
  *
- * @param index which amount is to be picked, in case
- *        multiple are offered.
- * @param amount the amount to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which amount is to be offered,
+ *        in case multiple are offered.
+ * @param amount the amount to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount
@@ -168,11 +174,12 @@ TALER_TESTING_make_trait_amount
 /**
  * Obtain a url from @a cmd.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the url from.
  * @param index which url is to be picked, in case
  *        multiple are offered.
- * @param amount[out] where to write the url.
- * @return #GNUNET_OK on success
+ * @param url[out] where to write the url.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_url
@@ -189,10 +196,11 @@ TALER_TESTING_get_trait_url
 /**
  * Offer url in a trait.
  *
- * @param index which url is to be picked, in case
- *        multiple are offered.
- * @param url the url to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which url is to be picked,
+ *        in case multiple are offered.
+ * @param url the url to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_url
@@ -211,11 +219,12 @@ TALER_TESTING_make_trait_url
 /**
  * Obtain a order id from @a cmd.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the order id from.
  * @param index which order id is to be picked, in case
  *        multiple are offered.
  * @param order_id[out] where to write the order id.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_order_id
@@ -232,10 +241,11 @@ TALER_TESTING_get_trait_order_id
 /**
  * Offer order id in a trait.
  *
- * @param index which order id is to be picked, in case
- *        multiple are offered.
- * @param order_id the url to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which order id is to be offered,
+ *        in case multiple are offered.
+ * @param order_id the order id to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_order_id
@@ -251,14 +261,15 @@ TALER_TESTING_make_trait_order_id
 }
 
 /**
- * Obtain the reference from a bank transfer which has
- * been rejected.
+ * Obtain the reference to a "reject" CMD.  Usually offered
+ * by _rejected_ bank transfers.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the reference from.
  * @param index which reference is to be picked, in case
  *        multiple are offered.
- * @param rejected_reference[out] where to write the order id.
- * @return #GNUNET_OK on success
+ * @param rejected_reference[out] where to write the reference.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_rejected
@@ -273,13 +284,13 @@ TALER_TESTING_get_trait_rejected
 }
 
 /**
- * Offer reference to a bank transfer which has been
- * rejected.
+ * Offer a "reject" CMD reference.
  *
- * @param index which reference is to be picked, in case
- *        multiple are offered.
- * @param rejected_reference the url to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which reference is to be offered,
+ *        in case multiple are offered.
+ * @param rejected_reference the reference to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_rejected
@@ -293,7 +304,5 @@ TALER_TESTING_make_trait_rejected
   };
   return ret;
 }
-
-
 
 /* end of testing_api_trait_string.c */

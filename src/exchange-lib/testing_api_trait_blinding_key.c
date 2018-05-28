@@ -18,7 +18,7 @@
 */
 /**
  * @file exchange-lib/testing_api_trait_blinding_key.c
- * @brief main interpreter loop for testcases
+ * @brief offer blinding keys as traits.
  * @author Christian Grothoff
  * @author Marcello Stanisci
  */
@@ -36,15 +36,16 @@
  * Obtain a blinding key from a @a cmd.
  *
  * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on offer
- * @param blinding_key[out] set to the blinding key of the coin
- * @return #GNUNET_OK on success
+ * @param index which coin to pick if @a cmd has multiple on offer.
+ * @param blinding_key[out] set to the offered blinding key.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_blinding_key (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  struct TALER_DenominationBlindingKeyP **blinding_key)
+TALER_TESTING_get_trait_blinding_key
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   struct TALER_DenominationBlindingKeyP **blinding_key)
 {
   return cmd->traits (cmd->cls,
                       (void **) blinding_key,
@@ -53,10 +54,19 @@ TALER_TESTING_get_trait_blinding_key (
 }
 
 
+
+/**
+ * Offer blinding key.
+ *
+ * @param index index number to associate to the offered key.
+ * @param blinding_key blinding key to offer.
+ *
+ * @return the trait.
+ */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_blinding_key (
-  unsigned int index,
-  const struct TALER_DenominationBlindingKeyP *blinding_key)
+TALER_TESTING_make_trait_blinding_key
+  (unsigned int index,
+   const struct TALER_DenominationBlindingKeyP *blinding_key)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -66,6 +76,5 @@ TALER_TESTING_make_trait_blinding_key (
 
   return ret;
 }
-
 
 /* end of testing_api_trait_blinding_key.c */

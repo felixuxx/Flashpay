@@ -18,7 +18,7 @@
 */
 /**
  * @file exchange-lib/testing_api_trait_denom_pub.c
- * @brief main interpreter loop for testcases
+ * @brief denom pub traits.
  * @author Christian Grothoff
  * @author Marcello Stanisci
  */
@@ -36,10 +36,10 @@
  * Obtain a denomination public key from a @a cmd.
  *
  * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- *        offer
- * @param denom_pub[out] set to the blinding key of the coin
- * @return #GNUNET_OK on success
+ * @param index index number of the denom to obtain.
+ * @param denom_pub[out] set to the offered denom pub.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_denom_pub
@@ -57,10 +57,10 @@ TALER_TESTING_get_trait_denom_pub
 /**
  * Make a trait for a denomination public key.
  *
- * @param selector in case the trait provides multiple
- *        objects, this parameter extracts a particular one.
- * @param denom_pub pointer to the data to be returned from
- *        this trait
+ * @param index index number to associate to the offered denom pub.
+ * @param denom_pub denom pub to offer with this trait.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_denom_pub

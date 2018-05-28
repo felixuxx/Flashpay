@@ -34,11 +34,13 @@
 /**
  * Obtain wire details from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank account
+ * @param cmd command to extract the wire details from.
+ * @param index index number associate with the wire details
+ *        on offer; usually zero, as one command sticks to
+ *        one bank account.
  * @param wire_details[out] where to write the wire details.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_wire_details
@@ -55,10 +57,12 @@ TALER_TESTING_get_trait_wire_details
 /**
  * Offer wire details in a trait.
  *
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param wire_details wire details to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index index number associate with the wire details
+ *        on offer; usually zero, as one command sticks to
+ *        one bank account.
+ * @param wire_details wire details to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wire_details

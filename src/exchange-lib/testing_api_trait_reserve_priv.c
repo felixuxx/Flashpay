@@ -35,17 +35,17 @@
 /**
  * Obtain a reserve private key from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- *        offer
- * @param reserve_priv[out] set to the private key of the reserve
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the reserve priv from.
+ * @param index reserve priv's index number.
+ * @param reserve_priv[out] set to the reserve priv.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_reserve_priv (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  struct TALER_ReservePrivateKeyP **reserve_priv)
+TALER_TESTING_get_trait_reserve_priv
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   struct TALER_ReservePrivateKeyP **reserve_priv)
 {
   return cmd->traits (cmd->cls,
                       (void **) reserve_priv,
@@ -54,10 +54,19 @@ TALER_TESTING_get_trait_reserve_priv (
 }
 
 
+
+/**
+ * Offer a reserve private key.
+ *
+ * @param index reserve priv's index number.
+ * @param reserve_priv reserve private key to offer.
+ *
+ * @return the trait.
+ */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_priv (
-  unsigned int index,
-  const struct TALER_ReservePrivateKeyP *reserve_priv)
+TALER_TESTING_make_trait_reserve_priv
+  (unsigned int index,
+   const struct TALER_ReservePrivateKeyP *reserve_priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -66,6 +75,5 @@ TALER_TESTING_make_trait_reserve_priv (
   };
   return ret;
 }
-
 
 /* end of testing_api_trait_reserve_priv.c */

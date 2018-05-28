@@ -19,7 +19,7 @@
 
 /**
  * @file exchange-lib/testing_api_trait_coin_priv.c
- * @brief main interpreter loop for testcases
+ * @brief coin priv traits.
  * @author Christian Grothoff
  * @author Marcello Stanisci
  */
@@ -36,11 +36,11 @@
 /**
  * Obtain a coin private key from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- *        offer
- * @param coin_priv[out] set to the private key of the coin
- * @return #GNUNET_OK on success
+ * @param cmd command to extract trait from.
+ * @param index index of the coin priv to obtain.
+ * @param coin_priv[out] set to the private key of the coin.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_coin_priv
@@ -55,6 +55,15 @@ TALER_TESTING_get_trait_coin_priv
 }
 
 
+
+/**
+ * Offer coin private key.
+ *
+ * @param index index number to associate with offered coin priv.
+ * @param coin_priv coin private key to offer.
+ *
+ * @return the trait.
+ */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_coin_priv
   (unsigned int index,
@@ -68,6 +77,5 @@ TALER_TESTING_make_trait_coin_priv
 
   return ret;
 }
-
 
 /* end of testing_api_trait_coin_priv.c */

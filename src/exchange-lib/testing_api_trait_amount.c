@@ -19,7 +19,7 @@
 
 /**
  * @file exchange-lib/testing_api_trait_amount.c
- * @brief offer amounts as traits
+ * @brief offer amounts as traits.
  * @author Marcello Stanisci
  */
 
@@ -35,10 +35,11 @@
 /**
  * Obtain an amount from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which amount to pick if @a cmd has multiple
+ * @param cmd command to extract the amount from.
+ * @param index which amount to pick if @a cmd has multiple
  *        on offer
- * @param amount[out] set to the amount
+ * @param amount[out] set to the amount.
+ *
  * @return #GNUNET_OK on success
  */
 int
@@ -53,6 +54,16 @@ TALER_TESTING_get_trait_amount_obj (
                       index);
 }
 
+
+/**
+ * Offer amount.
+ *
+ * @param index which amount to offer, in case there are
+ *        multiple available.
+ * @param amount the amount to offer.
+ *
+ * @return the trait.
+ */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount_obj (
   unsigned int index,

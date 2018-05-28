@@ -125,7 +125,7 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
 
     /* XXX: Errors reported here are NOT fatal */
 
-    /* Rejected wire transfers have hold a reference to a
+    /* Rejected wire transfers have a non-NULL reference to a
      * reject command to mark them as rejected. So errors
      * about "reject traits" not found are NOT fatal here */
     if (GNUNET_OK != TALER_TESTING_get_trait_rejected

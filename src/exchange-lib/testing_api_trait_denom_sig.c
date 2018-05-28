@@ -36,17 +36,17 @@
 /**
  * Obtain a denomination signature from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which signature to pick if @a cmd has multiple
- *        on offer
- * @param denom_sig[out] set to the signature
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the denom sig from.
+ * @param index index number associated with the denom sig.
+ * @param denom_sig[out] set to the offered signature.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_denom_sig (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  struct TALER_DenominationSignature **denom_sig)
+TALER_TESTING_get_trait_denom_sig
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   struct TALER_DenominationSignature **denom_sig)
 {
   return cmd->traits (cmd->cls,
                       (void **) denom_sig,
@@ -55,10 +55,20 @@ TALER_TESTING_get_trait_denom_sig (
 }
 
 
+
+/**
+ * Offer denom sig.
+ *
+ * @param index index number to associate to the signature on
+ *        offer.
+ * @param denom_sig the denom sig on offer.
+ *
+ * @return the trait.
+ */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_sig (
-  unsigned int index,
-  const struct TALER_DenominationSignature *denom_sig)
+TALER_TESTING_make_trait_denom_sig
+  (unsigned int index,
+   const struct TALER_DenominationSignature *denom_sig)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

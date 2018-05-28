@@ -33,13 +33,13 @@
 #define TALER_TESTING_TRAIT_UINT64 "uint-64"
 
 /**
- * Obtain a "number" value from @a cmd.
+ * Obtain a number from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
  * @param n[out] set to the number coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_uint
@@ -53,11 +53,15 @@ TALER_TESTING_get_trait_uint
                       index);
 }
 
+
+
 /**
- * @param selector associate the object with this "tag"
- * @param n which object should be returned
+ * Offer a number.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index the number's index number.
+ * @param n the number to offer.
+ *
+ * @return #GNUNET_OK on success.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_uint
@@ -73,13 +77,13 @@ TALER_TESTING_make_trait_uint
 }
 
 /**
- * Obtain a "number" value from @a cmd.
+ * Obtain a "number" value from @a cmd, 64-bit version.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
  * @param n[out] set to the number coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_uint64
@@ -94,10 +98,10 @@ TALER_TESTING_get_trait_uint64
 }
 
 /**
- * @param selector associate the object with this "tag"
- * @param n which object should be returned
+ * Offer number trait, 64-bit version.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index the number's index number.
+ * @param n number to offer.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_uint64
@@ -111,7 +115,5 @@ TALER_TESTING_make_trait_uint64
   };
   return ret;
 }
-
-
 
 /* end of testing_api_trait_number.c */
