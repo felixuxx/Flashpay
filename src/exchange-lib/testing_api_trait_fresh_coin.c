@@ -32,13 +32,14 @@
 #define TALER_TESTING_TRAIT_FRESH_COINS "fresh-coins"
 
 /**
- * Obtain a "number" value from @a cmd.
+ * Get a array of fresh coins.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
- * @param fresh_coins[out] will point to array of fresh coins
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the fresh coin from.
+ * @param index which array to pick if @a cmd has multiple
+ *        on offer.
+ * @param fresh_coins[out] will point to the offered array.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_fresh_coins
@@ -53,10 +54,14 @@ TALER_TESTING_get_trait_fresh_coins
 }
 
 /**
- * @param selector associate the object with this "tag"
+ * Offer a _array_ of fresh coins.
+ *
+ * @param index which array of fresh coins to offer,
+ *        if there are multiple on offer.  Tipically passed as
+ *        zero.
  * @param fresh_coins the array of fresh coins to offer
  *
- * @return the trait, to be put in the traits array of the command
+ * @return the trait,
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_fresh_coins

@@ -49,12 +49,12 @@ TALER_TESTING_trait_end ()
 /**
  * Pick the chosen trait from the traits array.
  *
- * @param traits the traits array
- * @param ret where to store the result
+ * @param traits the traits array.
+ * @param ret where to store the result.
  * @param selector which particular object in the trait should be
- *        returned
+ *        returned.
  *
- * @return GNUNET_OK if no error occurred, GNUNET_SYSERR otherwise
+ * @return GNUNET_OK if no error occurred, GNUNET_SYSERR otherwise.
  */
 int
 TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
