@@ -32,25 +32,39 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 
+
+/**
+ * State for a "reject" CMD.
+ */
 struct RejectState
 {
+
+  /**
+   * Handle of a ongoing "reject" operation.
+   */
   struct TALER_BANK_RejectHandle *rh;
 
+  /**
+   * Reference to any command that can offer a wire
+   * transfer "row id" and its credit account so as
+   * to give input data to the "reject" operation.
+   */
   const char *deposit_reference;
 
+  /**
+   * Base URL of the bank implementing the "reject"
+   * operation.
+   */
   const char *bank_url;
 };
 
 /**
- * Callbacks of this type are used to serve the result
- * of asking the bank to reject an incoming wire transfer.
+ * Check that the response code from the "reject" opetation
+ * is acceptable, namely it equals "204 No Content".
  *
- * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_NO_CONTENT
- *        (204) for successful status request; #MHD_HTTP_NOT_FOUND
- *        if the rowid is unknown; 0 if the bank's reply is bogus
- *        (fails to follow the protocol),
- * @param ec detailed error code
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
  */
 static void
 reject_cb (void *cls,
@@ -74,10 +88,11 @@ reject_cb (void *cls,
 }
 
 /**
- * Cleanup the state.
+ * Cleanup the state of a "reject" CMD, and possibly
+ * cancel a pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command which is being cleaned up.
+ * @param cls closure.
+ * @param cmd the command.
  */
 void
 reject_cleanup
@@ -98,8 +113,8 @@ reject_cleanup
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 void
@@ -140,13 +155,14 @@ reject_run (void *cls,
 
 
 /**
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
- * @param selector more detailed information about which object
- *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ * Offer internal data from a "reject" CMD to other commands.
+ *
+ * @param cls closure.
+ * @param ret[out] result.
+ * @param trait name of the trait.
+ * @param index index number of the trait to return.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 reject_traits (void *cls,
@@ -167,7 +183,16 @@ reject_traits (void *cls,
 }
 
 /**
- * FIXME.
+ * Create a "reject" CMD.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank implementing the
+ *        "reject" operation.
+ * @param deposit_reference reference to a command that will
+ *        provide a "row id" and credit (bank) account to craft
+ *        the "reject" request.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_reject (const char *label,
