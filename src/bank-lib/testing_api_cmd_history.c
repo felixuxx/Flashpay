@@ -34,22 +34,55 @@
 #include "taler_fakebank_lib.h"
 
 
+
+/**
+ * State for a "history" CMD.
+ */
 struct HistoryState
 {
+
+  /**
+   * Base URL of the bank offering the "history" operation.
+   */
   const char *bank_url;
 
+
+  /**
+   * Account number to ask the history for.
+   */
   uint64_t account_no;
 
+
+  /**
+   * Which type of records we are interested: in-transfers
+   * / out-transfers / rejected transfers.
+   */
   enum TALER_BANK_Direction direction;
 
+  /**
+   * First row number we want in the result.
+   */
   const char *start_row_reference;
 
+  /**
+   * How many rows we want in the result.
+   */
   unsigned int num_results;
 
+  /**
+   * Handle to a pending "history" operation.
+   */
   struct TALER_BANK_HistoryHandle *hh;
 
+  /**
+   * Expected number of results (= rows).
+   */
   uint64_t results_obtained;
 
+  /**
+   * Set to GNUNET_YES if the callback detects something
+   * unexpected. 
+   */
   int failed;
 };
 
@@ -77,15 +110,20 @@ struct History
 
 };
 
+
+/**
+ * Array mapping bank account numbers to login credentials.
+ */
 extern struct TALER_BANK_AuthenticationData AUTHS[];
 
 /**
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
- * @param selector more detailed information about which object
- *                 to return in case there were multiple generated
- *                 by the command
+ * Offer internal data to other commands.
+ *
+ * @param cls closure.
+ * @param ret[out] set to the wanted data.
+ * @param trait name of the trait.
+ * @param index index number of the traits to be returned.
+ *
  * @return #GNUNET_OK on success
  */
 static int
@@ -101,12 +139,13 @@ history_traits (void *cls,
 
 
 /**
- * Test if the /admin/add/incoming transaction at offset @a off
- * has been /rejected.
+ * Test if the CMD at offset @a off has been /rejected, and
+ * is indeed a wire transfer CMD.
  *
  * @param is interpreter state (where we are right now)
- * @param off offset of the command to test for rejection
- * @return #GNUNET_YES if the command at @a off was cancelled
+ * @param off offset of the command to test for rejection.
+ *
+ * @return GNUNET_YES if the command at @a off was cancelled.
  */
 static int
 test_cancelled (struct TALER_TESTING_Interpreter *is,
@@ -147,8 +186,8 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
 /**
  * Free history @a h of length @a h_len.
  *
- * @param h history array to free
- * @param h_len number of entries in @a h
+ * @param h history array to free.
+ * @param h_len number of entries in @a h.
  */
 static void
 free_history (struct History *h,
@@ -164,11 +203,11 @@ free_history (struct History *h,
 
 
 /**
- * Log which history we expected.
+ * Log which history we expected.  Called when an error occurs.
  *
- * @param h what we expected
- * @param h_len number of entries in @a h
- * @param off position of the missmatch
+ * @param h what we expected.
+ * @param h_len number of entries in @a h.
+ * @param off position of the missmatch.
  */
 static void
 print_expected (struct History *h,
@@ -184,9 +223,11 @@ print_expected (struct History *h,
   for (uint64_t i=0;i<h_len;i++)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "H(%llu): %s%s (serial: %llu, subject: %s, counterpart: %s)\n",
+                "H(%llu): %s%s (serial: %llu, subject: %s,"
+                " counterpart: %s)\n",
                 (unsigned long long) i,
-                (TALER_BANK_DIRECTION_CREDIT == h[i].direction) ? "+" : "-",
+                (TALER_BANK_DIRECTION_CREDIT == h[i].direction) ?
+                  "+" : "-",
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 h[i].details.wire_transfer_subject,
@@ -194,14 +235,14 @@ print_expected (struct History *h,
   }
 }
 
-
 /**
  * Build history of transactions matching the current
  * command in @a is.
  *
- * @param is interpreter state
- * @param[out] rh history array to initialize
- * @return number of entries in @a rh
+ * @param is interpreter state.
+ * @param[out] rh history array to initialize.
+ *
+ * @return number of entries in @a rh.
  */
 static uint64_t
 build_history (struct TALER_TESTING_Interpreter *is,
@@ -410,12 +451,13 @@ build_history (struct TALER_TESTING_Interpreter *is,
       if (GNUNET_YES == cancelled)
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
 
-      GNUNET_asprintf (&h[total].details.account_url,
-                       ('/' == hs->bank_url[strlen(hs->bank_url) -1])
-                       ? "payto://x-taler-bank/%s%llu"
-                       : "payto://x-taler-bank/%s/%llu",
-                       hs->bank_url,
-                       (unsigned long long) *debit_account_no);
+      GNUNET_asprintf
+        (&h[total].details.account_url,
+         ('/' == hs->bank_url[strlen(hs->bank_url) -1])
+          ? "payto://x-taler-bank/%s%llu"
+          : "payto://x-taler-bank/%s/%llu",
+          hs->bank_url,
+          (unsigned long long) *debit_account_no);
     }
     if ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
            (hs->account_no == *debit_account_no))
@@ -424,12 +466,13 @@ build_history (struct TALER_TESTING_Interpreter *is,
       if (GNUNET_YES == cancelled)
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
 
-      GNUNET_asprintf (&h[total].details.account_url,
-                       ('/' == hs->bank_url[strlen(hs->bank_url) -1])
-                       ? "payto://x-taler-bank/%s%llu"
-                       : "payto://x-taler-bank/%s/%llu",
-                       hs->bank_url,
-                       (unsigned long long) *credit_account_no);
+      GNUNET_asprintf
+        (&h[total].details.account_url,
+         ('/' == hs->bank_url[strlen(hs->bank_url) -1])
+          ? "payto://x-taler-bank/%s%llu"
+          : "payto://x-taler-bank/%s/%llu",
+          hs->bank_url,
+          (unsigned long long) *credit_account_no);
     }
     if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (hs->account_no == *credit_account_no)) ||
@@ -469,10 +512,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
 /**
  * Compute how many results we expect to be returned for
- * the history command at @a is.
+ * the current command at @a is.
  *
- * @param is the interpreter state to inspect
- * @return number of results expected
+ * @param is the interpreter state to inspect.
+ * @return number of results expected.
  */
 static uint64_t
 compute_result_count (struct TALER_TESTING_Interpreter *is)
@@ -488,13 +531,15 @@ compute_result_count (struct TALER_TESTING_Interpreter *is)
 /**
  * Check that @a dir and @a details are the transaction
  * results we expect at offset @a off in the history of
- * the current command executed by @a is
+ * the current command executed by @a is.
  *
- * @param is the interpreter state we are in
- * @param off the offset of the result
- * @param dir the direction of the transaction
- * @param details the transaction details to check
- * @return #GNUNET_OK if the transaction is what we expect
+ * @param is the interpreter state.
+ * @param off the offset (of the CMD list) where the command
+ *        to check is.
+ * @param dir the expected direction of the transaction.
+ * @param details the expected transaction details.
+ *
+ * @return #GNUNET_OK if the transaction is what we expect.
  */
 static int
 check_result (struct TALER_TESTING_Interpreter *is,
@@ -544,23 +589,24 @@ check_result (struct TALER_TESTING_Interpreter *is,
 }
 
 /**
- * Callbacks of this type are used to serve the result of asking
- * the bank for the transaction history.
+ * This callback will (1) check that the HTTP response code
+ * is acceptable and (2) that the history is consistent (FIXME,
+ * say more about 'consistent').
  *
- * @param cls closure
+ * @param cls closure.
  * @param http_status HTTP response code, #MHD_HTTP_OK (200)
  *        for successful status request 0 if the bank's reply is
  *        bogus (fails to follow the protocol),
  *        #MHD_HTTP_NO_CONTENT if there are no more results; on
  *        success the last callback is always of this status
  *        (even if `abs(num_results)` were already returned).
- * @param ec taler status code
- * @param dir direction of the transfer
+ * @param ec taler status code.
+ * @param dir direction of the transfer.
  * @param row_id monotonically increasing counter corresponding to
- *        the transaction
- * @param details details about the wire transfer
+ *        the transaction.
+ * @param details details about the wire transfer.
  * @param json detailed response from the HTTPD, or NULL if
- *        reply was not in JSON
+ *        reply was not in JSON.
  */
 static void
 history_cb (void *cls,
@@ -631,8 +677,8 @@ history_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 void
@@ -681,9 +727,10 @@ history_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Free the state from a "history" CMD, and possibly cancel
+ * a pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 void
@@ -704,7 +751,20 @@ history_cleanup
 
 
 /**
- * Test /history API from the bank.
+ * Make a "history" CMD.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank offering the "history"
+ *        operation.
+ * @param account_no bank account number to ask the history for.
+ * @param direction which direction this operation is interested
+ *        in.
+ * @param start_row_reference reference to a command that can
+ *        offer a row identifier, to be used as the starting row
+ *        to accept in the result.
+ * @param num_result how many rows we want in the result. 
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_history
