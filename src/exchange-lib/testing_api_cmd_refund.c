@@ -30,6 +30,10 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 
+
+/**
+ * State for a "refund" CMD.
+ */
 struct RefundState
 {
   /**
@@ -53,8 +57,7 @@ struct RefundState
   const char *coin_reference;
 
   /**
-   * Refund transaction identifier.  Left un-initialized in the
-   * old test-suite.  What's the best way to init it?
+   * Refund transaction identifier.
    */
   uint64_t refund_transaction_id;
 
@@ -76,17 +79,15 @@ struct RefundState
 
 
 /**
- * Check the result for the refund request.
+ * Check the result for the refund request, just check if the
+ * response code is acceptable.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful deposit; 0 if the exchange's reply is bogus
- *        (fails to follow the protocol).
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param exchange_pub public key the exchange used for signing @a
- *        obj
- * @param obj the received JSON reply, should be kept as proof
- *        (and, in particular, be forwarded to the customer)
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
+ * @param exchange_pub public key the exchange
+ *        used for signing @a obj.
+ * @param obj response object.
  */
 static void
 refund_cb (void *cls,
@@ -130,9 +131,9 @@ refund_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
- * @param i the interpreter state.
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
  */
 void
 refund_run (void *cls,
@@ -241,9 +242,10 @@ refund_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Free the state from a "refund" CMD, and possibly cancel
+ * a pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 void
@@ -265,14 +267,16 @@ refund_cleanup (void *cls,
 }
 
 /**
- * Create a /refund test command.
+ * Create a "refund" command.
  *
- * @param label command label
- * @param expected_response_code expected HTTP status code
- * @param refund_amount the amount to ask a refund for
- * @param refund_fee expected refund fee
+ * @param label command label.
+ * @param expected_response_code expected HTTP status code.
+ * @param refund_amount the amount to ask a refund for.
+ * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
@@ -300,15 +304,19 @@ TALER_TESTING_cmd_refund (const char *label,
 }
 
 /**
- * Create a /refund test command, allows to specify refund
- * transaction id.  Mainly used to create conflicting requests.
+ * Create a "refund" command, allow to specify refund transaction
+ * id.  Mainly used to create conflicting requests.
  *
- * @param label command label
- * @param expected_response_code expected HTTP status code
- * @param refund_amount the amount to ask a refund for
- * @param refund_fee expected refund fee
+ * @param label command label.
+ * @param expected_response_code expected HTTP status code.
+ * @param refund_amount the amount to ask a refund for.
+ * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
+ * @param refund_transaction_id transaction id to use
+ *        in the request.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund_with_id
