@@ -27,6 +27,10 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 
+
+/**
+ * State for a "signal" CMD.
+ */
 struct SignalState
 {
   /**
@@ -38,15 +42,13 @@ struct SignalState
    * The signal to send to the process.
    */
   int signal;
-
 };
-
 
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct SignalState.
- * @param cmd the command to execute, a /wire one.
+ * @param cls closure.
+ * @param cmd the command to execute.
  * @param is the interpreter state.
  */
 static void
@@ -67,9 +69,9 @@ signal_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Cleanup the state from a "signal" CMD.
  *
- * @param cls closure, typically a #struct SignalState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 static void
@@ -83,10 +85,11 @@ signal_cleanup (void *cls,
 
 
 /**
- * Send a signal to a process.
+ * Create a "signal" CMD.
  *
- * @param process handle to the process
- * @param signal signal to send
+ * @param label command label.
+ * @param process handle to the process to signal.
+ * @param signal signal to send.
  *
  * @return the command.
  */
