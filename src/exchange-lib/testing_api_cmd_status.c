@@ -27,6 +27,10 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 
+
+/**
+ * State for a "status" CMD.
+ */
 struct StatusState
 {
   /**
@@ -36,7 +40,7 @@ struct StatusState
   const char *reserve_reference;
 
   /**
-   * Handle to a /reserve/status operation.
+   * Handle to the "reserve status" operation.
    */
   struct TALER_EXCHANGE_ReserveStatusHandle *rsh;
 
@@ -51,7 +55,7 @@ struct StatusState
   unsigned int expected_response_code;
 
   /**
-   * Handle to the exchange.
+   * Connection handle to the exchange.
    */
   struct TALER_EXCHANGE_Handle *exchange;
 
@@ -63,19 +67,16 @@ struct StatusState
 
 
 /**
- * Check exchange returned expected values.
+ * Check that the reserve balance and HTTP response code are
+ * both acceptable.
  *
- * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request 0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param[in] json original response in JSON format (useful only
- *            for diagnostics)
- * @param balance current balance in the reserve, NULL on error
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
+ * @param balance current balance in the reserve, NULL on error.
  * @param history_length number of entries in the transaction
- *        history, 0 on error
- * @param history detailed transaction history, NULL on error
+ *        history, 0 on error.
+ * @param history detailed transaction history, NULL on error.
  */
 static void
 reserve_status_cb
@@ -136,9 +137,9 @@ reserve_status_cb
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
- * @param i the interpreter state.
+ * @param cls closure.
+ * @param cmd the command being executed.
+ * @param is the interpreter state.
  */
 static void
 status_run (void *cls,
@@ -185,9 +186,10 @@ status_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Cleanup the state from a "reserve status" CMD, and possibly
+ * cancel a pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 static void
@@ -210,15 +212,15 @@ status_cleanup (void *cls,
 
 
 /**
- * Create a /reserve/status command.
+ * Create a "reserve status" command.
  *
  * @param label the command label.
  * @param exchange the exchange to connect to.
  * @param reserve_reference reference to the reserve to check.
- * @param expected_balance balance expected to be at the referenced reserve.
+ * @param expected_balance expected balance for the reserve.
  * @param expected_response_code expected HTTP response code.
  *
- * @return the command to be executed by the interpreter.
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_status (const char *label,
