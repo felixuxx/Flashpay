@@ -30,6 +30,10 @@
 #include "taler_testing_lib.h"
 #include "taler_signatures.h"
 
+
+/**
+ * State for a "deposit" CMD.
+ */
 struct DepositState
 {
 
@@ -44,13 +48,14 @@ struct DepositState
   const char *coin_reference;
 
   /**
-   * If this @e coin_ref refers to an operation that generated
+   * If @e coin_reference refers to an operation that generated
    * an array of coins, this value determines which coin to pick.
    */
   unsigned int coin_index;
 
   /**
-   * payto://-URL of the merchant's bank account.
+   * Wire details of who is depositing -- this would be merchant
+   * wire details in a normal scenario.
    */
   json_t *wire_details;
 
@@ -66,7 +71,8 @@ struct DepositState
   struct GNUNET_TIME_Relative refund_deadline;
 
   /**
-   * Set (by the interpreter) to a fresh private key.
+   * Set (by the interpreter) to a fresh private key.  This
+   * key will be used to sign the deposit request.
    */
   struct TALER_MerchantPrivateKeyP merchant_priv;
 
@@ -92,16 +98,15 @@ struct DepositState
 };
 
 /**
- * Function called with the result of a /deposit operation.
+ * Callback to analyze the /deposit response, just used to
+ * check if the response code is acceptable.
  *
- * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful deposit; 0 if the exchange's reply is bogus
- *        (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param exchange_pub public key the exchange used for signing
- * @param obj the received JSON reply, should be kept as proof
- *        (and, in case of errors, be forwarded to the customer)
+ * @param cls closure.
+ * @param http_status HTTP response code.
+ * @param ec taler-specific error code.
+ * @param exchange_pub public key of the exchange,
+ *        used for signing the response.
+ * @param obj raw response from the exchange.
  */
 static void
 deposit_cb (void *cls,
@@ -130,9 +135,9 @@ deposit_cb (void *cls,
 /**
  * Run the command.
  *
- * @param cls closure, typically a #struct WireState.
- * @param cmd the command to execute, a /wire one.
- * @param i the interpreter state.
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
  */
 static void
 deposit_run (void *cls,
@@ -252,9 +257,10 @@ deposit_run (void *cls,
     dr.purpose.purpose = htonl
       (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
     dr.h_contract_terms = h_contract_terms;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_wire_signature_hash (ds->wire_details,
-                                                   &dr.h_wire));
+    GNUNET_assert
+      (GNUNET_OK ==
+       TALER_JSON_wire_signature_hash (ds->wire_details,
+                                       &dr.h_wire));
     dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
     dr.refund_deadline = GNUNET_TIME_absolute_hton
       (refund_deadline);
@@ -295,7 +301,8 @@ deposit_run (void *cls,
 
 
 /**
- * Cleanup the state.
+ * Free the state of a "deposit" CMD, and possibly cancel a
+ * pending operation thereof.
  *
  * @param cls closure, typically a #struct WireState.
  * @param cmd the command which is being cleaned up.
@@ -322,16 +329,16 @@ deposit_cleanup (void *cls,
 
 
 /**
- * Extract information from a command that is useful for other
- * commands.
+ * Offer internal data from a "deposit" CMD, to other commands.
  *
- * @param cls closure
- * @param ret[out] result (could be anything)
- * @param trait name of the trait
+ * @param cls closure.
+ * @param ret[out] result (could be anything).
+ * @param trait name of the trait.
  * @param selector more detailed information about which object
  *                 to return in case there were multiple generated
- *                 by the command
- * @return #GNUNET_OK on success
+ *                 by the command.
+ *
+ * @return #GNUNET_OK on success.
  */
 static int
 deposit_traits (void *cls,
@@ -378,26 +385,25 @@ deposit_traits (void *cls,
 }
 
 /**
- * Create a deposit command.
+ * Create a "deposit" command.
  *
- * @param label command label
- * @param exchange exchange connection
+ * @param label command label.
+ * @param exchange exchange connection.
  * @param coin_reference reference to any operation that can
- *        provide a coin
+ *        provide a coin.
  * @param coin_index if @a withdraw_reference offers an array of
  *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        withdrawals are implemented.
- * @param wire_details JSON details of the wire account of the merchant performing the
- *        deposit, reference is captured by this command
+ * @param wire_details wire details associated with the "deposit"
+ *        request.
  * @param contract_terms contract terms to be signed over by the
- *        coin
- * @param refund_deadline refund deadline, zero means 'no refunds'
- * @param amount how much is going to be deposited
- * @param expected_response_code which HTTP status code we expect
- *        in the response
+ *        coin.
+ * @param refund_deadline refund deadline, zero means 'no refunds'.
+ * @param amount how much is going to be deposited.
+ * @param expected_response_code expected HTTP response code.
  *
- * @return the deposit command to be run by the interpreter
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit
