@@ -43,10 +43,10 @@
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_amount_obj (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_Amount **amount)
+TALER_TESTING_get_trait_amount_obj
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct TALER_Amount **amount)
 {
   return cmd->traits (cmd->cls,
                       (void **) amount,
@@ -65,9 +65,9 @@ TALER_TESTING_get_trait_amount_obj (
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_amount_obj (
-  unsigned int index,
-  const struct TALER_Amount *amount)
+TALER_TESTING_make_trait_amount_obj
+  (unsigned int index,
+   const struct TALER_Amount *amount)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

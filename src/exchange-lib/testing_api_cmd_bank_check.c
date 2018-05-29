@@ -355,6 +355,8 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
  * @param deposit_reference reference to a CMD that is
  *        able to provide the "check bank transfer" operation
  *        input data.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer_with_ref

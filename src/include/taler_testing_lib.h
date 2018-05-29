@@ -74,6 +74,7 @@
  *
  * @param account_no account number
  * @param bank_url the bank_url
+ *
  * @return JSON describing the account, including the
  *         payto://-URL of the account, must be manually decref'd
  */
@@ -132,7 +133,8 @@ TALER_TESTING_url_port_free (const char *url);
  * If everything is OK, return the configured URL of the fakebank.
  *
  * @param config_filename configuration file to use
- * @param config_section which account to use (must match x-taler-bank)
+ * @param config_section which account to use
+ *                       (must match x-taler-bank)
  * @return NULL on error, fakebank URL otherwise
  */
 char *
@@ -176,8 +178,8 @@ struct TALER_TESTING_Interpreter
   struct GNUNET_CURL_RescheduleContext *rc;
 
   /**
-   * Handle to our fakebank, if #TALER_TESTING_run_with_fakebank() was used.
-   * Otherwise NULL.
+   * Handle to our fakebank, if #TALER_TESTING_run_with_fakebank()
+   * was used.  Otherwise NULL.
    */
   struct TALER_FAKEBANK_Handle *fakebank;
 
@@ -261,6 +263,8 @@ struct TALER_TESTING_Command
    * #TALER_TESTING_interpreter_next() or
    * #TALER_TESTING_interpreter_fail().
    *
+   * @param cls closure
+   * @param cmd command being run
    * @param i interpreter state
    */
   void
@@ -274,6 +278,7 @@ struct TALER_TESTING_Command
    * (CTRL-C) or test failure or test success.
    *
    * @param cls closure
+   * @param cmd command being cleaned up
    */
   void
   (*cleanup)(void *cls,
@@ -301,6 +306,10 @@ struct TALER_TESTING_Command
 
 /**
  * Lookup command by label.
+ *
+ * @param i interpreter state.
+ * @param label label of the command to lookup.
+ * @return the command, if it is found, or NULL.
  */
 const struct TALER_TESTING_Command *
 TALER_TESTING_interpreter_lookup_command
@@ -309,32 +318,40 @@ TALER_TESTING_interpreter_lookup_command
 
 /**
  * Obtain main execution context for the main loop.
+ *
+ * @param is interpreter state.
+ * @return CURL execution context.
  */
 struct GNUNET_CURL_Context *
 TALER_TESTING_interpreter_get_context
   (struct TALER_TESTING_Interpreter *is);
 
 /**
- * Obtain current label.
+ * Obtain label of the command being now run.
+ *
+ * @param is interpreter state.
+ * @return the label.
  */
 const char *
 TALER_TESTING_interpreter_get_current_label
   (struct TALER_TESTING_Interpreter *is);
 
+
+
 /**
- * Obtain main execution context for the main loop.
+ * Get connection handle to the fakebank.
+ *
+ * @param is interpreter state.
+ * @return the handle.
  */
-struct GNUNET_CURL_Context *
-TALER_TESTING_interpreter_get_context
-  (struct TALER_TESTING_Interpreter *is);
-
-
 struct TALER_FAKEBANK_Handle *
 TALER_TESTING_interpreter_get_fakebank
   (struct TALER_TESTING_Interpreter *is);
 
 /**
  * Current command is done, run the next one.
+ *
+ * @param is interpreter state.
  */
 void
 TALER_TESTING_interpreter_next
@@ -342,6 +359,8 @@ TALER_TESTING_interpreter_next
 
 /**
  * Current command failed, clean up and fail the test case.
+ *
+ * @param is interpreter state.
  */
 void
 TALER_TESTING_interpreter_fail
@@ -361,18 +380,35 @@ TALER_TESTING_cmd_end ();
  * Then obtain the process trait of the current
  * command, wait on the the zombie and continue
  * with the next command.
+ *
+ * @param is interpreter state.
  */
 void
 TALER_TESTING_wait_for_sigchld
   (struct TALER_TESTING_Interpreter *is);
 
 
+/**
+ * Schedule the first CMD in the CMDs array.
+ *
+ * @param is interpreter state.
+ * @param commands array of all the commands to execute.
+ */
 void
 TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands);
 
 
 
+
+/**
+ * First launch the fakebank, then schedule the first CMD
+ * in the array of all the CMDs to execute.
+ *
+ * @param is interpreter state.
+ * @param commands array of all the commands to execute.
+ * @param bank_url base URL of the fake bank.
+ */
 void
 TALER_TESTING_run_with_fakebank
   (struct TALER_TESTING_Interpreter *is,
@@ -381,7 +417,13 @@ TALER_TESTING_run_with_fakebank
 
 
 /**
- * FIXME
+ * The function that contains the array of all the CMDs to run,
+ * which is then on charge to call some fashion of
+ * TALER_TESTING_run*.  In all the test cases, this function is
+ * always the GNUnet-ish "run" method.
+ *
+ * @param cls closure.
+ * @param is interpreter state.
  */
 typedef void
 (*TALER_TESTING_Main)(void *cls,
@@ -396,9 +438,8 @@ typedef void
  * @param main_cb_cls a closure for "run", typically NULL.
  * @param config_filename configuration filename.
  * @param exchanged exchange process handle: will be put in the
- *        state as some commands - e.g. revoke - need to send
- *        signal to it, for example to let it know to reload the
- *        key state..
+ *        state as some commands - e.g. revoke - need to signal it,
+ *        for example to let it know to reload the key state.
  *
  * @return FIXME: not sure what 'is.result' is at this stage.
  */
@@ -410,24 +451,49 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
 
 
 /**
- * Initialize scheduler loop and curl context for the testcase
+ * Initialize scheduler loop and curl context for the test case
  * including starting and stopping the exchange using the given
  * configuration file.
+ *
+ * @param main_cb main method.
+ * @param main_cb_cls main method closure.
+ * @param config_filename configuration file name.  Is is used
+ *        by both this function and the exchange itself.  In the
+ *        first case it gives out the exchange port number and
+ *        the exchange base URL so as to check whether the port
+ *        is available and the exchange responds when requested
+ *        at its base URL.
+ * @return #GNUNET_OK if no errors occurred.
  */
 int
 TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                    void *main_cb_cls,
                                    const char *config_file);
 
-
-
-
 /* ************** Specific interpreter commands ************ */
 
 /**
- * Perform a wire transfer (formerly Admin-add-incoming)
+ * Create fakebank_transfer command, the subject line will be
+ * derived from a randomly created reserve priv.  Note that that
+ * reserve priv will then be offered as trait.
  *
- * @return NULL on failure
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param bank_url base URL of the bank that implements this
+ *        wire transer.  For simplicity, both credit and debit
+ *        bank account exist at the same bank.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param exchange_url which exchange is involved in this transfer.
+ *        This data is used for tracking purposes (FIXME: explain
+ *        _how_).
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer (const char *label,
@@ -441,8 +507,28 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
 
 
 /**
- * Create fakebank_transfer command with custom subject.
+ * Create "fakebank transfer" CMD, letting the caller specifying
+ * the subject line.
  *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param bank_url base URL of the bank that implements this
+ *        wire transer.  For simplicity, both credit and debit
+ *        bank account exist at the same bank.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ *
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param subject wire transfer's subject line.
+ * @param exchange_url which exchange is involved in this transfer.
+ *        This data is used for tracking purposes (FIXME: explain
+ *        _how_).
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_subject
@@ -458,8 +544,27 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
 
 
 /**
- * Create fakebank_transfer command with custom subject.
+ * Create "fakebank transfer" CMD, letting the caller specify
+ * a reference to a command that can offer a reserve private key.
+ * This private key will then be used to construct the subject line
+ * of the wire transfer.
  *
+ * @param label command label.
+ * @param amount the amount to transfer.
+ * @param bank_url base URL of the bank running the transfer.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param ref reference to a command that can offer a reserve
+ *        private key.
+ * @param exchange_url the exchage involved in the transfer,
+ *        tipically receiving the money in order to fuel a reserve.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref
@@ -474,8 +579,35 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
    const char *exchange_url);
 
 /**
- * Create fakebank_transfer command with custom subject.
+ * Create "fakebank transfer" CMD, letting the caller specifying
+ * the merchant instance.  This version is useful when a tip
+ * reserve should be topped up, in fact the interpreter will need
+ * the "tipping instance" in order to get the instance public key
+ * and make a wire transfer subject out of it.
  *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param bank_url base URL of the bank that implements this
+ *        wire transer.  For simplicity, both credit and debit
+ *        bank account exist at the same bank.
+ * @param debit_account_no which account (expressed as a number)
+ *        gives money.
+ * @param credit_account_no which account (expressed as a number)
+ *        receives money.
+ *
+ * @param auth_username username identifying the @a
+ *        debit_account_no at the bank.
+ * @param auth_password password for @a auth_username.
+ * @param instance the instance that runs the tipping.  Under this
+ *        instance, the configuration file will provide the private
+ *        key of the tipping reserve.  This data will then used to
+ *        construct the wire transfer subject line.
+ * @param exchange_url which exchange is involved in this transfer.
+ *        This data is used for tracking purposes (FIXME: explain
+ *        _how_).
+ * @param config_filename configuration file to use.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_instance
@@ -491,10 +623,10 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
    const char *config_filename);
 
 /**
- * Execute taler-exchange-wirewatch process.
+ * Make a "wirewatch" CMD.
  *
- * @param label command label
- * @param config_filanem configuration filename.
+ * @param label command label.
+ * @param config_filename configuration filename.
  *
  * @return the command.
  */
@@ -503,10 +635,11 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
                                   const char *config_filename);
 
 /**
- * Execute taler-exchange-aggregator process.
+ * Make a "aggregator" CMD.
  *
- * @param label command label
- * @param config_filename configuration filename
+ * @param label command label.
+ * @param config_filename configuration file for the
+ *                        aggregator to use.
  *
  * @return the command.
  */
@@ -515,10 +648,10 @@ TALER_TESTING_cmd_exec_aggregator (const char *label,
                                    const char *config_filename);
 
 /**
- * Execute taler-exchange-keyup process.
+ * Make the "keyup" CMD.
  *
- * @param label command label
- * @param config_filename configuration filename
+ * @param label command label.
+ * @param config_filename configuration filename.
  *
  * @return the command.
  */
@@ -527,7 +660,7 @@ TALER_TESTING_cmd_exec_keyup (const char *label,
                               const char *config_filename);
 
 /**
- * Execute taler-auditor-sign process.
+ * Make a "auditor sign" CMD.
  *
  * @param label command label
  * @param config_filename configuration filename
@@ -540,9 +673,16 @@ TALER_TESTING_cmd_exec_auditor_sign (const char *label,
 
 
 /**
- * Create withdraw command.
+ * Create a withdraw command, letting the caller specify
+ * the desired amount as string.
  *
- * @return NULL on failure
+ * @param label command label.
+ * @param exchange handle to the exchange.
+ * @param amount how much we withdraw.
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ *
+ * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount
@@ -554,8 +694,17 @@ TALER_TESTING_cmd_withdraw_amount
 
 
 /**
- * Create withdraw command.
+ * Create withdraw command, letting the caller specify the
+ * amount by a denomination key.
  *
+ * @param label command label.
+ * @param exchange connection handle to the exchange.
+ * @param reserve_reference reference to the reserve to withdraw
+ *        from; will provide reserve priv to sign the request.
+ * @param dk denomination public key.
+ * @param expected_response_code expected HTTP response code.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_denomination
@@ -567,7 +716,7 @@ TALER_TESTING_cmd_withdraw_denomination
 
 
 /**
- * Create a /wire command.
+ * Create a "wire" command.
  *
  * @param label the command label.
  * @param exchange the exchange to connect to.
@@ -577,7 +726,7 @@ TALER_TESTING_cmd_withdraw_denomination
  * @param expected_response_code the HTTP response the exchange
  *        should return.
  *
- * @return the command to be executed by the interpreter.
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire (const char *label,
@@ -588,16 +737,15 @@ TALER_TESTING_cmd_wire (const char *label,
 
 
 /**
- * Create a /reserve/status command.
+ * Create a "reserve status" command.
  *
  * @param label the command label.
  * @param exchange the exchange to connect to.
  * @param reserve_reference reference to the reserve to check.
- * @param expected_balance balance expected to be at the
- * referenced reserve.
+ * @param expected_balance expected balance for the reserve.
  * @param expected_response_code expected HTTP response code.
  *
- * @return the command to be executed by the interpreter.
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_status (const char *label,
@@ -607,26 +755,25 @@ TALER_TESTING_cmd_status (const char *label,
                           unsigned int expected_response_code);
 
 /**
- * Create a deposit command.
+ * Create a "deposit" command.
  *
- * @param label command label
- * @param exchange exchange connection
+ * @param label command label.
+ * @param exchange exchange connection.
  * @param coin_reference reference to any operation that can
- *        provide a coin
+ *        provide a coin.
  * @param coin_index if @a withdraw_reference offers an array of
- *        coins, this parameter selects which one in that array
+ *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        withdrawals are implemented.
- * @param wire_details JSON including payto://-URL of the merchant performing the
- *        deposit, reference is captured by this command
+ * @param wire_details wire details associated with the "deposit"
+ *        request.
  * @param contract_terms contract terms to be signed over by the
- *        coin
- * @param refund_deadline refund deadline
- * @param amount how much is going to be deposited
- * @param expected_response_code which HTTP status code we expect
- *        in the response
+ *        coin.
+ * @param refund_deadline refund deadline, zero means 'no refunds'.
+ * @param amount how much is going to be deposited.
+ * @param expected_response_code expected HTTP response code.
  *
- * @return the deposit command to be run by the interpreter
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit
@@ -644,14 +791,15 @@ TALER_TESTING_cmd_deposit
 /**
  * Create a "refresh melt" command.
  *
- * @param label command label
- * @param exchange connection to the exchange
- * @param amount Fixme
- * @param coin_reference reference to a command that will provide
- *        a coin to refresh
- * @param expected_response_code expected HTTP code
+ * @param label command label.
+ * @param exchange connection to the exchange.
+ * @param amount amount to be melted.
+ * @param coin_reference reference to a command
+ *        that will provide a coin to refresh.
+ * @param expected_response_code expected HTTP code.
+ *
+ * @return the command.
  */
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt
   (const char *label,
@@ -661,17 +809,19 @@ TALER_TESTING_cmd_refresh_melt
    unsigned int expected_response_code);
 
 /**
- * Create a "refresh melt" command, that does TWO /refresh/melt
- * requests.
+ * Create a "refresh melt" CMD that does TWO /refresh/melt
+ * requests.  This was needed to test the replay of a valid melt
+ * request, see #5312.
  *
  * @param label command label
  * @param exchange connection to the exchange
- * @param amount Fixme
+ * @param amount FIXME not used.
  * @param coin_reference reference to a command that will provide
  *        a coin to refresh
  * @param expected_response_code expected HTTP code
+ *
+ * @return the command.
  */
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt_double
   (const char *label,
@@ -684,12 +834,12 @@ TALER_TESTING_cmd_refresh_melt_double
 /**
  * Create a "refresh reveal" command.
  *
- * @param label command label
- * @param exchange connection to the exchange
- * @param melt_reference reference to a "refresh melt" command
- * @param expected_response_code expected HTTP response code
+ * @param label command label.
+ * @param exchange connection to the exchange.
+ * @param melt_reference reference to a "refresh melt" command.
+ * @param expected_response_code expected HTTP response code.
  *
- * @return the "refresh reveal" command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal
@@ -702,9 +852,9 @@ TALER_TESTING_cmd_refresh_reveal
 /**
  * Create a "refresh link" command.
  *
- * @param label command label
- * @param exchange connection to the exchange
- * @param melt_reference reference to a "refresh melt" command
+ * @param label command label.
+ * @param exchange connection to the exchange.
+ * @param reveal_reference reference to a "refresh reveal" CMD.
  * @param expected_response_code expected HTTP response code
  *
  * @return the "refresh link" command
@@ -718,18 +868,19 @@ TALER_TESTING_cmd_refresh_link
 
 
 /**
- * Create a /track/transaction command.
+ * Create a "track transaction" command.
  *
  * @param label the command label.
  * @param exchange the exchange to connect to.
- * @param transaction_reference reference to a deposit operation.
- * @param coin_index index of the coin involved in the transaction
+ * @param transaction_reference reference to a deposit operation,
+ *        will be used to get the input data for the track.
+ * @param coin_index index of the coin involved in the transaction.
  * @param expected_response_code expected HTTP response code.
- * @param bank_transfer_reference which #OC_CHECK_BANK_TRANSFER
- *        wtid should this match? NULL
-   * for none
+ * @param bank_transfer_reference reference to a command that
+ *        can offer a WTID so as to check that against what WTID
+ *        the tracked operation has.  Set as NULL if not needed.
  *
- * @return the command to be executed by the interpreter.
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transaction
@@ -741,18 +892,22 @@ TALER_TESTING_cmd_track_transaction
    const char *bank_transfer_reference);
 
 /**
- * Make a /track/transfer command, expecting the transfer
- * not being done (yet).
+ * Make a "track transfer" CMD where no "expected"-arguments,
+ * except the HTTP response code, are given.  The best use case
+ * is when what matters to check is the HTTP response code, e.g.
+ * when a bogus WTID was passed.
  *
  * @param label the command label
- * @param exchange connection to the exchange
+ * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
- *        a wtid
- * @param index in case there are multiple wtid offered, this
- *        parameter selects a particular one
- * @param expected_response_code expected HTTP response code
+ *        a wtid.  If NULL is given, then a all zeroed WTID is
+ *        used that will at 99.9999% probability NOT match any
+ *        existing WTID known to the exchange.
+ * @param index index number of the WTID to track, in case there
+ *        are multiple on offer.
+ * @param expected_response_code expected HTTP response code.
  *
- * @return the command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty
@@ -764,18 +919,18 @@ TALER_TESTING_cmd_track_transfer_empty
 
 
 /**
- * Make a /track/transfer command, specifying which amount and
+ * Make a "track transfer" command, specifying which amount and
  * wire fee are expected.
  *
- * @param label the command label
- * @param exchange connection to the exchange
+ * @param label the command label.
+ * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
- *        a wtid
- * @param index in case there are multiple wtid offered, this
- *        parameter selects a particular one
- * @param expected_response_code expected HTTP response code
- * @param expected_amount how much money we expect being
- *        moved with this wire-transfer.
+ *        a wtid.  Will be the one tracked.
+ * @param index in case there are multiple WTID offered, this
+ *        parameter selects a particular one.
+ * @param expected_response_code expected HTTP response code.
+ * @param expected_amount how much money we expect being moved
+ *        with this wire-transfer.
  * @param expected_wire_fee expected wire fee.
  *
  * @return the command
@@ -791,14 +946,15 @@ TALER_TESTING_cmd_track_transfer
    const char *expected_wire_fee);
 
 /**
- * Command to check whether a particular wire transfer has been
- * made or not.
+ * Make a "bank check" CMD.  It checks whether a
+ * particular wire transfer has been made or not.
  *
- * @param label the command label
- * @param exchange_base_url base url of the exchange (Fixme: why?)
- * @param amount the amount expected to be transferred
- * @param debit_account the account that gave money
- * @param credit_account the account that received money
+ * @param label the command label.
+ * @param exchange_base_url base url of the exchange involved in
+ *        the wire transfer.
+ * @param amount the amount expected to be transferred.
+ * @param debit_account the account that gave money.
+ * @param credit_account the account that received money.
  *
  * @return the command
  */
@@ -810,8 +966,18 @@ TALER_TESTING_cmd_check_bank_transfer
    uint64_t debit_account,
    uint64_t credit_account);
 
+
+
 /**
- * FIXME.
+ * Define a "bank check" CMD that takes the input
+ * data from another CMD that offers it.
+ *
+ * @param label command label.
+ * @param deposit_reference reference to a CMD that is
+ *        able to provide the "check bank transfer" operation
+ *        input data.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer_with_ref
@@ -819,9 +985,10 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
    const char *deposit_reference);
 
 /**
- * Check bank's balance is zero.
+ * Checks wheter all the wire transfers got "checked"
+ * by the "bank check" CMD.
  *
- * @param credit_account the account that received money
+ * @param label command label.
  *
  * @return the command
  */
@@ -829,15 +996,19 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_empty (const char *label);
 
 /**
- * Create a /refund test command, allows to specify refund
- * transaction id.
+ * Create a "refund" command, allow to specify refund transaction
+ * id.  Mainly used to create conflicting requests.
  *
- * @param label command label
- * @param expected_response_code expected HTTP status code
- * @param refund_amount the amount to ask a refund for
- * @param refund_fee expected refund fee
+ * @param label command label.
+ * @param expected_response_code expected HTTP status code.
+ * @param refund_amount the amount to ask a refund for.
+ * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
+ * @param refund_transaction_id transaction id to use
+ *        in the request.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund_with_id
@@ -849,14 +1020,16 @@ TALER_TESTING_cmd_refund_with_id
    uint64_t refund_transaction_id);
 
 /**
- * Create a /refund test command.
+ * Create a "refund" command.
  *
- * @param label command label
- * @param expected_response_code expected HTTP status code
- * @param refund_amount the amount to ask a refund for
- * @param refund_fee expected refund fee
+ * @param label command label.
+ * @param expected_response_code expected HTTP status code.
+ * @param refund_amount the amount to ask a refund for.
+ * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
@@ -867,15 +1040,15 @@ TALER_TESTING_cmd_refund (const char *label,
 
 
 /**
- * Make a /payback command.
+ * Make a "payback" command.
  *
  * @param label the command label
  * @param expected_response_code expected HTTP status code
- * @param coin_reference reference to any command which offers
- *        a reserve private key plus a coin to be paid back.
+ * @param coin_reference reference to any command which
+ *        offers a coin & reserve private key.
  * @param amount denomination to pay back.
  *
- * @return a /revoke command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_payback (const char *label,
@@ -885,15 +1058,15 @@ TALER_TESTING_cmd_payback (const char *label,
 
 
 /**
- * Make a /revoke command.
+ * Make a "revoke" command.
  *
- * @param label the command label
- * @param expected_response_code expected HTTP status code
- * @param coin_reference reference to any command which offers
- *        a coin trait
+ * @param label the command label.
+ * @param expected_response_code expected HTTP status code.
+ * @param coin_reference reference to a CMD that will offer the
+ *        denomination to revoke.
  * @param config_filename configuration file name.
  *
- * @return a /revoke command
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_revoke (const char *label,
@@ -902,11 +1075,11 @@ TALER_TESTING_cmd_revoke (const char *label,
                           const char *config_filename);
 
 /**
- * Send a signal to a process.
+ * Create a "signal" CMD.
  *
- * @param label command label
- * @param process handle to the process
- * @param signal signal to send
+ * @param label command label.
+ * @param process handle to the process to signal.
+ * @param signal signal to send.
  *
  * @return the command.
  */
@@ -916,12 +1089,15 @@ TALER_TESTING_cmd_signal (const char *label,
                           int signal);
 
 /**
- * Make a "check keys" command.
+ * Make a "check keys" command.  This type of command
+ * checks whether the number of denomination keys from
+ * @a exchange matches @a num_denom_keys.
  *
  * @param label command label
- * @param generation FIXME
- * @param num_denom_keys FIXME
- * @param exchange connection to the exchange
+ * @param generation how many /keys responses are expected to
+ *        have been returned when this CMD will be run.
+ * @param num_denom_keys expected number of denomination keys.
+ * @param exchange connection handle to the exchange to test.
  *
  * @return the command.
  */
@@ -939,19 +1115,44 @@ TALER_TESTING_cmd_check_keys
  */
 struct TALER_TESTING_Trait
 {
+  /**
+   * Index number associated with the trait.  This gives the
+   * possibility to have _multiple_ traits on offer under the
+   * same name.
+   */
   unsigned int index;
 
+  /**
+   * Trait type, for example "reserve-pub" or "coin-priv".
+   */
   const char *trait_name;
 
+  /**
+   * Pointer to the piece of data to offer.
+   */
   const void *ptr;
 };
 
 
 
+/**
+ * "end" trait.  Because traits are offered into arrays,
+ * this type of trait is used to mark the end of such arrays;
+ * useful when iterating over those.
+ */
 struct TALER_TESTING_Trait
 TALER_TESTING_trait_end (void);
 
 
+/**
+ * Extract a trait.
+ *
+ * @param traits the array of all the traits.
+ * @param ret[out] where to store the result.
+ * @param trait type of the trait to extract.
+ * @param index index number of the trait to extract.
+ * @return #GNUNET_OK when the trait is found.
+ */
 int
 TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
                          void **ret,
@@ -960,6 +1161,16 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 
 
 /* ****** Specific traits supported by this component ******* */
+
+
+/**
+ * Offer a reserve private key.
+ *
+ * @param index reserve priv's index number.
+ * @param reserve_priv reserve private key to offer.
+ *
+ * @return the trait.
+ */
 
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_reserve_priv
@@ -970,11 +1181,11 @@ TALER_TESTING_make_trait_reserve_priv
 /**
  * Obtain a reserve private key from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
- * @param reserve_priv[out] set to the private key of the reserve
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the reserve priv from.
+ * @param index reserve priv's index number.
+ * @param reserve_priv[out] set to the reserve priv.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_reserve_priv
@@ -984,14 +1195,15 @@ TALER_TESTING_get_trait_reserve_priv
 
 
 /**
- * Obtain location where a command stores a pointer to a process
+ * Obtain location where a command stores a pointer to a process.
  *
- * @param cmd command to extract trait from
- * @param selector which process to pick if @a cmd has multiple
- * on offer
- * @param processp[out] set to address of the pointer to the
- * process
- * @return #GNUNET_OK on success
+ * @param cmd command to extract trait from.
+ * @param index which process to pick if @a cmd
+ *        has multiple on offer.
+ * @param coin_priv[out] set to the address of the pointer to the
+ *        process.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_process
@@ -1000,6 +1212,16 @@ TALER_TESTING_get_trait_process
    struct GNUNET_OS_Process ***processp);
 
 
+
+/**
+ * Offer location where a command stores a pointer to a process.
+ * 
+ * @param index offered location index number, in case there are
+ *        multiple on offer.
+ * @param processp process location to offer.
+ *
+ * @return the trait.
+ */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_process
   (unsigned int index,
@@ -1007,7 +1229,12 @@ TALER_TESTING_make_trait_process
 
 
 /**
- * @param selector FIXME
+ * Offer coin private key.
+ *
+ * @param index index number to associate with offered coin priv.
+ * @param coin_priv coin private key to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_coin_priv
@@ -1017,11 +1244,11 @@ TALER_TESTING_make_trait_coin_priv
 /**
  * Obtain a coin private key from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
- * @param coin_priv[out] set to the private key of the coin
- * @return #GNUNET_OK on success
+ * @param cmd command to extract trait from.
+ * @param index index of the coin priv to obtain.
+ * @param coin_priv[out] set to the private key of the coin.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_coin_priv
@@ -1030,10 +1257,12 @@ TALER_TESTING_get_trait_coin_priv
    struct TALER_CoinSpendPrivateKeyP **coin_priv);
 
 /**
- * @param selector a "tag" to associate the object with
- * @param blinding_key which object should be returned
+ * Offer blinding key.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index index number to associate to the offered key.
+ * @param blinding_key blinding key to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_blinding_key
@@ -1041,13 +1270,13 @@ TALER_TESTING_make_trait_blinding_key
    const struct TALER_DenominationBlindingKeyP *blinding_key);
 
 /**
- * Obtain a coin's blinding key from a @a cmd.
+ * Obtain a blinding key from a @a cmd.
  *
  * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
- * @param blinding_key[out] set to the blinding key of the coin
- * @return #GNUNET_OK on success
+ * @param index which coin to pick if @a cmd has multiple on offer.
+ * @param blinding_key[out] set to the offered blinding key.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_blinding_key
@@ -1056,10 +1285,12 @@ TALER_TESTING_get_trait_blinding_key
    struct TALER_DenominationBlindingKeyP **blinding_key);
 
 /**
- * @param selector a "tag" to associate the object with
- * @param pdk which object should be returned
+ * Make a trait for a denomination public key.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index index number to associate to the offered denom pub.
+ * @param denom_pub denom pub to offer with this trait.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_denom_pub
@@ -1067,13 +1298,13 @@ TALER_TESTING_make_trait_denom_pub
    const struct TALER_EXCHANGE_DenomPublicKey *dpk);
 
 /**
- * Obtain a coin private key from a @a cmd.
+ * Obtain a denomination public key from a @a cmd.
  *
  * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- *        offer
- * @param dpk[out] set to a denomination key of the coin
- * @return #GNUNET_OK on success
+ * @param index index number of the denom to obtain.
+ * @param denom_pub[out] set to the offered denom pub.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_denom_pub
@@ -1083,13 +1314,13 @@ TALER_TESTING_get_trait_denom_pub
 
 
 /**
- * Obtain a coin denomination signature from a @a cmd.
+ * Obtain a denomination signature from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
- * @param sig[out] set to a denomination signature over the coin
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the denom sig from.
+ * @param index index number associated with the denom sig.
+ * @param denom_sig[out] set to the offered signature.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_denom_sig
@@ -1098,7 +1329,13 @@ TALER_TESTING_get_trait_denom_sig
    struct TALER_DenominationSignature **dpk);
 
 /**
- * @param selector
+ * Offer denom sig.
+ *
+ * @param index index number to associate to the signature on
+ *        offer.
+ * @param denom_sig the denom sig on offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_denom_sig
@@ -1107,24 +1344,24 @@ TALER_TESTING_make_trait_denom_sig
 
 
 /**
- * @param selector associate the object with this "tag"
- * @param i which object should be returned
+ * Offer number trait, 64-bit version.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index the number's index number.
+ * @param n number to offer.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_uint64
   (unsigned int index,
-   const uint64_t *i);
+   const uint64_t *n);
 
 /**
- * Obtain a "number" value from @a cmd.
+ * Obtain a "number" value from @a cmd, 64-bit version.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
  * @param n[out] set to the number coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_uint64
@@ -1133,10 +1370,12 @@ TALER_TESTING_get_trait_uint64
    const uint64_t **n);
 
 /**
- * @param selector associate the object with this "tag"
- * @param i which object should be returned
+ * Offer a number.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index the number's index number.
+ * @param n the number to offer.
+ *
+ * @return #GNUNET_OK on success.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_uint
@@ -1144,13 +1383,13 @@ TALER_TESTING_make_trait_uint
    const unsigned int *i);
 
 /**
- * Obtain a "number" value from @a cmd.
+ * Obtain a number from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
  * @param n[out] set to the number coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_uint
@@ -1185,10 +1424,14 @@ struct FreshCoin
 };
 
 /**
- * @param selector associate the object with this "tag"
- * @param fresh_coins array of fresh coins to return
+ * Offer a _array_ of fresh coins.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index which array of fresh coins to offer,
+ *        if there are multiple on offer.  Tipically passed as
+ *        zero.
+ * @param fresh_coins the array of fresh coins to offer
+ *
+ * @return the trait,
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_fresh_coins
@@ -1196,13 +1439,14 @@ TALER_TESTING_make_trait_fresh_coins
    struct FreshCoin *fresh_coins);
 
 /**
- * Obtain a "number" value from @a cmd.
+ * Get a array of fresh coins.
  *
- * @param cmd command to extract trait from
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
- * @param fresh_coins[out] will point to array of fresh coins
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the fresh coin from.
+ * @param index which array to pick if @a cmd has multiple
+ *        on offer.
+ * @param fresh_coins[out] will point to the offered array.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_fresh_coins
@@ -1210,17 +1454,15 @@ TALER_TESTING_get_trait_fresh_coins
    unsigned int index,
    struct FreshCoin **fresh_coins);
 
-
-
 /**
  * Obtain contract terms from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank account
+ * @param cmd command to extract the contract terms from.
+ * @param index contract terms index number.
  * @param contract_terms[out] where to write the contract
  *        terms.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_contract_terms
@@ -1229,10 +1471,12 @@ TALER_TESTING_get_trait_contract_terms
    const char **contract_terms);
 
 /**
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param contract_terms contract terms to offer
- * @return the trait, to be put in the traits array of the command
+ * Offer contract terms.
+ *
+ * @param index contract terms index number.
+ * @param contract_terms contract terms to offer.
+ * 
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_contract_terms
@@ -1243,11 +1487,13 @@ TALER_TESTING_make_trait_contract_terms
 /**
  * Obtain wire details from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank account
+ * @param cmd command to extract the wire details from.
+ * @param index index number associate with the wire details
+ *        on offer; usually zero, as one command sticks to
+ *        one bank account.
  * @param wire_details[out] where to write the wire details.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_wire_details
@@ -1259,10 +1505,12 @@ TALER_TESTING_get_trait_wire_details
 /**
  * Offer wire details in a trait.
  *
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param wire_details wire details to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index index number associate with the wire details
+ *        on offer; usually zero, as one command sticks to
+ *        one bank account.
+ * @param wire_details wire details to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wire_details
@@ -1273,12 +1521,12 @@ TALER_TESTING_make_trait_wire_details
  * Obtain a private key from a "peer".  Used e.g. to obtain
  * a merchant's priv to sign a /track request.
  *
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
- * @param selector which coin to pick if @a cmd has multiple on
- * offer
+ * @param cmd command that is offering the key.
+ * @param index (tipically zero) which key to return if there
+ *        are multiple on offer.
  * @param priv[out] set to the key coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_peer_key
@@ -1286,13 +1534,15 @@ TALER_TESTING_get_trait_peer_key
    unsigned int index,
    const struct GNUNET_CRYPTO_EddsaPrivateKey **priv);
 
-
 /**
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
- * @param priv which object should be returned
+ * Offer private key, typically done when CMD_1 needs it to
+ * sign a request.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index (tipically zero) which key to return if there are
+ *        multiple on offer.
+ * @param priv which object should be offered.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key
@@ -1304,10 +1554,12 @@ TALER_TESTING_make_trait_peer_key
  * Obtain a public key from a "peer".  Used e.g. to obtain
  * a merchant's public key to use backend's API.
  *
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
+ * @param cmd command offering the key.
+ * @param index (tipically zero) which key to return if there
+ *        are multiple on offer.
  * @param pub[out] set to the key coming from @a cmd.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_peer_key_pub
@@ -1316,11 +1568,14 @@ TALER_TESTING_get_trait_peer_key_pub
    const struct GNUNET_CRYPTO_EddsaPublicKey **pub);
 
 /**
- * @param index (tipically zero) which key to return if they
- *        exist in an array.
- * @param pub which object should be returned
+ * Offer public key.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index (tipically zero) which key to return if there
+ *        are multiple on offer.  NOTE: if one key is offered, it
+ *        is mandatory to set this as zero.
+ * @param pub which object should be returned.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key_pub
@@ -1330,11 +1585,13 @@ TALER_TESTING_make_trait_peer_key_pub
 /**
  * Obtain a transfer subject from @a cmd.
  *
- * @param cmd command to extract trait from
- * @param index always (?) zero, as one command sticks
- *        to one bank transfer
- * @param transfer_subject[out] where to write the wire details.
- * @return #GNUNET_OK on success
+ * @param cmd command to extract the subject from.
+ * @param index index number associated with the transfer
+ *        subject to offer.
+ * @param transfer_subject[out] where to write the offered
+ *        transfer subject.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_transfer_subject
@@ -1344,12 +1601,13 @@ TALER_TESTING_get_trait_transfer_subject
 
 
 /**
- * Offer wire wire transfer subject in a trait.
+ * Offer transfer subject.
  *
- * @param index always (?) zero, as one command sticks
- *        to one bank account
- * @param transfer_subject wire transfer subject to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index index number associated with the transfer
+ *        subject being offered.
+ * @param transfer_subject transfer subject to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_transfer_subject
@@ -1373,10 +1631,12 @@ TALER_TESTING_get_trait_wtid
    struct TALER_WireTransferIdentifierRawP **wtid);
 
 /**
- * @param index associate the object with this index
- * @param wtid which object should be returned
+ * Offer a WTID.
  *
- * @return the trait, to be put in the traits array of the command
+ * @param index associate the WTID with this index.
+ * @param wtid pointer to the WTID to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wtid
@@ -1387,10 +1647,11 @@ TALER_TESTING_make_trait_wtid
 /**
  * Offer amount in a trait.
  *
- * @param index which amount is to be picked, in case
- *        multiple are offered.
- * @param amount the amount to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which amount is to be offered,
+ *        in case multiple are offered.
+ * @param amount the amount to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount
@@ -1400,11 +1661,12 @@ TALER_TESTING_make_trait_amount
 /**
  * Obtain an amount from @a cmd.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the amount from.
  * @param index which amount is to be picked, in case
  *        multiple are offered.
  * @param amount[out] where to write the wire details.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_amount
@@ -1416,10 +1678,11 @@ TALER_TESTING_get_trait_amount
 /**
  * Offer url in a trait.
  *
- * @param index which url is to be picked, in case
- *        multiple are offered.
- * @param url the url to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which url is to be picked,
+ *        in case multiple are offered.
+ * @param url the url to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_url
@@ -1429,11 +1692,12 @@ TALER_TESTING_make_trait_url
 /**
  * Obtain a url from @a cmd.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the url from.
  * @param index which url is to be picked, in case
  *        multiple are offered.
- * @param amount[out] where to write the url.
- * @return #GNUNET_OK on success
+ * @param url[out] where to write the url.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_url
@@ -1445,11 +1709,12 @@ TALER_TESTING_get_trait_url
 /**
  * Obtain a order id from @a cmd.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the order id from.
  * @param index which order id is to be picked, in case
  *        multiple are offered.
  * @param order_id[out] where to write the order id.
- * @return #GNUNET_OK on success
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_order_id
@@ -1460,10 +1725,11 @@ TALER_TESTING_get_trait_order_id
 /**
  * Offer order id in a trait.
  *
- * @param index which order id is to be picked, in case
- *        multiple are offered.
- * @param order_id the url to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which order id is to be offered,
+ *        in case multiple are offered.
+ * @param order_id the order id to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_order_id
@@ -1474,47 +1740,58 @@ TALER_TESTING_make_trait_order_id
 /**
  * Obtain an amount from a @a cmd.
  *
- * @param cmd command to extract trait from
- * @param selector which amount to pick if @a cmd has multiple
+ * @param cmd command to extract the amount from.
+ * @param index which amount to pick if @a cmd has multiple
  *        on offer
- * @param amount[out] set to the amount
+ * @param amount[out] set to the amount.
+ *
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_amount_obj (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_Amount **amount);
-
-
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_amount_obj (
-  unsigned int index,
-  const struct TALER_Amount *amount);
+TALER_TESTING_get_trait_amount_obj
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct TALER_Amount **amount);
 
 /**
- * Offer reference to a bank transfer which has been
- * rejected.
+ * Offer amount.
  *
- * @param index which reference is to be picked, in case
- *        multiple are offered.
- * @param rejected_reference the url to offer
- * @return the trait, to be put in the traits array of the command
+ * @param index which amount to offer, in case there are
+ *        multiple available.
+ * @param amount the amount to offer.
+ *
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_amount_obj
+  (unsigned int index,
+   const struct TALER_Amount *amount);
+
+/**
+ * Offer a "reject" CMD reference.
+ *
+ * @param index which reference is to be offered,
+ *        in case multiple are offered.
+ * @param rejected_reference the reference to offer.
+ *
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_rejected
   (unsigned int index,
    const char *rejected);
 
+
 /**
- * Obtain the reference from a bank transfer which has
- * been rejected.
+ * Obtain the reference to a "reject" CMD.  Usually offered
+ * by _rejected_ bank transfers.
  *
- * @param cmd command to extract trait from
+ * @param cmd command to extract the reference from.
  * @param index which reference is to be picked, in case
  *        multiple are offered.
- * @param rejected_reference[out] where to write the order id.
- * @return #GNUNET_OK on success
+ * @param rejected_reference[out] where to write the reference.
+ *
+ * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_rejected

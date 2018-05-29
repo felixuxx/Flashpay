@@ -54,7 +54,6 @@ TALER_TESTING_get_trait_reserve_priv
 }
 
 
-
 /**
  * Offer a reserve private key.
  *

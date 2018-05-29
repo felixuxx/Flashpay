@@ -568,10 +568,11 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
                         "payto://x-taler-bank/",
                         strlen ("payto://x-taler-bank/")))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_WARNING,
-                               config_section,
-                               "URL",
-                               "expected `x-taler-bank' payto://-URL");
+    GNUNET_log_config_invalid
+      (GNUNET_ERROR_TYPE_WARNING,
+       config_section,
+       "URL",
+       "expected `x-taler-bank' payto://-URL");
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (payto_url);
     return NULL;

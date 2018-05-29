@@ -53,10 +53,12 @@ TALER_TESTING_get_trait_wtid
 }
 
 /**
+ * Offer a WTID.
+ *
  * @param index associate the object with this index
  * @param wtid which object should be returned
  *
- * @return the trait, to be put in the traits array of the command
+ * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wtid
