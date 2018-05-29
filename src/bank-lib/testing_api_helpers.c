@@ -164,7 +164,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  * Prepare the bank execution.  Check if the port is available
  * and reset database.
  *
- * @param config_filename configuration filename.
+ * @param config_filename configuration file name.
  *
  * @return the base url, or NULL upon errors.  Must be freed
  *         by the caller.

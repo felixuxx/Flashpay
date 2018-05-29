@@ -19,7 +19,7 @@
 
 /**
  * @file include/taler_testing_bank_lib.h
- * @brief API for writing an interpreter to test Taler components
+ * @brief API for writing test cases to test banks.
  * @author Marcello Stanisci
  */
 #ifndef TALER_TESTING_BANK_LIB_H
@@ -57,6 +57,8 @@
  * bank" function to do such tasks.
  *
  * @param config_filename configuration filename.
+ * @param bank_url base URL of the bank, used by `wget' to check
+ *        that the bank was started right.
  *
  * @return the process, or NULL if the process could not
  *         be started.
@@ -67,9 +69,9 @@ TALER_TESTING_run_bank (const char *config_filename,
 
 /**
  * Prepare the bank execution.  Check if the port is available
- * (and reset database?).
+ * and reset database.
  *
- * @param config_filename configuration filename.
+ * @param config_filename configuration file name.
  *
  * @return the base url, or NULL upon errors.  Must be freed
  *         by the caller.
@@ -78,12 +80,23 @@ char *
 TALER_TESTING_prepare_bank (const char *config_filename);
 
 
-/* ******************* Generic interpreter logic ************ */
-
 /* ************** Specific interpreter commands ************ */
 
 /**
- * Test /history API from the bank.
+ * Make a "history" CMD.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank offering the "history"
+ *        operation.
+ * @param account_no bank account number to ask the history for.
+ * @param direction which direction this operation is interested
+ *        in.
+ * @param start_row_reference reference to a command that can
+ *        offer a row identifier, to be used as the starting row
+ *        to accept in the result.
+ * @param num_result how many rows we want in the result. 
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_history
@@ -95,15 +108,19 @@ TALER_TESTING_cmd_bank_history
    unsigned int num_results);
 
 /**
- * FIXME.
+ * Create a "reject" CMD.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank implementing the
+ *        "reject" operation.
+ * @param deposit_reference reference to a command that will
+ *        provide a "row id" and credit (bank) account to craft
+ *        the "reject" request.
+ *
+ * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_reject (const char *label,
                                const char *bank_url,
                                const char *deposit_reference);
-
-/* *** Generic trait logic for implementing traits ********* */
-
-/* ****** Specific traits supported by this component ******* */
-
 #endif
