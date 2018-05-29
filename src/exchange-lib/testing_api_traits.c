@@ -51,8 +51,8 @@ TALER_TESTING_trait_end ()
  *
  * @param traits the traits array.
  * @param ret where to store the result.
- * @param selector which particular object in the trait should be
- *        returned.
+ * @param trait type of the trait to extract.
+ * @param index index number of the object to extract.
  *
  * @return GNUNET_OK if no error occurred, GNUNET_SYSERR otherwise.
  */

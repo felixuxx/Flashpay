@@ -342,9 +342,7 @@ payback_cleanup (void *cls,
  * @param cls closure
  * @param ret[out] result (could be anything)
  * @param trait name of the trait
- * @param selector more detailed information about which object
- *                 to return in case there were multiple generated
- *                 by the command
+ * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
 static int

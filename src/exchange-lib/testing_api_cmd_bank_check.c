@@ -193,11 +193,9 @@ check_bank_transfer_cleanup
  * Offer internal data from a "bank check" CMD state.
  *
  * @param cls closure.
- * @param ret[out] result (could be anything).
+ * @param ret[out] result.
  * @param trait name of the trait.
- * @param selector more detailed information about which object
- *                 to return in case there were multiple generated
- *                 by the command.
+ * @param index index number of the object to offer.
  *
  * @return #GNUNET_OK on success.
  */
