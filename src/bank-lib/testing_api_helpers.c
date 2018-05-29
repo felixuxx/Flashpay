@@ -27,7 +27,8 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_testing_bank_lib.h"
 
-/* Keeps each bank account credential at bank account number - 1 */
+/* Keep each bank account credentials at index:
+ * bank account number - 1 */
 struct TALER_BANK_AuthenticationData AUTHS[] = {
 
   /* Bank credentials */
@@ -52,6 +53,8 @@ struct TALER_BANK_AuthenticationData AUTHS[] = {
  * bank" function to do such tasks.
  *
  * @param config_filename configuration filename.
+ * @param bank_url base URL of the bank, used by `wget' to check
+ *        that the bank was started right.
  *
  * @return the process, or NULL if the process could not
  *         be started.
@@ -60,10 +63,6 @@ struct GNUNET_OS_Process *
 TALER_TESTING_run_bank (const char *config_filename,
                         const char *bank_url)
 {
-
-  /* to fetch: dbname+serving_method+base_url */
-
-
   struct GNUNET_OS_Process *bank_proc;
   unsigned int iter;
   char *wget_cmd;
@@ -160,9 +159,10 @@ TALER_TESTING_run_bank (const char *config_filename,
 
 }
 
+
 /**
  * Prepare the bank execution.  Check if the port is available
- * (and reset database?).
+ * and reset database.
  *
  * @param config_filename configuration filename.
  *
@@ -178,12 +178,23 @@ TALER_TESTING_prepare_bank (const char *config_filename)
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
   char *base_url;
+  char *database;
 
   cfg = GNUNET_CONFIGURATION_create ();
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
       (cfg, config_filename))
     BANK_FAIL ();
+
+  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string
+    (cfg, "bank", "DATABASE", &database))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "bank",
+                               "DATABASE");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    BANK_FAIL ();
+  }
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_number
     (cfg, "bank", "HTTP_PORT", &port))
@@ -214,7 +225,7 @@ TALER_TESTING_prepare_bank (const char *config_filename)
        "taler-bank-manage",
        "taler-bank-manage",
        "-c", "bank.conf",
-       "--with-db=postgres:///talercheck", /*FIXME: no hardcoded*/
+       "--with-db", database, /*FIXME: no hardcoded*/
        "django",
        "flush",
        "--no-input", NULL)))

@@ -59,11 +59,13 @@ append (struct curl_slist *hdr,
 /**
  * Build authentication header from @a auth.
  *
- * @param auth authentication data to use
- * @return NULL on error, otherwise curl headers to use
+ * @param auth authentication data to use.
+ *
+ * @return NULL on error, otherwise curl headers to use.
  */
 struct curl_slist *
-TALER_BANK_make_auth_header_ (const struct TALER_BANK_AuthenticationData *auth)
+TALER_BANK_make_auth_header_
+  (const struct TALER_BANK_AuthenticationData *auth)
 {
   struct curl_slist *authh;
 
@@ -89,9 +91,11 @@ TALER_BANK_make_auth_header_ (const struct TALER_BANK_AuthenticationData *auth)
 /**
  * Obtain the URL to use for an API request.
  *
- * @param u base URL of the bank
- * @param path Taler API path (i.e. "/history")
- * @return the full URL to use with cURL
+ * @param u base URL of the bank.
+ * @param path Taler API path (i.e. "/history").
+ *
+ * @return the full URL to use with cURL, must be
+ *         freed by the caller.
  */
 char *
 TALER_BANK_path_to_url_ (const char *u,
@@ -114,8 +118,9 @@ TALER_BANK_path_to_url_ (const char *u,
 /**
  * Parse error code given in @a json.
  *
- * @param json the json to parse
- * @return error code, or #TALER_EC_INVALID if not found
+ * @param json the json to parse.
+ *
+ * @return error code, or #TALER_EC_INVALID if not found.
  */
 enum TALER_ErrorCode
 TALER_BANK_parse_ec_ (const json_t *json)
