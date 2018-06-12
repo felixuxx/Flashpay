@@ -1033,6 +1033,7 @@ taler_bank_get_history (void *cls,
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
 
+  port = 433; /* if non given, equals 433.  */
   if (NULL != (p = strchr (account.hostname,
                            (unsigned char) ':')))
   {
