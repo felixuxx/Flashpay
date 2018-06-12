@@ -328,7 +328,7 @@ build_history (struct InterpreterState *is,
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
       GNUNET_asprintf (&h[total].details.account_url,
                        "payto://x-taler-bank/%s/%llu",
-                       "http://localhost:8080",
+                       "localhost:8080",
                        (unsigned long long) pos->details.admin_add_incoming.debit_account_no);
     }
     if ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
@@ -340,7 +340,7 @@ build_history (struct InterpreterState *is,
         h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
       GNUNET_asprintf (&h[total].details.account_url,
                        "payto://x-taler-bank/%s/%llu",
-                       "http://localhost:8080",
+                       "localhost:8080",
                        (unsigned long long) pos->details.admin_add_incoming.credit_account_no);
     }
     if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&

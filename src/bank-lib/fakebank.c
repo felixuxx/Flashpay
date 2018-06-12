@@ -960,6 +960,8 @@ handle_mhd_request (void *cls,
 
   /* Unexpected URL path, just close the connection. */
   /* we're rather impolite here, but it's a testcase. */
+  TALER_LOG_ERROR ("Breaking URL: %s\n",
+                   url);
   GNUNET_break_op (0);
   return MHD_NO;
 }

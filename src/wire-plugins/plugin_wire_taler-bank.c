@@ -978,6 +978,9 @@ taler_bank_get_history (void *cls,
   const uint64_t *start_off_b64;
   uint64_t start_row;
   struct Account account;
+  char *bank_base_url;
+  char *p;
+  long long unsigned port;
 
   if (0 == num_results)
   {
@@ -1029,8 +1032,40 @@ taler_bank_get_history (void *cls,
 
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
+
+  if (NULL != (p = strchr (account.hostname,
+                           (unsigned char) ':')))
+  {
+    p++;
+    if (1 != sscanf (p,
+                     "%llu",
+                     &port))
+    {
+      GNUNET_break (0); 
+      TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
+      return NULL;
+    }
+  }
+
+  if (443 != port)
+  {
+    GNUNET_assert
+      (GNUNET_SYSERR != GNUNET_asprintf
+        (&bank_base_url,
+         "http://%s",
+         account.hostname));
+  }
+  else
+  {
+    GNUNET_assert
+      (GNUNET_SYSERR != GNUNET_asprintf
+        (&bank_base_url,
+         "https://%s",
+         account.hostname));  
+  }
+
   whh->hh = TALER_BANK_history (tc->ctx,
-                                account.hostname,
+                                bank_base_url,
                                 &whh->auth,
                                 (uint64_t) account.no,
                                 direction,

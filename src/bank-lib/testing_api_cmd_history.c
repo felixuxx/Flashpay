@@ -380,6 +380,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const struct TALER_TESTING_Command *pos = &is->commands[off];
     int cancelled;
     const uint64_t *row_id;
+    char *bank_hostname;
+    const uint64_t *credit_account_no;
+    const uint64_t *debit_account_no;
 
     if (GNUNET_OK != TALER_TESTING_GET_TRAIT_ROW_ID
         (pos, &row_id))
@@ -408,8 +411,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
       TALER_LOG_INFO ("hit limit specified by command\n");
       break;
     }
-    const uint64_t *credit_account_no;
-    const uint64_t *debit_account_no;
 
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
@@ -444,6 +445,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
      continue;
     }
 
+      bank_hostname = strchr (hs->bank_url, ':');
+      GNUNET_assert (NULL != bank_hostname);
+      bank_hostname += 3;
+
     if ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
          (hs->account_no == *credit_account_no))
     {
@@ -453,10 +458,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
       GNUNET_asprintf
         (&h[total].details.account_url,
-         ('/' == hs->bank_url[strlen(hs->bank_url) -1])
+         ('/' == bank_hostname[strlen(bank_hostname) -1])
           ? "payto://x-taler-bank/%s%llu"
           : "payto://x-taler-bank/%s/%llu",
-          hs->bank_url,
+          bank_hostname,
           (unsigned long long) *debit_account_no);
     }
     if ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
@@ -468,10 +473,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
       GNUNET_asprintf
         (&h[total].details.account_url,
-         ('/' == hs->bank_url[strlen(hs->bank_url) -1])
+         ('/' == bank_hostname[strlen(bank_hostname) -1])
           ? "payto://x-taler-bank/%s%llu"
           : "payto://x-taler-bank/%s/%llu",
-          hs->bank_url,
+          bank_hostname,
           (unsigned long long) *credit_account_no);
     }
     if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&

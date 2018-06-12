@@ -78,6 +78,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
                        const json_t *history)
 {
   json_t *history_array;
+  char *bank_hostname;
 
   if (NULL == (history_array = json_object_get (history, "data")))
   {
@@ -136,11 +137,17 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
       GNUNET_JSON_parse_free (hist_spec);
       return GNUNET_SYSERR;
     }
+    /* Note, bank_base_url has _always_ the protocol scheme
+     * and it proved to be good at this point.  */
+    bank_hostname = strchr (hh->bank_base_url, ':');
+    GNUNET_assert (NULL != bank_hostname);
+    bank_hostname += 3;
+
     GNUNET_asprintf (&td.account_url,
-                     ('/' == hh->bank_base_url[strlen(hh->bank_base_url)-1])
+                     ('/' == bank_hostname[strlen(bank_hostname)-1])
                      ? "payto://x-taler-bank/%s%llu"
                      : "payto://x-taler-bank/%s/%llu",
-                     hh->bank_base_url,
+                     bank_hostname,
                      (unsigned long long) other_account);
     hh->hcb (hh->hcb_cls,
              MHD_HTTP_OK,
