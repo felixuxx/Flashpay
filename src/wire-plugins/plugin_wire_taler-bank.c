@@ -780,7 +780,7 @@ taler_bank_execute_wire_transfer (void *cls,
   wire_s = GNUNET_STRINGS_data_to_string_alloc (&bf.wtid,
                                                 sizeof (bf.wtid));
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
-                                            origin_account.hostname,
+                                            origin_account.bank_base_url,
                                             &auth,
                                             exchange_base_url,
                                             wire_s,
