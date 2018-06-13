@@ -202,6 +202,11 @@ struct Account
    * Bank account number.
    */
   unsigned long long no;
+
+  /**
+   * Base URL of the bank hosting the account above.
+   */
+  char *bank_base_url;
 };
 
 
@@ -257,11 +262,46 @@ parse_payto (const char *account_url,
   }
   if (no > MAX_ACCOUNT_NO)
     return TALER_EC_PAYTO_MALFORMED;
+
   if (NULL != r_account)
   {
+    long long unsigned port;
+    char *p;
+
     r_account->hostname = GNUNET_strndup (hostname,
                                           account - hostname);
     r_account->no = no;
+    port = 443; /* if non given, equals 443.  */
+    if (NULL != (p = strchr (r_account->hostname,
+                           (unsigned char) ':')))
+    {
+      p++;
+      if (1 != sscanf (p,
+                       "%llu",
+                       &port))
+      {
+        GNUNET_break (0); 
+        TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
+        GNUNET_free (r_account->hostname);
+        return TALER_EC_PAYTO_MALFORMED;
+      }
+    }
+    if (443 != port)
+    {
+      GNUNET_assert
+        (GNUNET_SYSERR != GNUNET_asprintf
+          (&r_account->bank_base_url,
+           "http://%s",
+           r_account->hostname));
+    }
+    else
+    {
+      GNUNET_assert
+        (GNUNET_SYSERR != GNUNET_asprintf
+          (&r_account->bank_base_url,
+           "https://%s",
+           r_account->hostname));  
+    }
   }
   return TALER_EC_NONE;
 }
@@ -978,9 +1018,6 @@ taler_bank_get_history (void *cls,
   const uint64_t *start_off_b64;
   uint64_t start_row;
   struct Account account;
-  char *bank_base_url;
-  char *p;
-  long long unsigned port;
 
   if (0 == num_results)
   {
@@ -1033,40 +1070,8 @@ taler_bank_get_history (void *cls,
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
 
-  port = 443; /* if non given, equals 443.  */
-  if (NULL != (p = strchr (account.hostname,
-                           (unsigned char) ':')))
-  {
-    p++;
-    if (1 != sscanf (p,
-                     "%llu",
-                     &port))
-    {
-      GNUNET_break (0); 
-      TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
-      return NULL;
-    }
-  }
-
-  if (443 != port)
-  {
-    GNUNET_assert
-      (GNUNET_SYSERR != GNUNET_asprintf
-        (&bank_base_url,
-         "http://%s",
-         account.hostname));
-  }
-  else
-  {
-    GNUNET_assert
-      (GNUNET_SYSERR != GNUNET_asprintf
-        (&bank_base_url,
-         "https://%s",
-         account.hostname));  
-  }
-
   whh->hh = TALER_BANK_history (tc->ctx,
-                                bank_base_url,
+                                account.bank_base_url,
                                 &whh->auth,
                                 (uint64_t) account.no,
                                 direction,
@@ -1080,9 +1085,11 @@ taler_bank_get_history (void *cls,
     taler_bank_get_history_cancel (NULL,
                                    whh);
     GNUNET_free (account.hostname);
+    GNUNET_free (account.bank_base_url);
     return NULL;
   }
   GNUNET_free (account.hostname);
+  GNUNET_free (account.bank_base_url);
   return whh;
 }
 
