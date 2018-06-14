@@ -549,6 +549,7 @@ taler_bank_prepare_wire_transfer (void *cls,
                                origin_account_section,
                                "URL");
     GNUNET_free (a_out.hostname);
+    GNUNET_free (a_out.bank_base_url);
     return NULL;
   }
   if (TALER_EC_NONE !=
@@ -561,6 +562,7 @@ taler_bank_prepare_wire_transfer (void *cls,
                                "Malformed payto:// URL for x-taler-bank method");
     GNUNET_free (origin_account_url);
     GNUNET_free (a_out.hostname);
+    GNUNET_free (a_out.bank_base_url);
     return NULL;
   }
 
@@ -573,11 +575,15 @@ taler_bank_prepare_wire_transfer (void *cls,
                 a_in.hostname,
                 a_out.hostname);
     GNUNET_free (a_in.hostname);
+    GNUNET_free (a_in.bank_base_url);
     GNUNET_free (a_out.hostname);
+    GNUNET_free (a_out.bank_base_url);
     return NULL;
   }
   GNUNET_free (a_in.hostname);
+  GNUNET_free (a_in.bank_base_url);
   GNUNET_free (a_out.hostname);
+  GNUNET_free (a_out.bank_base_url);
 
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
   if (GNUNET_OK !=
