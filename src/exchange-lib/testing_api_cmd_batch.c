@@ -34,7 +34,7 @@
 struct BatchState
 {
   /* CMDs batch.  */
-  const struct TALER_TESTING_Command *batch;
+  struct TALER_TESTING_Command *batch;
 
   /* Internal comand pointer.  */
   unsigned int batch_ip;
@@ -57,7 +57,10 @@ batch_run (void *cls,
 
   /* hit end command, leap to next top-level command.  */
   if (NULL == bs->batch[bs->batch_ip].label)
+  {
     TALER_TESTING_interpreter_next (is);
+    return;
+  }
 
   bs->batch[bs->batch_ip].run (bs->batch[bs->batch_ip].cls,
                                &bs->batch[bs->batch_ip],
@@ -84,6 +87,7 @@ batch_cleanup (void *cls,
        i++)
     bs->batch[i].cleanup (bs->batch[i].cls,
                           &bs->batch[i]);
+  GNUNET_free_non_null (bs->batch);
 }
 
 
@@ -105,9 +109,20 @@ TALER_TESTING_cmd_batch (const char *label,
 {
   struct TALER_TESTING_Command cmd;
   struct BatchState *bs;
+  unsigned int i;
 
   bs = GNUNET_new (struct BatchState);
-  bs->batch = batch;
+
+  /* Get number of commands.  */
+  for (i=0;NULL != batch[i].label;i++)
+    /* noop */
+    ;
+
+  bs->batch = GNUNET_new_array (i + 1,
+                                struct TALER_TESTING_Command);
+  memcpy (bs->batch,
+          batch,
+          sizeof (struct TALER_TESTING_Command) * i);
 
   cmd.cls = bs;
   cmd.label = label;
