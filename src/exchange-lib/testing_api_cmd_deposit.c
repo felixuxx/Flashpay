@@ -416,7 +416,7 @@ TALER_TESTING_cmd_deposit
    const char *amount,
    unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd;
+  struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct DepositState *ds;
 
   ds = GNUNET_new (struct DepositState);
