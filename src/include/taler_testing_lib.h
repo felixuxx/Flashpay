@@ -300,6 +300,15 @@ struct TALER_TESTING_Command
             const char *trait,
             unsigned int index);
 
+
+  /**
+   * Has GNUNET_YES if the command is a "meta" one.  Meta
+   * commands are those that takes arrays of commands and
+   * execute them.  Are used to group testing commands in
+   * order to improve readability of test cases.
+   */
+  unsigned int meta;
+
 };
 
 /**

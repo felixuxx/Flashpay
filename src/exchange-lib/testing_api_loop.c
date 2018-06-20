@@ -57,11 +57,33 @@ TALER_TESTING_interpreter_lookup_command
                 "Attempt to lookup command for empty label\n");
     return NULL;
   }
-  for (unsigned int i=0;NULL != (cmd = &is->commands[i])->label;i++)
+  for (unsigned int i=0;
+       NULL != (cmd = &is->commands[i])->label;
+       i++)
+  {
+    /* Give precedence to top-level commands.  */
     if ( (NULL != cmd->label) &&
          (0 == strcmp (cmd->label,
                        label)) )
       return cmd;
+
+    if (GNUNET_YES == cmd->meta)
+    {
+      struct TALER_TESTING_Command *batch = cmd->cls;
+
+      /* NOTE: the batch does need a "end" CMD in the
+       * last place.  */
+      for (unsigned int i=0;
+           NULL != (cmd = &batch[i])->label;
+           i++) 
+      {
+        if ( (NULL != cmd->label) &&
+            (0 == strcmp (cmd->label,
+                          label)) )
+          return cmd;
+      }
+    }
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "Command not found: %s\n",
               label);
