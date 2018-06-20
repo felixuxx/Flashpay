@@ -1806,4 +1806,20 @@ TALER_TESTING_get_trait_rejected
    unsigned int index,
    const char **rejected_reference);
 
+
+/**
+ * Create a "batch" command.  Such command takes a
+ * end_CMD-terminated array of CMDs and executed them.
+ * Once it hits the end CMD, it passes the control
+ * to the next top-level CMD, regardless of it being
+ * another batch or ordinary CMD.
+ *
+ * @param label the command label.
+ * @param batch array of CMDs to execute.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_batch (const char *label,
+                         struct TALER_TESTING_Command *batch);
 #endif

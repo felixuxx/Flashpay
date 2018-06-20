@@ -54,6 +54,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_payback.c \
   testing_api_cmd_signal.c \
   testing_api_cmd_check_keys.c \
+  testing_api_cmd_batch.c \
   testing_api_helpers.c \
   testing_api_loop.c \
   testing_api_traits.c \
