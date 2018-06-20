@@ -69,10 +69,14 @@ TALER_TESTING_interpreter_lookup_command
 
     if (GNUNET_YES == cmd->meta)
     {
-      struct TALER_TESTING_Command *batch = cmd->cls;
+      #define BATCH_INDEX 1
+      struct TALER_TESTING_Command *batch;
 
-      /* NOTE: the batch does need a "end" CMD in the
-       * last place.  */
+      /* NEED BATCH HERE FROM TRAIT.  */
+      GNUNET_assert
+        (GNUNET_OK == TALER_TESTING_get_trait_cmd
+          (cmd, BATCH_INDEX, &batch));
+
       for (unsigned int i=0;
            NULL != (cmd = &batch[i])->label;
            i++) 
@@ -166,10 +170,23 @@ interpreter_run (void *cls);
 void
 TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 {
+  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
+
   if (GNUNET_SYSERR == is->result)
     return; /* ignore, we already failed! */
 
-  if (GNUNET_NO == is->commands[is->ip].meta)
+  if (GNUNET_YES == cmd->meta)
+  {
+    #define CURRENT_BATCH_SUBCMD_INDEX 0
+    struct TALER_TESTING_Command *sub_cmd;
+
+    GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_cmd
+      (cmd, CURRENT_BATCH_SUBCMD_INDEX, &sub_cmd));
+      
+      if (NULL == sub_cmd->label)
+        is->ip++;
+  }
+  else
     is->ip++;
 
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
@@ -336,6 +353,15 @@ maint_child_death (void *cls)
 
   struct GNUNET_OS_Process **processp;
   char c[16];
+
+  if (GNUNET_YES == cmd->meta)
+  {
+    struct TALER_TESTING_Command *batch_cmd;
+    GNUNET_assert
+      (GNUNET_OK == TALER_TESTING_get_trait_cmd
+        (cmd, 0, &batch_cmd)); /* bad? */
+    cmd = batch_cmd;
+  }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Got SIGCHLD for `%s'.\n",

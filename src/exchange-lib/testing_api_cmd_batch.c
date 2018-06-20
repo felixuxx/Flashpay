@@ -37,7 +37,7 @@ struct BatchState
   struct TALER_TESTING_Command *batch;
 
   /* Internal comand pointer.  */
-  unsigned int batch_ip;
+  int batch_ip;
 };
 
 
@@ -55,9 +55,16 @@ batch_run (void *cls,
 {
   struct BatchState *bs = cls;
 
+  bs->batch_ip++;
+
+  TALER_LOG_DEBUG ("Running batched command: %s\n",
+                   bs->batch[bs->batch_ip].label);
+
   /* hit end command, leap to next top-level command.  */
   if (NULL == bs->batch[bs->batch_ip].label)
   {
+    TALER_LOG_INFO ("Exiting from batch: %s\n",
+                    cmd->label);
     TALER_TESTING_interpreter_next (is);
     return;
   }
@@ -65,7 +72,6 @@ batch_run (void *cls,
   bs->batch[bs->batch_ip].run (bs->batch[bs->batch_ip].cls,
                                &bs->batch[bs->batch_ip],
                                is);
-  bs->batch_ip++;
 }
 
 
@@ -92,6 +98,42 @@ batch_cleanup (void *cls,
 
 
 /**
+ * Offer internal data from a "batch" CMD, to other commands.
+ *
+ * @param cls closure.
+ * @param ret[out] result.
+ * @param trait name of the trait.
+ * @param index index number of the object to offer.
+ *
+ * @return #GNUNET_OK on success.
+ */
+static int
+batch_traits (void *cls,
+              void **ret,
+              const char *trait,
+              unsigned int index)
+{
+  #define CURRENT_CMD_INDEX 0
+  #define BATCH_INDEX 1
+
+  struct BatchState *bs = cls;
+
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_cmd
+      (CURRENT_CMD_INDEX, &bs->batch[bs->batch_ip]),
+    TALER_TESTING_make_trait_cmd
+      (BATCH_INDEX, bs->batch),
+    TALER_TESTING_trait_end ()
+  };
+
+  /* Always return current command.  */
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+/**
  * Create a "batch" command.  Such command takes a
  * end_CMD-terminated array of CMDs and executed them.
  * Once it hits the end CMD, it passes the control
@@ -111,7 +153,9 @@ TALER_TESTING_cmd_batch (const char *label,
   struct BatchState *bs;
   unsigned int i;
 
+  cmd.meta = GNUNET_YES;
   bs = GNUNET_new (struct BatchState);
+  bs->batch_ip = -1;
 
   /* Get number of commands.  */
   for (i=0;NULL != batch[i].label;i++)
@@ -128,6 +172,7 @@ TALER_TESTING_cmd_batch (const char *label,
   cmd.label = label;
   cmd.run = &batch_run;
   cmd.cleanup = &batch_cleanup;
+  cmd.traits = &batch_traits;
 
   return cmd;
 }

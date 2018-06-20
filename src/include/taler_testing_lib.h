@@ -1115,6 +1115,23 @@ TALER_TESTING_cmd_check_keys
    unsigned int num_denom_keys,
    struct TALER_EXCHANGE_Handle *exchange);
 
+/**
+ * Create a "batch" command.  Such command takes a
+ * end_CMD-terminated array of CMDs and executed them.
+ * Once it hits the end CMD, it passes the control
+ * to the next top-level CMD, regardless of it being
+ * another batch or ordinary CMD.
+ *
+ * @param label the command label.
+ * @param batch array of CMDs to execute.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_batch (const char *label,
+                         struct TALER_TESTING_Command *batch);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 /**
@@ -1808,18 +1825,36 @@ TALER_TESTING_get_trait_rejected
 
 
 /**
- * Create a "batch" command.  Such command takes a
- * end_CMD-terminated array of CMDs and executed them.
- * Once it hits the end CMD, it passes the control
- * to the next top-level CMD, regardless of it being
- * another batch or ordinary CMD.
+ * Offer a command in a trait.
  *
- * @param label the command label.
- * @param batch array of CMDs to execute.
+ * @param index always zero.  Commands offering this
+ *        kind of traits do not need this index.  For
+ *        example, a "meta" CMD returns always the
+ *        CMD currently being executed.
+ * @param cmd wire details to offer.
  *
- * @return the command.
+ * @return the trait.
  */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_batch (const char *label,
-                         struct TALER_TESTING_Command *batch);
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_cmd
+  (unsigned int index,
+   const struct TALER_TESTING_Command *cmd);
+
+/**
+ * Obtain a command from @a cmd.
+ *
+ * @param cmd command to extract the command from.
+ * @param index always zero.  Commands offering this
+ *        kind of traits do not need this index.  For
+ *        example, a "meta" CMD returns always the
+ *        CMD currently being executed.
+ * @param cmd_[out] where to write the wire details.
+ *
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_cmd
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   struct TALER_TESTING_Command **_cmd);
 #endif
