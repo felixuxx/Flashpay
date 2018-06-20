@@ -164,12 +164,15 @@ interpreter_run (void *cls);
  * Current command is done, run the next one.
  */
 void
-TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *i)
+TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 {
-  if (GNUNET_SYSERR == i->result)
+  if (GNUNET_SYSERR == is->result)
     return; /* ignore, we already failed! */
-  i->ip++;
-  i->task = GNUNET_SCHEDULER_add_now (&interpreter_run, i);
+
+  if (GNUNET_NO == is->commands[is->ip].meta)
+    is->ip++;
+
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
 }
 
 
