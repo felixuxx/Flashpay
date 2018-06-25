@@ -128,6 +128,7 @@ static char *exchange_url;
       EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
       subject, exchange_url)
 
+
 /**
  * Main function that will tell the interpreter what commands to
  * run.
@@ -138,9 +139,38 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  struct TALER_TESTING_Command commands[] = {
 
-    /****** Start of "wire" testing ******/
+  /**
+   * Checks made against /wire response.
+   */
+  struct TALER_TESTING_Command wire[] = {
+    /**
+     * Check if 'x-taler-bank' wire method is offered
+     * by the exchange.
+     */
+    TALER_TESTING_cmd_wire ("wire-taler-bank-1",
+                            is->exchange,
+                            "x-taler-bank",
+                            NULL,
+                            MHD_HTTP_OK),
+    #if WIRE_EBICS
+    /**
+     * Check if 'ebics' wire method is offered by the exchange.
+     */
+    TALER_TESTING_cmd_wire ("wire-sepa-1",
+                            is->exchange,
+                            "ebics",
+                            NULL,
+                            MHD_HTTP_OK),
+    #endif
+
+    TALER_TESTING_cmd_end ()
+  };
+
+  /**
+   * Test withdrawal plus spending.
+   */
+  struct TALER_TESTING_Command withdraw[] = {
 
     /**
      * Move money to the exchange's bank account.
@@ -154,27 +184,6 @@ run (void *cls,
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
 
-    /**
-     * Check if 'x-taler-bank' wire method is offered by the exchange.
-     */
-    TALER_TESTING_cmd_wire ("wire-taler-bank-1",
-                            is->exchange,
-                            "x-taler-bank",
-                            NULL,
-                            MHD_HTTP_OK),
-#if WIRE_EBICS
-    /**
-     * Check if 'ebics' wire method is offered by the exchange.
-     */
-    TALER_TESTING_cmd_wire ("wire-sepa-1",
-                            is->exchange,
-                            "ebics",
-                            NULL,
-                            MHD_HTTP_OK),
-#endif
-    /****** End of "wire" testing ******/
-
-    /******  Start of withdraw and spend testing ******/
 
     /**
      * Withdraw EUR:5.
@@ -193,6 +202,11 @@ run (void *cls,
                               "create-reserve-1",
                               "EUR:0",
                               MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command spend[] = {
     /**
      * Spend the coin.
      */
@@ -228,8 +242,8 @@ run (void *cls,
      * FIXME: how can it get a different transaction id?  There
      * isn't such a thing actually, the exchange only knows about
      * contract terms' hashes.  So since the contract terms are
-     * exactly the same as the previous command, how can a different
-     * id be generated?
+     * exactly the same as the previous command,
+     * how can a different id be generated?
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-1", is->exchange, "withdraw-coin-1", 0,
@@ -248,9 +262,11 @@ run (void *cls,
        "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
 
-    /******  End of withdraw and spend testing ******/
+    TALER_TESTING_cmd_end ()
+  };
 
-    /******  Start of refresh testing ******/
+
+  struct TALER_TESTING_Command refresh[] = {
 
     /**
      * Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
@@ -350,10 +366,10 @@ run (void *cls,
     /* FIXME: also test with coin that was already melted
      * (signature differs from coin that was deposited...) */
 
-    /******  End of refresh testing ******/
+    TALER_TESTING_cmd_end ()
+  };
 
-    /* **** Test tracking API ***** */
-
+  struct TALER_TESTING_Command track[] = {
     /**
      * Try resolving a deposit's WTID, as we never triggered
      * execution of transactions, the answer should be that
@@ -437,9 +453,11 @@ run (void *cls,
        "deposit-wtid-ok", 0, MHD_HTTP_OK, "EUR:4.98",
        "EUR:0.01"),
 
-    /* **** End of test tracking API ***** */
+    TALER_TESTING_cmd_end ()
+  };
 
-    /* **** test /refund API ***** */
+
+  struct TALER_TESTING_Command refund[] = {
 
     /**
      * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
@@ -590,10 +608,10 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_empty
       ("check-refund-fast-not-run"),
 
-    /* ************** End of refund API testing ************* */
+    TALER_TESTING_cmd_end ()
+  };
 
-    /* ************** Test /payback API  ************* */
-
+  struct TALER_TESTING_Command payback[] = {
     /**
      * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
      * config.
@@ -635,12 +653,14 @@ run (void *cls,
                                        MHD_HTTP_OK),
 
     /* This withdrawal will test the logic to create
-     * a "payback" element to insert into the reserve's history.  */
-    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2-over",
-                                       is->exchange,
-                                       "payback-create-reserve-1",
-                                       "EUR:10",
-                                       MHD_HTTP_FORBIDDEN),
+     * a "payback" element to insert into the reserve's history.
+     */
+    TALER_TESTING_cmd_withdraw_amount
+      ("payback-withdraw-coin-2-over",
+       is->exchange,
+       "payback-create-reserve-1",
+       "EUR:10",
+       MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_status ("payback-reserve-status-2",
                               is->exchange,
@@ -749,12 +769,17 @@ run (void *cls,
      * coin's transaction history with payback data, as we get a
      * 404 on the DK! */
     TALER_TESTING_cmd_deposit
-      ("payback-deposit-partial-after-payback", is->exchange,
-       "payback-withdraw-coin-2a", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
+      ("payback-deposit-partial-after-payback",
+       is->exchange,
+       "payback-withdraw-coin-2a",
+       0,
+       TALER_TESTING_make_wire_details
+         (42,
+          fakebank_url),
        "{\"items\":[{\"name\":\"extra ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:0.5", MHD_HTTP_NOT_FOUND),
+       GNUNET_TIME_UNIT_ZERO,
+       "EUR:0.5",
+       MHD_HTTP_NOT_FOUND),
 
     /* Test that revoked coins cannot be withdrawn */
     CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-3",
@@ -780,18 +805,45 @@ run (void *cls,
       ("check_bank_transfer-pr3", exchange_url,
        "EUR:1.01", 42, 2),
 
-    TALER_TESTING_cmd_check_bank_empty ("check-empty-again"),
+    TALER_TESTING_cmd_check_bank_empty
+      ("check-empty-again"),
 
     /* Test rejection of bogus wire transfers */
-    CMD_TRANSFER_TO_EXCHANGE_SUBJECT ("bogus-subject",
-                                      "EUR:1.01",
-                                      "not a reserve public key"),
+    CMD_TRANSFER_TO_EXCHANGE_SUBJECT
+      ("bogus-subject",
+       "EUR:1.01",
+       "not a reserve public key"),
 
     CMD_EXEC_WIREWATCH ("wirewatch-7"),
 
-    TALER_TESTING_cmd_check_bank_empty ("check-empty-from-reject"),
+    TALER_TESTING_cmd_check_bank_empty
+      ("check-empty-from-reject"),
 
-    /* ************** End of /payback API  ************* */
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command commands[] = {
+
+    TALER_TESTING_cmd_batch ("wire",
+                             wire),
+
+    TALER_TESTING_cmd_batch ("withdraw",
+                             withdraw),
+
+    TALER_TESTING_cmd_batch ("spend",
+                             spend),
+
+    TALER_TESTING_cmd_batch ("refresh",
+                             refresh),
+    
+    TALER_TESTING_cmd_batch ("track",
+                             track),
+
+    TALER_TESTING_cmd_batch ("refund",
+                             refund),
+
+    TALER_TESTING_cmd_batch ("payback",
+                             payback),
 
     /**
      * End the suite.  Fixme: better to have a label for this
