@@ -70,7 +70,8 @@ run (void *cls,
                               SIGUSR1),
 
     TALER_TESTING_cmd_check_keys ("check-keys-1",
-                                  1, 4,
+                                  1,
+                                  4,
                                   is->exchange),
 
     /* 1st keyup happens at start-up */
