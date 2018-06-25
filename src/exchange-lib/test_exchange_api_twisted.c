@@ -140,7 +140,12 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
 
-  struct TALER_TESTING_Command commands[] = {
+
+  /**
+   * This batch aims to trigger the 409 Conflict
+   * response from a refresh-reveal operation.
+   */
+  struct TALER_TESTING_Command refresh_409_conflict[] = {
 
     CMD_TRANSFER_TO_EXCHANGE
       ("refresh-create-reserve",
@@ -198,14 +203,12 @@ run (void *cls,
        "refresh-melt",
        MHD_HTTP_CONFLICT),
 
-       /* Next chunk, refund conflicts
-       
-         (contract hash missmatch [!],
-          original deposit does not exist V,
-          currency missmatch) V;
-          
-          'refund_transaction()' has many of the relevant cases;
-       */
+    TALER_TESTING_cmd_end ()
+
+  };
+
+
+  struct TALER_TESTING_Command refund[] = {
 
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-r1",
@@ -261,12 +264,9 @@ run (void *cls,
        "EUR:0.01",
        "deposit-refund-1"),
 
-    /* This deposit CMD is used to provide "good" traits
-     * to the next refund CMD, where 'good' means that the
-     * POST /refund will pass the signature verification,
-     * but the handler will then NOT judge the deposit as
-     * refundable - actually it won't be found since it will
-     * fail as double-spending attempt.  */
+    /* This next deposit CMD is only used to provide a
+     * good merchant signature to the next (failing) refund
+     * operations.  */
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-to-fail",
@@ -305,6 +305,18 @@ run (void *cls,
        "EUR:5",
        "EUR:0.000001",
        "deposit-refund-1"),
+
+    TALER_TESTING_cmd_end ()
+
+  };
+
+  struct TALER_TESTING_Command commands[] = {
+
+    TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
+                             refresh_409_conflict),
+
+    TALER_TESTING_cmd_batch ("refund",
+                             refund),
 
     TALER_TESTING_cmd_end ()
   };
