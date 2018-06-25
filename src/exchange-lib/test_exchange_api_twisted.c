@@ -208,6 +208,11 @@ run (void *cls,
   };
 
 
+  /**
+   * NOTE: not all CMDs actually need the twister,
+   * so it may be better to move those into the "main"
+   * lib test suite.
+   */
   struct TALER_TESTING_Command refund[] = {
 
     CMD_TRANSFER_TO_EXCHANGE
