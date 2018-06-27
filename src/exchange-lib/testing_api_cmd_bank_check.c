@@ -89,7 +89,7 @@ struct BankCheckState
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 check_bank_transfer_run (void *cls,
                          const struct TALER_TESTING_Command *cmd,
                          struct TALER_TESTING_Interpreter *is)
@@ -178,7 +178,7 @@ check_bank_transfer_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 check_bank_transfer_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
@@ -279,7 +279,7 @@ TALER_TESTING_cmd_check_bank_transfer
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 check_bank_empty_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
@@ -294,7 +294,7 @@ check_bank_empty_cleanup
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 check_bank_empty_run (void *cls,
                       const struct TALER_TESTING_Command *cmd,
                       struct TALER_TESTING_Interpreter *is)

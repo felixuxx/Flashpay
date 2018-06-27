@@ -2779,6 +2779,7 @@ postgres_get_ready_deposit (void *cls,
 						 rs);
   if (qs <= 0)
     return qs;
+
   qs = deposit_cb (deposit_cb_cls,
 		   serial_id,
 		   &merchant_pub,

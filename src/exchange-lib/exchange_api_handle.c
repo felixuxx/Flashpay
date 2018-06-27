@@ -1131,6 +1131,9 @@ request_keys (struct TALER_EXCHANGE_Handle *exchange)
   {
     char *arg;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Doing cherry-picking\n");
+
     GNUNET_asprintf (&arg,
 		     "/keys?last_issue_date=%llu",
 		     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);

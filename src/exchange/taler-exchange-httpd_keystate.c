@@ -2052,6 +2052,7 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                  key_state->krd_array_length,
                  sizeof (struct KeysResponseData),
                  &krd_search_comparator);
+
   if ( (NULL == krd) &&
        (key_state->krd_array_length > 0) )
   {

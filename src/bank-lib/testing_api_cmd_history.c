@@ -686,7 +686,7 @@ history_cb (void *cls,
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 history_run (void *cls,
              const struct TALER_TESTING_Command *cmd,
              struct TALER_TESTING_Interpreter *is)
@@ -738,7 +738,7 @@ history_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 history_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)

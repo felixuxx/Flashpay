@@ -94,7 +94,7 @@ reject_cb (void *cls,
  * @param cls closure.
  * @param cmd the command.
  */
-void
+static void
 reject_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
@@ -117,7 +117,7 @@ reject_cleanup
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 reject_run (void *cls,
              const struct TALER_TESTING_Command *cmd,
              struct TALER_TESTING_Interpreter *is)
