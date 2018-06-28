@@ -495,12 +495,9 @@ run (void *cls,
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-       /**
-        * This large time unit should NEVER result in
-        * a wire transfer from the aggregation CMD below.
-        * Bug number: #5366.
-        */
-       GNUNET_TIME_UNIT_FOREVER_REL,
+       GNUNET_TIME_relative_multiply
+         (GNUNET_TIME_UNIT_YEARS,
+          3000),
        "EUR:5",
        MHD_HTTP_OK),
 
