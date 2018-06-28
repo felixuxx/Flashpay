@@ -457,6 +457,57 @@ run (void *cls,
   };
 
 
+  /**
+   * This block checks whether a wire deadline
+   * very far in the future does NOT get aggregated now.
+   */
+  struct TALER_TESTING_Command unaggregation[] = {
+
+    TALER_TESTING_cmd_check_bank_empty
+      ("far-future-aggregation-a"),
+
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-unaggregated",
+                              "EUR:5.01"),
+
+    CMD_EXEC_WIREWATCH ("wirewatch-unaggregated"),
+
+    /* "consume" reserve creation transfer.  */
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_transfer-unaggregated",
+       exchange_url,
+       "EUR:5.01",
+       42,
+       2),
+
+    TALER_TESTING_cmd_withdraw_amount
+      ("withdraw-coin-unaggregated",
+       is->exchange,
+       "create-reserve-unaggregated",
+       "EUR:5",
+       MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_deposit
+      ("deposit-unaggregated",
+       is->exchange,
+       "withdraw-coin-unaggregated",
+       0,
+       TALER_TESTING_make_wire_details
+         (43,
+          fakebank_url),
+       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+       GNUNET_TIME_UNIT_FOREVER_REL,
+       "EUR:5",
+       MHD_HTTP_OK),
+
+    CMD_EXEC_AGGREGATOR ("aggregation-attempt"),
+
+    TALER_TESTING_cmd_check_bank_empty
+      ("far-future-aggregation-b"),
+
+    TALER_TESTING_cmd_end ()
+  };
+
+
   struct TALER_TESTING_Command refund[] = {
 
     /**
@@ -838,6 +889,9 @@ run (void *cls,
     
     TALER_TESTING_cmd_batch ("track",
                              track),
+
+    TALER_TESTING_cmd_batch ("unaggregation",
+                             unaggregation),
 
     TALER_TESTING_cmd_batch ("refund",
                              refund),

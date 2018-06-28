@@ -225,6 +225,9 @@ deposit_run (void *cls,
   ds->merchant_priv.eddsa_priv = *merchant_priv;
   GNUNET_free (merchant_priv);
 
+  /* FIXME: this looks very odd: why take times as relatives,
+   * just to convert them to absolutes soon after? */
+
   if (0 != ds->refund_deadline.rel_value_us)
   {
     refund_deadline = GNUNET_TIME_relative_to_absolute
