@@ -190,9 +190,11 @@ struct TALER_TESTING_Interpreter
 
   /**
    * Instruction pointer.  Tells #interpreter_run() which
-   * instruction to run next.
+   * instruction to run next.  Need (signed) int because
+   * it gets -1 when rewinding the interpreter to the first
+   * CMD.
    */
-  unsigned int ip;
+  int ip;
 
   /**
    * Result of the testcases, #GNUNET_OK on success
