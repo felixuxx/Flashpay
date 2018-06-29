@@ -47,6 +47,10 @@ struct AuditorSignState
    */
   const char *config_filename;
 
+  /**
+   * File name of signed blob.
+   */
+  char *signed_keys_out;
 };
 
 
@@ -66,7 +70,6 @@ auditor_sign_run (void *cls,
 
   struct GNUNET_CONFIGURATION_Handle *cfg;
   char *test_home_dir;
-  char *signed_keys_out;
   char *exchange_master_pub;
   struct GNUNET_TIME_Absolute now;
 
@@ -96,7 +99,7 @@ auditor_sign_run (void *cls,
 
   now = GNUNET_TIME_absolute_get ();
   GNUNET_asprintf
-    (&signed_keys_out,
+    (&ass->signed_keys_out,
      "%s/.local/share/taler/auditors/auditor-%llu.out",
      test_home_dir,
      (unsigned long long) now.abs_value_us);
@@ -129,7 +132,7 @@ auditor_sign_run (void *cls,
      "-u", "http://auditor/",
      "-m", exchange_master_pub,
      "-r", "auditor.in",
-     "-o", signed_keys_out,
+     "-o", ass->signed_keys_out,
      NULL);
 
   if (NULL == ass->auditor_sign_proc)
@@ -163,6 +166,7 @@ auditor_sign_cleanup (void *cls,
     GNUNET_OS_process_destroy (ass->auditor_sign_proc);
     ass->auditor_sign_proc = NULL;
   }
+  GNUNET_free_non_null (ass->signed_keys_out);
   GNUNET_free (ass);
 }
 
