@@ -68,6 +68,7 @@ auditor_sign_run (void *cls,
   char *test_home_dir;
   char *signed_keys_out;
   char *exchange_master_pub;
+  struct GNUNET_TIME_Absolute now;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
@@ -93,10 +94,12 @@ auditor_sign_run (void *cls,
     return;
   }
 
-  GNUNET_asprintf (&signed_keys_out,
-                   "%s/.local/share/taler/auditors/auditor.out",
-                   test_home_dir);
-
+  now = GNUNET_TIME_absolute_get ();
+  GNUNET_asprintf
+    (&signed_keys_out,
+     "%s/.local/share/taler/auditors/auditor-%llu.out",
+     test_home_dir,
+     (unsigned long long) now.abs_value_us);
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
