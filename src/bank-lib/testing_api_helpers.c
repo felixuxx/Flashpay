@@ -225,7 +225,7 @@ TALER_TESTING_prepare_bank (const char *config_filename)
        "taler-bank-manage",
        "taler-bank-manage",
        "-c", "bank.conf",
-       "--with-db", database, /*FIXME: no hardcoded*/
+       "--with-db", database,
        "django",
        "flush",
        "--no-input", NULL)))
