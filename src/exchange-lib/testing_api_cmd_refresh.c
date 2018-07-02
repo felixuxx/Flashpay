@@ -69,12 +69,6 @@ struct RefreshMeltState
   unsigned int double_melt;
 
   /**
-   * Amount to be melted.  FIXME: this value is useless
-   * here as the @a melted_coin field (below) has already it.
-   */
-  const char *amount;
-
-  /**
    * Information about coins to be melted.
    */
   struct MeltDetails melted_coin;
@@ -878,7 +872,6 @@ TALER_TESTING_cmd_refresh_melt
   md.amount = amount;
 
   rms = GNUNET_new (struct RefreshMeltState);
-  rms->amount = amount;
   rms->melted_coin = md;
   rms->expected_response_code = expected_response_code;
   rms->exchange = exchange;
@@ -922,7 +915,6 @@ TALER_TESTING_cmd_refresh_melt_double
   md.amount = amount;
 
   rms = GNUNET_new (struct RefreshMeltState);
-  rms->amount = amount;
   rms->melted_coin = md;
   rms->expected_response_code = expected_response_code;
   rms->exchange = exchange;
