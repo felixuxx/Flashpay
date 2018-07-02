@@ -892,7 +892,7 @@ TALER_TESTING_cmd_refresh_melt
  *
  * @param label command label
  * @param exchange connection to the exchange
- * @param amount FIXME not used.
+ * @param amount amount to be melted.
  * @param coin_reference reference to a command that will provide
  *        a coin to refresh
  * @param expected_response_code expected HTTP code
