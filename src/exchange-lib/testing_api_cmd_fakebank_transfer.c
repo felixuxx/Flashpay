@@ -101,7 +101,10 @@ struct FakebankTransferState
   uint64_t serial_id;
 
   /**
-   * Exchange URL.  FIXME: explaing is needed.
+   * Exchange URL.  This value is fed to the bank when requesting
+   * the wire transfer; note: the bank needs it because a merchant
+   * might want to know which exchange performed a wire transfer to
+   * them, just by looking at bank records.
    */
   const char *exchange_url;
 
@@ -381,8 +384,6 @@ fakebank_transfer_traits (void *cls,
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
  * @param exchange_url which exchange is involved in this transfer.
- *        This data is used for tracking purposes (FIXME: explain
- *        _how_).
  *
  * @return the command.
  */
@@ -444,8 +445,6 @@ TALER_TESTING_cmd_fakebank_transfer
  * @param auth_password password for @a auth_username.
  * @param subject wire transfer's subject line.
  * @param exchange_url which exchange is involved in this transfer.
- *        This data is used for tracking purposes (FIXME: explain
- *        _how_).
  *
  * @return the command.
  */
@@ -581,8 +580,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
  *        key of the tipping reserve.  This data will then used to
  *        construct the wire transfer subject line.
  * @param exchange_url which exchange is involved in this transfer.
- *        This data is used for tracking purposes (FIXME: explain
- *        _how_).
  * @param config_filename configuration file to use.
  *
  * @return the command.

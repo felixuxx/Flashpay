@@ -225,9 +225,6 @@ deposit_run (void *cls,
   ds->merchant_priv.eddsa_priv = *merchant_priv;
   GNUNET_free (merchant_priv);
 
-  /* FIXME: this looks very odd: why take times as relatives,
-   * just to convert them to absolutes soon after? */
-
   if (0 != ds->refund_deadline.rel_value_us)
   {
     refund_deadline = GNUNET_TIME_relative_to_absolute
@@ -402,6 +399,8 @@ deposit_traits (void *cls,
  * @param contract_terms contract terms to be signed over by the
  *        coin.
  * @param refund_deadline refund deadline, zero means 'no refunds'.
+ *        Note, if time were absolute, then it would have come
+ *        one day and disrupt tests meaning.
  * @param amount how much is going to be deposited.
  * @param expected_response_code expected HTTP response code.
  *
