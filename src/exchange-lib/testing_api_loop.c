@@ -202,7 +202,6 @@ TALER_TESTING_interpreter_fail
 {
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
-  // FIXME: disconnect from the exchange.
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Failed at command `%s'\n",
               cmd->label);
@@ -434,8 +433,11 @@ TALER_TESTING_wait_for_sigchld
 
 
 /**
- * Run the testsuite.  FIXME: explain why the commands are
- * copied into the state.
+ * Run the testsuite.  Note, CMDs are copied into
+ * the interpreter state because they are _usually_
+ * defined into the "run" method that returns after
+ * having scheduled the test interpreter.
+ *
  *
  * @param is the interpreter state
  * @param commands the list of command to execute
