@@ -634,7 +634,9 @@ main_wrapper_exchange_connect (void *cls)
  *        key state.. if NULL, the interpreter will run without
  *        trying to connect to the exchange first.
  *
- * @return FIXME: not sure what 'is.result' is at this stage.
+ * @return GNUNET_OK if all is okay, != GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are GNUNET_SYSERR most of the
+ *         times.
  */
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,

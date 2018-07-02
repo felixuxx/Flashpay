@@ -346,7 +346,9 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
  * @param main_cb_cls closure for @a main_cb, typically NULL.
  * @param config_file configuration file for the test-suite.
  *
- * @return FIXME: depends on what TALER_TESTING_setup returns.
+ * @return GNUNET_OK if all is okay, != GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are GNUNET_SYSERR most of the
+ *         times.
  */
 int
 TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
@@ -457,6 +459,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
     }
   while (0 != system (wget_cmd));
 
+  /* NOTE: this blocks.  */
   result = TALER_TESTING_setup (main_cb,
                                 main_cb_cls,
                                 config_filename,
