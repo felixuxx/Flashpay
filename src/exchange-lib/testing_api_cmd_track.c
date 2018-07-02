@@ -520,7 +520,6 @@ track_transfer_cb
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
-  const struct TALER_TESTING_Command *wtid_cmd;
   struct TALER_Amount expected_amount;
 
   tts->tth = NULL;
@@ -584,17 +583,6 @@ track_transfer_cb
                   "Wire fee missmatch to command %s\n",
                   cmd->label);
       json_dumpf (json, stderr, 0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-
-    /* FIXME: this block does nothing.  Remove?  */
-    wtid_cmd = TALER_TESTING_interpreter_lookup_command
-      (is, tts->wtid_reference);
-
-    if (NULL == wtid_cmd)
-    {
-      GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);
       return;
     }
