@@ -595,8 +595,10 @@ check_result (struct TALER_TESTING_Interpreter *is,
 
 /**
  * This callback will (1) check that the HTTP response code
- * is acceptable and (2) that the history is consistent (FIXME,
- * say more about 'consistent').
+ * is acceptable and (2) that the history is consistent.  The
+ * consistency is checked by going through all the past CMDs,
+ * reconstructing then the expected history as of those, and
+ * finally check it against what the bank returned.
  *
  * @param cls closure.
  * @param http_status HTTP response code, #MHD_HTTP_OK (200)
