@@ -572,13 +572,13 @@ TALER_EXCHANGE_conf_duration_provide ()
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "exchange_keys",
-                                           "lookahead_provide",
+                                           "exchange",
+                                           "LOOKAHEAD_PROVIDE",
                                            &rel))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange_keys",
-                               "lookahead_provide",
+                               "exchange",
+                               "LOOKAHEAD_PROVIDE",
                                "time value required");
     GNUNET_assert (0);
   }
