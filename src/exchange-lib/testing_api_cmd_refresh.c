@@ -120,6 +120,7 @@ struct RefreshMeltState
   uint16_t noreveal_index;
 };
 
+
 /**
  * State for a "refresh reveal" CMD.
  */
@@ -164,6 +165,7 @@ struct RefreshRevealState
    */
   unsigned int expected_response_code;
 };
+
 
 /**
  * State for a "refresh link" CMD.
@@ -223,7 +225,6 @@ reveal_cb (void *cls,
            const struct TALER_DenominationSignature *sigs,
            const json_t *full_response)
 {
-
   struct RefreshRevealState *rrs = cls;
   const struct TALER_TESTING_Command *melt_cmd;
 
@@ -260,7 +261,7 @@ reveal_cb (void *cls,
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rrs->is);
-      return;    
+      return;
     }
 
     for (i=0; i<num_coins; i++)
@@ -281,6 +282,7 @@ reveal_cb (void *cls,
   TALER_TESTING_interpreter_next (rrs->is);
 }
 
+
 /**
  * Run the command.
  *
@@ -288,7 +290,7 @@ reveal_cb (void *cls,
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 refresh_reveal_run (void *cls,
                     const struct TALER_TESTING_Command *cmd,
                     struct TALER_TESTING_Interpreter *is)
@@ -296,11 +298,11 @@ refresh_reveal_run (void *cls,
   struct RefreshRevealState *rrs = cls;
   struct RefreshMeltState *rms;
   const struct TALER_TESTING_Command *melt_cmd;
-    
+
   rrs->is = is;
   melt_cmd = TALER_TESTING_interpreter_lookup_command
     (is, rrs->melt_reference);
-  
+
   if (NULL == melt_cmd)
   {
     GNUNET_break (0);
@@ -331,11 +333,11 @@ refresh_reveal_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 refresh_reveal_cleanup (void *cls,
                         const struct TALER_TESTING_Command *cmd)
 {
-  struct RefreshRevealState *rrs = cls; 
+  struct RefreshRevealState *rrs = cls;
 
   if (NULL != rrs->rrh)
   {
@@ -348,13 +350,8 @@ refresh_reveal_cleanup (void *cls,
     rrs->rrh = NULL;
   }
 
-  { /* FIXME: why block-ing this? */
-    unsigned int j;
-
-    for (j=0; j < rrs->num_fresh_coins; j++)
-      GNUNET_CRYPTO_rsa_signature_free
-        (rrs->fresh_coins[j].sig.rsa_signature);
-  }
+  for (unsigned int j=0; j < rrs->num_fresh_coins; j++)
+    GNUNET_CRYPTO_rsa_signature_free (rrs->fresh_coins[j].sig.rsa_signature);
 
   GNUNET_free_non_null (rrs->fresh_coins);
   rrs->fresh_coins = NULL;
@@ -367,7 +364,7 @@ refresh_reveal_cleanup (void *cls,
  * code is expected _and_ that all the linked coins were actually
  * withdrawn by the "refresh reveal" CMD.
  *
- * @param cls closure. 
+ * @param cls closure.
  * @param http_status HTTP response code.
  * @param ec taler-specific error code
  * @param num_coins number of fresh coins created, length of the
@@ -503,12 +500,12 @@ link_cb (void *cls,
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 refresh_link_run (void *cls,
                   const struct TALER_TESTING_Command *cmd,
                   struct TALER_TESTING_Interpreter *is)
 {
-  
+
   struct RefreshLinkState *rls = cls;
   struct RefreshRevealState *rrs;
   struct RefreshMeltState *rms;
@@ -525,7 +522,7 @@ refresh_link_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (rls->is);
-    return; 
+    return;
   }
   rrs = reveal_cmd->cls;
   melt_cmd = TALER_TESTING_interpreter_lookup_command
@@ -535,13 +532,13 @@ refresh_link_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (rls->is);
-    return; 
+    return;
   }
 
   /* find reserve_withdraw command */
   {
     const struct MeltDetails *md;
-    
+
     rms = melt_cmd->cls;
     md = &rms->melted_coin;
     coin_cmd = TALER_TESTING_interpreter_lookup_command
@@ -575,6 +572,7 @@ refresh_link_run (void *cls,
   }
 }
 
+
 /**
  * Free the state of the "refresh link" CMD, and possibly
  * cancel a operation thereof.
@@ -582,12 +580,12 @@ refresh_link_run (void *cls,
  * @param cls closure
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 refresh_link_cleanup (void *cls,
                       const struct TALER_TESTING_Command *cmd)
 {
   struct RefreshLinkState *rls = cls;
-  
+
   if (NULL != rls->rlh)
   {
 
@@ -647,9 +645,9 @@ melt_cb (void *cls,
     rms->double_melt = GNUNET_NO;
     return;
   }
-
   TALER_TESTING_interpreter_next (rms->is);
 }
+
 
 /**
  * Run the command.
@@ -691,7 +689,6 @@ refresh_melt_run (void *cls,
     struct TALER_Amount fresh_amount;
     struct TALER_DenominationSignature *melt_sig;
     const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
-    unsigned int i;
 
     const struct MeltDetails *md = &rms->melted_coin;
     if (NULL == (coin_command
@@ -700,7 +697,7 @@ refresh_melt_run (void *cls,
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
-      return; 
+      return;
     }
 
     if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
@@ -708,7 +705,7 @@ refresh_melt_run (void *cls,
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
-      return;    
+      return;
     }
 
     if (GNUNET_OK !=
@@ -723,8 +720,10 @@ refresh_melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-    if (GNUNET_OK != TALER_TESTING_get_trait_denom_sig
-      (coin_command, 0, &melt_sig))
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_denom_sig (coin_command,
+                                           0,
+                                           &melt_sig))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -738,7 +737,7 @@ refresh_melt_run (void *cls,
       return;
     }
 
-    for (i=0;i<num_fresh_coins;i++)
+    for (unsigned int i=0;i<num_fresh_coins;i++)
     {
       if (GNUNET_OK != TALER_string_to_amount
         (melt_fresh_amounts[i], &fresh_amount))
@@ -786,6 +785,7 @@ refresh_melt_run (void *cls,
   }
 }
 
+
 /**
  * Free the "refresh melt" CMD state, and possibly cancel a
  * pending operation thereof.
@@ -793,7 +793,7 @@ refresh_melt_run (void *cls,
  * @param cls closure, typically a #struct RefreshMeltState.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 refresh_melt_cleanup (void *cls,
                       const struct TALER_TESTING_Command *cmd)
 {
@@ -813,6 +813,7 @@ refresh_melt_cleanup (void *cls,
   rms->refresh_data = NULL;
   rms->refresh_data_length = 0;
 }
+
 
 /**
  * Offer internal data to the "refresh melt" CMD.
@@ -881,7 +882,7 @@ TALER_TESTING_cmd_refresh_melt
   cmd.run = &refresh_melt_run;
   cmd.cleanup = &refresh_melt_cleanup;
   cmd.traits = &refresh_melt_traits;
-  
+
   return cmd;
 }
 
@@ -925,7 +926,7 @@ TALER_TESTING_cmd_refresh_melt_double
   cmd.run = &refresh_melt_run;
   cmd.cleanup = &refresh_melt_cleanup;
   cmd.traits = &refresh_melt_traits;
-  
+
   return cmd;
 }
 
@@ -954,7 +955,7 @@ refresh_reveal_traits (void *cls,
   /* Making coin privs traits */
   for (i=0; i<num_coins; i++)
     traits[i] = TALER_TESTING_make_trait_coin_priv
-      (i, &rrs->fresh_coins[i].coin_priv);  
+      (i, &rrs->fresh_coins[i].coin_priv);
 
   /* Making denom pubs traits */
   for (i=0; i<num_coins; i++)
@@ -1004,7 +1005,7 @@ TALER_TESTING_cmd_refresh_reveal
 {
   struct RefreshRevealState *rrs;
   struct TALER_TESTING_Command cmd;
-  
+
   rrs = GNUNET_new (struct RefreshRevealState);
   rrs->melt_reference = melt_reference;
   rrs->exchange = exchange;
@@ -1015,7 +1016,7 @@ TALER_TESTING_cmd_refresh_reveal
   cmd.run = &refresh_reveal_run;
   cmd.cleanup = &refresh_reveal_cleanup;
   cmd.traits = &refresh_reveal_traits;
-  
+
   return cmd;
 }
 
@@ -1039,7 +1040,7 @@ TALER_TESTING_cmd_refresh_link
 {
   struct RefreshLinkState *rrs;
   struct TALER_TESTING_Command cmd;
-  
+
   rrs = GNUNET_new (struct RefreshLinkState);
   rrs->reveal_reference = reveal_reference;
   rrs->exchange = exchange;
@@ -1049,6 +1050,6 @@ TALER_TESTING_cmd_refresh_link
   cmd.label = label;
   cmd.run = &refresh_link_run;
   cmd.cleanup = &refresh_link_cleanup;
-  
+
   return cmd;
 }
