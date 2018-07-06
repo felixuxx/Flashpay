@@ -807,6 +807,10 @@ typedef void
                                     const struct TALER_TransferPublicKeyP *tp);
 
 
+typedef void
+(*TALER_EXCHANGEDB_KycCallback)(void *cls,
+                                struct GNUNET_TIME_Absolute timeout);
+
 /**
  * Function called with details about coins that were refunding,
  * with the goal of auditing the refund's execution.
@@ -2208,8 +2212,35 @@ struct TALER_EXCHANGEDB_Plugin
 				  TALER_EXCHANGEDB_WireMissingCallback cb,
 				  void *cb_cls);
 
+  /**
+   * Save a amount threshold for a KYC check that
+   * has been triggered for a certain merchant.
+   *
+   * @param cls plugins' closure
+   * @param url "payto" url identifying the merchant to be checked.
+   * @param amount the threshold amount associated with the check.
+   * @return transaction status code.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_kyc_event)(void *cls,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      const char *url,
+                      const struct TALER_Amount *amount);
 
+  /**
+   * Get the _last_ KYC event associated with a certain merchant.
+   *
+   * @param cls plugin closure
+   * @param url the payto URL associated with the merchant whose
+   *        KYC has to be returned.
+   * @return transaction status.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*kyc_event_get_last) (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const char *url,
+                         TALER_EXCHANGEDB_KycCallback kyc_cb,
+                         void *kyc_cb_cls);
 };
-
 
 #endif /* _TALER_EXCHANGE_DB_H */
