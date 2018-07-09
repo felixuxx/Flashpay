@@ -432,9 +432,9 @@ postgres_create_tables (void *cls)
                            ");"),
 
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS kyc_merchants "
-                           "(payto_url VARCHAR UNIQUE NOT NULL"
-                           ",kyc_checked BOOLEAN NOT NULL"
-                           ",merchant_serial_id BIGSERIAL PRIMARY KEY"
+                           "(merchant_serial_id BIGSERIAL PRIMARY KEY"
+                           ",kyc_checked BOOLEAN NOT NULL DEFAULT FALSE"
+                           ",payto_url VARCHAR UNIQUE NOT NULL"
                            ");"),
 
     GNUNET_PQ_make_try_execute ("CREATE INDEX kyc_merchants_payto_url ON "
@@ -1293,7 +1293,7 @@ postgres_prepare (PGconn *db_conn)
      * Methods needed to implement KYC monitoring.
      *
      * 1 Sum money flow for a (unchecked) merchant.
-     * 2 Change KYC status for a merchant.
+     * 2 Change KYC status for a merchant. V
      * 3 Get KYC status for a merchant. V
      * 4 Put money flow event for a merchant.
      * 5 Delete money flow records for a fresh-checked merchant.
@@ -1302,8 +1302,9 @@ postgres_prepare (PGconn *db_conn)
      */
 
     GNUNET_PQ_make_prepare ("get_kyc_status",
-                            "SELECT"
-                            " (kyc_checked)"
+                            "SELECT "
+                            "(kyc_checked"
+                            ",merchant_serial_id)"
                             " FROM kyc_merchants"
                             " WHERE payto_url=$1",
                             1),
@@ -1329,6 +1330,16 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE"
                             " payto_url=$1",
                             1),
+
+    GNUNET_PQ_make_prepare ("insert_kyc_event",
+                            "INSERT INTO kyc_events "
+                            "(merchant_serial_id"
+                            ",amount_val"
+                            ",amount_frac"
+                            ",amount_curr"
+                            ",timestamp)"
+                            " VALUES ($1, $2, $3, $4, $5)",
+                            5),
 
     /* Used in #postgres_select_deposits_missing_wire */
     GNUNET_PQ_make_prepare ("deposits_get_overdue",
@@ -6602,24 +6613,41 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_kyc_status (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
                          const char *payto_url,
-                         uint8_t *status)
+                         TALER_EXCHANGEDB_KycStatusCallback ksc,
+                         void *ksc_cls)
 { 
+  uint8_t status;
+  uint64_t merchant_serial_id; 
+  enum GNUNET_DB_QueryStatus qs;
+
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_url),
     GNUNET_PQ_query_param_end
   }; 
 
+
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("kyc_checked",
-                                          status),
+                                          &status),
+    GNUNET_PQ_result_spec_uint64 ("merchant_serial_id",
+                                  &merchant_serial_id),
+
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select
-    (session->conn,
-     "get_kyc_status",
-     params,
-     rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                 "get_kyc_status",
+                                                 params,
+                                                 rs);
+  if (0 >= qs)
+    return qs;
+
+  ksc (ksc_cls,
+       payto_url,
+       status,
+       merchant_serial_id);
+
+  return qs;
 }
 
 

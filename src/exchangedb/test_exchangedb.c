@@ -345,6 +345,26 @@ never_called_cb (void *cls,
 
 
 /**
+ * Callback used to process data of a merchant under KYC monitoring.
+ *
+ * @param cls closure
+ * @param payto_url payto URL of this particular merchant (bank account)
+ * @param kyc_checked status of KYC check: if GNUNET_OK, the merchant was
+ *        checked at least once, never otherwise.
+ * @param merchant_serial_id serial ID identifying this merchant (bank
+ *        account) into the database system; it helps making more efficient
+ *        queries instead of the payto URL.
+ */
+static void
+kcs (void *cls,
+     const char *payto_url,
+     uint8_t kyc_checked,
+     uint64_t merchant_serial_id)
+{
+  GNUNET_break (0);
+}
+
+/**
  * Function called with information about a refresh order.
  * Checks that the response matches what we expect to see.
  *
@@ -2190,29 +2210,17 @@ run (void *cls)
           plugin->mark_kyc_merchant (NULL,
                                      session,
                                      "payto://mock"));
+  FAILIF (GNUNET_OK !=
+          plugin->get_kyc_status (NULL,
+                                  session,
+                                  "payto://mock",
+                                  &kcs,
+                                  NULL));
 
-  {
-    uint8_t kyc_checked;
-
-    FAILIF (GNUNET_OK !=
-            plugin->get_kyc_status (NULL,
-                                    session,
-                                    "payto://mock",
-                                    &kyc_checked));
-    FAILIF (GNUNET_NO == kyc_checked); 
-
-    FAILIF (GNUNET_OK !=
-            plugin->unmark_kyc_merchant (NULL,
-                                         session,
-                                         "payto://mock"));
-    FAILIF (GNUNET_OK !=
-            plugin->get_kyc_status (NULL,
-                                    session,
-                                    "payto://mock",
-                                    &kyc_checked));
-
-    FAILIF (GNUNET_YES == kyc_checked); 
-  }
+  FAILIF (GNUNET_OK !=
+          plugin->unmark_kyc_merchant (NULL,
+                                       session,
+                                       "payto://mock"));
 
   plugin->preflight (plugin->cls,
                      session);

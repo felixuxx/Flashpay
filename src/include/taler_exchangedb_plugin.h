@@ -711,6 +711,24 @@ typedef int
                                     int done);
 
 
+
+/**
+ * Callback used to process data of a merchant under KYC monitoring.
+ *
+ * @param cls closure
+ * @param payto_url payto URL of this particular merchant (bank account)
+ * @param kyc_checked status of KYC check: if GNUNET_OK, the merchant was
+ *        checked at least once, never otherwise.
+ * @param merchant_serial_id serial ID identifying this merchant (bank
+ *        account) into the database system; it helps making more efficient
+ *        queries instead of the payto URL.
+ */
+typedef void
+(*TALER_EXCHANGEDB_KycStatusCallback)(void *cls,
+                                      const char *payto_url,
+                                      uint8_t kyc_checked,
+                                      uint64_t merchant_serial_id);
+
 /**
  * Function called with details about coins that were melted,
  * with the goal of auditing the refresh's execution.
@@ -2226,6 +2244,8 @@ struct TALER_EXCHANGEDB_Plugin
    * associates a flag to the merchant that indicates whether
    * a KYC check has been done or not on this merchant.
    *
+   * @param cls closure
+   * @param session db session
    * @param payto_url payto:// URL indentifying the merchant
    *        bank account.
    * @return database transaction status.
@@ -2238,6 +2258,8 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Mark a merchant as KYC-checked.
    *
+   * @param cls closure
+   * @param session db session
    * @param payto_url payto:// URL indentifying the merchant
    *        to check.  Note, different banks may have different
    *        policies to check their customers.
@@ -2252,6 +2274,8 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Mark a merchant as NOT KYC-checked.
    *
+   * @param cls closure
+   * @param session db session
    * @param payto_url payto:// URL indentifying the merchant
    *        to unmark.  Note, different banks may have different
    *        policies to check their customers.
@@ -2266,16 +2290,21 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Retrieve KYC-check status related to a particular merchant.
    *
+   * @param cls closure
+   * @param session db session
    * @param payto_url URL identifying a merchant bank account,
    *        whose KYC is going to be retrieved.
-   * @param[out] status store the result.
+   * @param ksc callback to process all the row's columns.  As
+   *        expectable, it will only be called _if_ a row is found.
+   * @param ksc_cls closure for above callback.
    * @return transaction status.
    */
   enum GNUNET_DB_QueryStatus
   (*get_kyc_status) (void *cls,
                      struct TALER_EXCHANGEDB_Session *session,
                      const char *payto_url,
-                     uint8_t *status);
+                     TALER_EXCHANGEDB_KycStatusCallback ksc,
+                     void *ksc_cls);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */
