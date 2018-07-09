@@ -2248,6 +2248,21 @@ struct TALER_EXCHANGEDB_Plugin
                         struct TALER_EXCHANGEDB_Session *session,
                         const char *payto_url);
 
+
+  /**
+   * Mark a merchant as NOT KYC-checked.
+   *
+   * @param payto_url payto:// URL indentifying the merchant
+   *        to unmark.  Note, different banks may have different
+   *        policies to check their customers.
+   * @return database transaction status.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*unmark_kyc_merchant) (void *cls,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          const char *payto_url);
+
+
   /**
    * Retrieve KYC-check status related to a particular merchant.
    *

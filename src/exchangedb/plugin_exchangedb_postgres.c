@@ -1294,7 +1294,7 @@ postgres_prepare (PGconn *db_conn)
      *
      * 1 Sum money flow for a (unchecked) merchant.
      * 2 Change KYC status for a merchant.
-     * 3 Get KYC status for a merchant. --
+     * 3 Get KYC status for a merchant. V
      * 4 Put money flow event for a merchant.
      * 5 Delete money flow records for a fresh-checked merchant.
      * 6 Put a merchant. V
@@ -1312,6 +1312,14 @@ postgres_prepare (PGconn *db_conn)
                             "INSERT INTO kyc_merchants "
                             "(payto_url, kyc_checked) VALUES "
                             "($1, FALSE)",
+                            1),
+
+    GNUNET_PQ_make_prepare ("unmark_kyc_merchant",
+                            "UPDATE kyc_merchants"
+                            " SET"
+                            " kyc_checked=FALSE"
+                            " WHERE"
+                            " payto_url=$1",
                             1),
 
     GNUNET_PQ_make_prepare ("mark_kyc_merchant",
@@ -6532,17 +6540,44 @@ postgres_select_deposits_missing_wire (void *cls,
 }
 
 /**
- * Mark a merchant as KYC-checked.
+ * Mark a merchant as NOT KYC-checked.
  *
  * @param payto_url payto:// URL indentifying the merchant
- *        to check.  Note, different banks may have different
+ *        to unmark.  Note, different banks may have different
  *        policies to check their customers.
  * @return database transaction status.
  */
 static enum GNUNET_DB_QueryStatus
-postgres_mark_kyc_merchant (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
-                            const char *payto_url)
+postgres_unmark_kyc_merchant
+  (void *cls,
+   struct TALER_EXCHANGEDB_Session *session,
+   const char *payto_url)
+{
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (payto_url),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select
+    (session->conn,
+     "unmark_kyc_merchant",
+     params);
+}
+
+/**
+ * Mark a merchant as KYC-checked.
+ *
+ * @param payto_url payto:// URL indentifying the merchant
+ *        to mark.  Note, different banks may have different
+ *        policies to check their customers.
+ * @return database transaction status.
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_mark_kyc_merchant
+  (void *cls,
+   struct TALER_EXCHANGEDB_Session *session,
+   const char *payto_url)
 {
 
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6747,6 +6782,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   plugin->insert_kyc_merchant = postgres_insert_kyc_merchant;
   plugin->mark_kyc_merchant = postgres_mark_kyc_merchant;
+  plugin->unmark_kyc_merchant = postgres_unmark_kyc_merchant;
   plugin->get_kyc_status = postgres_get_kyc_status;
 
   return plugin;
