@@ -2190,6 +2190,18 @@ run (void *cls)
           plugin->mark_kyc_merchant (NULL,
                                      session,
                                      "payto://mock"));
+
+  {
+    uint8_t kyc_checked;
+
+    FAILIF (GNUNET_OK !=
+            plugin->get_kyc_status (NULL,
+                                    session,
+                                    "payto://mock",
+                                    &kyc_checked));
+    FAILIF (GNUNET_YES != kyc_checked);
+
+  }
   plugin->preflight (plugin->cls,
                      session);
 

@@ -2248,6 +2248,19 @@ struct TALER_EXCHANGEDB_Plugin
                         struct TALER_EXCHANGEDB_Session *session,
                         const char *payto_url);
 
+  /**
+   * Retrieve KYC-check status related to a particular merchant.
+   *
+   * @param payto_url URL identifying a merchant bank account,
+   *        whose KYC is going to be retrieved.
+   * @param[out] status store the result.
+   * @return transaction status.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_kyc_status) (void *cls,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     const char *payto_url,
+                     uint8_t *status);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

@@ -1294,12 +1294,19 @@ postgres_prepare (PGconn *db_conn)
      *
      * 1 Sum money flow for a (unchecked) merchant.
      * 2 Change KYC status for a merchant.
-     * 3 Get KYC status for a merchant.
+     * 3 Get KYC status for a merchant. --
      * 4 Put money flow event for a merchant.
      * 5 Delete money flow records for a fresh-checked merchant.
-     * 6 Put a merchant.
-     * 7 Change KYC status flag for a merchant.
+     * 6 Put a merchant. V
+     * 7 Change KYC status flag for a merchant. V
      */
+
+    GNUNET_PQ_make_prepare ("get_kyc_status",
+                            "SELECT"
+                            " (kyc_checked)"
+                            " FROM kyc_merchants"
+                            " WHERE payto_url=$1",
+                            1),
 
     GNUNET_PQ_make_prepare ("insert_kyc_merchant",
                             "INSERT INTO kyc_merchants "
@@ -6548,6 +6555,39 @@ postgres_mark_kyc_merchant (void *cls,
                                              params);
 }
 
+/**
+ * Retrieve KYC-check status related to a particular merchant.
+ *
+ * @param payto_url URL identifying a merchant bank account,
+ *        whose KYC is going to be retrieved.
+ * @param[out] status store the result.
+ * @return transaction status.
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_kyc_status (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const char *payto_url,
+                         uint8_t *status)
+{ 
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (payto_url),
+    GNUNET_PQ_query_param_end
+  }; 
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("kyc_checked",
+                                          status),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select
+    (session->conn,
+     "get_kyc_status",
+     params,
+     rs);
+}
+
+
 
 /**
  * Insert a merchant into the KYC monitor table.
@@ -6707,6 +6747,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   plugin->insert_kyc_merchant = postgres_insert_kyc_merchant;
   plugin->mark_kyc_merchant = postgres_mark_kyc_merchant;
+  plugin->get_kyc_status = postgres_get_kyc_status;
 
   return plugin;
 }
