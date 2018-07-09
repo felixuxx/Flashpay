@@ -2182,6 +2182,11 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           test_wire_fees (session));
 
+  FAILIF (GNUNET_OK !=
+          plugin->insert_kyc_merchant (NULL,
+                                       session,
+                                       "payto:///mock"));
+
   plugin->preflight (plugin->cls,
                      session);
 

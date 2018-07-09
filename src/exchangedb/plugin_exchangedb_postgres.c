@@ -106,6 +106,7 @@ postgres_drop_tables (void *cls)
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS kyc_events CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS kyc_merchants CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS prewire CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS payback CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS aggregation_tracking CASCADE;"),
@@ -430,13 +431,25 @@ postgres_create_tables (void *cls)
                            ",buf BYTEA NOT NULL"
                            ");"),
 
+    GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS kyc_merchants "
+                           "(payto_url VARCHAR UNIQUE NOT NULL"
+                           ",kyc_checked BOOLEAN NOT NULL"
+                           ",merchant_serial_id BIGSERIAL PRIMARY KEY"
+                           ");"),
+
+    GNUNET_PQ_make_try_execute ("CREATE INDEX kyc_merchants_payto_url ON "
+                                "kyc_merchants (payto_url);"),
+
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS kyc_events "
-                           "(url TEXT NOT NULL"
-                           ",timestamp INT8 NOT NULL"
+                           "(merchant_serial_id BIGSERIAL NOT NULL REFERENCES kyc_merchants (merchant_serial_id) ON DELETE CASCADE"
                            ",amount_val INT8 NOT NULL"
                            ",amount_frac INT4 NOT NULL"
                            ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+                           ",timestamp INT8 NOT NULL"
                            ");"),
+
+    GNUNET_PQ_make_try_execute ("CREATE INDEX kyc_events_timestamp ON "
+                                "kyc_events (timestamp);"),
 
     /* Index for wire_prepare_data_get and gc_prewire statement */
     GNUNET_PQ_make_try_execute("CREATE INDEX prepare_iteration_index "
@@ -1275,31 +1288,22 @@ postgres_prepare (PGconn *db_conn)
                             " ORDER BY prewire_uuid ASC"
                             " LIMIT 1;",
                             0),
-    /* Used in #postgres_insert_kyc_event */
-    GNUNET_PQ_make_prepare ("kyc_event_insert",
-                            "INSERT INTO kyc_events "
-                            "(url"
-                            ",timestamp"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",amount_curr"
-                            ") VALUES "
-                            "($1, $2, $3, $4);",
-                            4),
 
-    /* Used in #postgres_kyc_event_get_last */
-    GNUNET_PQ_make_prepare ("kyc_event_get_last",
-                            "SELECT "
-                            " url"
-                            ",timestamp"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",amount_curr"
-                            " FROM kyc_events"
-                            " WHERE url=$1"
-                            " ORDER BY timestamp"
-                            " LIMIT 1"
-                            " OFFSET 0;",
+    /**
+     * Methods needed to implement KYC monitoring.
+     *
+     * 1 Sum money flow for a (unchecked) merchant.
+     * 2 Change KYC status for a merchant.
+     * 3 Get KYC status for a merchant.
+     * 4 Put money flow event for a merchant.
+     * 5 Delete money flow records for a fresh-checked merchant.
+     * 6 Put a merchant.
+     */
+
+    GNUNET_PQ_make_prepare ("insert_kyc_merchant",
+                            "INSERT INTO kyc_merchants "
+                            "(payto_url, kyc_checked) VALUES "
+                            "($1, FALSE)",
                             1),
 
     /* Used in #postgres_select_deposits_missing_wire */
@@ -6512,80 +6516,26 @@ postgres_select_deposits_missing_wire (void *cls,
 }
 
 /**
- * Save a amount threshold for a KYC check that
- * has been triggered for a certain merchant.
+ * Insert a merchant into the KYC monitor table.
  *
- * @param cls plugins' closure
- * @param url "payto" url identifying the merchant to be checked.
- * @param amount the threshold amount associated with the check.
- * @return transaction status code.
+ * @param payto_url payto:// URL indentifying the merchant
+ *        bank account.
+ * @return database transaction status.
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_kyc_event (void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
-                           const char *url,
-                           const struct TALER_Amount *amount)
+postgres_insert_kyc_merchant (void *cls,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              const char *payto_url)
 {
-
-  enum GNUNET_DB_QueryStatus qs;
-
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (url),
-    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_string (payto_url),
     GNUNET_PQ_query_param_end
   };
-
-  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                           "kyc_event_insert",
-					   params);
-  return qs;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_kyc_merchant",
+                                             params);
 }
 
-/**
- * Get the _last_ KYC event associated with a certain merchant.
- *
- * @param cls plugin closure
- * @param url the payto URL associated with the merchant whose
- *        KYC has to be returned.
- * @param kyc_cb callback invoked with the timeout of last KYC event
- * @param kyc_cb_cls closure for callback above
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_kyc_event_get_last (void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
-                             const char *url,
-                             TALER_EXCHANGEDB_KycCallback kyc_cb,
-                             void *kyc_cb_cls)
-{
-  enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Absolute ts;
-
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (url),
-    GNUNET_PQ_query_param_end
-  };
-
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_absolute_time
-      ("timestamp", &ts),
-    GNUNET_PQ_result_spec_end
-  };
-
-  qs = GNUNET_PQ_eval_prepared_singleton_select
-    (session->conn,
-     "kyc_event_get_last",
-     params,
-     rs);
-
-  kyc_cb (kyc_cb_cls,
-          ts);
-
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-    GNUNET_PQ_cleanup_result (rs); 
-
-  return qs;
-}
 
 /**
  * Initialize Postgres database subsystem.
@@ -6721,8 +6671,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_deposits_missing_wire
     = &postgres_select_deposits_missing_wire;
 
-  plugin->insert_kyc_event = postgres_insert_kyc_event;
-  plugin->kyc_event_get_last = postgres_kyc_event_get_last;
+  plugin->insert_kyc_merchant = postgres_insert_kyc_merchant;
 
   return plugin;
 }

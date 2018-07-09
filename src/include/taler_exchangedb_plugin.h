@@ -807,8 +807,17 @@ typedef void
                                     const struct TALER_TransferPublicKeyP *tp);
 
 
+/**
+ * Callback for handling a KYC timestamped event associated with
+ * a certain customer (= merchant).
+ *
+ * @param cls closure
+ * @param url "payto" URL associated with the customer
+ * @param timeout last time when the KYC was issued to the customer.
+ */
 typedef void
 (*TALER_EXCHANGEDB_KycCallback)(void *cls,
+                                const char *url,
                                 struct GNUNET_TIME_Absolute timeout);
 
 /**
@@ -2213,34 +2222,20 @@ struct TALER_EXCHANGEDB_Plugin
 				  void *cb_cls);
 
   /**
-   * Save a amount threshold for a KYC check that
-   * has been triggered for a certain merchant.
+   * Insert a merchant into the KYC monitor table, namely it
+   * associates a flag to the merchant that indicates whether
+   * a KYC check has been done or not on this merchant.
    *
-   * @param cls plugins' closure
-   * @param url "payto" url identifying the merchant to be checked.
-   * @param amount the threshold amount associated with the check.
-   * @return transaction status code.
+   * @param payto_url payto:// URL indentifying the merchant
+   *        bank account.
+   * @return database transaction status.
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_kyc_event)(void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
-                      const char *url,
-                      const struct TALER_Amount *amount);
+  (*insert_kyc_merchant) (void *cls,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          const char *payto_url);
 
-  /**
-   * Get the _last_ KYC event associated with a certain merchant.
-   *
-   * @param cls plugin closure
-   * @param url the payto URL associated with the merchant whose
-   *        KYC has to be returned.
-   * @return transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*kyc_event_get_last) (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
-                         const char *url,
-                         TALER_EXCHANGEDB_KycCallback kyc_cb,
-                         void *kyc_cb_cls);
+
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */
