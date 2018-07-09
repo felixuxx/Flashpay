@@ -1298,12 +1298,21 @@ postgres_prepare (PGconn *db_conn)
      * 4 Put money flow event for a merchant.
      * 5 Delete money flow records for a fresh-checked merchant.
      * 6 Put a merchant.
+     * 7 Change KYC status flag for a merchant.
      */
 
     GNUNET_PQ_make_prepare ("insert_kyc_merchant",
                             "INSERT INTO kyc_merchants "
                             "(payto_url, kyc_checked) VALUES "
                             "($1, FALSE)",
+                            1),
+
+    GNUNET_PQ_make_prepare ("mark_kyc_merchant",
+                            "UPDATE kyc_merchants"
+                            " SET"
+                            " kyc_checked=TRUE"
+                            " WHERE"
+                            " payto_url=$1",
                             1),
 
     /* Used in #postgres_select_deposits_missing_wire */
@@ -6516,6 +6525,31 @@ postgres_select_deposits_missing_wire (void *cls,
 }
 
 /**
+ * Mark a merchant as KYC-checked.
+ *
+ * @param payto_url payto:// URL indentifying the merchant
+ *        to check.  Note, different banks may have different
+ *        policies to check their customers.
+ * @return database transaction status.
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_mark_kyc_merchant (void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            const char *payto_url)
+{
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (payto_url),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "mark_kyc_merchant",
+                                             params);
+}
+
+
+/**
  * Insert a merchant into the KYC monitor table.
  *
  * @param payto_url payto:// URL indentifying the merchant
@@ -6672,6 +6706,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_deposits_missing_wire;
 
   plugin->insert_kyc_merchant = postgres_insert_kyc_merchant;
+  plugin->mark_kyc_merchant = postgres_mark_kyc_merchant;
 
   return plugin;
 }
