@@ -364,20 +364,32 @@ kcs (void *cls,
 
   struct TALER_EXCHANGEDB_Session *session = cls;
   struct TALER_Amount amount;
+  struct TALER_Amount sum;
 
 
   TALER_amount_get_zero (CURRENCY,
                          &amount);
+  amount.value = 30;
+  FAILIF
+    (GNUNET_OK != plugin->insert_kyc_event (NULL,
+                                            session,
+                                            merchant_serial_id,
+                                            &amount));
+  amount.value = 20;
+  amount.fraction = 70;
   FAILIF
     (GNUNET_OK != plugin->insert_kyc_event (NULL,
                                             session,
                                             merchant_serial_id,
                                             &amount));
   FAILIF
-    (GNUNET_OK != plugin->insert_kyc_event (NULL,
-                                            session,
-                                            merchant_serial_id,
-                                            &amount));
+    (0 >= plugin->get_kyc_events (NULL,
+                                  session,
+                                  merchant_serial_id,
+                                  &sum));
+
+  FAILIF ((50 != sum.value) || (70 != sum.fraction));
+
   drop:
     return;
 }

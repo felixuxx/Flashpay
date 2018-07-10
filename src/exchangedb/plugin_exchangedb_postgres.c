@@ -1305,7 +1305,7 @@ postgres_prepare (PGconn *db_conn)
      * are stored into the table queried below.  */
     GNUNET_PQ_make_prepare ("get_kyc_events",
                             "SELECT"
-                            " merchant_serial_id,"
+                            " merchant_serial_id"
                             ",amount_val"
                             ",amount_frac"
                             ",amount_curr"
