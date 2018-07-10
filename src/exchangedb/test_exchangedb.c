@@ -390,6 +390,10 @@ kcs (void *cls,
 
   FAILIF ((50 != sum.value) || (70 != sum.fraction));
 
+  FAILIF (2 != plugin->clean_kyc_events (NULL,
+                                         session,
+                                         merchant_serial_id));
+
   drop:
     return;
 }

@@ -6592,7 +6592,7 @@ postgres_clean_kyc_events (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "clean_kyv_events",
+                                             "clean_kyc_events",
                                              params);
 
 }
