@@ -1292,7 +1292,7 @@ postgres_prepare (PGconn *db_conn)
     /**
      * Methods needed to implement KYC monitoring.
      *
-     * 1 Sum money flow for a (unchecked) merchant.
+     * 1 Sum money flow for a (unchecked) merchant. V
      * 2 Change KYC status for a merchant. V
      * 3 Get KYC status for a merchant. V
      * 4 Put money flow event for a merchant. V
@@ -1327,6 +1327,8 @@ postgres_prepare (PGconn *db_conn)
                             "($1, FALSE)",
                             1),
 
+
+    /* NOTE: NOT used yet, just _potentially_ needed.  */
     GNUNET_PQ_make_prepare ("unmark_kyc_merchant",
                             "UPDATE kyc_merchants"
                             " SET"
