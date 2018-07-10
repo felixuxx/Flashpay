@@ -1301,6 +1301,12 @@ postgres_prepare (PGconn *db_conn)
      * 7 Change KYC status flag for a merchant. V
      */
 
+    GNUNET_PQ_make_prepare ("clean_kyc_events",
+                            "DELETE"
+                            " FROM kyc_events"
+                            " WHERE merchant_serial_id=$1",
+                            1),
+
     /* Assume a merchant _unchecked_ if their events
      * are stored into the table queried below.  */
     GNUNET_PQ_make_prepare ("get_kyc_events",
@@ -6565,8 +6571,38 @@ postgres_select_deposits_missing_wire (void *cls,
 }
 
 /**
+ * Delete wire transfer records related to a particular merchant.
+ * This method would be called by the logic once that merchant
+ * gets successfully KYC checked.
+ *
+ * @param cls closure
+ * @param session DB session
+ * @param merchant_serial_id serial id of the merchant whose
+ *        KYC records have to be deleted.
+ * @return DB transaction status.
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_clean_kyc_events (void *cls,
+                           struct TALER_EXCHANGEDB_Session *session,
+                           uint64_t merchant_serial_id)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&merchant_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "clean_kyv_events",
+                                             params);
+
+}
+
+
+/**
  * Mark a merchant as NOT KYC-checked.
  *
+ * @param cls closure
+ * @param session DB session
  * @param payto_url payto:// URL indentifying the merchant
  *        to unmark.  Note, different banks may have different
  *        policies to check their customers.
@@ -6944,6 +6980,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_kyc_status = postgres_get_kyc_status;
   plugin->insert_kyc_event = postgres_insert_kyc_event;
   plugin->get_kyc_events = postgres_get_kyc_events;
+  plugin->clean_kyc_events = postgres_clean_kyc_events;
 
   return plugin;
 }

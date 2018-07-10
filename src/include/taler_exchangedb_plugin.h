@@ -2340,6 +2340,22 @@ struct TALER_EXCHANGEDB_Plugin
                     struct TALER_EXCHANGEDB_Session *session,
                     uint64_t merchant_serial_id,
                     struct TALER_Amount *amount);
+
+  /**
+   * Delete wire transfer records related to a particular merchant.
+   * This method would be called by the logic once that merchant
+   * gets successfully KYC checked.
+   *
+   * @param cls closure
+   * @param session DB session
+   * @param merchant_serial_id serial id of the merchant whose
+   *        KYC records have to be deleted.
+   * @return DB transaction status.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*clean_kyc_events)(void *cls,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      uint64_t merchant_serial_id);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */
