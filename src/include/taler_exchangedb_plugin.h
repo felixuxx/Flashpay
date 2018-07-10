@@ -2251,9 +2251,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @return database transaction status.
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_kyc_merchant) (void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          const char *payto_url);
+  (*insert_kyc_merchant)(void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const char *payto_url);
 
   /**
    * Mark a merchant as KYC-checked.
@@ -2266,9 +2266,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @return database transaction status.
    */
   enum GNUNET_DB_QueryStatus
-  (*mark_kyc_merchant) (void *cls,
-                        struct TALER_EXCHANGEDB_Session *session,
-                        const char *payto_url);
+  (*mark_kyc_merchant)(void *cls,
+                       struct TALER_EXCHANGEDB_Session *session,
+                       const char *payto_url);
 
 
   /**
@@ -2282,9 +2282,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @return database transaction status.
    */
   enum GNUNET_DB_QueryStatus
-  (*unmark_kyc_merchant) (void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          const char *payto_url);
+  (*unmark_kyc_merchant)(void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const char *payto_url);
 
 
   /**
@@ -2300,11 +2300,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status.
    */
   enum GNUNET_DB_QueryStatus
-  (*get_kyc_status) (void *cls,
-                     struct TALER_EXCHANGEDB_Session *session,
-                     const char *payto_url,
-                     TALER_EXCHANGEDB_KycStatusCallback ksc,
-                     void *ksc_cls);
+  (*get_kyc_status)(void *cls,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    const char *payto_url,
+                    TALER_EXCHANGEDB_KycStatusCallback ksc,
+                    void *ksc_cls);
 
   /**
    * Record timestamp where a particular merchant performed
@@ -2318,10 +2318,28 @@ struct TALER_EXCHANGEDB_Plugin
    * @return database transaction status.
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_kyc_event) (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
-                       uint64_t merchant_serial_id,
-                       struct TALER_Amount *amount);
+  (*insert_kyc_event)(void *cls,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      uint64_t merchant_serial_id,
+                      struct TALER_Amount *amount);
+
+
+  /**
+   * Calculate sum of money flow related to a particular merchant,
+   * used for KYC monitoring.
+   *
+   * @param cls closure
+   * @param session DB session
+   * @param merchant_serial_id serial id identifying the merchant
+   *        into the KYC monitoring system.
+   * @param amount[out] will store the amount of money received
+   *        by this merchant.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_kyc_events)(void *cls,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    uint64_t merchant_serial_id,
+                    struct TALER_Amount *amount);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

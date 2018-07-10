@@ -1295,11 +1295,23 @@ postgres_prepare (PGconn *db_conn)
      * 1 Sum money flow for a (unchecked) merchant.
      * 2 Change KYC status for a merchant. V
      * 3 Get KYC status for a merchant. V
-     * 4 Put money flow event for a merchant.
+     * 4 Put money flow event for a merchant. V
      * 5 Delete money flow records for a fresh-checked merchant.
      * 6 Put a merchant. V
      * 7 Change KYC status flag for a merchant. V
      */
+
+    /* Assume a merchant _unchecked_ if their events
+     * are stored into the table queried below.  */
+    GNUNET_PQ_make_prepare ("get_kyc_events",
+                            "SELECT"
+                            " merchant_serial_id,"
+                            ",amount_val"
+                            ",amount_frac"
+                            ",amount_curr"
+                            " FROM kyc_events"
+                            " WHERE merchant_serial_id=$1",
+                            1),
 
     GNUNET_PQ_make_prepare ("get_kyc_status",
                             "SELECT"
@@ -6634,6 +6646,87 @@ postgres_mark_kyc_merchant
                                              params);
 }
 
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+sum_kyc_events (void *cls,
+                PGresult *result,
+                unsigned int num_results)
+{
+  struct TALER_Amount *tot = cls;
+  struct TALER_Amount tmp;
+
+  int ntuples = PQntuples (result);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_amount ("amount", &tmp),
+    GNUNET_PQ_result_spec_end  
+  };
+
+  for (unsigned int i = 0; i < ntuples; i++)
+  {
+    GNUNET_assert
+      (GNUNET_OK == GNUNET_PQ_extract_result (result,
+                                              rs,
+                                              i));
+
+    if ((0 == tot->value) && (0 == tot->fraction))
+      *tot = tmp;
+    else
+      GNUNET_assert
+        (GNUNET_SYSERR != TALER_amount_add (tot,
+                                            tot,
+                                            &tmp));
+
+  }
+  
+}
+
+
+/**
+ * Calculate sum of money flow related to a particular merchant,
+ * used for KYC monitoring.
+ *
+ * @param cls closure
+ * @param session DB session
+ * @param merchant_serial_id serial id identifying the merchant
+ *        into the KYC monitoring system.
+ * @param amount[out] will store the amount of money received
+ *        by this merchant.
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_kyc_events (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         uint64_t merchant_serial_id,
+                         struct TALER_Amount *amount)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&merchant_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  /* make sure sum object starts virgin.  */
+  memset (amount,
+          0,
+          sizeof (struct TALER_Amount));
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                             "get_kyc_events",
+                                             params,
+                                             sum_kyc_events,
+                                             amount);
+  return qs;
+}
+
 /**
  * Retrieve KYC-check status related to a particular merchant.
  *
@@ -6848,6 +6941,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->unmark_kyc_merchant = postgres_unmark_kyc_merchant;
   plugin->get_kyc_status = postgres_get_kyc_status;
   plugin->insert_kyc_event = postgres_insert_kyc_event;
+  plugin->get_kyc_events = postgres_get_kyc_events;
 
   return plugin;
 }
