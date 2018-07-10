@@ -2305,6 +2305,23 @@ struct TALER_EXCHANGEDB_Plugin
                      const char *payto_url,
                      TALER_EXCHANGEDB_KycStatusCallback ksc,
                      void *ksc_cls);
+
+  /**
+   * Record timestamp where a particular merchant performed
+   * a wire transfer.
+   *
+   * @param cls closure.
+   * @param session db session.
+   * @param merchant_serial_id serial id of the merchant who
+   *        performed the wire transfer.
+   * @param amount amount of the wire transfer being monitored.
+   * @return database transaction status.
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_kyc_event) (void *cls,
+                       struct TALER_EXCHANGEDB_Session *session,
+                       uint64_t merchant_serial_id,
+                       struct TALER_Amount *amount);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

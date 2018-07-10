@@ -361,7 +361,25 @@ kcs (void *cls,
      uint8_t kyc_checked,
      uint64_t merchant_serial_id)
 {
-  GNUNET_break (0);
+
+  struct TALER_EXCHANGEDB_Session *session = cls;
+  struct TALER_Amount amount;
+
+
+  TALER_amount_get_zero (CURRENCY,
+                         &amount);
+  FAILIF
+    (GNUNET_OK != plugin->insert_kyc_event (NULL,
+                                            session,
+                                            merchant_serial_id,
+                                            &amount));
+  FAILIF
+    (GNUNET_OK != plugin->insert_kyc_event (NULL,
+                                            session,
+                                            merchant_serial_id,
+                                            &amount));
+  drop:
+    return;
 }
 
 /**
@@ -2215,13 +2233,12 @@ run (void *cls)
                                   session,
                                   "payto://mock",
                                   &kcs,
-                                  NULL));
+                                  session));
 
   FAILIF (GNUNET_OK !=
           plugin->unmark_kyc_merchant (NULL,
                                        session,
                                        "payto://mock"));
-
   plugin->preflight (plugin->cls,
                      session);
 

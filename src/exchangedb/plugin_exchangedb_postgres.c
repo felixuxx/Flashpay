@@ -6577,6 +6577,39 @@ postgres_unmark_kyc_merchant
 }
 
 /**
+ * Record timestamp where a particular merchant performed
+ * a wire transfer.
+ *
+ * @param cls closure.
+ * @param session db session.
+ * @param merchant_serial_id serial id of the merchant who
+ *        performed the wire transfer.
+ * @param amount amount of the wire transfer being monitored.
+ * @return database transaction status.
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_kyc_event
+  (void *cls,
+   struct TALER_EXCHANGEDB_Session *session,
+   uint64_t merchant_serial_id,
+   struct TALER_Amount *amount)
+{
+  struct GNUNET_TIME_Absolute now;
+
+  now = GNUNET_TIME_absolute_get ();
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&merchant_serial_id),
+    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_kyc_event",
+                                             params);
+}
+
+/**
  * Mark a merchant as KYC-checked.
  *
  * @param payto_url payto:// URL indentifying the merchant
@@ -6814,6 +6847,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->mark_kyc_merchant = postgres_mark_kyc_merchant;
   plugin->unmark_kyc_merchant = postgres_unmark_kyc_merchant;
   plugin->get_kyc_status = postgres_get_kyc_status;
+  plugin->insert_kyc_event = postgres_insert_kyc_event;
 
   return plugin;
 }
