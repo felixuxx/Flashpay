@@ -1289,18 +1289,6 @@ postgres_prepare (PGconn *db_conn)
                             " LIMIT 1;",
                             0),
 
-    /**
-     * Methods needed to implement KYC monitoring.
-     *
-     * 1 Sum money flow for a (unchecked) merchant. V
-     * 2 Change KYC status for a merchant. V
-     * 3 Get KYC status for a merchant. V
-     * 4 Put money flow event for a merchant. V
-     * 5 Delete money flow records for a fresh-checked merchant.
-     * 6 Put a merchant. V
-     * 7 Change KYC status flag for a merchant. V
-     */
-
     GNUNET_PQ_make_prepare ("clean_kyc_events",
                             "DELETE"
                             " FROM kyc_events"
