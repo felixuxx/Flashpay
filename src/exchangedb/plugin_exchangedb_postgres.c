@@ -1302,9 +1302,9 @@ postgres_prepare (PGconn *db_conn)
      */
 
     GNUNET_PQ_make_prepare ("get_kyc_status",
-                            "SELECT "
-                            "(kyc_checked"
-                            ",merchant_serial_id)"
+                            "SELECT"
+                            " kyc_checked"
+                            ",merchant_serial_id"
                             " FROM kyc_merchants"
                             " WHERE payto_url=$1",
                             1),
@@ -6635,10 +6635,12 @@ postgres_get_kyc_status (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-                                                 "get_kyc_status",
-                                                 params,
-                                                 rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select
+    (session->conn,
+     "get_kyc_status",
+     params,
+     rs);
+
   if (0 >= qs)
     return qs;
 
