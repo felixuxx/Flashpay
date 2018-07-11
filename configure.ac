@@ -287,12 +287,12 @@ AS_CASE([$with_jansson],
         [no], [AC_MSG_ERROR([--with-jansson is required])],
         [LDFLAGS="-L$with_jansson/lib $LDFLAGS"
          CPPFLAGS="-I$with_jansson/include $CPPFLAGS"])
-AC_CHECK_LIB(jansson,json_pack,
+AC_CHECK_LIB(jansson,json_dumpb,
   [AC_CHECK_HEADER([jansson.h],[jansson=1])])
 AS_IF([test $jansson = 0],
   [AC_MSG_ERROR([[
 ***
-*** You need libjansson to build this program.
+*** You need libjansson >= 2.10 to build this program.
 *** ]])])
 
 
