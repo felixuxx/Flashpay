@@ -717,6 +717,7 @@ typedef int
  *
  * @param cls closure
  * @param payto_url payto URL of this particular merchant (bank account)
+ * @param general_id general identificator valid at the KYC-caring institution
  * @param kyc_checked status of KYC check: if GNUNET_OK, the merchant was
  *        checked at least once, never otherwise.
  * @param merchant_serial_id serial ID identifying this merchant (bank
@@ -726,6 +727,7 @@ typedef int
 typedef void
 (*TALER_EXCHANGEDB_KycStatusCallback)(void *cls,
                                       const char *payto_url,
+                                      const char *general_id,
                                       uint8_t kyc_checked,
                                       uint64_t merchant_serial_id);
 
@@ -2246,6 +2248,8 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param session db session
+   * @param general_id identificator at the KYC-aware institution,
+   *        can be NULL if this is in-line wiht the rules.
    * @param payto_url payto:// URL indentifying the merchant
    *        bank account.
    * @return database transaction status.
@@ -2253,6 +2257,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_kyc_merchant)(void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
+                         const char *general_id,
                          const char *payto_url);
 
   /**

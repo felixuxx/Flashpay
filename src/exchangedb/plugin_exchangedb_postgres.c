@@ -431,10 +431,20 @@ postgres_create_tables (void *cls)
                            ",buf BYTEA NOT NULL"
                            ");"),
 
+
+    /**
+     * The 'general_id' column represents _some_ identificator
+     * from the institution that cares about the merchant KYC status.
+     * If the institution is a bank, then this values might be
+     * _any_ alphanumeric code that uniquely identifies that merchant
+     * at that bank.  Could also be NULL, if that bank's policy
+     * admits so.
+     */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS kyc_merchants "
                            "(merchant_serial_id BIGSERIAL PRIMARY KEY"
                            ",kyc_checked BOOLEAN NOT NULL DEFAULT FALSE"
                            ",payto_url VARCHAR UNIQUE NOT NULL"
+                           ",general_id VARCHAR NOT NULL"
                            ");"),
 
     GNUNET_PQ_make_try_execute ("CREATE INDEX kyc_merchants_payto_url ON "
@@ -1309,7 +1319,8 @@ postgres_prepare (PGconn *db_conn)
 
     GNUNET_PQ_make_prepare ("get_kyc_status",
                             "SELECT"
-                            " kyc_checked"
+                            " general_id"
+                            ",kyc_checked"
                             ",merchant_serial_id"
                             " FROM kyc_merchants"
                             " WHERE payto_url=$1",
@@ -1317,9 +1328,11 @@ postgres_prepare (PGconn *db_conn)
 
     GNUNET_PQ_make_prepare ("insert_kyc_merchant",
                             "INSERT INTO kyc_merchants "
-                            "(payto_url, kyc_checked) VALUES "
-                            "($1, FALSE)",
-                            1),
+                            "(payto_url"
+                            ",general_id"
+                            ",kyc_checked) VALUES "
+                            "($1, $2, FALSE)",
+                            2),
 
 
     /* NOTE: NOT used yet, just _potentially_ needed.  */
@@ -6771,6 +6784,7 @@ postgres_get_kyc_status (void *cls,
   uint8_t status;
   uint64_t merchant_serial_id; 
   enum GNUNET_DB_QueryStatus qs;
+  char *general_id;
 
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_url),
@@ -6779,11 +6793,12 @@ postgres_get_kyc_status (void *cls,
 
 
   struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_string ("general_id",
+                                  &general_id),
     GNUNET_PQ_result_spec_auto_from_type ("kyc_checked",
                                           &status),
     GNUNET_PQ_result_spec_uint64 ("merchant_serial_id",
                                   &merchant_serial_id),
-
     GNUNET_PQ_result_spec_end
   };
 
@@ -6798,6 +6813,7 @@ postgres_get_kyc_status (void *cls,
 
   ksc (ksc_cls,
        payto_url,
+       general_id,
        status,
        merchant_serial_id);
 
@@ -6816,10 +6832,12 @@ postgres_get_kyc_status (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_kyc_merchant (void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
+                              const char *general_id,
                               const char *payto_url)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_url),
+    GNUNET_PQ_query_param_string (general_id),
     GNUNET_PQ_query_param_end
   };
   return GNUNET_PQ_eval_prepared_non_select (session->conn,

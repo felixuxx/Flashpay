@@ -349,6 +349,7 @@ never_called_cb (void *cls,
  *
  * @param cls closure
  * @param payto_url payto URL of this particular merchant (bank account)
+ * @param general_id general identificator valid at the KYC-caring institution
  * @param kyc_checked status of KYC check: if GNUNET_OK, the merchant was
  *        checked at least once, never otherwise.
  * @param merchant_serial_id serial ID identifying this merchant (bank
@@ -358,6 +359,7 @@ never_called_cb (void *cls,
 static void
 kcs (void *cls,
      const char *payto_url,
+     const char *general_id,
      uint8_t kyc_checked,
      uint64_t merchant_serial_id)
 {
@@ -2239,6 +2241,7 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           plugin->insert_kyc_merchant (NULL,
                                        session,
+                                       "dummy", // NULL segfaults.
                                        "payto://mock"));
   FAILIF (GNUNET_OK !=
           plugin->mark_kyc_merchant (NULL,
