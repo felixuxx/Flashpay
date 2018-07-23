@@ -375,12 +375,20 @@ struct TALER_WIRE_Plugin
    *        needed values.  The merchant will use this list to
    *        show a HTML form to the business in order to collect that data.
    *        This value will have to be freed by the caller.
+   * @param private_person GNUNET_OK if the merchant to be registered
+   *        has a legal status of "person", for example they are freelance
+   *        journalists.
+   * @param business GNUNET_OK if the merchant has the legal status
+   *        of "business", so to say a "ordinary" shop.  Cannot be
+   *        both private and business though.
    * @return GNUNET_OK upon successful `enc' allocation and definition,
    *         GNUNET_NO if _no_ data is needed at all, GNUNET_SYSERR
    *         for all the other cases.
    */
   int
-  (*merchant_data)(void);
+  (*merchant_data)(char **out,
+                   unsigned int private_person,
+                   unsigned int business);
 
   /**
    * Send data to the banking institution in order to get the
