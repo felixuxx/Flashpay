@@ -395,6 +395,16 @@ struct TALER_WIRE_Plugin
   (*merchant_register)(void *cls,
                        const char *body,
                        TALER_WIRE_MerchantRegisterCallback mrcb);
+
+  /**
+   * Cancel pending operation of merchant registering.
+   *
+   * @param cls closure
+   * @param mrh handle to the pending operation to be cancelled.
+   */
+  void
+  (*merchant_register_cancel)(void *cls,
+                              struct TALER_WIRE_MerchantRegisterHandle *mrh);
 };
 
 
