@@ -716,13 +716,17 @@ typedef int
  * Callback used to process data of a merchant under KYC monitoring.
  *
  * @param cls closure
- * @param payto_url payto URL of this particular merchant (bank account)
- * @param general_id general identificator valid at the KYC-caring institution
- * @param kyc_checked status of KYC check: if GNUNET_OK, the merchant was
- *        checked at least once, never otherwise.
- * @param merchant_serial_id serial ID identifying this merchant (bank
- *        account) into the database system; it helps making more efficient
- *        queries instead of the payto URL.
+ * @param payto_url payto URL of this particular
+ *        merchant (bank account)
+ * @param general_id general identificator valid
+ *        at the KYC-caring institution
+ * @param kyc_checked status of KYC check:
+ *        if GNUNET_OK, the merchant was checked at least once,
+ *        never otherwise.
+ * @param merchant_serial_id serial ID identifying
+ *        this merchant (bank account) into the database system;
+ *        it helps making more efficient queries than the payto
+ *        URL.
  */
 typedef void
 (*TALER_EXCHANGEDB_KycStatusCallback)(void *cls,

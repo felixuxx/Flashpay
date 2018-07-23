@@ -712,6 +712,7 @@ taler_bank_execute_wire_transfer (void *cls,
   origin_account_url = &buf[sizeof (struct BufFormatP)];
   left = buf_size - sizeof (struct BufFormatP);
   slen = strlen (origin_account_url) + 1;
+  /* make sure there's enough space to accomodate what's been taken now */
   GNUNET_assert (left >= slen);
   left -= slen;
   if (0 == left)

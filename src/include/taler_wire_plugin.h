@@ -41,6 +41,17 @@ typedef void
 
 
 /**
+ * Callback to process a merchant registration outcome.
+ *
+ * @param cls closure
+ * @param status GNUNET_OK if the registration succeeded,
+ *        GNUNET_NO otherwise.
+ */
+typedef void
+(*TALER_WIRE_MerchantRegisterCallback) (void *cls,
+                                        unsigned int status);
+
+/**
  * Details about a valid wire transfer to the exchange.
  * It is the plugin's responsibility to filter and undo
  * invalid transfers.
@@ -356,6 +367,34 @@ struct TALER_WIRE_Plugin
                             struct TALER_WIRE_RejectHandle *rh);
 
 
+  /**
+   * Ask the plugin which data is needed to register the merchant
+   * into the banking institution.
+   *
+   * @param enc[out] where to store the JSON formatted list of
+   *        needed values.  The merchant will use this list to
+   *        show a HTML form to the business in order to collect that data.
+   *        This value will have to be freed by the caller.
+   * @return GNUNET_OK upon successful `enc' allocation and definition,
+   *         GNUNET_NO if _no_ data is needed at all, GNUNET_SYSERR
+   *         for all the other cases.
+   */
+  int
+  (*merchant_data)(void);
+
+  /**
+   * Send data to the banking institution in order to get the
+   * merchant registered.
+   *
+   * @param cls closure
+   * @param body subset of information to be sent to the bank.
+   *        The plugin implementation is free to modify this value.
+   * @param mrcb Callback to process the outcome.
+   */
+  struct TALER_WIRE_MerchantRegisterHandle *
+  (*merchant_register)(void *cls,
+                       const char *body,
+                       TALER_WIRE_MerchantRegisterCallback mrcb);
 };
 
 
