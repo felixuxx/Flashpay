@@ -10,7 +10,7 @@ bin_PROGRAMS = \
   taler-exchange-benchmark
 
 taler_exchange_benchmark_SOURCES = \
-  taler-exchange-benchmark.c
+  taler-exchange-benchmark-new.c
 taler_exchange_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
