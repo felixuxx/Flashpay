@@ -76,9 +76,9 @@ static unsigned int result;
 static struct GNUNET_OS_Process *bankd;
 
 /**
- * How many "runs" the user wants for benchmarking.
+ * How many coins we want to create.
  */
-static unsigned int iterations;
+static unsigned int howmany_coins;
 
 /**
  * Log level used during the run.
@@ -342,11 +342,11 @@ main (int argc,
       (&loglev),
 
     GNUNET_GETOPT_option_uint
-      ('I',
-       "payments-number",
-       "I",
-       "How many iterations to run, defaults to 1",
-       &iterations),
+      ('n',
+       "coins-number",
+       "CN",
+       "How many coins we should instantiate",
+       &howmany_coins),
 
     GNUNET_GETOPT_option_string
       ('b',
