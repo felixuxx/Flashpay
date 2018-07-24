@@ -36,17 +36,15 @@
 #include <taler/taler_testing_lib.h>
 #include <taler/taler_testing_bank_lib.h>
 #include <taler/taler_error_codes.h>
-#include "taler_merchant_testing_lib.h"
 
 /* Error codes.  */
-enum PaymentGeneratorError {
+enum BenchmarkError {
 
-  MISSING_MERCHANT_URL = 2,
-  FAILED_TO_LAUNCH_MERCHANT,
   MISSING_BANK_URL,
   FAILED_TO_LAUNCH_BANK,
   BAD_CLI_ARG,
-  BAD_CONFIG_FILE
+  BAD_CONFIG_FILE,
+  NO_CONFIG_FILE_GIVEN
 };
 
 /* Hard-coded params.  Note, the bank is expected to
@@ -61,51 +59,11 @@ enum PaymentGeneratorError {
 #define EXCHANGE_URL "http://example.com/"
 
 #define FIRST_INSTRUCTION -1
-#define TRACKS_INSTRUCTION 9
-#define TWOCOINS_INSTRUCTION 5
 
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
      bank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
      USER_LOGIN_NAME, USER_LOGIN_PASS, EXCHANGE_URL)
-
-/**
- * Help string shown if NO subcommand is given on command line.
- */
-int root_help;
-
-/**
- * Witnesses if the ordinary cases payment suite should be run.
- */
-unsigned int ordinary;
-
-/**
- * Witnesses if the corner cases payment suite should be run.
- */
-unsigned int corner;
-
-/**
- * Root help string.
- */
-char *root_help_str = \
-  "taler-merchant-benchmark\nPopulates production database"
-  " with fake payments.\nMust be used with either 'ordinary'"
-  " or 'corner' sub-commands.\n";
-
-/**
- * Alternative non default instance.
- */
-static char *alt_instance;
-
-/**
- * How many unaggregated payments we want to generate.
- */
-static unsigned int unaggregated_number = 1;
-
-/**
- * How many payments that use two coins we want to generate.
- */
-static unsigned int twocoins_number = 1;
 
 /**
  * Exit code.
@@ -118,30 +76,19 @@ static unsigned int result;
 static struct GNUNET_OS_Process *bankd;
 
 /**
- * Merchant process.
+ * How many "runs" the user wants for benchmarking.
  */
-static struct GNUNET_OS_Process *merchantd;
-
-/**
- * How many payments we want to generate.
- */
-static unsigned int payments_number = 1;
-
-/**
- * How many /tracks operation we want to perform.
- */
-static unsigned int tracks_number = 1;
-
-
-/**
- * Usually set as ~/.config/taler.net
- */
-static const char *default_config_file;
+static unsigned int iterations;
 
 /**
  * Log level used during the run.
  */
 static char *loglev;
+
+/**
+ * Log file.
+ */
+static char *logfile;
 
 /**
  * Config filename.
@@ -152,16 +99,6 @@ static char *cfg_filename;
  * Bank base URL.
  */
 static char *bank_url;
-
-/**
- * Log file.
- */
-static char *logfile;
-
-/**
- * Merchant base URL.
- */
-static char *merchant_url;
 
 /**
  * Currency used.
@@ -303,6 +240,8 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
 
+  #define APIKEY_SANDBOX "Authorization: ApiKey sandbox"
+
   /* Will be freed by testing-lib.  */
   GNUNET_assert
     (GNUNET_OK == GNUNET_CURL_append_header
@@ -323,7 +262,7 @@ run (void *cls,
      order_worth_5_unaggregated,
      order_worth_10_2coins);
 
-  struct TALER_TESTING_Command ordinary_commands[] = {
+  struct TALER_TESTING_Command commands[] = {
 
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-1",
@@ -347,186 +286,13 @@ run (void *cls,
        CURRENCY_5,
        MHD_HTTP_OK),
 
-    TALER_TESTING_cmd_proposal
-      ("create-proposal-1",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       order_worth_5,
-       NULL),
-
-    TALER_TESTING_cmd_pay
-      ("deposit-simple",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       "create-proposal-1",
-       "withdraw-coin-1",
-       CURRENCY_5,
-       CURRENCY_4_99,
-       CURRENCY_0_01),
-
-    TALER_TESTING_cmd_rewind_ip
-      ("rewind-payments",
-       FIRST_INSTRUCTION,
-       &payments_number),
-
-    /* Next proposal-pay cycle will be used by /track CMDs
-     * and so it will not have to be looped over, only /track
-     * CMDs will have to.  */
-
-    TALER_TESTING_cmd_proposal
-      ("create-proposal-2",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       order_worth_5_track,
-       NULL),
-
-    TALER_TESTING_cmd_pay
-      ("deposit-simple-2",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       "create-proposal-2",
-       "withdraw-coin-2",
-       CURRENCY_5,
-       CURRENCY_4_99,
-       CURRENCY_0_01),
-
-    /* /track/transaction over deposit-simple-2 */
-
-    TALER_TESTING_cmd_exec_aggregator
-      ("aggregate-1",
-       cfg_filename),
-
-    TALER_TESTING_cmd_merchant_track_transaction
-      ("track-transaction-1",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       "deposit-simple-2"),
-
-    TALER_TESTING_cmd_merchant_track_transfer
-      ("track-transfer-1",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       "track-transaction-1"),
-
-    TALER_TESTING_cmd_rewind_ip
-      ("rewind-tracks",
-       TRACKS_INSTRUCTION,
-       &tracks_number),
-
     TALER_TESTING_cmd_end ()
   };
 
-  struct TALER_TESTING_Command corner_commands[] = {
-
-    CMD_TRANSFER_TO_EXCHANGE
-      ("create-reserve-1",
-       CURRENCY_5_01),
-
-    TALER_TESTING_cmd_exec_wirewatch
-      ("wirewatch-1",
-       cfg_filename),
-
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-1",
-       is->exchange,
-       "create-reserve-1",
-       CURRENCY_5,
-       MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_proposal
-      ("create-unaggregated-proposal",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       order_worth_5_unaggregated,
-       alt_instance),
-
-    TALER_TESTING_cmd_pay
-      ("deposit-unaggregated",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       "create-unaggregated-proposal",
-       "withdraw-coin-1",
-       CURRENCY_5,
-       CURRENCY_4_99,
-       CURRENCY_0_01),
-
-    TALER_TESTING_cmd_rewind_ip
-      ("rewind-unaggregated",
-       FIRST_INSTRUCTION,
-       &unaggregated_number),
-
-    CMD_TRANSFER_TO_EXCHANGE
-      ("create-reserve-2",
-       CURRENCY_10_02),
-
-    TALER_TESTING_cmd_exec_wirewatch
-      ("wirewatch-2",
-       cfg_filename),
-
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-2",
-       is->exchange,
-       "create-reserve-2",
-       CURRENCY_5,
-       MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-3",
-       is->exchange,
-       "create-reserve-2",
-       CURRENCY_5,
-       MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_proposal
-      ("create-twocoins-proposal",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       order_worth_10_2coins,
-       NULL),
-
-    TALER_TESTING_cmd_pay
-      ("deposit-twocoins",
-       merchant_url,
-       is->ctx,
-       MHD_HTTP_OK,
-       "create-twocoins-proposal",
-       "withdraw-coin-2;withdraw-coin-3",
-       CURRENCY_10,
-       CURRENCY_9_98,
-       CURRENCY_0_02),
-
-    TALER_TESTING_cmd_exec_aggregator
-      ("aggregate-twocoins",
-       cfg_filename),
-
-    TALER_TESTING_cmd_rewind_ip
-      ("rewind-twocoins",
-       TWOCOINS_INSTRUCTION,
-       &twocoins_number),
-
-    TALER_TESTING_cmd_end ()
-  };
-
-
-  if (GNUNET_OK == ordinary)
-    TALER_TESTING_run (is,
-                       ordinary_commands);
-
-  if (GNUNET_OK == corner)
-    TALER_TESTING_run (is,
-                       corner_commands);
-  TALER_LOG_ERROR ("Neither ordinary or corner payments"
-                   " were specified to be run.\n");
-
+  #if 0
+  TALER_TESTING_run (is,
+                     commands);
+  #endif
   result = 1;
 }
 
@@ -556,101 +322,12 @@ main (int argc,
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
 
-  default_config_file = GNUNET_OS_project_data_get
-    ()->user_config_file;
-
   loglev = NULL;
-  GNUNET_log_setup ("taler-merchant-benchmark",
+  GNUNET_log_setup ("taler-exchange-benchmark",
                     loglev,
                     logfile);
 
-  struct GNUNET_GETOPT_CommandLineOption *options;
-
-  struct GNUNET_GETOPT_CommandLineOption root_options[] = {
-
-    GNUNET_GETOPT_option_cfgfile
-      (&cfg_filename),
-
-    GNUNET_GETOPT_option_version
-      (PACKAGE_VERSION " " VCS_VERSION),
-
-    GNUNET_GETOPT_option_flag
-      ('h',
-       "help",
-       NULL,
-       &root_help),
-
-    GNUNET_GETOPT_OPTION_END
-  };
-
-  struct GNUNET_GETOPT_CommandLineOption corner_options[] = {
-
-    GNUNET_GETOPT_option_help
-      ("Populate databases with corner case payments"),
-
-    GNUNET_GETOPT_option_loglevel
-      (&loglev),
-
-    GNUNET_GETOPT_option_uint
-      ('u',
-       "unaggregated-number",
-       "UN",
-       "will generate UN unaggregated payments, defaults to 1",
-       &unaggregated_number),
-
-    GNUNET_GETOPT_option_uint
-      ('t',
-       "two-coins",
-       "TC",
-       "will perform TC 2-coins payments, defaults to 1",
-       &twocoins_number),
-
-    /**
-     * NOTE: useful when the setup serves merchant
-     * backends via unix domain sockets, since there
-     * is no way - yet? - to get the merchant base url.
-     * Clearly, we could introduce a merchant_base_url
-     * value into the configuration.
-     */
-    GNUNET_GETOPT_option_string
-      ('m',
-       "merchant-url",
-       "MU",
-       "merchant base url, mandatory",
-       &merchant_url),
-
-    GNUNET_GETOPT_option_string
-      ('i',
-       "alt-instance",
-       "AI",
-       "alternative (non default) instance,"
-       " used to provide fresh wire details to"
-       " make unaggregated transactions stay so."
-       " Note, this instance will be given far"
-       " future wire deadline, and so it should"
-       " never author now-deadlined transactions,"
-       " as they would get those far future ones"
-       " aggregated too.",
-       &alt_instance),
-
-    GNUNET_GETOPT_option_string
-      ('b',
-       "bank-url",
-       "BU",
-       "bank base url, mandatory",
-       &bank_url),
-
-    GNUNET_GETOPT_option_string
-      ('l',
-       "logfile",
-       "LF",
-       "will log to file LF",
-       &logfile),
-
-    GNUNET_GETOPT_OPTION_END
-  };
-
-  struct GNUNET_GETOPT_CommandLineOption ordinary_options[] = {
+  struct GNUNET_GETOPT_CommandLineOption options[] = {
 
     GNUNET_GETOPT_option_cfgfile
       (&cfg_filename),
@@ -659,39 +336,17 @@ main (int argc,
       (PACKAGE_VERSION " " VCS_VERSION),
 
     GNUNET_GETOPT_option_help
-      ("Generate Taler ordinary payments"
-       " to populate the databases"),
+      ("Exchange benchmark"),
 
     GNUNET_GETOPT_option_loglevel
       (&loglev),
 
     GNUNET_GETOPT_option_uint
-      ('p',
+      ('I',
        "payments-number",
-       "PN",
-       "will generate PN payments, defaults to 1",
-       &payments_number),
-
-    GNUNET_GETOPT_option_uint
-      ('t',
-       "tracks-number",
-       "TN",
-       "will perform TN /track operations, defaults to 1",
-       &tracks_number),
-
-    /**
-     * NOTE: useful when the setup serves merchant
-     * backends via unix domain sockets, since there
-     * is no way - yet? - to get the merchant base url.
-     * Clearly, we could introduce a merchant_base_url
-     * value into the configuration.
-     */
-    GNUNET_GETOPT_option_string
-      ('m',
-       "merchant-url",
-       "MU",
-       "merchant base url, mandatory",
-       &merchant_url),
+       "I",
+       "How many iterations to run, defaults to 1",
+       &iterations),
 
     GNUNET_GETOPT_option_string
       ('b',
@@ -710,50 +365,21 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
   
-  options = root_options;
-  if (0 == strcmp ("ordinary", argv[1]))
-  {
-    ordinary = GNUNET_YES;
-    options = ordinary_options;
-  }
-  if (0 == strcmp ("corner", argv[1]))
-  {
-    corner = GNUNET_YES;
-    options = corner_options;
-  }
-
-  if (GNUNET_SYSERR != (result = GNUNET_GETOPT_run
-      ("taler-merchant-benchmark",
+  if (GNUNET_SYSERR == (result = GNUNET_GETOPT_run
+      ("taler-exchange-benchmark",
        options,
        argc,
        argv))) 
   {
-
-    if (GNUNET_YES == root_help)
-    {
-      fprintf (stdout, root_help_str);
-      return 0;
-    }
-
-    /* --help was given.  */
-    if (0 == result) 
-      return 0;
-  }
-
-  if (-1 == result)
-  {
-    return 1;
-  }
-
-  if ((GNUNET_YES == corner) && (NULL == alt_instance))
-  {
-    fprintf (stderr, "option '-i' is mandatory"
-                     " with sub-command 'corner'!\n");
-    return 1;
+    TALER_LOG_ERROR ("Unparsable CLI options\n");
+    return BAD_CLI_ARG;
   }
 
   if (NULL == cfg_filename)
-    cfg_filename = (char *) default_config_file;
+  {
+    TALER_LOG_ERROR ("-c option is mandatory\n");
+    return NO_CONFIG_FILE_GIVEN;
+  }
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
@@ -777,32 +403,17 @@ main (int argc,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  if (NULL == merchant_url)
-  {
-    TALER_LOG_ERROR ("Option -m is mandatory!\n");
-    return MISSING_MERCHANT_URL;
-  }
-
-  if (NULL == (merchantd = TALER_TESTING_run_merchant
-    (cfg_filename, merchant_url)))
-  {
-    TALER_LOG_ERROR ("Failed to launch the merchant\n");
-    return FAILED_TO_LAUNCH_MERCHANT;
-  }
-
   if (NULL == bank_url)
   {
     TALER_LOG_ERROR ("Option -b is mandatory!\n");
-    terminate_process (merchantd);
     return MISSING_BANK_URL;
   }
 
-  if ( NULL == (bankd = TALER_TESTING_run_bank
+  if (NULL == (bankd = TALER_TESTING_run_bank
     (cfg_filename,
      bank_url)))
   {
     TALER_LOG_ERROR ("Failed to run the bank\n");
-    terminate_process (merchantd);
     return FAILED_TO_LAUNCH_BANK;
   }
 
@@ -811,7 +422,6 @@ main (int argc,
      NULL,
      cfg_filename);
 
-  terminate_process (merchantd);
   terminate_process (bankd);
 
   return (GNUNET_OK == result) ? 0 : result;

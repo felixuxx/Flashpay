@@ -16,8 +16,10 @@ taler_exchange_benchmark_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/exchange-lib/libtalerexchange.la \
+  $(top_builddir)/src/exchange-lib/libtalertesting.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
