@@ -321,12 +321,6 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
-
-  loglev = NULL;
-  GNUNET_log_setup ("taler-exchange-benchmark",
-                    loglev,
-                    logfile);
-
   struct GNUNET_GETOPT_CommandLineOption options[] = {
 
     GNUNET_GETOPT_option_cfgfile
@@ -375,6 +369,10 @@ main (int argc,
     TALER_LOG_ERROR ("Unparsable CLI options\n");
     return BAD_CLI_ARG;
   }
+
+  GNUNET_log_setup ("taler-exchange-benchmark",
+                    NULL == loglev ? "INFO" : loglev,
+                    logfile);
 
   if (NULL == cfg_filename)
   {
