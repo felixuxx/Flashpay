@@ -14,6 +14,7 @@ man_MANS = \
   taler-exchange-keycheck.1 \
   taler-exchange-wire.1 \
   taler-exchange-wirewatch.1 \
+  taler-exchange-benchmark.1 \
   taler.conf.5
 
 AM_MAKEINFOHTMLFLAGS = --no-split --css-ref=docstyle.css --css-ref=brown-paper.css

@@ -1,0 +1,41 @@
+.TH TALER\-EXCHANGE\-BENCHMARK 1 "Jul 25, 2018" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-benchmark \- Measure exchange performance.
+
+.SH SYNOPSIS
+.B taler\-exchange\-benchmark
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-benchmark\fP is a command line tool to measure the time spent to serve withdrawals/deposits/refreshes.  It usually needs a dedicate configuration file where all the services - the exchange and the (fake)bank - listen to URLs not subject to any reverse proxy, as say Nginx.  Moreover, the benchmark runs on a "volatile" database, that means that table are always erased during a single benchmark run.
+
+.SH OPTIONS
+
+.B
+.IP "\-c CONFIG_FILENAME,  \-\-config=CONFIG_FILENAME"
+(Mandatory) Use CONFIG_FILENAME.
+
+.B
+.IP "\-b BANK_URL, --bank-url=BANK_URL"
+(Mandatory) The URL where the fakebank listens at.  Must match the host component in the exchange's escrow account "payto" URL.
+
+.B
+.IP "\-n HOWMANY_COINS, \-\-coins-number=HOWMANY_COINS"
+Defaults to 1.  Specifies how many coins this benchmark should withdraw and spend.  After being spent, each coin will be refreshed with a REFRESH_PROBABILITY probability, which is (hardcoded as) 0.1; future versions of this tool should offer this parameter as a CLI option.
+
+.B
+.IP "\-l LOGLEVEL, \-\-log\-level=LOGLEVEL"
+GNUnet-compatible log level, takes values "ERROR/WARNING/INFO/DEBUG"
+
+.B
+.IP "\-h, \-\-help"
+Prints a compiled-in help text.
+
+.B
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-dbinit\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)
