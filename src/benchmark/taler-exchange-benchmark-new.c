@@ -56,6 +56,14 @@ enum BenchmarkError {
  */
 #define REFRESH_PROBABILITY 0.1
 
+
+/**
+ * The whole benchmark is a repetition of a "unit".  Each
+ * unit is a array containing a withdraw+deposit operation,
+ * and _possibly_ a refresh of the deposited coin.
+ */
+#define UNITY_SIZE 6
+
 /* Hard-coded params.  Note, the bank is expected to
  * have the Tor user with account number 3 and password 'x'.
  *
@@ -162,11 +170,15 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+  #define APIKEY_SANDBOX "Authorization: ApiKey sandbox"
   struct TALER_Amount total_reserve_amount;
   struct TALER_Amount withdraw_fee;
   char *withdraw_fee_str;
 
-  #define APIKEY_SANDBOX "Authorization: ApiKey sandbox"
+  struct TALER_TESTING_Command all_commands
+    [1 + /* Withdraw block */
+     howmany_coins + /* All units */
+     1 /* End CMD */];
 
   /* Will be freed by testing-lib.  */
   GNUNET_assert
@@ -205,12 +217,13 @@ run (void *cls,
 
   };
 
+  all_commands[0] = TALER_TESTING_cmd_batch ("make-reserve",
+                                             make_reserve);
   for (unsigned int i = 0; i < howmany_coins; i++)
   {
-    #define UNITY_SIZE 6
     char *withdraw_label;
     char *order_enc;
-    struct TALER_TESTING_Command unity[UNITY_SIZE];
+    struct TALER_TESTING_Command unit[UNITY_SIZE];
 
     GNUNET_asprintf (&withdraw_label,
                      "withdraw-%u",
@@ -220,14 +233,14 @@ run (void *cls,
                      "{\"nonce\": %u}",
                      i);
 
-    unity[0] = TALER_TESTING_cmd_withdraw_amount
+    unit[0] = TALER_TESTING_cmd_withdraw_amount
       (withdraw_label,
        is->exchange,
        "create-reserve",
        AMOUNT_5,
        MHD_HTTP_OK);
 
-    unity[1] = TALER_TESTING_cmd_deposit
+    unit[1] = TALER_TESTING_cmd_deposit
       ("deposit",
        is->exchange,
        withdraw_label,
@@ -245,7 +258,6 @@ run (void *cls,
       char *melt_label;
       char *reveal_label;
 
-
       GNUNET_asprintf (&melt_label,
                        "refresh-melt-%u",
                        i);
@@ -254,55 +266,33 @@ run (void *cls,
                        "refresh-reveal-%u",
                        i);
 
-      unity[2] = TALER_TESTING_cmd_refresh_melt
+      unit[2] = TALER_TESTING_cmd_refresh_melt
         (melt_label,
          is->exchange,
          AMOUNT_4,
          withdraw_label,
          MHD_HTTP_OK);
 
-      unity[3] = TALER_TESTING_cmd_refresh_reveal
+      unit[3] = TALER_TESTING_cmd_refresh_reveal
         (reveal_label,
          is->exchange,
          melt_label,
          MHD_HTTP_OK);
 
-      unity[4] = TALER_TESTING_cmd_refresh_link
+      unit[4] = TALER_TESTING_cmd_refresh_link
         ("refresh-link",
          is->exchange,
          reveal_label,
          MHD_HTTP_OK);
 
-      unity[5] = TALER_TESTING_cmd_end ();
+      unit[5] = TALER_TESTING_cmd_end ();
     }
-    else unity[2] = TALER_TESTING_cmd_end ();
-  
+    else unit[2] = TALER_TESTING_cmd_end ();
+    
+    all_commands[1 + i] = TALER_TESTING_cmd_batch ("unit",
+                                                   unit);
   }
-
-  struct TALER_TESTING_Command all_commands[] = {
-    TALER_TESTING_cmd_batch ("make-reserve",
-                             make_reserve),
-    TALER_TESTING_cmd_end ()
-  };
-
-    /*
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-1",
-       is->exchange, // picks port from config's [exchange].
-       "create-reserve-1",
-       CURRENCY_5,
-       MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-2",
-       is->exchange,
-       "create-reserve-1",
-       CURRENCY_5,
-       MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_end ()
-  }; */
-
+  all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
   TALER_TESTING_run (is,
                      all_commands);
   result = 1;
