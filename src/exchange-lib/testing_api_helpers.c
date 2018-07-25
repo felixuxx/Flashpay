@@ -98,7 +98,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
                                   "-c", config_filename,
-                                  "-o", "/tmp/auditor.in",
+                                  "-o", "auditor.in",
                                   NULL);
   if (NULL == proc)
   {
@@ -167,7 +167,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
                                   "-c", config_filename,
                                   "-u", "http://auditor/",
                                   "-m", exchange_master_pub,
-                                  "-r", "/tmp/auditor.in",
+                                  "-r", "auditor.in",
                                   "-o", signed_keys_out,
                                   NULL);
   if (NULL == proc)
