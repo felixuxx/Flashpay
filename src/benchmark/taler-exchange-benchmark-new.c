@@ -95,7 +95,7 @@ static struct GNUNET_OS_Process *bankd;
 /**
  * How many coins we want to create.
  */
-static unsigned int howmany_coins;
+static unsigned int howmany_coins = 1;
 
 /**
  * Log level used during the run.
@@ -247,7 +247,7 @@ run (void *cls,
        0, /* Index of the one withdrawn coin in the traits.  */
        TALER_TESTING_make_wire_details
          (24,
-          "https://no-aggregation"),
+          "no-aggregation"),
        order_enc,
        GNUNET_TIME_UNIT_ZERO,
        AMOUNT_1,
