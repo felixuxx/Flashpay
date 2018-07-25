@@ -72,7 +72,6 @@ TALER_TESTING_interpreter_lookup_command
       #define BATCH_INDEX 1
       struct TALER_TESTING_Command *batch;
 
-      /* NEED BATCH HERE FROM TRAIT.  */
       GNUNET_assert
         (GNUNET_OK == TALER_TESTING_get_trait_cmd
           (cmd, BATCH_INDEX, &batch));
