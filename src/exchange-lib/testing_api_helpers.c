@@ -508,7 +508,7 @@ TALER_TESTING_url_port_free (const char *url)
  * @a payto://-URL and adds some salt to create the JSON.
  *
  * @param account_no account number
- * @param bank_url the bank_url
+ * @param bank_url the bank_url (FIXME/WARNING: shouldn't this be a _hostname_ ??)
  * @return JSON describing the account, including the
  *         payto://-URL of the account, must be manually decref'd
  */
