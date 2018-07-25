@@ -74,7 +74,7 @@ enum BenchmarkError {
 
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-     bank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
+     fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
      USER_LOGIN_NAME, USER_LOGIN_PASS, EXCHANGE_URL)
 
 
@@ -125,9 +125,9 @@ static char *logfile;
 static char *cfg_filename;
 
 /**
- * Bank base URL.
+ * Fake bank base URL.
  */
-static char *bank_url;
+static char *fakebank_url;
 
 /**
  * Currency used.
@@ -306,10 +306,10 @@ run (void *cls,
                                                    unit);
   }
   all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
-
   start_time = GNUNET_TIME_absolute_get ();
-  TALER_TESTING_run (is,
-                     all_commands);
+  TALER_TESTING_run_with_fakebank (is,
+                                   all_commands,
+                                   fakebank_url);
   result = 1;
 }
 
@@ -369,8 +369,9 @@ main (int argc,
       ('b',
        "bank-url",
        "BU",
-       "bank base url, mandatory",
-       &bank_url),
+       "bank base url, mandatory,"
+       " must match exchange's escrow bank",
+       &fakebank_url),
 
     GNUNET_GETOPT_option_string
       ('l',
@@ -420,18 +421,10 @@ main (int argc,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  if (NULL == bank_url)
+  if (NULL == fakebank_url)
   {
     TALER_LOG_ERROR ("Option -b is mandatory!\n");
     return MISSING_BANK_URL;
-  }
-
-  if (NULL == (bankd = TALER_TESTING_run_bank
-    (cfg_filename,
-     bank_url)))
-  {
-    TALER_LOG_ERROR ("Failed to run the bank\n");
-    return FAILED_TO_LAUNCH_BANK;
   }
 
   result = TALER_TESTING_setup_with_exchange
