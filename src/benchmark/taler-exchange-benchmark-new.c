@@ -95,11 +95,6 @@ static struct GNUNET_TIME_Relative duration;
 static unsigned int result;
 
 /**
- * Bank process.
- */
-static struct GNUNET_OS_Process *bankd;
-
-/**
  * How many refreshes got executed.
  */
 static unsigned int howmany_refreshes;
@@ -314,19 +309,6 @@ run (void *cls,
 }
 
 /**
- * Send SIGTERM and wait for process termination.
- *
- * @param process process to terminate.
- */
-void
-terminate_process (struct GNUNET_OS_Process *process)
-{
-  GNUNET_OS_process_kill (process, SIGTERM);
-  GNUNET_OS_process_wait (process);
-  GNUNET_OS_process_destroy (process);
-}
-
-/**
  * The main function of the serve tool
  *
  * @param argc number of arguments from the command line
@@ -433,7 +415,6 @@ main (int argc,
      cfg_filename);
 
   duration = GNUNET_TIME_absolute_get_duration (start_time);
-  terminate_process (bankd);
 
   TALER_LOG_INFO ("Executed W=%u, D=%u, R=%u, operations in %s\n",
                   howmany_coins,
