@@ -177,7 +177,6 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  #define APIKEY_SANDBOX "Authorization: ApiKey sandbox"
   struct TALER_Amount total_reserve_amount;
   struct TALER_Amount withdraw_fee;
   char *withdraw_fee_str;
@@ -186,11 +185,6 @@ run (void *cls,
     [1 + /* Withdraw block */
      howmany_coins + /* All units */
      1 /* End CMD */];
-
-  /* Will be freed by testing-lib.  */
-  GNUNET_assert
-    (GNUNET_OK == GNUNET_CURL_append_header
-      (is->ctx, APIKEY_SANDBOX));
 
   ALLOCATE_AMOUNTS
     (AMOUNT_5,
