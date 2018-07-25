@@ -239,6 +239,9 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+  struct TALER_Amount total_reserve_amount;
+  struct TALER_Amount withdraw_fee;
+  char *withdraw_fee_str;
 
   #define APIKEY_SANDBOX "Authorization: ApiKey sandbox"
 
@@ -261,6 +264,23 @@ run (void *cls,
      order_worth_5_track,
      order_worth_5_unaggregated,
      order_worth_10_2coins);
+
+  strcpy (total_reserve_amount.currency,
+          currency);
+  total_reserve_amount.value = 5 * howmany_coins;
+  GNUNET_asprintf (&withdraw_fee_str,
+                   "%s:0.1",
+                   currency);
+  TALER_string_to_amount (withdraw_fee_str,
+                          &withdraw_fee);
+  for (unsigned int i = 0; i < howmany_coins; i++)
+    TALER_amount_add (&total_reserve_amount,
+                      &total_reserve_amount,
+                      &withdraw_fee);
+
+  /* 1st, calculate how much money should be held in
+   * reserve.  Being all 5-valued coins, the overall
+   * value should be: 5 times `howmany_coins' */
 
   struct TALER_TESTING_Command commands[] = {
 
