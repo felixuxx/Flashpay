@@ -320,6 +320,7 @@ int
 main (int argc,
       char *const *argv)
 {
+  struct GNUNET_OS_Process *compute_wire_response;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
 
@@ -408,9 +409,30 @@ main (int argc,
     return MISSING_BANK_URL;
   }
 
-  GNUNET_assert (GNUNET_OK == TALER_TESTING_prepare_exchange
-    (cfg_filename,
-     &exchange_url)); // never used, we do all via handle.
+  compute_wire_response = GNUNET_OS_start_process
+    (GNUNET_NO,
+     GNUNET_OS_INHERIT_STD_ALL,
+     NULL, NULL, NULL,
+     "taler-exchange-wire",
+     "taler-exchange-wire",
+     "-c", cfg_filename,
+     NULL);
+  if (NULL == compute_wire_response)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-wire`,"
+                " is your PATH correct?\n");
+    return GNUNET_NO;
+  }
+  GNUNET_OS_process_wait
+    (compute_wire_response);
+  GNUNET_OS_process_destroy
+    (compute_wire_response);
+
+  GNUNET_assert
+    (GNUNET_OK == TALER_TESTING_prepare_exchange
+      (cfg_filename,
+       &exchange_url)); // never used, we do all via handle.
   result = TALER_TESTING_setup_with_exchange
     (run,
      NULL,
