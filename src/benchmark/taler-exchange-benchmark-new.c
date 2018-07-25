@@ -48,14 +48,9 @@ enum BenchmarkError {
 };
 
 /**
- * Probability a coin can be refreshed.
- * This probability multiplied by the number of coins
- * generated during the average refresh must be smaller
- * than one.  The variance must be covered by the
- * #INVALID_COIN_SLACK.
+ * Probability that a spent coin will be refreshed.
  */
 #define REFRESH_PROBABILITY 0.1
-
 
 /**
  * The whole benchmark is a repetition of a "unit".  Each
@@ -82,6 +77,18 @@ enum BenchmarkError {
      bank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
      USER_LOGIN_NAME, USER_LOGIN_PASS, EXCHANGE_URL)
 
+
+/**
+ * Time snapshot taken right before executing the CMDs.
+ */
+static struct GNUNET_TIME_Absolute start_time;
+
+/**
+ * Benchmark duration time taken right after the CMD interpreter
+ * returns.
+ */
+static struct GNUNET_TIME_Relative duration;
+
 /**
  * Exit code.
  */
@@ -91,6 +98,11 @@ static unsigned int result;
  * Bank process.
  */
 static struct GNUNET_OS_Process *bankd;
+
+/**
+ * How many refreshes got executed.
+ */
+static unsigned int howmany_refreshes;
 
 /**
  * How many coins we want to create.
@@ -258,6 +270,7 @@ run (void *cls,
       char *melt_label;
       char *reveal_label;
 
+      howmany_refreshes++;
       GNUNET_asprintf (&melt_label,
                        "refresh-melt-%u",
                        i);
@@ -293,6 +306,8 @@ run (void *cls,
                                                    unit);
   }
   all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
+
+  start_time = GNUNET_TIME_absolute_get ();
   TALER_TESTING_run (is,
                      all_commands);
   result = 1;
@@ -424,7 +439,16 @@ main (int argc,
      NULL,
      cfg_filename);
 
+  duration = GNUNET_TIME_absolute_get_duration (start_time);
   terminate_process (bankd);
+
+  TALER_LOG_INFO ("Executed W=%u, D=%u, R=%u, operations in %s\n",
+                  howmany_coins,
+                  howmany_coins,
+                  howmany_refreshes,
+                  GNUNET_STRINGS_relative_time_to_string
+                    (duration,
+                     GNUNET_YES));
 
   return (GNUNET_OK == result) ? 0 : result;
 }
