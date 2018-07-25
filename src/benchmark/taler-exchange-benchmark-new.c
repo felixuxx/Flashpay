@@ -47,6 +47,15 @@ enum BenchmarkError {
   NO_CONFIG_FILE_GIVEN
 };
 
+/**
+ * Probability a coin can be refreshed.
+ * This probability multiplied by the number of coins
+ * generated during the average refresh must be smaller
+ * than one.  The variance must be covered by the
+ * #INVALID_COIN_SLACK.
+ */
+#define REFRESH_PROBABILITY 0.1
+
 /* Hard-coded params.  Note, the bank is expected to
  * have the Tor user with account number 3 and password 'x'.
  *
@@ -113,123 +122,37 @@ static char *currency;
  */
 
 #define ALLOCATE_AMOUNTS(...) \
-  char *CURRENCY_10_02; \
-  char *CURRENCY_10; \
-  char *CURRENCY_9_98; \
-  char *CURRENCY_5_01; \
-  char *CURRENCY_5; \
-  char *CURRENCY_4_99; \
-  char *CURRENCY_0_02; \
-  char *CURRENCY_0_01; \
+  char *AMOUNT_5; \
+  char *AMOUNT_4; \
+  char *AMOUNT_1; \
   \
-  GNUNET_asprintf (&CURRENCY_10_02, \
-                   "%s:10.02", \
-                   currency); \
-  GNUNET_asprintf (&CURRENCY_10, \
-                   "%s:10", \
-                   currency); \
-  GNUNET_asprintf (&CURRENCY_9_98, \
-                   "%s:9.98", \
-                   currency); \
-  GNUNET_asprintf (&CURRENCY_5_01, \
-                   "%s:5.01", \
-                   currency); \
-  GNUNET_asprintf (&CURRENCY_5, \
+  GNUNET_asprintf (&AMOUNT_5, \
                    "%s:5", \
                    currency); \
-  GNUNET_asprintf (&CURRENCY_4_99, \
-                   "%s:4.99", \
+  GNUNET_asprintf (&AMOUNT_4, \
+                   "%s:4", \
                    currency); \
-  GNUNET_asprintf (&CURRENCY_0_02, \
-                   "%s:0.02", \
-                   currency); \
-  GNUNET_asprintf (&CURRENCY_0_01, \
-                   "%s:0.01", \
+  GNUNET_asprintf (&AMOUNT_1, \
+                   "%s:1", \
                    currency);
 
-#define ALLOCATE_ORDERS(...) \
-  char *order_worth_5; \
-  char *order_worth_5_track; \
-  char *order_worth_5_unaggregated; \
-  char *order_worth_10_2coins; \
-  \
-  GNUNET_asprintf \
-    (&order_worth_5, \
-     "{\"max_fee\":\
-       {\"currency\":\"%s\",\
-        \"value\":0,\
-        \"fraction\":50000000},\
-       \"refund_deadline\":\"\\/Date(0)\\/\",\
-       \"pay_deadline\":\"\\/Date(99999999999)\\/\",\
-       \"amount\":\
-         {\"currency\":\"%s\",\
-          \"value\":5,\
-          \"fraction\":0},\
-        \"summary\": \"merchant-lib testcase\",\
-        \"fulfillment_url\": \"https://example.com/\",\
-        \"products\": [ {\"description\":\"ice cream\",\
-                         \"value\":\"{%s:5}\"} ] }", \
-     currency, \
-     currency, \
-     currency); \
-  GNUNET_asprintf \
-    (&order_worth_5_track, \
-     "{\"max_fee\":\
-       {\"currency\":\"%s\",\
-        \"value\":0,\
-        \"fraction\":50000000},\
-       \"refund_deadline\":\"\\/Date(0)\\/\",\
-       \"pay_deadline\":\"\\/Date(99999999999)\\/\",\
-       \"amount\":\
-         {\"currency\":\"%s\",\
-          \"value\":5,\
-          \"fraction\":0},\
-        \"summary\": \"ice track cream!\",\
-        \"fulfillment_url\": \"https://example.com/\",\
-        \"products\": [ {\"description\":\"ice track cream\",\
-                         \"value\":\"{%s:5}\"} ] }", \
-     currency, \
-     currency, \
-     currency); \
-  GNUNET_asprintf \
-    (&order_worth_5_unaggregated, \
-     "{\"max_fee\":\
-       {\"currency\":\"%s\",\
-        \"value\":0,\
-        \"fraction\":50000000},\
-       \"wire_transfer_delay\":\"\\/Delay(30000)\\/\",\
-       \"refund_deadline\":\"\\/Date(22)\\/\",\
-       \"pay_deadline\":\"\\/Date(1)\\/\",\
-       \"amount\":\
-         {\"currency\":\"%s\",\
-          \"value\":5,\
-          \"fraction\":0},\
-        \"summary\": \"unaggregated deposit!\",\
-        \"fulfillment_url\": \"https://example.com/\",\
-        \"products\": [ {\"description\":\"unaggregated cream\",\
-                         \"value\":\"{%s:5}\"} ] }", \
-     currency, \
-     currency, \
-     currency); \
-  GNUNET_asprintf \
-    (&order_worth_10_2coins, \
-     "{\"max_fee\":\
-       {\"currency\":\"%s\",\
-        \"value\":0,\
-        \"fraction\":50000000},\
-       \"refund_deadline\":\"\\/Date(0)\\/\",\
-       \"pay_deadline\":\"\\/Date(99999999999)\\/\",\
-       \"amount\":\
-         {\"currency\":\"%s\",\
-          \"value\":10,\
-          \"fraction\":0},\
-        \"summary\": \"2-coins payment\",\
-        \"fulfillment_url\": \"https://example.com/\",\
-        \"products\": [ {\"description\":\"2-coins payment\",\
-                         \"value\":\"{%s:10}\"} ] }", \
-     currency, \
-     currency, \
-     currency);
+/**
+ * Throw a weighted coin with @a probability.
+ *
+ * @return #GNUNET_OK with @a probability,
+ *         #GNUNET_NO with 1 - @a probability
+ */
+static unsigned int
+eval_probability (float probability)
+{
+  uint64_t random;
+  float random_01;
+
+  random = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+				     UINT64_MAX);
+  random_01 = (double) random / UINT64_MAX;
+  return (random_01 <= probability) ? GNUNET_OK : GNUNET_NO;
+}
 
 
 /**
@@ -251,19 +174,9 @@ run (void *cls,
       (is->ctx, APIKEY_SANDBOX));
 
   ALLOCATE_AMOUNTS
-      (CURRENCY_10_02,
-       CURRENCY_9_98,
-       CURRENCY_5_01,
-       CURRENCY_5,
-       CURRENCY_4_99,
-       CURRENCY_0_02,
-       CURRENCY_0_01);
-
-  ALLOCATE_ORDERS
-    (order_worth_5,
-     order_worth_5_track,
-     order_worth_5_unaggregated,
-     order_worth_10_2coins);
+    (AMOUNT_5,
+     AMOUNT_4,
+     AMOUNT_1);
 
   strcpy (total_reserve_amount.currency,
           currency);
@@ -278,20 +191,101 @@ run (void *cls,
                       &total_reserve_amount,
                       &withdraw_fee);
 
-  /* 1st, calculate how much money should be held in
-   * reserve.  Being all 5-valued coins, the overall
-   * value should be: 5 times `howmany_coins' */
-
-  struct TALER_TESTING_Command commands[] = {
+  struct TALER_TESTING_Command make_reserve[] = {
 
     CMD_TRANSFER_TO_EXCHANGE
-      ("create-reserve-1",
-       CURRENCY_10_02),
+      ("create-reserve",
+       TALER_amount_to_string (&total_reserve_amount)),
 
     TALER_TESTING_cmd_exec_wirewatch
-      ("wirewatch-1",
+      ("wirewatch",
        cfg_filename),
 
+    TALER_TESTING_cmd_end ()
+
+  };
+
+  for (unsigned int i = 0; i < howmany_coins; i++)
+  {
+    #define UNITY_SIZE 6
+    char *withdraw_label;
+    char *order_enc;
+    struct TALER_TESTING_Command unity[UNITY_SIZE];
+
+    GNUNET_asprintf (&withdraw_label,
+                     "withdraw-%u",
+                     i);
+
+    GNUNET_asprintf (&order_enc,
+                     "{\"nonce\": %u}",
+                     i);
+
+    unity[0] = TALER_TESTING_cmd_withdraw_amount
+      (withdraw_label,
+       is->exchange,
+       "create-reserve",
+       AMOUNT_5,
+       MHD_HTTP_OK);
+
+    unity[1] = TALER_TESTING_cmd_deposit
+      ("deposit",
+       is->exchange,
+       withdraw_label,
+       0, /* Index of the one withdrawn coin in the traits.  */
+       TALER_TESTING_make_wire_details
+         (24,
+          "https://no-aggregation"),
+       order_enc,
+       GNUNET_TIME_UNIT_ZERO,
+       AMOUNT_1,
+       MHD_HTTP_OK);
+
+    if (eval_probability (REFRESH_PROBABILITY))
+    {
+      char *melt_label;
+      char *reveal_label;
+
+
+      GNUNET_asprintf (&melt_label,
+                       "refresh-melt-%u",
+                       i);
+
+      GNUNET_asprintf (&reveal_label,
+                       "refresh-reveal-%u",
+                       i);
+
+      unity[2] = TALER_TESTING_cmd_refresh_melt
+        (melt_label,
+         is->exchange,
+         AMOUNT_4,
+         withdraw_label,
+         MHD_HTTP_OK);
+
+      unity[3] = TALER_TESTING_cmd_refresh_reveal
+        (reveal_label,
+         is->exchange,
+         melt_label,
+         MHD_HTTP_OK);
+
+      unity[4] = TALER_TESTING_cmd_refresh_link
+        ("refresh-link",
+         is->exchange,
+         reveal_label,
+         MHD_HTTP_OK);
+
+      unity[5] = TALER_TESTING_cmd_end ();
+    }
+    else unity[2] = TALER_TESTING_cmd_end ();
+  
+  }
+
+  struct TALER_TESTING_Command all_commands[] = {
+    TALER_TESTING_cmd_batch ("make-reserve",
+                             make_reserve),
+    TALER_TESTING_cmd_end ()
+  };
+
+    /*
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-1",
        is->exchange, // picks port from config's [exchange].
@@ -307,12 +301,10 @@ run (void *cls,
        MHD_HTTP_OK),
 
     TALER_TESTING_cmd_end ()
-  };
+  }; */
 
-  #if 0
   TALER_TESTING_run (is,
-                     commands);
-  #endif
+                     all_commands);
   result = 1;
 }
 
