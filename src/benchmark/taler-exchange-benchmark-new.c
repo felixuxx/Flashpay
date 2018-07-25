@@ -79,6 +79,11 @@ enum BenchmarkError {
 
 
 /**
+ * Exchange URL; never used, just needed by exchange preparator.
+ */
+static char *exchange_url;
+
+/**
  * Time snapshot taken right before executing the CMDs.
  */
 static struct GNUNET_TIME_Absolute start_time;
@@ -403,6 +408,9 @@ main (int argc,
     return MISSING_BANK_URL;
   }
 
+  GNUNET_assert (GNUNET_OK == TALER_TESTING_prepare_exchange
+    (cfg_filename,
+     &exchange_url)); // never used, we do all via handle.
   result = TALER_TESTING_setup_with_exchange
     (run,
      NULL,
