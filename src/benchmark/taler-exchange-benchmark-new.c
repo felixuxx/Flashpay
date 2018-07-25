@@ -196,9 +196,11 @@ run (void *cls,
      AMOUNT_4,
      AMOUNT_1);
 
-  strcpy (total_reserve_amount.currency,
-          currency);
   total_reserve_amount.value = 5 * howmany_coins;
+  strncpy (total_reserve_amount.currency,
+           currency,
+           TALER_CURRENCY_LEN);
+
   GNUNET_asprintf (&withdraw_fee_str,
                    "%s:0.1",
                    currency);
