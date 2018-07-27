@@ -196,6 +196,17 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
+    if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify
+      (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
+       &wdp.purpose,
+       &exchange_sig.eddsa_signature,
+       &exchange_pub.eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+
     if (GNUNET_OK !=
         TALER_amount_subtract (&total_expected,
                                &total_expected,
