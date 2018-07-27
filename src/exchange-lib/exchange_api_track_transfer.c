@@ -197,14 +197,6 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
-        TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
-                                         &exchange_pub))
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-    if (GNUNET_OK !=
         TALER_amount_subtract (&total_expected,
                                &total_expected,
                                &wire_fee))
