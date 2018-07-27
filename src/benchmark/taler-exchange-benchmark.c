@@ -320,6 +320,10 @@ int
 main (int argc,
       char *const *argv)
 {
+
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
+
   struct GNUNET_OS_Process *compute_wire_response;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -360,7 +364,7 @@ main (int argc,
 
     GNUNET_GETOPT_OPTION_END
   };
-  
+
   if (GNUNET_SYSERR == (result = GNUNET_GETOPT_run
       ("taler-exchange-benchmark",
        options,
@@ -430,6 +434,7 @@ main (int argc,
     (compute_wire_response);
 
   GNUNET_assert
+    /* Takes care of dropping all tables.  */
     (GNUNET_OK == TALER_TESTING_prepare_exchange
       (cfg_filename,
        &exchange_url)); // never used, we do all via handle.

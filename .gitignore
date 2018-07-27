@@ -59,8 +59,11 @@ src/exchange-tools/taler-exchange-keyup
 src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
 src/benchmark/taler-exchange-benchmark
-src/benchmark/test_benchmark_home/.local/share/taler/exchange/live-keys/
-src/benchmark/test_benchmark_home/.local/share/taler/exchange/wirefees/
+src/benchmark/auditor.in
+src/benchmark/exchange_benchmark_home/.local/share/taler/exchange/live-keys/*
+src/benchmark/exchange_benchmark_home/.local/share/taler/auditors/
+src/benchmark/exchange_benchmark_home/.local/share/taler/auditor/
+src/benchmark/exchange_benchmark_home/.local/share/taler/exchange/wirefees/*
 src/json/test_json
 src/wire-plugins/test_ebics_wireformat
 src/wire-plugins/test_wire_plugin
