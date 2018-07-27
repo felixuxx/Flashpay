@@ -1,6 +1,10 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
+clean-blobs:
+	rm -fr exchange_benchmark_home/.local/share/taler/auditor*/ exchange_benchmark_home/.local/share/taler/exchange/wirefees/ exchange_benchmark_home/.local/share/taler/exchange/live-keys/ auditor.in
+
+
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
   XLIB = -lgcov
