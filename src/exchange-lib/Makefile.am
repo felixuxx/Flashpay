@@ -73,6 +73,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_amount.c \
   testing_api_trait_cmd.c
 libtalertesting_la_LIBADD = \
+  libtalerexchange.la \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
