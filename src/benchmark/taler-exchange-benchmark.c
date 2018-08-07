@@ -39,13 +39,13 @@
 
 /* Error codes.  */
 enum BenchmarkError {
-
   MISSING_BANK_URL,
   FAILED_TO_LAUNCH_BANK,
   BAD_CLI_ARG,
   BAD_CONFIG_FILE,
   NO_CONFIG_FILE_GIVEN
 };
+
 
 /**
  * Probability that a spent coin will be refreshed.
@@ -62,7 +62,7 @@ enum BenchmarkError {
 /**
  * Account number of the merchant.  Fakebank likes any number,
  * the only requirement is that this number then matches the
- * number given when building payto URLs at deposit time. 
+ * number given when building payto URLs at deposit time.
  */
 #define USER_ACCOUNT_NUMBER 3
 
@@ -104,12 +104,6 @@ struct Account
  */
 static struct Account exchange_bank_account;
 
-
-/**
- * Exchange URL; never used, just needed by exchange preparator.
- */
-static char *exchange_url;
-
 /**
  * Time snapshot taken right before executing the CMDs.
  */
@@ -137,6 +131,11 @@ static unsigned int howmany_refreshes;
 static unsigned int howmany_coins = 1;
 
 /**
+ * How many clients we want to create.
+ */
+static unsigned int howmany_clients = 1;
+
+/**
  * Log level used during the run.
  */
 static char *loglev;
@@ -162,7 +161,6 @@ static char *currency;
  * It is kept as a way to make the macro more auto-descriptive
  * where it is called.
  */
-
 #define ALLOCATE_AMOUNTS(...) \
   char *AMOUNT_5; \
   char *AMOUNT_4; \
@@ -197,8 +195,8 @@ pick_exchange_account_cb (void *cls,
     const char **s = cls;
     *s = section;
   }
-  
 }
+
 
 /**
  * Parse payto:// account URL (only account information,
@@ -273,7 +271,7 @@ parse_payto (const char *account_url,
                        "%llu",
                        &port))
       {
-        GNUNET_break (0); 
+        GNUNET_break (0);
         TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
         GNUNET_free (account->hostname);
         return TALER_EC_PAYTO_MALFORMED;
@@ -293,7 +291,7 @@ parse_payto (const char *account_url,
         (GNUNET_SYSERR != GNUNET_asprintf
           (&account->bank_base_url,
            "https://%s",
-           account->hostname));  
+           account->hostname));
     }
   }
   return TALER_EC_NONE;
@@ -442,7 +440,7 @@ run (void *cls,
       unit[5] = TALER_TESTING_cmd_end ();
     }
     else unit[2] = TALER_TESTING_cmd_end ();
-    
+
     all_commands[1 + i] = TALER_TESTING_cmd_batch ("unit",
                                                    unit);
   }
@@ -455,6 +453,66 @@ run (void *cls,
   result = 1;
 }
 
+
+/**
+ * Run the benchmark in parallel in many (client) processes
+ * and summarize result.
+ *
+ * @param main_cb main function to run per process
+ * @param main_cb_cls closure for @a main_cb
+ * @param config_file configuration file to use
+ * @param exchange_url exchange URL to use
+ * @return #GNUNET_OK on success
+ */
+static int
+parallel_benchmark (TALER_TESTING_Main main_cb,
+                    void *main_cb_cls,
+                    const char *config_file,
+                    const char *exchange_url)
+{
+  int result;
+  pid_t cpids[howmany_clients];
+  int wstatus;
+
+  result = GNUNET_OK;
+  for (unsigned int i=0;i<howmany_clients;i++)
+  {
+    if (0 == (cpids[i] = fork ()))
+    {
+      /* I am the child, do the work! */
+      result = TALER_TESTING_setup_with_exchange
+        (run,
+         NULL,
+         cfg_filename);
+      if (GNUNET_OK == result)
+        exit (0);
+      else
+        exit (1);
+    }
+    if (-1 == cpids[i])
+    {
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                           "fork");
+      howmany_clients = i;
+      result = GNUNET_SYSERR;
+      break;
+    }
+    /* fork() success, continue starting more processes! */
+  }
+  /* collect all children */
+  for (unsigned int i=0;i<howmany_clients;i++)
+  {
+    waitpid (cpids[i],
+             &wstatus,
+             0);
+    if ( (!WIFEXITED (wstatus)) ||
+         (0 != WEXITSTATUS (wstatus)) )
+      result = GNUNET_SYSERR;
+  }
+  return result;
+}
+
+
 /**
  * The main function of the serve tool
  *
@@ -466,76 +524,60 @@ int
 main (int argc,
       char *const *argv)
 {
-
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-
+  char *exchange_url;
   struct GNUNET_OS_Process *compute_wire_response;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
-
-    GNUNET_GETOPT_option_cfgfile
-      (&cfg_filename),
-
-    GNUNET_GETOPT_option_version
-      (PACKAGE_VERSION " " VCS_VERSION),
-
-    GNUNET_GETOPT_option_help
-      ("Exchange benchmark"),
-
-    GNUNET_GETOPT_option_loglevel
-      (&loglev),
-
-    GNUNET_GETOPT_option_uint
-      ('n',
-       "coins-number",
-       "CN",
-       "How many coins we should instantiate",
-       &howmany_coins),
-
-    GNUNET_GETOPT_option_string
-      ('l',
-       "logfile",
-       "LF",
-       "will log to file LF",
-       &logfile),
-
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_cfgfile (&cfg_filename)),
+    GNUNET_GETOPT_option_version (PACKAGE_VERSION " " VCS_VERSION),
+    GNUNET_GETOPT_option_help ("Exchange benchmark"),
+    GNUNET_GETOPT_option_loglevel (&loglev),
+    GNUNET_GETOPT_option_uint ('n',
+                               "coins-number",
+                               "CN",
+                               "How many coins we should instantiate",
+                               &howmany_coins),
+    GNUNET_GETOPT_option_uint ('p',
+                               "parallelism",
+                               "NPROCS",
+                               "How many client processes we should run",
+                               &howmany_clients),
+    GNUNET_GETOPT_option_string ('l',
+                                 "logfile",
+                                 "LF",
+                                 "will log to file LF",
+                                 &logfile),
     GNUNET_GETOPT_OPTION_END
   };
 
-  if (GNUNET_SYSERR == (result = GNUNET_GETOPT_run
-      ("taler-exchange-benchmark",
-       options,
-       argc,
-       argv))) 
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
+  if (GNUNET_SYSERR ==
+      (result = GNUNET_GETOPT_run ("taler-exchange-benchmark",
+                                   options,
+                                   argc,
+                                   argv)))
   {
     TALER_LOG_ERROR ("Unparsable CLI options\n");
     return BAD_CLI_ARG;
   }
-
   GNUNET_log_setup ("taler-exchange-benchmark",
                     NULL == loglev ? "INFO" : loglev,
                     logfile);
-
-  if (NULL == cfg_filename)
-  {
-    TALER_LOG_ERROR ("-c option is mandatory\n");
-    return NO_CONFIG_FILE_GIVEN;
-  }
-
   cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK != GNUNET_CONFIGURATION_load
-      (cfg,
-       cfg_filename))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 cfg_filename))
   {
     TALER_LOG_ERROR ("Could not parse configuration\n");
     return BAD_CONFIG_FILE;
   }
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string
-      (cfg,
-       "taler",
-       "currency",
-       &currency))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "taler",
+                                             "currency",
+                                             &currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
@@ -543,13 +585,19 @@ main (int argc,
     GNUNET_CONFIGURATION_destroy (cfg);
     return BAD_CONFIG_FILE;
   }
+  if (howmany_clients > 1024)
+  {
+    TALER_LOG_ERROR ("-p option value given is too large\n");
+    return BAD_CLI_ARG;
+  }
+
 
   {
     char *bank_details_section;
     char *exchange_payto_url;
 
     GNUNET_CONFIGURATION_iterate_sections
-      (cfg, 
+      (cfg,
        pick_exchange_account_cb,
        &bank_details_section);
 
@@ -582,21 +630,19 @@ main (int argc,
                 " is your PATH correct?\n");
     return GNUNET_NO;
   }
-  GNUNET_OS_process_wait
-    (compute_wire_response);
-  GNUNET_OS_process_destroy
-    (compute_wire_response);
+  GNUNET_OS_process_wait (compute_wire_response);
+  GNUNET_OS_process_destroy (compute_wire_response);
 
   GNUNET_assert
     /* Takes care of dropping all tables.  */
     (GNUNET_OK == TALER_TESTING_prepare_exchange
       (cfg_filename,
-       &exchange_url)); // never used, we do all via handle.
-  result = TALER_TESTING_setup_with_exchange
-    (run,
-     NULL,
-     cfg_filename);
-
+       &exchange_url));
+  result = parallel_benchmark (&run,
+                               NULL,
+                               cfg_filename,
+                               exchange_url);
+  GNUNET_free (exchange_url);
   duration = GNUNET_TIME_absolute_get_duration (start_time);
 
   TALER_LOG_INFO ("Executed W=%u, D=%u, R=%u, operations in %s\n",
@@ -605,7 +651,7 @@ main (int argc,
                   howmany_refreshes,
                   GNUNET_STRINGS_relative_time_to_string
                     (duration,
-                     GNUNET_YES));
+                     GNUNET_NO));
 
   return (GNUNET_OK == result) ? 0 : result;
 }
