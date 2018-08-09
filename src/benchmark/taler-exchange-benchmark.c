@@ -645,13 +645,13 @@ main (int argc,
   GNUNET_free (exchange_url);
   duration = GNUNET_TIME_absolute_get_duration (start_time);
 
-  TALER_LOG_INFO ("Executed W=%u, D=%u, R=%u, operations in %s\n",
-                  howmany_coins,
-                  howmany_coins,
-                  howmany_refreshes,
-                  GNUNET_STRINGS_relative_time_to_string
-                    (duration,
-                     GNUNET_NO));
-
+  fprintf (stdout,
+           "Executed W=%u, D=%u, R=%u, operations in %s\n",
+           howmany_coins,
+           howmany_coins,
+           howmany_refreshes,
+           GNUNET_STRINGS_relative_time_to_string
+           (duration,
+            GNUNET_NO));
   return (GNUNET_OK == result) ? 0 : result;
 }
