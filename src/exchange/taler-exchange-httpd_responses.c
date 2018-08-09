@@ -409,7 +409,7 @@ TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
 				 enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        "{s:s, s:I}",
                                        "error", "commit failure",
 				       "code", (json_int_t) ec);
