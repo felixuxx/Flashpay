@@ -356,6 +356,7 @@ run (void *cls,
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve",
        TALER_amount_to_string (&total_reserve_amount)),
+    /* FIXME: remove wirewatch here! */
     TALER_TESTING_cmd_exec_wirewatch
       ("wirewatch",
        cfg_filename),
@@ -435,11 +436,57 @@ run (void *cls,
   }
   all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
   start_time = GNUNET_TIME_absolute_get ();
-  TALER_TESTING_run_with_fakebank
-    (is,
-     all_commands,
-     exchange_bank_account.bank_base_url);
+  TALER_TESTING_run (is,
+                     all_commands);
   result = 1;
+}
+
+
+/**
+ * Stop the fakebank.
+ *
+ * @param cls fakebank handle
+ */
+static void
+stop_fakebank (void *cls)
+{
+  struct TALER_FAKEBANK_Handle *fakebank = cls;
+
+  TALER_FAKEBANK_stop (fakebank);
+}
+
+
+/**
+ * Start the fakebank.
+ *
+ * @param cls the URL of the fakebank
+ */
+static void
+launch_fakebank (void *cls)
+{
+  const char *bank_base_url = cls;
+  const char *port;
+  long pnum;
+  struct TALER_FAKEBANK_Handle * fakebank;
+
+  port = strrchr (bank_base_url,
+                  (unsigned char) ':');
+  if (NULL == port)
+    pnum = 80;
+  else
+    pnum = strtol (port + 1, NULL, 10);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting Fakebank on port %u (%s)\n",
+              (unsigned int) pnum,
+              bank_base_url);
+  fakebank = TALER_FAKEBANK_start ((uint16_t) pnum);
+  if (NULL == fakebank)
+  {
+    GNUNET_break (0);
+    return;
+  }
+  GNUNET_SCHEDULER_add_shutdown (&stop_fakebank,
+                                 fakebank);
 }
 
 
@@ -461,9 +508,11 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 {
   int result;
   pid_t cpids[howmany_clients];
+  pid_t fakebank;
   int wstatus;
   struct GNUNET_OS_Process *exchanged;
 
+  /* start exchange */
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
                                        GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
@@ -482,6 +531,24 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     GNUNET_OS_process_destroy (exchanged);
     return 77;
   }
+  /* start fakebank */
+  fakebank = fork ();
+  if (0 == fakebank)
+  {
+    GNUNET_SCHEDULER_run (&launch_fakebank,
+                          NULL);
+    exit (0);
+  }
+  if (-1 == fakebank)
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "fork");
+    result = GNUNET_SYSERR;
+    return 77;
+  }
+
+  /* FIXME: start wirewatch */
+
   result = GNUNET_OK;
   for (unsigned int i=0;i<howmany_clients;i++)
   {
@@ -516,8 +583,28 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
              0);
     if ( (!WIFEXITED (wstatus)) ||
          (0 != WEXITSTATUS (wstatus)) )
+    {
+      GNUNET_break (0);
       result = GNUNET_SYSERR;
+    }
   }
+  /* FIXME: stop wirewatch */
+
+  /* stop fakebank */
+  if (0 != kill (fakebank,
+                 SIGTERM))
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                         "kill");
+  waitpid (fakebank,
+           &wstatus,
+           0);
+  if ( (!WIFEXITED (wstatus)) ||
+       (0 != WEXITSTATUS (wstatus)) )
+  {
+    GNUNET_break (0);
+    result = GNUNET_SYSERR;
+  }
+  /* stop exchange */
   GNUNET_break (0 ==
                 GNUNET_OS_process_kill (exchanged,
                                         SIGTERM));
