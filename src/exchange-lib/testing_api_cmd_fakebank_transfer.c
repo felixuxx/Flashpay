@@ -152,6 +152,10 @@ add_incoming_cb (void *cls,
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fakebank returned HTTP status %u/%d\n",
+                http_status,
+                (int) ec);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
@@ -211,13 +215,13 @@ fakebank_transfer_run (void *cls,
     {
       if (NULL != fts->instance)
       {
-        GNUNET_assert (NULL != fts->config_filename);
         char *section;
         char *keys;
         struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
         struct GNUNET_CONFIGURATION_Handle *cfg;
-        cfg = GNUNET_CONFIGURATION_create ();
 
+        GNUNET_assert (NULL != fts->config_filename);
+        cfg = GNUNET_CONFIGURATION_create ();
         if (GNUNET_OK !=
             GNUNET_CONFIGURATION_load (cfg,
                                        fts->config_filename))

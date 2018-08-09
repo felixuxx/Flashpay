@@ -121,11 +121,6 @@ static struct GNUNET_TIME_Relative duration;
 static unsigned int result;
 
 /**
- * How many refreshes got executed.
- */
-static unsigned int howmany_refreshes;
-
-/**
  * How many coins we want to create.
  */
 static unsigned int howmany_coins = 1;
@@ -401,7 +396,6 @@ run (void *cls,
       char *melt_label;
       char *reveal_label;
 
-      howmany_refreshes++;
       GNUNET_asprintf (&melt_label,
                        "refresh-melt-%u",
                        i);
@@ -435,7 +429,6 @@ run (void *cls,
                                                    unit);
   }
   all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
-  start_time = GNUNET_TIME_absolute_get ();
   TALER_TESTING_run (is,
                      all_commands);
   result = 1;
@@ -536,7 +529,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   if (0 == fakebank)
   {
     GNUNET_SCHEDULER_run (&launch_fakebank,
-                          NULL);
+                          exchange_bank_account.bank_base_url);
     exit (0);
   }
   if (-1 == fakebank)
@@ -546,9 +539,11 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     result = GNUNET_SYSERR;
     return 77;
   }
+  sleep (1); /* make sure fakebank process is ready before continuing */
 
   /* FIXME: start wirewatch */
 
+  start_time = GNUNET_TIME_absolute_get ();
   result = GNUNET_OK;
   for (unsigned int i=0;i<howmany_clients;i++)
   {
@@ -748,12 +743,19 @@ main (int argc,
   duration = GNUNET_TIME_absolute_get_duration (start_time);
 
   fprintf (stdout,
-           "Executed W=%u, D=%u, R=%u, operations in %s\n",
+           "Executed (W=%u, D=%u, R~=%5.2f) * P=%u, operations in %s\n",
            howmany_coins,
            howmany_coins,
-           howmany_refreshes,
+           (float) howmany_coins * REFRESH_PROBABILITY,
+           howmany_clients,
            GNUNET_STRINGS_relative_time_to_string
            (duration,
             GNUNET_NO));
+  fprintf (stdout,
+           "(approximately %s/coin)\n",
+           GNUNET_STRINGS_relative_time_to_string
+           (GNUNET_TIME_relative_divide (duration,
+                                         howmany_coins * howmany_clients),
+            GNUNET_YES));
   return (GNUNET_OK == result) ? 0 : result;
 }
