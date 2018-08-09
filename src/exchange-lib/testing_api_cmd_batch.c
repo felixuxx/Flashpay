@@ -33,10 +33,14 @@
  */
 struct BatchState
 {
-  /* CMDs batch.  */
+  /**
+   * CMDs batch.
+   */
   struct TALER_TESTING_Command *batch;
 
-  /* Internal comand pointer.  */
+  /**
+   * Internal comand pointer.
+   */
   int batch_ip;
 };
 
@@ -56,7 +60,6 @@ batch_run (void *cls,
   struct BatchState *bs = cls;
 
   bs->batch_ip++;
-
   TALER_LOG_DEBUG ("Running batched command: %s\n",
                    bs->batch[bs->batch_ip].label);
 
@@ -113,8 +116,8 @@ batch_traits (void *cls,
               const char *trait,
               unsigned int index)
 {
-  #define CURRENT_CMD_INDEX 0
-  #define BATCH_INDEX 1
+#define CURRENT_CMD_INDEX 0
+#define BATCH_INDEX 1
 
   struct BatchState *bs = cls;
 

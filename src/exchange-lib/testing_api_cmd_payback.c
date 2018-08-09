@@ -142,9 +142,11 @@ payback_cb (void *cls,
   if (ps->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                cmd->label);
+                cmd->label,
+                __FILE__,
+                __LINE__);
     json_dumpf (full_response, stderr, 0);
     fprintf (stderr, "\n");
     TALER_TESTING_interpreter_fail (is);

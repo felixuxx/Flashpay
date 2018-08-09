@@ -184,9 +184,11 @@ deposit_wtid_cb
   if (tts->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                cmd->label);
+                cmd->label,
+                __FILE__,
+                __LINE__);
     json_dumpf (json, stderr, 0);
     TALER_TESTING_interpreter_fail (is);
     return;
@@ -224,7 +226,7 @@ deposit_wtid_cb
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      
+
       /* Compare that expected and gotten subjects match.  */
       if (0 != strcmp (ws, transfer_subject))
       {
@@ -527,9 +529,11 @@ track_transfer_cb
   if (tts->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                cmd->label);
+                cmd->label,
+                __FILE__,
+                __LINE__);
     json_dumpf (json, stderr, 0);
     TALER_TESTING_interpreter_fail (is);
     return;

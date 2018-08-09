@@ -944,11 +944,11 @@ main (int argc,
   }
 
   mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG | MHD_USE_DUAL_STACK, //  | MHD_USE_INTERNAL_POLLING_THREAD,
+    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG | MHD_USE_DUAL_STACK | MHD_USE_INTERNAL_POLLING_THREAD,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
                         &handle_mhd_request, NULL,
-                        /* MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 8, */
+                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 16,
                         MHD_OPTION_LISTEN_SOCKET, fh,
                         MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
                         MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,

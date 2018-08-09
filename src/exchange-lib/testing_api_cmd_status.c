@@ -95,8 +95,10 @@ reserve_status_cb
   if (ss->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected HTTP response code: %d\n",
-                http_status);
+                "Unexpected HTTP response code: %d in %s:%u\n",
+                http_status,
+                __FILE__,
+                __LINE__);
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }

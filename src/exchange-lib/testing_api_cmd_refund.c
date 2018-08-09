@@ -105,9 +105,11 @@ refund_cb (void *cls,
   if (rs->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                refund_cmd->label);
+                refund_cmd->label,
+                __FILE__,
+                __LINE__);
     json_dumpf (obj, stderr, 0);
     TALER_TESTING_interpreter_fail (rs->is);
     return;

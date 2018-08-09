@@ -232,9 +232,11 @@ reveal_cb (void *cls,
   if (rrs->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                rrs->is->commands[rrs->is->ip].label);
+                rrs->is->commands[rrs->is->ip].label,
+                __FILE__,
+                __LINE__);
     json_dumpf (full_response, stderr, 0);
     TALER_TESTING_interpreter_fail (rrs->is);
     return;
@@ -400,9 +402,11 @@ link_cb (void *cls,
   if (rls->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                link_cmd->label);
+                link_cmd->label,
+                __FILE__,
+                __LINE__);
     json_dumpf (full_response, stderr, 0);
     TALER_TESTING_interpreter_fail (rls->is);
     return;
@@ -431,8 +435,11 @@ link_cb (void *cls,
     if (num_coins != *num_fresh_coins)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unexpected number of fresh coins: %d vs %d\n",
-                  num_coins, *num_fresh_coins);
+                  "Unexpected number of fresh coins: %d vs %d in %s:%u\n",
+                  num_coins,
+                  *num_fresh_coins,
+                  __FILE__,
+                __LINE__);
       TALER_TESTING_interpreter_fail (rls->is);
       return;
     }
@@ -626,9 +633,11 @@ melt_cb (void *cls,
   if (rms->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                rms->is->commands[rms->is->ip].label);
+                rms->is->commands[rms->is->ip].label,
+                __FILE__,
+                __LINE__);
     json_dumpf (full_response, stderr, 0);
     TALER_TESTING_interpreter_fail (rms->is);
     return;

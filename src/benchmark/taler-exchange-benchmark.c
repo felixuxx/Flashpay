@@ -741,21 +741,23 @@ main (int argc,
                                exchange_url);
   GNUNET_free (exchange_url);
   duration = GNUNET_TIME_absolute_get_duration (start_time);
-
-  fprintf (stdout,
-           "Executed (W=%u, D=%u, R~=%5.2f) * P=%u, operations in %s\n",
-           howmany_coins,
-           howmany_coins,
-           (float) howmany_coins * REFRESH_PROBABILITY,
-           howmany_clients,
-           GNUNET_STRINGS_relative_time_to_string
-           (duration,
-            GNUNET_NO));
-  fprintf (stdout,
-           "(approximately %s/coin)\n",
-           GNUNET_STRINGS_relative_time_to_string
-           (GNUNET_TIME_relative_divide (duration,
-                                         howmany_coins * howmany_clients),
-            GNUNET_YES));
+  if (GNUNET_OK == result)
+  {
+    fprintf (stdout,
+             "Executed (W=%u, D=%u, R~=%5.2f) * P=%u, operations in %s\n",
+             howmany_coins,
+             howmany_coins,
+             (float) howmany_coins * REFRESH_PROBABILITY,
+             howmany_clients,
+             GNUNET_STRINGS_relative_time_to_string
+             (duration,
+              GNUNET_NO));
+    fprintf (stdout,
+             "(approximately %s/coin)\n",
+             GNUNET_STRINGS_relative_time_to_string
+             (GNUNET_TIME_relative_divide (duration,
+                                           howmany_coins * howmany_clients),
+              GNUNET_YES));
+  }
   return (GNUNET_OK == result) ? 0 : result;
 }

@@ -120,9 +120,11 @@ reserve_withdraw_cb (void *cls,
   if (ws->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                TALER_TESTING_interpreter_get_current_label (is));
+                TALER_TESTING_interpreter_get_current_label (is),
+                __FILE__,
+                __LINE__);
     json_dumpf (full_response,
                 stderr,
                 0);
@@ -269,7 +271,7 @@ withdraw_traits (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ws->is);
-    return GNUNET_SYSERR;  
+    return GNUNET_SYSERR;
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
@@ -277,7 +279,7 @@ withdraw_traits (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ws->is);
-    return GNUNET_SYSERR;  
+    return GNUNET_SYSERR;
   }
 
   struct TALER_TESTING_Trait traits[] = {

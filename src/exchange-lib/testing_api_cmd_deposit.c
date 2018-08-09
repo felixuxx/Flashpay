@@ -121,9 +121,11 @@ deposit_cb (void *cls,
   if (ds->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s\n",
+                "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
-                ds->is->commands[ds->is->ip].label);
+                ds->is->commands[ds->is->ip].label,
+                __FILE__,
+                __LINE__);
     json_dumpf (obj, stderr, 0);
     TALER_TESTING_interpreter_fail (ds->is);
     return;
