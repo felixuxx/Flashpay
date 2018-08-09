@@ -232,8 +232,9 @@ reveal_cb (void *cls,
   if (rrs->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
+                (int) ec,
                 rrs->is->commands[rrs->is->ip].label,
                 __FILE__,
                 __LINE__);
@@ -402,8 +403,9 @@ link_cb (void *cls,
   if (rls->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
+                (int) ec,
                 link_cmd->label,
                 __FILE__,
                 __LINE__);
@@ -633,8 +635,9 @@ melt_cb (void *cls,
   if (rms->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
+                (int) ec,
                 rms->is->commands[rms->is->ip].label,
                 __FILE__,
                 __LINE__);

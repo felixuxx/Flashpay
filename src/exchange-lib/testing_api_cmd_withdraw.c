@@ -120,8 +120,9 @@ reserve_withdraw_cb (void *cls,
   if (ws->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
+                (int) ec,
                 TALER_TESTING_interpreter_get_current_label (is),
                 __FILE__,
                 __LINE__);
