@@ -30,6 +30,14 @@
 
 
 /**
+ * Perform RSA signature before checking with the database?
+ * Reduces time spent in transaction, but may cause us to
+ * waste CPU time if DB check fails.
+ */
+#define OPTIMISTIC_SIGN 1
+
+
+/**
  * Send reserve status information to client with the
  * message that we have insufficient funds for the
  * requested /reserve/withdraw operation.
@@ -172,6 +180,12 @@ withdraw_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_DenominationSignature denom_sig;
 
+#if OPTIMISTIC_SIGN
+  /* store away optimistic signature to protect
+     it from being overwritten by get_withdraw_info */
+  denom_sig = wc->collectable.sig;
+  wc->collectable.sig.rsa_signature = NULL;
+#endif
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
 				      session,
 				      &wc->wsrd.h_coin_envelope,
@@ -182,12 +196,20 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return qs;
   }
 
   /* Don't sign again if we have already signed the coin */
   if (1 == qs)
+  {
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  }
   GNUNET_assert (0 == qs);
 
   /* Check if balance is sufficient */
@@ -200,6 +222,9 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return qs;
   }
   if (NULL == rh)
@@ -207,6 +232,9 @@ withdraw_transaction (void *cls,
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
 					       TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
 					       "reserve_pub");
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -229,6 +257,9 @@ withdraw_transaction (void *cls,
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
+#if OPTIMISTIC_SIGN
+          GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
       res |= 1;
@@ -245,6 +276,9 @@ withdraw_transaction (void *cls,
 	  {
 	    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							     TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
+#if OPTIMISTIC_SIGN
+            GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
 	    return GNUNET_DB_STATUS_HARD_ERROR;
 	  }
 	res |= 2;
@@ -261,6 +295,9 @@ withdraw_transaction (void *cls,
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
+#if OPTIMISTIC_SIGN
+          GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
       res |= 1;
@@ -277,6 +314,9 @@ withdraw_transaction (void *cls,
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
+#if OPTIMISTIC_SIGN
+          GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
 
@@ -290,6 +330,9 @@ withdraw_transaction (void *cls,
     GNUNET_break (0);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						     TALER_EC_WITHDRAW_RESERVE_WITHOUT_WIRE_TRANSFER);
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 == (res & 2))
@@ -308,6 +351,9 @@ withdraw_transaction (void *cls,
     GNUNET_break (0); /* database inconsistent */
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						     TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE);
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -319,12 +365,16 @@ withdraw_transaction (void *cls,
 							  rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
+#if OPTIMISTIC_SIGN
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rh);
 
   /* Balance is good, sign the coin! */
+#if !OPTIMISTIC_SIGN
   denom_sig.rsa_signature
     = GNUNET_CRYPTO_rsa_sign_blinded (wc->dki->denom_priv.rsa_private_key,
                                       wc->blinded_msg,
@@ -337,6 +387,7 @@ withdraw_transaction (void *cls,
 						  "Internal error");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+#endif
   TALER_amount_ntoh (&fee_withdraw,
                      &wc->dki->issue.properties.fee_withdraw);
   wc->collectable.sig = denom_sig;
@@ -481,6 +532,23 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
 						 TALER_EC_WITHDRAW_RESERVE_SIGNATURE_INVALID,
                                                  "reserve_sig");
   }
+
+#if OPTIMISTIC_SIGN
+  /* Sign before transaction! */
+  wc.collectable.sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_sign_blinded (wc.dki->denom_priv.rsa_private_key,
+                                      wc.blinded_msg,
+                                      wc.blinded_msg_len);
+  if (NULL == wc.collectable.sig.rsa_signature)
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    TEH_KS_release (wc.key_state);
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_WITHDRAW_SIGNATURE_FAILED,
+                                              "Internal error");
+  }
+#endif
 
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
