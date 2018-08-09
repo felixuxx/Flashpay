@@ -370,6 +370,7 @@ fakebank_transfer_traits (void *cls,
                                   index);
 }
 
+
 /**
  * Create fakebank_transfer command, the subject line will be
  * derived from a randomly created reserve priv.  Note that that
@@ -429,6 +430,7 @@ TALER_TESTING_cmd_fakebank_transfer
   cmd.traits = &fakebank_transfer_traits;
   return cmd;
 }
+
 
 /**
  * Create "fakebank transfer" CMD, letting the caller specifying
