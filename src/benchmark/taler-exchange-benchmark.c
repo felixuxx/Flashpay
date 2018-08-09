@@ -327,7 +327,6 @@ run (void *cls,
   struct TALER_Amount total_reserve_amount;
   struct TALER_Amount withdraw_fee;
   char *withdraw_fee_str;
-
   struct TALER_TESTING_Command all_commands
     [1 + /* Withdraw block */
      howmany_coins + /* All units */
@@ -353,19 +352,14 @@ run (void *cls,
     TALER_amount_add (&total_reserve_amount,
                       &total_reserve_amount,
                       &withdraw_fee);
-
   struct TALER_TESTING_Command make_reserve[] = {
-
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve",
        TALER_amount_to_string (&total_reserve_amount)),
-
     TALER_TESTING_cmd_exec_wirewatch
       ("wirewatch",
        cfg_filename),
-
     TALER_TESTING_cmd_end ()
-
   };
 
   all_commands[0] = TALER_TESTING_cmd_batch ("make-reserve",
@@ -379,18 +373,15 @@ run (void *cls,
     GNUNET_asprintf (&withdraw_label,
                      "withdraw-%u",
                      i);
-
     GNUNET_asprintf (&order_enc,
                      "{\"nonce\": %u}",
                      i);
-
     unit[0] = TALER_TESTING_cmd_withdraw_amount
       (withdraw_label,
        is->exchange,
        "create-reserve",
        AMOUNT_5,
        MHD_HTTP_OK);
-
     unit[1] = TALER_TESTING_cmd_deposit
       ("deposit",
        is->exchange,
@@ -424,22 +415,20 @@ run (void *cls,
          AMOUNT_4,
          withdraw_label,
          MHD_HTTP_OK);
-
       unit[3] = TALER_TESTING_cmd_refresh_reveal
         (reveal_label,
          is->exchange,
          melt_label,
          MHD_HTTP_OK);
-
       unit[4] = TALER_TESTING_cmd_refresh_link
         ("refresh-link",
          is->exchange,
          reveal_label,
          MHD_HTTP_OK);
-
       unit[5] = TALER_TESTING_cmd_end ();
     }
-    else unit[2] = TALER_TESTING_cmd_end ();
+    else
+      unit[2] = TALER_TESTING_cmd_end ();
 
     all_commands[1 + i] = TALER_TESTING_cmd_batch ("unit",
                                                    unit);
@@ -473,17 +462,37 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   int result;
   pid_t cpids[howmany_clients];
   int wstatus;
+  struct GNUNET_OS_Process *exchanged;
 
+  exchanged = GNUNET_OS_start_process (GNUNET_NO,
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-exchange-httpd",
+                                       "taler-exchange-httpd",
+                                       "-c", config_file,
+                                       "-i",
+                                       NULL);
+  if (NULL == exchanged)
+    return GNUNET_SYSERR;
+  if (0 != TALER_TESTING_wait_exchange_ready (exchange_url))
+  {
+    GNUNET_OS_process_kill (exchanged,
+                            SIGTERM);
+    GNUNET_OS_process_wait (exchanged);
+    GNUNET_OS_process_destroy (exchanged);
+    return 77;
+  }
   result = GNUNET_OK;
   for (unsigned int i=0;i<howmany_clients;i++)
   {
     if (0 == (cpids[i] = fork ()))
     {
       /* I am the child, do the work! */
-      result = TALER_TESTING_setup_with_exchange
+      result = TALER_TESTING_setup
         (run,
          NULL,
-         cfg_filename);
+         cfg_filename,
+         exchanged);
       if (GNUNET_OK == result)
         exit (0);
       else
@@ -509,6 +518,12 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
          (0 != WEXITSTATUS (wstatus)) )
       result = GNUNET_SYSERR;
   }
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (exchanged,
+                                        SIGTERM));
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_OS_process_wait (exchanged));
+  GNUNET_OS_process_destroy (exchanged);
   return result;
 }
 

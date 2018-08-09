@@ -338,6 +338,47 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Wait for the exchange to have started. Waits for at
+ * most 10s, after that returns 77 to indicate an error.
+ *
+ * @param base_url what URL should we expect the exchange
+ *        to be running at
+ * @return 0 on success
+ */
+int
+TALER_TESTING_wait_exchange_ready (const char *base_url)
+{
+  char *wget_cmd;
+  unsigned int iter;
+
+  GNUNET_asprintf (&wget_cmd,
+                   "wget -q -t 1 -T 1 %skeys"
+                   " -o /dev/null -O /dev/null",
+                   base_url); // make sure ends with '/'
+  /* give child time to start and bind against the socket */
+  fprintf (stderr,
+           "Waiting for `taler-exchange-httpd' to be ready\n");
+  iter = 0;
+  do
+    {
+      if (10 == iter)
+      {
+	fprintf (stderr,
+		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");
+        GNUNET_free (wget_cmd);
+	return 77;
+      }
+      fprintf (stderr, ".\n");
+      sleep (1);
+      iter++;
+    }
+  while (0 != system (wget_cmd));
+  GNUNET_free (wget_cmd);
+  return 0;
+}
+
+
+/**
  * Initialize scheduler loop and curl context for the testcase
  * including starting and stopping the exchange using the given
  * configuration file.
@@ -356,12 +397,10 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                    const char *config_filename)
 {
   int result;
-  unsigned int iter;
   struct GNUNET_OS_Process *exchanged;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long port;
   char *serve;
-  char *wget_cmd;
   char *base_url;
 
   cfg = GNUNET_CONFIGURATION_create ();
@@ -397,7 +436,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
       GNUNET_CONFIGURATION_destroy (cfg);
       return GNUNET_NO;
     }
-  
+
     if (GNUNET_OK !=
         GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
   				     (uint16_t) port))
@@ -431,33 +470,8 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  GNUNET_asprintf (&wget_cmd,
-                   "wget -q -t 1 -T 1 %skeys"
-                   " -o /dev/null -O /dev/null",
-                   base_url); // make sure ends with '/'
-
-  /* give child time to start and bind against the socket */
-  fprintf (stderr,
-           "Waiting for `taler-exchange-httpd' to be ready\n");
-  iter = 0;
-  do
-    {
-      if (10 == iter)
-      {
-	fprintf (stderr,
-		 "Failed to launch `taler-exchange-httpd'"
-                 " (or `wget')\n");
-	GNUNET_OS_process_kill (exchanged,
-				SIGTERM);
-	GNUNET_OS_process_wait (exchanged);
-	GNUNET_OS_process_destroy (exchanged);
-	return 77;
-      }
-      fprintf (stderr, ".\n");
-      sleep (1);
-      iter++;
-    }
-  while (0 != system (wget_cmd));
+  if (0 != TALER_TESTING_wait_exchange_ready (base_url))
+    return 77;
 
   /* NOTE: this blocks.  */
   result = TALER_TESTING_setup (main_cb,

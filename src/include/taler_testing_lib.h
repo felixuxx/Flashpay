@@ -114,6 +114,18 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 
 
 /**
+ * Wait for the exchange to have started. Waits for at
+ * most 10s, after that returns 77 to indicate an error.
+ *
+ * @param base_url what URL should we expect the exchange
+ *        to be running at
+ * @return 0 on success
+ */
+int
+TALER_TESTING_wait_exchange_ready (const char *base_url);
+
+
+/**
  * Remove files from previous runs
  */
 void
@@ -1241,7 +1253,7 @@ TALER_TESTING_get_trait_process
 
 /**
  * Offer location where a command stores a pointer to a process.
- * 
+ *
  * @param index offered location index number, in case there are
  *        multiple on offer.
  * @param processp process location to offer.
@@ -1501,7 +1513,7 @@ TALER_TESTING_get_trait_contract_terms
  *
  * @param index contract terms index number.
  * @param contract_terms contract terms to offer.
- * 
+ *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

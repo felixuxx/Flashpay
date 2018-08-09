@@ -78,7 +78,7 @@ TALER_TESTING_interpreter_lookup_command
 
       for (unsigned int i=0;
            NULL != (cmd = &batch[i])->label;
-           i++) 
+           i++)
       {
         if ( (NULL != cmd->label) &&
             (0 == strcmp (cmd->label,
@@ -181,7 +181,7 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 
     GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_cmd
       (cmd, CURRENT_BATCH_SUBCMD_INDEX, &sub_cmd));
-      
+
       if (NULL == sub_cmd->label)
         is->ip++;
   }
@@ -520,7 +520,7 @@ sighandler_child_death ()
  * @param keys the exchange's keys.
  * @param compat protocol compatibility information.
  */
-void
+static void
 cert_cb (void *cls,
          const struct TALER_EXCHANGE_Keys *keys,
 	 enum TALER_EXCHANGE_VersionCompatibility compat)
@@ -561,6 +561,7 @@ cert_cb (void *cls,
   GNUNET_SCHEDULER_add_now (&interpreter_run,
                             main_ctx->is);
 }
+
 
 /**
  * Initialize scheduler loop and curl context for the testcase,
