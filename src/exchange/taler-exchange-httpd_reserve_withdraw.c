@@ -171,14 +171,10 @@ withdraw_transaction (void *cls,
   int res;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_DenominationSignature denom_sig;
-  struct GNUNET_HashCode h_blind;
 
-  GNUNET_CRYPTO_hash (wc->blinded_msg,
-                      wc->blinded_msg_len,
-                      &h_blind);
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
 				      session,
-				      &h_blind,
+				      &wc->wsrd.h_coin_envelope,
 				      &wc->collectable);
   if (0 > qs)
   {
@@ -348,7 +344,7 @@ withdraw_transaction (void *cls,
   wc->collectable.amount_with_fee = wc->amount_required;
   wc->collectable.withdraw_fee = fee_withdraw;
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
-  wc->collectable.h_coin_envelope = h_blind;
+  wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   wc->collectable.reserve_sig = wc->signature;
   qs = TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
 					 session,
