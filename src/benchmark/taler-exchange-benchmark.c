@@ -68,7 +68,7 @@ enum BenchmarkError {
 
 #define FIRST_INSTRUCTION -1
 
-#define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
+#define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
    TALER_TESTING_cmd_fakebank_transfer (label, amount, \
      exchange_bank_account.bank_base_url, \
      USER_ACCOUNT_NUMBER, \
@@ -576,7 +576,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     waitpid (cpids[i],
              &wstatus,
              0);
-    if ( (!WIFEXITED (wstatus)) ||
+    if ( (! WIFEXITED (wstatus)) ||
          (0 != WEXITSTATUS (wstatus)) )
     {
       GNUNET_break (0);
