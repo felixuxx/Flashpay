@@ -682,7 +682,8 @@ postgres_prepare (PGconn *db_conn)
                             ",execution_date"
                             ",sender_account_details"
                             " FROM reserves_in"
-                            " WHERE reserve_pub=$1;",
+                            " WHERE reserve_pub=$1"
+                            " FOR UPDATE;",
                             1),
     /* Used in #postgres_insert_withdraw_info() to store
        the signature of a blinded coin with the blinded coin's
@@ -725,7 +726,8 @@ postgres_prepare (PGconn *db_conn)
                             " FROM reserves_out"
                             "    JOIN denominations denom"
                             "      USING (denom_pub_hash)"
-                            " WHERE h_blind_ev=$1;",
+                            " WHERE h_blind_ev=$1"
+                            " FOR UPDATE;",
                             1),
     /* Used during #postgres_get_reserve_history() to
        obtain all of the /reserve/withdraw operations that
@@ -747,7 +749,8 @@ postgres_prepare (PGconn *db_conn)
                             " FROM reserves_out"
                             "    JOIN denominations denom"
                             "      USING (denom_pub_hash)"
-                            " WHERE reserve_pub=$1;",
+                            " WHERE reserve_pub=$1"
+                            " FOR UPDATE",
                             1),
     /* Used in #postgres_select_reserves_out_above_serial_id() */
     GNUNET_PQ_make_prepare ("audit_get_reserves_out_incr",
@@ -1498,7 +1501,8 @@ postgres_prepare (PGconn *db_conn)
                             "      USING (denom_pub_hash)"
                             "    JOIN reserves_out ro"
                             "      USING (h_blind_ev)"
-                            " WHERE ro.reserve_pub=$1;",
+                            " WHERE ro.reserve_pub=$1"
+                            " FOR UPDATE;",
                             1),
     /* Used in #postgres_get_reserve_history() */
     GNUNET_PQ_make_prepare ("close_by_reserve",
@@ -1513,7 +1517,8 @@ postgres_prepare (PGconn *db_conn)
                             ",receiver_account"
                             ",wtid"
                             " FROM reserves_close"
-                            " WHERE reserve_pub=$1;",
+                            " WHERE reserve_pub=$1"
+                            " FOR UPDATE",
                             1),
     /* Used in #postgres_get_expired_reserves() */
     GNUNET_PQ_make_prepare ("get_expired_reserves",
@@ -6706,7 +6711,7 @@ sum_kyc_events (void *cls,
 
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("amount", &tmp),
-    GNUNET_PQ_result_spec_end  
+    GNUNET_PQ_result_spec_end
   };
 
   for (unsigned int i = 0; i < ntuples; i++)
@@ -6725,7 +6730,7 @@ sum_kyc_events (void *cls,
                                             &tmp));
 
   }
-  
+
 }
 
 
@@ -6780,16 +6785,16 @@ postgres_get_kyc_status (void *cls,
                          const char *payto_url,
                          TALER_EXCHANGEDB_KycStatusCallback ksc,
                          void *ksc_cls)
-{ 
+{
   uint8_t status;
-  uint64_t merchant_serial_id; 
+  uint64_t merchant_serial_id;
   enum GNUNET_DB_QueryStatus qs;
   char *general_id;
 
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_url),
     GNUNET_PQ_query_param_end
-  }; 
+  };
 
 
   struct GNUNET_PQ_ResultSpec rs[] = {
