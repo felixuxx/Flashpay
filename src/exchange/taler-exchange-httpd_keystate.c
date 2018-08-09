@@ -1841,8 +1841,8 @@ TEH_KS_loop (void)
 
   if (0 != pipe (reload_pipe))
   {
-    fprintf (stderr,
-             "Failed to create pipe.\n");
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "pipe");
     return GNUNET_SYSERR;
   }
   sigusr1 = GNUNET_SIGNAL_handler_install (SIGUSR1,
@@ -1915,17 +1915,26 @@ read_again:
       break;
     }
   }
-  if (NULL != internal_key_state)
-  {
-    TEH_KS_release (internal_key_state);
-    internal_key_state = NULL;
-  }
   GNUNET_SIGNAL_handler_uninstall (sigusr1);
   GNUNET_SIGNAL_handler_uninstall (sigterm);
   GNUNET_SIGNAL_handler_uninstall (sigint);
   GNUNET_SIGNAL_handler_uninstall (sighup);
   GNUNET_SIGNAL_handler_uninstall (sigchld);
   return ret;
+}
+
+
+/**
+ * Finally release #internal_key_state.
+ */
+void
+TEH_KS_free ()
+{
+  if (NULL != internal_key_state)
+  {
+    TEH_KS_release (internal_key_state);
+    internal_key_state = NULL;
+  }
 }
 
 

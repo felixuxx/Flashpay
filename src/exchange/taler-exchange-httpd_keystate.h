@@ -78,6 +78,13 @@ TEH_KS_release_ (const char *location,
 
 
 /**
+ * Finally, release #internal_key_state.
+ */
+void
+TEH_KS_free (void);
+
+
+/**
  * Denomination key lookups can be for signing of fresh coins
  * or to validate signatures on existing coins.  As the validity
  * periods for a key differ, the caller must specify which

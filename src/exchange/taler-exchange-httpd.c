@@ -1046,6 +1046,7 @@ main (int argc,
     MHD_stop_daemon (mhd);
     break;
   }
+  TEH_KS_free ();
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
   TEH_VALIDATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
