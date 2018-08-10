@@ -351,10 +351,6 @@ run (void *cls,
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve",
        TALER_amount_to_string (&total_reserve_amount)),
-    /* FIXME: remove wirewatch here! */
-    TALER_TESTING_cmd_exec_wirewatch
-      ("wirewatch",
-       cfg_filename),
     TALER_TESTING_cmd_end ()
   };
 
@@ -506,26 +502,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   pid_t fakebank;
   int wstatus;
   struct GNUNET_OS_Process *exchanged;
+  struct GNUNET_OS_Process *wirewatch;
 
-  /* start exchange */
-  exchanged = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
-                                       NULL, NULL, NULL,
-                                       "taler-exchange-httpd",
-                                       "taler-exchange-httpd",
-                                       "-c", config_file,
-                                       "-i",
-                                       NULL);
-  if (NULL == exchanged)
-    return GNUNET_SYSERR;
-  if (0 != TALER_TESTING_wait_exchange_ready (exchange_url))
-  {
-    GNUNET_OS_process_kill (exchanged,
-                            SIGTERM);
-    GNUNET_OS_process_wait (exchanged);
-    GNUNET_OS_process_destroy (exchanged);
-    return 77;
-  }
   /* start fakebank */
   fakebank = fork ();
   if (0 == fakebank)
@@ -538,12 +516,62 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   {
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                          "fork");
-    result = GNUNET_SYSERR;
+    return GNUNET_SYSERR;
+  }
+
+  /* start exchange */
+  exchanged = GNUNET_OS_start_process (GNUNET_NO,
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-exchange-httpd",
+                                       "taler-exchange-httpd",
+                                       "-c", config_file,
+                                       "-i",
+                                       NULL);
+  if (NULL == exchanged)
+  {
+    kill (fakebank,
+	  SIGTERM);
+    waitpid (fakebank,
+	     &wstatus,
+	     0);
+    return 77;
+  }
+  /* start exchange */
+  wirewatch = GNUNET_OS_start_process (GNUNET_NO,
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-exchange-wirewatch",
+                                       "taler-exchange-wirewatch",
+                                       "-c", config_file,
+                                       NULL);
+  if (NULL == wirewatch)
+  {
+    GNUNET_OS_process_kill (exchanged,
+                            SIGTERM);
+    kill (fakebank,
+	  SIGTERM);
+    GNUNET_OS_process_wait (exchanged);
+    GNUNET_OS_process_destroy (exchanged);
+    waitpid (fakebank,
+	     &wstatus,
+	     0);
+    return 77;
+  }
+  if (0 != TALER_TESTING_wait_exchange_ready (exchange_url))
+  {
+    GNUNET_OS_process_kill (exchanged,
+                            SIGTERM);
+    kill (fakebank,
+	  SIGTERM);
+    GNUNET_OS_process_wait (exchanged);
+    GNUNET_OS_process_destroy (exchanged);
+    waitpid (fakebank,
+	     &wstatus,
+	     0);
     return 77;
   }
   sleep (1); /* make sure fakebank process is ready before continuing */
-
-  /* FIXME: start wirewatch */
 
   start_time = GNUNET_TIME_absolute_get ();
   result = GNUNET_OK;
@@ -585,8 +613,21 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       result = GNUNET_SYSERR;
     }
   }
-  /* FIXME: stop wirewatch */
 
+  /* stop wirewatch */
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (wirewatch,
+                                        SIGTERM));
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_OS_process_wait (wirewatch));
+  GNUNET_OS_process_destroy (wirewatch);
+  /* stop exchange */
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (exchanged,
+                                        SIGTERM));
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_OS_process_wait (exchanged));
+  GNUNET_OS_process_destroy (exchanged);
   /* stop fakebank */
   if (0 != kill (fakebank,
                  SIGTERM))
@@ -601,13 +642,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     GNUNET_break (0);
     result = GNUNET_SYSERR;
   }
-  /* stop exchange */
-  GNUNET_break (0 ==
-                GNUNET_OS_process_kill (exchanged,
-                                        SIGTERM));
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_OS_process_wait (exchanged));
-  GNUNET_OS_process_destroy (exchanged);
   return result;
 }
 
