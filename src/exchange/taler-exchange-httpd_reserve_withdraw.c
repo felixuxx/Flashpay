@@ -157,6 +157,16 @@ struct WithdrawContext
  * IF it returns the soft error code, the function MAY be called again
  * to retry and MUST not queue a MHD response.
  *
+ * Note that "wc->collectable.sig" may already be set before entering
+ * this function, either because OPTIMISTIC_SIGN was used and we signed
+ * before entering the transaction, or because this function is run
+ * twice (!) by #TEH_DB_run_transaction() and the first time created
+ * the signature and then failed to commit.  Furthermore, we may get
+ * a 2nd correct signature briefly if "get_withdraw_info" suceeds and
+ * finds one in the DB.  To avoid signing twice, the function may
+ * return a valid signature in "wc->collectable.sig" even if it failed.
+ * The caller must thus free the signature in either case.
+ *
  * @param cls a `struct WithdrawContext *`
  * @param connection MHD request which triggered the transaction
  * @param session database session to use
@@ -196,9 +206,7 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
-#if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
+    wc->collectable.sig = denom_sig;
     return qs;
   }
 
@@ -211,6 +219,7 @@ withdraw_transaction (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
   GNUNET_assert (0 == qs);
+  wc->collectable.sig = denom_sig;
 
   /* Check if balance is sufficient */
   qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
@@ -222,9 +231,6 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
-#if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
     return qs;
   }
   if (NULL == rh)
@@ -232,9 +238,6 @@ withdraw_transaction (void *cls,
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
 					       TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
 					       "reserve_pub");
-#if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -257,9 +260,6 @@ withdraw_transaction (void *cls,
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
-#if OPTIMISTIC_SIGN
-          GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
       res |= 1;
@@ -276,9 +276,6 @@ withdraw_transaction (void *cls,
 	  {
 	    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							     TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
-#if OPTIMISTIC_SIGN
-            GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
 	    return GNUNET_DB_STATUS_HARD_ERROR;
 	  }
 	res |= 2;
@@ -295,9 +292,6 @@ withdraw_transaction (void *cls,
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
-#if OPTIMISTIC_SIGN
-          GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
       res |= 1;
@@ -314,9 +308,6 @@ withdraw_transaction (void *cls,
         {
           *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 							   TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
-#if OPTIMISTIC_SIGN
-          GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
 	  return GNUNET_DB_STATUS_HARD_ERROR;
         }
 
@@ -330,9 +321,6 @@ withdraw_transaction (void *cls,
     GNUNET_break (0);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						     TALER_EC_WITHDRAW_RESERVE_WITHOUT_WIRE_TRANSFER);
-#if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 == (res & 2))
@@ -351,9 +339,6 @@ withdraw_transaction (void *cls,
     GNUNET_break (0); /* database inconsistent */
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						     TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE);
-#if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -365,9 +350,6 @@ withdraw_transaction (void *cls,
 							  rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
-#if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-#endif
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
@@ -375,22 +357,24 @@ withdraw_transaction (void *cls,
 
   /* Balance is good, sign the coin! */
 #if !OPTIMISTIC_SIGN
-  denom_sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_blinded (wc->dki->denom_priv.rsa_private_key,
-                                      wc->blinded_msg,
-                                      wc->blinded_msg_len);
-  if (NULL == denom_sig.rsa_signature)
+  if (NULL == wc->collectable.sig.rsa_signature)
   {
-    GNUNET_break (0);
-    *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
-						  TALER_EC_WITHDRAW_SIGNATURE_FAILED,
-						  "Internal error");
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    wc->collectable.sig.rsa_signature
+      = GNUNET_CRYPTO_rsa_sign_blinded (wc->dki->denom_priv.rsa_private_key,
+                                        wc->blinded_msg,
+                                        wc->blinded_msg_len);
+    if (NULL == wc->collectable.sig.rsa_signature)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
+                                                    TALER_EC_WITHDRAW_SIGNATURE_FAILED,
+                                                    "Internal error");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
   }
 #endif
   TALER_amount_ntoh (&fee_withdraw,
                      &wc->dki->issue.properties.fee_withdraw);
-  wc->collectable.sig = denom_sig;
   wc->collectable.denom_pub = wc->denomination_pub;
   wc->collectable.amount_with_fee = wc->amount_required;
   wc->collectable.withdraw_fee = fee_withdraw;
@@ -403,7 +387,6 @@ withdraw_transaction (void *cls,
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						       TALER_EC_WITHDRAW_DB_STORE_ERROR);
@@ -558,6 +541,10 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
 			      &wc))
   {
     TEH_KS_release (wc.key_state);
+    /* Even if #withdraw_transaction() failed, it may have created a signature
+       (or we might have done it optimistically above). */
+    if (NULL != wc.collectable.sig.rsa_signature)
+      GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
     GNUNET_JSON_parse_free (spec);
     return mhd_ret;
   }
