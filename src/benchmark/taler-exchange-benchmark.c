@@ -428,8 +428,9 @@ run (void *cls,
                                                    unit);
   }
   all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
-  TALER_TESTING_run (is,
-                     all_commands);
+  TALER_TESTING_run2 (is,
+                      all_commands,
+                      GNUNET_TIME_UNIT_FOREVER_REL); /* no timeout */
   result = 1;
 }
 
@@ -586,6 +587,9 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
          NULL,
          cfg_filename,
          exchanged);
+      if (GNUNET_OK != result)
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failure in child process test suite!\n");
       if (GNUNET_OK == result)
         exit (0);
       else
