@@ -420,6 +420,20 @@ TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands);
 
 
+/**
+ * Run the testsuite.  Note, CMDs are copied into
+ * the interpreter state because they are _usually_
+ * defined into the "run" method that returns after
+ * having scheduled the test interpreter.
+ *
+ * @param is the interpreter state
+ * @param commands the list of command to execute
+ * @param timeout how long to wait
+ */
+void
+TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
+                    struct TALER_TESTING_Command *commands,
+                    struct GNUNET_TIME_Relative timeout);
 
 
 /**

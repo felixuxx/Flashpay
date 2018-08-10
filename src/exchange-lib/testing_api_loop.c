@@ -204,9 +204,7 @@ TALER_TESTING_interpreter_fail
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Failed at command `%s'\n",
               cmd->label);
-
   is->result = GNUNET_SYSERR;
-  // this cleans up too.
   GNUNET_SCHEDULER_shutdown ();
 }
 
@@ -332,6 +330,8 @@ do_timeout (void *cls)
   struct TALER_TESTING_Interpreter *is = cls;
 
   is->timeout_task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Terminating test due to timeout\n");
   GNUNET_SCHEDULER_shutdown ();
 }
 
@@ -437,13 +437,14 @@ TALER_TESTING_wait_for_sigchld
  * defined into the "run" method that returns after
  * having scheduled the test interpreter.
  *
- *
  * @param is the interpreter state
  * @param commands the list of command to execute
+ * @param timeout how long to wait
  */
 void
-TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
-                   struct TALER_TESTING_Command *commands)
+TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
+                    struct TALER_TESTING_Command *commands,
+                    struct GNUNET_TIME_Relative timeout)
 {
   unsigned int i;
   /* get the number of commands */
@@ -455,10 +456,32 @@ TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
           commands,
           sizeof (struct TALER_TESTING_Command) * i);
   is->timeout_task = GNUNET_SCHEDULER_add_delayed
-    (GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 300),
-     &do_timeout, is);
+    (timeout,
+     &do_timeout,
+     is);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
+}
+
+
+/**
+ * Run the testsuite.  Note, CMDs are copied into
+ * the interpreter state because they are _usually_
+ * defined into the "run" method that returns after
+ * having scheduled the test interpreter.
+ *
+ *
+ * @param is the interpreter state
+ * @param commands the list of command to execute
+ */
+void
+TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
+                   struct TALER_TESTING_Command *commands)
+{
+  TALER_TESTING_run2 (is,
+                      commands,
+                      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES,
+                                                     5));
 }
 
 
@@ -529,15 +552,15 @@ cert_cb (void *cls,
 
   if (NULL == keys)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Got NULL response for /keys\n");
-
   }
   else
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Got %d DK from /keys\n",
                 keys->num_denom_keys);
-
+  }
   main_ctx->is->key_generation++;
   main_ctx->is->keys = keys;
 
@@ -596,8 +619,9 @@ main_wrapper_exchange_connect (void *cls)
   char *exchange_url;
 
   cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK != GNUNET_CONFIGURATION_load
-    (cfg, main_ctx->config_filename))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 main_ctx->config_filename))
     return;
 
   if (GNUNET_OK !=
@@ -612,11 +636,11 @@ main_wrapper_exchange_connect (void *cls)
     GNUNET_CONFIGURATION_destroy (cfg);
     return;
   }
-  GNUNET_assert ( NULL !=
-    (is->exchange = TALER_EXCHANGE_connect (is->ctx,
-                                            exchange_url,
-                                            cert_cb,
-                                            main_ctx)) );
+  GNUNET_assert (NULL !=
+                 (is->exchange = TALER_EXCHANGE_connect (is->ctx,
+                                                         exchange_url,
+                                                         &cert_cb,
+                                                         main_ctx)));
   GNUNET_free (exchange_url);
   GNUNET_CONFIGURATION_destroy (cfg);
 }
@@ -635,9 +659,8 @@ main_wrapper_exchange_connect (void *cls)
  *        signal to it, for example to let it know to reload the
  *        key state.. if NULL, the interpreter will run without
  *        trying to connect to the exchange first.
- *
- * @return GNUNET_OK if all is okay, != GNUNET_OK otherwise.
- *         non-GNUNET_OK codes are GNUNET_SYSERR most of the
+ * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         times.
  */
 int
@@ -657,7 +680,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     .config_filename = config_filename
   };
   struct GNUNET_SIGNAL_Context *shc_chld;
-  /* zero-ing the state */
+
   memset (&is,
           0,
           sizeof (is));
@@ -669,7 +692,8 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     (GNUNET_SIGCHLD, &sighandler_child_death);
 
   is.ctx = GNUNET_CURL_init
-    (&GNUNET_CURL_gnunet_scheduler_reschedule, &is.rc);
+    (&GNUNET_CURL_gnunet_scheduler_reschedule,
+     &is.rc);
   GNUNET_assert (NULL != is.ctx);
   is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
 
