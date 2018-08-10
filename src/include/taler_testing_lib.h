@@ -737,6 +737,18 @@ TALER_TESTING_cmd_withdraw_denomination
 
 
 /**
+ * Modify a withdraw command to enable retries when the
+ * reserve is not yet full or we get other transient
+ * errors from the exchange.
+ *
+ * @param cmd a withdraw command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd);
+
+
+/**
  * Create a "wire" command.
  *
  * @param label the command label.

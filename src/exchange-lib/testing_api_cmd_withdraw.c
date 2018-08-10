@@ -24,6 +24,7 @@
  */
 #include "platform.h"
 #include "taler_json_lib.h"
+#include <microhttpd.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -88,11 +89,58 @@ struct WithdrawState
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
 
   /**
+   * Task scheduled to try later.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * How long do we wait until we retry?
+   */
+  struct GNUNET_TIME_Relative backoff;
+  
+  /**
    * Expected HTTP response code to the request.
    */
   unsigned int expected_response_code;
 
+  /**
+   * Was this command modified via 
+   * #TALER_TESTING_cmd_withdraw_with_retry to 
+   * enable retries?
+   */
+  int do_retry;
+  
 };
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the commaind being run.
+ * @param is interpreter state.
+ */
+static void
+withdraw_run (void *cls,
+              const struct TALER_TESTING_Command *cmd,
+              struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Task scheduled to re-try #withdraw_run.
+ *
+ * @param cls a `struct WithdrawState`
+ */
+static void
+do_retry (void *cls)
+{
+  struct WithdrawState *ws = cls;
+
+  ws->retry_task = NULL;
+  withdraw_run (ws,
+		NULL,
+		ws->is);
+}
 
 
 /**
@@ -119,6 +167,24 @@ reserve_withdraw_cb (void *cls,
   ws->wsh = NULL;
   if (ws->expected_response_code != http_status)
   {
+    if (GNUNET_YES == ws->do_retry)
+    {
+      if ( (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+	   (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == ec) ||
+	   (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == ec) ||
+	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      {
+	/* on DB conflicts, do not use backoff */
+	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+	  ws->backoff = GNUNET_TIME_UNIT_ZERO;
+	else
+	  ws->backoff = GNUNET_TIME_STD_BACKOFF (ws->backoff);
+	ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
+						       &do_retry,
+						       ws);
+	return;
+      }
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
@@ -164,7 +230,7 @@ reserve_withdraw_cb (void *cls,
  * Run the command.
  *
  * @param cls closure.
- * @param cmd the commaind being run.
+ * @param cmd the command being run, NULL when called from #do_retry()
  * @param is interpreter state.
  */
 static void
@@ -176,6 +242,7 @@ withdraw_run (void *cls,
   struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
 
+  (void) cmd;
   create_reserve = TALER_TESTING_interpreter_lookup_command
     (is, ws->reserve_reference);
   if (NULL == create_reserve)
@@ -231,6 +298,11 @@ withdraw_cleanup (void *cls,
                 cmd->label);
     TALER_EXCHANGE_reserve_withdraw_cancel (ws->wsh);
     ws->wsh = NULL;
+  }
+  if (NULL != ws->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (ws->retry_task);
+    ws->retry_task = NULL;
   }
   if (NULL != ws->sig.rsa_signature)
   {
@@ -412,5 +484,26 @@ TALER_TESTING_cmd_withdraw_denomination
   cmd.traits = &withdraw_traits;
   return cmd;
 }
+
+
+/**
+ * Modify a withdraw command to enable retries when the
+ * reserve is not yet full or we get other transient
+ * errors from the exchange.
+ *
+ * @param cmd a withdraw command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd)
+{
+  struct WithdrawState *ws;
+  
+  GNUNET_assert (&withdraw_run == cmd.run);
+  ws = cmd.cls;
+  ws->do_retry = GNUNET_YES;
+  return cmd;
+}
+  
 
 /* end of testing_api_cmd_withdraw.c */
