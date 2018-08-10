@@ -372,12 +372,14 @@ run (void *cls,
     GNUNET_asprintf (&order_enc,
                      "{\"nonce\": %u}",
                      i);
-    unit[0] = TALER_TESTING_cmd_withdraw_amount
-      (withdraw_label,
-       is->exchange,
-       "create-reserve",
-       AMOUNT_5,
-       MHD_HTTP_OK);
+    unit[0] =
+      TALER_TESTING_cmd_withdraw_with_retry
+      (TALER_TESTING_cmd_withdraw_amount
+       (withdraw_label,
+	is->exchange,
+	"create-reserve",
+	AMOUNT_5,
+	MHD_HTTP_OK));
     unit[1] = TALER_TESTING_cmd_deposit
       ("deposit",
        is->exchange,
