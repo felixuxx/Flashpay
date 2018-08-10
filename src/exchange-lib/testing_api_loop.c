@@ -49,18 +49,17 @@ TALER_TESTING_interpreter_lookup_command
   (struct TALER_TESTING_Interpreter *is,
    const char *label)
 {
-  const struct TALER_TESTING_Command *cmd;
-
   if (NULL == label)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Attempt to lookup command for empty label\n");
     return NULL;
   }
-  for (unsigned int i=0;
-       NULL != (cmd = &is->commands[i])->label;
-       i++)
+  /* Search backwards as we most likely reference recent commands */
+  for (int i=is->ip; 0 >= i; i--)
   {
+    const struct TALER_TESTING_Command *cmd = &is->commands[i];
+
     /* Give precedence to top-level commands.  */
     if ( (NULL != cmd->label) &&
          (0 == strcmp (cmd->label,
@@ -69,20 +68,20 @@ TALER_TESTING_interpreter_lookup_command
 
     if (GNUNET_YES == cmd->meta)
     {
-      #define BATCH_INDEX 1
+#define BATCH_INDEX 1
       struct TALER_TESTING_Command *batch;
 
-      GNUNET_assert
-        (GNUNET_OK == TALER_TESTING_get_trait_cmd
-          (cmd, BATCH_INDEX, &batch));
-
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_TESTING_get_trait_cmd (cmd,
+                                                  BATCH_INDEX,
+                                                  &batch));
       for (unsigned int i=0;
            NULL != (cmd = &batch[i])->label;
            i++)
       {
         if ( (NULL != cmd->label) &&
-            (0 == strcmp (cmd->label,
-                          label)) )
+             (0 == strcmp (cmd->label,
+                           label)) )
           return cmd;
       }
     }
@@ -169,11 +168,12 @@ interpreter_run (void *cls);
 void
 TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 {
+  static unsigned long long ipc;
+  static struct GNUNET_TIME_Absolute last_report;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   if (GNUNET_SYSERR == is->result)
     return; /* ignore, we already failed! */
-
   if (GNUNET_YES == cmd->meta)
   {
     #define CURRENT_BATCH_SUBCMD_INDEX 0
@@ -187,8 +187,18 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
   }
   else
     is->ip++;
-
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
+  if (0 == (ipc % 1000))
+  {
+    if (0 != ipc)
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  "Interpreter executed 1000 instructions in %s\n",
+                  GNUNET_STRINGS_relative_time_to_string (GNUNET_TIME_absolute_get_duration (last_report),
+                                                          GNUNET_YES));
+    last_report = GNUNET_TIME_absolute_get ();
+  }
+  ipc++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
