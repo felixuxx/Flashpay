@@ -30,7 +30,7 @@
  * How often should we retry a transaction before giving up
  * (for transactions resulting in serialization/dead locks only).
  */
-#define MAX_TRANSACTION_COMMIT_RETRIES 3
+#define MAX_TRANSACTION_COMMIT_RETRIES 2
 
 
 /**
@@ -108,8 +108,9 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     if (0 <= qs)
       return GNUNET_OK;
   }
-  TALER_LOG_WARNING ("Transaction commit failed %u times\n",
-		     MAX_TRANSACTION_COMMIT_RETRIES);
+  TALER_LOG_ERROR ("Transaction `%s' commit failed %u times\n",
+                   name,
+                   MAX_TRANSACTION_COMMIT_RETRIES);
   if (NULL != mhd_ret)
     *mhd_ret = TEH_RESPONSE_reply_commit_error (connection,
 						TALER_EC_DB_COMMIT_FAILED_ON_RETRY);

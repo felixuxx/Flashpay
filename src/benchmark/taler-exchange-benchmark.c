@@ -22,6 +22,7 @@
  * @brief HTTP serving layer intended to perform crypto-work and
  * communication with the exchange
  * @author Marcello Stanisci
+ * @author Christian Grothoff
  */
 
 #include "platform.h"

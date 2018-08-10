@@ -573,7 +573,8 @@ postgres_prepare (PGconn *db_conn)
                             ",expiration_date"
                             " FROM reserves"
                             " WHERE reserve_pub=$1"
-                            " LIMIT 1;",
+                            " LIMIT 1"
+                            " FOR UPDATE;",
                             1),
     /* Used in #postgres_reserves_in_insert() when the reserve is new */
     GNUNET_PQ_make_prepare ("reserve_create",
@@ -782,7 +783,8 @@ postgres_prepare (PGconn *db_conn)
                             " FROM known_coins"
                             "    JOIN denominations denom"
                             "      USING (denom_pub_hash)"
-                            " WHERE coin_pub=$1;",
+                            " WHERE coin_pub=$1"
+                            " FOR UPDATE;",
                             1),
     /* Used in #postgres_insert_known_coin() to store
        the denomination public key and signature for
@@ -895,7 +897,8 @@ postgres_prepare (PGconn *db_conn)
                             "    JOIN denominations denom "
                             "      USING (denom_pub_hash)"
                             " WHERE rc=$1"
-                            "   ORDER BY newcoin_index ASC;",
+                            "   ORDER BY newcoin_index ASC"
+                            " FOR UPDATE;",
                             1),
 
     /* Used in #postgres_insert_refresh_reveal() to store the transfer
@@ -1008,7 +1011,8 @@ postgres_prepare (PGconn *db_conn)
                             "        (coin_pub=$1)"
                             "    AND (h_contract_terms=$2)"
                             "    AND (merchant_pub=$3)"
-                            " );",
+                            " )"
+                            " FOR UPDATE;",
                             3),
     /* Fetch deposits with rowid '\geq' the given parameter */
     GNUNET_PQ_make_prepare ("audit_get_deposits_incr",
@@ -1150,7 +1154,8 @@ postgres_prepare (PGconn *db_conn)
                             "      USING (coin_pub)"
                             "    JOIN denominations denom"
                             "      USING (denom_pub_hash)"
-                            " WHERE coin_pub=$1;",
+                            " WHERE coin_pub=$1"
+                            " FOR UPDATE;",
                             1),
 
     /* Used in #postgres_get_link_data(). */
@@ -1564,7 +1569,8 @@ postgres_prepare (PGconn *db_conn)
                             " reserve_pub"
                             " FROM reserves_out"
                             " WHERE h_blind_ev=$1"
-                            " LIMIT 1;",
+                            " LIMIT 1"
+                            " FOR UPDATE;",
                             1),
     /* used in #postgres_commit */
     GNUNET_PQ_make_prepare ("do_commit",
