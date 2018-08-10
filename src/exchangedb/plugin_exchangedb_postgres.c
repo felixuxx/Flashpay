@@ -31,6 +31,12 @@
 
 #include "plugin_exchangedb_common.c"
 
+/**
+ * Set to 1 to enable Postgres auto_explain module. This will
+ * slow down things a _lot_, but also provide extensive logging
+ * in the Postgres database logger for performance analysis.
+ */
+#define AUTO_EXPLAIN 1
 
 /**
  * Log a really unexpected PQ error with all the details we can get hold of.
@@ -204,7 +210,7 @@ postgres_create_tables (void *cls)
                             ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                             ",expiration_date INT8 NOT NULL"
                             ");"),
-    /* index on reserves table */
+    /* index on reserves table (TODO: useless due to primary key!?) */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_reserve_pub_index ON "
                                 "reserves (reserve_pub);"),
     /* index for get_expired_reserves */
@@ -228,6 +234,13 @@ postgres_create_tables (void *cls)
     /* Create indices on reserves_in */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_in_execution_index"
                                 " ON reserves_in (exchange_account_section,execution_date);"),
+    /* TODO: verify this actually helps, given the PRIMARY_KEY already includes
+       reserve_pub as the first dimension! */
+    GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_in_reserve_pub"
+                                " ON reserves_in (reserve_pub);"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_in_exchange_account_serial"
+                                " ON reserves_in (exchange_account_section,reserve_in_serial_id DESC);"),
+
     /* This table contains the data for wire transfers the exchange has
        executed to close a reserve. */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS reserves_close "
@@ -267,6 +280,8 @@ postgres_create_tables (void *cls)
                                 " reserves_out (reserve_pub)"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_out_execution_date ON "
                                 "reserves_out (execution_date)"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_out_for_get_withdraw_info ON "
+                                "reserves_out (denom_pub_hash,h_blind_ev)"),
     /* Table with coins that have been (partially) spent, used to track
        coin information only once. */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS known_coins "
@@ -303,6 +318,8 @@ postgres_create_tables (void *cls)
                            ",ev_sig BYTEA NOT NULL"
                            ",PRIMARY KEY (rc, newcoin_index)"
                            ");"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_revealed_coins_coin_pub_index ON "
+                                "refresh_revealed_coins (denom_pub_hash);"),
 
     /* Table with the transfer keys of a refresh operation; includes
        the rc for which this is the link information, the
@@ -313,6 +330,12 @@ postgres_create_tables (void *cls)
                            ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
                            ",transfer_privs BYTEA NOT NULL"
                            ");"),
+    /* for "get_link" (not sure if this helps, as there should be very few
+       transfer_pubs per rc, but at least in theory this helps the ORDER BY
+       clause. */
+    GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_transfer_keys_coin_tpub ON "
+                                "refresh_transfer_keys (rc,transfer_pub);"),
+
 
     /* This table contains the wire transfers the exchange is supposed to
        execute to transmit funds to the merchants (and manage refunds). */
@@ -332,12 +355,9 @@ postgres_create_tables (void *cls)
                            ",wire TEXT NOT NULL"
                            ",tiny BOOLEAN NOT NULL DEFAULT FALSE"
                            ",done BOOLEAN NOT NULL DEFAULT FALSE"
-                           ",UNIQUE (coin_pub, h_contract_terms, merchant_pub)"
+                           ",UNIQUE (coin_pub, merchant_pub, h_contract_terms)"
                            ");"),
-    /* Index for get_deposit statement on coin_pub, h_contract_terms and merchant_pub */
-    GNUNET_PQ_make_try_execute("CREATE INDEX deposits_coin_pub_index "
-                               "ON deposits(coin_pub, h_contract_terms, merchant_pub)"),
-    /* Index for get_deposit_for_wtid */
+    /* Index for get_deposit_for_wtid and get_deposit_statement */
     GNUNET_PQ_make_try_execute("CREATE INDEX deposits_coin_pub_merchant_contract_index "
                                "ON deposits(coin_pub, merchant_pub, h_contract_terms)"),
     /* Index for deposits_get_ready */
@@ -419,8 +439,12 @@ postgres_create_tables (void *cls)
                            ");"),
     GNUNET_PQ_make_try_execute("CREATE INDEX payback_by_coin_index "
                                "ON payback(coin_pub);"),
+    GNUNET_PQ_make_try_execute("CREATE INDEX payback_by_h_blind_ev "
+                               "ON payback(h_blind_ev);"),
     GNUNET_PQ_make_try_execute("CREATE INDEX payback_by_reserve_index "
                                "ON payback(reserve_pub);"),
+    GNUNET_PQ_make_try_execute("CREATE INDEX payback_for_by_reserve "
+                               "ON payback(coin_pub,denom_pub_hash,h_blind_ev);"),
 
     /* This table contains the pre-commit data for
        wire transfers the exchange is about to execute. */
@@ -1009,8 +1033,8 @@ postgres_prepare (PGconn *db_conn)
                             " FROM deposits"
                             " WHERE ("
                             "        (coin_pub=$1)"
-                            "    AND (h_contract_terms=$2)"
                             "    AND (merchant_pub=$3)"
+                            "    AND (h_contract_terms=$2)"
                             " )"
                             " FOR UPDATE;",
                             3),
@@ -1665,6 +1689,26 @@ postgres_get_session (void *cls)
     PQfinish (db_conn);
     return NULL;
   }
+
+#if AUTO_EXPLAIN
+  /* Enable verbose logging to see where queries do not
+     properly use indices */
+  {
+    struct GNUNET_PQ_ExecuteStatement es[] = {
+      GNUNET_PQ_make_execute ("LOAD 'auto_explain';"),
+      GNUNET_PQ_make_execute ("SET auto_explain.log_min_duration=50;"),
+      GNUNET_PQ_make_execute ("SET auto_explain.log_timing=TRUE;"),
+      GNUNET_PQ_make_execute ("SET auto_explain.log_analyze=TRUE;"),
+      GNUNET_PQ_make_execute ("SET enable_sort=OFF;"),
+      GNUNET_PQ_make_execute ("SET enable_seqscan=OFF;"),
+      GNUNET_PQ_EXECUTE_STATEMENT_END
+    };
+
+    (void) GNUNET_PQ_exec_statements (db_conn,
+                                      es);
+  }
+#endif
+
   session = GNUNET_new (struct TALER_EXCHANGEDB_Session);
   session->conn = db_conn;
   if (0 != pthread_setspecific (pc->db_conn_threadlocal,
@@ -1696,6 +1740,9 @@ postgres_start (void *cls,
   PGresult *result;
   ExecStatusType ex;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Starting transaction on %p\n",
+              session->conn);
   result = PQexec (session->conn,
                    "START TRANSACTION ISOLATION LEVEL SERIALIZABLE");
   if (PGRES_COMMAND_OK !=
@@ -1727,6 +1774,9 @@ postgres_rollback (void *cls,
 {
   PGresult *result;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Rolling back transaction on %p\n",
+              session->conn);
   result = PQexec (session->conn,
                    "ROLLBACK");
   GNUNET_break (PGRES_COMMAND_OK ==
@@ -2696,6 +2746,9 @@ postgres_have_deposit (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Getting deposits for coin %s\n",
+              TALER_B2S (&deposit->coin.coin_pub));
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						 "get_deposit",
 						 params,
@@ -3090,6 +3143,9 @@ get_known_coin (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Getting known coin data for coin %s\n",
+              TALER_B2S (coin_pub));
   coin_info->coin_pub = *coin_pub;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						   "get_known_coin",
@@ -3121,6 +3177,9 @@ insert_known_coin (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Creating known coin %s\n",
+              TALER_B2S (&coin_info->coin_pub));
   GNUNET_CRYPTO_rsa_public_key_hash (coin_info->denom_pub.rsa_public_key,
 				     &denom_pub_hash);
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
@@ -4259,6 +4318,9 @@ postgres_get_coin_transactions (void *cls,
     { NULL, NULL }
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Getting transactions for coin %s\n",
+              TALER_B2S (coin_pub));
   chc.head = NULL;
   chc.status = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   chc.coin_pub = coin_pub;
