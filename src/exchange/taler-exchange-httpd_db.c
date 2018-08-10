@@ -30,7 +30,7 @@
  * How often should we retry a transaction before giving up
  * (for transactions resulting in serialization/dead locks only).
  */
-#define MAX_TRANSACTION_COMMIT_RETRIES 2
+#define MAX_TRANSACTION_COMMIT_RETRIES 10
 
 
 /**

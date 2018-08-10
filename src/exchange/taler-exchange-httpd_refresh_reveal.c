@@ -36,6 +36,13 @@
  */
 #define MAX_FRESH_COINS 256
 
+/**
+ * How often do we at most retry the reveal transaction sequence?
+ * Twice should really suffice in all cases (as the possible conflict
+ * cannot happen more than once).
+ */
+#define MAX_REVEAL_RETRIES 2
+
 
 /**
  * Send a response for "/refresh/reveal".
@@ -142,6 +149,14 @@ struct RevealContext
    */
   unsigned int num_fresh_coins;
 
+  /**
+   * Result from preflight checks. #GNUNET_NO for no result,
+   * #GNUNET_YES if preflight found previous successful operation,
+   * #GNUNET_SYSERR if prefight check failed hard (and generated
+   * an MHD response already).
+   */
+  int preflight_ok;
+
 };
 
 
@@ -189,11 +204,56 @@ check_exists_cb (void *cls,
 
 
 /**
+ * Check if the "/refresh/reveal" was already successful before.
+ * If so, just return the old result.
+ *
+ * @param cls closure of type `struct RevealContext`
+ * @param connection MHD request which triggered the transaction
+ * @param session database session to use
+ * @param[out] mhd_ret set to MHD response status for @a connection,
+ *             if transaction failed (!)
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+refresh_reveal_preflight (void *cls,
+                          struct MHD_Connection *connection,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          int *mhd_ret)
+{
+  struct RevealContext *rctx = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  /* Try to see if we already have given an answer before. */
+  qs = TEH_plugin->get_refresh_reveal (TEH_plugin->cls,
+                                       session,
+                                       &rctx->rc,
+                                       &check_exists_cb,
+                                       rctx);
+  switch (qs) {
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    return qs; /* continue normal execution */
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return qs;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (qs);
+    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_REFRESH_REVEAL_DB_FETCH_REVEAL_ERROR);
+    rctx->preflight_ok = GNUNET_SYSERR;
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+  default:
+    /* Hossa, already found our reply! */
+    GNUNET_assert (NULL != rctx->ev_sigs);
+    rctx->preflight_ok = GNUNET_YES;
+    return qs;
+  }
+}
+
+
+/**
  * Execute a "/refresh/reveal".  The client is revealing to us the
  * transfer keys for @a #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
- * revealed transfer keys would allow linkage to the blinded coins,
- * and if so, return the signed coins for corresponding to the set of
- * coins that was not chosen.
+ * revealed transfer keys would allow linkage to the blinded coins.
  *
  * IF it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
@@ -217,30 +277,6 @@ refresh_reveal_transaction (void *cls,
   struct RevealContext *rctx = cls;
   struct TALER_EXCHANGEDB_RefreshMelt refresh_melt;
   enum GNUNET_DB_QueryStatus qs;
-
-  /* Try to see if we already have given an answer before. */
-  qs = TEH_plugin->get_refresh_reveal (TEH_plugin->cls,
-                                       session,
-                                       &rctx->rc,
-                                       &check_exists_cb,
-                                       rctx);
-  switch (qs) {
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* continue normal execution */
-    break;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    return qs;
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (qs);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_REFRESH_REVEAL_DB_FETCH_REVEAL_ERROR);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-  default:
-    /* Hossa, already found our reply! */
-    GNUNET_assert (NULL != rctx->ev_sigs);
-    return qs;
-  }
 
   /* Obtain basic information about the refresh operation and what
      gamma we committed to. */
@@ -394,23 +430,28 @@ refresh_reveal_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
+  return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+}
 
-  /* Client request OK, sign coins */
-  rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
-                                    struct TALER_DenominationSignature);
-  for (unsigned int i=0;i<rctx->num_fresh_coins;i++)
-  {
-    rctx->ev_sigs[i].rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_blinded (rctx->dkis[i]->denom_priv.rsa_private_key,
-                                        rctx->rcds[i].coin_ev,
-                                        rctx->rcds[i].coin_ev_size);
-    if (NULL == rctx->ev_sigs[i].rsa_signature)
-    {
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_REFRESH_REVEAL_SIGNING_ERROR);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-  }
+
+/**
+ * Persist result of a "/refresh/reveal".
+ *
+ * @param cls closure of type `struct RevealContext`
+ * @param connection MHD request which triggered the transaction
+ * @param session database session to use
+ * @param[out] mhd_ret set to MHD response status for @a connection,
+ *             if transaction failed (!)
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+refresh_reveal_persist (void *cls,
+                        struct MHD_Connection *connection,
+                        struct TALER_EXCHANGEDB_Session *session,
+                        int *mhd_ret)
+{
+  struct RevealContext *rctx = cls;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* Persist operation result in DB */
   {
@@ -584,22 +625,84 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     rctx->num_fresh_coins = num_fresh_coins;
     rctx->rcds = rcds;
     rctx->dkis = dkis;
-    /* do transactional work */
-    if (GNUNET_OK ==
-        TEH_DB_run_transaction (connection,
-                                "run reveal",
-                                &res,
-                                &refresh_reveal_transaction,
-                                rctx))
-    {
-      /* Generate final (positive) response */
-      GNUNET_assert (NULL != rctx->ev_sigs);
-      res = reply_refresh_reveal_success (connection,
-					  num_fresh_coins,
-					  rctx->ev_sigs);
 
+    /* sign _early_ (optimistic!) to keep out of transaction scope! */
+    rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
+                                      struct TALER_DenominationSignature);
+    for (unsigned int i=0;i<rctx->num_fresh_coins;i++)
+    {
+      rctx->ev_sigs[i].rsa_signature
+        = GNUNET_CRYPTO_rsa_sign_blinded (rctx->dkis[i]->denom_priv.rsa_private_key,
+                                          rctx->rcds[i].coin_ev,
+                                          rctx->rcds[i].coin_ev_size);
+      if (NULL == rctx->ev_sigs[i].rsa_signature)
+      {
+        GNUNET_break (0);
+        res = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                    TALER_EC_REFRESH_REVEAL_SIGNING_ERROR);
+        goto cleanup;
+      }
     }
 
+    /* We try the three transactions a few times, as theoretically
+       the pre-check might be satisfied by a concurrent transaction
+       voiding our final commit due to uniqueness violation; naturally,
+       on hard errors we exit immediately */
+    for (unsigned int retries=0;retries < MAX_REVEAL_RETRIES;retries++)
+    {
+      /* do transactional work */
+      rctx->preflight_ok = GNUNET_NO;
+      if ( (GNUNET_OK ==
+            TEH_DB_run_transaction (connection,
+                                    "reveal pre-check",
+                                    &res,
+                                    &refresh_reveal_preflight,
+                                    rctx)) &&
+           (GNUNET_YES == rctx->preflight_ok) )
+      {
+        /* Generate final (positive) response */
+        GNUNET_assert (NULL != rctx->ev_sigs);
+        res = reply_refresh_reveal_success (connection,
+                                            num_fresh_coins,
+                                            rctx->ev_sigs);
+        GNUNET_break (MHD_NO != res);
+        goto cleanup; /* aka 'break' */
+      }
+      if (GNUNET_SYSERR == rctx->preflight_ok)
+      {
+        GNUNET_break (0);
+        goto cleanup; /* aka 'break' */
+      }
+      if (GNUNET_OK !=
+          TEH_DB_run_transaction (connection,
+                                  "run reveal",
+                                  &res,
+                                  &refresh_reveal_transaction,
+                                  rctx))
+      {
+        /* reveal failed, too bad */
+        GNUNET_break_op (0);
+        goto cleanup; /* aka 'break' */
+      }
+      if (GNUNET_OK ==
+          TEH_DB_run_transaction (connection,
+                                  "persist reveal",
+                                  &res,
+                                  &refresh_reveal_persist,
+                                  rctx))
+      {
+        /* Generate final (positive) response */
+        GNUNET_assert (NULL != rctx->ev_sigs);
+        res = reply_refresh_reveal_success (connection,
+                                            num_fresh_coins,
+                                            rctx->ev_sigs);
+        break;
+      }
+    } /* end for (retries...) */
+    GNUNET_break (MHD_NO != res);
+
+  cleanup:
+    GNUNET_break (MHD_NO != res);
     /* free resources */
     if (NULL != rctx->ev_sigs)
     {
