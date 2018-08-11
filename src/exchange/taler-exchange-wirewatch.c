@@ -420,7 +420,7 @@ history_cb (void *cls,
   {
     struct RejectContext *rtc;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Wire transfer over %s has invalid subject `%s', sending it back!\n",
                 TALER_amount2s (&details->amount),
                 details->wtid_s);
@@ -443,6 +443,15 @@ history_cb (void *cls,
                                                row_off_size,
                                                &reject_cb,
                                                rtc);
+    if (NULL == rt)
+    {
+      GNUNET_break (0);
+      db_plugin->rollback (db_plugin->cls,
+                           session);
+      GNUNET_assert (NULL == task);
+      task = GNUNET_SCHEDULER_add_now (&find_transfers,
+                                       NULL);
+    }
     return GNUNET_SYSERR; /* will continue later... */
   }
 
@@ -474,7 +483,10 @@ history_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Got DB soft error for reserve_in_insert\n");
+    db_plugin->rollback (db_plugin->cls,
+                         session);
     /* try again */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&find_transfers,
 				     NULL);
     return GNUNET_SYSERR;
@@ -540,6 +552,8 @@ find_transfers (void *cls)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to obtain starting point for montoring from database!\n");
+      db_plugin->rollback (db_plugin->cls,
+                           session);
       global_ret = GNUNET_SYSERR;
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -547,6 +561,8 @@ find_transfers (void *cls)
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       /* try again */
+      db_plugin->rollback (db_plugin->cls,
+                           session);
       task = GNUNET_SCHEDULER_add_now (&find_transfers,
                                        NULL);
       return;
