@@ -140,6 +140,17 @@ static void *last_row_off;
 static size_t last_row_off_size;
 
 /**
+ * Latest row offset seen in this transaction, becomes
+ * the new #last_row_off upon commit.
+ */
+static void *latest_row_off;
+
+/**
+ * Number of bytes in #latest_row_off.
+ */
+static size_t latest_row_off_size;
+
+/**
  * Should we delay the next request to the wire plugin a bit?
  */
 static int delay;
@@ -389,6 +400,28 @@ history_cb (void *cls,
                 "End of list. Committing progress!\n");
     qs = db_plugin->commit (db_plugin->cls,
 			    session);
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Got DB soft error for commit\n");
+      /* do we need to rollback explicitly on commit failure!? */
+      db_plugin->rollback (db_plugin->cls,
+                           session);
+      /* try again */
+      GNUNET_assert (NULL == task);
+      task = GNUNET_SCHEDULER_add_now (&find_transfers,
+                                       NULL);
+      return GNUNET_OK; /* will be ignored anyway */
+    }
+    if (0 < qs)
+    {
+      /* transaction success, update #last_row_off */
+      GNUNET_free_non_null (last_row_off);
+      last_row_off = latest_row_off;
+      last_row_off_size = latest_row_off_size;
+      latest_row_off = NULL;
+      latest_row_off_size = 0;
+    }
     GNUNET_break (0 <= qs);
     if ( (GNUNET_YES == delay) &&
          (test_mode) &&
@@ -403,9 +436,6 @@ history_cb (void *cls,
     {
       wa_pos->delayed_until
         = GNUNET_TIME_relative_to_absolute (DELAY);
-      GNUNET_free_non_null (last_row_off);
-      last_row_off = NULL;
-      last_row_off_size = 0;
       wa_pos = wa_pos->next;
       if (NULL == wa_pos)
         wa_pos = wa_head;
@@ -425,13 +455,13 @@ history_cb (void *cls,
                 TALER_amount2s (&details->amount),
                 details->wtid_s);
     GNUNET_break (0 != row_off_size);
-    if (last_row_off_size != row_off_size)
+    if (latest_row_off_size != row_off_size)
     {
-      GNUNET_free_non_null (last_row_off);
-      last_row_off = GNUNET_malloc (row_off_size);
-      last_row_off_size = row_off_size;
+      GNUNET_free_non_null (latest_row_off);
+      latest_row_off = GNUNET_malloc (row_off_size);
+      latest_row_off_size = row_off_size;
     }
-    memcpy (last_row_off,
+    memcpy (latest_row_off,
             row_off,
             row_off_size);
     rtc = GNUNET_new (struct RejectContext);
@@ -492,13 +522,13 @@ history_cb (void *cls,
     return GNUNET_SYSERR;
   }
 
-  if (last_row_off_size != row_off_size)
+  if (latest_row_off_size != row_off_size)
   {
-    GNUNET_free_non_null (last_row_off);
-    last_row_off = GNUNET_malloc (row_off_size);
-    last_row_off_size = row_off_size;
+    GNUNET_free_non_null (latest_row_off);
+    latest_row_off = GNUNET_malloc (row_off_size);
+    latest_row_off_size = row_off_size;
   }
-  memcpy (last_row_off,
+  memcpy (latest_row_off,
 	  row_off,
 	  row_off_size);
   return GNUNET_OK;

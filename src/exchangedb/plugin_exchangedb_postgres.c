@@ -2062,7 +2062,7 @@ postgres_reserves_in_insert (void *cls,
                                          &reserve);
   if (0 > reserve_exists)
   {
-    GNUNET_break (0);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == reserve_exists);
     return reserve_exists;
   }
   if ( (0 == reserve.balance.value) &&
