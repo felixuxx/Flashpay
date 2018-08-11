@@ -122,9 +122,14 @@ static struct GNUNET_TIME_Relative duration;
 static unsigned int result;
 
 /**
- * How many coins we want to create.
+ * How many coins we want to create per client and reserve.
  */
 static unsigned int howmany_coins = 1;
+
+/**
+ * How many reserves we want to create per client.
+ */
+static unsigned int howmany_reserves = 1;
 
 /**
  * How many clients we want to create.
@@ -324,8 +329,8 @@ run (void *cls,
   struct TALER_Amount withdraw_fee;
   char *withdraw_fee_str;
   struct TALER_TESTING_Command all_commands
-    [1 + /* Withdraw block */
-     howmany_coins + /* All units */
+    [howmany_reserves * (1 + /* Withdraw block */
+                         howmany_coins) + /* All units */
      1 /* End CMD */];
 
   ALLOCATE_AMOUNTS
@@ -348,86 +353,109 @@ run (void *cls,
     TALER_amount_add (&total_reserve_amount,
                       &total_reserve_amount,
                       &withdraw_fee);
-  struct TALER_TESTING_Command make_reserve[] = {
-    CMD_TRANSFER_TO_EXCHANGE
-      ("create-reserve",
-       TALER_amount_to_string (&total_reserve_amount)),
-    TALER_TESTING_cmd_end ()
-  };
-
-  all_commands[0] = TALER_TESTING_cmd_batch ("make-reserve",
-                                             make_reserve);
-  for (unsigned int i = 0; i < howmany_coins; i++)
+  for (unsigned int j = 0; j < howmany_reserves; j++)
   {
-    char *withdraw_label;
-    char *order_enc;
-    struct TALER_TESTING_Command unit[UNITY_SIZE];
+    char *create_reserve_label;
 
-    GNUNET_asprintf (&withdraw_label,
-                     "withdraw-%u",
-                     i);
-    GNUNET_asprintf (&order_enc,
-                     "{\"nonce\": %u}",
-                     i);
-    unit[0] =
-      TALER_TESTING_cmd_withdraw_with_retry
-      (TALER_TESTING_cmd_withdraw_amount
-       (withdraw_label,
-	is->exchange,
-	"create-reserve",
-	AMOUNT_5,
-	MHD_HTTP_OK));
-    unit[1] = TALER_TESTING_cmd_deposit
-      ("deposit",
-       is->exchange,
-       withdraw_label,
-       0, /* Index of the one withdrawn coin in the traits.  */
-       TALER_TESTING_make_wire_details
+    GNUNET_asprintf (&create_reserve_label,
+                     "create-reserve-%u",
+                     j);
+    {
+      struct TALER_TESTING_Command make_reserve[] = {
+        CMD_TRANSFER_TO_EXCHANGE
+        (create_reserve_label,
+         TALER_amount_to_string (&total_reserve_amount)),
+        TALER_TESTING_cmd_end ()
+      };
+      char *batch_label;
+
+      GNUNET_asprintf (&batch_label,
+                       "batch-start-%u",
+                       j);
+      all_commands[j * (howmany_coins + 1)]
+        = TALER_TESTING_cmd_batch (batch_label,
+                                   make_reserve);
+    }
+    for (unsigned int i = 0; i < howmany_coins; i++)
+    {
+      char *withdraw_label;
+      char *order_enc;
+      struct TALER_TESTING_Command unit[UNITY_SIZE];
+      char *unit_label;
+
+      GNUNET_asprintf (&withdraw_label,
+                       "withdraw-%u-%u",
+                       i,
+                       j);
+      GNUNET_asprintf (&order_enc,
+                       "{\"nonce\": %llu}",
+                       i + (howmany_coins * j));
+      unit[0] =
+        TALER_TESTING_cmd_withdraw_with_retry
+        (TALER_TESTING_cmd_withdraw_amount
+         (withdraw_label,
+          is->exchange,
+          create_reserve_label,
+          AMOUNT_5,
+          MHD_HTTP_OK));
+      unit[1] = TALER_TESTING_cmd_deposit
+        ("deposit",
+         is->exchange,
+         withdraw_label,
+         0, /* Index of the one withdrawn coin in the traits.  */
+         TALER_TESTING_make_wire_details
          (USER_ACCOUNT_NUMBER,
           exchange_bank_account.hostname),
-       order_enc,
-       GNUNET_TIME_UNIT_ZERO,
-       AMOUNT_1,
-       MHD_HTTP_OK);
-
-    if (eval_probability (REFRESH_PROBABILITY))
-    {
-      char *melt_label;
-      char *reveal_label;
-
-      GNUNET_asprintf (&melt_label,
-                       "refresh-melt-%u",
-                       i);
-
-      GNUNET_asprintf (&reveal_label,
-                       "refresh-reveal-%u",
-                       i);
-
-      unit[2] = TALER_TESTING_cmd_refresh_melt
-        (melt_label,
-         is->exchange,
-         AMOUNT_4,
-         withdraw_label,
+         order_enc,
+         GNUNET_TIME_UNIT_ZERO,
+         AMOUNT_1,
          MHD_HTTP_OK);
-      unit[3] = TALER_TESTING_cmd_refresh_reveal
-        (reveal_label,
-         is->exchange,
-         melt_label,
-         MHD_HTTP_OK);
-      unit[4] = TALER_TESTING_cmd_refresh_link
-        ("refresh-link",
-         is->exchange,
-         reveal_label,
-         MHD_HTTP_OK);
-      unit[5] = TALER_TESTING_cmd_end ();
+
+      if (eval_probability (REFRESH_PROBABILITY))
+      {
+        char *melt_label;
+        char *reveal_label;
+
+        GNUNET_asprintf (&melt_label,
+                         "refresh-melt-%u-%u",
+                         i,
+                         j);
+        GNUNET_asprintf (&reveal_label,
+                         "refresh-reveal-%u-%u",
+                         i,
+                         j);
+        unit[2] = TALER_TESTING_cmd_refresh_melt
+          (melt_label,
+           is->exchange,
+           AMOUNT_4,
+           withdraw_label,
+           MHD_HTTP_OK);
+        unit[3] = TALER_TESTING_cmd_refresh_reveal
+          (reveal_label,
+           is->exchange,
+           melt_label,
+           MHD_HTTP_OK);
+        unit[4] = TALER_TESTING_cmd_refresh_link
+          ("refresh-link",
+           is->exchange,
+           reveal_label,
+           MHD_HTTP_OK);
+        unit[5] = TALER_TESTING_cmd_end ();
+      }
+      else
+        unit[2] = TALER_TESTING_cmd_end ();
+
+      GNUNET_asprintf (&unit_label,
+                       "unit-%u-%u",
+                       i,
+                       j);
+      all_commands[j * (howmany_coins + 1) + (1 + i)]
+        = TALER_TESTING_cmd_batch (unit_label,
+                                   unit);
     }
-    else
-      unit[2] = TALER_TESTING_cmd_end ();
-
-    all_commands[1 + i] = TALER_TESTING_cmd_batch ("unit",
-                                                   unit);
   }
-  all_commands[1 + howmany_coins] = TALER_TESTING_cmd_end ();
+  all_commands[howmany_reserves * (1 + howmany_coins)]
+    = TALER_TESTING_cmd_end ();
   TALER_TESTING_run2 (is,
                       all_commands,
                       GNUNET_TIME_UNIT_FOREVER_REL); /* no timeout */
@@ -529,6 +557,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                                        "taler-exchange-httpd",
                                        "-c", config_file,
                                        "-i",
+                                       "-C",
                                        NULL);
   if (NULL == exchanged)
   {
@@ -641,7 +670,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   waitpid (fakebank,
            &wstatus,
            0);
-  if ( (!WIFEXITED (wstatus)) ||
+  if ( (! WIFEXITED (wstatus)) ||
        (0 != WEXITSTATUS (wstatus)) )
   {
     GNUNET_break (0);
@@ -674,13 +703,18 @@ main (int argc,
     GNUNET_GETOPT_option_uint ('n',
                                "coins-number",
                                "CN",
-                               "How many coins we should instantiate",
+                               "How many coins we should instantiate per reserve",
                                &howmany_coins),
     GNUNET_GETOPT_option_uint ('p',
                                "parallelism",
                                "NPROCS",
                                "How many client processes we should run",
                                &howmany_clients),
+    GNUNET_GETOPT_option_uint ('r',
+                               "reserves",
+                               "NRESERVES",
+                               "How many reserves per client we should create",
+                               &howmany_reserves),
     GNUNET_GETOPT_option_string ('l',
                                  "logfile",
                                  "LF",
@@ -785,10 +819,11 @@ main (int argc,
   if (GNUNET_OK == result)
   {
     fprintf (stdout,
-             "Executed (W=%u, D=%u, R~=%5.2f) * P=%u, operations in %s\n",
+             "Executed (Withdraw=%u, Deposit=%u, Refresh~=%5.2f) * Reserve=%u * Parallel=%u, operations in %s\n",
              howmany_coins,
              howmany_coins,
              (float) howmany_coins * REFRESH_PROBABILITY,
+             howmany_reserves,
              howmany_clients,
              GNUNET_STRINGS_relative_time_to_string
              (duration,
@@ -797,8 +832,16 @@ main (int argc,
              "(approximately %s/coin)\n",
              GNUNET_STRINGS_relative_time_to_string
              (GNUNET_TIME_relative_divide (duration,
-                                           howmany_coins * howmany_clients),
+                                           (unsigned long long) howmany_coins *
+                                           howmany_reserves *
+                                           howmany_clients),
               GNUNET_YES));
+    fprintf (stdout,
+             "RAW: %04u %04u %04u %16llu\n",
+             howmany_coins,
+             howmany_reserves,
+             howmany_clients,
+             (unsigned long long) duration.rel_value_us);
   }
   return (GNUNET_OK == result) ? 0 : result;
 }
