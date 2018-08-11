@@ -56,7 +56,7 @@ TALER_TESTING_interpreter_lookup_command
     return NULL;
   }
   /* Search backwards as we most likely reference recent commands */
-  for (int i=is->ip; 0 >= i; i--)
+  for (int i=is->ip; i >= 0; i--)
   {
     const struct TALER_TESTING_Command *cmd = &is->commands[i];
 
@@ -75,9 +75,9 @@ TALER_TESTING_interpreter_lookup_command
                      TALER_TESTING_get_trait_cmd (cmd,
                                                   BATCH_INDEX,
                                                   &batch));
-      for (unsigned int i=0;
-           NULL != (cmd = &batch[i])->label;
-           i++)
+      for (unsigned int j=0;
+           NULL != (cmd = &batch[j])->label;
+           j++)
       {
         if ( (NULL != cmd->label) &&
              (0 == strcmp (cmd->label,
@@ -86,7 +86,7 @@ TALER_TESTING_interpreter_lookup_command
       }
     }
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Command not found: %s\n",
               label);
   return NULL;

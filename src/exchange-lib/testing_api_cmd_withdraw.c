@@ -97,19 +97,19 @@ struct WithdrawState
    * How long do we wait until we retry?
    */
   struct GNUNET_TIME_Relative backoff;
-  
+
   /**
    * Expected HTTP response code to the request.
    */
   unsigned int expected_response_code;
 
   /**
-   * Was this command modified via 
-   * #TALER_TESTING_cmd_withdraw_with_retry to 
+   * Was this command modified via
+   * #TALER_TESTING_cmd_withdraw_with_retry to
    * enable retries?
    */
   int do_retry;
-  
+
 };
 
 
@@ -502,12 +502,12 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd)
 {
   struct WithdrawState *ws;
-  
+
   GNUNET_assert (&withdraw_run == cmd.run);
   ws = cmd.cls;
   ws->do_retry = GNUNET_YES;
   return cmd;
 }
-  
+
 
 /* end of testing_api_cmd_withdraw.c */
