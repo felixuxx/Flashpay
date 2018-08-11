@@ -721,16 +721,33 @@ handle_mhd_logs (void *cls,
                  const char *fm,
                  va_list ap)
 {
+  static int cache;
   char buf[2048];
 
+  if (-1 == cache)
+    return;
+  if (0 == cache)
+  {
+    if (0 ==
+        GNUNET_get_log_call_status (GNUNET_ERROR_TYPE_INFO,
+                                    "libmicrohttpd",
+                                    __FILE__,
+                                    __FUNCTION__,
+                                    __LINE__))
+    {
+      cache = -1;
+      return;
+    }
+  }
+  cache = 1;
   vsnprintf (buf,
              sizeof (buf),
              fm,
              ap);
-  GNUNET_log_from (GNUNET_ERROR_TYPE_INFO,
-                   "libmicrohttpd",
-                   "%s",
-                   buf);
+  GNUNET_log_from_nocheck (GNUNET_ERROR_TYPE_INFO,
+                           "libmicrohttpd",
+                           "%s",
+                           buf);
 }
 
 
