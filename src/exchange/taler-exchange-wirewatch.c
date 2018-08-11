@@ -166,6 +166,16 @@ static int test_mode;
 static int reset_mode;
 
 /**
+ * How many transactions do we retrieve per batch?
+ */
+static unsigned int batch_size = 1024;
+
+/**
+ * How many transactions did we see in the current batch?
+ */
+static unsigned int current_batch_size;
+
+/**
  * Next task to run, if any.
  */
 static struct GNUNET_SCHEDULER_Task *task;
@@ -407,6 +417,9 @@ history_cb (void *cls,
       /* do we need to rollback explicitly on commit failure!? */
       db_plugin->rollback (db_plugin->cls,
                            session);
+      /* reduce transaction size to reduce rollback probability */
+      if (2 > current_batch_size)
+        current_batch_size /= 2;
       /* try again */
       GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_now (&find_transfers,
@@ -421,6 +434,10 @@ history_cb (void *cls,
       last_row_off_size = latest_row_off_size;
       latest_row_off = NULL;
       latest_row_off_size = 0;
+
+      /* if successful at limit, try increasing transaction batch size (AIMD) */
+      if (current_batch_size == batch_size)
+        batch_size++;
     }
     GNUNET_break (0 <= qs);
     if ( (GNUNET_YES == delay) &&
@@ -489,6 +506,7 @@ history_cb (void *cls,
               "Adding wire transfer over %s with subject `%s'\n",
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->wtid));
+  current_batch_size++;
   /* Wire transfer identifier == reserve public key */
   GNUNET_assert (sizeof (reserve_pub) == sizeof (details->wtid));
   memcpy (&reserve_pub,
@@ -603,12 +621,13 @@ find_transfers (void *cls)
                   ( (NULL != last_row_off) &&
                     (0 != last_row_off_size) ) );
   delay = GNUNET_YES;
+  current_batch_size = 0;
   hh = wa_pos->wire_plugin->get_history (wa_pos->wire_plugin->cls,
                                          wa_pos->section_name,
                                          TALER_BANK_DIRECTION_CREDIT,
                                          last_row_off,
                                          last_row_off_size,
-                                         1024,
+                                         batch_size,
                                          &history_cb,
                                          session);
   if (NULL == hh)
