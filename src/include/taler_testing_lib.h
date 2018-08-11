@@ -836,6 +836,17 @@ TALER_TESTING_cmd_deposit
 
 
 /**
+ * Modify a deposit command to enable retries when we get transient
+ * errors from the exchange.
+ *
+ * @param cmd a deposit command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
+
+
+/**
  * Create a "refresh melt" command.
  *
  * @param label command label.
@@ -854,6 +865,7 @@ TALER_TESTING_cmd_refresh_melt
    const char *amount,
    const char *coin_reference,
    unsigned int expected_response_code);
+
 
 /**
  * Create a "refresh melt" CMD that does TWO /refresh/melt
@@ -879,6 +891,16 @@ TALER_TESTING_cmd_refresh_melt_double
 
 
 /**
+ * Modify a "refresh melt" command to enable retries.
+ *
+ * @param cmd command
+ * @return modified command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd);
+
+
+/**
  * Create a "refresh reveal" command.
  *
  * @param label command label.
@@ -897,6 +919,16 @@ TALER_TESTING_cmd_refresh_reveal
 
 
 /**
+ * Modify a "refresh reveal" command to enable retries.
+ *
+ * @param cmd command
+ * @return modified command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd);
+
+
+/**
  * Create a "refresh link" command.
  *
  * @param label command label.
@@ -912,6 +944,16 @@ TALER_TESTING_cmd_refresh_link
    struct TALER_EXCHANGE_Handle *exchange,
    const char *reveal_reference,
    unsigned int expected_response_code);
+
+
+/**
+ * Modify a "refresh link" command to enable retries.
+ *
+ * @param cmd command
+ * @return modified command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd);
 
 
 /**

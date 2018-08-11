@@ -82,11 +82,6 @@ struct DepositState
   struct TALER_EXCHANGE_DepositHandle *dh;
 
   /**
-   * Expected HTTP response code.
-   */
-  unsigned int expected_response_code;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -95,7 +90,59 @@ struct DepositState
    * Exchange connection.
    */
   struct TALER_EXCHANGE_Handle *exchange;
+
+  /**
+   * Task scheduled to try later.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * How long do we wait until we retry?
+   */
+  struct GNUNET_TIME_Relative backoff;
+
+  /**
+   * Expected HTTP response code.
+   */
+  unsigned int expected_response_code;
+
+  /**
+   * Should we retry on (transient) failures?
+   */
+  int do_retry;
+
 };
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
+deposit_run (void *cls,
+             const struct TALER_TESTING_Command *cmd,
+             struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Task scheduled to re-try #deposit_run.
+ *
+ * @param cls a `struct DepositState`
+ */
+static void
+do_retry (void *cls)
+{
+  struct DepositState *ds = cls;
+
+  ds->retry_task = NULL;
+  deposit_run (ds,
+               NULL,
+               ds->is);
+}
+
 
 /**
  * Callback to analyze the /deposit response, just used to
@@ -120,6 +167,27 @@ deposit_cb (void *cls,
   ds->dh = NULL;
   if (ds->expected_response_code != http_status)
   {
+    if (GNUNET_YES == ds->do_retry)
+    {
+      if ( (0 == http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Retrying deposit failed with %u/%d\n",
+                    http_status,
+                    (int) ec);
+	/* on DB conflicts, do not use backoff */
+	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+	  ds->backoff = GNUNET_TIME_UNIT_ZERO;
+	else
+	  ds->backoff = GNUNET_TIME_STD_BACKOFF (ds->backoff);
+	ds->retry_task = GNUNET_SCHEDULER_add_delayed (ds->backoff,
+						       &do_retry,
+						       ds);
+        return;
+      }
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u to command %s in %s:%u\n",
                 http_status,
@@ -324,7 +392,11 @@ deposit_cleanup (void *cls,
     TALER_EXCHANGE_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }
-
+  if (NULL != ds->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (ds->retry_task);
+    ds->retry_task = NULL;
+  }
   json_decref (ds->wire_details);
   GNUNET_free (ds);
 }
@@ -441,3 +513,25 @@ TALER_TESTING_cmd_deposit
 
   return cmd;
 }
+
+
+/**
+ * Modify a deposit command to enable retries when we get transient
+ * errors from the exchange.
+ *
+ * @param cmd a deposit command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd)
+{
+  struct DepositState *ds;
+
+  GNUNET_assert (&deposit_run == cmd.run);
+  ds = cmd.cls;
+  ds->do_retry = GNUNET_YES;
+  return cmd;
+}
+
+
+/* end of testing_api_cmd_deposit.c */

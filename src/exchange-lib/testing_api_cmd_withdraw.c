@@ -169,15 +169,16 @@ reserve_withdraw_cb (void *cls,
   {
     if (GNUNET_YES == ws->do_retry)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		  "Retrying withdraw failed with %u/%d\n",
-		  http_status,
-		  (int) ec);
-      if ( (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+      if ( (0 == http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
 	   (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == ec) ||
 	   (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == ec) ||
 	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Retrying withdraw failed with %u/%d\n",
+                    http_status,
+                    (int) ec);
 	/* on DB conflicts, do not use backoff */
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  ws->backoff = GNUNET_TIME_UNIT_ZERO;

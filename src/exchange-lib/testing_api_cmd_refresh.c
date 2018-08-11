@@ -56,19 +56,6 @@ struct RefreshMeltState
 {
 
   /**
-   * if set to GNUNET_YES, then two /refresh/melt operations
-   * will be performed.  This is needed to trigger the logic
-   * that manages those already-made requests.  Note: it
-   * is not possible to just copy-and-paste a test refresh melt
-   * CMD to have the same effect, because every data preparation
-   * generates new planchets that (in turn) make the whole "hash"
-   * different from any previous one, therefore NOT allowing the
-   * exchange to pick any previous /rerfesh/melt operation from
-   * the database.
-   */
-  unsigned int double_melt;
-
-  /**
    * Information about coins to be melted.
    */
   struct MeltDetails melted_coin;
@@ -77,11 +64,6 @@ struct RefreshMeltState
    * "Crypto data" used in the refresh operation.
    */
   char *refresh_data;
-
-  /**
-   * Number of bytes in @e refresh_data.
-   */
-  size_t refresh_data_length;
 
   /**
    * Reference to a previous melt command.
@@ -104,15 +86,48 @@ struct RefreshMeltState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Array of the denomination public keys
+   * corresponding to the @e fresh_amounts.
+   */
+  struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
+
+  /**
+   * Task scheduled to try later.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * How long do we wait until we retry?
+   */
+  struct GNUNET_TIME_Relative backoff;
+
+  /**
+   * Number of bytes in @e refresh_data.
+   */
+  size_t refresh_data_length;
+
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
 
   /**
-   * Array of the denomination public keys
-   * corresponding to the @e fresh_amounts.
+   * if set to #GNUNET_YES, then two /refresh/melt operations
+   * will be performed.  This is needed to trigger the logic
+   * that manages those already-made requests.  Note: it
+   * is not possible to just copy-and-paste a test refresh melt
+   * CMD to have the same effect, because every data preparation
+   * generates new planchets that (in turn) make the whole "hash"
+   * different from any previous one, therefore NOT allowing the
+   * exchange to pick any previous /rerfesh/melt operation from
+   * the database.
    */
-  struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
+  unsigned int double_melt;
+
+  /**
+   * Should we retry on (transient) failures?
+   */
+  int do_retry;
 
   /**
    * Set by the melt callback as it comes from the exchange.
@@ -137,13 +152,6 @@ struct RefreshRevealState
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
 
   /**
-   * Number of fresh coins withdrawn, set by the
-   * reveal callback as it comes from the exchange,
-   * it is the length of the @e fresh_coins array.
-   */
-  unsigned int num_fresh_coins;
-
-  /**
    * Convenience struct to keep in one place all the
    * data related to one fresh coin, set by the reveal callback
    * as it comes from the exchange.
@@ -161,9 +169,32 @@ struct RefreshRevealState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Task scheduled to try later.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * How long do we wait until we retry?
+   */
+  struct GNUNET_TIME_Relative backoff;
+
+  /**
+   * Number of fresh coins withdrawn, set by the
+   * reveal callback as it comes from the exchange,
+   * it is the length of the @e fresh_coins array.
+   */
+  unsigned int num_fresh_coins;
+
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
+
+  /**
+   * Should we retry on (transient) failures?
+   */
+  int do_retry;
+
 };
 
 
@@ -193,10 +224,56 @@ struct RefreshLinkState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Task scheduled to try later.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * How long do we wait until we retry?
+   */
+  struct GNUNET_TIME_Relative backoff;
+
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
+
+  /**
+   * Should we retry on (transient) failures?
+   */
+  int do_retry;
+
 };
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
+refresh_reveal_run (void *cls,
+                    const struct TALER_TESTING_Command *cmd,
+                    struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Task scheduled to re-try #refresh_reveal_run.
+ *
+ * @param cls a `struct RefreshRevealState`
+ */
+static void
+do_reveal_retry (void *cls)
+{
+  struct RefreshRevealState *rrs = cls;
+
+  rrs->retry_task = NULL;
+  refresh_reveal_run (rrs,
+                      NULL,
+                      rrs->is);
+}
 
 
 /**
@@ -231,6 +308,27 @@ reveal_cb (void *cls,
   rrs->rrh = NULL;
   if (rrs->expected_response_code != http_status)
   {
+    if (GNUNET_YES == rrs->do_retry)
+    {
+      if ( (0 == http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Retrying refresh reveal failed with %u/%d\n",
+                    http_status,
+                    (int) ec);
+	/* on DB conflicts, do not use backoff */
+	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+	  rrs->backoff = GNUNET_TIME_UNIT_ZERO;
+	else
+	  rrs->backoff = GNUNET_TIME_STD_BACKOFF (rrs->backoff);
+	rrs->retry_task = GNUNET_SCHEDULER_add_delayed (rrs->backoff,
+                                                        &do_reveal_retry,
+                                                        rrs);
+        return;
+      }
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
@@ -258,16 +356,18 @@ reveal_cb (void *cls,
       (num_coins, struct FreshCoin);
 
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
-    unsigned int i;
-    if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
-      (melt_cmd, 0, &fresh_pks))
+
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_denom_pub (melt_cmd,
+                                           0,
+                                           &fresh_pks))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rrs->is);
       return;
     }
 
-    for (i=0; i<num_coins; i++)
+    for (unsigned int i=0; i<num_coins; i++)
     {
       struct FreshCoin *fc = &rrs->fresh_coins[i];
 
@@ -352,6 +452,11 @@ refresh_reveal_cleanup (void *cls,
     TALER_EXCHANGE_refresh_reveal_cancel (rrs->rrh);
     rrs->rrh = NULL;
   }
+  if (NULL != rrs->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (rrs->retry_task);
+    rrs->retry_task = NULL;
+  }
 
   for (unsigned int j=0; j < rrs->num_fresh_coins; j++)
     GNUNET_CRYPTO_rsa_signature_free (rrs->fresh_coins[j].sig.rsa_signature);
@@ -359,6 +464,36 @@ refresh_reveal_cleanup (void *cls,
   GNUNET_free_non_null (rrs->fresh_coins);
   rrs->fresh_coins = NULL;
   rrs->num_fresh_coins = 0;
+}
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
+refresh_link_run (void *cls,
+                  const struct TALER_TESTING_Command *cmd,
+                  struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Task scheduled to re-try #refresh_link_run.
+ *
+ * @param cls a `struct RefreshLinkState`
+ */
+static void
+do_link_retry (void *cls)
+{
+  struct RefreshLinkState *rls = cls;
+
+  rls->retry_task = NULL;
+  refresh_link_run (rls,
+                    NULL,
+                    rls->is);
 }
 
 
@@ -402,6 +537,27 @@ link_cb (void *cls,
   rls->rlh = NULL;
   if (rls->expected_response_code != http_status)
   {
+    if (GNUNET_YES == rls->do_retry)
+    {
+      if ( (0 == http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Retrying refresh link failed with %u/%d\n",
+                    http_status,
+                    (int) ec);
+	/* on DB conflicts, do not use backoff */
+	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+	  rls->backoff = GNUNET_TIME_UNIT_ZERO;
+	else
+	  rls->backoff = GNUNET_TIME_STD_BACKOFF (rls->backoff);
+	rls->retry_task = GNUNET_SCHEDULER_add_delayed (rls->backoff,
+                                                        &do_link_retry,
+                                                        rls);
+        return;
+      }
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
@@ -514,11 +670,9 @@ refresh_link_run (void *cls,
                   const struct TALER_TESTING_Command *cmd,
                   struct TALER_TESTING_Interpreter *is)
 {
-
   struct RefreshLinkState *rls = cls;
   struct RefreshRevealState *rrs;
   struct RefreshMeltState *rms;
-
   const struct TALER_TESTING_Command *reveal_cmd;
   const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_TESTING_Command *coin_cmd;
@@ -605,6 +759,41 @@ refresh_link_cleanup (void *cls,
     TALER_EXCHANGE_refresh_link_cancel (rls->rlh);
     rls->rlh = NULL;
   }
+  if (NULL != rls->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (rls->retry_task);
+    rls->retry_task = NULL;
+  }
+}
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
+refresh_melt_run (void *cls,
+                  const struct TALER_TESTING_Command *cmd,
+                  struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Task scheduled to re-try #refresh_melt_run.
+ *
+ * @param cls a `struct RefreshMeltState`
+ */
+static void
+do_melt_retry (void *cls)
+{
+  struct RefreshMeltState *rms = cls;
+
+  rms->retry_task = NULL;
+  refresh_melt_run (rms,
+                    NULL,
+                    rms->is);
 }
 
 
@@ -634,6 +823,27 @@ melt_cb (void *cls,
   rms->rmh = NULL;
   if (rms->expected_response_code != http_status)
   {
+    if (GNUNET_YES == rms->do_retry)
+    {
+      if ( (0 == http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Retrying refresh melt failed with %u/%d\n",
+                    http_status,
+                    (int) ec);
+	/* on DB conflicts, do not use backoff */
+	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+	  rms->backoff = GNUNET_TIME_UNIT_ZERO;
+	else
+	  rms->backoff = GNUNET_TIME_STD_BACKOFF (rms->backoff);
+	rms->retry_task = GNUNET_SCHEDULER_add_delayed (rms->backoff,
+                                                        &do_melt_retry,
+                                                        rms);
+        return;
+      }
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
                 http_status,
@@ -668,7 +878,7 @@ melt_cb (void *cls,
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 refresh_melt_run (void *cls,
                   const struct TALER_TESTING_Command *cmd,
                   struct TALER_TESTING_Interpreter *is)
@@ -819,6 +1029,11 @@ refresh_melt_cleanup (void *cls,
     TALER_EXCHANGE_refresh_melt_cancel (rms->rmh);
     rms->rmh = NULL;
   }
+  if (NULL != rms->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (rms->retry_task);
+    rms->retry_task = NULL;
+  }
   GNUNET_free_non_null (rms->fresh_pks);
   rms->fresh_pks = NULL;
   GNUNET_free_non_null (rms->refresh_data);
@@ -894,9 +1109,9 @@ TALER_TESTING_cmd_refresh_melt
   cmd.run = &refresh_melt_run;
   cmd.cleanup = &refresh_melt_cleanup;
   cmd.traits = &refresh_melt_traits;
-
   return cmd;
 }
+
 
 /**
  * Create a "refresh melt" CMD that does TWO /refresh/melt
@@ -938,9 +1153,27 @@ TALER_TESTING_cmd_refresh_melt_double
   cmd.run = &refresh_melt_run;
   cmd.cleanup = &refresh_melt_cleanup;
   cmd.traits = &refresh_melt_traits;
-
   return cmd;
 }
+
+
+/**
+ * Modify a "refresh melt" command to enable retries.
+ *
+ * @param cmd command
+ * @return modified command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd)
+{
+  struct RefreshMeltState *rms;
+
+  GNUNET_assert (&refresh_melt_run == cmd.run);
+  rms = cmd.cls;
+  rms->do_retry = GNUNET_YES;
+  return cmd;
+}
+
 
 /**
  * Offer internal data from a "refresh reveal" CMD.
@@ -960,23 +1193,22 @@ refresh_reveal_traits (void *cls,
 {
   struct RefreshRevealState *rrs = cls;
   unsigned int num_coins = rrs->num_fresh_coins;
-  #define NUM_TRAITS (num_coins * 3) + 3
+#define NUM_TRAITS (num_coins * 3) + 3
   struct TALER_TESTING_Trait traits[NUM_TRAITS];
-  unsigned int i;
 
   /* Making coin privs traits */
-  for (i=0; i<num_coins; i++)
+  for (unsigned int i=0; i<num_coins; i++)
     traits[i] = TALER_TESTING_make_trait_coin_priv
       (i, &rrs->fresh_coins[i].coin_priv);
 
   /* Making denom pubs traits */
-  for (i=0; i<num_coins; i++)
+  for (unsigned int i=0; i<num_coins; i++)
     traits[num_coins + i]
       = TALER_TESTING_make_trait_denom_pub
         (i, rrs->fresh_coins[i].pk);
 
   /* Making denom sigs traits */
-  for (i=0; i<num_coins; i++)
+  for (unsigned int i=0; i<num_coins; i++)
     traits[(num_coins * 2) + i]
       = TALER_TESTING_make_trait_denom_sig
         (i, &rrs->fresh_coins[i].sig);
@@ -997,6 +1229,7 @@ refresh_reveal_traits (void *cls,
                                   trait,
                                   index);
 }
+
 
 /**
  * Create a "refresh reveal" command.
@@ -1028,7 +1261,24 @@ TALER_TESTING_cmd_refresh_reveal
   cmd.run = &refresh_reveal_run;
   cmd.cleanup = &refresh_reveal_cleanup;
   cmd.traits = &refresh_reveal_traits;
+  return cmd;
+}
 
+
+/**
+ * Modify a "refresh reveal" command to enable retries.
+ *
+ * @param cmd command
+ * @return modified command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
+{
+  struct RefreshRevealState *rrs;
+
+  GNUNET_assert (&refresh_reveal_run == cmd.run);
+  rrs = cmd.cls;
+  rrs->do_retry = GNUNET_YES;
   return cmd;
 }
 
@@ -1062,6 +1312,23 @@ TALER_TESTING_cmd_refresh_link
   cmd.label = label;
   cmd.run = &refresh_link_run;
   cmd.cleanup = &refresh_link_cleanup;
+  return cmd;
+}
 
+
+/**
+ * Modify a "refresh link" command to enable retries.
+ *
+ * @param cmd command
+ * @return modified command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd)
+{
+  struct RefreshLinkState *rls;
+
+  GNUNET_assert (&refresh_link_run == cmd.run);
+  rls = cmd.cls;
+  rls->do_retry = GNUNET_YES;
   return cmd;
 }

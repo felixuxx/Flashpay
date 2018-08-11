@@ -398,18 +398,20 @@ run (void *cls,
           create_reserve_label,
           AMOUNT_5,
           MHD_HTTP_OK));
-      unit[1] = TALER_TESTING_cmd_deposit
-        ("deposit",
-         is->exchange,
-         withdraw_label,
-         0, /* Index of the one withdrawn coin in the traits.  */
-         TALER_TESTING_make_wire_details
-         (USER_ACCOUNT_NUMBER,
-          exchange_bank_account.hostname),
-         order_enc,
-         GNUNET_TIME_UNIT_ZERO,
-         AMOUNT_1,
-         MHD_HTTP_OK);
+      unit[1] =
+        TALER_TESTING_cmd_deposit_with_retry
+        (TALER_TESTING_cmd_deposit
+         ("deposit",
+          is->exchange,
+          withdraw_label,
+          0, /* Index of the one withdrawn coin in the traits.  */
+          TALER_TESTING_make_wire_details
+          (USER_ACCOUNT_NUMBER,
+           exchange_bank_account.hostname),
+          order_enc,
+          GNUNET_TIME_UNIT_ZERO,
+          AMOUNT_1,
+          MHD_HTTP_OK));
 
       if (eval_probability (REFRESH_PROBABILITY))
       {
@@ -424,22 +426,28 @@ run (void *cls,
                          "refresh-reveal-%u-%u",
                          i,
                          j);
-        unit[2] = TALER_TESTING_cmd_refresh_melt
-          (melt_label,
-           is->exchange,
-           AMOUNT_4,
-           withdraw_label,
-           MHD_HTTP_OK);
-        unit[3] = TALER_TESTING_cmd_refresh_reveal
-          (reveal_label,
-           is->exchange,
-           melt_label,
-           MHD_HTTP_OK);
-        unit[4] = TALER_TESTING_cmd_refresh_link
-          ("refresh-link",
-           is->exchange,
-           reveal_label,
-           MHD_HTTP_OK);
+        unit[2] =
+          TALER_TESTING_cmd_refresh_melt_with_retry
+          (TALER_TESTING_cmd_refresh_melt
+           (melt_label,
+            is->exchange,
+            AMOUNT_4,
+            withdraw_label,
+            MHD_HTTP_OK));
+        unit[3] =
+          TALER_TESTING_cmd_refresh_reveal_with_retry
+          (TALER_TESTING_cmd_refresh_reveal
+           (reveal_label,
+            is->exchange,
+            melt_label,
+            MHD_HTTP_OK));
+        unit[4] =
+          TALER_TESTING_cmd_refresh_link_with_retry
+          (TALER_TESTING_cmd_refresh_link
+           ("refresh-link",
+            is->exchange,
+            reveal_label,
+            MHD_HTTP_OK));
         unit[5] = TALER_TESTING_cmd_end ();
       }
       else
