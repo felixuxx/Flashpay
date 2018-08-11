@@ -60,14 +60,7 @@ TALER_project_data_default (void)
 void __attribute__ ((constructor))
 TALER_OS_init ()
 {
-  gcry_error_t rc;
-
   GNUNET_OS_init (&taler_pd);
-  if ((rc = gcry_control (GCRYCTL_DISABLE_SECMEM, 1)))
-    FPRINTF (stderr,
-             "Failed to set libgcrypt option %s: %s\n",
-             "DISABLE_SECMEM",
-             gcry_strerror (rc));
 }
 
 
