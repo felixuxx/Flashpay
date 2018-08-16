@@ -33,7 +33,7 @@ check_PROGRAMS= \
 test_json_SOURCES = \
   test_json.c
 test_json_LDADD = \
-  -ltalerjson \
+  $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
