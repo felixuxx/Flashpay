@@ -107,13 +107,13 @@ test_exchange_api_twisted_SOURCES = \
   test_exchange_api_twisted.c
 test_exchange_api_twisted_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  -ltalertesting \
+  $(top_builddir)/src/exchange-lib/libtalertesting.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchange-lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -ltalertwistertesting \
-  -ltalerfakebank \
-  -ltalerbank \
-  -ltalerexchange \
-  -ltalerjson \
-  -ltalerutil \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
