@@ -152,11 +152,11 @@ AS_IF([test "x$curl" = xtrue],
       [LDFLAGS="-L$with_libcurl/lib $LDFLAGS"
        CPPFLAGS="-I$with_libcurl/include $CPPFLAGS"
        AC_CHECK_HEADERS([curl/curl.h],
-                        AC_CHECK_DECLS(CURLINFO_TLS_SESSION,
-                        [curl=true],
-                        [curl=false],
-                        [[#include <curl/curl.h>]]),
-                       [curl=false])
+                        [AC_CHECK_DECLS(CURLINFO_TLS_SESSION,
+                         [curl=true],
+                         [curl=false],
+                         [[#include <curl/curl.h>]])],
+                        [curl=false])
        # need libcurl-gnutls.so, everything else is not acceptable
        AC_CHECK_LIB([curl-gnutls],
                     [curl_easy_getinfo],,
