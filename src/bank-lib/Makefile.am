@@ -100,9 +100,9 @@ test_bank_api_with_fakebank_twisted_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/exchange-lib/libtalertesting.la \
   -ltalertwistertesting \
-  -ltalerbanktesting \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalertesting.la \
   -ltalerfakebank \
-  -ltalerbank \
   -ltalerexchange \
   -ltalerjson \
   -ltalerutil \
@@ -117,10 +117,10 @@ test_bank_api_twisted_SOURCES = \
 test_bank_api_twisted_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/exchange-lib/libtalertesting.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalertesting.la \
   -ltalertwistertesting \
-  -ltalerbanktesting \
   -ltalerfakebank \
-  -ltalerbank \
   -ltalerexchange \
   -ltalerjson \
   -ltalerutil \
