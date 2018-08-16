@@ -99,13 +99,13 @@ test_bank_api_with_fakebank_twisted_SOURCES = \
 test_bank_api_with_fakebank_twisted_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/exchange-lib/libtalertesting.la \
-  -ltalertwistertesting \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalertesting.la \
-  -ltalerfakebank \
-  -ltalerexchange \
-  -ltalerjson \
-  -ltalerutil \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/exchange-lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -ltalertwistertesting \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
@@ -119,11 +119,11 @@ test_bank_api_twisted_LDADD = \
   $(top_builddir)/src/exchange-lib/libtalertesting.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalertesting.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/exchange-lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -ltalertwistertesting \
-  -ltalerfakebank \
-  -ltalerexchange \
-  -ltalerjson \
-  -ltalerutil \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
