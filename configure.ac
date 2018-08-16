@@ -148,18 +148,17 @@ AS_IF([test $libgnunetjson != 1],
 
 # libcurl-gnutls
 LIBCURL_CHECK_CONFIG(,7.34.0,[curl=true],[curl=false])
-if test "x$curl" = xtrue
-then
+AS_IF([test "x$curl" = xtrue], [
  LDFLAGS="-L$with_libcurl/lib $LDFLAGS"
  CPPFLAGS="-I$with_libcurl/include $CPPFLAGS"
  AC_CHECK_HEADERS([curl/curl.h],
-   AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=true],[curl=false],[[#include <curl/curl.h>]]),
+   [AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=true],[curl=false],[[#include <curl/curl.h>]])],
    [curl=false])
  # need libcurl-gnutls.so, everything else is not acceptable
  AC_CHECK_LIB([curl-gnutls],[curl_easy_getinfo],,[curl=false])
  # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
+])
 
-fi
 if test x$curl = xfalse
 then
 	AM_CONDITIONAL(HAVE_LIBCURL, false)
