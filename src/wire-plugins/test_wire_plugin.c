@@ -64,12 +64,14 @@ static struct TestBlock tests[] = {
     .round_out = "EUR:0.12",
     .currency = "EUR"
   },
+#if HAVE_LIBCURL
   {
     .plugin_name = "taler_bank",
     .round_in = "KUDOS:0.123456",
     .round_out = "KUDOS:0.12",
     .currency = "KUDOS"
   },
+#endif
   {
     NULL, NULL, NULL, NULL
   }

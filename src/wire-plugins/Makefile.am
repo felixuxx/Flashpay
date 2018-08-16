@@ -18,8 +18,17 @@ EXTRA_DIST = \
 plugindir = $(libdir)/taler
 
 plugin_LTLIBRARIES = \
-  libtaler_plugin_wire_ebics.la \
-  libtaler_plugin_wire_taler_bank.la
+  libtaler_plugin_wire_ebics.la
+
+if HAVE_LIBCURL
+plugin_LTLIBRARIES += \
+ libtaler_plugin_wire_taler_bank.la
+else
+if HAVE_LIBGNURL
+plugin_LTLIBRARIES += \
+ libtaler_plugin_wire_taler_bank.la
+endif
+endif
 
 noinst_LTLIBRARIES = \
   libtaler_plugin_wire_template.la
@@ -44,9 +53,7 @@ libtaler_plugin_wire_ebics_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_wire_ebics_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
-  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetjson \
   -lgnunetutil $(XLIB)
 
 
