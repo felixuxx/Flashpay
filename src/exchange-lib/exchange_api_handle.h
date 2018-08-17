@@ -20,7 +20,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <curl/curl.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 
 

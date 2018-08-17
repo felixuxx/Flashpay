@@ -20,7 +20,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <curl/curl.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>

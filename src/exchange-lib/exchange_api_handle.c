@@ -21,7 +21,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <curl/curl.h>
 #include <microhttpd.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
