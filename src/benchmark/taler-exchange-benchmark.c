@@ -197,13 +197,6 @@ static char *remote_host;
  */
 static char *remote_dir;
 
-/**
- * Convenience macros to allocate all the currency-dependant
- * strings;  note that the argument list of the macro is ignored.
- * It is kept as a way to make the macro more auto-descriptive
- * where it is called.
- */
-#define ALLOCATE_AMOUNTS(...) \
 
 /**
  * Decide which exchange account is going to be
@@ -367,11 +360,6 @@ run (void *cls,
   GNUNET_asprintf (&AMOUNT_5, "%s:5", currency);
   GNUNET_asprintf (&AMOUNT_4, "%s:4", currency);
   GNUNET_asprintf (&AMOUNT_1, "%s:1", currency);
-
-  ALLOCATE_AMOUNTS
-    (AMOUNT_5,
-     AMOUNT_4,
-     AMOUNT_1);
 
   GNUNET_assert (GNUNET_OK == TALER_amount_get_zero (currency, &total_reserve_amount));
   total_reserve_amount.value = 5 * howmany_coins;
