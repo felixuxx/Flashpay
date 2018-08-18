@@ -405,11 +405,18 @@ maint_child_death (void *cls)
 
   if (GNUNET_OK == is->reload_keys)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Triggering key state reload at exchange\n");
-    GNUNET_break (0 == GNUNET_OS_process_kill
-    (is->exchanged, SIGUSR1));
-    sleep (5); /* make sure signal was received and processed */
+    if (NULL == is->exchanged)
+    {
+      GNUNET_break (0);
+    }
+    else
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Triggering key state reload at exchange\n");
+      GNUNET_break (0 == GNUNET_OS_process_kill
+      (is->exchanged, SIGUSR1));
+      sleep (5); /* make sure signal was received and processed */
+    }
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -669,6 +676,8 @@ main_wrapper_exchange_connect (void *cls)
  *        signal to it, for example to let it know to reload the
  *        key state.. if NULL, the interpreter will run without
  *        trying to connect to the exchange first.
+ * @param exchange_connect GNUNET_YES if the test should connect
+ *        to the exchange, GNUNET_NO otherwise
  * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
  *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         times.
@@ -677,7 +686,8 @@ int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,
                      const char *config_filename,
-                     struct GNUNET_OS_Process *exchanged)
+                     struct GNUNET_OS_Process *exchanged,
+                     int exchange_connect)
 {
   struct TALER_TESTING_Interpreter is;
   struct MainContext main_ctx = {
@@ -709,7 +719,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
 
   /* Blocking */
 
-  if (NULL != exchanged)
+  if (GNUNET_YES == exchange_connect)
     GNUNET_SCHEDULER_run (&main_wrapper_exchange_connect,
                           &main_ctx);
   else

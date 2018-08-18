@@ -477,7 +477,8 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
   result = TALER_TESTING_setup (main_cb,
                                 main_cb_cls,
                                 config_filename,
-                                exchanged);
+                                exchanged,
+                                GNUNET_YES);
   GNUNET_break (0 ==
                 GNUNET_OS_process_kill (exchanged,
                                         SIGTERM));

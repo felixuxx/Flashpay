@@ -101,6 +101,27 @@ struct Account
 
 
 /**
+ * What mode should the benchmark run in?
+ */
+enum BenchmarkMode {
+  /**
+   * Run as client (with fakebank), also starts a remote exchange.
+   */
+  MODE_CLIENT = 1,
+
+  /**
+   * Run the the exchange.
+   */
+  MODE_EXCHANGE = 2,
+
+  /**
+   * Run both, for a local benchmark.
+   */
+  MODE_BOTH = 3,
+};
+
+
+/**
  * Hold information regarding which bank has the exchange account.
  */
 static struct Account exchange_bank_account;
@@ -147,6 +168,16 @@ static char *loglev;
 static char *logfile;
 
 /**
+ * Benchmarking mode (run as client, exchange, both) as string.
+ */
+static char *mode_str;
+
+/**
+ * Benchmarking mode (run as client, exchange, both).
+ */
+static enum BenchmarkMode mode;
+
+/**
  * Config filename.
  */
 static char *cfg_filename;
@@ -157,25 +188,22 @@ static char *cfg_filename;
 static char *currency;
 
 /**
+ * Remote host that runs the exchange.
+ */
+static char *remote_host;
+
+/**
+ * Remote benchmarking directory.
+ */
+static char *remote_dir;
+
+/**
  * Convenience macros to allocate all the currency-dependant
  * strings;  note that the argument list of the macro is ignored.
  * It is kept as a way to make the macro more auto-descriptive
  * where it is called.
  */
 #define ALLOCATE_AMOUNTS(...) \
-  char *AMOUNT_5; \
-  char *AMOUNT_4; \
-  char *AMOUNT_1; \
-  \
-  GNUNET_asprintf (&AMOUNT_5, \
-                   "%s:5", \
-                   currency); \
-  GNUNET_asprintf (&AMOUNT_4, \
-                   "%s:4", \
-                   currency); \
-  GNUNET_asprintf (&AMOUNT_1, \
-                   "%s:1", \
-                   currency);
 
 /**
  * Decide which exchange account is going to be
@@ -190,7 +218,7 @@ pick_exchange_account_cb (void *cls,
                           const char *section)
 {
   if (0 == strncasecmp ("account-",
-                         section,
+                        section,
                         strlen ("account-")))
   {
     const char **s = cls;
@@ -332,17 +360,21 @@ run (void *cls,
     [howmany_reserves * (1 + /* Withdraw block */
                          howmany_coins) + /* All units */
      1 /* End CMD */];
+  char *AMOUNT_5;
+  char *AMOUNT_4;
+  char *AMOUNT_1;
+
+  GNUNET_asprintf (&AMOUNT_5, "%s:5", currency);
+  GNUNET_asprintf (&AMOUNT_4, "%s:4", currency);
+  GNUNET_asprintf (&AMOUNT_1, "%s:1", currency);
 
   ALLOCATE_AMOUNTS
     (AMOUNT_5,
      AMOUNT_4,
      AMOUNT_1);
 
+  GNUNET_assert (GNUNET_OK == TALER_amount_get_zero (currency, &total_reserve_amount));
   total_reserve_amount.value = 5 * howmany_coins;
-  total_reserve_amount.fraction = 0;
-  strncpy (total_reserve_amount.currency,
-           currency,
-           TALER_CURRENCY_LEN);
 
   GNUNET_asprintf (&withdraw_fee_str,
                    "%s:0.1",
@@ -535,117 +567,215 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                     const char *config_file,
                     const char *exchange_url)
 {
-  int result;
+  int result = GNUNET_OK;
   pid_t cpids[howmany_clients];
-  pid_t fakebank;
+  pid_t fakebank = -1;
   int wstatus;
-  struct GNUNET_OS_Process *exchanged;
-  struct GNUNET_OS_Process *wirewatch;
+  struct GNUNET_OS_Process *exchanged = NULL;
+  struct GNUNET_OS_Process *wirewatch = NULL;
+  struct GNUNET_OS_Process *exchange_slave = NULL;
 
-  /* start fakebank */
-  fakebank = fork ();
-  if (0 == fakebank)
+  if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
-    GNUNET_SCHEDULER_run (&launch_fakebank,
-                          exchange_bank_account.bank_base_url);
-    exit (0);
-  }
-  if (-1 == fakebank)
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "fork");
-    return GNUNET_SYSERR;
+
+    /* start fakebank */
+    fakebank = fork ();
+    if (0 == fakebank)
+    {
+      GNUNET_SCHEDULER_run (&launch_fakebank,
+                            exchange_bank_account.bank_base_url);
+      exit (0);
+    }
+    if (-1 == fakebank)
+    {
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                           "fork");
+      return GNUNET_SYSERR;
+    }
   }
 
-  /* start exchange */
-  exchanged = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
-                                       NULL, NULL, NULL,
-                                       "taler-exchange-httpd",
-                                       "taler-exchange-httpd",
-                                       "-c", config_file,
-                                       "-i",
-                                       "-C",
-                                       NULL);
-  if (NULL == exchanged)
+  if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
-    kill (fakebank,
-	  SIGTERM);
-    waitpid (fakebank,
-	     &wstatus,
-	     0);
-    return 77;
+    /* start exchange */
+    exchanged = GNUNET_OS_start_process (GNUNET_NO,
+                                         GNUNET_OS_INHERIT_STD_ALL,
+                                         NULL, NULL, NULL,
+                                         "taler-exchange-httpd",
+                                         "taler-exchange-httpd",
+                                         "-c", config_file,
+                                         "-i",
+                                         "-C",
+                                         NULL);
+    if ( (NULL == exchanged) && (MODE_BOTH == mode) )
+    {
+      GNUNET_assert (-1 != fakebank);
+      kill (fakebank,
+            SIGTERM);
+      waitpid (fakebank,
+               &wstatus,
+               0);
+      return 77;
+    }
+    /* start exchange wirewatch */
+    wirewatch = GNUNET_OS_start_process (GNUNET_NO,
+                                         GNUNET_OS_INHERIT_STD_ALL,
+                                         NULL, NULL, NULL,
+                                         "taler-exchange-wirewatch",
+                                         "taler-exchange-wirewatch",
+                                         "-c", config_file,
+                                         NULL);
+    if (NULL == wirewatch)
+    {
+      GNUNET_OS_process_kill (exchanged,
+                              SIGTERM);
+      if (MODE_BOTH == mode)
+      {
+        GNUNET_assert (-1 != fakebank);
+        kill (fakebank,
+              SIGTERM);
+        waitpid (fakebank,
+                 &wstatus,
+                 0);
+      }
+      GNUNET_OS_process_destroy (exchanged);
+      return 77;
+    }
   }
-  /* start exchange */
-  wirewatch = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
-                                       NULL, NULL, NULL,
-                                       "taler-exchange-wirewatch",
-                                       "taler-exchange-wirewatch",
-                                       "-c", config_file,
-                                       NULL);
-  if (NULL == wirewatch)
+
+  if (MODE_CLIENT == mode)
   {
-    GNUNET_OS_process_kill (exchanged,
-                            SIGTERM);
-    kill (fakebank,
-	  SIGTERM);
-    GNUNET_OS_process_wait (exchanged);
-    GNUNET_OS_process_destroy (exchanged);
-    waitpid (fakebank,
-	     &wstatus,
-	     0);
-    return 77;
+    char *remote_cmd;
+
+    GNUNET_asprintf (&remote_cmd,
+                     ("cd '%s'; "
+                      "taler-exchange-benchmark --mode=exchange -c '%s'"),
+                     remote_dir,
+                     config_file);
+
+    printf ("remote command: %s\n", remote_cmd);
+
+    exchange_slave = GNUNET_OS_start_process (GNUNET_NO,
+                                              GNUNET_OS_INHERIT_STD_ALL,
+                                              NULL, NULL, NULL,
+                                              "ssh",
+                                              "ssh",
+                                              /* Don't ask for pw/passphrase, rather fail */
+                                              "-oBatchMode=yes",
+                                              remote_host,
+                                              remote_cmd,
+                                              NULL);
+    GNUNET_free (remote_cmd);
   }
+
+  /* We always wait for the exchange, no matter if it's running locally or
+     remotely */
   if (0 != TALER_TESTING_wait_exchange_ready (exchange_url))
   {
     GNUNET_OS_process_kill (exchanged,
                             SIGTERM);
-    kill (fakebank,
-	  SIGTERM);
+    if ( (MODE_BOTH == mode) || (MODE_CLIENT == mode))
+    {
+      GNUNET_assert (-1 != fakebank);
+      kill (fakebank,
+            SIGTERM);
+      waitpid (fakebank,
+               &wstatus,
+               0);
+    }
     GNUNET_OS_process_wait (exchanged);
     GNUNET_OS_process_destroy (exchanged);
-    waitpid (fakebank,
-	     &wstatus,
-	     0);
     return 77;
   }
-  sleep (1); /* make sure fakebank process is ready before continuing */
+  if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
+  {
+    sleep (1); /* make sure fakebank process is ready before continuing */
 
-  start_time = GNUNET_TIME_absolute_get ();
-  result = GNUNET_OK;
-  for (unsigned int i=0;i<howmany_clients;i++)
-  {
-    if (0 == (cpids[i] = fork ()))
+    start_time = GNUNET_TIME_absolute_get ();
+    result = GNUNET_OK;
+    for (unsigned int i=0;i<howmany_clients;i++)
     {
-      /* I am the child, do the work! */
-      result = TALER_TESTING_setup
-        (run,
-         NULL,
-         cfg_filename,
-         exchanged);
-      if (GNUNET_OK != result)
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failure in child process test suite!\n");
-      if (GNUNET_OK == result)
-        exit (0);
-      else
-        exit (1);
+      if (0 == (cpids[i] = fork ()))
+      {
+        /* I am the child, do the work! */
+        result = TALER_TESTING_setup
+          (run,
+           NULL,
+           cfg_filename,
+           exchanged,
+           GNUNET_YES);
+        if (GNUNET_OK != result)
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Failure in child process test suite!\n");
+        if (GNUNET_OK == result)
+          exit (0);
+        else
+          exit (1);
+      }
+      if (-1 == cpids[i])
+      {
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fork");
+        howmany_clients = i;
+        result = GNUNET_SYSERR;
+        break;
+      }
+      /* fork() success, continue starting more processes! */
     }
-    if (-1 == cpids[i])
+    /* collect all children */
+    for (unsigned int i=0;i<howmany_clients;i++)
     {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "fork");
-      howmany_clients = i;
-      result = GNUNET_SYSERR;
-      break;
+      waitpid (cpids[i],
+               &wstatus,
+               0);
+      if ( (! WIFEXITED (wstatus)) ||
+           (0 != WEXITSTATUS (wstatus)) )
+      {
+        GNUNET_break (0);
+        result = GNUNET_SYSERR;
+      }
     }
-    /* fork() success, continue starting more processes! */
   }
-  /* collect all children */
-  for (unsigned int i=0;i<howmany_clients;i++)
+
+  /* Wait for our master to die or to tell us to die */
+  if (MODE_EXCHANGE == mode)
+    getchar ();
+
+  if (MODE_CLIENT == mode)
   {
-    waitpid (cpids[i],
+    GNUNET_assert (NULL != exchange_slave);
+    GNUNET_OS_process_kill (exchange_slave, SIGTERM);
+    GNUNET_OS_process_destroy (exchange_slave);
+  }
+
+  if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
+  {
+    GNUNET_assert (NULL != wirewatch);
+    GNUNET_assert (NULL != exchanged);
+    /* stop wirewatch */
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (wirewatch,
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (wirewatch));
+    GNUNET_OS_process_destroy (wirewatch);
+    /* stop exchange */
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (exchanged,
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (exchanged));
+    GNUNET_OS_process_destroy (exchanged);
+  }
+
+  if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
+  {
+    /* stop fakebank */
+    GNUNET_assert (-1 != fakebank);
+    if (0 != kill (fakebank,
+                   SIGTERM))
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                           "kill");
+    waitpid (fakebank,
              &wstatus,
              0);
     if ( (! WIFEXITED (wstatus)) ||
@@ -654,35 +784,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       GNUNET_break (0);
       result = GNUNET_SYSERR;
     }
-  }
-
-  /* stop wirewatch */
-  GNUNET_break (0 ==
-                GNUNET_OS_process_kill (wirewatch,
-                                        SIGTERM));
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_OS_process_wait (wirewatch));
-  GNUNET_OS_process_destroy (wirewatch);
-  /* stop exchange */
-  GNUNET_break (0 ==
-                GNUNET_OS_process_kill (exchanged,
-                                        SIGTERM));
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_OS_process_wait (exchanged));
-  GNUNET_OS_process_destroy (exchanged);
-  /* stop fakebank */
-  if (0 != kill (fakebank,
-                 SIGTERM))
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "kill");
-  waitpid (fakebank,
-           &wstatus,
-           0);
-  if ( (! WIFEXITED (wstatus)) ||
-       (0 != WEXITSTATUS (wstatus)) )
-  {
-    GNUNET_break (0);
-    result = GNUNET_SYSERR;
   }
   return result;
 }
@@ -700,7 +801,6 @@ main (int argc,
       char *const *argv)
 {
   char *exchange_url;
-  struct GNUNET_OS_Process *compute_wire_response;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
@@ -723,6 +823,11 @@ main (int argc,
                                "NRESERVES",
                                "How many reserves per client we should create",
                                &howmany_reserves),
+    GNUNET_GETOPT_option_string ('m',
+                                 "mode",
+                                 "MODE",
+                                 "run as exchange, clients or both",
+                                 &mode_str),
     GNUNET_GETOPT_option_string ('l',
                                  "logfile",
                                  "LF",
@@ -745,6 +850,19 @@ main (int argc,
   GNUNET_log_setup ("taler-exchange-benchmark",
                     NULL == loglev ? "INFO" : loglev,
                     logfile);
+  if (NULL == mode_str)
+    mode = MODE_BOTH;
+  else if (0 == strcmp (mode_str, "exchange"))
+    mode = MODE_EXCHANGE;
+  else if (0 == strcmp (mode_str, "client"))
+    mode = MODE_CLIENT;
+  else if (0 == strcmp (mode_str, "both"))
+    mode = MODE_BOTH;
+  else
+  {
+    TALER_LOG_ERROR ("Unknown mode given: '%s'\n", mode_str);
+    return BAD_CONFIG_FILE;
+  }
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
@@ -793,31 +911,76 @@ main (int argc,
       (TALER_EC_NONE == parse_payto (exchange_payto_url,
                                      &exchange_bank_account));
   }
+  if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
+  {
+    struct GNUNET_OS_Process *compute_wire_response;
+
+    compute_wire_response = GNUNET_OS_start_process
+      (GNUNET_NO,
+       GNUNET_OS_INHERIT_STD_ALL,
+       NULL, NULL, NULL,
+       "taler-exchange-wire",
+       "taler-exchange-wire",
+       "-c", cfg_filename,
+       NULL);
+    if (NULL == compute_wire_response)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to run `taler-exchange-wire`,"
+                  " is your PATH correct?\n");
+      return GNUNET_NO;
+    }
+    GNUNET_OS_process_wait (compute_wire_response);
+    GNUNET_OS_process_destroy (compute_wire_response);
+    GNUNET_assert
+      (GNUNET_OK == TALER_TESTING_prepare_exchange
+        (cfg_filename,
+         &exchange_url));
+  }
+  else
+  {
+     if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "BASE_URL",
+                                               &exchange_url))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "base_url");
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return BAD_CONFIG_FILE;
+    }
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "benchmark-remote-exchange",
+                                               "host",
+                                               &remote_host))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "benchmark-remote-exchange",
+                                 "host");
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return BAD_CONFIG_FILE;
+    }
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "benchmark-remote-exchange",
+                                               "dir",
+                                               &remote_dir))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "benchmark-remote-exchange",
+                                 "dir");
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return BAD_CONFIG_FILE;
+    }
+  }
+
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  compute_wire_response = GNUNET_OS_start_process
-    (GNUNET_NO,
-     GNUNET_OS_INHERIT_STD_ALL,
-     NULL, NULL, NULL,
-     "taler-exchange-wire",
-     "taler-exchange-wire",
-     "-c", cfg_filename,
-     NULL);
-  if (NULL == compute_wire_response)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-wire`,"
-                " is your PATH correct?\n");
-    return GNUNET_NO;
-  }
-  GNUNET_OS_process_wait (compute_wire_response);
-  GNUNET_OS_process_destroy (compute_wire_response);
-
-  GNUNET_assert
-    /* Takes care of dropping all tables.  */
-    (GNUNET_OK == TALER_TESTING_prepare_exchange
-      (cfg_filename,
-       &exchange_url));
   result = parallel_benchmark (&run,
                                NULL,
                                cfg_filename,

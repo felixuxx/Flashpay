@@ -464,6 +464,7 @@ typedef void
 (*TALER_TESTING_Main)(void *cls,
                       struct TALER_TESTING_Interpreter *is);
 
+
 /**
  * Install signal handlers plus schedules the main wrapper
  * around the "run" method.
@@ -473,16 +474,22 @@ typedef void
  * @param main_cb_cls a closure for "run", typically NULL.
  * @param config_filename configuration filename.
  * @param exchanged exchange process handle: will be put in the
- *        state as some commands - e.g. revoke - need to signal it,
- *        for example to let it know to reload the key state.
- *
- * @return FIXME: not sure what 'is.result' is at this stage.
+ *        state as some commands - e.g. revoke - need to send
+ *        signal to it, for example to let it know to reload the
+ *        key state.. if NULL, the interpreter will run without
+ *        trying to connect to the exchange first.
+ * @param exchange_connect GNUNET_YES if the test should connect
+ *        to the exchange, GNUNET_NO otherwise
+ * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
+ *         times.
  */
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,
                      const char *config_filename,
-                     struct GNUNET_OS_Process *exchanged);
+                     struct GNUNET_OS_Process *exchanged,
+                     int exchange_connect);
 
 
 /**
