@@ -414,9 +414,6 @@ history_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Got DB soft error for commit\n");
-      /* do we need to rollback explicitly on commit failure!? */
-      db_plugin->rollback (db_plugin->cls,
-                           session);
       /* reduce transaction size to reduce rollback probability */
       if (2 > current_batch_size)
         current_batch_size /= 2;
@@ -524,6 +521,8 @@ history_cb (void *cls,
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
+    db_plugin->rollback (db_plugin->cls,
+                         session);
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_SYSERR;
   }
