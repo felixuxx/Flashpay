@@ -181,13 +181,9 @@ withdraw_transaction (void *cls,
 		      int *mhd_ret)
 {
   struct WithdrawContext *wc = cls;
-  struct TALER_EXCHANGEDB_ReserveHistory *rh;
-  struct TALER_Amount deposit_total;
-  struct TALER_Amount withdraw_total;
-  struct TALER_Amount balance;
-  struct TALER_Amount fee_withdraw;
-  int res;
+  struct TALER_EXCHANGEDB_Reserve r;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_Amount fee_withdraw;
   struct TALER_DenominationSignature denom_sig;
 
 #if OPTIMISTIC_SIGN
@@ -221,11 +217,13 @@ withdraw_transaction (void *cls,
   GNUNET_assert (0 == qs);
   wc->collectable.sig = denom_sig;
 
+
+
   /* Check if balance is sufficient */
-  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                        session,
-                                        &wc->wsrd.reserve_pub,
-					&rh);
+  r.pub = wc->wsrd.reserve_pub;
+  qs = TEH_plugin->reserve_get (TEH_plugin->cls,
+                                session,
+                                &r);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -233,7 +231,7 @@ withdraw_transaction (void *cls,
 						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
     return qs;
   }
-  if (NULL == rh)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
 					       TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
@@ -241,119 +239,29 @@ withdraw_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* calculate balance of the reserve */
-  res = 0;
-  for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh;
-       NULL != pos;
-       pos = pos->next)
-  {
-    switch (pos->type)
-    {
-    case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
-      if (0 == (res & 1))
-        deposit_total = pos->details.bank->amount;
-      else
-        if (GNUNET_OK !=
-            TALER_amount_add (&deposit_total,
-                              &deposit_total,
-                              &pos->details.bank->amount))
-        {
-          *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-							   TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
-	  return GNUNET_DB_STATUS_HARD_ERROR;
-        }
-      res |= 1;
-      break;
-    case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
-      {
-	if (0 == (res & 2))
-	  withdraw_total = pos->details.withdraw->amount_with_fee;
-	else
-	  if (GNUNET_OK !=
-	      TALER_amount_add (&withdraw_total,
-				&withdraw_total,
-				&pos->details.withdraw->amount_with_fee))
-	  {
-	    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-							     TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
-	    return GNUNET_DB_STATUS_HARD_ERROR;
-	  }
-	res |= 2;
-	break;
-      }
-    case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
-      if (0 == (res & 1))
-        deposit_total = pos->details.payback->value;
-      else
-        if (GNUNET_OK !=
-            TALER_amount_add (&deposit_total,
-                              &deposit_total,
-                              &pos->details.payback->value))
-        {
-          *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-							   TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
-	  return GNUNET_DB_STATUS_HARD_ERROR;
-        }
-      res |= 1;
-      break;
-
-    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
-      if (0 == (res & 2))
-        withdraw_total = pos->details.closing->amount;
-      else
-        if (GNUNET_OK !=
-            TALER_amount_add (&withdraw_total,
-                              &withdraw_total,
-                              &pos->details.closing->amount))
-        {
-          *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-							   TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW);
-	  return GNUNET_DB_STATUS_HARD_ERROR;
-        }
-
-      res |= 2;
-      break;
-    }
-  }
-  if (0 == (res & 1))
-  {
-    /* did not encounter any wire transfer operations, how can we have a reserve? */
-    GNUNET_break (0);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_WITHDRAW_RESERVE_WITHOUT_WIRE_TRANSFER);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (0 == (res & 2))
-  {
-    /* did not encounter any withdraw operations, set to zero */
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (deposit_total.currency,
-                                          &withdraw_total));
-  }
-  /* All reserve balances should be non-negative */
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&balance,
-                             &deposit_total,
-                             &withdraw_total))
-  {
-    GNUNET_break (0); /* database inconsistent */
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
   if (0 < TALER_amount_cmp (&wc->amount_required,
-                            &balance))
+                            &r.balance))
   {
+    struct TALER_EXCHANGEDB_ReserveHistory *rh;
+
     GNUNET_break_op (0);
+    qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
+                                          session,
+                                          &wc->wsrd.reserve_pub,
+                                          &rh);
+    if (0 >= qs)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                         TALER_EC_WITHDRAW_DB_FETCH_ERROR);
+      return qs;
+    }
     *mhd_ret = reply_reserve_withdraw_insufficient_funds (connection,
 							  rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TEH_plugin->free_reserve_history (TEH_plugin->cls,
-                                    rh);
 
   /* Balance is good, sign the coin! */
 #if !OPTIMISTIC_SIGN
