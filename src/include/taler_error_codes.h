@@ -175,6 +175,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAYTO_MALFORMED = 1013,
 
+  /**
+   * We failed to update the database of known coins.
+   */
+  TALER_EC_DB_COIN_HISTORY_STORE_ERROR = 1014,
+
   /* ********** request-specific error codes ************* */
 
   /**

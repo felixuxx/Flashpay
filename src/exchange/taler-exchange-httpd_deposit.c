@@ -144,7 +144,15 @@ deposit_transaction (void *cls,
 				 session,
 				 deposit);
   if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                       TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
     return qs;
+  }
   if (1 == qs)
   {
     struct TALER_Amount amount_without_fee;
@@ -516,6 +524,22 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     return TEH_RESPONSE_reply_external_error (connection,
 					      TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
                                               "deposited amount smaller than depositing fee");
+  }
+
+  /* make sure coin is 'known' in database */
+  {
+    struct TEH_DB_KnowCoinContext kcc;
+    int mhd_ret;
+
+    kcc.coin = &deposit.coin;
+    kcc.connection = connection;
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "know coin for deposit",
+                                &mhd_ret,
+                                &TEH_DB_know_coin_transaction,
+                                &kcc))
+      return mhd_ret;
   }
 
   res = verify_and_execute_deposit (connection,

@@ -1205,6 +1205,10 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
 
           deposit_index = state->cmd[state->i].details.insert_deposit.index_deposit;
           deposit = state->cmd[deposit_index].exposed.data.deposit;
+          qs = state->plugin->ensure_coin_known (state->plugin->cls,
+                                                 state->session,
+                                                 &deposit->coin);
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
           qs = state->plugin->insert_deposit (state->plugin->cls,
                                               state->session,
                                               deposit);
@@ -1434,7 +1438,11 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                  &refresh_session.amount_with_fee));
           refresh_session.noreveal_index = 1;
           GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-			 state->plugin->insert_melt (state->session,
+			 state->plugin->ensure_coin_known (state->plugin->cls,
+                                                           state->session,
+                                                           &refresh_session.coin));
+          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+			 state->plugin->insert_melt (state->plugin->cls,
                                                      state->session,
                                                      &refresh_session));
           state->cmd[state->i].exposed.data.rc = refresh_session.rc;
@@ -1449,7 +1457,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
 
           hash_index = state->cmd[state->i].details.get_refresh_session.index_hash;
           rc = &state->cmd[hash_index].exposed.data.rc;
-          state->plugin->get_melt (state->session,
+          state->plugin->get_melt (state->plugin->cls,
                                    state->session,
                                    rc,
                                    &refresh);

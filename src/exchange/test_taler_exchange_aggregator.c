@@ -459,14 +459,21 @@ do_deposit (struct Command *cmd)
         plugin->start (plugin->cls,
                        session,
                        "aggregator-test-1")) ||
-       (GNUNET_OK !=
+       (0 >
+        plugin->ensure_coin_known (plugin->cls,
+                                   session,
+                                   &deposit.coin)) ||
+       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         plugin->insert_deposit (plugin->cls,
                                 session,
                                 &deposit)) ||
        (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
         plugin->commit (plugin->cls,
                         session)) )
+  {
+    GNUNET_break (0);
     ret = GNUNET_SYSERR;
+  }
   else
     ret = GNUNET_OK;
   GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig.rsa_signature);

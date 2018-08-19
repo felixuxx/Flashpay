@@ -34,6 +34,43 @@
 
 
 /**
+ * Execute database transaction to ensure coin is known. Run the transaction
+ * logic; IF it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
+ *
+ * @param cls a `struct DepositContext`
+ * @param connection MHD request context
+ * @param session database session and transaction to use
+ * @param[out] mhd_ret set to MHD status on error
+ * @return transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_DB_know_coin_transaction (void *cls,
+                              struct MHD_Connection *connection,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              int *mhd_ret)
+{
+  struct TEH_DB_KnowCoinContext *kcc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
+                                      session,
+                                      kcc->coin);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    *mhd_ret
+      = TEH_RESPONSE_reply_internal_db_error (connection,
+                                              TALER_EC_DB_COIN_HISTORY_STORE_ERROR);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  return qs;
+}
+
+
+/**
  * Run a database transaction for @a connection.
  * Starts a transaction and calls @a cb.  Upon success,
  * attempts to commit the transaction.  Upon soft failures,

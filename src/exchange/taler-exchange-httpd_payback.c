@@ -391,6 +391,22 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                       &pc.h_blind);
   GNUNET_free (coin_ev);
 
+  /* make sure coin is 'known' in database */
+  {
+    struct TEH_DB_KnowCoinContext kcc;
+    int mhd_ret;
+
+    kcc.coin = coin;
+    kcc.connection = connection;
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "know coin for payback",
+                                &mhd_ret,
+                                &TEH_DB_know_coin_transaction,
+                                &kcc))
+      return mhd_ret;
+  }
+
   pc.coin_sig = coin_sig;
   pc.coin_bks = coin_bks;
   pc.coin = coin;

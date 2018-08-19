@@ -1,3 +1,7 @@
+Sun Aug 19 15:15:48 CEST 2018
+	Increase various limits and rework transaction scopes to
+	improve scalability. -CG
+
 Tue Apr  3 23:29:06 CEST 2018
 	Releasing Taler v0.5.0
 

@@ -591,6 +591,10 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                             &refresh_session.rc,
                             &ret_refresh_session));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->ensure_coin_known (plugin->cls,
+                                     session,
+                                     &refresh_session.coin));
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
 	  plugin->insert_melt (plugin->cls,
                                session,
                                &refresh_session));
@@ -1776,6 +1780,10 @@ run (void *cls)
   deadline = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&deadline);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->ensure_coin_known (plugin->cls,
+                                     session,
+                                     &deposit.coin));
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_payback_request (plugin->cls,
                                           session,
                                           &reserve_pub,
@@ -1922,6 +1930,10 @@ run (void *cls)
   deposit.refund_deadline = deadline;
   deposit.wire_deadline = deadline;
   result = 8;
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->ensure_coin_known (plugin->cls,
+                                     session,
+                                     &deposit.coin));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_deposit (plugin->cls,
                                   session,

@@ -1398,6 +1398,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Make sure the given @a coin is known to the database.
+   *
+   * @param cls database connection plugin state
+   * @param session database session
+   * @param coin the coin that must be made known
+   * @return database transaction status, non-negative on success
+   */
+  enum GNUNET_DB_QueryStatus
+  (*ensure_coin_known) (void *cls,
+                        struct TALER_EXCHANGEDB_Session *session,
+                        const struct TALER_CoinPublicInfo *coin);
+
+
+  /**
    * Check if we have the specified deposit already in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

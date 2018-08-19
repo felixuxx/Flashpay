@@ -474,6 +474,22 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     goto cleanup;
   }
 
+  /* make sure coin is 'known' in database */
+  {
+    struct TEH_DB_KnowCoinContext kcc;
+    int mhd_ret;
+
+    kcc.coin = &rmc.refresh_session.coin;
+    kcc.connection = connection;
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "know coin for refresh-melt",
+                                &mhd_ret,
+                                &TEH_DB_know_coin_transaction,
+                                &kcc))
+      return mhd_ret;
+  }
+
   res = handle_refresh_melt (connection,
                              &rmc);
 

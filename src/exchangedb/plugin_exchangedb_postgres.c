@@ -3197,15 +3197,16 @@ insert_known_coin (void *cls,
  * @return database transaction status, non-negative on success
  */
 static enum GNUNET_DB_QueryStatus
-ensure_coin_known (struct PostgresClosure *cls,
-		   struct TALER_EXCHANGEDB_Session *session,
-		   const struct TALER_CoinPublicInfo *coin)
+postgres_ensure_coin_known (void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            const struct TALER_CoinPublicInfo *coin)
 {
+  struct PostgresClosure *pc = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_CoinPublicInfo known_coin;
 
   /* check if the coin is already known */
-  qs = get_known_coin (cls,
+  qs = get_known_coin (pc,
 		       session,
 		       &coin->coin_pub,
 		       &known_coin);
@@ -3222,7 +3223,7 @@ ensure_coin_known (struct PostgresClosure *cls,
   }
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
   /* if not known, insert it */
-  qs = insert_known_coin (cls,
+  qs = insert_known_coin (pc,
 			  session,
 			  coin);
   if (0 >= qs)
@@ -3249,7 +3250,6 @@ postgres_insert_deposit (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
-  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     TALER_PQ_query_param_amount (&deposit->amount_with_fee),
@@ -3264,10 +3264,14 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  if (0 > (qs = ensure_coin_known (cls,
-				   session,
-				   &deposit->coin)))
+#if 0
+  enum GNUNET_DB_QueryStatus qs;
+
+  if (0 > (qs = postgres_ensure_coin_known (cls,
+                                            session,
+                                            &deposit->coin)))
     return qs;
+#endif
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Inserting deposit to be executed at %s (%llu/%llu)\n",
 	      GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
@@ -3501,12 +3505,14 @@ postgres_insert_melt (void *cls,
     GNUNET_PQ_query_param_uint32 (&refresh_session->noreveal_index),
     GNUNET_PQ_query_param_end
   };
+#if 0
   enum GNUNET_DB_QueryStatus qs;
 
-  if (0 > (qs = ensure_coin_known (cls,
-				   session,
-				   &refresh_session->coin)))
+  if (0 > (qs = postgres_ensure_coin_known (cls,
+                                            session,
+                                            &refresh_session->coin)))
     return qs;
+#endif
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
 					     "insert_melt",
 					     params);
@@ -6371,11 +6377,13 @@ postgres_insert_payback_request (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+#if 0
   /* check if the coin is already known */
-  if (0 > (qs = ensure_coin_known (cls,
-				   session,
-				   coin)))
+  if (0 > (qs = postgres_ensure_coin_known (cls,
+                                            session,
+                                            coin)))
     return qs;
+#endif
   /* now store actual payback information */
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
 					   "payback_insert",
@@ -6993,6 +7001,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
+  plugin->ensure_coin_known = &postgres_ensure_coin_known;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
   plugin->test_deposit_done = &postgres_test_deposit_done;
