@@ -63,28 +63,22 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
-
     /* Trigger keys reloading from disk.  */
     TALER_TESTING_cmd_signal ("signal-reaction-1",
                               is->exchanged,
                               SIGUSR1),
-
     TALER_TESTING_cmd_check_keys ("check-keys-1",
                                   1,
                                   4,
                                   is->exchange),
-
     /* 1st keyup happens at start-up */
-    TALER_TESTING_cmd_exec_keyup ("keyup-2", 
+    TALER_TESTING_cmd_exec_keyup ("keyup-2",
                                   CONFIG_FILE_EXTENDED),
-
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
                                          CONFIG_FILE),
-
     TALER_TESTING_cmd_signal ("trigger-keys-reload-1",
                               is->exchanged,
                               SIGUSR1),
-
     TALER_TESTING_cmd_check_keys ("check-keys-2",
                                   2,
 #if TALER_EXCHANGE_API_DISABLE_CHERRYPICKING
@@ -98,6 +92,7 @@ run (void *cls,
 
   TALER_TESTING_run (is, commands);
 }
+
 
 int
 main (int argc,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 GNUnet e.V.
+  Copyright (C) 2014-2018 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -118,6 +118,12 @@ struct TALER_EXCHANGE_Handle
   struct GNUNET_SCHEDULER_Task *retry_task;
 
   /**
+   * Raw key data of the exchange, only valid if
+   * @e handshake_complete is past stage #MHS_CERT.
+   */
+  json_t *key_data_raw;
+
+  /**
    * Key data of the exchange, only valid if
    * @e handshake_complete is past stage #MHS_CERT.
    */
@@ -132,12 +138,6 @@ struct TALER_EXCHANGE_Handle
    * When does @e key_data expire?
    */
   struct GNUNET_TIME_Absolute key_data_expiration;
-
-  /**
-   * Raw key data of the exchange, only valid if
-   * @e handshake_complete is past stage #MHS_CERT.
-   */
-  json_t *key_data_raw;
 
   /**
    * Stage of the exchange's initialization routines.
@@ -801,7 +801,7 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
   if ( (GNUNET_NO == force_download) &&
        (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;
-  if (NULL != exchange->retry_task)
+  if (NULL == exchange->retry_task)
     exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
                                                      exchange);
   return GNUNET_TIME_UNIT_ZERO_ABS;
@@ -1096,7 +1096,9 @@ header_cb (char *buffer,
   return total;
 }
 
+
 /* ********************* public API ******************* */
+
 
 /**
  * Initialise a connection to the exchange. Will connect to the
@@ -1121,7 +1123,12 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
                         ...)
 {
   struct TALER_EXCHANGE_Handle *exchange;
+  va_list ap;
 
+  va_start (ap, cert_cb_cls);
+  GNUNET_assert (TALER_EXCHANGE_OPTION_END ==
+                 va_arg (ap, int));
+  va_end (ap);
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);

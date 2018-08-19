@@ -3821,7 +3821,8 @@ run (void *cls)
   fakebank = TALER_FAKEBANK_start (8082);
   exchange = TALER_EXCHANGE_connect (ctx,
                                      "http://localhost:8081",
-                                     &cert_cb, is,
+                                     &cert_cb,
+                                     is,
                                      TALER_EXCHANGE_OPTION_END);
   GNUNET_assert (NULL != exchange);
   timeout_task

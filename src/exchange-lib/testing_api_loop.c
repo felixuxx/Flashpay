@@ -657,7 +657,8 @@ main_wrapper_exchange_connect (void *cls)
                  (is->exchange = TALER_EXCHANGE_connect (is->ctx,
                                                          exchange_url,
                                                          &cert_cb,
-                                                         main_ctx)));
+                                                         main_ctx,
+                                                         TALER_EXCHANGE_OPTION_END)));
   GNUNET_free (exchange_url);
   GNUNET_CONFIGURATION_destroy (cfg);
 }

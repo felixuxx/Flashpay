@@ -597,13 +597,15 @@ run (void *cls)
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   exchange = TALER_EXCHANGE_connect (ctx,
                                      "http://localhost:8081",
-                                     &cert_cb, is,
+                                     &cert_cb,
+                                     is,
                                      TALER_EXCHANGE_OPTION_END);
   GNUNET_assert (NULL != exchange);
   timeout_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
                                     (GNUNET_TIME_UNIT_SECONDS, 300),
-                                    &do_timeout, NULL);
+                                    &do_timeout,
+                                    NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  is);
 }
