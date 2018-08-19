@@ -1579,7 +1579,7 @@ postgres_prepare (PGconn *db_conn)
                             ",denoms.denom_pub"
                             ",coins.denom_sig"
                             " FROM payback"
-                            "    JOIN kown_coins coins"
+                            "    JOIN known_coins coins"
                             "      USING (coin_pub)"
                             "    JOIN denominations denoms"
                             "      USING (denom_pub_hash)"
