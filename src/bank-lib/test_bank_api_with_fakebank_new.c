@@ -217,7 +217,8 @@ main (int argc,
   return (GNUNET_OK == TALER_TESTING_setup (&run,
                                             NULL,
                                             CONFIG_FILE,
-                                            NULL)) ? 0 : 1;
+                                            NULL,
+                                            GNUNET_NO)) ? 0 : 1;
 }
 
 

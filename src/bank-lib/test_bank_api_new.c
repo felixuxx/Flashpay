@@ -170,7 +170,8 @@ main(int argc,
   ret = TALER_TESTING_setup (&run,
                              NULL,
                              CONFIG_FILE,
-                             NULL); // means no exchange.
+                             NULL,
+                             GNUNET_NO); // means no exchange.
 
   GNUNET_OS_process_kill (bankd, SIGKILL); 
   GNUNET_OS_process_wait (bankd); 
