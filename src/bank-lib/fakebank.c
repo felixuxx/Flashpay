@@ -1120,6 +1120,7 @@ TALER_FAKEBANK_start (uint16_t port)
                                   &handle_mhd_request, h,
                                   MHD_OPTION_NOTIFY_COMPLETED,
                                   &handle_mhd_completion_callback, h,
+                                  MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
                                   MHD_OPTION_END);
   if (NULL == h->mhd_bank)
   {
