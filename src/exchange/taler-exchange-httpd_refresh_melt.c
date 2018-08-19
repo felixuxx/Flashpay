@@ -172,6 +172,7 @@ refresh_check_melt (struct MHD_Connection *connection,
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &rmc->refresh_session.coin.coin_pub,
+                                          GNUNET_NO,
 					  &tl);
   if (0 > qs)
   {

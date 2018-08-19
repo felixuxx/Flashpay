@@ -1410,6 +1410,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           qs = state->plugin->get_coin_transactions (state->plugin->cls,
 						     state->session,
 						     &coin->public_info.coin_pub,
+                                                     GNUNET_YES,
 						     &transactions);
 	  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
 	  GNUNET_assert (transactions != NULL);

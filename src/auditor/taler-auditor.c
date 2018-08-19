@@ -2120,6 +2120,7 @@ wire_transfer_information_cb (void *cls,
   qs = edb->get_coin_transactions (edb->cls,
                                    esession,
                                    coin_pub,
+                                   GNUNET_YES,
 				   &tl);
   if ( (qs < 0) ||
        (NULL == tl) )

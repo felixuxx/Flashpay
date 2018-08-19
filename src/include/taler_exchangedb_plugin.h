@@ -1680,6 +1680,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param coin_pub coin to investigate
+   * @param include_payback include payback transactions of the coin?
    * @param[out] tlp set to list of transactions, NULL if coin is fresh
    * @return database transaction status
    */
@@ -1687,6 +1688,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_coin_transactions) (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                            int include_payback,
 			    struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 

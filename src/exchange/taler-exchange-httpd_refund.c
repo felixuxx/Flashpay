@@ -164,6 +164,7 @@ refund_transaction (void *cls,
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &refund->coin.coin_pub,
+                                          GNUNET_NO,
 					  &tl);
   if (0 > qs)
   {

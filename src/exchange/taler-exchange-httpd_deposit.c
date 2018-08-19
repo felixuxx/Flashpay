@@ -153,7 +153,7 @@ deposit_transaction (void *cls,
     }
     return qs;
   }
-  if (1 == qs)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     struct TALER_Amount amount_without_fee;
 
@@ -182,6 +182,7 @@ deposit_transaction (void *cls,
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &deposit->coin.coin_pub,
+                                          GNUNET_NO,
 					  &tl);
   if (0 > qs)
     return qs;

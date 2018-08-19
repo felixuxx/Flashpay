@@ -1579,7 +1579,7 @@ postgres_prepare (PGconn *db_conn)
                             ",denoms.denom_pub"
                             ",coins.denom_sig"
                             " FROM payback"
-                            "    JOIN known_coins coins"
+                            "    JOIN kown_coins coins"
                             "      USING (coin_pub)"
                             "    JOIN denominations denoms"
                             "      USING (denom_pub_hash)"
@@ -4277,6 +4277,23 @@ add_coin_payback (void *cls,
 
 
 /**
+ * Work we need to do.
+ */
+struct Work
+{
+  /**
+   * SQL prepared statement name.
+   */
+  const char *statement;
+
+  /**
+   * Function to call to handle the result(s).
+   */
+  GNUNET_PQ_PostgresResultHandler cb;
+};
+
+
+/**
  * Compile a list of all (historic) transactions performed
  * with the given coin (/refresh/melt, /deposit and /refund operations).
  *
@@ -4290,25 +4307,22 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_coin_transactions (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                int include_payback,
 				struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
-  struct CoinHistoryContext chc;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_end
+  static const struct Work work_op[] = {
+    /** #TALER_EXCHANGEDB_TT_DEPOSIT */
+    { "get_deposit_with_coin_pub",
+      &add_coin_deposit },
+    /** #TALER_EXCHANGEDB_TT_REFRESH_MELT */
+    { "get_refresh_session_by_coin",
+      &add_coin_melt },
+    /** #TALER_EXCHANGEDB_TT_REFUND */
+    { "get_refunds_by_coin",
+      &add_coin_refund },
+    { NULL, NULL }
   };
-  enum GNUNET_DB_QueryStatus qs;
-  struct {
-    /**
-     * SQL prepared statement name.
-     */
-    const char *statement;
-
-    /**
-     * Function to call to handle the result(s).
-     */
-    GNUNET_PQ_PostgresResultHandler cb;
-  } work[] = {
+  static const struct Work work_wp[] = {
     /** #TALER_EXCHANGEDB_TT_DEPOSIT */
     { "get_deposit_with_coin_pub",
       &add_coin_deposit },
@@ -4323,7 +4337,15 @@ postgres_get_coin_transactions (void *cls,
       &add_coin_payback },
     { NULL, NULL }
   };
+  struct CoinHistoryContext chc;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  const struct Work * work;
 
+  work = (GNUNET_YES == include_payback) ? work_wp : work_op;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting transactions for coin %s\n",
               TALER_B2S (coin_pub));

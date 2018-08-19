@@ -209,6 +209,7 @@ payback_transaction (void *cls,
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &pc->coin->coin_pub,
+                                          GNUNET_YES,
 					  &tl);
   if (0 > qs)
   {

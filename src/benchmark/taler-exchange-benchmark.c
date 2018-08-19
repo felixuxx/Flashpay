@@ -571,6 +571,9 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     fakebank = fork ();
     if (0 == fakebank)
     {
+      GNUNET_log_setup ("benchmark-fakebank",
+                        NULL == loglev ? "INFO" : loglev,
+                        logfile);
       GNUNET_SCHEDULER_run (&launch_fakebank,
                             exchange_bank_account.bank_base_url);
       exit (0);
@@ -686,6 +689,9 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       if (0 == (cpids[i] = fork ()))
       {
         /* I am the child, do the work! */
+        GNUNET_log_setup ("benchmark-worker",
+                          NULL == loglev ? "INFO" : loglev,
+                          logfile);
         result = TALER_TESTING_setup
           (run,
            NULL,

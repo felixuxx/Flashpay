@@ -718,6 +718,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     qs = plugin->get_coin_transactions (plugin->cls,
                                         session,
                                         &refresh_session.coin.coin_pub,
+                                        GNUNET_YES,
 					&tl);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
     plugin->free_coin_transaction_list (plugin->cls,
@@ -2132,6 +2133,7 @@ run (void *cls)
   qs = plugin->get_coin_transactions (plugin->cls,
                                       session,
                                       &refund.coin.coin_pub,
+                                      GNUNET_YES,
 				      &tl);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
   GNUNET_assert (NULL != tl);
