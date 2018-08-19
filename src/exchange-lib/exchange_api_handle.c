@@ -846,7 +846,7 @@ keys_completed_cb (void *cls,
     exchange->retry_task = GNUNET_SCHEDULER_add_delayed (exchange->retry_delay,
                                                          &request_keys,
                                                          exchange);
-    break;
+    return;
   case MHD_HTTP_OK:
     if (NULL == resp_obj)
     {
