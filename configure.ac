@@ -88,6 +88,38 @@ AC_MSG_RESULT($enable_expensive)
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [test "x$enable_expensive" = "xyes"])
 
 
+AC_ARG_ENABLE([[epoll]],
+  [AS_HELP_STRING([[--enable-epoll[=ARG]]], [enable epoll support (yes, no, auto) [auto]])],
+    [enable_epoll=${enableval}],
+    [enable_epoll='auto']
+  )
+
+AS_IF([test "$enable_epoll" != "no"],
+      [AX_HAVE_EPOLL
+       AS_IF([test "${ax_cv_have_epoll}" = "yes"],
+          [AC_DEFINE([[EPOLL_SUPPORT]],[[1]],[Define to 1 to enable epoll support])
+           enable_epoll='yes'],
+       [AS_IF([test "$enable_epoll" = "yes"],
+              AC_MSG_ERROR([[Support for epoll was explicitly requested but cannot be enabled on this platform.]]))
+        enable_epoll='no'])])
+
+AM_CONDITIONAL([MHD_HAVE_EPOLL], [[test "x$enable_epoll" = xyes]])
+
+AS_IF([test "x$enable_epoll" = "xyes"],
+  AC_CACHE_CHECK([for epoll_create1()],
+                 [mhd_cv_have_epoll_create1], [
+    AC_LINK_IFELSE([
+      AC_LANG_PROGRAM([[
+#include <sys/epoll.h>
+        ]], [[
+int fd;
+fd = epoll_create1(EPOLL_CLOEXEC);]])],
+      [mhd_cv_have_epoll_create1=yes],
+      [mhd_cv_have_epoll_create1=no])])
+  AS_IF([test "x$mhd_cv_have_epoll_create1" = "xyes"],[
+    AC_DEFINE([[HAVE_EPOLL_CREATE1]], [[1]], [Define if you have epoll_create1 function.])]))
+
+
 if test "$wallet_only" != yes
 then
 

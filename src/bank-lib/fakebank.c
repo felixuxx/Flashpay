@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017 Inria and GNUnet e.V.
+  (C) 2016, 2017, 2018 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -19,7 +19,6 @@
  * @brief library that fakes being a Taler bank for testcases
  * @author Christian Grothoff <christian@grothoff.org>
  */
-
 #include "platform.h"
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
@@ -125,6 +124,18 @@ struct TALER_FAKEBANK_Handle
    * Number of transactions.
    */
   uint64_t serial_counter;
+
+#if EPOLL_SUPPORT
+  /**
+   * Boxed @e mhd_fd.
+   */
+  struct GNUNET_NETWORK_Handle *mhd_rfd;
+  
+  /**
+   * File descriptor to use to wait for MHD.
+   */
+  int mhd_fd;
+#endif
 };
 
 
@@ -328,6 +339,9 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     GNUNET_SCHEDULER_cancel (h->mhd_task);
     h->mhd_task = NULL;
   }
+#if EPOLL_SUPPORT
+  GNUNET_NETWORK_socket_free_memory_only_ (h->mhd_rfd);
+#endif
   if (NULL != h->mhd_bank)
   {
     MHD_stop_daemon (h->mhd_bank);
@@ -976,10 +990,42 @@ static void
 run_mhd (void *cls);
 
 
+#if EPOLL_SUPPORT
 /**
  * Schedule MHD.  This function should be called initially when an
  * MHD is first getting its client socket, and will then automatically
  * always be called later whenever there is work to be done.
+ *
+ * @param h fakebank handle to schedule MHD for
+ */
+static void
+schedule_httpd (struct TALER_FAKEBANK_Handle *h)
+{
+  int haveto;
+  MHD_UNSIGNED_LONG_LONG timeout;
+  struct GNUNET_TIME_Relative tv;
+
+  haveto = MHD_get_timeout (h->mhd_bank,
+			    &timeout);
+  if (MHD_YES == haveto)
+    tv.rel_value_us = (uint64_t) timeout * 1000LL;
+  else
+    tv = GNUNET_TIME_UNIT_FOREVER_REL;
+  if (NULL != h->mhd_task)
+    GNUNET_SCHEDULER_cancel (h->mhd_task);
+  h->mhd_task =
+    GNUNET_SCHEDULER_add_read_net (tv,
+				   h->mhd_rfd,
+				   &run_mhd,
+				   h);
+}
+#else
+/**
+ * Schedule MHD.  This function should be called initially when an
+ * MHD is first getting its client socket, and will then automatically
+ * always be called later whenever there is work to be done.
+ *
+ * @param h fakebank handle to schedule MHD for
  */
 static void
 schedule_httpd (struct TALER_FAKEBANK_Handle *h)
@@ -1033,6 +1079,7 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   if (NULL != wws)
     GNUNET_NETWORK_fdset_destroy (wws);
 }
+#endif
 
 
 /**
@@ -1063,7 +1110,11 @@ TALER_FAKEBANK_start (uint16_t port)
   struct TALER_FAKEBANK_Handle *h;
 
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
-  h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG | MHD_USE_DUAL_STACK,
+  h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
+#if EPOLL_SUPPORT
+				  | MHD_USE_EPOLL
+#endif
+				  | MHD_USE_DUAL_STACK,
                                   port,
                                   NULL, NULL,
                                   &handle_mhd_request, h,
@@ -1075,6 +1126,11 @@ TALER_FAKEBANK_start (uint16_t port)
     GNUNET_free (h);
     return NULL;
   }
+#if EPOLL_SUPPORT
+  h->mhd_fd = MHD_get_daemon_info (h->mhd_bank,
+				   MHD_DAEMON_INFO_EPOLL_FD)->epoll_fd;
+  h->mhd_rfd = GNUNET_NETWORK_socket_box_native (h->mhd_fd);
+#endif
   schedule_httpd (h);
   return h;
 }
