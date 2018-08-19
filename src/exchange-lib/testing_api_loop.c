@@ -294,6 +294,7 @@ do_shutdown (void *cls)
   if (NULL != is->exchange)
   {
     TALER_EXCHANGE_disconnect (is->exchange);
+    is->exchange = NULL;
   }
   if (NULL != is->task)
   {
@@ -514,7 +515,7 @@ struct MainContext
   TALER_TESTING_Main main_cb;
 
   /**
-   * Closure for "run".
+   * Closure for @e main_cb.
    */
   void *main_cb_cls;
 
@@ -530,6 +531,11 @@ struct MainContext
    * generic.
    */
   const char *config_filename;
+
+  /**
+   * URL of the exchange.
+   */
+  char *exchange_url;
 
 };
 
@@ -566,11 +572,27 @@ cert_cb (void *cls,
 	 enum TALER_EXCHANGE_VersionCompatibility compat)
 {
   struct MainContext *main_ctx = cls;
+  struct TALER_TESTING_Interpreter *is = main_ctx->is;
 
   if (NULL == keys)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Got NULL response for /keys\n");
+    if (GNUNET_NO == is->working)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Got NULL response for /keys during startup, retrying!\n");
+      TALER_EXCHANGE_disconnect (is->exchange);
+      GNUNET_assert (NULL !=
+                     (is->exchange = TALER_EXCHANGE_connect (is->ctx,
+                                                             main_ctx->exchange_url,
+                                                             &cert_cb,
+                                                             main_ctx,
+                                                             TALER_EXCHANGE_OPTION_END)));
+      return;
+    }
+    else
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Got NULL response for /keys during execution!\n");
+
   }
   else
   {
@@ -578,28 +600,28 @@ cert_cb (void *cls,
                 "Got %d DK from /keys\n",
                 keys->num_denom_keys);
   }
-  main_ctx->is->key_generation++;
-  main_ctx->is->keys = keys;
+  is->key_generation++;
+  is->keys = keys;
 
   /* /keys has been called for some reason and
    * the interpreter is already running. */
-  if (GNUNET_YES == main_ctx->is->working)
+  if (GNUNET_YES == is->working)
     return;
 
-  main_ctx->is->working = GNUNET_YES;
+  is->working = GNUNET_YES;
 
   /* Very first start of tests, call "run()" */
-  if (1 == main_ctx->is->key_generation)
+  if (1 == is->key_generation)
   {
     main_ctx->main_cb (main_ctx->main_cb_cls,
-                       main_ctx->is);
+                       is);
     return;
   }
 
   /* Tests already started, just trigger the
    * next command. */
   GNUNET_SCHEDULER_add_now (&interpreter_run,
-                            main_ctx->is);
+                            is);
 }
 
 
@@ -653,13 +675,13 @@ main_wrapper_exchange_connect (void *cls)
     GNUNET_CONFIGURATION_destroy (cfg);
     return;
   }
+  main_ctx->exchange_url = exchange_url;
   GNUNET_assert (NULL !=
                  (is->exchange = TALER_EXCHANGE_connect (is->ctx,
                                                          exchange_url,
                                                          &cert_cb,
                                                          main_ctx,
                                                          TALER_EXCHANGE_OPTION_END)));
-  GNUNET_free (exchange_url);
   GNUNET_CONFIGURATION_destroy (cfg);
 }
 
@@ -726,7 +748,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   else
      GNUNET_SCHEDULER_run (&main_wrapper_exchange_agnostic,
                            &main_ctx);
-
+  GNUNET_free_non_null (main_ctx.exchange_url);
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   GNUNET_DISK_pipe_close (sigpipe);
   sigpipe = NULL;
