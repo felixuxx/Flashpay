@@ -2242,6 +2242,8 @@ run (void *cls)
   plugin->free_coin_transaction_list (plugin->cls,
                                       tl);
 
+  plugin->rollback (plugin->cls,
+                    session);
   FAILIF (GNUNET_OK !=
           test_wire_prepare (session));
   FAILIF (GNUNET_OK !=
