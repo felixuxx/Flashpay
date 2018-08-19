@@ -113,10 +113,20 @@ struct TALER_EXCHANGE_Handle
   struct KeysRequest *kr;
 
   /**
+   * Task for retrying /keys request.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
    * Key data of the exchange, only valid if
    * @e handshake_complete is past stage #MHS_CERT.
    */
   struct TALER_EXCHANGE_Keys key_data;
+
+  /**
+   * Retry /keys frequency.
+   */
+  struct GNUNET_TIME_Relative retry_delay;
 
   /**
    * When does @e key_data expire?
@@ -768,10 +778,10 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
 /**
  * Initiate download of /keys from the exchange.
  *
- * @param exchange where to download /keys from
+ * @param cls exchange where to download /keys from
  */
 static void
-request_keys (struct TALER_EXCHANGE_Handle *exchange);
+request_keys (void *cls);
 
 
 /**
@@ -791,7 +801,9 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
   if ( (GNUNET_NO == force_download) &&
        (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;
-  request_keys (exchange);
+  if (NULL != exchange->retry_task)
+    exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
+                                                     exchange);
   return GNUNET_TIME_UNIT_ZERO_ABS;
 }
 
@@ -827,6 +839,13 @@ keys_completed_cb (void *cls,
   switch (response_code)
   {
   case 0:
+    free_keys_request (kr);
+    exchange->kr = NULL;
+    GNUNET_assert (NULL == exchange->retry_task);
+    exchange->retry_delay = GNUNET_TIME_STD_BACKOFF (exchange->retry_delay);
+    exchange->retry_task = GNUNET_SCHEDULER_add_delayed (exchange->retry_delay,
+                                                         &request_keys,
+                                                         exchange);
     break;
   case MHD_HTTP_OK:
     if (NULL == resp_obj)
@@ -882,6 +901,7 @@ keys_completed_cb (void *cls,
     }
     json_decref (exchange->key_data_raw);
     exchange->key_data_raw = json_deep_copy (resp_obj);
+    exchange->retry_delay = GNUNET_TIME_UNIT_ZERO;
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1107,7 +1127,8 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
   exchange->url = GNUNET_strdup (url);
   exchange->cert_cb = cert_cb;
   exchange->cert_cb_cls = cert_cb_cls;
-  request_keys (exchange);
+  exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
+                                                   exchange);
   return exchange;
 }
 
@@ -1115,18 +1136,21 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
 /**
  * Initiate download of /keys from the exchange.
  *
- * @param exchange where to download /keys from
+ * @param cls exchange where to download /keys from
  */
 static void
-request_keys (struct TALER_EXCHANGE_Handle *exchange)
+request_keys (void *cls)
 {
+  struct TALER_EXCHANGE_Handle *exchange = cls;
   struct KeysRequest *kr;
   CURL *eh;
 
+  exchange->retry_task = NULL;
   GNUNET_assert (NULL == exchange->kr);
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
-  if (GNUNET_YES == MAH_handle_is_ready (exchange) && !TALER_EXCHANGE_API_DISABLE_CHERRYPICKING)
+  if (GNUNET_YES ==
+      MAH_handle_is_ready (exchange) && !TALER_EXCHANGE_API_DISABLE_CHERRYPICKING)
   {
     char *arg;
 
@@ -1197,6 +1221,11 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
   {
     json_decref (exchange->key_data_raw);
     exchange->key_data_raw = NULL;
+  }
+  if (NULL != exchange->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (exchange->retry_task);
+    exchange->retry_task = NULL;
   }
   GNUNET_free (exchange->url);
   GNUNET_free (exchange);
