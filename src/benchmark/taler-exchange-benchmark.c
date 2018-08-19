@@ -871,7 +871,7 @@ main (int argc,
     GNUNET_CONFIGURATION_destroy (cfg);
     return BAD_CONFIG_FILE;
   }
-  if (howmany_clients > 1024)
+  if (howmany_clients > 10240)
   {
     TALER_LOG_ERROR ("-p option value given is too large\n");
     return BAD_CLI_ARG;
