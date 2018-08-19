@@ -217,8 +217,6 @@ withdraw_transaction (void *cls,
   GNUNET_assert (0 == qs);
   wc->collectable.sig = denom_sig;
 
-
-
   /* Check if balance is sufficient */
   r.pub = wc->wsrd.reserve_pub;
   qs = TEH_plugin->reserve_get (TEH_plugin->cls,
@@ -238,7 +236,6 @@ withdraw_transaction (void *cls,
 					       "reserve_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-
   if (0 < TALER_amount_cmp (&wc->amount_required,
                             &r.balance))
   {
@@ -249,12 +246,12 @@ withdraw_transaction (void *cls,
                                           session,
                                           &wc->wsrd.reserve_pub,
                                           &rh);
-    if (0 >= qs)
+    if (NULL == rh)
     {
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
         *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
                                                          TALER_EC_WITHDRAW_DB_FETCH_ERROR);
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret = reply_reserve_withdraw_insufficient_funds (connection,
 							  rh);
