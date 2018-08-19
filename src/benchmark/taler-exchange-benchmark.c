@@ -70,13 +70,14 @@ enum BenchmarkError {
 #define FIRST_INSTRUCTION -1
 
 #define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
-   TALER_TESTING_cmd_fakebank_transfer (label, amount, \
+   TALER_TESTING_cmd_fakebank_transfer_retry \
+    (TALER_TESTING_cmd_fakebank_transfer (label, amount, \
      exchange_bank_account.bank_base_url, \
      USER_ACCOUNT_NUMBER, \
      exchange_bank_account.no, \
      "dummy_user", \
      "dummy_password", \
-     "http://example.com/")
+     "http://example.com/"))
 
 /**
  * Information about an account extracted from a payto://-URL.

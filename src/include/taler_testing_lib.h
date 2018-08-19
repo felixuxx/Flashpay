@@ -620,6 +620,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
    const char *ref,
    const char *exchange_url);
 
+
 /**
  * Create "fakebank transfer" CMD, letting the caller specifying
  * the merchant instance.  This version is useful when a tip
@@ -663,6 +664,19 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
    const char *instance,
    const char *exchange_url,
    const char *config_filename);
+
+
+/**
+ * Modify a fakebank transfer command to enable retries when the
+ * reserve is not yet full or we get other transient errors from the
+ * fakebank.
+ *
+ * @param cmd a fakebank transfer command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_retry (struct TALER_TESTING_Command cmd);
+
 
 /**
  * Make a "wirewatch" CMD.

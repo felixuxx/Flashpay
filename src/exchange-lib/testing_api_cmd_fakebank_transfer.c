@@ -120,7 +120,54 @@ struct FakebankTransferState
    * transfer subject).
    */
   const char *config_filename;
+
+  /**
+   * Task scheduled to try later.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * How long do we wait until we retry?
+   */
+  struct GNUNET_TIME_Relative backoff;
+
+  /**
+   * Was this command modified via
+   * #TALER_TESTING_cmd_fakebank_transfer_with_retry to
+   * enable retries?
+   */
+  int do_retry;
 };
+
+
+/**
+ * Run the "fakebank transfer" CMD.
+ *
+ * @param cls closure.
+ * @param cmd CMD being run.
+ * @param is interpreter state.
+ */
+static void
+fakebank_transfer_run (void *cls,
+                       const struct TALER_TESTING_Command *cmd,
+                       struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Task scheduled to re-try #fakebank_transfer_run.
+ *
+ * @param cls a `struct FakebankTransferState`
+ */
+static void
+do_retry (void *cls)
+{
+  struct FakebankTransferState *fts = cls;
+
+  fts->retry_task = NULL;
+  fakebank_transfer_run (fts,
+                         NULL,
+                         fts->is);
+}
 
 
 /**
@@ -151,6 +198,27 @@ add_incoming_cb (void *cls,
   fts->serial_id = serial_id;
   if (MHD_HTTP_OK != http_status)
   {
+    if (GNUNET_YES == fts->do_retry)
+    {
+      if ( (0 == http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Retrying fakebank transfer failed with %u/%d\n",
+                    http_status,
+                    (int) ec);
+	/* on DB conflicts, do not use backoff */
+	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+	  fts->backoff = GNUNET_TIME_UNIT_ZERO;
+	else
+	  fts->backoff = GNUNET_TIME_STD_BACKOFF (fts->backoff);
+	fts->retry_task = GNUNET_SCHEDULER_add_delayed (fts->backoff,
+                                                        &do_retry,
+                                                        fts);
+	return;
+      }
+    }
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Fakebank returned HTTP status %u/%d\n",
@@ -327,6 +395,11 @@ fakebank_transfer_cleanup (void *cls,
                 "Command %s did not complete\n",
                 cmd->label);
     TALER_BANK_admin_add_incoming_cancel (fts->aih);
+  }
+  if (NULL != fts->retry_task)
+  {
+    GNUNET_SCHEDULER_cancel (fts->retry_task);
+    fts->retry_task = NULL;
   }
   GNUNET_free (fts);
 }
@@ -630,6 +703,26 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
   cmd.run = &fakebank_transfer_run;
   cmd.cleanup = &fakebank_transfer_cleanup;
   cmd.traits = &fakebank_transfer_traits;
+  return cmd;
+}
+
+
+/**
+ * Modify a fakebank transfer command to enable retries when the
+ * reserve is not yet full or we get other transient errors from the
+ * fakebank.
+ *
+ * @param cmd a fakebank transfer command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_fakebank_transfer_retry (struct TALER_TESTING_Command cmd)
+{
+  struct FakebankTransferState *fts;
+
+  GNUNET_assert (&fakebank_transfer_run == cmd.run);
+  fts = cmd.cls;
+  fts->do_retry = GNUNET_YES;
   return cmd;
 }
 
