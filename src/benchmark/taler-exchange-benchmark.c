@@ -198,6 +198,12 @@ static char *remote_host;
  */
 static char *remote_dir;
 
+/**
+ * Don't kill exchange/fakebank/wirewatch until
+ * requested by the user explicitly.
+ */
+static int linger;
+
 
 /**
  * Decide which exchange account is going to be
@@ -735,6 +741,12 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   if (MODE_EXCHANGE == mode)
     getchar ();
 
+  if ( (GNUNET_YES == linger) && ( (mode == MODE_BOTH || mode == MODE_CLIENT ) ) )
+  {
+    printf("press ENTER to stop\n");
+    getchar ();
+  }
+
   if (MODE_CLIENT == mode)
   {
     GNUNET_assert (NULL != exchange_slave);
@@ -828,6 +840,10 @@ main (int argc,
                                  "LF",
                                  "will log to file LF",
                                  &logfile),
+    GNUNET_GETOPT_option_flag ('K',
+                               "linger",
+                               "linger around until key press",
+                               &linger),
     GNUNET_GETOPT_OPTION_END
   };
 
