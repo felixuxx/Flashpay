@@ -528,6 +528,7 @@ else
 
 # logic if doc_only is set, make sure conditionals are still defined
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
+AM_CONDITIONAL([MHD_HAVE_EPOLL], [false])
 AM_CONDITIONAL([WALLET_ONLY], [false])
 AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
 AM_CONDITIONAL([HAVE_LIBCURL], [false])
