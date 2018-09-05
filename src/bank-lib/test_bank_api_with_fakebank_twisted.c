@@ -114,9 +114,11 @@ main (int argc,
       char * const *argv)
 {
   unsigned int ret;
+
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
+
   GNUNET_log_setup ("test-bank-api-twisted",
                     "DEBUG", NULL);
 
@@ -135,7 +137,8 @@ main (int argc,
   ret = TALER_TESTING_setup (&run,
                              NULL,
                              CONFIG_FILE,
-                             NULL);
+                             NULL,
+                             GNUNET_NO);
   purge_process (twisterd);
   GNUNET_free (twister_url);
   GNUNET_free (fakebank_url);
