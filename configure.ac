@@ -43,7 +43,7 @@ AC_ARG_ENABLE([only-doc],
   [doc_only=${enableval}],
   [doc_only=no])
 AC_MSG_RESULT($doc_only)
-AM_CONDITIONAL([DOC_ONLY], [test "$doc_only" = "yes"])
+AM_CONDITIONAL([DOC_ONLY], [test "x$doc_only" = "xyes"])
 
 if test "$doc_only" != yes
 then
@@ -88,11 +88,14 @@ AC_MSG_RESULT($enable_expensive)
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [test "x$enable_expensive" = "xyes"])
 
 
+AC_MSG_CHECKING(whether to enable epoll)
 AC_ARG_ENABLE([[epoll]],
   [AS_HELP_STRING([[--enable-epoll[=ARG]]], [enable epoll support (yes, no, auto) [auto]])],
     [enable_epoll=${enableval}],
     [enable_epoll='auto']
   )
+AC_MSG_RESULT($enable_epoll)
+AM_CONDITIONAL([MHD_HAVE_EPOLL], [test "x$enable_epoll" = "xyes"])
 
 AS_IF([test "$enable_epoll" != "no"],
       [AX_HAVE_EPOLL
@@ -103,7 +106,6 @@ AS_IF([test "$enable_epoll" != "no"],
               AC_MSG_ERROR([[Support for epoll was explicitly requested but cannot be enabled on this platform.]]))
         enable_epoll='no'])])
 
-AM_CONDITIONAL([MHD_HAVE_EPOLL], [[test "x$enable_epoll" = xyes]])
 
 AS_IF([test "x$enable_epoll" = "xyes"],
   AC_CACHE_CHECK([for epoll_create1()],
