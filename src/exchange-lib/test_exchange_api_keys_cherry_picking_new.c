@@ -73,7 +73,7 @@ run (void *cls,
                                   is->exchange),
     /* sleep a bit */
     TALER_TESTING_cmd_sleep ("sleep",
-                             25),
+                             10),
     /* 1st keyup happens at start-up */
     TALER_TESTING_cmd_exec_keyup ("keyup-2",
                                   CONFIG_FILE_EXTENDED),
@@ -89,7 +89,7 @@ run (void *cls,
 
     /* sleep a bit */
     TALER_TESTING_cmd_sleep ("sleep",
-                             24),
+                             20),
     /* Do 2nd keyup */
     TALER_TESTING_cmd_exec_keyup ("keyup-3",
                                   CONFIG_FILE_EXTENDED),
@@ -100,7 +100,7 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_check_keys ("check-keys-3",
                                   3,
-                                  10,
+                                  8,
                                   is->exchange),
     TALER_TESTING_cmd_end ()
   };

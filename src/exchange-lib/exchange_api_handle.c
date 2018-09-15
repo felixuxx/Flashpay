@@ -836,7 +836,6 @@ keys_completed_cb (void *cls,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
               response_code);
-  json_dumpf (resp_obj, stderr, 0);
   kd_old = exchange->key_data;
   memset (&kd,
           0,
