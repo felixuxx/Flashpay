@@ -71,8 +71,8 @@ check_keys_run (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "cmd `%s', key generation: %d\n",
-              cmd->label, is->key_generation);
-
+              cmd->label,
+              is->key_generation);
   if (is->key_generation < cks->generation)
   {
     /* Go back to waiting for /keys signal! */
@@ -99,10 +99,11 @@ check_keys_run (void *cls,
   {
     /* Did not get the expected number of denomination keys! */
     GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Got %u keys in step %s\n",
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Got %u keys in step %s, expected %u\n",
                 is->keys->num_denom_keys,
-                cmd->label);
+                cmd->label,
+                cks->num_denom_keys);
     TALER_TESTING_interpreter_fail (is);
     return;
   }

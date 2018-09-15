@@ -71,6 +71,9 @@ run (void *cls,
                                   1,
                                   4,
                                   is->exchange),
+    /* sleep a bit */
+    TALER_TESTING_cmd_sleep ("sleep",
+                             25),
     /* 1st keyup happens at start-up */
     TALER_TESTING_cmd_exec_keyup ("keyup-2",
                                   CONFIG_FILE_EXTENDED),
@@ -81,11 +84,23 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_check_keys ("check-keys-2",
                                   2,
-#if TALER_EXCHANGE_API_DISABLE_CHERRYPICKING
-                                  12,
-#else
-                                  8,
-#endif
+                                  6,
+                                  is->exchange),
+
+    /* sleep a bit */
+    TALER_TESTING_cmd_sleep ("sleep",
+                             24),
+    /* Do 2nd keyup */
+    TALER_TESTING_cmd_exec_keyup ("keyup-3",
+                                  CONFIG_FILE_EXTENDED),
+    TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-2",
+                                         CONFIG_FILE),
+    TALER_TESTING_cmd_signal ("trigger-keys-reload-2",
+                              is->exchanged,
+                              SIGUSR1),
+    TALER_TESTING_cmd_check_keys ("check-keys-3",
+                                  3,
+                                  10,
                                   is->exchange),
     TALER_TESTING_cmd_end ()
   };

@@ -1192,6 +1192,10 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
 
   krd->cherry_pick_date = cherry_pick_date;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Creating /keys for cherry pick date %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (cherry_pick_date));
+
   /* Initialize `rbc` */
   memset (&rbc,
           0,
@@ -2062,6 +2066,11 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                  sizeof (struct KeysResponseData),
                  &krd_search_comparator);
 
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Filtering /keys by cherry pick date %s found entry %u/%u\n",
+              GNUNET_STRINGS_absolute_time_to_string (last_issue_date),
+              (unsigned int) (krd - key_state->krd_array),
+              key_state->krd_array_length);
   if ( (NULL == krd) &&
        (key_state->krd_array_length > 0) )
   {

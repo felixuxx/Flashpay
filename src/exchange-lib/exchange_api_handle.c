@@ -426,14 +426,15 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                       &kv.auditor_url_hash);
   kv.master = key_data->master_pub;
   len = json_array_size (keys);
-  auditor->denom_keys = GNUNET_new_array (len,
-                                          const struct TALER_EXCHANGE_DenomPublicKey *);
+  auditor->denom_key_offsets = GNUNET_new_array (len,
+                                                 unsigned int);
   i = 0;
   off = 0;
   json_array_foreach (keys, i, key) {
     struct TALER_AuditorSignatureP auditor_sig;
     struct GNUNET_HashCode denom_h;
     const struct TALER_EXCHANGE_DenomPublicKey *dk;
+    unsigned int dk_off;
     struct GNUNET_JSON_Specification kspec[] = {
       GNUNET_JSON_spec_fixed_auto ("denom_pub_h",
                                    &denom_h),
@@ -451,6 +452,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
       continue;
     }
     dk = NULL;
+    dk_off = UINT_MAX;
     for (unsigned int j=0;j<key_data->num_denom_keys;j++)
     {
       if (0 == memcmp (&denom_h,
@@ -458,6 +460,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                        sizeof (struct GNUNET_HashCode)))
       {
         dk = &key_data->denom_keys[j];
+        dk_off = j;
         break;
       }
     }
@@ -492,7 +495,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    auditor->denom_keys[off] = dk;
+    auditor->denom_key_offsets[off] = dk_off;
     off++;
   }
   auditor->num_denom_keys = off;
@@ -628,7 +631,8 @@ decode_keys_json (const json_t *resp_obj,
     unsigned int index;
 
     EXITIF (NULL == (denom_keys_array =
-                     json_object_get (resp_obj, "denoms")));
+                     json_object_get (resp_obj,
+                                      "denoms")));
     EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
 
     index = 0;
@@ -694,6 +698,7 @@ decode_keys_json (const json_t *resp_obj,
       for (unsigned int j=0;j<key_data->num_auditors;j++)
       {
         struct TALER_EXCHANGE_AuditorInformation *aix = &key_data->auditors[j];
+
 	if (0 == memcmp (&ai.auditor_pub,
 			 &aix->auditor_pub,
 			 sizeof (struct TALER_AuditorPublicKeyP)))
@@ -701,12 +706,12 @@ decode_keys_json (const json_t *resp_obj,
 	  found = true;
           /* Merge denomination key signatures of downloaded /keys into existing
              auditor information 'aix'. */
-          GNUNET_array_grow (aix->denom_keys,
+          GNUNET_array_grow (aix->denom_key_offsets,
                              aix->num_denom_keys,
                              aix->num_denom_keys + ai.num_denom_keys);
-          memcpy (&aix->denom_keys[aix->num_denom_keys - ai.num_denom_keys],
-                  ai.denom_keys,
-                  ai.num_denom_keys * sizeof (struct TALER_EXCHANGE_DenomPublicKey *));
+          memcpy (&aix->denom_key_offsets[aix->num_denom_keys - ai.num_denom_keys],
+                  ai.denom_key_offsets,
+                  ai.num_denom_keys * sizeof (unsigned int));
 	  break;
 	}
       }
@@ -762,7 +767,7 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
                      0);
   for (unsigned int i=0;i<key_data->num_auditors;i++)
   {
-    GNUNET_array_grow (key_data->auditors[i].denom_keys,
+    GNUNET_array_grow (key_data->auditors[i].denom_key_offsets,
                        key_data->auditors[i].num_denom_keys,
                        0);
     GNUNET_free (key_data->auditors[i].auditor_url);
@@ -827,10 +832,11 @@ keys_completed_cb (void *cls,
   struct TALER_EXCHANGE_Keys kd_old;
   enum TALER_EXCHANGE_VersionCompatibility vc;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
               response_code);
+  json_dumpf (resp_obj, stderr, 0);
   kd_old = exchange->key_data;
   memset (&kd,
           0,
@@ -878,17 +884,12 @@ keys_completed_cb (void *cls,
 
       anew->auditor_pub = aold->auditor_pub;
       anew->auditor_url = GNUNET_strdup (aold->auditor_url);
-      GNUNET_array_grow (anew->denom_keys,
+      GNUNET_array_grow (anew->denom_key_offsets,
                          anew->num_denom_keys,
                          aold->num_denom_keys);
-      for (unsigned int j=0;j<aold->num_denom_keys;j++)
-      {
-        /* offsets will map 1:1 */
-        unsigned int off = aold->denom_keys[j] - kd_old.denom_keys;
-        /* FIXME(#5315): this should not be an assert! */
-        GNUNET_assert (off < kd_old.num_denom_keys);
-        anew->denom_keys[j] = &kd.denom_keys[off];
-      }
+      memcpy (anew->denom_key_offsets,
+              aold->denom_key_offsets,
+              aold->num_denom_keys * sizeof (unsigned int));
     }
 
     if (GNUNET_OK !=
@@ -921,10 +922,10 @@ keys_completed_cb (void *cls,
                        NULL,
 		       vc);
     if (NULL != exchange->key_data_raw)
-      {
-        json_decref (exchange->key_data_raw);
-        exchange->key_data_raw = NULL;
-      }
+    {
+      json_decref (exchange->key_data_raw);
+      exchange->key_data_raw = NULL;
+    }
     free_key_data (&kd_old);
     return;
   }
@@ -1157,12 +1158,9 @@ request_keys (void *cls)
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
   if (GNUNET_YES ==
-      MAH_handle_is_ready (exchange) && !TALER_EXCHANGE_API_DISABLE_CHERRYPICKING)
+      MAH_handle_is_ready (exchange))
   {
     char *arg;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Doing cherry-picking\n");
 
     GNUNET_asprintf (&arg,
 		     "/keys?last_issue_date=%llu",

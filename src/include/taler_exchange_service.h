@@ -30,14 +30,6 @@
 
 /* *********************  /keys *********************** */
 
-
-/**
- * Temporarily disable cherrypicking until it's fixed.
- * See #5315.
- */
-#define TALER_EXCHANGE_API_DISABLE_CHERRYPICKING 1
-
-
 /**
  * List of possible options to be passed to
  * #TALER_EXCHANGE_connect().
@@ -170,11 +162,10 @@ struct TALER_EXCHANGE_AuditorInformation
 
   /**
    * Array of length @a num_denom_keys with the denomination
-   * keys audited by this auditor.  Note that the array
-   * elements point to the same locations as the entries
-   * in the key's main `denom_keys` array.
+   * keys audited by this auditor.  Offsets into the
+   * key's main `denom_keys` array.
    */
-  const struct TALER_EXCHANGE_DenomPublicKey **denom_keys;
+  unsigned int *denom_key_offsets;
 };
 
 

@@ -48,6 +48,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_refund.c \
   testing_api_cmd_status.c \
   testing_api_cmd_deposit.c \
+  testing_api_cmd_sleep.c \
   testing_api_cmd_refresh.c \
   testing_api_cmd_track.c \
   testing_api_cmd_bank_check.c \
@@ -95,9 +96,7 @@ endif
 
 check_PROGRAMS = \
   test_exchange_api_keys_cherry_picking_new \
-  test_exchange_api_new \
-  test_exchange_api_keys_cherry_picking \
-  test_exchange_api
+  test_exchange_api_new
 
 if HAVE_TWISTER
   check_PROGRAMS += \
@@ -126,19 +125,6 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 TESTS = \
   $(check_PROGRAMS)
 
-test_exchange_api_SOURCES = \
-  test_exchange_api.c
-test_exchange_api_LDADD = \
-  libtalerexchange.la \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
-
 test_exchange_api_new_SOURCES = \
   test_exchange_api_new.c
 test_exchange_api_new_LDADD = \
@@ -162,17 +148,6 @@ test_exchange_api_keys_cherry_picking_new_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
-
-test_exchange_api_keys_cherry_picking_SOURCES = \
-  test_exchange_api_keys_cherry_picking.c
-test_exchange_api_keys_cherry_picking_LDADD = \
-  libtalerexchange.la \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson

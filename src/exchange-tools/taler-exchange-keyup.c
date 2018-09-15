@@ -639,6 +639,15 @@ get_cointype_params (const char *ct,
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_overlap);
+  if (params->duration_overlap.rel_value_us >=
+      params->duration_withdraw.rel_value_us)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "duration_overlap",
+                               "duration_overlap must be smaller than duration_withdraw!");
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (kcfg,
                                              ct,
@@ -814,8 +823,9 @@ exchange_keys_update_cointype (void *cls,
   {
     dkf = get_cointype_file (&p,
                              p.anchor);
-    GNUNET_break (GNUNET_YES != GNUNET_DISK_file_test (dkf));
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_break (GNUNET_YES !=
+                  GNUNET_DISK_file_test (dkf));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Generating denomination key for type `%s', start %s at %s\n",
                 coin_alias,
                 GNUNET_STRINGS_absolute_time_to_string (p.anchor),
