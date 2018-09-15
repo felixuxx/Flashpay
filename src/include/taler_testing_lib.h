@@ -1094,6 +1094,7 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
   (const char *label,
    const char *deposit_reference);
 
+
 /**
  * Checks wheter all the wire transfers got "checked"
  * by the "bank check" CMD.
@@ -1104,6 +1105,7 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_empty (const char *label);
+
 
 /**
  * Create a "refund" command, allow to specify refund transaction
@@ -1128,6 +1130,7 @@ TALER_TESTING_cmd_refund_with_id
    const char *refund_fee,
    const char *deposit_reference,
    uint64_t refund_transaction_id);
+
 
 /**
  * Create a "refund" command.
@@ -1184,6 +1187,7 @@ TALER_TESTING_cmd_revoke (const char *label,
                           const char *coin_reference,
                           const char *config_filename);
 
+
 /**
  * Create a "signal" CMD.
  *
@@ -1197,6 +1201,19 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_signal (const char *label,
                           struct GNUNET_OS_Process *process,
                           int signal);
+
+
+/**
+ * Sleep for @a duration_s seconds.
+ *
+ * @param label command label.
+ * @param duration_s number of seconds to sleep
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_sleep (const char *label,
+                         unsigned int duration_s);
+
 
 /**
  * Make a "check keys" command.  This type of command
@@ -1218,6 +1235,7 @@ TALER_TESTING_cmd_check_keys
    unsigned int num_denom_keys,
    struct TALER_EXCHANGE_Handle *exchange);
 
+
 /**
  * Create a "batch" command.  Such command takes a
  * end_CMD-terminated array of CMDs and executed them.
@@ -1233,6 +1251,7 @@ TALER_TESTING_cmd_check_keys
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch (const char *label,
                          struct TALER_TESTING_Command *batch);
+
 
 
 /* *** Generic trait logic for implementing traits ********* */
