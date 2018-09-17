@@ -261,9 +261,9 @@ add_account_cb (void *cls,
                                             ai->plugin_name);
   if (NULL == wa->wire_plugin)
   {
-    fprintf (stderr,
-             "Failed to load wire plugin for `%s'\n",
-             ai->plugin_name);
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+		"Failed to load wire plugin for `%s'\n",
+		ai->plugin_name);
     GNUNET_free (wa);
     return;
   }
