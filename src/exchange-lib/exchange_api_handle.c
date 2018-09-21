@@ -1176,6 +1176,7 @@ request_keys (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
               kr->url);
+  eh = TALER_EXCHANGE
   eh = curl_easy_init ();
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
@@ -1201,6 +1202,10 @@ request_keys (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_ENCODING,
                                    "deflate"));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_TCP_FASTOPEN,
+                                   1L));
   kr->job = GNUNET_CURL_job_add (exchange->ctx,
                                  eh,
                                  GNUNET_NO,
