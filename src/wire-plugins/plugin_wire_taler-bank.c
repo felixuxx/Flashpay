@@ -1235,6 +1235,8 @@ taler_bank_reject_transfer (void *cls,
   }
   rh->rej_cb = rej_cb;
   rh->rej_cb_cls = rej_cb_cls;
+  TALER_ERROR_INFO ("Rejecting over %s bank URL\n",
+                    account.hostname);
   rh->brh = TALER_BANK_reject (tc->ctx,
                                account.hostname,
                                &rh->auth,
