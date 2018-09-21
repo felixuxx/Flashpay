@@ -849,13 +849,12 @@ main (int argc,
 
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  if (GNUNET_SYSERR ==
+  if (0 >=
       (result = GNUNET_GETOPT_run ("taler-exchange-benchmark",
                                    options,
                                    argc,
                                    argv)))
   {
-    TALER_LOG_ERROR ("Unparsable CLI options\n");
     return BAD_CLI_ARG;
   }
   GNUNET_log_setup ("taler-exchange-benchmark",
