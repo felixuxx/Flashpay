@@ -29,6 +29,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -317,7 +318,6 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->cb_cls = payback_cb_cls;
   ph->url = MAH_path_to_url (exchange, "/payback");
 
-  eh = curl_easy_init ();
   ph->json_enc = json_dumps (payback_obj,
                              JSON_COMPACT);
   json_decref (payback_obj);
@@ -328,17 +328,10 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_free (ph);
     return NULL;
   }
+  eh = TEL_curl_easy_get (ph->url);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for payback: `%s'\n",
               ph->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   ph->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,

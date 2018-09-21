@@ -28,6 +28,7 @@
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -353,15 +354,7 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_free (buf);
   GNUNET_free (path);
 
-  eh = curl_easy_init ();
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   wdh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
+  eh = TEL_curl_easy_get (wdh->url);
   ctx = MAH_handle_to_context (exchange);
   wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,

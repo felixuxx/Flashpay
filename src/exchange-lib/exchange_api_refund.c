@@ -29,6 +29,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -365,7 +366,7 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
   TALER_amount_hton (&rh->depconf.refund_fee,
                      refund_fee);
 
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (rh->url);
   GNUNET_assert (NULL != (rh->json_enc =
                           json_dumps (refund_obj,
                                       JSON_COMPACT)));
@@ -373,14 +374,6 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for refund: `%s'\n",
               rh->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   rh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,

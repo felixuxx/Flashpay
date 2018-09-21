@@ -30,6 +30,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -490,7 +491,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->amount_with_fee = *amount;
   dh->coin_value = dki->value;
 
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (dh->url);
   GNUNET_assert (NULL != (dh->json_enc =
                           json_dumps (deposit_obj,
                                       JSON_COMPACT)));
@@ -500,16 +501,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
               dh->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   dh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
                                    dh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,

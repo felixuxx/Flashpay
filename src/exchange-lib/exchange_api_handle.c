@@ -27,6 +27,7 @@
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
 #include "exchange_api_handle.h"
+#include "curl_defaults.h"
 
 /**
  * Which revision of the Taler protocol is implemented
@@ -1176,7 +1177,7 @@ request_keys (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
               kr->url);
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (kr->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_VERBOSE,
@@ -1193,18 +1194,6 @@ request_keys (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERDATA,
                                    kr));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   kr->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_TCP_FASTOPEN,
-                                   1L));
   kr->job = GNUNET_CURL_job_add (exchange->ctx,
                                  eh,
                                  GNUNET_NO,

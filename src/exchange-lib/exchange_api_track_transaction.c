@@ -29,6 +29,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -319,19 +320,11 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->depconf.h_contract_terms = *h_contract_terms;
   dwh->depconf.coin_pub = *coin_pub;
 
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (dwh->url);
   GNUNET_assert (NULL != (dwh->json_enc =
                           json_dumps (deposit_wtid_obj,
                                       JSON_COMPACT)));
   json_decref (deposit_wtid_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   dwh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,

@@ -30,6 +30,7 @@
 #include "taler_signatures.h"
 #include "taler_wire_plugin.h"
 #include "exchange_api_handle.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -407,15 +408,7 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->cb_cls = wire_cb_cls;
   wh->url = MAH_path_to_url (exchange, "/wire");
 
-  eh = curl_easy_init ();
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   wh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
+  eh = TEL_curl_easy_get (wh->url);
   ctx = MAH_handle_to_context (exchange);
   wh->job = GNUNET_CURL_job_add (ctx,
                          eh,

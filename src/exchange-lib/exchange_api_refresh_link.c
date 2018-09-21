@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /**
@@ -408,15 +409,8 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   rlh->url = MAH_path_to_url (exchange, arg_str);
   GNUNET_free (arg_str);
 
-  eh = curl_easy_init ();
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   rlh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
+
+  eh = TEL_curl_easy_get (rlh->url);
   ctx = MAH_handle_to_context (exchange);
   rlh->job = GNUNET_CURL_job_add (ctx,
                           eh,

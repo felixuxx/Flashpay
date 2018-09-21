@@ -29,6 +29,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /* ********************* /refresh/ common ***************************** */
@@ -1200,23 +1201,15 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   rmh->md = md;
   rmh->url = MAH_path_to_url (exchange,
                               "/refresh/melt");
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (rmh->url);
   GNUNET_assert (NULL != (rmh->json_enc =
                           json_dumps (melt_obj,
                                       JSON_COMPACT)));
   json_decref (melt_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   rmh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
                                    rmh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
@@ -1635,15 +1628,11 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   rrh->url = MAH_path_to_url (rrh->exchange,
                               "/refresh/reveal");
 
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (rrh->url);
   GNUNET_assert (NULL != (rrh->json_enc =
                           json_dumps (reveal_obj,
                                       JSON_COMPACT)));
   json_decref (reveal_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   rrh->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
@@ -1652,10 +1641,6 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rrh->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
   ctx = MAH_handle_to_context (rrh->exchange);
   rrh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

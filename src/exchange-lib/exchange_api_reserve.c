@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
+#include "curl_defaults.h"
 
 
 /* ********************** /reserve/status ********************** */
@@ -625,15 +626,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
                               arg_str);
   GNUNET_free (arg_str);
 
-  eh = curl_easy_init ();
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   rsh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
+  eh = TEL_curl_easy_get (rsh->url);
   ctx = MAH_handle_to_context (exchange);
   rsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
@@ -1029,15 +1022,11 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wsh->ps = *ps;
   wsh->url = MAH_path_to_url (exchange, "/reserve/withdraw");
 
-  eh = curl_easy_init ();
+  eh = TEL_curl_easy_get (wsh->url);
   GNUNET_assert (NULL != (wsh->json_enc =
                           json_dumps (withdraw_obj,
                                       JSON_COMPACT)));
   json_decref (withdraw_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   wsh->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
