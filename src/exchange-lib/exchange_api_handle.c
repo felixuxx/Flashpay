@@ -1197,7 +1197,6 @@ request_keys (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    kr->url));
-  /* FIXME: do elsewhere as well */
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_ENCODING,

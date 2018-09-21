@@ -1215,6 +1215,10 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                                    rmh->json_enc));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rmh->json_enc)));
   ctx = MAH_handle_to_context (exchange);
@@ -1648,6 +1652,10 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rrh->json_enc)));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
   ctx = MAH_handle_to_context (rrh->exchange);
   rrh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

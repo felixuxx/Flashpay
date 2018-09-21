@@ -508,6 +508,10 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                    dh->json_enc));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (dh->json_enc)));
   ctx = MAH_handle_to_context (exchange);

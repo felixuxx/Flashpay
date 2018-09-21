@@ -412,6 +412,10 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wh->url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
   ctx = MAH_handle_to_context (exchange);
   wh->job = GNUNET_CURL_job_add (ctx,
                          eh,

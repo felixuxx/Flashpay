@@ -330,6 +330,10 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                                    dwh->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
                                    dwh->json_enc));
   GNUNET_assert (CURLE_OK ==

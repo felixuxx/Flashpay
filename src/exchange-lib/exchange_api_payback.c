@@ -337,6 +337,10 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                                    ph->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
                                    ph->json_enc));
   GNUNET_assert (CURLE_OK ==

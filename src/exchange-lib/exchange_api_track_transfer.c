@@ -358,6 +358,10 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wdh->url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
   ctx = MAH_handle_to_context (exchange);
   wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,

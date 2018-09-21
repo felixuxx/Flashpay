@@ -413,6 +413,10 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    rlh->url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
   ctx = MAH_handle_to_context (exchange);
   rlh->job = GNUNET_CURL_job_add (ctx,
                           eh,

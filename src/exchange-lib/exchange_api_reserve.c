@@ -630,6 +630,10 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    rsh->url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
   ctx = MAH_handle_to_context (exchange);
   rsh->job = GNUNET_CURL_job_add (ctx,
                           eh,

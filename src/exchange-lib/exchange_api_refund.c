@@ -379,6 +379,10 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
                                    rh->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_ENCODING,
+                                   "deflate"));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
                                    rh->json_enc));
   GNUNET_assert (CURLE_OK ==
