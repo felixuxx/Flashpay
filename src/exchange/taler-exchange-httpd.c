@@ -961,7 +961,7 @@ main (int argc,
   }
 
   mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG | MHD_USE_DUAL_STACK | MHD_USE_INTERNAL_POLLING_THREAD,
+    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG | MHD_USE_DUAL_STACK | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_TCP_FASTOPEN,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
                         &handle_mhd_request, NULL,
