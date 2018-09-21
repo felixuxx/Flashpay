@@ -141,7 +141,7 @@ static struct GNUNET_TIME_Relative duration;
 /**
  * Exit code.
  */
-static unsigned int result;
+static int result;
 
 /**
  * How many coins we want to create per client and reserve.
