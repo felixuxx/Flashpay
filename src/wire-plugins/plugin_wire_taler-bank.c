@@ -1238,7 +1238,7 @@ taler_bank_reject_transfer (void *cls,
   TALER_LOG_INFO ("Rejecting over %s bank URL\n",
                   account.hostname);
   rh->brh = TALER_BANK_reject (tc->ctx,
-                               account.hostname,
+                               account.bank_base_url,
                                &rh->auth,
                                (uint64_t) account.no,
                                GNUNET_ntohll (*rowid_b64),
