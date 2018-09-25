@@ -833,7 +833,7 @@ keys_completed_cb (void *cls,
   struct TALER_EXCHANGE_Keys kd_old;
   enum TALER_EXCHANGE_VersionCompatibility vc;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
               response_code);

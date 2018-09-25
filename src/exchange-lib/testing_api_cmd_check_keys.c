@@ -80,6 +80,8 @@ check_keys_run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Triggering /keys dl, cmd `%s'\n",
                 cmd->label);
+
+    /* Means re-download /keys.  */
     GNUNET_break (0 == TALER_EXCHANGE_check_keys_current
       (cks->exchange, GNUNET_YES).abs_value_us);
     return;
