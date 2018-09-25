@@ -2091,6 +2091,20 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                             ? krd->response_compressed
                             : krd->response_uncompressed);
   TEH_KS_release (key_state);
+
+  /**
+   * Not the best style, but needed since the logic has this
+   * dual behaviour: some functions touch directly the global
+   * variable, some others want the key state passed in the
+   * arguments.
+   *
+   * NOTE, this NULL-ification is needed because otherwise
+   * the internal key state object gets left with refcnt == 0
+   * and a non-NULL global pointer to it.
+   */
+  if (internal_key_state == key_state)
+    internal_key_state = NULL;
+
   return ret;
 }
 
