@@ -16,26 +16,23 @@
 */
 
 /**
- * @file exchange-lib/curl_defaults.h
- * @brief curl easy handle defaults
+ * @file exchange-lib/backoff.h
+ * @brief backoff computation for the exchange lib
  * @author Florian Dold
  */
 
-#ifndef _TALER_CURL_DEFAULTS_H
-#define _TALER_CURL_DEFAULTS_H
 
+#ifndef _TALER_BACKOFF_H
+#define _TALER_BACKOFF_H
 
 #include "platform.h"
-#include <gnunet/gnunet_curl_lib.h>
-
+#include <gnunet/gnunet_time_lib.h>
 
 /**
- * Get a curl handle with the right defaults
- * for the exchange lib.  In the future, we might manage a pool of connections here.
- *
- * @param url URL to query
+ * Random exponential backoff used in the exchange lib.
  */
-CURL *
-TEL_curl_easy_get (char *url);
+#define EXCHANGE_LIB_BACKOFF(r) GNUNET_TIME_randomized_backoff ( \
+    (r), \
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 2));
 
-#endif /* _TALER_CURL_DEFAULTS_H */
+#endif

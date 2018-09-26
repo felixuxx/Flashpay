@@ -28,6 +28,7 @@
 #include "taler_signatures.h"
 #include "exchange_api_handle.h"
 #include "curl_defaults.h"
+#include "backoff.h"
 
 /**
  * Which revision of the Taler protocol is implemented
@@ -848,7 +849,7 @@ keys_completed_cb (void *cls,
     free_keys_request (kr);
     exchange->kr = NULL;
     GNUNET_assert (NULL == exchange->retry_task);
-    exchange->retry_delay = GNUNET_TIME_randomized_backoff (exchange->retry_delay);
+    exchange->retry_delay = EXCHANGE_LIB_BACKOFF (exchange->retry_delay);
     exchange->retry_task = GNUNET_SCHEDULER_add_delayed (exchange->retry_delay,
                                                          &request_keys,
                                                          exchange);

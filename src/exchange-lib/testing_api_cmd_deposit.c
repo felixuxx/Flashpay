@@ -29,6 +29,7 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 #include "taler_signatures.h"
+#include "backoff.h"
 
 
 /**
@@ -181,7 +182,7 @@ deposit_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  ds->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff);
+	  ds->backoff = EXCHANGE_LIB_BACKOFF (ds->backoff);
 	ds->retry_task = GNUNET_SCHEDULER_add_delayed (ds->backoff,
 						       &do_retry,
 						       ds);

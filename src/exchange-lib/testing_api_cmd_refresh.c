@@ -29,6 +29,7 @@
 #include "exchange_api_handle.h"
 #include "taler_testing_lib.h"
 #include "taler_signatures.h"
+#include "backoff.h"
 
 /**
  * Data for a coin to be melted.
@@ -322,7 +323,7 @@ reveal_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  rrs->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  rrs->backoff = GNUNET_TIME_randomized_backoff (rrs->backoff);
+	  rrs->backoff = EXCHANGE_LIB_BACKOFF (rrs->backoff);
 	rrs->retry_task = GNUNET_SCHEDULER_add_delayed (rrs->backoff,
                                                         &do_reveal_retry,
                                                         rrs);
@@ -551,7 +552,7 @@ link_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  rls->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  rls->backoff = GNUNET_TIME_randomized_backoff (rls->backoff);
+	  rls->backoff = EXCHANGE_LIB_BACKOFF (rls->backoff);
 	rls->retry_task = GNUNET_SCHEDULER_add_delayed (rls->backoff,
                                                         &do_link_retry,
                                                         rls);
@@ -837,7 +838,7 @@ melt_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  rms->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  rms->backoff = GNUNET_TIME_randomized_backoff (rms->backoff);
+	  rms->backoff = EXCHANGE_LIB_BACKOFF (rms->backoff);
 	rms->retry_task = GNUNET_SCHEDULER_add_delayed (rms->backoff,
                                                         &do_melt_retry,
                                                         rms);

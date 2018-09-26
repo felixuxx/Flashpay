@@ -32,6 +32,7 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 #include "taler_testing_bank_lib.h"
+#include "backoff.h"
 
 /**
  * State for a "fakebank transfer" CMD.
@@ -212,7 +213,7 @@ add_incoming_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  fts->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff);
+	  fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
 	fts->retry_task = GNUNET_SCHEDULER_add_delayed (fts->backoff,
                                                         &do_retry,
                                                         fts);
