@@ -212,7 +212,7 @@ add_incoming_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  fts->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  fts->backoff = GNUNET_TIME_STD_BACKOFF (fts->backoff);
+	  fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff);
 	fts->retry_task = GNUNET_SCHEDULER_add_delayed (fts->backoff,
                                                         &do_retry,
                                                         fts);

@@ -183,7 +183,7 @@ reserve_withdraw_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  ws->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  ws->backoff = GNUNET_TIME_STD_BACKOFF (ws->backoff);
+	  ws->backoff = GNUNET_TIME_randomized_backoff (ws->backoff);
 	ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
 						       &do_retry,
 						       ws);

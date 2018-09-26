@@ -181,7 +181,7 @@ deposit_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  ds->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  ds->backoff = GNUNET_TIME_STD_BACKOFF (ds->backoff);
+	  ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff);
 	ds->retry_task = GNUNET_SCHEDULER_add_delayed (ds->backoff,
 						       &do_retry,
 						       ds);
