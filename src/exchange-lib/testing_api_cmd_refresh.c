@@ -627,14 +627,14 @@ link_cb (void *cls,
       for (unsigned int j=0;j<num_coins;j++)
       {
 	if ( (0 == memcmp
-                (&coin_privs[i], &fc[i].coin_priv,
+                (&coin_privs[i], &fc[j].coin_priv,
                 sizeof (struct TALER_CoinSpendPrivateKeyP))) &&
 	     (0 == GNUNET_CRYPTO_rsa_signature_cmp
                 (fc[i].sig.rsa_signature,
-                 sigs[i].rsa_signature)) &&
+                 sigs[j].rsa_signature)) &&
 	     (0 == GNUNET_CRYPTO_rsa_public_key_cmp
                (fc[i].pk->key.rsa_public_key,
-                pubs[i].rsa_public_key)) )
+                pubs[j].rsa_public_key)) )
 	{
 	  found++;
 	  break;
