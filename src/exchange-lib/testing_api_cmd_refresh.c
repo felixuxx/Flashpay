@@ -887,14 +887,10 @@ refresh_melt_run (void *cls,
   struct RefreshMeltState *rms = cls;
   unsigned int num_fresh_coins;
   const struct TALER_TESTING_Command *coin_command;
+  /* FIXME:  this should be dynamic */
   const char *melt_fresh_amounts[] = {
-    /* with 0.01 withdraw fees (except for 1ct coins),
-       this totals up to exactly EUR:3.97, and with
-       the 0.03 refresh fee, to EUR:4.0 */
-    "EUR:1", "EUR:1", "EUR:1", "EUR:0.1", "EUR:0.1", "EUR:0.1",
-    "EUR:0.1", "EUR:0.1", "EUR:0.1", "EUR:0.1", "EUR:0.1",
-    "EUR:0.01", "EUR:0.01", "EUR:0.01", "EUR:0.01", "EUR:0.01",
-    "EUR:0.01", NULL};
+    "EUR:1", "EUR:1", "EUR:1", "EUR:0.1",
+    NULL};
   const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;
 
   rms->is = is;
