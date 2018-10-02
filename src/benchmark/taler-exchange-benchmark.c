@@ -28,6 +28,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
+#include <sys/resource.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_exchange_service.h"
@@ -999,6 +1000,8 @@ main (int argc,
   duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {
+    struct rusage usage;
+    GNUNET_assert (0 == getrusage(RUSAGE_CHILDREN, &usage));
     fprintf (stdout,
              "Executed (Withdraw=%u, Deposit=%u, Refresh~=%5.2f) * Reserve=%u * Parallel=%u, operations in %s\n",
              howmany_coins,
@@ -1023,6 +1026,9 @@ main (int argc,
              howmany_reserves,
              howmany_clients,
              (unsigned long long) duration.rel_value_us);
+    fprintf (stdout, "cpu time: sys %llu user %llu\n", \
+             (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000 + usage.ru_stime.tv_usec),
+             (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000 + usage.ru_utime.tv_usec));
   }
   return (GNUNET_OK == result) ? 0 : result;
 }
