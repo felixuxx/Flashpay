@@ -26,6 +26,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include <sys/resource.h>
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_deposit.h"
@@ -845,6 +846,52 @@ open_unix_path (const char *unix_path,
 
 
 /**
+ * Called when the main thread exits, writes out performance
+ * stats if requested.
+ */
+static void
+write_stats ()
+{
+
+  struct GNUNET_DISK_FileHandle *fh;
+  pid_t pid = getpid ();
+  char *benchmark_dir;
+  char *s;
+  struct rusage usage;
+
+  benchmark_dir = getenv ("GNUNET_BENCHMARK_DIR");
+
+  if (NULL == benchmark_dir)
+    return;
+
+  GNUNET_asprintf (&s, "%s/taler-exchange-%llu-%llu.txt",
+                   benchmark_dir,
+                   (unsigned long long) pid);
+
+  fh = GNUNET_DISK_file_open (s,
+                              (GNUNET_DISK_OPEN_WRITE |
+                               GNUNET_DISK_OPEN_TRUNCATE |
+                               GNUNET_DISK_OPEN_CREATE),
+                              (GNUNET_DISK_PERM_USER_READ |
+                               GNUNET_DISK_PERM_USER_WRITE));
+  GNUNET_assert (NULL != fh);
+  GNUNET_free (s);
+
+  /* Collect stats, summed up for all threads */
+  GNUNET_assert (0 == getrusage(RUSAGE_SELF, &usage));
+
+  GNUNET_asprintf (&s, "time_exchange sys %llu user %llu\n", \
+                   (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000 + usage.ru_stime.tv_usec),
+                   (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000 + usage.ru_utime.tv_usec));
+  GNUNET_assert (GNUNET_SYSERR != GNUNET_DISK_file_write_blocking (fh, s, strlen (s)));
+  GNUNET_free (s);
+
+  GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_close (fh));
+}
+
+
+
+/**
  * The main function of the taler-exchange-httpd server ("the exchange").
  *
  * @param argc number of arguments from the command line
@@ -981,6 +1028,8 @@ main (int argc,
              "Failed to start HTTP server.\n");
     return 1;
   }
+
+  atexit (write_stats);
 
 #if HAVE_DEVELOPER
   if (NULL != input_filename)
