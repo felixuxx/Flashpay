@@ -50,11 +50,6 @@ enum BenchmarkError {
 
 
 /**
- * Probability that a spent coin will be refreshed.
- */
-#define REFRESH_PROBABILITY 0.1
-
-/**
  * The whole benchmark is a repetition of a "unit".  Each
  * unit is a array containing a withdraw+deposit operation,
  * and _possibly_ a refresh of the deposited coin.
@@ -153,6 +148,11 @@ static unsigned int howmany_coins = 1;
  * How many reserves we want to create per client.
  */
 static unsigned int howmany_reserves = 1;
+
+/**
+ * Probability (in percent) of refreshing per spent coin.
+ */
+static unsigned int refresh_rate = 10;
 
 /**
  * How many clients we want to create.
@@ -441,7 +441,7 @@ run (void *cls,
           AMOUNT_1,
           MHD_HTTP_OK));
 
-      if (eval_probability (REFRESH_PROBABILITY))
+      if (eval_probability (refresh_rate / 100.0))
       {
         char *melt_label;
         char *reveal_label;
@@ -831,6 +831,11 @@ main (int argc,
                                "NRESERVES",
                                "How many reserves per client we should create",
                                &howmany_reserves),
+    GNUNET_GETOPT_option_uint ('R',
+                               "refresh-rate",
+                               "RATE",
+                               "Probability of refresh per coin (0-100)",
+                               &refresh_rate),
     GNUNET_GETOPT_option_string ('m',
                                  "mode",
                                  "MODE",
@@ -1006,7 +1011,7 @@ main (int argc,
              "Executed (Withdraw=%u, Deposit=%u, Refresh~=%5.2f) * Reserve=%u * Parallel=%u, operations in %s\n",
              howmany_coins,
              howmany_coins,
-             (float) howmany_coins * REFRESH_PROBABILITY,
+             (float) howmany_coins * (refresh_rate / 100.0),
              howmany_reserves,
              howmany_clients,
              GNUNET_STRINGS_relative_time_to_string
