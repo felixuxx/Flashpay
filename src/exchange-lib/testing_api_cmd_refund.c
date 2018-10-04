@@ -137,7 +137,7 @@ refund_cb (void *cls,
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 refund_run (void *cls,
             const struct TALER_TESTING_Command *cmd,
             struct TALER_TESTING_Interpreter *is)
@@ -250,7 +250,7 @@ refund_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 refund_cleanup (void *cls,
                 const struct TALER_TESTING_Command *cmd)
 {
