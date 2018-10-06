@@ -137,8 +137,22 @@ TALER_JSON_get_error_code (const json_t *json);
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
  */
 int
-TALER_JSON_wire_signature_hash (const json_t *wire_s,
-                                struct GNUNET_HashCode *hc);
+TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
+                                         struct GNUNET_HashCode *hc);
+
+
+/**
+ * Compute the hash of the given wire details.   The resulting
+ * hash is what is signed by the master public key.
+ *
+ * @param wire_s wire details to hash
+ * @param hc[out] set to the hash
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
+ */
+int
+TALER_JSON_exchange_wire_signature_hash (const json_t *wire_s,
+                                         struct GNUNET_HashCode *hc);
+
 
 /**
  * Check the signature in @a wire_s.
@@ -148,8 +162,8 @@ TALER_JSON_wire_signature_hash (const json_t *wire_s,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_JSON_wire_signature_check (const json_t *wire_s,
-                                 const struct TALER_MasterPublicKeyP *master_pub);
+TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
+                                          const struct TALER_MasterPublicKeyP *master_pub);
 
 
 /**
@@ -159,8 +173,8 @@ TALER_JSON_wire_signature_check (const json_t *wire_s,
  * @param master_priv private key to sign with, NULL to not sign
  */
 json_t *
-TALER_JSON_wire_signature_make (const char *payto_url,
-                                const struct TALER_MasterPrivateKeyP *master_priv);
+TALER_JSON_exchange_wire_signature_make (const char *payto_url,
+                                         const struct TALER_MasterPrivateKeyP *master_priv);
 
 
 /**

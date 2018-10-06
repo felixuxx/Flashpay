@@ -2095,8 +2095,8 @@ wire_transfer_information_cb (void *cls,
   struct GNUNET_HashCode hw;
 
   if (GNUNET_OK !=
-      TALER_JSON_wire_signature_hash (account_details,
-                                      &hw))
+      TALER_JSON_merchant_wire_signature_hash (account_details,
+                                               &hw))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
@@ -2411,8 +2411,8 @@ check_wire_out_cb (void *cls,
                  TALER_amount_get_zero (amount->currency,
                                         &wcc.total_deposits));
   if (GNUNET_OK !=
-      TALER_JSON_wire_signature_hash (wire,
-                                      &wcc.h_wire))
+      TALER_JSON_merchant_wire_signature_hash (wire,
+                                               &wcc.h_wire))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -3430,8 +3430,8 @@ deposit_cb (void *cls,
   dr.purpose.size = htonl (sizeof (dr));
   dr.h_contract_terms = *h_contract_terms;
   if (GNUNET_OK !=
-      TALER_JSON_wire_signature_hash (receiver_wire_account,
-                                      &dr.h_wire))
+      TALER_JSON_merchant_wire_signature_hash (receiver_wire_account,
+                                               &dr.h_wire))
   {
     GNUNET_break (0);
     cc->qs = GNUNET_DB_STATUS_HARD_ERROR;

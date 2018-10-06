@@ -158,8 +158,8 @@ load_account (void *cls,
     }
     GNUNET_free (url);
     if (GNUNET_OK !=
-        TALER_JSON_wire_signature_check (wire_s,
-                                         &TEH_master_public_key))
+        TALER_JSON_exchange_wire_signature_check (wire_s,
+                                                  &TEH_master_public_key))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid signature in `%s'\n",

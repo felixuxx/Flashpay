@@ -457,8 +457,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                            "timestamp");
   }
   if (GNUNET_OK !=
-      TALER_JSON_wire_signature_hash (wire,
-                                      &my_h_wire))
+      TALER_JSON_merchant_wire_signature_hash (wire,
+                                               &my_h_wire))
   {
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
     GNUNET_JSON_parse_free (spec);

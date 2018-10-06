@@ -34,8 +34,40 @@
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
  */
 int
-TALER_JSON_wire_signature_hash (const json_t *wire_s,
-                                struct GNUNET_HashCode *hc)
+TALER_JSON_exchange_wire_signature_hash (const json_t *wire_s,
+                                         struct GNUNET_HashCode *hc)
+{
+  const char *payto_url;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("url", &payto_url),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (wire_s,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_exchange_wire_signature_hash (payto_url,
+                                      hc);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Compute the hash of the given wire details.   The resulting
+ * hash is what is put into the contract.
+ *
+ * @param wire_s wire details to hash
+ * @param hc[out] set to the hash
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
+ */
+int
+TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
+                                         struct GNUNET_HashCode *hc)
 {
   const char *payto_url;
   const char *salt;
@@ -53,9 +85,9 @@ TALER_JSON_wire_signature_hash (const json_t *wire_s,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  TALER_wire_signature_hash (payto_url,
-                             salt,
-                             hc);
+  TALER_merchant_wire_signature_hash (payto_url,
+                                      salt,
+                                      hc);
   return GNUNET_OK;
 }
 
@@ -68,15 +100,13 @@ TALER_JSON_wire_signature_hash (const json_t *wire_s,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_JSON_wire_signature_check (const json_t *wire_s,
-                                 const struct TALER_MasterPublicKeyP *master_pub)
+TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
+                                          const struct TALER_MasterPublicKeyP *master_pub)
 {
   const char *payto_url;
-  const char *salt;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("url", &payto_url),
-    GNUNET_JSON_spec_string ("salt", &salt),
     GNUNET_JSON_spec_fixed_auto ("master_sig", &master_sig),
     GNUNET_JSON_spec_end ()
   };
@@ -89,10 +119,9 @@ TALER_JSON_wire_signature_check (const json_t *wire_s,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  return TALER_wire_signature_check (payto_url,
-                                     salt,
-                                     master_pub,
-                                     &master_sig);
+  return TALER_exchange_wire_signature_check (payto_url,
+                                              master_pub,
+                                              &master_sig);
 }
 
 
@@ -103,38 +132,17 @@ TALER_JSON_wire_signature_check (const json_t *wire_s,
  * @param master_priv private key to sign with, NULL to not sign
  */
 json_t *
-TALER_JSON_wire_signature_make (const char *payto_url,
-                                const struct TALER_MasterPrivateKeyP *master_priv)
+TALER_JSON_exchange_wire_signature_make (const char *payto_url,
+                                         const struct TALER_MasterPrivateKeyP *master_priv)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_HashCode salt;
-  char *salt_str;
-  json_t *ret;
 
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
-                              &salt,
-                              sizeof (salt));
-  salt_str = GNUNET_STRINGS_data_to_string_alloc (&salt,
-                                                  sizeof (salt));
-  if (NULL != master_priv)
-  {
-    TALER_wire_signature_make (payto_url,
-                               salt_str,
-                               master_priv,
-                               &master_sig);
-    ret = json_pack ("{s:s, s:s, s:o}",
-                     "url", payto_url,
-                     "salt", salt_str,
-                     "master_sig", GNUNET_JSON_from_data_auto (&master_sig));
-  }
-  else
-  {
-    ret = json_pack ("{s:s, s:s}",
-                     "url", payto_url,
-                     "salt", salt_str);
-  }
-  GNUNET_free (salt_str);
-  return ret;
+  TALER_exchange_wire_signature_make (payto_url,
+                                      master_priv,
+                                      &master_sig);
+  return json_pack ("{s:s, s:o}",
+                    "url", payto_url,
+                    "master_sig", GNUNET_JSON_from_data_auto (&master_sig));
 }
 
 

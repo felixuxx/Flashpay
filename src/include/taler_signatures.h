@@ -178,6 +178,12 @@
  */
 #define TALER_SIGNATURE_MERCHANT_PAY_SESSION 1106
 
+/**
+ * Signature where the merchant confirms its own (salted)
+ * wire details (not yet really used).
+ */
+#define TALER_SIGNATURE_MERCHANT_WIRE_DETAILS 1107
+
 
 /*********************/
 /* Wallet signatures */

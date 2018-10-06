@@ -1633,6 +1633,9 @@ TEH_KS_release_ (const char *location,
                  struct TEH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "KS released at %s\n",
+              location);
   ks_release (key_state);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
@@ -1653,6 +1656,9 @@ TEH_KS_acquire_ (const char *location)
   struct TEH_KS_StateHandle *key_state;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "KS acquired at %s\n",
+              location);
   if ( (NULL != internal_key_state) &&
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {

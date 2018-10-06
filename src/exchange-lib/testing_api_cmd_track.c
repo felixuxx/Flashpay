@@ -328,8 +328,8 @@ track_transaction_run (void *cls,
   /* Should not fail here, json has been parsed already */
   GNUNET_assert
     ( (GNUNET_OK ==
-       TALER_JSON_wire_signature_hash (wire_details,
-                                       &h_wire_details)) &&
+       TALER_JSON_merchant_wire_signature_hash (wire_details,
+                                                &h_wire_details)) &&
       (GNUNET_OK ==
        TALER_JSON_hash (j_contract_terms,
                         &h_contract_terms)) );
@@ -614,8 +614,10 @@ track_transfer_cb
         return;
       }
 
-      if (GNUNET_OK != TALER_TESTING_get_trait_wire_details
-        (wire_details_cmd, 0, &wire_details))
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_wire_details (wire_details_cmd,
+                                                0,
+                                                &wire_details))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -623,9 +625,9 @@ track_transfer_cb
       }
 
       GNUNET_assert
-        (GNUNET_OK == TALER_JSON_wire_signature_hash
-          (wire_details,
-           &h_wire_details));
+        (GNUNET_OK ==
+         TALER_JSON_merchant_wire_signature_hash (wire_details,
+                                                  &h_wire_details));
 
       if (0 != memcmp (&h_wire_details,
                        h_wire,

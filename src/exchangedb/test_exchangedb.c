@@ -904,8 +904,8 @@ deposit_cb (void *cls,
   deposit_rowid = rowid;
   if (NULL != wire)
     GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_wire_signature_hash (wire,
-                                                   &h_wire));
+                   TALER_JSON_merchant_wire_signature_hash (wire,
+                                                            &h_wire));
   if ( (0 != memcmp (merchant_pub,
                      &deposit->merchant_pub,
                      sizeof (struct TALER_MerchantPublicKeyP))) ||
@@ -1438,8 +1438,8 @@ wire_missing_cb (void *cls,
 
   if (NULL != wire)
     GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_wire_signature_hash (wire,
-                                                   &h_wire));
+                   TALER_JSON_merchant_wire_signature_hash (wire,
+                                                            &h_wire));
   else
     memset (&h_wire,
             0,
@@ -1922,8 +1922,8 @@ run (void *cls)
   RND_BLK (&deposit.merchant_pub);
   RND_BLK (&deposit.h_contract_terms);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_wire_signature_hash (wire,
-                                                 &deposit.h_wire));
+                 TALER_JSON_merchant_wire_signature_hash (wire,
+                                                          &deposit.h_wire));
   deposit.receiver_wire_account = wire;
   deposit.amount_with_fee = value;
   deposit.deposit_fee = fee_deposit;

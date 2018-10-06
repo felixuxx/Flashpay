@@ -480,11 +480,6 @@ struct TALER_EXCHANGE_WireAccount
   const char *url;
 
   /**
-   * Salt used to generate @e master_sig.
-   */
-  const char *salt;
-
-  /**
    * Signature of the exchange over the account (was checked by the API).
    */
   struct TALER_MasterSignatureP master_sig;

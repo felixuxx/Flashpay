@@ -59,6 +59,7 @@ sign_account_data (void *cls,
   json_t *wire;
   char *json_out;
   FILE *out;
+  int ret;
 
   if (GNUNET_NO == ai->credit_enabled)
     return;
@@ -70,8 +71,9 @@ sign_account_data (void *cls,
     global_ret = 1;
     return;
   }
-  wire = TALER_JSON_wire_signature_make (ai->payto_url,
-                                         &master_priv);
+  wire = TALER_JSON_exchange_wire_signature_make (ai->payto_url,
+                                                  &master_priv);
+  GNUNET_assert (NULL != wire);
   json_out = json_dumps (wire,
                          JSON_INDENT(2));
   json_decref (wire);
@@ -98,10 +100,20 @@ sign_account_data (void *cls,
     free (json_out);
     return;
   }
-  fprintf (out,
-	   "%s",
-	   json_out);
+  ret = fprintf (out,
+                 "%s",
+                 json_out);
   fclose (out);
+  if ( (0 == fclose (out)) &&
+       (-1 != ret) )
+    fprintf (stdout,
+             "Created wire account file `%s'\n",
+             ai->wire_response_filename);
+  else
+    fprintf (stderr,
+             "Failure creating wire account file `%s': %s\n",
+             ai->wire_response_filename,
+             STRERROR (errno));
   free (json_out);
 }
 

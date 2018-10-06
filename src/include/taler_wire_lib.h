@@ -46,6 +46,7 @@ struct TALER_WIRE_Plugin *
 TALER_WIRE_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         const char *plugin_name);
 
+
 /**
  * Unload a WIRE plugin.
  *

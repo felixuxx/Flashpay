@@ -447,8 +447,8 @@ do_deposit (struct Command *cmd)
     GNUNET_free (str);
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_wire_signature_hash (deposit.receiver_wire_account,
-                                                 &deposit.h_wire));
+                 TALER_JSON_merchant_wire_signature_hash (deposit.receiver_wire_account,
+                                                          &deposit.h_wire));
   deposit.timestamp = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&deposit.timestamp);
   deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.wire_deadline);

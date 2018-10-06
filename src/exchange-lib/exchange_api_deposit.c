@@ -416,8 +416,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 		 MAH_handle_is_ready (exchange));
   /* initialize h_wire */
   if (GNUNET_OK !=
-      TALER_JSON_wire_signature_hash (wire_details,
-                                      &h_wire))
+      TALER_JSON_merchant_wire_signature_hash (wire_details,
+                                               &h_wire))
   {
     GNUNET_break (0);
     return NULL;

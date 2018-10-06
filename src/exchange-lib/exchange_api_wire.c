@@ -272,7 +272,6 @@ handle_wire_finished (void *cls,
           json_t *account;
           struct GNUNET_JSON_Specification spec_account[] = {
             GNUNET_JSON_spec_string ("url", &wa->url),
-            GNUNET_JSON_spec_string ("salt", &wa->salt),
             GNUNET_JSON_spec_fixed_auto ("master_sig", &wa->master_sig),
             GNUNET_JSON_spec_end()
           };
@@ -281,8 +280,8 @@ handle_wire_finished (void *cls,
           account = json_array_get (accounts,
                                     i);
           if (GNUNET_OK !=
-              TALER_JSON_wire_signature_check (account,
-                                               &key_state->master_pub))
+              TALER_JSON_exchange_wire_signature_check (account,
+                                                        &key_state->master_pub))
           {
             /* bogus reply */
             GNUNET_break_op (0);
