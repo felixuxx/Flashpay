@@ -13,6 +13,7 @@ pkgcfg_DATA = \
 
 bin_PROGRAMS = \
   taler-auditor \
+  taler-auditor-httpd \
   taler-wire-auditor \
   taler-auditor-sign \
   taler-auditor-dbinit
@@ -44,6 +45,23 @@ taler_auditor_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil
+
+taler_auditor_httpd_SOURCES = \
+  taler-auditor-httpd.c taler-auditor-httpd.h \
+  taler-auditor-httpd_mhd.c taler-auditor-httpd_mhd.h \
+  taler-auditor-httpd_parsing.c taler-auditor-httpd_parsing.h \
+  taler-auditor-httpd_responses.c taler-auditor-httpd_responses.h
+taler_auditor_httpd_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  -lmicrohttpd \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  -lz
 
 taler_wire_auditor_SOURCES = \
   taler-wire-auditor.c

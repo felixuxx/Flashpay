@@ -1930,6 +1930,8 @@ read_again:
   GNUNET_SIGNAL_handler_uninstall (sigint);
   GNUNET_SIGNAL_handler_uninstall (sighup);
   GNUNET_SIGNAL_handler_uninstall (sigchld);
+  GNUNET_break (0 == close (reload_pipe[0]));
+  GNUNET_break (0 == close (reload_pipe[1]));
   return ret;
 }
 
