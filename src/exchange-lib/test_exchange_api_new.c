@@ -350,7 +350,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-refreshed-1b", is->exchange,
-       "refresh-reveal-1", 4,
+       "refresh-reveal-1", 3,
        TALER_TESTING_make_wire_details (43,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\
