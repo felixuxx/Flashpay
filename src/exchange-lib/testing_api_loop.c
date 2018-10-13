@@ -475,7 +475,6 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
   }
   /* get the number of commands */
   for (i=0;NULL != commands[i].label;i++) ;
-
   is->commands = GNUNET_new_array (i + 1,
                                    struct TALER_TESTING_Command);
   memcpy (is->commands,

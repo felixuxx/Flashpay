@@ -434,6 +434,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                  "exchange",
                                  "PORT");
       GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (serve);
       return GNUNET_NO;
     }
 
@@ -444,9 +445,11 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
       fprintf (stderr,
                "Required port %llu not available, skipping.\n",
   	     port);
+      GNUNET_free (serve);
       return GNUNET_NO;
     }
   }
+  GNUNET_free (serve);
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
                                        GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
@@ -471,8 +474,12 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
   GNUNET_CONFIGURATION_destroy (cfg);
 
   if (0 != TALER_TESTING_wait_exchange_ready (base_url))
+  {
+    GNUNET_free (base_url);
     return 77;
-
+  }
+  GNUNET_free (base_url);
+  
   /* NOTE: this blocks.  */
   result = TALER_TESTING_setup (main_cb,
                                 main_cb_cls,

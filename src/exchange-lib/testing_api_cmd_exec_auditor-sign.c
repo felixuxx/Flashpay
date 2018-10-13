@@ -103,7 +103,8 @@ auditor_sign_run (void *cls,
      "%s/.local/share/taler/auditors/auditor-%llu.out",
      test_home_dir,
      (unsigned long long) now.abs_value_us);
-
+  GNUNET_free (test_home_dir);
+  
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
@@ -134,7 +135,7 @@ auditor_sign_run (void *cls,
      "-r", "auditor.in",
      "-o", ass->signed_keys_out,
      NULL);
-
+  GNUNET_free (exchange_master_pub);
   if (NULL == ass->auditor_sign_proc)
   {
     GNUNET_break (0);
