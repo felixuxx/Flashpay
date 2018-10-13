@@ -63,6 +63,11 @@ struct TALER_EXCHANGE_SigningPublicKey
   struct TALER_ExchangePublicKeyP key;
 
   /**
+   * Signature over this signing key by the exchange's master signature.
+   */
+  struct TALER_MasterSignatureP master_sig;
+  
+  /**
    * Validity start time
    */
   struct GNUNET_TIME_Absolute valid_from;
@@ -94,6 +99,11 @@ struct TALER_EXCHANGE_DenomPublicKey
    */
   struct GNUNET_HashCode h_key;
 
+  /**
+   * Exchange's master signature over this denomination record.
+   */
+  struct TALER_MasterSignatureP master_sig;
+  
   /**
    * Timestamp indicating when the denomination key becomes valid
    */
@@ -147,6 +157,27 @@ struct TALER_EXCHANGE_DenomPublicKey
 
 
 /**
+ * Information we track per denomination audited by the auditor.
+ */
+struct TALER_EXCHANGE_AuditorDenominationInfo
+{
+
+  /**
+   * Signature by the auditor affirming that it is monitoring this
+   * denomination.
+   */
+  struct TALER_AuditorSignatureP auditor_sig;
+  
+  /**
+   * Offsets into the key's main `denom_keys` array identifying the
+   * denomination being audited by this auditor.
+   */
+  unsigned int denom_key_offset;
+
+};
+
+
+/**
  * @brief Information we get from the exchange about auditors.
  */
 struct TALER_EXCHANGE_AuditorInformation
@@ -169,16 +200,15 @@ struct TALER_EXCHANGE_AuditorInformation
   char *auditor_url;
 
   /**
+   * Array of length @a num_denom_keys with the denomination
+   * keys audited by this auditor. 
+   */
+  struct TALER_EXCHANGE_AuditorDenominationInfo *denom_keys;
+
+  /**
    * Number of denomination keys audited by this auditor.
    */
   unsigned int num_denom_keys;
-
-  /**
-   * Array of length @a num_denom_keys with the denomination
-   * keys audited by this auditor.  Offsets into the
-   * key's main `denom_keys` array.
-   */
-  unsigned int *denom_key_offsets;
 };
 
 
