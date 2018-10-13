@@ -105,7 +105,8 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  TALER_TESTING_run (is, commands);
+  TALER_TESTING_run (is,
+		     commands);
 }
 
 
