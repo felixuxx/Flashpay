@@ -280,6 +280,26 @@ struct TEH_KS_StateHandle
 };
 
 
+
+/**
+ * Exchange key state.  This is the long-term, read-only internal global state,
+ * which the various threads "lock" to use in read-only ways.  We eventually
+ * create a completely new object "on the side" and then start to return
+ * the new read-only object to threads that ask. Once none of the threads
+ * use the previous object (RC drops to zero), we discard it.
+ *
+ * Thus, this instance should never be used directly, instead reserve
+ * access via #TEH_KS_acquire() and release it via #TEH_KS_release().
+ */
+static struct TEH_KS_StateHandle *internal_key_state;
+
+/**
+ * Mutex protecting access to #internal_key_state.
+ */
+static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+
 /* ************************** Clean up logic *********************** */
 
 
@@ -373,6 +393,10 @@ static void
 ks_release (struct TEH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 < key_state->refcnt);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "KS release called (%p/%d)\n",
+	      key_state,
+	      key_state->refcnt);
   key_state->refcnt--;
   if (0 == key_state->refcnt)
   {
@@ -404,6 +428,7 @@ ks_release (struct TEH_KS_StateHandle *key_state)
     GNUNET_array_grow (key_state->krd_array,
                        key_state->krd_array_length,
                        0);
+    GNUNET_assert (key_state != internal_key_state);
     GNUNET_free (key_state);
   }
 }
@@ -1604,25 +1629,6 @@ make_fresh_key_state ()
 /* ************************** Persistent part ********************** */
 
 /**
- * Exchange key state.  This is the long-term, read-only internal global state,
- * which the various threads "lock" to use in read-only ways.  We eventually
- * create a completely new object "on the side" and then start to return
- * the new read-only object to threads that ask. Once none of the threads
- * use the previous object (RC drops to zero), we discard it.
- *
- * Thus, this instance should never be used directly, instead reserve
- * access via #TEH_KS_acquire() and release it via #TEH_KS_release().
- */
-static struct TEH_KS_StateHandle *internal_key_state;
-
-/**
- * Mutex protecting access to #internal_key_state.
- */
-static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
-
-/**
  * Release key state, free if necessary (if reference count gets to zero).
  *
  * @param location name of the function in which the lock is acquired
@@ -1634,8 +1640,10 @@ TEH_KS_release_ (const char *location,
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "KS released at %s\n",
-              location);
+              "KS released at %s (%p/%d)\n",
+              location,
+	      key_state,
+	      key_state->refcnt);
   ks_release (key_state);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
@@ -1654,22 +1662,43 @@ TEH_KS_acquire_ (const char *location)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TEH_KS_StateHandle *key_state;
+  unsigned int rcd;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "KS acquired at %s\n",
-              location);
+  rcd = 0;
   if ( (NULL != internal_key_state) &&
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
-    ks_release (internal_key_state);
+    struct TEH_KS_StateHandle *ks = internal_key_state;
+    
     internal_key_state = NULL;
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		"KS released in acquire due to expiration\n");
+    ks_release (ks);
+    rcd = 1; /* remember that we released 'internal_key_state' */
   }
   if (NULL == internal_key_state)
+  {
     internal_key_state = make_fresh_key_state ();
+    /* bump RC by 1 if we released internal_key_state above */
+    internal_key_state->refcnt += rcd;
+  }
   key_state = internal_key_state;
   if (NULL != key_state)
+  {
     key_state->refcnt++;
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+		"KS acquired at %s (%p/%d)\n",
+		location,
+		key_state,
+		key_state->refcnt);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+		"KS acquire failed at %s\n",
+		location);
+  }
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 
   return key_state;
@@ -1876,8 +1905,10 @@ TEH_KS_loop (void)
                 "(re-)loading keys\n");
     if (NULL != internal_key_state)
     {
-      TEH_KS_release (internal_key_state);
+      struct TEH_KS_StateHandle *ks = internal_key_state;
+
       internal_key_state = NULL;
+      TEH_KS_release (ks);
     }
     /* This will re-initialize 'internal_key_state' with
        an initial refcnt of 1 */
@@ -1944,8 +1975,10 @@ TEH_KS_free ()
 {
   if (NULL != internal_key_state)
   {
-    TEH_KS_release (internal_key_state);
+    struct TEH_KS_StateHandle *ks = internal_key_state;
+    
     internal_key_state = NULL;
+    TEH_KS_release (ks);
   }
 }
 

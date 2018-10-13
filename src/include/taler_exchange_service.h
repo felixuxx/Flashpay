@@ -68,9 +68,14 @@ struct TALER_EXCHANGE_SigningPublicKey
   struct GNUNET_TIME_Absolute valid_from;
 
   /**
-   * Validity expiration time
+   * Validity expiration time (how long the exchange may use it).
    */
   struct GNUNET_TIME_Absolute valid_until;
+
+  /**
+   * Validity expiration time for legal disputes.
+   */
+  struct GNUNET_TIME_Absolute valid_legal;
 };
 
 
