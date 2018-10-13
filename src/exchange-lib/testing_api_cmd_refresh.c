@@ -1190,7 +1190,7 @@ refresh_reveal_traits (void *cls,
 {
   struct RefreshRevealState *rrs = cls;
   unsigned int num_coins = rrs->num_fresh_coins;
-#define NUM_TRAITS (num_coins * 3) + 3
+#define NUM_TRAITS ((num_coins * 3) + 3)
   struct TALER_TESTING_Trait traits[NUM_TRAITS];
 
   /* Making coin privs traits */
