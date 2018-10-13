@@ -37,7 +37,7 @@
  * @param cmd command to extract the command from.
  * @param index always zero.  Commands offering this
  *        kind of traits do not need this index.  For
- *        example, a "meta" CMD returns always the
+ *        example, a "batch" CMD returns always the
  *        CMD currently being executed.
  * @param cmd_[out] where to write the wire details.
  *

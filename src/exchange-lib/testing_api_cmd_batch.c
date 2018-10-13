@@ -156,7 +156,6 @@ TALER_TESTING_cmd_batch (const char *label,
   struct BatchState *bs;
   unsigned int i;
 
-  cmd.meta = GNUNET_YES;
   bs = GNUNET_new (struct BatchState);
   bs->batch_ip = -1;
 
@@ -178,4 +177,16 @@ TALER_TESTING_cmd_batch (const char *label,
   cmd.traits = &batch_traits;
 
   return cmd;
+}
+
+
+/**
+ * Test if this command is a batch command.
+ *
+ * @return false if not, true if it is a batch command
+ */
+int
+TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd)
+{
+  return cmd->run == &batch_run;
 }

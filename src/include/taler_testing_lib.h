@@ -314,16 +314,8 @@ struct TALER_TESTING_Command
             const char *trait,
             unsigned int index);
 
-
-  /**
-   * Has GNUNET_YES if the command is a "meta" one.  Meta
-   * commands are those that takes arrays of commands and
-   * execute them.  Are used to group testing commands in
-   * order to improve readability of test cases.
-   */
-  unsigned int meta;
-
 };
+
 
 /**
  * Lookup command by label.
@@ -1252,6 +1244,14 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch (const char *label,
                          struct TALER_TESTING_Command *batch);
 
+
+/**
+ * Test if this command is a batch command.
+ *
+ * @return false if not, true if it is a batch command
+ */
+int
+TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd);
 
 
 /* *** Generic trait logic for implementing traits ********* */

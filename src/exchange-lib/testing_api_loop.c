@@ -66,7 +66,7 @@ TALER_TESTING_interpreter_lookup_command
                        label)) )
       return cmd;
 
-    if (GNUNET_YES == cmd->meta)
+    if (TALER_TESTING_cmd_is_batch (cmd))
     {
 #define BATCH_INDEX 1
       struct TALER_TESTING_Command *batch;
@@ -173,17 +173,17 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   if (GNUNET_SYSERR == is->result)
-    return; /* ignore, we already failed! */
-  if (GNUNET_YES == cmd->meta)
+    return; /* ignore, we already failled! */
+  if (TALER_TESTING_cmd_is_batch (cmd))
   {
-    #define CURRENT_BATCH_SUBCMD_INDEX 0
+#define CURRENT_BATCH_SUBCMD_INDEX 0
     struct TALER_TESTING_Command *sub_cmd;
 
     GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_cmd
       (cmd, CURRENT_BATCH_SUBCMD_INDEX, &sub_cmd));
 
-      if (NULL == sub_cmd->label)
-        is->ip++;
+    if (NULL == sub_cmd->label)
+      is->ip++;
   }
   else
     is->ip++;
@@ -204,6 +204,8 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 
 /**
  * Current command failed, clean up and fail the test case.
+ *
+ * @param is interpreter of the test
  */
 void
 TALER_TESTING_interpreter_fail
@@ -363,7 +365,7 @@ maint_child_death (void *cls)
   struct GNUNET_OS_Process **processp;
   char c[16];
 
-  if (GNUNET_YES == cmd->meta)
+  if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command *batch_cmd;
     GNUNET_assert
@@ -465,6 +467,12 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
                     struct GNUNET_TIME_Relative timeout)
 {
   unsigned int i;
+
+  if (NULL != is->timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (is->timeout_task);
+    is->timeout_task = NULL;
+  }
   /* get the number of commands */
   for (i=0;NULL != commands[i].label;i++) ;
 
@@ -487,7 +495,6 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
  * the interpreter state because they are _usually_
  * defined into the "run" method that returns after
  * having scheduled the test interpreter.
- *
  *
  * @param is the interpreter state
  * @param commands the list of command to execute
@@ -643,6 +650,29 @@ main_wrapper_exchange_agnostic (void *cls)
 
 
 /**
+ * Function run when the test is aborted before we launch the actual
+ * interpreter.  Cleans up our state.
+ *
+ * @param cls the main context
+ */
+static void
+do_abort (void *cls)
+{
+  struct MainContext *main_ctx = cls;
+  struct TALER_TESTING_Interpreter *is = main_ctx->is;
+
+  is->timeout_task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Executing abort prior to interpreter launch\n");
+  if (NULL != is->exchange)
+  {
+    TALER_EXCHANGE_disconnect (is->exchange);
+    is->exchange = NULL;
+  }
+}
+
+
+/**
  * Initialize scheduler loop and curl context for the testcase,
  * and responsible to run the "run" method.
  *
@@ -676,6 +706,8 @@ main_wrapper_exchange_connect (void *cls)
     return;
   }
   main_ctx->exchange_url = exchange_url;
+  is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
+						    main_ctx);
   GNUNET_assert (NULL !=
                  (is->exchange = TALER_EXCHANGE_connect (is->ctx,
                                                          exchange_url,
@@ -732,8 +764,8 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                               GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install
-    (GNUNET_SIGCHLD, &sighandler_child_death);
-
+    (GNUNET_SIGCHLD,
+     &sighandler_child_death);
   is.ctx = GNUNET_CURL_init
     (&GNUNET_CURL_gnunet_scheduler_reschedule,
      &is.rc);
