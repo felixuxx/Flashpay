@@ -1103,6 +1103,89 @@ header_cb (char *buffer,
 
 
 /**
+ * Deserialize the key data and use it to bootstrap @a exchange to
+ * more efficiently recover the state.  Errors in @a data must be
+ * tolerated (i.e. by re-downloading instead).
+ *
+ * @param exchange which exchange's key and wire data should be deserialized
+ * @return data the data to deserialize
+ */
+static void
+deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
+		  const json_t *data)
+{
+  enum TALER_EXCHANGE_VersionCompatibility vc;
+  json_t *keys;
+  const char *url;
+  struct GNUNET_TIME_Absolute expire;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("keys",
+			   &keys),
+    GNUNET_JSON_spec_string ("url",
+			     &url),
+    GNUNET_JSON_spec_absolute_time ("expire",
+                                    &expire),
+    GNUNET_JSON_spec_end()
+  };
+  struct TALER_EXCHANGE_Keys key_data;
+ 
+  if (NULL == data)
+    return;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (data,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return;
+  }
+  if (0 != strcmp (url,
+		   exchange->url))
+    {
+      GNUNET_break (0);
+      return;
+    }    
+  memset (&key_data,
+	  0,
+          sizeof (struct TALER_EXCHANGE_Keys));
+  if (GNUNET_OK !=
+      decode_keys_json (keys,
+			&key_data,
+			&vc))
+    {
+      GNUNET_break (0);
+      return;
+    }
+  /* decode successful, initialize with the result */
+  GNUNET_assert (NULL == exchange->key_data_raw);
+  exchange->key_data_raw = json_deep_copy (keys);
+  exchange->key_data = key_data;
+  exchange->key_data_expiration = expire;
+  exchange->state = MHS_CERT;
+  /* notify application about the key information */
+  exchange->cert_cb (exchange->cert_cb_cls,
+                     &exchange->key_data,
+		     vc);
+}
+
+
+/**
+ * Serialize the latest key data from @a exchange to be persisted on
+ * disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more
+ * efficiently recover the state).
+ *
+ * @param exchange which exchange's key and wire data should be serialized
+ * @return NULL on error (i.e. no current data available); otherwise
+ *         json object owned by the caller
+ */
+json_t *
+TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
+{
+  return NULL;
+}
+
+
+/**
  * Initialise a connection to the exchange. Will connect to the
  * exchange and obtain information about the exchange's master public
  * key and the exchange's auditor.  The respective information will
@@ -1126,11 +1209,8 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
 {
   struct TALER_EXCHANGE_Handle *exchange;
   va_list ap;
+  enum TALER_EXCHANGE_Option opt;
 
-  va_start (ap, cert_cb_cls);
-  GNUNET_assert (TALER_EXCHANGE_OPTION_END ==
-                 va_arg (ap, int));
-  va_end (ap);
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);
@@ -1138,6 +1218,28 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
   exchange->cert_cb_cls = cert_cb_cls;
   exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
                                                    exchange);
+  va_start (ap, cert_cb_cls);
+  while (TALER_EXCHANGE_OPTION_END !=
+	 (opt = va_arg (ap, int)))
+    {
+      switch (opt) {
+      case TALER_EXCHANGE_OPTION_END:
+	GNUNET_assert (0);
+	break;
+      case TALER_EXCHANGE_OPTION_DATA:
+	{
+	  const json_t *data = va_arg (ap, const json_t *);
+
+	  deserialize_data (exchange,
+			    data);
+	  break;
+	}
+      default:
+	GNUNET_assert (0);
+	break;
+      }
+    }
+  va_end (ap);
   return exchange;
 }
 

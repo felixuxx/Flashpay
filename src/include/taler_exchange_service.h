@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -39,8 +39,16 @@ enum TALER_EXCHANGE_Option
   /**
    * Terminator (end of option list).
    */
-  TALER_EXCHANGE_OPTION_END = 0
+  TALER_EXCHANGE_OPTION_END = 0,
 
+  /**
+   * Followed by a "const json_t *" that was previously returned for
+   * this exchange URL by #TALER_EXCHANGE_serialize_data().  Used to
+   * resume a connection to an exchange without having to re-download
+   * /keys data (or at least only download the deltas).
+   */
+  TALER_EXCHANGE_OPTION_DATA
+  
 };
 
 
@@ -346,6 +354,19 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
                         TALER_EXCHANGE_CertificationCallback cert_cb,
                         void *cert_cb_cls,
                         ...);
+
+
+/**
+ * Serialize the latest key data from @a exchange to be persisted
+ * on disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more 
+ * efficiently recover the state).
+ *
+ * @param exchange which exchange's key and wire data should be serialized
+ * @return NULL on error (i.e. no current data available); otherwise
+ *         json object owned by the caller
+ */
+json_t *
+TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange);
 
 
 /**
