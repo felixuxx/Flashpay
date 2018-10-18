@@ -49,5 +49,26 @@ TEL_curl_easy_get (char *url)
                                    CURLOPT_TCP_FASTOPEN,
                                    1L));
 
+  {
+    /* Unfortunately libcurl needs chunk to be alive until after
+    curl_easy_perform.  To avoid manual cleanup, we keep
+    one static list here.  */
+    static struct curl_slist *chunk = NULL;
+    if (NULL == chunk)
+    {
+      /* With POST requests, we do not want to wait for the
+      "100 Continue" response, as our request bodies are usually
+      small and directy sending them saves us a round trip.  
+
+      Clearing the expect header like this disables libcurl's
+      default processing of the header.
+
+      Disabling this header is safe for other HTTP methods, thus
+      we don't distinguish further before setting it.  */
+      chunk = curl_slist_append (chunk, "Expect:");
+    }
+    GNUNET_assert (CURLE_OK == curl_easy_setopt (eh, CURLOPT_HTTPHEADER, chunk));
+  }
+
   return eh;
 }
