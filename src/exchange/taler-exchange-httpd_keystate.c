@@ -2107,7 +2107,7 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                  sizeof (struct KeysResponseData),
                  &krd_search_comparator);
 
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Filtering /keys by cherry pick date %s found entry %u/%u\n",
               GNUNET_STRINGS_absolute_time_to_string (last_issue_date),
               (unsigned int) (krd - key_state->krd_array),

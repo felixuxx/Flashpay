@@ -252,20 +252,22 @@ refresh_melt_transaction (void *cls,
   struct RefreshMeltContext *rmc = cls;
   struct TALER_EXCHANGEDB_RefreshMelt rm;
   enum GNUNET_DB_QueryStatus qs;
+  uint32_t noreveal_index;
 
   /* Check if we already created such a session */
-  qs = TEH_plugin->get_melt (TEH_plugin->cls,
-                             session,
-                             &rmc->refresh_session.rc,
-                             &rm);
+  qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
+                                   session,
+                                   &rmc->refresh_session.rc,
+                                   &noreveal_index);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     TALER_LOG_DEBUG ("Found already-melted coin\n");
     *mhd_ret = reply_refresh_melt_success (connection,
 					   &rmc->refresh_session.rc,
-					   rm.session.noreveal_index);
-    /* FIXME: is it normal to return "hard error" upon
-     * _finding_ some data into the database?  */
+					   noreveal_index);
+    /* Note: we return "hard error" to ensure the wrapper
+       does not retry the transaction, and to also not generate
+       a "fresh" response (as we would on "success") */
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 > qs)

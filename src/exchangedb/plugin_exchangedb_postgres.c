@@ -858,6 +858,14 @@ postgres_prepare (PGconn *db_conn)
                             "     ON (kc.denom_pub_hash = denom.denom_pub_hash)"
                             " WHERE rc=$1;",
                             1),
+    /* Used in #postgres_get_melt_index() to fetch
+       the noreveal index from a previous melt operation */
+    GNUNET_PQ_make_prepare ("get_melt_index",
+                            "SELECT"
+                            " noreveal_index"
+                            " FROM refresh_commitments"
+                            " WHERE rc=$1;",
+                            1),
     /* Used in #postgres_select_refreshs_above_serial_id() to fetch
        refresh session with id '\geq' the given parameter */
     GNUNET_PQ_make_prepare ("audit_get_refresh_commitments_incr",
@@ -3481,6 +3489,39 @@ postgres_get_melt (void *cls,
 						 rs);
   refresh_melt->session.rc = *rc;
   return qs;
+}
+
+
+/**
+ * Lookup noreveal index of a previous melt operation under the given
+ * @a rc.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session database handle to use
+ * @param rc commitment hash to use to locate the operation
+ * @param[out] refresh_melt where to store the result
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_melt_index (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const struct TALER_RefreshCommitmentP *rc,
+                         uint32_t *noreveal_index)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (rc),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint32 ("noreveal_index",
+				  noreveal_index),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "get_melt_index",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -7035,6 +7076,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_refunds_by_coin = &postgres_select_refunds_by_coin;
   plugin->insert_melt = &postgres_insert_melt;
   plugin->get_melt = &postgres_get_melt;
+  plugin->get_melt_index = &postgres_get_melt_index;
   plugin->insert_refresh_reveal = &postgres_insert_refresh_reveal;
   plugin->get_refresh_reveal = &postgres_get_refresh_reveal;
   plugin->get_link_data = &postgres_get_link_data;

@@ -172,13 +172,12 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
 					  struct TALER_Amount *ret)
 {
   struct TALER_Amount spent = *off;
-  struct TALER_EXCHANGEDB_TransactionList *pos;
   struct TALER_Amount refunded;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (spent.currency,
                                         &refunded));
-  for (pos = tl; NULL != pos; pos = pos->next)
+  for (struct TALER_EXCHANGEDB_TransactionList *pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)
     {

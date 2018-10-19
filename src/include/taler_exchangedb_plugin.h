@@ -1607,6 +1607,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Lookup noreveal index of a previous melt operation under the given
+   * @a rc.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param session database handle to use
+   * @param rc commitment hash to use to locate the operation
+   * @param[out] refresh_melt where to store the result
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_melt_index) (void *cls,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     const struct TALER_RefreshCommitmentP *rc,
+                     uint32_t *noreveal_index);
+
+
+  /**
    * Store in the database which coin(s) the wallet wanted to create
    * in a given refresh operation and all of the other information
    * we learned or created in the /refresh/reveal step.
