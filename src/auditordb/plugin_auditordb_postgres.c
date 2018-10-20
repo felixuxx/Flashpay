@@ -1112,8 +1112,6 @@ postgres_insert_deposit_confirmation (void *cls,
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
 					     "auditor_deposit_confirmation_insert",
 					     params);
-
-
 }
 
 
