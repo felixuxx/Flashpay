@@ -250,7 +250,6 @@ refresh_melt_transaction (void *cls,
 			  int *mhd_ret)
 {
   struct RefreshMeltContext *rmc = cls;
-  struct TALER_EXCHANGEDB_RefreshMelt rm;
   enum GNUNET_DB_QueryStatus qs;
   uint32_t noreveal_index;
 
