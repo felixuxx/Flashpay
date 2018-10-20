@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 GNUnet e.V.
+  Copyright (C) 2014-2018 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -361,6 +361,24 @@ postgres_create_tables (void *cls)
 			    ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date "
 				"ON auditor_historic_reserve_summary(master_pub,start_date)"),
+
+    /* Table with deposit confirmation sent to us by merchants;
+       we must check that the exchange reported these properly. */
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS deposit_confirmations "
+			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    ",h_contract_terms BYTEA PRIMARY KEY CHECK (LENGTH(h_contract_terms_hash)=64)"
+                            ",h_wire BYTEA PRIMARY KEY CHECK (LENGTH(h_wire)=64)"
+			    ",timestamp INT8 NOT NULL"
+			    ",refund_deadline INT8 NOT NULL"
+			    ",amount_with_fee_val INT8 NOT NULL"
+			    ",amount_with_fee_frac INT4 NOT NULL"
+			    ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+                            ",coin_pub BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+                            ",merchant BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+                            ",exchange_sig BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+                            ",exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+                            ",master_sig BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+			    ")"),
     /* Table with historic business ledger; basically, when the exchange
        operator decides to use operating costs for anything but wire
        transfers to merchants, it goes in here.  This happens when the
@@ -474,6 +492,22 @@ postgres_prepare (PGconn *db_conn)
 			    " FROM auditor_denominations"
 			    " WHERE master_pub=$1;",
 			    1),
+    /* Used in #postgres_insert_auditor_progress() */
+    GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_insert",
+			    "INSERT INTO deposit_confirmations "
+			    "(master_pub"
+			    ",h_contract_terms"
+			    ",h_wire"
+			    ",timestamp"
+			    ",refund_deadline"
+			    ",amount_without_fee"
+			    ",coin_pub"
+			    ",merchant"
+			    ",exchange_sig"
+			    ",exchange_pub"
+			    ",master_sig" /* master_sig could be normalized... */
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
+			    11),
     /* Used in #postgres_insert_auditor_progress() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert",
 			    "INSERT INTO auditor_progress "
@@ -1044,6 +1078,42 @@ postgres_gc (void *cls)
   }
   PQfinish (conn);
   return GNUNET_OK;
+}
+
+
+/**
+ * Insert information about a deposit confirmation into the database.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param dc deposit confirmation information to store
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_deposit_confirmation (void *cls,
+                                      struct TALER_AUDITORDB_Session *session,
+                                      const struct TALER_AUDITORDB_DepositConfirmation *dc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&dc->master_public_key),
+    GNUNET_PQ_query_param_auto_from_type (&dc->h_contract_terms),
+    GNUNET_PQ_query_param_auto_from_type (&dc->h_wire),
+    TALER_PQ_query_param_absolute_time (&dc->timestamp),
+    TALER_PQ_query_param_absolute_time (&dc->refund_deadline),
+    TALER_PQ_query_param_amount (&dc->amount_without_fee),
+    GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (&dc->merchant),
+    GNUNET_PQ_query_param_auto_from_type (&dc->exchange_sig),
+    GNUNET_PQ_query_param_auto_from_type (&dc->exchange_pub),
+    GNUNET_PQ_query_param_auto_from_type (&dc->master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_deposit_confirmation_insert",
+					     params);
+
+
 }
 
 
@@ -2624,6 +2694,8 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->commit = &postgres_commit;
   plugin->rollback = &postgres_rollback;
   plugin->gc = &postgres_gc;
+
+  plugin->insert_deposit_confirmation = &postgres_insert_deposit_confirmation;
 
   plugin->select_denomination_info = &postgres_select_denomination_info;
   plugin->insert_denomination_info = &postgres_insert_denomination_info;

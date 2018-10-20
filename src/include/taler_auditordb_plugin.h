@@ -187,6 +187,81 @@ struct TALER_AUDITORDB_ProgressPoint
 
 
 /**
+ * Information about a deposit confirmation we received from
+ * a merchant.
+ */
+struct TALER_AUDITORDB_DepositConfirmation
+{
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct GNUNET_HashCode h_contract_terms;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Time when this confirmation was generated.
+   */
+  struct GNUNET_TIME_Absolute timestamp;
+
+  /**
+   * How much time does the @e merchant have to issue a refund
+   * request?  Zero if refunds are not allowed.  After this time, the
+   * coin cannot be refunded.  Note that the wire transfer will not be
+   * performed by the exchange until the refund deadline.  This value
+   * is taken from the original deposit request.
+   */
+  struct GNUNET_TIME_Absolute refund_deadline;
+
+  /**
+   * Amount to be deposited, excluding fee.  Calculated from the
+   * amount with fee and the fee from the deposit request.
+   */
+  struct TALER_Amount amount_without_fee;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Exchange.  The deposit request is to be
+   * signed by the corresponding private key (using EdDSA).
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * The Merchant's public key.  Allows the merchant to later refund
+   * the transaction or to inquire about the wire transfer identifier.
+   */
+  struct TALER_MerchantPublicKeyP merchant;
+
+  /**
+   * Signature from the exchange of type
+   * #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT.
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * Public signing key from the exchange matching @e exchange_sig.
+   */
+  struct TALER_ExchangeSignatureP exchange_pub;
+
+  /**
+   * Exchange master signature over @e exchange_sig.
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+  /**
+   * Master public key of the exchange corresponding to @e master_sig.
+   * Identifies the exchange this is about.
+   */
+  struct TALER_MasterPublicKeyP master_public_key;
+
+};
+
+
+/**
  * Handle for one session with the database.
  */
 struct TALER_AUDITORDB_Session;
@@ -289,6 +364,20 @@ struct TALER_AUDITORDB_Plugin
    */
   int
   (*gc) (void *cls);
+
+
+  /**
+   * Insert information about a deposit confirmation into the database.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param dc deposit confirmation information to store
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_deposit_confirmation) (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_AUDITORDB_DepositConfirmation *dc);
 
 
   /**
