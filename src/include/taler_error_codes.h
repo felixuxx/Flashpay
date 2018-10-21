@@ -1516,6 +1516,23 @@ enum TALER_ErrorCode
    */
   TALER_EC_CHECK_PAYMENT_FAILED_COMPUTE_PROPOSAL_HASH = 2014,
 
+
+  /* *********** Auditor error codes ********* */
+
+  /**
+   * The signature from the exchange on the deposit confirmation
+   * is invalid.  Returned with a "400 Bad Request" status code.
+   */
+  TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID = 2500,
+
+  /**
+   * The auditor had trouble storing the deposit confirmation
+   * in its database. Returned with an HTTP status code of
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR = 2501,
+
+
   /* ********** /test API error codes ************* */
 
   /**

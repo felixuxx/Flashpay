@@ -245,7 +245,7 @@ struct TALER_AUDITORDB_DepositConfirmation
   /**
    * Public signing key from the exchange matching @e exchange_sig.
    */
-  struct TALER_ExchangeSignatureP exchange_pub;
+  struct TALER_ExchangePublicKeyP exchange_pub;
 
   /**
    * Exchange master signature over @e exchange_sig.

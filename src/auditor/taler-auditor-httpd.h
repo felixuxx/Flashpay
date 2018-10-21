@@ -24,6 +24,7 @@
 #define TALER_AUDITOR_HTTPD_H
 
 #include <microhttpd.h>
+#include "taler_auditordb_plugin.h"
 
 /**
  * Should we return "Connection: close" in each response?

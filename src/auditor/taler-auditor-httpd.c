@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <sys/resource.h>
 #include "taler_auditordb_lib.h"
+#include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_parsing.h"
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
@@ -296,7 +297,14 @@ handle_mhd_request (void *cls,
 {
   static struct TAH_RequestHandler handlers[] =
     {
-      /* Landing page, tell humans to go away. */
+      /* Our most popular handler (thus first!), used by merchants to
+         probabilistically report us their deposit confirmations. */
+      { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "text/plain",
+        NULL, 0,
+        &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK },
+
+      /* Landing page, for now tells humans to go away (FIXME: replace
+         with auditor's welcome page!) */
       { "/", MHD_HTTP_METHOD_GET, "text/plain",
         "Hello, I'm the Taler auditor. This HTTP server is not for humans.\n", 0,
         &TAH_MHD_handler_static_response, MHD_HTTP_OK },
