@@ -58,7 +58,7 @@ TEL_curl_easy_get (char *url)
     {
       /* With POST requests, we do not want to wait for the
       "100 Continue" response, as our request bodies are usually
-      small and directy sending them saves us a round trip.  
+      small and directy sending them saves us a round trip.
 
       Clearing the expect header like this disables libcurl's
       default processing of the header.

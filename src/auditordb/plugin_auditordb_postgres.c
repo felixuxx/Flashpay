@@ -366,18 +366,20 @@ postgres_create_tables (void *cls)
        we must check that the exchange reported these properly. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS deposit_confirmations "
 			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
-			    ",h_contract_terms BYTEA PRIMARY KEY CHECK (LENGTH(h_contract_terms_hash)=64)"
-                            ",h_wire BYTEA PRIMARY KEY CHECK (LENGTH(h_wire)=64)"
+			    ",h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)"
+                            ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
 			    ",timestamp INT8 NOT NULL"
 			    ",refund_deadline INT8 NOT NULL"
 			    ",amount_with_fee_val INT8 NOT NULL"
 			    ",amount_with_fee_frac INT4 NOT NULL"
 			    ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-                            ",coin_pub BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-                            ",merchant BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-                            ",exchange_sig BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-                            ",exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-                            ",master_sig BYTEA PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+                            ",coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)"
+                            ",merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)"
+                            ",exchange_sig BYTEA CHECK (LENGTH(exchange_sig)=64)"
+                            ",exchange_pub BYTEA CHECK (LENGTH(exchange_pub)=32)"
+                            ",master_sig BYTEA CHECK (LENGTH(master_sig)=64)"
+                            ",PRIMARY KEY (h_contract_terms, h_wire, coin_pub, "
+                            "  merchant_pub, exchange_sig, exchange_pub, master_sig)"
 			    ")"),
     /* Table with historic business ledger; basically, when the exchange
        operator decides to use operating costs for anything but wire
