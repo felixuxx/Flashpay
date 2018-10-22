@@ -412,7 +412,7 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->job = GNUNET_CURL_job_add (ctx,
                          eh,
                          GNUNET_YES,
-                         &handle_wire_finished,
+                         (GC_JCC) &handle_wire_finished,
                          wh);
   return wh;
 }

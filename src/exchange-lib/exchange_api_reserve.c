@@ -631,7 +631,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   rsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_NO,
-                          &handle_reserve_status_finished,
+                          (GC_JCC) &handle_reserve_status_finished,
                           rsh);
   return rsh;
 }
@@ -1039,7 +1039,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_reserve_withdraw_finished,
+                          (GC_JCC) &handle_reserve_withdraw_finished,
                           wsh);
   return wsh;
 }

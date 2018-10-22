@@ -24,6 +24,7 @@
 
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_util.h"
 #include "taler_error_codes.h"
 
@@ -36,6 +37,11 @@
               "JSON parsing failed at %s:%u: %s (%s)\n",                  \
               __FILE__, __LINE__, error.text, error.source)
 
+
+/**
+ * A shorter name to make type casts less verbose.
+ */
+typedef GNUNET_CURL_JobCompletionCallback GC_JCC;
 
 /**
  * Convert a TALER amount to a JSON object.

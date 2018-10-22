@@ -247,7 +247,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   GNUNET_NO,
-                                  &handle_admin_add_incoming_finished,
+                                  (GC_JCC) &handle_admin_add_incoming_finished,
                                   aai);
   return aai;
 }

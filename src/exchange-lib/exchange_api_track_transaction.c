@@ -337,7 +337,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_deposit_wtid_finished,
+                          (GC_JCC) &handle_deposit_wtid_finished,
                           dwh);
   return dwh;
 }

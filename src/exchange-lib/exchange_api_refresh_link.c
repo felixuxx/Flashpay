@@ -415,7 +415,7 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   rlh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_refresh_link_finished,
+                          (GC_JCC) &handle_refresh_link_finished,
                           rlh);
   return rlh;
 }

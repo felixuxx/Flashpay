@@ -215,7 +215,7 @@ TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
   rh->job = GNUNET_CURL_job_add (ctx,
                                  eh,
                                  GNUNET_NO,
-                                 &handle_reject_finished,
+                                 (GC_JCC) &handle_reject_finished,
                                  rh);
   return rh;
 }

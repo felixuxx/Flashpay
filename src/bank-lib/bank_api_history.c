@@ -350,7 +350,7 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   hh->job = GNUNET_CURL_job_add (ctx,
                                  eh,
                                  GNUNET_NO,
-                                 &handle_history_finished,
+                                 (GC_JCC) &handle_history_finished,
                                  hh);
   return hh;
 }

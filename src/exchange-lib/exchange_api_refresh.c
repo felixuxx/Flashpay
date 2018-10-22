@@ -1218,7 +1218,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   rmh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_refresh_melt_finished,
+                          (GC_JCC) &handle_refresh_melt_finished,
                           rmh);
   return rmh;
 }
@@ -1645,7 +1645,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   rrh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   GNUNET_YES,
-                                  &handle_refresh_reveal_finished,
+                                  (GC_JCC) &handle_refresh_reveal_finished,
                                   rrh);
   return rrh;
 }

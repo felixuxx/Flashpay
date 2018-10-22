@@ -359,7 +359,7 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_track_transfer_finished,
+                          (GC_JCC) &handle_track_transfer_finished,
                           wdh);
   return wdh;
 }

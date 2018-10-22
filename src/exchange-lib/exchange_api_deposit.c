@@ -511,7 +511,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
-				 &handle_deposit_finished,
+				 (GC_JCC) &handle_deposit_finished,
 				 dh);
   return dh;
 }

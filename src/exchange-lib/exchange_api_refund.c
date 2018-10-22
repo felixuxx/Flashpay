@@ -386,7 +386,7 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
   rh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
-				 &handle_refund_finished,
+				 (GC_JCC) &handle_refund_finished,
 				 rh);
   return rh;
 }

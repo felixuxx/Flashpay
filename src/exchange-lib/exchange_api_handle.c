@@ -59,7 +59,6 @@
  GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
              function, __FILE__, __LINE__, curl_easy_strerror (code));
 
-
 /**
  * Stages of initialization for the `struct TALER_EXCHANGE_Handle`
  */
@@ -1485,7 +1484,7 @@ request_keys (void *cls)
   kr->job = GNUNET_CURL_job_add (exchange->ctx,
                                  eh,
                                  GNUNET_NO,
-                                 &keys_completed_cb,
+                                 (GC_JCC) &keys_completed_cb,
                                  kr);
   exchange->kr = kr;
 }
