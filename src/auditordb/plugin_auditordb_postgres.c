@@ -370,9 +370,9 @@ postgres_create_tables (void *cls)
                             ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
 			    ",timestamp INT8 NOT NULL"
 			    ",refund_deadline INT8 NOT NULL"
-			    ",amount_with_fee_val INT8 NOT NULL"
-			    ",amount_with_fee_frac INT4 NOT NULL"
-			    ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+			    ",amount_without_fee_val INT8 NOT NULL"
+			    ",amount_without_fee_frac INT4 NOT NULL"
+			    ",amount_without_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                             ",coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)"
                             ",merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)"
                             ",exchange_sig BYTEA CHECK (LENGTH(exchange_sig)=64)"
@@ -502,13 +502,15 @@ postgres_prepare (PGconn *db_conn)
 			    ",h_wire"
 			    ",timestamp"
 			    ",refund_deadline"
-			    ",amount_without_fee"
+			    ",amount_without_fee_val"
+			    ",amount_without_fee_frac"
+			    ",amount_without_fee_curr"
 			    ",coin_pub"
-			    ",merchant"
+			    ",merchant_pub"
 			    ",exchange_sig"
 			    ",exchange_pub"
 			    ",master_sig" /* master_sig could be normalized... */
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
 			    11),
     /* Used in #postgres_insert_auditor_progress() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert",
