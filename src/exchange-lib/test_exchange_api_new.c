@@ -738,6 +738,12 @@ run (void *cls,
       ("close-reserves",
        CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
+    TALER_TESTING_cmd_status ("short-lived-status",
+                              is->exchange,
+                              "short-lived-reserve",
+                              "EUR:0",
+                              MHD_HTTP_OK),
+
     TALER_TESTING_cmd_withdraw_amount
       ("expired-withdraw",
        is->exchange,
