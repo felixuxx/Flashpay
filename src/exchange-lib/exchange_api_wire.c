@@ -202,15 +202,16 @@ lookup_fee (const struct FeeMap *fm,
  *
  * @param cls the `struct TALER_EXCHANGE_WireHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_wire_finished (void *cls,
                       long response_code,
-                      const json_t *json)
+                      const void *response)
 {
   struct TALER_EXCHANGE_WireHandle *wh = cls;
   enum TALER_ErrorCode ec;
+  const json_t *j = response;
 
   wh->job = NULL;
   ec = TALER_EC_NONE;
@@ -232,7 +233,7 @@ handle_wire_finished (void *cls,
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (json,
+          GNUNET_JSON_parse (j,
                              spec,
                              NULL, NULL))
       {
@@ -359,7 +360,7 @@ handle_wire_finished (void *cls,
   if (NULL != wh->cb)
     wh->cb (wh->cb_cls,
             response_code,
-            (0 == response_code) ? ec : TALER_JSON_get_error_code (json),
+            (0 == response_code) ? ec : TALER_JSON_get_error_code (j),
             0,
             NULL);
   TALER_EXCHANGE_wire_cancel (wh);
@@ -412,7 +413,7 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->job = GNUNET_CURL_job_add (ctx,
                          eh,
                          GNUNET_YES,
-                         (GC_JCC) &handle_wire_finished,
+                         &handle_wire_finished,
                          wh);
   return wh;
 }

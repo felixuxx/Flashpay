@@ -456,14 +456,15 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
  *
  * @param cls the `struct TALER_EXCHANGE_ReserveStatusHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_reserve_status_finished (void *cls,
                                 long response_code,
-                                const json_t *json)
+                                const void *response)
 {
   struct TALER_EXCHANGE_ReserveStatusHandle *rsh = cls;
+  const json_t *j = response;
 
   rsh->job = NULL;
   switch (response_code)
@@ -483,7 +484,7 @@ handle_reserve_status_finished (void *cls,
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (json,
+          GNUNET_JSON_parse (j,
                              spec,
                              NULL,
 			     NULL))
@@ -492,7 +493,7 @@ handle_reserve_status_finished (void *cls,
         response_code = 0;
         break;
       }
-      history = json_object_get (json,
+      history = json_object_get (j,
                                  "history");
       if (NULL == history)
       {
@@ -531,7 +532,7 @@ handle_reserve_status_finished (void *cls,
           rsh->cb (rsh->cb_cls,
                    response_code,
                    TALER_EC_NONE,
-                   json,
+                   j,
                    &balance,
                    len,
                    rhistory);
@@ -567,8 +568,8 @@ handle_reserve_status_finished (void *cls,
   {
     rsh->cb (rsh->cb_cls,
              response_code,
-	     TALER_JSON_get_error_code (json),
-             json,
+	     TALER_JSON_get_error_code (j),
+             j,
              NULL,
              0, NULL);
     rsh->cb = NULL;
@@ -631,7 +632,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   rsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_NO,
-                          (GC_JCC) &handle_reserve_status_finished,
+                          &handle_reserve_status_finished,
                           rsh);
   return rsh;
 }
@@ -891,14 +892,15 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
  *
  * @param cls the `struct TALER_EXCHANGE_ReserveWithdrawHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_reserve_withdraw_finished (void *cls,
                                   long response_code,
-                                  const json_t *json)
+                                  const void *response)
 {
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh = cls;
+  const json_t *j = response;
 
   wsh->job = NULL;
   switch (response_code)
@@ -908,7 +910,7 @@ handle_reserve_withdraw_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         reserve_withdraw_ok (wsh,
-                             json))
+                             j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -923,7 +925,7 @@ handle_reserve_withdraw_finished (void *cls,
        check the signatures in the history... */
     if (GNUNET_OK !=
         reserve_withdraw_payment_required (wsh,
-                                           json))
+                                           j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -958,9 +960,9 @@ handle_reserve_withdraw_finished (void *cls,
   {
     wsh->cb (wsh->cb_cls,
              response_code,
-	     TALER_JSON_get_error_code (json),
+	     TALER_JSON_get_error_code (j),
              NULL,
-             json);
+             j);
     wsh->cb = NULL;
   }
   TALER_EXCHANGE_reserve_withdraw_cancel (wsh);
@@ -1039,7 +1041,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          (GC_JCC) &handle_reserve_withdraw_finished,
+                          &handle_reserve_withdraw_finished,
                           wsh);
   return wsh;
 }

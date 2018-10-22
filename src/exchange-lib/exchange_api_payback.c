@@ -158,14 +158,15 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
  *
  * @param cls the `struct TALER_EXCHANGE_PaybackHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_payback_finished (void *cls,
                          long response_code,
-                         const json_t *json)
+                         const void *response)
 {
   struct TALER_EXCHANGE_PaybackHandle *ph = cls;
+  const json_t *j = response;
 
   ph->job = NULL;
   switch (response_code)
@@ -175,7 +176,7 @@ handle_payback_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_payback_signature_ok (ph,
-                                     json))
+                                     j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -194,7 +195,7 @@ handle_payback_finished (void *cls,
       const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
       dki = ph->pk;
-      history = json_object_get (json,
+      history = json_object_get (j,
 				 "history");
       if (GNUNET_OK !=
 	  TALER_EXCHANGE_verify_coin_history (dki->fee_deposit.currency,
@@ -207,11 +208,11 @@ handle_payback_finished (void *cls,
       }
       ph->cb (ph->cb_cls,
 	      response_code,
-	      TALER_JSON_get_error_code (json),
+	      TALER_JSON_get_error_code (j),
 	      &total,
 	      GNUNET_TIME_UNIT_FOREVER_ABS,
 	      NULL,
-	      json);
+	      j);
       TALER_EXCHANGE_payback_cancel (ph);
       return;
     }
@@ -243,11 +244,11 @@ handle_payback_finished (void *cls,
   }
   ph->cb (ph->cb_cls,
           response_code,
-	  TALER_JSON_get_error_code (json),
+	  TALER_JSON_get_error_code (j),
           NULL,
           GNUNET_TIME_UNIT_FOREVER_ABS,
           NULL,
-          json);
+          j);
   TALER_EXCHANGE_payback_cancel (ph);
 }
 
@@ -344,7 +345,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
-				 (GC_JCC) &handle_payback_finished,
+				 &handle_payback_finished,
 				 ph);
   return ph;
 }

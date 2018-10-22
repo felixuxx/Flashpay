@@ -134,12 +134,12 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_TrackTransactionHa
  *
  * @param cls the `struct TALER_EXCHANGE_TrackTransactionHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_deposit_wtid_finished (void *cls,
                               long response_code,
-                              const json_t *json)
+                              const void *response)
 {
   struct TALER_EXCHANGE_TrackTransactionHandle *dwh = cls;
   const struct TALER_WireTransferIdentifierRawP *wtid = NULL;
@@ -148,6 +148,7 @@ handle_deposit_wtid_finished (void *cls,
   struct TALER_Amount coin_contribution_s;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangePublicKeyP *ep = NULL;
+  const json_t *j = response;
 
   dwh->job = NULL;
   switch (response_code)
@@ -164,7 +165,7 @@ handle_deposit_wtid_finished (void *cls,
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (json,
+          GNUNET_JSON_parse (j,
                              spec,
                              NULL, NULL))
       {
@@ -179,7 +180,7 @@ handle_deposit_wtid_finished (void *cls,
       coin_contribution = &coin_contribution_s;
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
-                                            json,
+                                            j,
                                             &exchange_pub))
       {
         GNUNET_break_op (0);
@@ -200,7 +201,7 @@ handle_deposit_wtid_finished (void *cls,
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (json,
+          GNUNET_JSON_parse (j,
                              spec,
                              NULL, NULL))
       {
@@ -238,9 +239,9 @@ handle_deposit_wtid_finished (void *cls,
   }
   dwh->cb (dwh->cb_cls,
            response_code,
-	   TALER_JSON_get_error_code (json),
+	   TALER_JSON_get_error_code (j),
            ep,
-           json,
+           j,
            wtid,
            execution_time,
            coin_contribution);
@@ -337,7 +338,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          (GC_JCC) &handle_deposit_wtid_finished,
+                          &handle_deposit_wtid_finished,
                           dwh);
   return dwh;
 }

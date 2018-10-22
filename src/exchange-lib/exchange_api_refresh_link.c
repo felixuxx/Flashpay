@@ -301,14 +301,15 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshLinkHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_refresh_link_finished (void *cls,
                               long response_code,
-                              const json_t *json)
+                              const void *response)
 {
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh = cls;
+  const json_t *j = response;
 
   rlh->job = NULL;
   switch (response_code)
@@ -318,7 +319,7 @@ handle_refresh_link_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         parse_refresh_link_ok (rlh,
-                               json))
+                               j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -348,12 +349,12 @@ handle_refresh_link_finished (void *cls,
   if (NULL != rlh->link_cb)
     rlh->link_cb (rlh->link_cb_cls,
                   response_code,
-		  TALER_JSON_get_error_code (json),
+		  TALER_JSON_get_error_code (j),
                   0,
 		  NULL,
 		  NULL,
 		  NULL,
-                  json);
+                  j);
   TALER_EXCHANGE_refresh_link_cancel (rlh);
 }
 
@@ -415,7 +416,7 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   rlh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          (GC_JCC) &handle_refresh_link_finished,
+                          &handle_refresh_link_finished,
                           rlh);
   return rlh;
 }

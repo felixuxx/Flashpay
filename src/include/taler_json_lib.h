@@ -37,12 +37,6 @@
               "JSON parsing failed at %s:%u: %s (%s)\n",                  \
               __FILE__, __LINE__, error.text, error.source)
 
-
-/**
- * A shorter name to make type casts less verbose.
- */
-typedef GNUNET_CURL_JobCompletionCallback GC_JCC;
-
 /**
  * Convert a TALER amount to a JSON object.
  *

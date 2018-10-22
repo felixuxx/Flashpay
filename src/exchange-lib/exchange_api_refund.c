@@ -133,16 +133,17 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
  *
  * @param cls the `struct TALER_EXCHANGE_RefundHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_refund_finished (void *cls,
                         long response_code,
-                        const json_t *json)
+                        const void *response)
 {
   struct TALER_EXCHANGE_RefundHandle *rh = cls;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangePublicKeyP *ep = NULL;
+  const json_t *j = response;
 
   rh->job = NULL;
   switch (response_code)
@@ -152,7 +153,7 @@ handle_refund_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_refund_signature_ok (rh,
-				    json,
+				    j,
                                     &exchange_pub))
     {
       GNUNET_break_op (0);
@@ -203,9 +204,9 @@ handle_refund_finished (void *cls,
   }
   rh->cb (rh->cb_cls,
           response_code,
-	  TALER_JSON_get_error_code (json),
+	  TALER_JSON_get_error_code (j),
           ep,
-          json);
+          j);
   TALER_EXCHANGE_refund_cancel (rh);
 }
 
@@ -386,7 +387,7 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
   rh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
-				 (GC_JCC) &handle_refund_finished,
+				 &handle_refund_finished,
 				 rh);
   return rh;
 }

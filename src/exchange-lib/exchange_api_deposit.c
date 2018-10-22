@@ -193,16 +193,17 @@ verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *d
  *
  * @param cls the `struct TALER_EXCHANGE_DepositHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_deposit_finished (void *cls,
                          long response_code,
-                         const json_t *json)
+                         const void *response)
 {
   struct TALER_EXCHANGE_DepositHandle *dh = cls;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangePublicKeyP *ep = NULL;
+  const json_t *j = response;
 
   dh->job = NULL;
   switch (response_code)
@@ -212,7 +213,7 @@ handle_deposit_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_deposit_signature_ok (dh,
-                                     json,
+                                     j,
                                      &exchange_pub))
     {
       GNUNET_break_op (0);
@@ -231,7 +232,7 @@ handle_deposit_finished (void *cls,
     /* Double spending; check signatures on transaction history */
     if (GNUNET_OK !=
         verify_deposit_signature_forbidden (dh,
-                                            json))
+                                            j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -261,9 +262,9 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           response_code,
-	  TALER_JSON_get_error_code (json),
+	  TALER_JSON_get_error_code (j),
           ep,
-          json);
+          j);
   TALER_EXCHANGE_deposit_cancel (dh);
 }
 
@@ -511,7 +512,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
-				 (GC_JCC) &handle_deposit_finished,
+				 &handle_deposit_finished,
 				 dh);
   return dh;
 }

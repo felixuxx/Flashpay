@@ -834,13 +834,14 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
 static void
 keys_completed_cb (void *cls,
                    long response_code,
-                   const json_t *resp_obj)
+                   const void *resp_obj)
 {
   struct KeysRequest *kr = cls;
   struct TALER_EXCHANGE_Handle *exchange = kr->exchange;
   struct TALER_EXCHANGE_Keys kd;
   struct TALER_EXCHANGE_Keys kd_old;
   enum TALER_EXCHANGE_VersionCompatibility vc;
+  const json_t *j = resp_obj;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received keys from URL `%s' with status %ld.\n",
@@ -863,7 +864,7 @@ keys_completed_cb (void *cls,
                                                          exchange);
     return;
   case MHD_HTTP_OK:
-    if (NULL == resp_obj)
+    if (NULL == j)
     {
       response_code = 0;
       break;
@@ -902,7 +903,7 @@ keys_completed_cb (void *cls,
     }
 
     if (GNUNET_OK !=
-        decode_keys_json (resp_obj,
+        decode_keys_json (j,
 			  GNUNET_YES,
                           &kd,
 			  &vc))
@@ -927,7 +928,7 @@ keys_completed_cb (void *cls,
       break;
     }
     json_decref (exchange->key_data_raw);
-    exchange->key_data_raw = json_deep_copy (resp_obj);
+    exchange->key_data_raw = json_deep_copy (j);
     exchange->retry_delay = GNUNET_TIME_UNIT_ZERO;
     break;
   default:
@@ -1484,7 +1485,7 @@ request_keys (void *cls)
   kr->job = GNUNET_CURL_job_add (exchange->ctx,
                                  eh,
                                  GNUNET_NO,
-                                 (GC_JCC) &keys_completed_cb,
+                                 &keys_completed_cb,
                                  kr);
   exchange->kr = kr;
 }

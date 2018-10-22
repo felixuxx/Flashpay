@@ -248,14 +248,15 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
  *
  * @param cls the `struct TALER_EXCHANGE_TrackTransferHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_track_transfer_finished (void *cls,
                                 long response_code,
-                                const json_t *json)
+                                const void *response)
 {
   struct TALER_EXCHANGE_TrackTransferHandle *wdh = cls;
+  const json_t *j = response;
 
   wdh->job = NULL;
   switch (response_code)
@@ -265,7 +266,7 @@ handle_track_transfer_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK ==
         check_track_transfer_response_ok (wdh,
-                                          json))
+                                          j))
       return;
     GNUNET_break_op (0);
     response_code = 0;
@@ -298,9 +299,9 @@ handle_track_transfer_finished (void *cls,
   }
   wdh->cb (wdh->cb_cls,
            response_code,
-	   TALER_JSON_get_error_code (json),
+	   TALER_JSON_get_error_code (j),
            NULL,
-           json,
+           j,
            NULL,
            GNUNET_TIME_UNIT_ZERO_ABS,
            NULL,
@@ -359,7 +360,7 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          (GC_JCC) &handle_track_transfer_finished,
+                          &handle_track_transfer_finished,
                           wdh);
   return wdh;
 }

@@ -1032,16 +1032,17 @@ verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshMeltHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_refresh_melt_finished (void *cls,
                               long response_code,
-                              const json_t *json)
+                              const void *response)
 {
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh = cls;
   uint32_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   struct TALER_ExchangePublicKeyP exchange_pub;
+  const json_t *j = response;
 
   rmh->job = NULL;
   switch (response_code)
@@ -1051,7 +1052,7 @@ handle_refresh_melt_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_refresh_melt_signature_ok (rmh,
-                                          json,
+                                          j,
                                           &exchange_pub,
                                           &noreveal_index))
     {
@@ -1062,10 +1063,10 @@ handle_refresh_melt_finished (void *cls,
     {
       rmh->melt_cb (rmh->melt_cb_cls,
                     response_code,
-		    TALER_JSON_get_error_code (json),
+		    TALER_JSON_get_error_code (j),
                     noreveal_index,
                     (0 == response_code) ? NULL : &exchange_pub,
-                    json);
+                    j);
       rmh->melt_cb = NULL;
     }
     break;
@@ -1077,7 +1078,7 @@ handle_refresh_melt_finished (void *cls,
     /* Double spending; check signatures on transaction history */
     if (GNUNET_OK !=
         verify_refresh_melt_signature_forbidden (rmh,
-                                                 json))
+                                                 j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -1108,10 +1109,10 @@ handle_refresh_melt_finished (void *cls,
   if (NULL != rmh->melt_cb)
     rmh->melt_cb (rmh->melt_cb_cls,
                   response_code,
-		  TALER_JSON_get_error_code (json),
+		  TALER_JSON_get_error_code (j),
                   UINT32_MAX,
                   NULL,
-                  json);
+                  j);
   TALER_EXCHANGE_refresh_melt_cancel (rmh);
 }
 
@@ -1218,7 +1219,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   rmh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          (GC_JCC) &handle_refresh_melt_finished,
+                          &handle_refresh_melt_finished,
                           rmh);
   return rmh;
 }
@@ -1411,14 +1412,15 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_refresh_reveal_finished (void *cls,
                                 long response_code,
-                                const json_t *json)
+                                const void *response)
 {
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh = cls;
+  const json_t *j = response;
 
   rrh->job = NULL;
   switch (response_code)
@@ -1433,7 +1435,7 @@ handle_refresh_reveal_finished (void *cls,
 
       memset (sigs, 0, sizeof (sigs));
       ret = refresh_reveal_ok (rrh,
-                               json,
+                               j,
                                coin_privs,
                                sigs);
       if (GNUNET_OK != ret)
@@ -1448,7 +1450,7 @@ handle_refresh_reveal_finished (void *cls,
                         rrh->md->num_fresh_coins,
                         coin_privs,
                         sigs,
-                        json);
+                        j);
         rrh->reveal_cb = NULL;
       }
       for (unsigned int i=0;i<rrh->md->num_fresh_coins;i++)
@@ -1481,11 +1483,11 @@ handle_refresh_reveal_finished (void *cls,
   if (NULL != rrh->reveal_cb)
     rrh->reveal_cb (rrh->reveal_cb_cls,
                     response_code,
-		    TALER_JSON_get_error_code (json),
+		    TALER_JSON_get_error_code (j),
 		    0,
 		    NULL,
 		    NULL,
-                    json);
+                    j);
   TALER_EXCHANGE_refresh_reveal_cancel (rrh);
 }
 
@@ -1645,7 +1647,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   rrh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   GNUNET_YES,
-                                  (GC_JCC) &handle_refresh_reveal_finished,
+                                  &handle_refresh_reveal_finished,
                                   rrh);
   return rrh;
 }

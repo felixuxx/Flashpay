@@ -169,15 +169,16 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
  *
  * @param cls the `struct TALER_BANK_HistoryHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
 handle_history_finished (void *cls,
                          long response_code,
-                         const json_t *json)
+                         const void *response)
 {
   struct TALER_BANK_HistoryHandle *hh = cls;
   enum TALER_ErrorCode ec;
+  const json_t *j = response;
 
   hh->job = NULL;
   switch (response_code)
@@ -188,7 +189,7 @@ handle_history_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         parse_account_history (hh,
-                               json))
+                               j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -204,27 +205,27 @@ handle_history_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (json);
+    ec = TALER_BANK_parse_ec_ (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Access denied */
-    ec = TALER_BANK_parse_ec_ (json);
+    ec = TALER_BANK_parse_ec_ (j);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (json);
+    ec = TALER_BANK_parse_ec_ (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (json);
+    ec = TALER_BANK_parse_ec_ (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_BANK_parse_ec_ (json);
+    ec = TALER_BANK_parse_ec_ (j);
     break;
   default:
     /* unexpected response code */
@@ -232,7 +233,7 @@ handle_history_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
-    ec = TALER_BANK_parse_ec_ (json);
+    ec = TALER_BANK_parse_ec_ (j);
     response_code = 0;
     break;
   }
@@ -242,7 +243,7 @@ handle_history_finished (void *cls,
            TALER_BANK_DIRECTION_NONE,
            0LLU,
            NULL,
-           json);
+           j);
   TALER_BANK_history_cancel (hh);
 }
 
@@ -350,7 +351,7 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   hh->job = GNUNET_CURL_job_add (ctx,
                                  eh,
                                  GNUNET_NO,
-                                 (GC_JCC) &handle_history_finished,
+                                 &handle_history_finished,
                                  hh);
   return hh;
 }
