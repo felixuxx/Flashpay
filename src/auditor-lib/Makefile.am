@@ -14,7 +14,6 @@ libtalerauditor_la_LDFLAGS = \
   -no-undefined
 libtalerauditor_la_SOURCES = \
   curl_defaults.c \
-  auditor_api_common.c \
   auditor_api_handle.c auditor_api_handle.h \
   auditor_api_deposit_confirmation.c
 libtalerauditor_la_LIBADD = \
