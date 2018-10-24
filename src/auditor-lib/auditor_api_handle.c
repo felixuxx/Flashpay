@@ -483,7 +483,7 @@ MAH_path_to_url2 (const char *base_url,
 struct TALER_AUDITOR_Handle *
 TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
 		       const char *url,
-		       TALER_AUDITOR_VersionificationCallback version_cb,
+		       TALER_AUDITOR_VersionCallback version_cb,
 		       void *version_cb_cls)
 {
   struct TALER_AUDITOR_Handle *auditor;

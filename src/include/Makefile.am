@@ -12,6 +12,7 @@ else
 
 talerinclude_HEADERS = \
   platform.h \
+  taler_auditor_service.h \
   taler_amount_lib.h \
   taler_auditordb_lib.h \
   taler_auditordb_plugin.h \
