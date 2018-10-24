@@ -48,7 +48,7 @@ MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h);
  * Obtain the URL to use for an API request.
  *
  * @param h the auditor handle to query
- * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @param path Taler API path (i.e. "/deposit-confirmation")
  * @return the full URL to use with cURL
  */
 char *
@@ -60,7 +60,7 @@ MAH_path_to_url (struct TALER_AUDITOR_Handle *h,
  * Obtain the URL to use for an API request.
  *
  * @param base_url base URL of the auditor (i.e. "http://auditor/")
- * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @param path Taler API path (i.e. "/deposit-confirmation")
  * @return the full URL to use with cURL
  */
 char *

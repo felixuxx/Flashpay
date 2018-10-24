@@ -136,7 +136,7 @@ struct TALER_AUDITOR_Handle;
  *
  * @param ctx the context
  * @param url HTTP base URL for the auditor
- * @param version_cb function to call with the auditor's versionification information
+ * @param version_cb function to call with the auditor's version information
  * @param version_cb_cls closure for @a version_cb
  * @return the auditor handle; NULL upon error
  */
@@ -155,5 +155,36 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
 void
 TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor);
 
+
+/**
+ * @brief A DepositConfirmation Handle
+ */
+struct TALER_AUDITOR_DepositConfirmationHandle;
+
+
+/**
+ * Signature of functions called with the result from our call to the
+ * auditor's /deposit-confirmation handler.
+ *
+ * @param cls closure
+ * @param http_status HTTP status code, 200 on success
+ * @param ec taler protocol error status code, 0 on success
+ * @param json raw json response
+ */
+typedef void
+(*TALER_AUDITOR_DepositConfirmationResultCallback)(void *cls,
+                                                   unsigned int http_status,
+                                                   enum TALER_ErrorCode ec,
+                                                   const json_t *json);
+
+
+/**
+ * Cancel a deposit-confirmation permission request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param deposit-confirmation the deposit-confirmation permission request handle
+ */
+void
+TALER_AUDITOR_deposit_confirmation_cancel (struct TALER_AUDITOR_DepositConfirmationHandle *deposit_confirmation);
 
 #endif  /* _TALER_AUDITOR_SERVICE_H */

@@ -111,7 +111,7 @@ struct TALER_AUDITOR_Handle
    * Data for the request to get the /version of a auditor,
    * NULL once we are past stage #MHS_INIT.
    */
-  struct VersionRequest *kr;
+  struct VersionRequest *vr;
 
   /**
    * Task for retrying /version request.
@@ -119,10 +119,10 @@ struct TALER_AUDITOR_Handle
   struct GNUNET_SCHEDULER_Task *retry_task;
 
   /**
-   * Key data of the auditor, only valid if
+   * /version data of the auditor, only valid if
    * @e handshake_complete is past stage #MHS_VERSION.
    */
-  struct TALER_AUDITOR_Version key_data;
+  struct TALER_AUDITOR_VersionInformation vi;
 
   /**
    * Retry /version frequency.
@@ -167,54 +167,26 @@ struct VersionRequest
  * Note that this does not cancel the request
  * itself.
  *
- * @param kr request to free
+ * @param vr request to free
  */
 static void
-free_version_request (struct VersionRequest *kr)
+free_version_request (struct VersionRequest *vr)
 {
-  GNUNET_free (kr->url);
-  GNUNET_free (kr);
+  GNUNET_free (vr->url);
+  GNUNET_free (vr);
 }
 
 
 /**
- * Parse a auditor's auditor information encoded in JSON.
+ * Free version data object.
  *
- * @param[out] auditor where to return the result
- * @param check_sig should we check signatures
- * @param[in] auditor_obj json to parse
- * @param key_data information about denomination version
- * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
- *        invalid or the json malformed.
+ * @param vi data to free (pointer itself excluded)
  */
-static int
-parse_json_auditor (struct TALER_AUDITOR_AuditorInformation *auditor,
-		    int check_sigs,
-                    json_t *auditor_obj,
-                    const struct TALER_AUDITOR_Version *key_data)
+static void
+free_version_info (struct TALER_AUDITOR_VersionInformation *vi)
 {
-  const char *auditor_url;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("auditor_pub",
-                                 &auditor->auditor_pub),
-    GNUNET_JSON_spec_string ("auditor_url",
-                             &auditor_url),
-    GNUNET_JSON_spec_json ("denomination_version",
-                           &version),
-    GNUNET_JSON_spec_end()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (auditor_obj,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  auditor->auditor_url = GNUNET_strdup (auditor_url);
-  GNUNET_JSON_parse_free (spec);
-  return GNUNET_OK;
+  GNUNET_free_non_null (vi->version);
+  vi->version = NULL;
 }
 
 
@@ -224,15 +196,15 @@ parse_json_auditor (struct TALER_AUDITOR_AuditorInformation *auditor,
  *
  * @param[in] resp_obj JSON object to parse
  * @param check_sig #GNUNET_YES if we should check the signature
- * @param[out] key_data where to store the results we decoded
- * @param[out] where to store version compatibility data
+ * @param[out] vi where to store the results we decoded
+ * @param[out] vc where to store version compatibility data
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error (malformed JSON)
  */
 static int
 decode_version_json (const json_t *resp_obj,
-		  int check_sig,
-                  struct TALER_AUDITOR_Version *key_data,
-		  enum TALER_AUDITOR_VersionCompatibility *vc)
+                     int check_sig,
+                     struct TALER_AUDITOR_VersionInformation *vi,
+                     enum TALER_AUDITOR_VersionCompatibility *vc)
 {
   struct TALER_AuditorPublicKeyP pub;
   unsigned int age;
@@ -240,9 +212,9 @@ decode_version_json (const json_t *resp_obj,
   unsigned int current;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("version",
-			     &ver),
+			     &vi->version),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
-				 &key_data->master_pub),
+				 &vi->auditor_pub),
     GNUNET_JSON_spec_end()
   };
 
@@ -260,13 +232,14 @@ decode_version_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (3 != sscanf (ver,
+  if (3 != sscanf (vi->version,
 		   "%u:%u:%u",
 		   &current,
 		   &revision,
 		   &age))
   {
     GNUNET_break_op (0);
+    free_version_info (vi);
     return GNUNET_SYSERR;
   }
   *vc = TALER_AUDITOR_VC_MATCH;
@@ -282,21 +255,7 @@ decode_version_json (const json_t *resp_obj,
     if (TALER_PROTOCOL_CURRENT - TALER_PROTOCOL_AGE > current)
       *vc |= TALER_AUDITOR_VC_INCOMPATIBLE;
   }
-  key_data->version = GNUNET_strdup (ver);
   return GNUNET_OK;
-}
-
-
-/**
- * Free key data object.
- *
- * @param key_data data to free (pointer itself excluded)
- */
-static void
-free_key_data (struct TALER_AUDITOR_Keys *key_data)
-{
-  GNUNET_free_non_null (key_data->version);
-  key_data->version = NULL;
 }
 
 
@@ -322,25 +281,26 @@ version_completed_cb (void *cls,
 		      long response_code,
 		      const json_t *resp_obj)
 {
-  struct VersionRequest *kr = cls;
-  struct TALER_AUDITOR_Handle *auditor = kr->auditor;
+  struct VersionRequest *vr = cls;
+  struct TALER_AUDITOR_Handle *auditor = vr->auditor;
   enum TALER_AUDITOR_VersionCompatibility vc;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received version from URL `%s' with status %ld.\n",
-              kr->url,
+              vr->url,
               response_code);
   vc = TALER_AUDITOR_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
   case 0:
-    free_version_request (kr);
-    auditor->kr = NULL;
+  case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    free_version_request (vr);
+    auditor->vr = NULL;
     GNUNET_assert (NULL == auditor->retry_task);
     auditor->retry_delay = AUDITOR_LIB_BACKOFF (auditor->retry_delay);
     auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
-                                                         &request_version,
-                                                         auditor);
+                                                        &request_version,
+                                                        auditor);
     return;
   case MHD_HTTP_OK:
     if (NULL == resp_obj)
@@ -348,13 +308,11 @@ version_completed_cb (void *cls,
       response_code = 0;
       break;
     }
-    /* We keep the denomination version and auditor signatures from the
-       previous iteration (/version cherry picking) */
     if (GNUNET_OK !=
         decode_version_json (resp_obj,
-			  GNUNET_YES,
-                          &kd,
-			  &vc))
+                             GNUNET_YES,
+                             &auditor->vi,
+                             &vc))
     {
       response_code = 0;
       break;
@@ -367,14 +325,12 @@ version_completed_cb (void *cls,
                 (unsigned int) response_code);
     break;
   }
-  auditor->key_data = kd;
-
   if (MHD_HTTP_OK != response_code)
   {
-    auditor->kr = NULL;
-    free_version_request (kr);
+    auditor->vr = NULL;
+    free_version_request (vr);
     auditor->state = MHS_FAILED;
-    free_key_data (&kd_old);
+    free_version_info (&auditor->vi);
     /* notify application that we failed */
     auditor->version_cb (auditor->version_cb_cls,
 			 NULL,
@@ -382,14 +338,13 @@ version_completed_cb (void *cls,
     return;
   }
 
-  auditor->kr = NULL;
-  free_version_request (kr);
+  auditor->vr = NULL;
+  free_version_request (vr);
   auditor->state = MHS_VERSION;
   /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
-                     &auditor->key_data,
-		     vc);
-  free_key_data (&kd_old);
+                       &auditor->vi,
+                       vc);
 }
 
 
@@ -426,7 +381,7 @@ MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h)
  * Obtain the URL to use for an API request.
  *
  * @param h handle for the auditor
- * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @param path Taler API path (i.e. "/deposit-confirmation")
  * @return the full URL to use with cURL
  */
 char *
@@ -442,7 +397,7 @@ MAH_path_to_url (struct TALER_AUDITOR_Handle *h,
  * Obtain the URL to use for an API request.
  *
  * @param base_url base URL of the auditor (i.e. "http://auditor/")
- * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @param path Taler API path (i.e. "/deposit-confirmation")
  * @return the full URL to use with cURL
  */
 char *
@@ -476,7 +431,7 @@ MAH_path_to_url2 (const char *base_url,
  *
  * @param ctx the context
  * @param url HTTP base URL for the auditor
- * @param version_cb function to call with the auditor's versionification information
+ * @param version_cb function to call with the auditor's version information
  * @param version_cb_cls closure for @a version_cb
  * @return the auditor handle; NULL upon error
  */
@@ -508,19 +463,19 @@ static void
 request_version (void *cls)
 {
   struct TALER_AUDITOR_Handle *auditor = cls;
-  struct VersionRequest *kr;
+  struct VersionRequest *vr;
   CURL *eh;
 
   auditor->retry_task = NULL;
-  GNUNET_assert (NULL == auditor->kr);
-  kr = GNUNET_new (struct VersionRequest);
-  kr->auditor = auditor;
-  kr->url = MAH_path_to_url (auditor,
+  GNUNET_assert (NULL == auditor->vr);
+  vr = GNUNET_new (struct VersionRequest);
+  vr->auditor = auditor;
+  vr->url = MAH_path_to_url (auditor,
 			     "/version");
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting version with URL `%s'.\n",
-              kr->url);
-  eh = TEL_curl_easy_get (kr->url);
+              vr->url);
+  eh = TEL_curl_easy_get (vr->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_VERBOSE,
@@ -532,13 +487,13 @@ request_version (void *cls)
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERDATA,
-                                   kr));
-  kr->job = GNUNET_CURL_job_add (auditor->ctx,
+                                   vr));
+  vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
                                  GNUNET_NO,
                                  (GC_JCC) &version_completed_cb,
-                                 kr);
-  auditor->kr = kr;
+                                 vr);
+  auditor->vr = vr;
 }
 
 
@@ -550,13 +505,13 @@ request_version (void *cls)
 void
 TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor)
 {
-  if (NULL != auditor->kr)
+  if (NULL != auditor->vr)
   {
-    GNUNET_CURL_job_cancel (auditor->kr->job);
-    free_version_request (auditor->kr);
-    auditor->kr = NULL;
+    GNUNET_CURL_job_cancel (auditor->vr->job);
+    free_version_request (auditor->vr);
+    auditor->vr = NULL;
   }
-  free_key_data (&auditor->key_data);
+  free_version_info (&auditor->vi);
   if (NULL != auditor->retry_task)
   {
     GNUNET_SCHEDULER_cancel (auditor->retry_task);

@@ -15,9 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/auditor_api_deposit.c
+ * @file auditor-lib/auditor_api_deposit_confirmation.c
  * @brief Implementation of the /deposit request of the auditor's HTTP API
- * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
 #include "platform.h"
