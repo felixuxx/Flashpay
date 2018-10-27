@@ -179,6 +179,59 @@ typedef void
 
 
 /**
+ * Submit a deposit-confirmation permission to the auditor and get the
+ * auditor's response.  Note that while we return the response
+ * verbatim to the caller for further processing, we do already verify
+ * that the response is well-formed.  If the auditor's reply is not
+ * well-formed, we return an HTTP status code of zero to @a cb.
+ *
+ * We also verify that the @a exchange_sig is valid for this deposit-confirmation
+ * request, and that the @a master_sig is a valid signature for @a
+ * exchange_pub.  Also, the @a auditor must be ready to operate (i.e.  have
+ * finished processing the /version reply).  If either check fails, we do
+ * NOT initiate the transaction with the auditor and instead return NULL.
+ *
+ * @param auditor the auditor handle; the auditor must be ready to operate
+ * @param h_wire hash of merchant wire details
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
+ * @param timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
+ * @param coin_pub coin’s public key
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param exchange_sig the signature made with purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT
+ * @param exchange_pub the public key of the exchange that matches @a exchange_sig
+ * @param master_pub master public key of the exchange
+ * @param ep_start when does @a exchange_pub validity start
+ * @param ep_expire when does @a exchange_pub usage end
+ * @param ep_end when does @a exchange_pub legal validity end
+ * @param master_sig master signature affirming validity of @a exchange_pub
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_AUDITOR_DepositConfirmationHandle *
+TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
+                                    const struct GNUNET_HashCode *h_wire,
+                                    const struct GNUNET_HashCode *h_contract_terms,
+                                    struct GNUNET_TIME_Absolute timestamp,
+                                    struct GNUNET_TIME_Absolute refund_deadline,
+                                    const struct TALER_Amount *amount_without_fee,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                    const struct TALER_ExchangePublicKeyP *exchange_pub,
+                                    const struct TALER_CoinSpendSignatureP *exchange_sig,
+                                    const struct TALER_MasterPublicKeyP *master_pub,
+                                    struct GNUNET_TIME_Absolute ep_start,
+                                    struct GNUNET_TIME_Absolute ep_expire,
+                                    struct GNUNET_TIME_Absolute ep_end,
+                                    const struct TALER_MasterSignatureP *master_sig,
+				    TALER_AUDITOR_DepositConfirmationResultCallback cb,
+				    void *cb_cls);
+
+
+/**
  * Cancel a deposit-confirmation permission request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
