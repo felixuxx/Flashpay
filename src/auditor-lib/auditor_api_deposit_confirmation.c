@@ -77,16 +77,15 @@ struct TALER_AUDITOR_DepositConfirmationHandle
  *
  * @param cls the `struct TALER_AUDITOR_DepositConfirmationHandle`
  * @param response_code HTTP response code, 0 on error
- * @param json parsed JSON result, NULL on error
+ * @param djson parsed JSON result, NULL on error
  */
 static void
 handle_deposit_confirmation_finished (void *cls,
 				      long response_code,
-				      const json_t *json)
+				      const void *djson)
 {
+  const json_t *json = djson;
   struct TALER_AUDITOR_DepositConfirmationHandle *dh = cls;
-  struct TALER_AuditorPublicKeyP auditor_pub;
-  struct TALER_AuditorPublicKeyP *ep = NULL;
 
   dh->job = NULL;
   switch (response_code)
@@ -94,8 +93,6 @@ handle_deposit_confirmation_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    break;
-  case MHD_HTTP_NOT_FOUND:
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the auditor is buggy
@@ -153,59 +150,43 @@ verify_signatures (const struct TALER_Amount *amount,
                    struct GNUNET_TIME_Absolute timestamp,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    struct GNUNET_TIME_Absolute refund_deadline,
-                   const struct TALER_CoinSpendSignatureP *coin_sig)
+                   const struct TALER_ExchangePublicKeyP *exchange_pub,
+                   const struct TALER_CoinSpendSignatureP *exchange_sig,
+                   const struct TALER_MasterPublicKeyP *master_pub,
+                   struct GNUNET_TIME_AbsoluteNBO ep_start,
+                   struct GNUNET_TIME_AbsoluteNBO ep_expire,
+                   struct GNUNET_TIME_AbsoluteNBO ep_end,
+                   const struct TALER_MasterSignatureP *master_sig)
 {
-  struct TALER_DepositConfirmationRequestPS dr;
-  struct TALER_CoinPublicInfo coin_info;
+  struct TALER_DepositConfirmationPS dc;
 
-  dr.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_DEPOSIT_CONFIRMATION);
-  dr.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationRequestPS));
-  dr.h_contract_terms = *h_contract_terms;
-  dr.h_wire = *h_wire;
-  dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_hton (&dr.amount_with_fee,
+  dc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
+  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
+  dc.h_contract_terms = *h_contract_terms;
+  dc.h_wire = *h_wire;
+  dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+  TALER_amount_hton (&dc.amount_without_fee,
                      amount);
-  TALER_amount_hton (&dr.deposit_confirmation_fee,
-                     &dki->fee_deposit_confirmation);
-  dr.merchant = *merchant_pub;
-  dr.coin_pub = *coin_pub;
+  dc.coin_pub = *coin_pub;
+  dc.merchant = *merchant_pub;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT_CONFIRMATION,
-                                  &dr.purpose,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
+                                  &dc.purpose,
                                   &coin_sig->eddsa_signature,
                                   &coin_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
     TALER_LOG_WARNING ("Invalid coin signature on /deposit-confirmation request!\n");
     {
-      TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
+      TALER_LOG_DEBUG ("... amount_without_fee was %s\n",
                        TALER_amount2s (amount));
-      TALER_LOG_DEBUG ("... deposit-confirmation_fee was %s\n",
-                       TALER_amount2s (&dki->fee_deposit_confirmation));
     }
 
     return GNUNET_SYSERR;
   }
 
-  /* check coin signature */
-  coin_info.coin_pub = *coin_pub;
-  coin_info.denom_pub = *denom_pub;
-  coin_info.denom_sig = *denom_sig;
-  if (GNUNET_YES !=
-      TALER_test_coin_valid (&coin_info))
-  {
-    GNUNET_break_op (0);
-    TALER_LOG_WARNING ("Invalid coin passed for /deposit-confirmation\n");
-    return GNUNET_SYSERR;
-  }
-  if (0 < TALER_amount_cmp (&dki->fee_deposit_confirmation,
-                            amount))
-  {
-    GNUNET_break_op (0);
-    TALER_LOG_WARNING ("DepositConfirmation amount smaller than fee\n");
-    return GNUNET_SYSERR;
-  }
+
   return GNUNET_OK;
 }
 
@@ -252,16 +233,15 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   struct GNUNET_CURL_Context *ctx;
   json_t *deposit_confirmation_obj;
   CURL *eh;
-  struct TALER_Amount amount_without_fee;
 
-  (void) GNUNET_TIME_round_abs (&wire_deadline);
+  (void) GNUNET_TIME_round_abs (&timestamp);
   (void) GNUNET_TIME_round_abs (&refund_deadline);
   GNUNET_assert (refund_deadline.abs_value_us <= wire_deadline.abs_value_us);
   GNUNET_assert (GNUNET_YES ==
 		 MAH_handle_is_ready (auditor));
   if (GNUNET_OK !=
-      verify_signatures (amount,
-                         &h_wire,
+      verify_signatures (amount_without_fees,
+                         h_wire,
                          h_contract_terms,
                          coin_pub,
                          timestamp,
@@ -281,7 +261,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
 		 " s:o," /* merchant_pub */
 		 " s:o, s:o," /* refund_deadline, wire_deadline */
 		 " s:o}",     /* coin_sig */
-		 "contribution", TALER_JSON_from_amount (amount),
+		 "amount_without_fees", TALER_JSON_from_amount (amount_without_fees),
 		 "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
 		 "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
 		 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
@@ -302,20 +282,8 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   dh->cb = cb;
   dh->cb_cls = cb_cls;
   dh->url = MAH_path_to_url (auditor, "/deposit-confirmation");
-  dh->depconf.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationConfirmationPS));
-  dh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_DEPOSIT_CONFIRMATION);
-  dh->depconf.h_contract_terms = *h_contract_terms;
-  dh->depconf.h_wire = h_wire;
-  dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_hton (&dh->depconf.amount_without_fee,
-                     &amount_without_fee);
-  dh->depconf.coin_pub = *coin_pub;
-  dh->depconf.merchant = *merchant_pub;
-  dh->amount_with_fee = *amount;
-  dh->coin_value = dki->value;
 
-  eh = TEL_curl_easy_get (dh->url);
+  eh = TAL_curl_easy_get (dh->url);
   GNUNET_assert (NULL != (dh->json_enc =
                           json_dumps (deposit_confirmation_obj,
                                       JSON_COMPACT)));
@@ -335,7 +303,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
-				 (GC_JCC) &handle_deposit_confirmation_finished,
+				 &handle_deposit_confirmation_finished,
 				 dh);
   return dh;
 }

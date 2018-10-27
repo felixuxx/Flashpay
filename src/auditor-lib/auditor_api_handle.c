@@ -206,13 +206,13 @@ decode_version_json (const json_t *resp_obj,
                      struct TALER_AUDITOR_VersionInformation *vi,
                      enum TALER_AUDITOR_VersionCompatibility *vc)
 {
-  struct TALER_AuditorPublicKeyP pub;
   unsigned int age;
   unsigned int revision;
   unsigned int current;
+  const char *ver;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("version",
-			     &vi->version),
+			     &ver),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
 				 &vi->auditor_pub),
     GNUNET_JSON_spec_end()
@@ -242,6 +242,7 @@ decode_version_json (const json_t *resp_obj,
     free_version_info (vi);
     return GNUNET_SYSERR;
   }
+  vi->version = GNUNET_strdup (ver);
   *vc = TALER_AUDITOR_VC_MATCH;
   if (TALER_PROTOCOL_CURRENT < current)
   {
@@ -279,8 +280,9 @@ request_version (void *cls);
 static void
 version_completed_cb (void *cls,
 		      long response_code,
-		      const json_t *resp_obj)
+		      const void *gresp_obj)
 {
+  const json_t *resp_obj = gresp_obj;
   struct VersionRequest *vr = cls;
   struct TALER_AUDITOR_Handle *auditor = vr->auditor;
   enum TALER_AUDITOR_VersionCompatibility vc;
@@ -475,7 +477,7 @@ request_version (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting version with URL `%s'.\n",
               vr->url);
-  eh = TEL_curl_easy_get (vr->url);
+  eh = TAL_curl_easy_get (vr->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_VERBOSE,
@@ -491,7 +493,7 @@ request_version (void *cls)
   vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
                                  GNUNET_NO,
-                                 (GC_JCC) &version_completed_cb,
+                                 &version_completed_cb,
                                  vr);
   auditor->vr = vr;
 }

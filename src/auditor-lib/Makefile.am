@@ -1,5 +1,5 @@
 # This Makefile.am is in the public domain
-AM_CPPFLAGS = -I$(top_srcdir)/src/include 
+AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
@@ -7,7 +7,7 @@ if USE_COVERAGE
 endif
 
 lib_LTLIBRARIES = \
-  libtalerauditor
+  libtalerauditor.la
 
 libtalerauditor_la_LDFLAGS = \
   -version-info 0:0:0 \
@@ -32,4 +32,3 @@ if HAVE_LIBGNURL
 libtalerauditor_la_LIBADD += -lgnurl
 endif
 endif
-
