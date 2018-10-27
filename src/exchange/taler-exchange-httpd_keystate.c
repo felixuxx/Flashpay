@@ -795,10 +795,12 @@ reload_keys_denom_iter (void *cls,
  * Convert the public part of a sign key issue to a JSON object.
  *
  * @param ski the sign key issue
+ * @param ski_sig signature over @a ski
  * @return a JSON object describing the sign key issue (public part)
  */
 static json_t *
-sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
+sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski,
+                        struct TALER_MasterSignatureP *ski_sig)
 {
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o}",
@@ -809,7 +811,7 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
                "stamp_end",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (ski->end)),
                "master_sig",
-               GNUNET_JSON_from_data_auto (&ski->signature),
+               GNUNET_JSON_from_data_auto (ski_sig),
                "key",
                GNUNET_JSON_from_data_auto (&ski->signkey_pub));
 }
@@ -823,6 +825,7 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
  * @param cls closure with the `struct ResponseFactoryContext *`
  * @param filename name of the file the key came from
  * @param ski the sign key issue
+ * @param ski_sig signature over @a ski
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -878,7 +881,8 @@ reload_keys_sign_iter (void *cls,
   }
   GNUNET_assert (0 ==
                  json_array_append_new (rfc->sign_keys_array,
-                                        sign_key_issue_to_json (&ski->issue)));
+                                        sign_key_issue_to_json (&ski->issue,
+                                                                &ski->master_sig)));
 
   return GNUNET_OK;
 }
@@ -1670,7 +1674,7 @@ TEH_KS_acquire_ (const char *location)
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
     struct TEH_KS_StateHandle *ks = internal_key_state;
-    
+
     internal_key_state = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
 		"KS released in acquire due to expiration\n");
@@ -1976,7 +1980,7 @@ TEH_KS_free ()
   if (NULL != internal_key_state)
   {
     struct TEH_KS_StateHandle *ks = internal_key_state;
-    
+
     internal_key_state = NULL;
     TEH_KS_release (ks);
   }

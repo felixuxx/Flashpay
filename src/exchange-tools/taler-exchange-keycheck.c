@@ -64,9 +64,7 @@ signkeys_iter (void *cls,
               (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
 
   if (ntohl (ski->issue.purpose.size) !=
-      (sizeof (struct TALER_ExchangeSigningKeyValidityPS) -
-       offsetof (struct TALER_ExchangeSigningKeyValidityPS,
-                 purpose)))
+      (sizeof (struct TALER_ExchangeSigningKeyValidityPS)))
   {
     fprintf (stderr,
              "Signing key `%s' has invalid purpose size\n",
@@ -85,7 +83,7 @@ signkeys_iter (void *cls,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
                                   &ski->issue.purpose,
-                                  &ski->issue.signature.eddsa_signature,
+                                  &ski->master_sig.eddsa_signature,
                                   &ski->issue.master_public_key.eddsa_pub))
   {
     fprintf (stderr,

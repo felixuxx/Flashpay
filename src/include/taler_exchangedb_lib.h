@@ -56,9 +56,15 @@ struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP
   struct TALER_ExchangePrivateKeyP signkey_priv;
 
   /**
+   * Signature over @e issue
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+  /**
    * Public information about a exchange signing key.
    */
   struct TALER_ExchangeSigningKeyValidityPS issue;
+
 };
 
 

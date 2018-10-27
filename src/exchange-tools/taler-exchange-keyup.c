@@ -472,14 +472,11 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
                                       &issue->signkey_pub.eddsa_pub);
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  issue->purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS) -
-                               offsetof (struct TALER_ExchangeSigningKeyValidityPS,
-                                         purpose));
-
+  issue->purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &issue->purpose,
-                                           &issue->signature.eddsa_signature));
+                                           &pi->master_sig.eddsa_signature));
 }
 
 

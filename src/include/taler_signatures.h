@@ -607,13 +607,6 @@ struct TALER_RefreshMeltConfirmationPS
  */
 struct TALER_ExchangeSigningKeyValidityPS
 {
-  /**
-   * Signature over the signing key (by the master key of the exchange).
-   *
-   * FIXME: should be moved outside of the "PS" struct, this is ugly.
-   * (and makes this struct different from all of the others)
-   */
-  struct TALER_MasterSignatureP signature;
 
   /**
    * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.
