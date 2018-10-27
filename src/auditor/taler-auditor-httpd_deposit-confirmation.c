@@ -51,6 +51,37 @@ reply_deposit_confirmation_success (struct MHD_Connection *connection)
 
 
 /**
+ * Store exchange's signing key information in the database.
+ *
+ * @param cls a `struct TALER_AUDITORDB_ExchangeSigningKey *`
+ * @param connection MHD request context
+ * @param session database session and transaction to use
+ * @param[out] mhd_ret set to MHD status on error
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+store_exchange_signing_key_transaction (void *cls,
+                                        struct MHD_Connection *connection,
+                                        struct TALER_AUDITORDB_Session *session,
+                                        int *mhd_ret)
+{
+  const struct TALER_AUDITORDB_ExchangeSigningKey *es = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
+                                            session,
+                                            es);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
+    *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
+						     TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR);
+  }
+  return qs;
+}
+
+
+/**
  * Execute database transaction for /deposit-confirmation.  Runs the
  * transaction logic; IF it returns a non-error code, the transaction
  * logic MUST NOT queue a MHD response.  IF it returns an hard error,
@@ -94,17 +125,48 @@ deposit_confirmation_transaction (void *cls,
  *
  * @param connection the MHD connection to handle
  * @param dc information about the deposit confirmation
+ * @param es information about the exchange's signing key
  * @return MHD result code
  */
 static int
 verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
-                                         const struct TALER_AUDITORDB_DepositConfirmation *dc)
+                                         const struct TALER_AUDITORDB_DepositConfirmation *dc,
+                                         const struct TALER_AUDITORDB_ExchangeSigningKey *es)
 {
   struct TALER_ExchangeSigningKeyValidityPS skv;
   struct TALER_DepositConfirmationPS dcs;
   int mhd_ret;
 
-  /* check signatures */
+  /* check exchange signing key signature */
+  skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
+  skv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
+  skv.master_public_key = es->master_public_key;
+  skv.start = GNUNET_TIME_absolute_hton (es->ep_start);
+  skv.expire = GNUNET_TIME_absolute_hton (es->ep_expire);
+  skv.end = GNUNET_TIME_absolute_hton (es->ep_end);
+  skv.signkey_pub = es->exchange_pub;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
+                                  &skv.purpose,
+                                  &es->master_sig.eddsa_signature,
+                                  &es->master_public_key.eddsa_pub))
+  {
+    TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
+    return TAH_RESPONSE_reply_signature_invalid (connection,
+						 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                                 "master_sig");
+  }
+
+  /* execute transaction */
+  if (GNUNET_OK !=
+      TAH_DB_run_transaction (connection,
+                              "persist exchange signing key",
+			      &mhd_ret,
+			      &store_exchange_signing_key_transaction,
+			      (void *) es))
+    return mhd_ret;
+
+  /* check deposit confirmation signature */
   dcs.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dcs.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
   dcs.h_contract_terms = dc->h_contract_terms;
@@ -125,26 +187,6 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
     return TAH_RESPONSE_reply_signature_invalid (connection,
 						 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                                  "exchange_sig");
-  }
-  /* TODO: we should probably cache these, no need to verify the
-     exchange_sig's every time (wastes CPU) */
-  skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  skv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
-  skv.master_public_key = dc->master_public_key;
-  skv.start; // FIXME
-  skv.expire; // FIXME
-  skv.end; // FIXME
-  skv.signkey_pub = dc->exchange_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                  &skv.purpose,
-                                  &dc->master_sig.eddsa_signature,
-                                  &dc->master_public_key.eddsa_pub))
-  {
-    TALER_LOG_WARNING ("Invalid signature on /deposit-confirmation request\n");
-    return TAH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                                 "master_sig");
   }
 
   /* execute transaction */
@@ -183,6 +225,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   json_t *json;
   int res;
   struct TALER_AUDITORDB_DepositConfirmation dc;
+  struct TALER_AUDITORDB_ExchangeSigningKey es;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &dc.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &dc.h_wire),
@@ -193,8 +236,11 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &dc.merchant),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",  &dc.exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",  &dc.exchange_pub),
-    GNUNET_JSON_spec_fixed_auto ("master_sig",  &dc.master_sig),
-    GNUNET_JSON_spec_fixed_auto ("master_public_key",  &dc.master_public_key),
+    GNUNET_JSON_spec_fixed_auto ("master_pub",  &es.master_public_key),
+    GNUNET_JSON_spec_fixed_auto ("ep_start",  &es.ep_start),
+    GNUNET_JSON_spec_fixed_auto ("ep_expire",  &es.ep_expire),
+    GNUNET_JSON_spec_fixed_auto ("ep_end",  &es.ep_end),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",  &es.master_sig),
     GNUNET_JSON_spec_end ()
   };
 
@@ -212,12 +258,15 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                              json,
                              spec);
   json_decref (json);
+  es.exchange_pub = dc.exchange_pub; /* used twice! */
+
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
   res = verify_and_execute_deposit_confirmation (connection,
-                                                 &dc);
+                                                 &dc,
+                                                 &es);
   GNUNET_JSON_parse_free (spec);
   return res;
 }

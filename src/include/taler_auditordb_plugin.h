@@ -187,6 +187,43 @@ struct TALER_AUDITORDB_ProgressPoint
 
 
 /**
+ * Information about a signing key of an exchange.
+ */
+struct TALER_AUDITORDB_ExchangeSigningKey
+{
+  /**
+   * Public master key of the exchange that certified @e master_sig.
+   */
+  struct TALER_MasterPublicKeyP master_public_key;
+
+  /**
+   * When does @e exchange_pub start to be used?
+   */
+  struct GNUNET_TIME_Absolute ep_start;
+
+  /**
+   * When will the exchange stop signing with @e exchange_pub?
+   */
+  struct GNUNET_TIME_Absolute ep_expire;
+
+  /**
+   * When does the signing key expire (for legal disputes)?
+   */
+  struct GNUNET_TIME_Absolute ep_end;
+
+  /**
+   * What is the public offline signing key this is all about?
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * Signature by the offline master key affirming the above.
+   */
+  struct TALER_MasterSignatureP master_sig;
+};
+
+
+/**
  * Information about a deposit confirmation we received from
  * a merchant.
  */
@@ -364,6 +401,21 @@ struct TALER_AUDITORDB_Plugin
    */
   int
   (*gc) (void *cls);
+
+
+  /**
+   * Insert information about a signing key of the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param sk signing key information to store
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_exchange_signkey) (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_AUDITORDB_ExchangeSigningKey *sk);
+  // FIXME: above function is not yet implemented!
 
 
   /**
