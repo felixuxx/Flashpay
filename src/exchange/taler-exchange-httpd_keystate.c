@@ -800,7 +800,7 @@ reload_keys_denom_iter (void *cls,
  */
 static json_t *
 sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski,
-                        struct TALER_MasterSignatureP *ski_sig)
+                        const struct TALER_MasterSignatureP *ski_sig)
 {
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o}",
