@@ -147,7 +147,9 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserve_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_wire_fee_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserves;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_reserve;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_aggregation;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
@@ -206,28 +208,37 @@ postgres_create_tables (void *cls)
 			    ",fee_refund_frac INT4 NOT NULL"
 			    ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
+    /* List of exchanges audited by this auditor */
+    // TODO: not yet used!
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS exchanges"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    ",exchange_url VARCHAR NOT NULL"
+			    ")"),
+
     /* Table indicating up to which transactions the auditor has
        processed the exchange database.  Used for SELECTing the
-       statements to process.  We basically trace the exchange's
-       operations by the 6 primary tables: reserves_in,
-       reserves_out, deposits, refresh_sessions, refunds and prewire. The
-       other tables of the exchange DB just provide supporting
-       evidence which is checked alongside the audit of these
-       five tables.  The 6 indices below include the last serial
-       ID from the respective tables that we have processed. Thus,
-       we need to select those table entries that are strictly
-       larger (and process in monotonically increasing order). */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress"
+       statements to process.  The indices below include the last
+       serial ID from the respective tables that we have
+       processed. Thus, we need to select those table entries that are
+       strictly larger (and process in monotonically increasing
+       order). */
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_reserve"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0"
+			    ")"),
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_aggregation"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+			    ")"),
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_coin"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",last_withdraw_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_deposit_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_melt_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_refund_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
@@ -494,7 +505,7 @@ postgres_prepare (PGconn *db_conn)
 			    " FROM auditor_denominations"
 			    " WHERE master_pub=$1;",
 			    1),
-    /* Used in #postgres_insert_auditor_progress() */
+    /* Used in #postgres_insert_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_insert",
 			    "INSERT INTO deposit_confirmations "
 			    "(master_pub"
@@ -512,50 +523,84 @@ postgres_prepare (PGconn *db_conn)
 			    ",master_sig" /* master_sig could be normalized... */
 			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
 			    11),
-    /* Used in #postgres_insert_auditor_progress() */
-    GNUNET_PQ_make_prepare ("auditor_progress_insert",
-			    "INSERT INTO auditor_progress "
-			    "(master_pub"
-			    ",last_reserve_in_serial_id"
-			    ",last_reserve_out_serial_id"
-			    ",last_reserve_payback_serial_id"
-			    ",last_reserve_close_serial_id"
-			    ",last_withdraw_serial_id"
-			    ",last_deposit_serial_id"
-			    ",last_melt_serial_id"
-			    ",last_refund_serial_id"
-			    ",last_wire_out_serial_id"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
-			    10),
-    /* Used in #postgres_update_auditor_progress() */
-    GNUNET_PQ_make_prepare ("auditor_progress_update",
-			    "UPDATE auditor_progress SET "
+    /* Used in #postgres_update_auditor_progress_reserve() */
+    GNUNET_PQ_make_prepare ("auditor_progress_update_reserve",
+			    "UPDATE auditor_progress_reserve SET "
 			    " last_reserve_in_serial_id=$1"
 			    ",last_reserve_out_serial_id=$2"
 			    ",last_reserve_payback_serial_id=$3"
 			    ",last_reserve_close_serial_id=$4"
-			    ",last_withdraw_serial_id=$5"
-			    ",last_deposit_serial_id=$6"
-			    ",last_melt_serial_id=$7"
-			    ",last_refund_serial_id=$8"
-			    ",last_wire_out_serial_id=$9"
-			    " WHERE master_pub=$10",
-			    10),
-    /* Used in #postgres_get_auditor_progress() */
-    GNUNET_PQ_make_prepare ("auditor_progress_select",
+			    " WHERE master_pub=$5",
+			    5),
+    /* Used in #postgres_get_auditor_progress_reserve() */
+    GNUNET_PQ_make_prepare ("auditor_progress_select_reserve",
 			    "SELECT"
 			    " last_reserve_in_serial_id"
 			    ",last_reserve_out_serial_id"
 			    ",last_reserve_payback_serial_id"
 			    ",last_reserve_close_serial_id"
+			    " FROM auditor_progress_reserve"
+			    " WHERE master_pub=$1;",
+			    1),
+    /* Used in #postgres_insert_auditor_progress_reserve() */
+    GNUNET_PQ_make_prepare ("auditor_progress_insert_reserve",
+			    "INSERT INTO auditor_progress_reserve "
+			    "(master_pub"
+			    ",last_reserve_in_serial_id"
+			    ",last_reserve_out_serial_id"
+			    ",last_reserve_payback_serial_id"
+			    ",last_reserve_close_serial_id"
+			    ") VALUES ($1,$2,$3,$4,$5);",
+			    5),
+    /* Used in #postgres_update_auditor_progress_aggregation() */
+    GNUNET_PQ_make_prepare ("auditor_progress_update_aggregation",
+			    "UPDATE auditor_progress_aggregation SET "
+			    " last_wire_out_serial_id=$1"
+			    " WHERE master_pub=$2",
+			    2),
+    /* Used in #postgres_get_auditor_progress_aggregation() */
+    GNUNET_PQ_make_prepare ("auditor_progress_select_aggregation",
+			    "SELECT"
+			    " last_wire_out_serial_id"
+			    " FROM auditor_progress_aggregation"
+			    " WHERE master_pub=$1;",
+			    1),
+    /* Used in #postgres_insert_auditor_progress_aggregation() */
+    GNUNET_PQ_make_prepare ("auditor_progress_insert_aggregation",
+			    "INSERT INTO auditor_progress_aggregation "
+			    "(master_pub"
+			    ",last_wire_out_serial_id"
+			    ") VALUES ($1,$2);",
+			    2),
+    /* Used in #postgres_update_auditor_progress_coin() */
+    GNUNET_PQ_make_prepare ("auditor_progress_update_coin",
+			    "UPDATE auditor_progress_coin SET "
+			    " last_withdraw_serial_id=$1"
+			    ",last_deposit_serial_id=$2"
+			    ",last_melt_serial_id=$3"
+			    ",last_refund_serial_id=$4"
+			    " WHERE master_pub=$5",
+			    4),
+    /* Used in #postgres_get_auditor_progress_coin() */
+    GNUNET_PQ_make_prepare ("auditor_progress_select_coin",
+			    "SELECT"
+			    " last_withdraw_serial_id"
+			    ",last_deposit_serial_id"
+			    ",last_melt_serial_id"
+			    ",last_refund_serial_id"
+			    " FROM auditor_progress_coin"
+			    " WHERE master_pub=$1;",
+			    1),
+    /* Used in #postgres_insert_auditor_progress() */
+    GNUNET_PQ_make_prepare ("auditor_progress_insert_coin",
+			    "INSERT INTO auditor_progress_coin "
+			    "(master_pub"
 			    ",last_withdraw_serial_id"
 			    ",last_deposit_serial_id"
 			    ",last_melt_serial_id"
 			    ",last_refund_serial_id"
-			    ",last_wire_out_serial_id"
-			    " FROM auditor_progress"
-			    " WHERE master_pub=$1;",
-			    1),
+			    ") VALUES ($1,$2,$3,$4,$5);",
+			    5),
     /* Used in #postgres_insert_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
 			    "INSERT INTO wire_auditor_progress "
@@ -1296,31 +1341,26 @@ postgres_select_denomination_info (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
- * @param pp where is the auditor in processing
+ * @param ppr where is the auditor in processing
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_auditor_progress (void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
-                                  const struct TALER_AUDITORDB_ProgressPoint *pp)
+postgres_insert_auditor_progress_reserve (void *cls,
+                                          struct TALER_AUDITORDB_Session *session,
+                                          const struct TALER_MasterPublicKeyP *master_pub,
+                                          const struct TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_payback_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_withdraw_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_deposit_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_melt_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_refund_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_end
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_insert",
+					     "auditor_progress_insert_reserve",
 					     params);
 }
 
@@ -1332,31 +1372,26 @@ postgres_insert_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
- * @param pp where is the auditor in processing
+ * @param ppr where is the auditor in processing
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_update_auditor_progress (void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
-                                  const struct TALER_AUDITORDB_ProgressPoint *pp)
+postgres_update_auditor_progress_reserve (void *cls,
+                                          struct TALER_AUDITORDB_Session *session,
+                                          const struct TALER_MasterPublicKeyP *master_pub,
+                                          const struct TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_payback_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_withdraw_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_deposit_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_melt_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_refund_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_update",
+					     "auditor_progress_update_reserve",
 					     params);
 }
 
@@ -1367,14 +1402,14 @@ postgres_update_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
- * @param[out] pp set to where the auditor is in processing
+ * @param[out] ppr set to where the auditor is in processing
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_auditor_progress (void *cls,
-                               struct TALER_AUDITORDB_Session *session,
-                               const struct TALER_MasterPublicKeyP *master_pub,
-                               struct TALER_AUDITORDB_ProgressPoint *pp)
+postgres_get_auditor_progress_reserve (void *cls,
+                                       struct TALER_AUDITORDB_Session *session,
+                                       const struct TALER_MasterPublicKeyP *master_pub,
+                                       struct TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1382,28 +1417,206 @@ postgres_get_auditor_progress (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id",
-                                  &pp->last_reserve_in_serial_id),
+                                  &ppr->last_reserve_in_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id",
-                                  &pp->last_reserve_out_serial_id),
+                                  &ppr->last_reserve_out_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_payback_serial_id",
-                                  &pp->last_reserve_payback_serial_id),
+                                  &ppr->last_reserve_payback_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_close_serial_id",
-                                  &pp->last_reserve_close_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_withdraw_serial_id",
-                                  &pp->last_withdraw_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id",
-                                  &pp->last_deposit_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id",
-                                  &pp->last_melt_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id",
-                                  &pp->last_refund_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_wire_out_serial_id",
-                                  &pp->last_wire_out_serial_id),
+                                  &ppr->last_reserve_close_serial_id),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_progress_select",
+						   "auditor_progress_select_reserve",
+						   params,
+						   rs);
+}
+
+
+/**
+ * Insert information about the auditor's progress with an exchange's
+ * data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param ppa where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_auditor_progress_aggregation (void *cls,
+                                              struct TALER_AUDITORDB_Session *session,
+                                              const struct TALER_MasterPublicKeyP *master_pub,
+                                              const struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_uint64 (&ppa->last_wire_out_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_progress_insert_aggregation",
+					     params);
+}
+
+
+/**
+ * Update information about the progress of the auditor.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param ppa where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_auditor_progress_aggregation (void *cls,
+                                              struct TALER_AUDITORDB_Session *session,
+                                              const struct TALER_MasterPublicKeyP *master_pub,
+                                              const struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&ppa->last_wire_out_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_progress_update_aggregation",
+					     params);
+}
+
+
+/**
+ * Get information about the progress of the auditor.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] ppa set to where the auditor is in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_auditor_progress_aggregation (void *cls,
+                                           struct TALER_AUDITORDB_Session *session,
+                                           const struct TALER_MasterPublicKeyP *master_pub,
+                                           struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("last_wire_out_serial_id",
+                                  &ppa->last_wire_out_serial_id),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "auditor_progress_select_aggregation",
+						   params,
+						   rs);
+}
+
+
+/**
+ * Insert information about the auditor's progress with an exchange's
+ * data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param ppc where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_auditor_progress_coin (void *cls,
+                                       struct TALER_AUDITORDB_Session *session,
+                                       const struct TALER_MasterPublicKeyP *master_pub,
+                                       const struct TALER_AUDITORDB_ProgressPointCoin *ppc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_withdraw_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_melt_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_refund_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_progress_insert_coin",
+					     params);
+}
+
+
+/**
+ * Update information about the progress of the auditor.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param ppc where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_auditor_progress_coin (void *cls,
+                                       struct TALER_AUDITORDB_Session *session,
+                                       const struct TALER_MasterPublicKeyP *master_pub,
+                                       const struct TALER_AUDITORDB_ProgressPointCoin *ppc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&ppc->last_withdraw_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_melt_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_refund_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_progress_update_coin",
+					     params);
+}
+
+
+/**
+ * Get information about the progress of the auditor.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] ppc set to where the auditor is in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_auditor_progress_coin (void *cls,
+                                    struct TALER_AUDITORDB_Session *session,
+                                    const struct TALER_MasterPublicKeyP *master_pub,
+                                    struct TALER_AUDITORDB_ProgressPointCoin *ppc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("last_withdraw_serial_id",
+                                  &ppc->last_withdraw_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id",
+                                  &ppc->last_deposit_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id",
+                                  &ppc->last_melt_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id",
+                                  &ppc->last_refund_serial_id),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "auditor_progress_select_coin",
 						   params,
 						   rs);
 }
@@ -2702,9 +2915,15 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->select_denomination_info = &postgres_select_denomination_info;
   plugin->insert_denomination_info = &postgres_insert_denomination_info;
 
-  plugin->get_auditor_progress = &postgres_get_auditor_progress;
-  plugin->update_auditor_progress = &postgres_update_auditor_progress;
-  plugin->insert_auditor_progress = &postgres_insert_auditor_progress;
+  plugin->get_auditor_progress_reserve = &postgres_get_auditor_progress_reserve;
+  plugin->update_auditor_progress_reserve = &postgres_update_auditor_progress_reserve;
+  plugin->insert_auditor_progress_reserve = &postgres_insert_auditor_progress_reserve;
+  plugin->get_auditor_progress_aggregation = &postgres_get_auditor_progress_aggregation;
+  plugin->update_auditor_progress_aggregation = &postgres_update_auditor_progress_aggregation;
+  plugin->insert_auditor_progress_aggregation = &postgres_insert_auditor_progress_aggregation;
+  plugin->get_auditor_progress_coin = &postgres_get_auditor_progress_coin;
+  plugin->update_auditor_progress_coin = &postgres_update_auditor_progress_coin;
+  plugin->insert_auditor_progress_coin = &postgres_insert_auditor_progress_coin;
 
   plugin->get_wire_auditor_progress = &postgres_get_wire_auditor_progress;
   plugin->update_wire_auditor_progress = &postgres_update_wire_auditor_progress;

@@ -215,58 +215,50 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_auditor_progress\n");
 
-  struct TALER_AUDITORDB_ProgressPoint pp = {
-    .last_reserve_in_serial_id = 1234,
-    .last_reserve_out_serial_id = 5678,
+  struct TALER_AUDITORDB_ProgressPointCoin ppc = {
     .last_deposit_serial_id = 123,
     .last_melt_serial_id = 456,
     .last_refund_serial_id = 789,
-    .last_wire_out_serial_id = 555
+    .last_withdraw_serial_id = 555
   };
-  struct TALER_AUDITORDB_ProgressPoint pp2 = {
-    .last_reserve_in_serial_id = 0,
-    .last_reserve_out_serial_id = 0,
+  struct TALER_AUDITORDB_ProgressPointCoin ppc2 = {
     .last_deposit_serial_id = 0,
     .last_melt_serial_id = 0,
     .last_refund_serial_id = 0,
-    .last_wire_out_serial_id = 0
+    .last_withdraw_serial_id = 0
   };
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_auditor_progress (plugin->cls,
-                                           session,
-                                           &master_pub,
-                                           &pp));
+          plugin->insert_auditor_progress_coin (plugin->cls,
+                                                session,
+                                                &master_pub,
+                                                &ppc));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_auditor_progress\n");
 
-  pp.last_reserve_in_serial_id++;
-  pp.last_reserve_out_serial_id++;
-  pp.last_deposit_serial_id++;
-  pp.last_melt_serial_id++;
-  pp.last_refund_serial_id++;
-  pp.last_wire_out_serial_id++;
+  ppc.last_deposit_serial_id++;
+  ppc.last_melt_serial_id++;
+  ppc.last_refund_serial_id++;
+  ppc.last_withdraw_serial_id++;
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->update_auditor_progress (plugin->cls,
-                                           session,
-                                           &master_pub,
-                                           &pp));
+          plugin->update_auditor_progress_coin (plugin->cls,
+                                                session,
+                                                &master_pub,
+                                                &ppc));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_auditor_progress\n");
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_auditor_progress (plugin->cls,
-                                        session,
-                                        &master_pub,
-                                        &pp2));
-  FAILIF ( (pp.last_reserve_in_serial_id != pp2.last_reserve_in_serial_id) ||
-           (pp.last_reserve_out_serial_id != pp2.last_reserve_out_serial_id) ||
-           (pp.last_deposit_serial_id != pp2.last_deposit_serial_id) ||
-           (pp.last_melt_serial_id != pp2.last_melt_serial_id) ||
-           (pp.last_refund_serial_id != pp2.last_refund_serial_id) ||
-           (pp.last_wire_out_serial_id != pp2.last_wire_out_serial_id) );
+          plugin->get_auditor_progress_coin (plugin->cls,
+                                             session,
+                                             &master_pub,
+                                             &ppc2));
+  FAILIF ( (ppc.last_deposit_serial_id != ppc2.last_deposit_serial_id) ||
+           (ppc.last_melt_serial_id != ppc2.last_melt_serial_id) ||
+           (ppc.last_refund_serial_id != ppc2.last_refund_serial_id) ||
+           (ppc.last_withdraw_serial_id != ppc2.last_withdraw_serial_id) );
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_info\n");
@@ -399,10 +391,10 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_denomination_balance\n");
 
-  pp.last_reserve_out_serial_id++;
-  pp.last_deposit_serial_id++;
-  pp.last_melt_serial_id++;
-  pp.last_refund_serial_id++;
+  ppc.last_withdraw_serial_id++;
+  ppc.last_deposit_serial_id++;
+  ppc.last_melt_serial_id++;
+  ppc.last_refund_serial_id++;
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_denomination_balance (plugin->cls,

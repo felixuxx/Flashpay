@@ -131,10 +131,10 @@ struct TALER_AUDITORDB_WireProgressPoint
 
 
 /**
- * Structure for remembering the auditor's progress over the
- * various tables and (auditor) transactions.
+ * Structure for remembering the auditor's progress over the various
+ * tables and (auditor) transactions when analyzing reserves.
  */
-struct TALER_AUDITORDB_ProgressPoint
+struct TALER_AUDITORDB_ProgressPointReserve
 {
   /**
    * last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
@@ -158,6 +158,29 @@ struct TALER_AUDITORDB_ProgressPoint
    */
   uint64_t last_reserve_close_serial_id;
 
+};
+
+
+/**
+ * Structure for remembering the auditor's progress over the various
+ * tables and (auditor) transactions when analyzing aggregations.
+ */
+struct TALER_AUDITORDB_ProgressPointAggregation
+{
+
+  /**
+   * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   */
+  uint64_t last_wire_out_serial_id;
+};
+
+
+/**
+ * Structure for remembering the auditor's progress over the various
+ * tables and (auditor) transactions when analyzing coins.
+ */
+struct TALER_AUDITORDB_ProgressPointCoin
+{
   /**
    * last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
    */
@@ -177,11 +200,6 @@ struct TALER_AUDITORDB_ProgressPoint
    * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
    */
   uint64_t last_refund_serial_id;
-
-  /**
-   * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
-   */
-  uint64_t last_wire_out_serial_id;
 
 };
 
@@ -473,14 +491,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
-   * @param pp where is the auditor in processing
+   * @param ppc where is the auditor in processing
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor_progress)(void *cls,
-                             struct TALER_AUDITORDB_Session *session,
-                             const struct TALER_MasterPublicKeyP *master_pub,
-                             const struct TALER_AUDITORDB_ProgressPoint *pp);
+  (*insert_auditor_progress_coin)(void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_AUDITORDB_ProgressPointCoin *ppc);
 
 
   /**
@@ -490,14 +508,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
-   * @param pp where is the auditor in processing
+   * @param ppc where is the auditor in processing
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_auditor_progress)(void *cls,
-                             struct TALER_AUDITORDB_Session *session,
-                             const struct TALER_MasterPublicKeyP *master_pub,
-                             const struct TALER_AUDITORDB_ProgressPoint *pp);
+  (*update_auditor_progress_coin)(void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_AUDITORDB_ProgressPointCoin *ppc);
 
 
   /**
@@ -506,14 +524,112 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
-   * @param[out] pp set to where the auditor is in processing
+   * @param[out] ppc set to where the auditor is in processing
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_auditor_progress)(void *cls,
-                          struct TALER_AUDITORDB_Session *session,
-                          const struct TALER_MasterPublicKeyP *master_pub,
-                          struct TALER_AUDITORDB_ProgressPoint *pp);
+  (*get_auditor_progress_coin)(void *cls,
+                               struct TALER_AUDITORDB_Session *session,
+                               const struct TALER_MasterPublicKeyP *master_pub,
+                               struct TALER_AUDITORDB_ProgressPointCoin *ppc);
+
+    /**
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param ppr where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor_progress_reserve)(void *cls,
+                                     struct TALER_AUDITORDB_Session *session,
+                                     const struct TALER_MasterPublicKeyP *master_pub,
+                                     const struct TALER_AUDITORDB_ProgressPointReserve *ppr);
+
+
+  /**
+   * Update information about the progress of the auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param ppr where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_auditor_progress_reserve)(void *cls,
+                                     struct TALER_AUDITORDB_Session *session,
+                                     const struct TALER_MasterPublicKeyP *master_pub,
+                                     const struct TALER_AUDITORDB_ProgressPointReserve *ppr);
+
+
+  /**
+   * Get information about the progress of the auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param[out] ppr set to where the auditor is in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_auditor_progress_reserve)(void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  struct TALER_AUDITORDB_ProgressPointReserve *ppr);
+
+    /**
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param ppa where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor_progress_aggregation)(void *cls,
+                                         struct TALER_AUDITORDB_Session *session,
+                                         const struct TALER_MasterPublicKeyP *master_pub,
+                                         const struct TALER_AUDITORDB_ProgressPointAggregation *ppa);
+
+
+  /**
+   * Update information about the progress of the auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param ppa where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_auditor_progress_aggregation)(void *cls,
+                                         struct TALER_AUDITORDB_Session *session,
+                                         const struct TALER_MasterPublicKeyP *master_pub,
+                                         const struct TALER_AUDITORDB_ProgressPointAggregation *ppa);
+
+
+  /**
+   * Get information about the progress of the auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param[out] ppa set to where the auditor is in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_auditor_progress_aggregation)(void *cls,
+                                      struct TALER_AUDITORDB_Session *session,
+                                      const struct TALER_MasterPublicKeyP *master_pub,
+                                      struct TALER_AUDITORDB_ProgressPointAggregation *pp);
 
 
   /**
