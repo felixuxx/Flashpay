@@ -364,6 +364,7 @@ run (void *cls)
   struct TALER_Amount refund_fee_balance2;
   struct TALER_Amount rbalance;
   struct TALER_Amount rbalance2;
+  uint64_t nissued;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":12.345678",
@@ -386,7 +387,8 @@ run (void *cls)
                                                session,
                                                &denom_pub_hash,
                                                &denom_balance,
-                                               &rbalance));
+                                               &rbalance,
+                                               42));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_denomination_balance\n");
@@ -401,7 +403,8 @@ run (void *cls)
                                                session,
                                                &denom_pub_hash,
                                                &denom_balance,
-                                               &rbalance));
+                                               &rbalance,
+                                               62));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_balance\n");
 
@@ -410,10 +413,12 @@ run (void *cls)
                                             session,
                                             &denom_pub_hash,
                                             &denom_balance2,
-                                            &rbalance2));
+                                            &rbalance2,
+                                            &nissued));
 
   FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance)));
   FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
+  FAILIF (62 != nissued);
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -421,26 +426,26 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_balance_summary (plugin->cls,
-                                               session,
-                                               &master_pub,
-                                               &refund_fee_balance,
-                                               &melt_fee_balance,
-                                               &deposit_fee_balance,
-                                               &denom_balance,
-                                               &rbalance));
+                                          session,
+                                          &master_pub,
+                                          &refund_fee_balance,
+                                          &melt_fee_balance,
+                                          &deposit_fee_balance,
+                                          &denom_balance,
+                                          &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_balance_summary\n");
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_balance_summary (plugin->cls,
-                                               session,
-                                               &master_pub,
-                                               &denom_balance,
-                                               &deposit_fee_balance,
-                                               &melt_fee_balance,
-                                               &refund_fee_balance,
-                                               &rbalance));
+                                          session,
+                                          &master_pub,
+                                          &denom_balance,
+                                          &deposit_fee_balance,
+                                          &melt_fee_balance,
+                                          &refund_fee_balance,
+                                          &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_balance_summary\n");

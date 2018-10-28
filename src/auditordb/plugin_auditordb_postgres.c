@@ -308,18 +308,18 @@ postgres_create_tables (void *cls)
 			    ",wire_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
     /* Table with all of the outstanding denomination coins that the
-       exchange is aware of.  "last_deposit_serial_id" marks the
-       deposit_serial_id from "deposits" about this denomination key
-       that the auditor is aware of; "last_melt_serial_id" marks the
-       last melt from "refresh_sessions" that the auditor is aware
-       of; "refund_serial_id" tells us the last entry in "refunds"
-       for this denom_pub that the auditor is aware of. */
+       exchange is aware of and what the respective balances are
+       (outstanding as well as issued overall which implies the
+       maximum value at risk).  We also count the number of coins
+       issued (withdraw, refresh-reveal) and the number of coins seen
+       at the exchange (refresh-commit, deposit), not just the amounts. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denomination_pending"
 			    "(denom_pub_hash BYTEA PRIMARY KEY"
 			    " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
 			    ",denom_balance_val INT8 NOT NULL"
 			    ",denom_balance_frac INT4 NOT NULL"
 			    ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+                            ",num_issued INT8 NOT NULL"
 			    ",denom_risk_val INT8 NOT NULL"
 			    ",denom_risk_frac INT4 NOT NULL"
 			    ",denom_risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -818,28 +818,31 @@ postgres_prepare (PGconn *db_conn)
 			    ",denom_balance_val"
 			    ",denom_balance_frac"
 			    ",denom_balance_curr"
+                            ",num_issued"
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
-			    7),
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
+			    8),
     /* Used in #postgres_update_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_update",
 			    "UPDATE auditor_denomination_pending SET"
 			    " denom_balance_val=$1"
 			    ",denom_balance_frac=$2"
 			    ",denom_balance_curr=$3"
-			    ",denom_risk_val=$4"
-			    ",denom_risk_frac=$5"
-			    ",denom_risk_curr=$6"
-			    " WHERE denom_pub_hash=$7",
-			    7),
+                            ",num_issued=$4"
+			    ",denom_risk_val=$5"
+			    ",denom_risk_frac=$6"
+			    ",denom_risk_curr=$7"
+			    " WHERE denom_pub_hash=$8",
+			    8),
     /* Used in #postgres_get_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_select",
 			    "SELECT"
 			    " denom_balance_val"
 			    ",denom_balance_frac"
 			    ",denom_balance_curr"
+                            ",num_issued"
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
@@ -2458,6 +2461,7 @@ postgres_get_wire_fee_summary (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_risk value of coins issued with this denomination key
+ * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2465,11 +2469,13 @@ postgres_insert_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
-                                      const struct TALER_Amount *denom_risk)
+                                      const struct TALER_Amount *denom_risk,
+                                      uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_amount (denom_balance),
+    GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
     GNUNET_PQ_query_param_end
   };
@@ -2489,6 +2495,7 @@ postgres_insert_denomination_balance (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_risk value of coins issued with this denomination key
+ * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2496,10 +2503,12 @@ postgres_update_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
-                                      const struct TALER_Amount *denom_risk)
+                                      const struct TALER_Amount *denom_risk,
+                                      uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
+    GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
@@ -2519,6 +2528,7 @@ postgres_update_denomination_balance (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
  * @param[out] denom_risk value of coins issued with this denomination key
+ * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2526,7 +2536,8 @@ postgres_get_denomination_balance (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct TALER_Amount *denom_balance,
-                                   struct TALER_Amount *denom_risk)
+                                   struct TALER_Amount *denom_risk,
+                                   uint64_t *num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -2535,6 +2546,7 @@ postgres_get_denomination_balance (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
     TALER_PQ_result_spec_amount ("denom_risk", denom_risk),
+    GNUNET_PQ_result_spec_uint64 ("num_issued", num_issued),
     GNUNET_PQ_result_spec_end
   };
 

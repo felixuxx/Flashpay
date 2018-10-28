@@ -509,7 +509,6 @@ struct TALER_AUDITORDB_Plugin
   (*insert_exchange_signkey) (void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_AUDITORDB_ExchangeSigningKey *sk);
-  // FIXME: above function is not yet implemented!, check for _XX for prepared statement!
 
 
   /**
@@ -1040,6 +1039,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_risk value of coins issued with this denomination key
+   * @param num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1047,7 +1047,8 @@ struct TALER_AUDITORDB_Plugin
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
-                                 const struct TALER_Amount *denom_risk);
+                                 const struct TALER_Amount *denom_risk,
+                                 uint64_t num_issued);
 
 
   /**
@@ -1059,6 +1060,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_risk value of coins issued with this denomination key
+   * @param num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1066,7 +1068,8 @@ struct TALER_AUDITORDB_Plugin
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
-                                 const struct TALER_Amount *denom_risk);
+                                 const struct TALER_Amount *denom_risk,
+                                 uint64_t num_issued);
 
 
   /**
@@ -1077,6 +1080,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param[out] denom_balance value of coins outstanding with this denomination key
    * @param[out] denom_risk value of coins issued with this denomination key
+   * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1084,7 +1088,8 @@ struct TALER_AUDITORDB_Plugin
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash,
                               struct TALER_Amount *denom_balance,
-                              struct TALER_Amount *denom_risk);
+                              struct TALER_Amount *denom_risk,
+                              uint64_t *num_issued);
 
 
   /**

@@ -2754,6 +2754,12 @@ struct DenominationSummary
   struct TALER_Amount denom_risk;
 
   /**
+   * How many coins (not their amount!) of this denomination
+   * did the exchange issue overall?
+   */
+  uint64_t num_issued;
+
+  /**
    * Denomination key information for this denomination.
    */
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
@@ -2805,10 +2811,11 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = adb->get_denomination_balance (adb->cls,
-                                       asession,
-                                       denom_hash,
-                                       &ds->denom_balance,
-                                       &ds->denom_risk);
+                                      asession,
+                                      denom_hash,
+                                      &ds->denom_balance,
+                                      &ds->denom_risk,
+                                      &ds->num_issued);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2964,13 +2971,15 @@ sync_denomination (void *cls,
 					     asession,
 					     denom_hash,
 					     &ds->denom_balance,
-					     &ds->denom_risk);
+					     &ds->denom_risk,
+                                             ds->num_issued);
     else
       qs = adb->insert_denomination_balance (adb->cls,
 					     asession,
 					     denom_hash,
 					     &ds->denom_balance,
-					     &ds->denom_risk);
+					     &ds->denom_risk,
+                                             ds->num_issued);
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
@@ -3051,6 +3060,7 @@ withdraw_cb (void *cls,
               "Issued coin in denomination `%s' of total value %s\n",
               GNUNET_h2s (&dh),
               TALER_amount2s (&value));
+  ds->num_issued++;
   if (GNUNET_OK !=
       TALER_amount_add (&ds->denom_balance,
                         &ds->denom_balance,
@@ -3367,6 +3377,7 @@ refresh_session_cb (void *cls,
                     "Created fresh coin in denomination `%s' of value %s\n",
                     GNUNET_h2s (&new_dkis[i]->properties.denom_hash),
                     TALER_amount2s (&value));
+        dsi->num_issued++;
         if (GNUNET_OK !=
             TALER_amount_add (&dsi->denom_balance,
                               &dsi->denom_balance,
