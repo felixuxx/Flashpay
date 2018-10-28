@@ -1532,6 +1532,13 @@ enum TALER_ErrorCode
    */
   TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR = 2501,
 
+  /**
+   * The auditor had trouble retrieving the exchange list
+   * from its database. Returned with an HTTP status code of
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_LIST_EXCHANGES_DB_ERROR = 2502,
+
 
   /* ********** /test API error codes ************* */
 

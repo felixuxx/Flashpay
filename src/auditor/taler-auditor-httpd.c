@@ -29,6 +29,7 @@
 #include <sys/resource.h>
 #include "taler_auditordb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
+#include "taler-auditor-httpd_exchanges.h"
 #include "taler-auditor-httpd_parsing.h"
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
@@ -302,6 +303,9 @@ handle_mhd_request (void *cls,
       { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "text/plain",
         NULL, 0,
         &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK },
+      { "/exchanges", MHD_HTTP_METHOD_GET, "text/plain",
+        NULL, 0,
+        &TAH_EXCHANGES_handler, MHD_HTTP_OK },
 
       /* Landing page, for now tells humans to go away (FIXME: replace
          with auditor's welcome page!) */
