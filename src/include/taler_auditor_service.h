@@ -240,4 +240,75 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
 void
 TALER_AUDITOR_deposit_confirmation_cancel (struct TALER_AUDITOR_DepositConfirmationHandle *deposit_confirmation);
 
+
+/**
+ * Handle for /exchanges API returned by
+ * #TALER_AUDITOR_list_exchanges() so that the operation can be
+ * cancelled with #TALER_AUDITOR_list_exchanges_cancel()
+ */
+struct TALER_AUDITOR_ListExchangesHandle;
+
+
+/**
+ * Information about an exchange kept by the auditor.
+ */
+struct TALER_AUDITOR_ExchangeInfo
+{
+  /**
+   * Master public key of the exchange.
+   */
+  struct TALER_MasterPublicKeyP master_pub;
+
+  /**
+   * Base URL of the exchange's API.
+   */
+  const char *exchange_url;
+};
+
+
+/**
+ * Function called with the result from /exchagnes.
+ *
+ * @param cls closure
+ * @param http_status the HTTP status code, 200 on success
+ * @param ec detailed Taler error status code, #TALER_EC_NONE on success
+ * @param num_exchanges length of array at @a ei
+ * @param ei information about exchanges returned by the auditor
+ * @param raw_response raw JSON response
+ */
+typedef void
+(*TALER_AUDITOR_ListExchangesResultCallback)(void *cls,
+                                             unsigned int http_status,
+                                             enum TALER_ErrorCode ec,
+                                             unsigned int num_exchanges,
+                                             const struct TALER_AUDITOR_ExchangeInfo *ei,
+                                             const json_t *raw_response);
+
+/**
+ * Submit an /exchanges request to the auditor and get the
+ * auditor's response.  If the auditor's reply is not
+ * well-formed, we return an HTTP status code of zero to @a cb.
+ *
+ * @param auditor the auditor handle; the auditor must be ready to operate
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_AUDITOR_ListExchangesHandle *
+TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
+                              TALER_AUDITOR_ListExchangesResultCallback cb,
+                              void *cb_cls);
+
+
+/**
+ * Cancel a deposit-confirmation permission request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param deposit-confirmation the deposit-confirmation permission request handle
+ */
+void
+TALER_AUDITOR_list_exchanges_cancel (struct TALER_AUDITOR_ListExchangesHandle *leh);
+
+
 #endif  /* _TALER_AUDITOR_SERVICE_H */

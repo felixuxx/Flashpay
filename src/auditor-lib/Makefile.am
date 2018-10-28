@@ -15,7 +15,8 @@ libtalerauditor_la_LDFLAGS = \
 libtalerauditor_la_SOURCES = \
   curl_defaults.c \
   auditor_api_handle.c auditor_api_handle.h \
-  auditor_api_deposit_confirmation.c
+  auditor_api_deposit_confirmation.c \
+  auditor_api_exchanges.c
 libtalerauditor_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
