@@ -289,6 +289,8 @@ postgres_create_tables (void *cls)
                            ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
                            ",denom_sig BYTEA NOT NULL"
                            ");"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX known_coins_by_denomination ON "
+                                "known_coins (denom_pub_hash)"),
 
     /* Table with the commitments made when melting a coin. */
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS refresh_commitments "
@@ -797,6 +799,13 @@ postgres_prepare (PGconn *db_conn)
                             " ORDER BY reserve_out_serial_id ASC;",
                             1),
 
+    /* Used in #postgres_count_known_coins() */
+    GNUNET_PQ_make_prepare ("count_known_coins",
+                            "SELECT"
+                            " COUNT(*) AS count"
+                            " FROM known_coins"
+                            " WHERE denom_pub_hash=$1;",
+                            1),
     /* Used in #postgres_get_known_coin() to fetch
        the denomination public key and signature for
        a coin known to the exchange. */
@@ -3193,6 +3202,41 @@ insert_known_coin (void *cls,
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
 					     "insert_known_coin",
 					     params);
+}
+
+
+/**
+ * Count the number of known coins by denomination.
+ *
+ * @param cls database connection plugin state
+ * @param session database session
+ * @param denom_pub_hash denomination to count by
+ * @return number of coins if non-negative, otherwise an `enum GNUNET_DB_QueryStatus`
+ */
+static long long
+postgres_count_known_coins (void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            const struct GNUNET_HashCode *denom_pub_hash)
+{
+  uint64_t count;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("count",
+                                  &count),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						 "count_known_coins",
+						 params,
+						 rs);
+  if (0 > qs)
+    return (long long) qs;
+  return (long long) count;
 }
 
 
@@ -7064,6 +7108,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
+  plugin->count_known_coins = &postgres_count_known_coins;
   plugin->ensure_coin_known = &postgres_ensure_coin_known;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;

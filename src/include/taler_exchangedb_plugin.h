@@ -1398,6 +1398,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Count the number of known coins by denomination.
+   *
+   * @param cls database connection plugin state
+   * @param session database session
+   * @param denom_pub_hash denomination to count by
+   * @return number of coins if non-negative, otherwise an `enum GNUNET_DB_QueryStatus`
+   */
+  long long
+  (*count_known_coins) (void *cls,
+                        struct TALER_EXCHANGEDB_Session *session,
+                        const struct GNUNET_HashCode *denom_pub_hash);
+
+
+  /**
    * Make sure the given @a coin is known to the database.
    *
    * @param cls database connection plugin state
