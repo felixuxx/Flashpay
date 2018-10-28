@@ -30,6 +30,20 @@
 
 
 /**
+ * Function called with information about exchanges this
+ * auditor is monitoring.
+ *
+ * @param cls closure
+ * @param master_pub master public key of the exchange
+ * @param exchange_url base URL of the exchange's API
+ */
+typedef void
+(*TALER_AUDITORDB_ExchangeCallback)(void *cls,
+                                    const struct TALER_MasterPublicKeyP *master_pub,
+                                    const char *exchange_url);
+
+
+/**
  * Function called with the results of select_denomination_info()
  *
  * @param cls closure
@@ -113,12 +127,12 @@ typedef int
 struct TALER_AUDITORDB_WireProgressPoint
 {
   /**
-   * last_reserve_in_serial_id serial ID of the last reserve_in transfer the wire auditor processed
+   * serial ID of the last reserve_in transfer the wire auditor processed
    */
   uint64_t last_reserve_in_serial_id;
 
   /**
-   * last_wire_out_serial_id serial ID of the last wire_out the wire auditor processed
+   * serial ID of the last wire_out the wire auditor processed
    */
   uint64_t last_wire_out_serial_id;
 
@@ -137,26 +151,41 @@ struct TALER_AUDITORDB_WireProgressPoint
 struct TALER_AUDITORDB_ProgressPointReserve
 {
   /**
-   * last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * serial ID of the last reserve_in transfer the auditor processed
    */
   uint64_t last_reserve_in_serial_id;
 
   /**
-   * last_reserve_out_serial_id serial ID of the last reserve_out the auditor processed
+   * serial ID of the last reserve_out the auditor processed
    */
   uint64_t last_reserve_out_serial_id;
 
   /**
-   * last_payback_serial_id serial ID of the last payback entry the auditor processed when
+   * serial ID of the last payback entry the auditor processed when
    * considering reserves.
    */
   uint64_t last_reserve_payback_serial_id;
 
   /**
-   * last_reserve_close_serial_id serial ID of the last reserve_close
+   * serial ID of the last reserve_close
    * entry the auditor processed.
    */
   uint64_t last_reserve_close_serial_id;
+
+};
+
+
+/**
+ * Structure for remembering the auditor's progress over the various
+ * tables and (auditor) transactions when analyzing reserves.
+ */
+struct TALER_AUDITORDB_ProgressPointDepositConfirmation
+{
+  /**
+   * serial ID of the last deposit_confirmation the auditor processed
+   */
+  uint64_t last_deposit_confirmation_serial_id;
+
 
 };
 
@@ -169,7 +198,7 @@ struct TALER_AUDITORDB_ProgressPointAggregation
 {
 
   /**
-   * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * serial ID of the last prewire transfer the auditor processed
    */
   uint64_t last_wire_out_serial_id;
 };
@@ -182,22 +211,22 @@ struct TALER_AUDITORDB_ProgressPointAggregation
 struct TALER_AUDITORDB_ProgressPointCoin
 {
   /**
-   * last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * serial ID of the last withdraw the auditor processed
    */
   uint64_t last_withdraw_serial_id;
 
   /**
-   * last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * serial ID of the last deposit the auditor processed
    */
   uint64_t last_deposit_serial_id;
 
   /**
-   * last_melt_serial_id serial ID of the last refresh the auditor processed
+   * serial ID of the last refresh the auditor processed
    */
   uint64_t last_melt_serial_id;
 
   /**
-   * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * serial ID of the last refund the auditor processed
    */
   uint64_t last_refund_serial_id;
 
@@ -422,6 +451,53 @@ struct TALER_AUDITORDB_Plugin
 
 
   /**
+   * Insert information about an exchange this auditor will be auditing.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param master_pub master public key of the exchange
+   * @param exchange_url public (base) URL of the API of the exchange
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_exchange) (void *cls,
+                      struct TALER_AUDITORDB_Session *session,
+                      const struct TALER_MasterPublicKeyP *master_pub,
+                      const char *exchange_url);
+
+
+  /**
+   * Delete an exchange from the list of exchanges this auditor is auditing.
+   * Warning: this will cascade and delete all knowledge of this auditor related
+   * to this exchange!
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param master_pub master public key of the exchange
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*delete_exchange) (void *cls,
+                      struct TALER_AUDITORDB_Session *session,
+                      const struct TALER_MasterPublicKeyP *master_pub);
+
+
+  /**
+   * Obtain information about exchanges this auditor is auditing.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param master_pub master public key of the exchange
+   * @param exchange_url public (base) URL of the API of the exchange
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*list_exchanges) (void *cls,
+                     struct TALER_AUDITORDB_Session *session,
+                     TALER_AUDITORDB_ExchangeCallback cb,
+                     void *cb_cls);
+
+  /**
    * Insert information about a signing key of the exchange.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -433,7 +509,7 @@ struct TALER_AUDITORDB_Plugin
   (*insert_exchange_signkey) (void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_AUDITORDB_ExchangeSigningKey *sk);
-  // FIXME: above function is not yet implemented!
+  // FIXME: above function is not yet implemented!, check for _XX for prepared statement!
 
 
   /**
@@ -582,7 +658,57 @@ struct TALER_AUDITORDB_Plugin
                                   const struct TALER_MasterPublicKeyP *master_pub,
                                   struct TALER_AUDITORDB_ProgressPointReserve *ppr);
 
-    /**
+  /**
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param ppdc where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor_progress_deposit_confirmation)(void *cls,
+                                                  struct TALER_AUDITORDB_Session *session,
+                                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                                  const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc);
+
+
+  /**
+   * Update information about the progress of the auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param ppdc where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_auditor_progress_deposit_confirmation)(void *cls,
+                                                  struct TALER_AUDITORDB_Session *session,
+                                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                                  const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc);
+
+
+  /**
+   * Get information about the progress of the auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param[out] ppdc set to where the auditor is in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_auditor_progress_deposit_confirmation)(void *cls,
+                                               struct TALER_AUDITORDB_Session *session,
+                                               const struct TALER_MasterPublicKeyP *master_pub,
+                                               struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc);
+
+
+  /**
    * Insert information about the auditor's progress with an exchange's
    * data.
    *
@@ -629,7 +755,7 @@ struct TALER_AUDITORDB_Plugin
   (*get_auditor_progress_aggregation)(void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                      struct TALER_AUDITORDB_ProgressPointAggregation *pp);
+                                      struct TALER_AUDITORDB_ProgressPointAggregation *ppa);
 
 
   /**

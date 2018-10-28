@@ -149,6 +149,7 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserves;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_reserve;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_aggregation;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
@@ -183,6 +184,20 @@ postgres_create_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
+    /* Table with list of exchanges we are auditing */
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_exchanges"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    ",exchange_url VARCHAR NOT NULL"
+			    ")"),
+    /* Table with list of signing keys of exchanges we are auditing */
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    ",ep_start INT8 NOT NULL"
+			    ",ep_expire INT8 NOT NULL"
+			    ",ep_end INT8 NOT NULL"
+			    ",exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)"
+			    ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
+			    ")"),
     /* Table with all of the denomination keys that the auditor
        is aware of. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denominations"
@@ -232,6 +247,10 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_aggregation"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 			    ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+			    ")"),
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation"
+			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    ",last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_coin"
 			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
@@ -453,6 +472,37 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_make_prepare ("do_commit",
                             "COMMIT",
                             0),
+    /* used in #postgres_insert_exchange */
+    GNUNET_PQ_make_prepare ("auditor_insert_exchange",
+			    "INSERT INTO auditor_exchanges "
+			    "(master_pub"
+			    ",exchange_url"
+			    ") VALUES ($1,$2);",
+                            2),
+    /* used in #postgres_delete_exchange */
+    GNUNET_PQ_make_prepare ("auditor_delete_exchange",
+			    "DELETE"
+			    " FROM auditor_exchanges"
+			    " WHERE master_pub=$1;",
+                            1),
+    /* used in #postgres_list_exchanges */
+    GNUNET_PQ_make_prepare ("auditor_list_exchanges",
+			    "SELECT"
+			    " master_pub"
+                            ",exchange_url"
+			    " FROM auditor_exchanges",
+                            0),
+    /* used in #postgres_insert_exchange_signkey */
+    GNUNET_PQ_make_prepare ("auditor_insert_exchange_signkey",
+			    "INSERT INTO auditor_exchange_signkeys "
+			    "(master_pub"
+			    ",ep_start"
+			    ",ep_expire"
+			    ",ep_end"
+			    ",exchange_pub"
+                            ",master_sig"
+			    ") VALUES ($1,$2,$3,$4,$5,$6);",
+                            6),
     /* Used in #postgres_insert_denomination_info() */
     GNUNET_PQ_make_prepare ("auditor_denominations_insert",
 			    "INSERT INTO auditor_denominations "
@@ -570,6 +620,26 @@ postgres_prepare (PGconn *db_conn)
 			    "INSERT INTO auditor_progress_aggregation "
 			    "(master_pub"
 			    ",last_wire_out_serial_id"
+			    ") VALUES ($1,$2);",
+			    2),
+    /* Used in #postgres_update_auditor_progress_deposit_confirmation() */
+    GNUNET_PQ_make_prepare ("auditor_progress_update_deposit_confirmation",
+			    "UPDATE auditor_progress_deposit_confirmation SET "
+			    " last_deposit_confirmation_serial_id=$1"
+			    " WHERE master_pub=$2",
+			    2),
+    /* Used in #postgres_get_auditor_progress_deposit_confirmation() */
+    GNUNET_PQ_make_prepare ("auditor_progress_select_deposit_confirmation",
+			    "SELECT"
+			    " last_deposit_confirmation_serial_id"
+			    " FROM auditor_progress_deposit_confirmation"
+			    " WHERE master_pub=$1;",
+			    1),
+    /* Used in #postgres_insert_auditor_progress_deposit_confirmation() */
+    GNUNET_PQ_make_prepare ("auditor_progress_insert_deposit_confirmation",
+			    "INSERT INTO auditor_progress_deposit_confirmation "
+			    "(master_pub"
+			    ",last_deposit_confirmation_serial_id"
 			    ") VALUES ($1,$2);",
 			    2),
     /* Used in #postgres_update_auditor_progress_coin() */
@@ -1131,6 +1201,191 @@ postgres_gc (void *cls)
 
 
 /**
+ * Insert information about an exchange this auditor will be auditing.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param master_pub master public key of the exchange
+ * @param exchange_url public (base) URL of the API of the exchange
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_exchange (void *cls,
+                          struct TALER_AUDITORDB_Session *session,
+                          const struct TALER_MasterPublicKeyP *master_pub,
+                          const char *exchange_url)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&master_pub),
+    GNUNET_PQ_query_param_string (exchange_url),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_insert_exchange",
+					     params);
+}
+
+
+/**
+ * Delete an exchange from the list of exchanges this auditor is auditing.
+ * Warning: this will cascade and delete all knowledge of this auditor related
+ * to this exchange!
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param master_pub master public key of the exchange
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_delete_exchange (void *cls,
+                          struct TALER_AUDITORDB_Session *session,
+                          const struct TALER_MasterPublicKeyP *master_pub)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_delete_exchange",
+					     params);
+}
+
+
+/**
+ * Closure for #exchange_info_cb().
+ */
+struct ExchangeInfoContext
+{
+
+  /**
+   * Function to call for each exchange.
+   */
+  TALER_AUDITORDB_ExchangeCallback cb;
+
+  /**
+   * Closure for @e cb
+   */
+  void *cb_cls;
+
+  /**
+   * Query status to return.
+   */
+  enum GNUNET_DB_QueryStatus qs;
+};
+
+
+/**
+ * Helper function for #postgres_auditor_list_exchanges().
+ * To be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct ExchangeInfoContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+exchange_info_cb (void *cls,
+                  PGresult *result,
+                  unsigned int num_results)
+{
+  struct ExchangeInfoContext *eic = cls;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    struct TALER_MasterPublicKeyP master_pub;
+    char *exchange_url;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("master_pub", &master_pub),
+      GNUNET_PQ_result_spec_string ("exchange_url", &exchange_url),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+				  rs,
+				  i))
+    {
+      GNUNET_break (0);
+      eic->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return;
+    }
+    eic->qs = i + 1;
+    eic->cb (eic->cb_cls,
+             &master_pub,
+             exchange_url);
+    GNUNET_free (exchange_url);
+  }
+}
+
+
+/**
+ * Obtain information about exchanges this auditor is auditing.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param master_pub master public key of the exchange
+ * @param exchange_url public (base) URL of the API of the exchange
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_list_exchanges (void *cls,
+                         struct TALER_AUDITORDB_Session *session,
+                         TALER_AUDITORDB_ExchangeCallback cb,
+                         void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct ExchangeInfoContext eic = {
+    .cb = cb,
+    .cb_cls = cb_cls
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "auditor_list_exchanges",
+					     params,
+					     &exchange_info_cb,
+					     &eic);
+  if (qs > 0)
+    return eic.qs;
+  GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
+  return qs;
+}
+
+
+/**
+ * Insert information about a signing key of the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param sk signing key information to store
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_exchange_signkey (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_AUDITORDB_ExchangeSigningKey *sk)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&sk->master_public_key),
+    TALER_PQ_query_param_absolute_time (&sk->ep_start),
+    TALER_PQ_query_param_absolute_time (&sk->ep_expire),
+    TALER_PQ_query_param_absolute_time (&sk->ep_end),
+    GNUNET_PQ_query_param_auto_from_type (&sk->exchange_pub),
+    GNUNET_PQ_query_param_auto_from_type (&sk->master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_insert_exchange_signkey",
+					     params);
+}
+
+
+/**
  * Insert information about a deposit confirmation into the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -1517,6 +1772,94 @@ postgres_get_auditor_progress_aggregation (void *cls,
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						   "auditor_progress_select_aggregation",
+						   params,
+						   rs);
+}
+
+
+/**
+ * Insert information about the auditor's progress with an exchange's
+ * data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param ppdc where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_auditor_progress_deposit_confirmation (void *cls,
+                                                       struct TALER_AUDITORDB_Session *session,
+                                                       const struct TALER_MasterPublicKeyP *master_pub,
+                                                       const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_uint64 (&ppdc->last_deposit_confirmation_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_progress_insert_deposit_confirmation",
+					     params);
+}
+
+
+/**
+ * Update information about the progress of the auditor.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param ppdc where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_auditor_progress_deposit_confirmation (void *cls,
+                                                       struct TALER_AUDITORDB_Session *session,
+                                                       const struct TALER_MasterPublicKeyP *master_pub,
+                                                       const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&ppdc->last_deposit_confirmation_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+					     "auditor_progress_update_deposit_confirmation",
+					     params);
+}
+
+
+/**
+ * Get information about the progress of the auditor.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] ppdc set to where the auditor is in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_auditor_progress_deposit_confirmation (void *cls,
+                                                    struct TALER_AUDITORDB_Session *session,
+                                                    const struct TALER_MasterPublicKeyP *master_pub,
+                                                    struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("last_deposit_confirmation_serial_id",
+                                  &ppdc->last_deposit_confirmation_serial_id),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+						   "auditor_progress_select_deposit_confirmation",
 						   params,
 						   rs);
 }
@@ -2910,6 +3253,10 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->rollback = &postgres_rollback;
   plugin->gc = &postgres_gc;
 
+  plugin->insert_exchange = &postgres_insert_exchange;
+  plugin->delete_exchange = &postgres_delete_exchange;
+  plugin->list_exchanges = &postgres_list_exchanges;
+  plugin->insert_exchange_signkey = &postgres_insert_exchange_signkey;
   plugin->insert_deposit_confirmation = &postgres_insert_deposit_confirmation;
 
   plugin->select_denomination_info = &postgres_select_denomination_info;
@@ -2921,6 +3268,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->get_auditor_progress_aggregation = &postgres_get_auditor_progress_aggregation;
   plugin->update_auditor_progress_aggregation = &postgres_update_auditor_progress_aggregation;
   plugin->insert_auditor_progress_aggregation = &postgres_insert_auditor_progress_aggregation;
+  plugin->get_auditor_progress_deposit_confirmation = &postgres_get_auditor_progress_deposit_confirmation;
+  plugin->update_auditor_progress_deposit_confirmation = &postgres_update_auditor_progress_deposit_confirmation;
+  plugin->insert_auditor_progress_deposit_confirmation = &postgres_insert_auditor_progress_deposit_confirmation;
   plugin->get_auditor_progress_coin = &postgres_get_auditor_progress_coin;
   plugin->update_auditor_progress_coin = &postgres_update_auditor_progress_coin;
   plugin->insert_auditor_progress_coin = &postgres_insert_auditor_progress_coin;
