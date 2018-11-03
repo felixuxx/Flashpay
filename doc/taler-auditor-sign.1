@@ -11,6 +11,8 @@ taler\-auditor\-sign \- Sign exchange denomination as auditor.
 .SH DESCRIPTION
 \fBtaler\-auditor\-sign\fP is a command line tool to be used by an auditor to sign that he is aware of certain keys being used by a exchange.  Using this signature, the auditor affirms that he will verify that the exchange is properly accounting for those coins.
 
+The exchange for which keys were signed must have been added to the auditor using taler\-auditor\-exchange first!
+
 .SH OPTIONS
 .B
 .IP "\-a FILE,  \-\-auditor-key=FILE"
@@ -35,4 +37,4 @@ File where the auditor should write the EdDSA signature.
 Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
 
 .SH "SEE ALSO"
-\fBtaler\-exchange\-keyup\fP(1), \fBgnunet\-ecc\fP(1), \fBtaler.conf\fP(5)
+\fBtaler\-auditor\-exchange\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBgnunet\-ecc\fP(1), \fBtaler.conf\fP(5)

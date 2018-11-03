@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2018 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -151,13 +151,13 @@ main (int argc,
                                    "file containing the private key of the auditor",
                                    &auditor_key_file),
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
-    GNUNET_GETOPT_option_help ("Private key of the auditor to use for signing"),
+    GNUNET_GETOPT_option_help ("Sign denomination keys of an exchange"),
     GNUNET_GETOPT_option_mandatory
     (GNUNET_GETOPT_option_base32_auto ('m',
-                                           "exchange-key",
-                                           "KEY",
-                                           "public key of the exchange (Crockford base32 encoded)",
-                                           &master_public_key)),
+                                       "exchange-key",
+                                       "KEY",
+                                       "public key of the exchange (Crockford base32 encoded)",
+                                       &master_public_key)),
     GNUNET_GETOPT_option_string ('u',
                                  "auditor-url",
                                  "URL",
@@ -398,7 +398,7 @@ main (int argc,
       if (0 > qs)
       {
 	fprintf (stderr,
-		 "Failed to store key in auditor DB\n");
+		 "Failed to store key in auditor DB (did you add the exchange first?)\n");
 	TALER_AUDITORDB_plugin_unload (adb);
 	GNUNET_free (dks);
 	GNUNET_free (sigs);
