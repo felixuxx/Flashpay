@@ -1219,7 +1219,7 @@ postgres_insert_exchange (void *cls,
                           const char *exchange_url)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&master_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (exchange_url),
     GNUNET_PQ_query_param_end
   };
@@ -1246,7 +1246,7 @@ postgres_delete_exchange (void *cls,
                           const struct TALER_MasterPublicKeyP *master_pub)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&master_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 

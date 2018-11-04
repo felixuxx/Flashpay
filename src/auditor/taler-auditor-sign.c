@@ -193,7 +193,7 @@ main (int argc,
                                    NULL));
   if (GNUNET_GETOPT_run ("taler-auditor-sign",
                          options,
-                         argc, argv) < 0)
+                         argc, argv) <= 0)
     return 1;
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR ==

@@ -73,12 +73,11 @@ main (int argc,
                                        "KEY",
                                        "public key of the exchange (Crockford base32 encoded)",
                                        &master_public_key)),
-    GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_string ('u',
-                                  "exchange-url",
-                                  "URL",
-                                  "base URL of the exchange",
-                                  &exchange_url)),
+    GNUNET_GETOPT_option_string ('u',
+				 "exchange-url",
+				 "URL",
+				 "base URL of the exchange",
+				 &exchange_url),
     GNUNET_GETOPT_option_flag ('r',
                                "remove",
                                "remove the exchange's key (default is to add)",
@@ -93,7 +92,7 @@ main (int argc,
                                    NULL));
   if (GNUNET_GETOPT_run ("taler-auditor-exchange",
                          options,
-                         argc, argv) < 0)
+                         argc, argv) <= 0)
     return 1;
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR ==
@@ -108,6 +107,32 @@ main (int argc,
   }
   GNUNET_free_non_null (cfgfile);
 
+  if (! remove_flag)
+  {
+    if (NULL == exchange_url)
+    {
+      FPRINTF (stderr,
+	       _("Missing either `%s' or `%s'.\n"),
+	       "-u URL",
+	       "--remove");
+      return 1;
+    }
+    if ( (0 == strlen (exchange_url)) ||
+	 ( (0 != strncasecmp ("http://",
+			      exchange_url,
+			      strlen ("http://"))) &&
+	   (0 != strncasecmp ("https://",
+			      exchange_url,
+			      strlen ("https://"))) )  ||
+	 ('/' != exchange_url[strlen(exchange_url)-1]) )
+    {
+      fprintf (stderr,
+	       "Exchange URL must begin with `http://` or `https://` and end with `/'\n");
+      return 3;
+    }
+  }
+	  
+  
   if (NULL ==
       (adb = TALER_AUDITORDB_plugin_load (cfg)))
   {
