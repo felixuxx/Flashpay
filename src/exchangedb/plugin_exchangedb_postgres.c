@@ -2730,6 +2730,7 @@ postgres_get_reserve_history (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param deposit deposit to search for
+ * @param check_extras wether to check extra fields match or not
  * @return 1 if we know this operation,
  *         0 if this exact deposit is unknown to us,
  *         otherwise transaction error status
@@ -2737,7 +2738,8 @@ postgres_get_reserve_history (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_have_deposit (void *cls,
                        struct TALER_EXCHANGEDB_Session *session,
-                       const struct TALER_EXCHANGEDB_Deposit *deposit)
+                       const struct TALER_EXCHANGEDB_Deposit *deposit,
+                       int check_extras)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
@@ -2755,8 +2757,6 @@ postgres_have_deposit (void *cls,
 					 &deposit2.refund_deadline),
     TALER_PQ_result_spec_absolute_time ("wire_deadline",
 					 &deposit2.wire_deadline),
-    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-					  &deposit2.h_contract_terms),
     GNUNET_PQ_result_spec_auto_from_type ("h_wire",
 					  &deposit2.h_wire),
     GNUNET_PQ_result_spec_end
@@ -2774,18 +2774,16 @@ postgres_have_deposit (void *cls,
     return qs;
   /* Now we check that the other information in @a deposit
      also matches, and if not report inconsistencies. */
-  if ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
-			       &deposit2.amount_with_fee)) ||
-       (deposit->timestamp.abs_value_us !=
-	deposit2.timestamp.abs_value_us) ||
+  if ( ( (check_extras) &&
+         ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
+                                   &deposit2.amount_with_fee)) ||
+           (deposit->timestamp.abs_value_us !=
+            deposit2.timestamp.abs_value_us) ) ) ||
        (deposit->refund_deadline.abs_value_us !=
-	deposit2.refund_deadline.abs_value_us) ||
-       (0 != memcmp (&deposit->h_contract_terms,
-		     &deposit2.h_contract_terms,
-		     sizeof (struct GNUNET_HashCode))) ||
+        deposit2.refund_deadline.abs_value_us) ||
        (0 != memcmp (&deposit->h_wire,
-		     &deposit2.h_wire,
-		     sizeof (struct GNUNET_HashCode))) )
+                     &deposit2.h_wire,
+                     sizeof (struct GNUNET_HashCode)) ) )
   {
     /* Inconsistencies detected! Does not match!  (We might want to
        expand the API with a 'get_deposit' function to return the

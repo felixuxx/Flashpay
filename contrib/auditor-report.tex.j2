@@ -148,6 +148,61 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
 {% endif %}
 
 
+
+\section{Deposit confirmation lag}
+
+This section analyzes the lag, which is by how much the exchange's
+database reporting is behind in providing us with information about
+deposit confirmations. Merchants probabilisitcally report deposit
+confirmations to the auditor directly, so if the exchange is slow at
+synchronizing its database with the auditor, some deposit
+confirmations may be known at the auditor only directly. However, any
+delta not accounted for by database synchronization delays is an
+indicator of a malicious exchange (or online singing key compromise)
+and should be answered by revoking the exchange's online siging keys.
+% FIXME: reference PhD thesis?
+
+The total amount the exchange currently lags behind is
+{\bf  {{ data.missing_deposit_confirmation_total.value }}.{{ data.missing_deposit_confirmation_total.fraction }}
+      {{ data.missing_deposit_confirmation_total.currency }}} or
+{\bf {{ data.total_missed_deposit_confirmations}} } deposit confirmations.
+
+Note that some lag is perfectly normal.
+Below, we report {\em all} deposit confirmations that are lagging behind.
+
+{% if data.deposit_confirmation_inconsistencies|length() == 0 %}
+  {\bf No deposit confirmations that are lagging behind detected.}
+{% else %}
+  \begin{longtable}{p{1.5cm}|rl|c|rl}
+  {\bf Timestamp} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
+\endfirsthead
+  {\bf Timestamp} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Timestamp} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Target account} \\
+\endfoot
+  \hline \hline
+  {\bf Timestamp} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Target account} \\
+    \caption{Missing deposit confirmations.}
+    \label{table:missing_dc}
+\endlastfoot
+{% for item in data.deposit_confirmation_inconsistencies %}
+  &
+  {{ item.timestamp }} &
+  {{ item.amount.value }}.{{ item.amount.fraction }} &
+  {{ item.amount.currency }} &
+  {{ item.row }} \\
+\nopagebreak
+  \multicolumn{3}{l}{ {\tt {{ item.account }} } } \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
 \section{Major irregularities}
 
 This section describes the possible major irregularities that the

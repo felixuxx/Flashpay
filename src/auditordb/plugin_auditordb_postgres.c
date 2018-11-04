@@ -390,6 +390,7 @@ postgres_create_tables (void *cls)
        we must check that the exchange reported these properly. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS deposit_confirmations "
 			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",serial_id BIGSERIAL UNIQUE"
 			    ",h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)"
                             ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
 			    ",timestamp INT8 NOT NULL"
@@ -567,6 +568,25 @@ postgres_prepare (PGconn *db_conn)
 			    ",master_sig" /* master_sig could be normalized... */
 			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
 			    11),
+    /* Used in #postgres_get_deposit_confirmations() */
+    GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
+			    "SELECT"
+			    " h_contract_terms"
+			    ",h_wire"
+			    ",timestamp"
+			    ",refund_deadline"
+			    ",amount_without_fee_val"
+			    ",amount_without_fee_frac"
+			    ",amount_without_fee_curr"
+			    ",coin_pub"
+			    ",merchant_pub"
+			    ",exchange_sig"
+			    ",exchange_pub"
+			    ",master_sig" /* master_sig could be normalized... */
+                            " FROM deposit_confirmations"
+                            " WHERE master_pub=$1"
+                            " AND serial_id>$2",
+			    2),
     /* Used in #postgres_update_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_reserve",
 			    "UPDATE auditor_progress_reserve SET "
@@ -1414,6 +1434,144 @@ postgres_insert_deposit_confirmation (void *cls,
 					     "auditor_deposit_confirmation_insert",
 					     params);
 }
+
+
+/**
+ * Closure for #deposit_confirmation_cb().
+ */
+struct DepositConfirmationContext
+{
+
+  /**
+   * Master public key that is being used.
+   */
+  const struct TALER_MasterPublicKeyP *master_pub;
+
+  /**
+   * Function to call for each deposit confirmation.
+   */
+  TALER_AUDITORDB_DepositConfirmationCallback cb;
+
+  /**
+   * Closure for @e cb
+   */
+  void *cb_cls;
+
+  /**
+   * Query status to return.
+   */
+  enum GNUNET_DB_QueryStatus qs;
+};
+
+
+/**
+ * Helper function for #postgres_get_deposit_confirmations().
+ * To be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct DepositConfirmationContext *`
+ * @param result the postgres result
+ * @param num_result the number of results in @a result
+ */
+static void
+deposit_confirmation_cb (void *cls,
+                         PGresult *result,
+                         unsigned int num_results)
+{
+  struct DepositConfirmationContext *dcc = cls;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    uint64_t serial_id;
+    struct TALER_AUDITORDB_DepositConfirmation dc = {
+      .master_public_key = *dcc->master_pub
+    };
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial_id",
+                                    &serial_id),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                            &dc.h_contract_terms),
+      GNUNET_PQ_result_spec_auto_from_type ("h_wire",
+                                            &dc.h_wire),
+      GNUNET_PQ_result_spec_absolute_time ("timetamp",
+                                           &dc.timestamp),
+      GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+                                           &dc.refund_deadline),
+      TALER_PQ_result_spec_amount ("amount_without_fee",
+                                   &dc.amount_without_fee),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                            &dc.coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                            &dc.merchant),
+      GNUNET_PQ_result_spec_auto_from_type ("exchange_sig",
+                                            &dc.exchange_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("exchange_pub",
+                                            &dc.exchange_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &dc.master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+				  rs,
+				  i))
+    {
+      GNUNET_break (0);
+      dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return;
+    }
+    dcc->qs = i + 1;
+    dcc->cb (dcc->cb_cls,
+             serial_id,
+             &dc);
+  }
+}
+
+
+/**
+ * Get information about deposit confirmations from the database.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param master_pub for which exchange do we want to get deposit confirmations
+ * @param start_id row/serial ID where to start the iteration (0 from
+ *                  the start, exclusive, i.e. serial_ids must start from 1)
+ * @param cb function to call with results
+ * @param cb_cls closure for @a cb
+ * @return query result status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_deposit_confirmations (void *cls,
+                                    struct TALER_AUDITORDB_Session *session,
+                                    const struct TALER_MasterPublicKeyP *master_public_key,
+                                    uint64_t start_id,
+                                    TALER_AUDITORDB_DepositConfirmationCallback cb,
+                                    void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_public_key),
+    GNUNET_PQ_query_param_uint64 (&start_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct DepositConfirmationContext dcc = {
+    .master_pub = master_public_key,
+    .cb = cb,
+    .cb_cls = cb_cls
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+					     "auditor_deposit_confirmation_select",
+					     params,
+					     &deposit_confirmation_cb,
+					     &dcc);
+  if (qs > 0)
+    return dcc.qs;
+  GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
+  return qs;
+}
+
 
 
 /**
@@ -3264,6 +3422,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->list_exchanges = &postgres_list_exchanges;
   plugin->insert_exchange_signkey = &postgres_insert_exchange_signkey;
   plugin->insert_deposit_confirmation = &postgres_insert_deposit_confirmation;
+  plugin->get_deposit_confirmations = &postgres_get_deposit_confirmations;
 
   plugin->select_denomination_info = &postgres_select_denomination_info;
   plugin->insert_denomination_info = &postgres_insert_denomination_info;

@@ -1431,6 +1431,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param deposit deposit to search for
+   * @param check_extras wether to check extra fields or not
    * @return 1 if we know this operation,
    *         0 if this exact deposit is unknown to us,
    *         otherwise transaction error status
@@ -1438,7 +1439,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*have_deposit) (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
-                   const struct TALER_EXCHANGEDB_Deposit *deposit);
+                   const struct TALER_EXCHANGEDB_Deposit *deposit,
+                   int check_extras);
 
 
   /**

@@ -346,6 +346,20 @@ struct TALER_AUDITORDB_DepositConfirmation
 
 
 /**
+ * Function called with deposit confirmations stored in
+ * the auditor's database.
+ *
+ * @param cls closure
+ * @param serial_id location of the @a dc in the database
+ * @param dc the deposit confirmation itself
+ */
+typedef void
+(*TALER_AUDITORDB_DepositConfirmationCallback)(void *cls,
+                                               uint64_t serial_id,
+                                               const struct TALER_AUDITORDB_DepositConfirmation *dc);
+
+
+/**
  * Handle for one session with the database.
  */
 struct TALER_AUDITORDB_Session;
@@ -523,6 +537,27 @@ struct TALER_AUDITORDB_Plugin
   (*insert_deposit_confirmation) (void *cls,
                                   struct TALER_AUDITORDB_Session *session,
                                   const struct TALER_AUDITORDB_DepositConfirmation *dc);
+
+
+  /**
+   * Get information about a deposit confirmations from the database.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param master_pub for which exchange do we want to get deposit confirmations
+   * @param start_id row/serial ID where to start the iteration (0 from
+   *                  the start, exclusive, i.e. serial_ids must start from 1)
+   * @param cb function to call with results
+   * @param cb_cls closure for @a cb
+   * @return query result status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_deposit_confirmations) (void *cls,
+                                struct TALER_AUDITORDB_Session *session,
+                                const struct TALER_MasterPublicKeyP *master_public_key,
+                                uint64_t start_id,
+                                TALER_AUDITORDB_DepositConfirmationCallback cb,
+                                void *cb_cls);
 
 
   /**

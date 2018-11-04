@@ -142,7 +142,8 @@ deposit_transaction (void *cls,
 
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
 				 session,
-				 deposit);
+				 deposit,
+                                 GNUNET_YES /* check refund deadline */);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)

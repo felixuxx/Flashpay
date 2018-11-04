@@ -183,6 +183,11 @@ static struct TALER_Amount total_balance_reserve_not_closed;
 static json_t *report_wire_out_inconsistencies;
 
 /**
+ * Array of reports about missing deposit confirmations.
+ */
+static json_t *report_deposit_confirmation_inconsistencies;
+
+/**
  * Total delta between calculated and stored wire out transfers,
  * for positive deltas.
  */
@@ -234,6 +239,16 @@ static struct TALER_Amount total_arithmetic_delta_plus;
  * Losses the exchange made by bad amount calculations.
  */
 static struct TALER_Amount total_arithmetic_delta_minus;
+
+/**
+ * Total number of deposit confirmations that we did not get.
+ */
+static json_int_t number_missed_deposit_confirmations;
+
+/**
+ * Total amount involved in deposit confirmations that we did not get.
+ */
+static struct TALER_Amount total_missed_deposit_confirmations;
 
 /**
  * Total amount reported in all calls to #report_emergency().
@@ -4036,6 +4051,202 @@ analyze_coins (void *cls)
 }
 
 
+/* *************************** Analysis of deposit-confirmations ********** */
+
+/**
+ * Closure for #test_dc.
+ */
+struct DepositConfirmationContext
+{
+
+  /**
+   * How many deposit confirmations did we NOT find in the #edb?
+   */
+  unsigned long long missed_count;
+
+  /**
+   * What is the total amount missing?
+   */
+  struct TALER_Amount missed_amount;
+
+  /**
+   * Lowest SerialID of the first coin we missed? (This is where we
+   * should resume next time).
+   */
+  uint64_t first_missed_coin_serial;
+
+  /**
+   * Lowest SerialID of the first coin we missed? (This is where we
+   * should resume next time).
+   */
+  uint64_t last_seen_coin_serial;
+
+  /**
+   * Success or failure of (exchange) database operations within
+   * #test_dc.
+   */
+  enum GNUNET_DB_QueryStatus qs;
+
+};
+
+
+/**
+ * Given a deposit confirmation from #adb, check that it is also
+ * in #edb.  Update the deposit confirmation context accordingly.
+ *
+ * @param cls our `struct DepositConfirmationContext`
+ * @param serial_id row of the @a dc in the database
+ * @param dc the deposit confirmation we know
+ */
+static void
+test_dc (void *cls,
+         uint64_t serial_id,
+         const struct TALER_AUDITORDB_DepositConfirmation *dc)
+{
+  struct DepositConfirmationContext *dcc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_Deposit dep;
+
+  dcc->last_seen_coin_serial = serial_id;
+  memset (&dep,
+          0,
+          sizeof (dep));
+  dep.coin.coin_pub = dc->coin_pub;
+  dep.h_contract_terms = dc->h_contract_terms;
+  dep.merchant_pub = dc->merchant;
+  dep.h_wire = dc->h_wire;
+  dep.refund_deadline = dc->refund_deadline;
+
+  qs = edb->have_deposit (edb->cls,
+                          esession,
+                          &dep,
+                          GNUNET_NO /* do not check refund deadline */);
+  if (qs > 0)
+    return; /* found, all good */
+  if (qs < 0)
+  {
+    GNUNET_break (0); /* DB error, complain */
+    dcc->qs = qs;
+    return;
+  }
+  /* deposit confirmation missing! report! */
+  report (report_deposit_confirmation_inconsistencies,
+          json_pack ("{s:s, s:o, s:I, s:o}",
+                     "timestamp",
+                     GNUNET_STRINGS_absolute_time_to_string (dc->timestamp),
+                     "amount",
+                     TALER_JSON_from_amount (&dc->amount_without_fee),
+                     "rowid",
+                     (json_int_t) serial_id,
+                     "account",
+                     GNUNET_JSON_from_data_auto (&dc->h_wire)));
+  dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial,
+                                              serial_id);
+  dcc->missed_count++;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&dcc->missed_amount,
+                                   &dcc->missed_amount,
+                                   &dc->amount_without_fee));
+}
+
+
+/**
+ * Check that the deposit-confirmations that were reported to
+ * us by merchants are also in the exchange's database.
+ *
+ * @param cls closure
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+analyze_deposit_confirmations (void *cls)
+{
+  struct TALER_AUDITORDB_ProgressPointDepositConfirmation ppdc;
+  struct DepositConfirmationContext dcc;
+  enum GNUNET_DB_QueryStatus qs;
+  enum GNUNET_DB_QueryStatus qsx;
+  enum GNUNET_DB_QueryStatus qsp;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Analyzing deposit confirmations\n");
+  ppdc.last_deposit_confirmation_serial_id = 0;
+  qsp = adb->get_auditor_progress_deposit_confirmation (adb->cls,
+                                                        asession,
+                                                        &master_pub,
+                                                        &ppdc);
+  if (0 > qsp)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
+    return qsp;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                _("First analysis using this auditor, starting audit from scratch\n"));
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                _("Resuming deposit confirmation audit at %llu\n"),
+                (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
+  }
+
+  /* setup 'cc' */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &dcc.missed_amount));
+  dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  dcc.missed_count = 0LLU;
+  dcc.first_missed_coin_serial = UINT64_MAX;
+  qsx = adb->get_deposit_confirmations (adb->cls,
+                                        asession,
+                                        &master_pub,
+                                        ppdc.last_deposit_confirmation_serial_id,
+                                        &test_dc,
+                                        &dcc);
+  if (0 > qsx)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
+    return qsx;
+  }
+  if (0 > dcc.qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == dcc.qs);
+    return dcc.qs;
+  }
+  if (UINT64_MAX == dcc.first_missed_coin_serial)
+    ppdc.last_deposit_confirmation_serial_id = dcc.last_seen_coin_serial;
+  else
+    ppdc.last_deposit_confirmation_serial_id = dcc.first_missed_coin_serial - 1;
+
+  /* sync 'cc' back to disk */
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
+    qs = adb->update_auditor_progress_deposit_confirmation (adb->cls,
+                                                            asession,
+                                                            &master_pub,
+                                                            &ppdc);
+  else
+    qs = adb->insert_auditor_progress_deposit_confirmation (adb->cls,
+                                                            asession,
+                                                            &master_pub,
+                                                            &ppdc);
+  if (0 >= qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"Failed to update auditor DB, not recording progress\n");
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  number_missed_deposit_confirmations = (json_int_t) dcc.missed_count;
+  total_missed_deposit_confirmations = dcc.missed_amount;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              _("Concluded deposit confirmation audit step at %llu\n"),
+              (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
+  return qs;
+}
+
+
+
 /* *************************** General transaction logic ****************** */
 
 /**
@@ -4150,6 +4361,8 @@ setup_sessions_and_run ()
   transact (&analyze_aggregations,
             NULL);
   transact (&analyze_coins,
+            NULL);
+  transact (&analyze_deposit_confirmations,
             NULL);
 }
 
@@ -4348,6 +4561,8 @@ run (void *cls,
   GNUNET_assert (NULL !=
 		 (report_wire_out_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
+		 (report_deposit_confirmation_inconsistencies = json_array ()));
+  GNUNET_assert (NULL !=
 		 (report_coin_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
 		 (report_aggregation_fee_balances = json_array ()));
@@ -4383,7 +4598,8 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o }",
+                      " s:o, s:o, s:o, s:o, s:I,"
+                      " s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
 		      "reserve_balance_insufficient_inconsistencies",
@@ -4457,7 +4673,14 @@ run (void *cls,
                       "total_refresh_hanging",
                       TALER_JSON_from_amount (&total_refresh_hanging),
                       "refresh_hanging",
-                      report_refreshs_hanging);
+                      report_refreshs_hanging,
+                      "deposit_confirmation_inconsistencies",
+                      report_deposit_confirmation_inconsistencies,
+                      "missing_deposit_confirmation_count",
+                      (json_int_t) number_missed_deposit_confirmations,
+                      /* block */
+                      "missing_deposit_confirmation_total",
+                      TALER_JSON_from_amount (&total_missed_deposit_confirmations));
   GNUNET_break (NULL != report);
   json_dumpf (report,
 	      stdout,
