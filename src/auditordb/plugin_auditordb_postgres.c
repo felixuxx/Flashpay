@@ -152,6 +152,7 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
@@ -191,7 +192,7 @@ postgres_create_tables (void *cls)
 			    ")"),
     /* Table with list of signing keys of exchanges we are auditing */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",ep_start INT8 NOT NULL"
 			    ",ep_expire INT8 NOT NULL"
 			    ",ep_end INT8 NOT NULL"
@@ -202,7 +203,7 @@ postgres_create_tables (void *cls)
        is aware of. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denominations"
 			    "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
-			    ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",valid_from INT8 NOT NULL"
 			    ",expire_withdraw INT8 NOT NULL"
 			    ",expire_deposit INT8 NOT NULL"
@@ -223,13 +224,6 @@ postgres_create_tables (void *cls)
 			    ",fee_refund_frac INT4 NOT NULL"
 			    ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
-    /* List of exchanges audited by this auditor */
-    // TODO: not yet used!
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS exchanges"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
-			    ",exchange_url VARCHAR NOT NULL"
-			    ")"),
-
     /* Table indicating up to which transactions the auditor has
        processed the exchange database.  Used for SELECTing the
        statements to process.  The indices below include the last
@@ -238,29 +232,29 @@ postgres_create_tables (void *cls)
        strictly larger (and process in monotonically increasing
        order). */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_reserve"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_aggregation"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_coin"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",last_withdraw_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_deposit_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_melt_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_refund_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",account_name TEXT NOT NULL"
 			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
@@ -276,7 +270,7 @@ postgres_create_tables (void *cls)
        operation about this reserve that the auditor is aware of. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_reserves"
 			    "(reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)"
-			    ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",reserve_balance_val INT8 NOT NULL"
 			    ",reserve_balance_frac INT4 NOT NULL"
 			    ",reserve_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -291,7 +285,7 @@ postgres_create_tables (void *cls)
     /* Table with the sum of the balances of all customer reserves
        (by exchange's master public key) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_reserve_balance"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",reserve_balance_val INT8 NOT NULL"
 			    ",reserve_balance_frac INT4 NOT NULL"
 			    ",reserve_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -302,7 +296,7 @@ postgres_create_tables (void *cls)
     /* Table with the sum of the balances of all wire fees
        (by exchange's master public key) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_wire_fee_balance"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",wire_fee_balance_val INT8 NOT NULL"
 			    ",wire_fee_balance_frac INT4 NOT NULL"
 			    ",wire_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -331,7 +325,7 @@ postgres_create_tables (void *cls)
        unexpected historic_loss-style events where denomination keys are
        compromised) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_balance_summary"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",denom_balance_val INT8 NOT NULL"
 			    ",denom_balance_frac INT4 NOT NULL"
 			    ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -358,7 +352,7 @@ postgres_create_tables (void *cls)
        individually; the delta to the revenue_balance is from coins that
        were withdrawn but never deposited prior to expiration. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue"
-			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
 			    ",revenue_timestamp INT8 NOT NULL"
 			    ",revenue_balance_val INT8 NOT NULL"
@@ -371,7 +365,7 @@ postgres_create_tables (void *cls)
        up here. (NOTE: the 'bankrupcy' protocol is not yet
        implemented, so right now this table is not used.)  */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_losses"
-			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
 			    ",loss_timestamp INT8 NOT NULL"
 			    ",loss_balance_val INT8 NOT NULL"
@@ -382,7 +376,7 @@ postgres_create_tables (void *cls)
        GC "auditor_historic_reserve_revenue", and then store the totals
        in here (by time intervals). */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary"
-			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",start_date INT8 NOT NULL"
 			    ",end_date INT8 NOT NULL"
 			    ",reserve_profits_val INT8 NOT NULL"
@@ -395,7 +389,7 @@ postgres_create_tables (void *cls)
     /* Table with deposit confirmation sent to us by merchants;
        we must check that the exchange reported these properly. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS deposit_confirmations "
-			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)"
                             ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
 			    ",timestamp INT8 NOT NULL"
@@ -424,7 +418,7 @@ postgres_create_tables (void *cls)
        (So this table for now just exists as a reminder of what we'll
        need in the long term.) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_ledger"
-			    "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",purpose VARCHAR NOT NULL"
 			    ",timestamp INT8 NOT NULL"
 			    ",balance_val INT8 NOT NULL"
@@ -438,7 +432,7 @@ postgres_create_tables (void *cls)
        final amount that the exchange should have in its bank account
        right now. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_predicted_result"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
 			    ",balance_val INT8 NOT NULL"
 			    ",balance_frac INT4 NOT NULL"
 			    ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
