@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 Taler Systems SA
+  Copyright (C) 2016, 2017, 2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -329,13 +329,56 @@ report (json_t *array,
  * @param risk maximum risk that might have just become real (coins created by this @a dki)
  */
 static void
-report_emergency (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
-                  const struct TALER_Amount *risk)
+report_emergency_by_amount (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                            const struct TALER_Amount *risk)
 {
   report (report_emergencies,
 	  json_pack ("{s:o, s:o, s:s, s:s, s:o}",
 		     "denompub_hash",
 		     GNUNET_JSON_from_data_auto (&dki->properties.denom_hash),
+                     "denom_risk",
+                     TALER_JSON_from_amount (risk),
+                     "start",
+                     GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dki->properties.start)),
+                     "deposit_end",
+                     GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dki->properties.expire_deposit)),
+                     "value",
+                     TALER_JSON_from_amount_nbo (&dki->properties.value)));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&reported_emergency_sum,
+                                   &reported_emergency_sum,
+                                   risk));
+}
+
+
+/**
+ * Called in case we detect an emergency situation where the exchange
+ * is paying out a larger NUMBER of coins of a denomination than we
+ * issued in that denomination.  This means that the exchange's
+ * private keys might have gotten compromised, and that we need to
+ * trigger an emergency request to all wallets to deposit pending
+ * coins for the denomination (and as an exchange suffer a huge
+ * financial loss).
+ *
+ * @param dki denomination key where the loss was detected
+ * @param num_issued number of coins that were issued
+ * @param num_known number of coins that have been deposited
+ * @param risk amount that is at risk
+ */
+static void
+report_emergency_by_count (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                           uint64_t num_issued,
+                           uint64_t num_known,
+                           const struct TALER_Amount *risk)
+{
+  report (report_emergencies,
+	  json_pack ("{s:o, s:I, s:I, s:o, s:s, s:s, s:o}",
+		     "denompub_hash",
+		     GNUNET_JSON_from_data_auto (&dki->properties.denom_hash),
+                     "num_issued",
+                     (json_int_t) num_issued,
+                     "num_known",
+                     (json_int_t) num_known,
                      "denom_risk",
                      TALER_JSON_from_amount (risk),
                      "start",
@@ -2962,24 +3005,47 @@ sync_denomination (void *cls,
   }
   else
   {
+    long long cnt;
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Final balance for denomination `%s' is %s\n",
+                "Final balance for denomination `%s' is %s (%llu)\n",
                 GNUNET_h2s (denom_hash),
-                TALER_amount2s (&ds->denom_balance));
-    if (ds->in_db)
-      qs = adb->update_denomination_balance (adb->cls,
-					     asession,
-					     denom_hash,
-					     &ds->denom_balance,
-					     &ds->denom_risk,
-                                             ds->num_issued);
+                TALER_amount2s (&ds->denom_balance),
+                (unsigned long long) ds->num_issued);
+    cnt = edb->count_known_coins (edb->cls,
+                                  esession,
+                                  denom_hash);
+    if (0 > cnt)
+    {
+      /* Failed to obtain count? Bad database */
+      qs = (enum GNUNET_DB_QueryStatus) cnt;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      cc->qs = qs;
+    }
     else
-      qs = adb->insert_denomination_balance (adb->cls,
-					     asession,
-					     denom_hash,
-					     &ds->denom_balance,
-					     &ds->denom_risk,
-                                             ds->num_issued);
+    {
+      if (ds->num_issued > (uint64_t) cnt)
+      {
+        report_emergency_by_count (dki,
+                                   cnt,
+                                   ds->num_issued,
+                                   &ds->denom_risk);
+      }
+      if (ds->in_db)
+        qs = adb->update_denomination_balance (adb->cls,
+                                               asession,
+                                               denom_hash,
+                                               &ds->denom_balance,
+                                               &ds->denom_risk,
+                                               ds->num_issued);
+      else
+        qs = adb->insert_denomination_balance (adb->cls,
+                                               asession,
+                                               denom_hash,
+                                               &ds->denom_balance,
+                                               &ds->denom_risk,
+                                               ds->num_issued);
+    }
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
@@ -3272,7 +3338,6 @@ refresh_session_cb (void *cls,
                                       amount_with_fee));
       return GNUNET_OK;
     }
-    // FIXME: free reveal_ctx.num_newcoins later!
 
     {
       const struct TALER_EXCHANGEDB_DenominationKeyInformationP *new_dkis[reveal_ctx.num_newcoins];
@@ -3436,8 +3501,9 @@ refresh_session_cb (void *cls,
                              &dso->denom_balance,
                              amount_with_fee))
   {
-    report_emergency (dki,
-                      &dso->denom_risk);
+    report_emergency_by_amount (dki,
+                                &dso->denom_risk);
+    /* FIXME: we can't exactly just stop here! */
     return GNUNET_SYSERR;
   }
   dso->denom_balance = tmp;
@@ -3593,8 +3659,9 @@ deposit_cb (void *cls,
                              &ds->denom_balance,
                              amount_with_fee))
   {
-    report_emergency (dki,
-                      &ds->denom_risk);
+    report_emergency_by_amount (dki,
+                                &ds->denom_risk);
+    /* FIXME: we can't exactly just stop here like this! */
     cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
