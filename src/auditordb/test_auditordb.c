@@ -173,6 +173,15 @@ run (void *cls)
                                                                   4));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Test: auditor_insert_exchange\n");
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+	  plugin->insert_exchange (plugin->cls,
+				   session,
+				   &master_pub,
+				   "https://exchange/"));
+  
+  
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_info\n");
 
   struct TALER_DenominationKeyValidityPS issue = { 0 };
@@ -724,7 +733,6 @@ run (void *cls)
                                     &reserve_pub,
                                     &master_pub));
 
-
   FAILIF (0 != TALER_amount_cmp (&rbalance2,
                                  &rbalance));
 
@@ -742,6 +750,21 @@ drop:
   if (NULL != session)
     plugin->rollback (plugin->cls,
                       session);
+  
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Test: auditor_delete_exchange\n");
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session));
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+	  plugin->delete_exchange (plugin->cls,
+				   session,
+				   &master_pub));
+  FAILIF (0 >
+          plugin->commit (plugin->cls,
+                          session));
+
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls));
  unload:
