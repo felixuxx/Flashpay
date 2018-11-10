@@ -583,6 +583,7 @@ decode_keys_json (const json_t *resp_obj,
     key_data->version = GNUNET_strdup (ver);
   }
 
+  hash_context = NULL;
   EXITIF (GNUNET_OK !=
 	  GNUNET_JSON_parse (resp_obj,
 			     (check_sig) ? mspec : &mspec[2],
@@ -591,8 +592,6 @@ decode_keys_json (const json_t *resp_obj,
   /* parse the master public key and issue date of the response */
   if (check_sig)
     hash_context = GNUNET_CRYPTO_hash_context_start ();
-  else
-    hash_context = NULL;
 
   /* parse the signing keys */
   {
