@@ -53,6 +53,12 @@
 static char *exchange_url;
 
 /**
+ * Auditor base URL; mainly purpose is to make the compiler happy.
+ */
+static char *auditor_url;
+
+
+/**
  * Main function that will tell the interpreter what commands to
  * run.
  *
@@ -124,7 +130,8 @@ main (int argc,
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-                                          &exchange_url))
+                                          &auditor_url,
+					  &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

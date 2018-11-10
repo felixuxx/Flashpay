@@ -809,6 +809,7 @@ main (int argc,
       char *const *argv)
 {
   char *exchange_url;
+  char *auditor_url;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
@@ -951,7 +952,8 @@ main (int argc,
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_prepare_exchange
         (cfg_filename,
-         &exchange_url));
+         &exchange_url,
+	 &auditor_url));
   }
   else
   {
@@ -1002,6 +1004,7 @@ main (int argc,
                                cfg_filename,
                                exchange_url);
   GNUNET_free (exchange_url);
+  GNUNET_free (auditor_url);
   duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {

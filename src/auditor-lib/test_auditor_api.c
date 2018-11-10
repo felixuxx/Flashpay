@@ -170,9 +170,9 @@ main (int argc,
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_AUDITOR_prepare_auditor (CONFIG_FILE,
-						 &auditor_url,
-						 &exchange_url))
+  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+					  &auditor_url,
+					  &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

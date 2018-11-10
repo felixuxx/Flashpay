@@ -35,27 +35,6 @@
 
 /* ********************* Helper functions ********************* */
 
-/**
- * Prepare launching an auditor and exchange.  Checks that the configured
- * port is available, runs taler-exchange-keyup, taler-auditor-exchange,
- * taler-auditor-sign and taler-exchange-dbinit.  Does not
- * launch the exchange process itself.
- *
- * @param config_filename configuration file to use
- * @param auditor_base_url[out] will be set to the auditor base url,
- *        if the config has any; otherwise it will be set to
- *        NULL.
- * @param exchange_base_url[out] will be set to the exchange base url,
- *        if the config has any; otherwise it will be set to
- *        NULL.
- * @return #GNUNET_OK on success, #GNUNET_NO if test should be
- *         skipped, #GNUNET_SYSERR on test failure
- */
-int
-TALER_TESTING_AUDITOR_prepare_auditor (const char *config_filename,
-				       char **auditor_base_url,
-				       char **exchange_base_url);
-
 
 /**
  * Wait for the auditor to have started. Waits for at

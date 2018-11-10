@@ -102,7 +102,10 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
- * @param base_url[out] will be set to the exchange base url,
+ * @param auditor_base_url[out] will be set to the auditor base url,
+ *        if the config has any; otherwise it will be set to
+ *        NULL.
+ * @param exchange_base_url[out] will be set to the exchange base url,
  *        if the config has any; otherwise it will be set to
  *        NULL.
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
@@ -110,7 +113,8 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
  */
 int
 TALER_TESTING_prepare_exchange (const char *config_filename,
-                                char **base_url);
+				char **auditor_base_url,
+				char **exchange_base_url);
 
 
 /**
@@ -126,10 +130,86 @@ TALER_TESTING_wait_exchange_ready (const char *base_url);
 
 
 /**
+ * Wait for the auditor to have started. Waits for at
+ * most 10s, after that returns 77 to indicate an error.
+ *
+ * @param base_url what URL should we expect the auditor
+ *        to be running at
+ * @return 0 on success
+ */
+int
+TALER_TESTING_wait_auditor_ready (const char *base_url);
+
+
+/**
  * Remove files from previous runs
+ *
+ * @param config_name configuration file to use+
  */
 void
 TALER_TESTING_cleanup_files (const char *config_name);
+
+
+/**
+ * Remove files from previous runs
+ *
+ * @param cls NULL
+ * @param cfg configuration
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_cleanup_files_cfg (void *cls,
+				 const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Run `taler-exchange-keyup`.
+ *
+ * @param config_filename configuration file to use
+ * @param output_filename where to write the output for the auditor
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_run_keyup (const char *config_filename,
+			 const char *output_filename);
+
+
+/**
+ * Run `taler-auditor-dbinit -r` (reset auditor database).
+ *
+ * @param config_filename configuration file to use
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_auditor_db_reset (const char *config_filename);
+
+
+/**
+ * Run `taler-exchange-dbinit -r` (reset exchange database).
+ *
+ * @param config_filename configuration file to use
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_exchange_db_reset (const char *config_filename);
+
+
+/**
+ * Run `taler-auditor-sign`.
+ *
+ * @param config_filename configuration file to use
+ * @param exchange_master_pub master public key of the exchange
+ * @param auditor_base_url what is the base URL of the auditor
+ * @param signdata_in where is the information from taler-exchange-keyup
+ * @param signdata_out where to write the output for the exchange
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_run_auditor_sign (const char *config_filename,
+				const char *exchange_master_pub,
+				const char *auditor_base_url,
+				const char *signdata_in,
+				const char *signdata_out);
 
 
 /**

@@ -66,6 +66,13 @@ static char *fakebank_url;
 static char *exchange_url;
 
 /**
+ * Auditor base URL as it appears in the configuration.  Note
+ * that it might differ from the one where the auditor actually
+ * listens from.
+ */
+static char *auditor_url;
+
+/**
  * Account number of the exchange at the bank.
  */
 #define EXCHANGE_ACCOUNT_NO 2
@@ -941,7 +948,8 @@ main (int argc,
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-                                          &exchange_url))
+                                          &auditor_url,
+					  &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);
