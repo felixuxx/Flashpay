@@ -399,11 +399,11 @@ do_prepare (void *cls)
   len_o = strlen (pth->origin_account_url) + 1;
   len_i = strlen (pth->destination_account_url) + 1;
   len_b = strlen (pth->exchange_base_url) + 1;
+  len_au = 0;
+  len_ap = 0;
   switch (pth->auth.method)
   {
   case TALER_BANK_AUTH_NONE:
-    len_au = 0;
-    len_ap = 0;
     break;
   case TALER_BANK_AUTH_BASIC:
     len_au = strlen (pth->auth.details.basic.username) + 1;
