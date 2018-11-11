@@ -40,7 +40,8 @@ libtalerauditortesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalerauditortesting_la_SOURCES = \
-  testing_auditor_api_helpers.c 
+  testing_auditor_api_cmd_exec_auditor.c \
+  testing_auditor_api_cmd_exec_wire_auditor.c
 libtalerauditortesting_la_LIBADD = \
   libtalerauditor.la \
   $(top_builddir)/src/exchange-lib/libtalerexchange.la \
