@@ -540,7 +540,7 @@ struct TALER_AUDITORDB_Plugin
 
 
   /**
-   * Get information about a deposit confirmations from the database.
+   * Get information about deposit confirmations from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database

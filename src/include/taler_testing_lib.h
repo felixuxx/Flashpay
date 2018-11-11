@@ -213,6 +213,22 @@ TALER_TESTING_run_auditor_sign (const char *config_filename,
 
 
 /**
+ * Run `taler-auditor-exchange`.
+ *
+ * @param config_filename configuration file to use
+ * @param exchange_master_pub master public key of the exchange
+ * @param exchange_base_url what is the base URL of the exchange
+ * @param do_remove #GNUNET_NO to add exchange, #GNUNET_YES to remove
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_run_auditor_exchange (const char *config_filename,
+                                    const char *exchange_master_pub,
+                                    const char *exchange_base_url,
+                                    int do_remove);
+
+
+/**
  * Test port in URL string for availability.
  */
 int
@@ -565,6 +581,42 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
 
 
 /**
+ * Closure for #TALER_TESTING_setup_with_exchange_cfg().
+ */
+struct TALER_TESTING_SetupContext
+{
+  /**
+   * Main function of the test to run.
+   */
+  TALER_TESTING_Main main_cb;
+
+  /**
+   * Closure for @e main_cb.
+   */
+  void *main_cb_cls;
+
+  /**
+   * Name of the configuration file.
+   */
+  const char *config_filename;
+};
+
+
+/**
+ * Initialize scheduler loop and curl context for the test case
+ * including starting and stopping the exchange using the given
+ * configuration file.
+ *
+ * @param cls must be a `struct TALER_TESTING_SetupContext *`
+ * @param cfg configuration to use.
+ * @return #GNUNET_OK if no errors occurred.
+ */
+int
+TALER_TESTING_setup_with_exchange_cfg (void *cls,
+                                       const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
  * Initialize scheduler loop and curl context for the test case
  * including starting and stopping the exchange using the given
  * configuration file.
@@ -583,6 +635,44 @@ int
 TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                    void *main_cb_cls,
                                    const char *config_file);
+
+
+/**
+ * Initialize scheduler loop and curl context for the test case
+ * including starting and stopping the auditor and exchange using the
+ * given configuration file.
+ *
+ * @param cls must be a `struct TALER_TESTING_SetupContext *`
+ * @param cfg configuration to use.
+ * @return #GNUNET_OK if no errors occurred.
+ */
+int
+TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
+                                                   const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Initialize scheduler loop and curl context for the test case
+ * including starting and stopping the auditor and exchange using the
+ * given configuration file.
+ *
+ * @param main_cb main method.
+ * @param main_cb_cls main method closure.
+ * @param config_filename configuration file name.  Is is used
+ *        by both this function and the exchange itself.  In the
+ *        first case it gives out the exchange port number and
+ *        the exchange base URL so as to check whether the port
+ *        is available and the exchange responds when requested
+ *        at its base URL.
+ * @return #GNUNET_OK if no errors occurred.
+ */
+int
+TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
+                                               void *main_cb_cls,
+                                               const char *config_file);
+
+
+
 
 /* ************** Specific interpreter commands ************ */
 

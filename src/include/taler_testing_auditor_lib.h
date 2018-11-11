@@ -36,42 +36,4 @@
 /* ********************* Helper functions ********************* */
 
 
-/**
- * Wait for the auditor to have started. Waits for at
- * most 10s, after that returns 77 to indicate an error.
- *
- * @param base_url what URL should we expect the exchange
- *        to be running at
- * @return 0 on success
- */
-int
-TALER_TESTING_AUDITOR_wait_auditor_ready (const char *base_url);
-
-
-/**
- * Remove files from previous runs
- */
-void
-TALER_TESTING_AUDITOR_cleanup_files (const char *config_name);
-
-
-/**
- * Initialize scheduler loop and curl context for the testcase
- * including starting and stopping the auditor and exchange using the
- * given configuration file.
- *
- * @param main_cb routine containing all the commands to run.
- * @param main_cb_cls closure for @a main_cb, typically NULL.
- * @param config_file configuration file for the test-suite.
- *
- * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
- *         non-#GNUNET_OK codes are #GNUNET_SYSERR most of the
- *         time.
- */
-int
-TALER_TESTING_AUDITOR_setup_with_auditor (TALER_TESTING_Main main_cb,
-					  void *main_cb_cls,
-					  const char *config_filename);
-
-
 #endif
