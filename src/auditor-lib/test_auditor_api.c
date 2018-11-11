@@ -166,7 +166,7 @@ main (int argc,
                = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
                                                  "account-2")))
     return 77;
-  TALER_TESTING_AUDITOR_cleanup_files (CONFIG_FILE);
+  TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
@@ -185,9 +185,9 @@ main (int argc,
          * start/stop the exchange.  It calls TALER_TESTING_setup
          * which creates the 'is' object.
          */
-        TALER_TESTING_AUDITOR_setup_with_auditor (&run,
-						  NULL,
-						  CONFIG_FILE))
+        TALER_TESTING_setup_with_auditor_and_exchange (&run,
+                                                       NULL,
+                                                       CONFIG_FILE))
       return 1;
     break;
   default:

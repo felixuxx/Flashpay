@@ -36,6 +36,6 @@
  * @param url URL to query
  */
 CURL *
-TEL_curl_easy_get (char *url);
+TEL_curl_easy_get (const char *url);
 
 #endif /* _TALER_CURL_DEFAULTS_H */
