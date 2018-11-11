@@ -281,6 +281,11 @@ struct TALER_TESTING_Interpreter
   struct GNUNET_CURL_Context *ctx;
 
   /**
+   * Our configuration.
+   */
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
    * Context for running the CURL event loop.
    */
   struct GNUNET_CURL_RescheduleContext *rc;
@@ -295,6 +300,16 @@ struct TALER_TESTING_Interpreter
    * Task run on timeout.
    */
   struct GNUNET_SCHEDULER_Task *timeout_task;
+
+  /**
+   * Function to call for cleanup at the end. Can be NULL.
+   */
+  GNUNET_SCHEDULER_TaskCallback final_cleanup_cb;
+
+  /**
+   * Closure for #final_cleanup_cb().
+   */
+  void *final_cleanup_cb_cls;
 
   /**
    * Instruction pointer.  Tells #interpreter_run() which
@@ -315,6 +330,13 @@ struct TALER_TESTING_Interpreter
   struct TALER_EXCHANGE_Handle *exchange;
 
   /**
+   * Handle to the auditor.  NULL unless specifically initialized
+   * as part of libtalertestingauditor's
+   * #TALER_TESTING_AUDITOR_main_wrapper().
+   */
+  struct TALER_AUDITOR_Handle *auditor;
+
+  /**
    * Handle to exchange process; some commands need it
    * to send signals.  E.g. to trigger the key state reload.
    */
@@ -332,6 +354,12 @@ struct TALER_TESTING_Interpreter
    * for /keys (#GNUNET_NO)?
    */
   int working;
+
+  /**
+   * Is the auditor running (#GNUNET_YES) or waiting
+   * for /version (#GNUNET_NO)?
+   */
+  int auditor_working;
 
   /**
    * How often have we gotten a /keys response so far?

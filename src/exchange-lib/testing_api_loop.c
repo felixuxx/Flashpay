@@ -675,22 +675,16 @@ do_abort (void *cls)
  * Initialize scheduler loop and curl context for the testcase,
  * and responsible to run the "run" method.
  *
- * @param cls closure, typically the "run" method, the
- *        interpreter state and a closure for "run".
+ * @param cls a `struct MainContext *`
+ * @param cfg configuration to use
  */
-static void
-main_wrapper_exchange_connect (void *cls)
+static int
+main_exchange_connect_with_cfg (void *cls,
+                                const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
-  struct GNUNET_CONFIGURATION_Handle *cfg;
   char *exchange_url;
-
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_load (cfg,
-                                 main_ctx->config_filename))
-    return;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -701,19 +695,38 @@ main_wrapper_exchange_connect (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return;
+    return GNUNET_SYSERR;
   }
   main_ctx->exchange_url = exchange_url;
+  is->cfg = cfg;
   is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
 						    main_ctx);
-  GNUNET_assert (NULL !=
-                 (is->exchange = TALER_EXCHANGE_connect (is->ctx,
-                                                         exchange_url,
-                                                         &cert_cb,
-                                                         main_ctx,
-                                                         TALER_EXCHANGE_OPTION_END)));
-  GNUNET_CONFIGURATION_destroy (cfg);
+  GNUNET_break (NULL !=
+                (is->exchange = TALER_EXCHANGE_connect (is->ctx,
+                                                        exchange_url,
+                                                        &cert_cb,
+                                                        main_ctx,
+                                                        TALER_EXCHANGE_OPTION_END)));
+  is->cfg = NULL;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Initialize scheduler loop and curl context for the testcase,
+ * and responsible to run the "run" method.
+ *
+ * @param cls a `struct MainContext *`
+ */
+static void
+main_wrapper_exchange_connect (void *cls)
+{
+  struct MainContext *main_ctx = cls;
+
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_CONFIGURATION_parse_and_run (main_ctx->config_filename,
+                                                    &main_exchange_connect_with_cfg,
+                                                    main_ctx));
 }
 
 
@@ -721,7 +734,7 @@ main_wrapper_exchange_connect (void *cls)
  * Install signal handlers plus schedules the main wrapper
  * around the "run" method.
  *
- * @param main_cb the "run" method which coontains all the
+ * @param main_cb the "run" method which contains all the
  *        commands.
  * @param main_cb_cls a closure for "run", typically NULL.
  * @param config_filename configuration filename.
@@ -730,8 +743,8 @@ main_wrapper_exchange_connect (void *cls)
  *        signal to it, for example to let it know to reload the
  *        key state.. if NULL, the interpreter will run without
  *        trying to connect to the exchange first.
- * @param exchange_connect GNUNET_YES if the test should connect
- *        to the exchange, GNUNET_NO otherwise
+ * @param exchange_connect #GNUNET_YES if the test should connect
+ *        to the exchange, #GNUNET_NO otherwise
  * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
  *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         times.
@@ -779,11 +792,12 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   else
      GNUNET_SCHEDULER_run (&main_wrapper_exchange_agnostic,
                            &main_ctx);
+  if (NULL != is.final_cleanup_cb)
+    is.final_cleanup_cb (is.final_cleanup_cb_cls);
   GNUNET_free_non_null (main_ctx.exchange_url);
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   GNUNET_DISK_pipe_close (sigpipe);
   sigpipe = NULL;
-
   return is.result;
 }
 

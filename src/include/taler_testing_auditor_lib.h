@@ -36,4 +36,22 @@
 /* ********************* Helper functions ********************* */
 
 
+/**
+ * Install signal handlers plus schedules the main wrapper
+ * around the "run" method.
+ *
+ * @param main_cb the "run" method which contains all the
+ *        commands.
+ * @param main_cb_cls a closure for "run", typically NULL.
+ * @param config_filename configuration filename.
+ * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
+ *         times.
+ */
+int
+TALER_TESTING_AUDITOR_setup (TALER_TESTING_Main main_cb,
+                             void *main_cb_cls,
+                             const char *config_filename);
+
+
 #endif
