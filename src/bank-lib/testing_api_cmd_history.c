@@ -116,6 +116,7 @@ struct History
  */
 extern struct TALER_BANK_AuthenticationData AUTHS[];
 
+
 /**
  * Offer internal data to other commands.
  *
@@ -128,7 +129,7 @@ extern struct TALER_BANK_AuthenticationData AUTHS[];
  */
 static int
 history_traits (void *cls,
-                void **ret,
+                const void **ret,
                 const char *trait,
                 unsigned int index)
 {

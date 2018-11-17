@@ -259,7 +259,7 @@ fakebank_transfer_run (void *cls,
     if (NULL != fts->reserve_reference)
     {
       const struct TALER_TESTING_Command *ref;
-      struct TALER_ReservePrivateKeyP *reserve_priv;
+      const struct TALER_ReservePrivateKeyP *reserve_priv;
 
       ref = TALER_TESTING_interpreter_lookup_command
         (is, fts->reserve_reference);
@@ -414,12 +414,11 @@ fakebank_transfer_cleanup (void *cls,
  * @param ret[out] result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
 static int
 fakebank_transfer_traits (void *cls,
-                          void **ret,
+                          const void **ret,
                           const char *trait,
                           unsigned int index)
 {

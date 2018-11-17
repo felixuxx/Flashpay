@@ -53,12 +53,11 @@ TALER_TESTING_trait_end ()
  * @param ret where to store the result.
  * @param trait type of the trait to extract.
  * @param index index number of the object to extract.
- *
- * @return GNUNET_OK if no error occurred, GNUNET_SYSERR otherwise.
+ * @return #GNUNET_OK if no error occurred, #GNUNET_SYSERR otherwise.
  */
 int
 TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
-                         void **ret,
+                         const void **ret,
                          const char *trait,
                          unsigned int index)
 {

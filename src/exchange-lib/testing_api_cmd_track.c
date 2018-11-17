@@ -219,7 +219,8 @@ deposit_wtid_cb
       /* expected wire transfer subject line.  */
       const char *transfer_subject;
 
-      if (GNUNET_OK != TALER_TESTING_get_trait_transfer_subject
+      if (GNUNET_OK !=
+	  TALER_TESTING_get_trait_transfer_subject
         (bank_transfer_cmd, 0, &transfer_subject))
       {
         GNUNET_break (0);
@@ -393,12 +394,11 @@ track_transaction_cleanup
  */
 static int
 track_transaction_traits (void *cls,
-                          void **ret,
+                          const void **ret,
                           const char *trait,
                           unsigned int index)
 {
   struct TrackTransactionState *tts = cls;
-
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_wtid (0, &tts->wtid),
     TALER_TESTING_trait_end ()
@@ -409,6 +409,7 @@ track_transaction_traits (void *cls,
                                   trait,
                                   index);
 }
+
 
 /**
  * Create a "track transaction" command.
@@ -698,7 +699,7 @@ track_transfer_run (void *cls,
   /* looking for a wtid to track .. */
   struct TrackTransferState *tts = cls;
   struct TALER_WireTransferIdentifierRawP wtid;
-  struct TALER_WireTransferIdentifierRawP *wtid_ptr;
+  const struct TALER_WireTransferIdentifierRawP *wtid_ptr;
 
   /* If no reference is given, we'll use a all-zeros
    * WTID */

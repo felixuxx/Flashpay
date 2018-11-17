@@ -183,7 +183,7 @@ auditor_sign_cleanup (void *cls,
  */
 static int
 auditor_sign_traits (void *cls,
-                     void **ret,
+                     const void **ret,
                      const char *trait,
                      unsigned int index)
 {

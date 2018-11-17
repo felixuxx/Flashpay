@@ -134,7 +134,7 @@ payback_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = ps->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct TALER_TESTING_Command *reserve_cmd;
-  struct TALER_ReservePrivateKeyP *reserve_priv;
+  const struct TALER_ReservePrivateKeyP *reserve_priv;
   struct TALER_ReservePublicKeyP rp;
   struct TALER_Amount expected_amount;
 
@@ -225,9 +225,9 @@ payback_run (void *cls,
   struct PaybackState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
-  struct TALER_DenominationBlindingKeyP *blinding_key;
+  const struct TALER_DenominationBlindingKeyP *blinding_key;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
-  struct TALER_DenominationSignature *coin_sig;
+  const struct TALER_DenominationSignature *coin_sig;
   struct TALER_PlanchetSecretsP planchet;
 
   ps->is = is;
@@ -349,13 +349,12 @@ payback_cleanup (void *cls,
  */
 static int
 revoke_traits (void *cls,
-               void **ret,
+               const void **ret,
                const char *trait,
                unsigned int index)
 {
 
   struct RevokeState *rs = cls;
-
   struct TALER_TESTING_Trait traits[] = {
     /* Needed by the handler which waits the proc'
      * death and calls the next command */

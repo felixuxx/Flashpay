@@ -43,7 +43,6 @@
  * @param index contract terms index number.
  * @param contract_terms[out] where to write the contract
  *        terms.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -53,7 +52,7 @@ TALER_TESTING_get_trait_contract_terms
    const char **contract_terms)
 {
   return cmd->traits (cmd->cls,
-                      (void **) contract_terms,
+                      (const void **) contract_terms,
                       TALER_TESTING_TRAIT_CONTRACT_TERMS,
                       index);
 }
@@ -63,7 +62,6 @@ TALER_TESTING_get_trait_contract_terms
  *
  * @param index contract terms index number.
  * @param contract_terms contract terms to offer.
- * 
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -88,7 +86,6 @@ TALER_TESTING_make_trait_contract_terms
  *        subject to offer.
  * @param transfer_subject[out] where to write the offered
  *        transfer subject.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -98,7 +95,7 @@ TALER_TESTING_get_trait_transfer_subject
    const char **transfer_subject)
 {
   return cmd->traits (cmd->cls,
-                      (void **) transfer_subject,
+                      (const void **) transfer_subject,
                       TALER_TESTING_TRAIT_TRANSFER_SUBJECT,
                       index);
 }
@@ -143,7 +140,7 @@ TALER_TESTING_get_trait_amount
    const char **amount)
 {
   return cmd->traits (cmd->cls,
-                      (void **) amount,
+                      (const void **) amount,
                       TALER_TESTING_TRAIT_AMOUNT,
                       index);
 }
@@ -188,7 +185,7 @@ TALER_TESTING_get_trait_url
    const char **url)
 {
   return cmd->traits (cmd->cls,
-                      (void **) url,
+                      (const void **) url,
                       TALER_TESTING_TRAIT_URL,
                       index);
 }
@@ -233,7 +230,7 @@ TALER_TESTING_get_trait_order_id
    const char **order_id)
 {
   return cmd->traits (cmd->cls,
-                      (void **) order_id,
+                      (const void **) order_id,
                       TALER_TESTING_TRAIT_ORDER_ID,
                       index);
 }
@@ -278,7 +275,7 @@ TALER_TESTING_get_trait_rejected
    const char **rejected_reference)
 {
   return cmd->traits (cmd->cls,
-                      (void **) rejected_reference,
+                      (const void **) rejected_reference,
                       TALER_TESTING_TRAIT_REJECTED,
                       index);
 }

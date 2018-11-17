@@ -46,7 +46,7 @@ TALER_TESTING_get_trait_exchange_pub
    const struct TALER_ExchangePublicKeyP **exchange_pub)
 {
   return cmd->traits (cmd->cls,
-                      (void **) exchange_pub,
+                      (const void **) exchange_pub,
                       TALER_TESTING_TRAIT_EXCHANGE_PUB,
                       index);
 }

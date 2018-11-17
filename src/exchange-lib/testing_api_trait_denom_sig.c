@@ -39,21 +39,19 @@
  * @param cmd command to extract the denom sig from.
  * @param index index number associated with the denom sig.
  * @param denom_sig[out] set to the offered signature.
- *
  * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_denom_sig
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_DenominationSignature **denom_sig)
+   const struct TALER_DenominationSignature **denom_sig)
 {
   return cmd->traits (cmd->cls,
-                      (void **) denom_sig,
+                      (const void **) denom_sig,
                       TALER_TESTING_TRAIT_DENOM_SIG,
                       index);
 }
-
 
 
 /**
@@ -62,7 +60,6 @@ TALER_TESTING_get_trait_denom_sig
  * @param index index number to associate to the signature on
  *        offer.
  * @param denom_sig the denom sig on offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

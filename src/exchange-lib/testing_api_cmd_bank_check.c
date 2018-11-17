@@ -196,12 +196,11 @@ check_bank_transfer_cleanup
  * @param ret[out] result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
 static int
 check_bank_transfer_traits (void *cls,
-                            void **ret,
+                            const void **ret,
                             const char *trait,
                             unsigned int index)
 {
@@ -316,12 +315,13 @@ check_bank_empty_run (void *cls,
  */
 static int
 check_bank_empty_traits (void *cls,
-                         void **ret,
+                         const void **ret,
                          const char *trait,
                          unsigned int index)
 {
   return GNUNET_SYSERR;
 }                         
+
 
 /**
  * Checks wheter all the wire transfers got "checked"

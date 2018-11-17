@@ -49,7 +49,7 @@ TALER_TESTING_get_trait_amount_obj
    const struct TALER_Amount **amount)
 {
   return cmd->traits (cmd->cls,
-                      (void **) amount,
+                      (const void **) amount,
                       TALER_TESTING_TRAIT_AMOUNT,
                       index);
 }

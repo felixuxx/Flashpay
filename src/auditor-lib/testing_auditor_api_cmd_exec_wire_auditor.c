@@ -114,12 +114,11 @@ wire_auditor_cleanup (void *cls,
  * @param ret[out] result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
 static int
 wire_auditor_traits (void *cls,
-                     void **ret,
+                     const void **ret,
                      const char *trait,
                      unsigned int index)
 {

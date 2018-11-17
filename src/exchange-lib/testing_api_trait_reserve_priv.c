@@ -38,17 +38,16 @@
  * @param cmd command to extract the reserve priv from.
  * @param index reserve priv's index number.
  * @param reserve_priv[out] set to the reserve priv.
- *
  * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_reserve_priv
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_ReservePrivateKeyP **reserve_priv)
+   const struct TALER_ReservePrivateKeyP **reserve_priv)
 {
   return cmd->traits (cmd->cls,
-                      (void **) reserve_priv,
+                      (const void **) reserve_priv,
                       TALER_TESTING_TRAIT_RESERVE_PRIVATE_KEY,
                       index);
 }
@@ -59,7 +58,6 @@ TALER_TESTING_get_trait_reserve_priv
  *
  * @param index reserve priv's index number.
  * @param reserve_priv reserve private key to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

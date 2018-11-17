@@ -51,7 +51,7 @@ TALER_TESTING_get_trait_process
    struct GNUNET_OS_Process ***processp)
 {
   return cmd->traits (cmd->cls,
-                      (void **) processp,
+                      (const void **) processp,
                       TALER_TESTING_TRAIT_PROCESS,
                       index);
 }

@@ -46,7 +46,7 @@ TALER_TESTING_get_trait_exchange_sig
    const struct TALER_ExchangeSignatureP **exchange_sig)
 {
   return cmd->traits (cmd->cls,
-                      (void **) exchange_sig,
+                      (const void **) exchange_sig,
                       TALER_TESTING_TRAIT_EXCHANGE_SIG,
                       index);
 }

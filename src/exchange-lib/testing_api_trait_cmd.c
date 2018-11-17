@@ -50,10 +50,11 @@ TALER_TESTING_get_trait_cmd
    struct TALER_TESTING_Command **_cmd)
 {
   return cmd->traits (cmd->cls,
-                      (void **) _cmd,
+                      (const void **) _cmd,
                       TALER_TESTING_TRAIT_CMD,
                       index);
 }
+
 
 /**
  * Offer a command in a trait.
@@ -63,7 +64,6 @@ TALER_TESTING_get_trait_cmd
  *        example, a "meta" CMD returns always the
  *        CMD currently being executed.
  * @param cmd wire details to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

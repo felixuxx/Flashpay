@@ -121,7 +121,7 @@ keyup_cleanup (void *cls,
  */
 static int
 keyup_traits (void *cls,
-              void **ret,
+              const void **ret,
               const char *trait,
               unsigned int index)
 {

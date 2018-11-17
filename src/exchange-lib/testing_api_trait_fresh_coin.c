@@ -38,20 +38,20 @@
  * @param index which array to pick if @a cmd has multiple
  *        on offer.
  * @param fresh_coins[out] will point to the offered array.
- *
  * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_fresh_coins
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct FreshCoin **fresh_coins)
+   const struct FreshCoin **fresh_coins)
 {
   return cmd->traits (cmd->cls,
-                      (void **) fresh_coins,
+                      (const void **) fresh_coins,
                       TALER_TESTING_TRAIT_FRESH_COINS,
                       index);
 }
+
 
 /**
  * Offer a _array_ of fresh coins.

@@ -40,7 +40,6 @@
  * @param index (tipically zero) which key to return if there
  *        are multiple on offer.
  * @param priv[out] set to the key coming from @a cmd.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -50,7 +49,7 @@ TALER_TESTING_get_trait_peer_key
    const struct GNUNET_CRYPTO_EddsaPrivateKey **priv)
 {
   return cmd->traits (cmd->cls,
-                      (void **) priv,
+                      (const void **) priv,
                       TALER_TESTING_TRAIT_KEY_PEER,
                       index);
 }
@@ -62,13 +61,12 @@ TALER_TESTING_get_trait_peer_key
  * @param index (tipically zero) which key to return if there are
  *        multiple on offer.
  * @param priv which object should be offered.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key
   (unsigned int index,
-   struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
+   const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -97,7 +95,7 @@ TALER_TESTING_get_trait_peer_key_pub
    const struct GNUNET_CRYPTO_EddsaPublicKey **pub)
 {
   return cmd->traits (cmd->cls,
-                      (void **) pub,
+                      (const void **) pub,
                       TALER_TESTING_TRAIT_KEY_PEER_PUB,
                       index);
 }

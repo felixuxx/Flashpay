@@ -533,7 +533,7 @@ link_cb (void *cls,
   struct TALER_TESTING_Command *link_cmd
     = &rls->is->commands[rls->is->ip];
   unsigned int found;
-  unsigned int *num_fresh_coins;
+  const unsigned int *num_fresh_coins;
 
   rls->rlh = NULL;
   if (rls->expected_response_code != http_status)
@@ -613,7 +613,7 @@ link_cb (void *cls,
     found = 0;
 
     /* Will point to the pointer inside the cmd state. */
-    struct FreshCoin *fc = NULL;
+    const struct FreshCoin *fc = NULL;
 
     if (GNUNET_OK != TALER_TESTING_get_trait_fresh_coins
       (reveal_cmd, 0, &fc))
@@ -906,7 +906,7 @@ refresh_melt_run (void *cls,
     const struct TALER_CoinSpendPrivateKeyP *melt_priv;
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
-    struct TALER_DenominationSignature *melt_sig;
+    const struct TALER_DenominationSignature *melt_sig;
     const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
 
     const struct MeltDetails *md = &rms->melted_coin;
@@ -1051,7 +1051,7 @@ refresh_melt_cleanup (void *cls,
  */
 static int
 refresh_melt_traits (void *cls,
-                     void **ret,
+                     const void **ret,
                      const char *trait,
                      unsigned int index)
 {
@@ -1184,7 +1184,7 @@ TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd)
  */
 static int
 refresh_reveal_traits (void *cls,
-                       void **ret,
+                       const void **ret,
                        const char *trait,
                        unsigned int index)
 {

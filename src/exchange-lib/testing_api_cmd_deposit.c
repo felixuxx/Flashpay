@@ -249,7 +249,7 @@ deposit_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
-  struct TALER_DenominationSignature *denom_pub_sig;
+  const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Absolute refund_deadline;
   struct GNUNET_TIME_Absolute wire_deadline;
@@ -443,7 +443,7 @@ deposit_cleanup (void *cls,
  */
 static int
 deposit_traits (void *cls,
-                void **ret,
+                const void **ret,
                 const char *trait,
                 unsigned int index)
 {

@@ -245,7 +245,7 @@ withdraw_run (void *cls,
               struct TALER_TESTING_Interpreter *is)
 {
   struct WithdrawState *ws = cls;
-  struct TALER_ReservePrivateKeyP *rp;
+  const struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
 
   (void) cmd;
@@ -333,13 +333,13 @@ withdraw_cleanup (void *cls,
  */
 static int
 withdraw_traits (void *cls,
-                 void **ret,
+                 const void **ret,
                  const char *trait,
                  unsigned int index)
 {
   struct WithdrawState *ws = cls;
   const struct TALER_TESTING_Command *reserve_cmd;
-  struct TALER_ReservePrivateKeyP *reserve_priv;
+  const struct TALER_ReservePrivateKeyP *reserve_priv;
 
   /* We offer the reserve key where these coins were withdrawn
    * from. */

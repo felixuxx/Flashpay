@@ -166,7 +166,7 @@ reject_run (void *cls,
  */
 static int
 reject_traits (void *cls,
-               void **ret,
+               const void **ret,
                const char *trait,
                unsigned int index)
 {

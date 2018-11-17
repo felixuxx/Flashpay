@@ -38,21 +38,19 @@
  * @param cmd command to extract the number from.
  * @param index the number's index number.
  * @param n[out] set to the number coming from @a cmd.
- *
  * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_uint
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   unsigned int **n)
+   const unsigned int **n)
 {
   return cmd->traits (cmd->cls,
-                      (void **) n,
+                      (const void **) n,
                       TALER_TESTING_TRAIT_UINT,
                       index);
 }
-
 
 
 /**
@@ -60,7 +58,6 @@ TALER_TESTING_get_trait_uint
  *
  * @param index the number's index number.
  * @param n the number to offer.
- *
  * @return #GNUNET_OK on success.
  */
 struct TALER_TESTING_Trait
@@ -92,7 +89,7 @@ TALER_TESTING_get_trait_uint64
    const uint64_t **n)
 {
   return cmd->traits (cmd->cls,
-                      (void **) n,
+                      (const void **) n,
                       TALER_TESTING_TRAIT_UINT64,
                       index);
 }

@@ -39,7 +39,6 @@
  * @param cmd command to extract trait from.
  * @param index index of the coin priv to obtain.
  * @param coin_priv[out] set to the private key of the coin.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -49,11 +48,10 @@ TALER_TESTING_get_trait_coin_priv
    const struct TALER_CoinSpendPrivateKeyP **coin_priv)
 {
   return cmd->traits (cmd->cls,
-                      (void **) coin_priv,
+                      (const void **) coin_priv,
                       TALER_TESTING_TRAIT_COIN_PRIVATE_KEY,
                       index);
 }
-
 
 
 /**
@@ -61,7 +59,6 @@ TALER_TESTING_get_trait_coin_priv
  *
  * @param index index number to associate with offered coin priv.
  * @param coin_priv coin private key to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

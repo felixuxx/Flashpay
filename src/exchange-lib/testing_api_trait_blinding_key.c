@@ -45,10 +45,10 @@ int
 TALER_TESTING_get_trait_blinding_key
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   struct TALER_DenominationBlindingKeyP **blinding_key)
+   const struct TALER_DenominationBlindingKeyP **blinding_key)
 {
   return cmd->traits (cmd->cls,
-                      (void **) blinding_key,
+                      (const void **) blinding_key,
                       TALER_TESTING_TRAIT_BLINDING_KEY,
                       index);
 }

@@ -368,6 +368,7 @@ maint_child_death (void *cls)
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command *batch_cmd;
+    
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_get_trait_cmd
         (cmd, 0, &batch_cmd)); /* bad? */

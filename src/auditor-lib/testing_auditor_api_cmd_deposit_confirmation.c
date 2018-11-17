@@ -311,6 +311,28 @@ deposit_confirmation_cleanup (void *cls,
 
 
 /**
+ * Offer internal data to other commands.
+ *
+ * @param cls closure.
+ * @param ret[out] set to the wanted data.
+ * @param trait name of the trait.
+ * @param index index number of the traits to be returned.
+ *
+ * @return #GNUNET_OK on success
+ */
+static int
+deposit_confirmation_traits (void *cls,
+			     const void **ret,
+			     const char *trait,
+			     unsigned int index)
+{
+  /* Must define this function because some callbacks
+   * look for certain traits on _all_ the commands. */
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Create a "deposit-confirmation" command.
  *
  * @param label command label.
@@ -346,7 +368,8 @@ TALER_TESTING_cmd_deposit_confirmation
   cmd.label = label;
   cmd.run = &deposit_confirmation_run;
   cmd.cleanup = &deposit_confirmation_cleanup;
-
+  cmd.traits = &deposit_confirmation_traits;
+  
   return cmd;
 }
 

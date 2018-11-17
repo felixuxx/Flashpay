@@ -150,7 +150,7 @@ status_run (void *cls,
 {
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
-  struct TALER_ReservePrivateKeyP *reserve_priv;
+  const struct TALER_ReservePrivateKeyP *reserve_priv;
   struct TALER_ReservePublicKeyP reserve_pub;
 
   ss->is = is;

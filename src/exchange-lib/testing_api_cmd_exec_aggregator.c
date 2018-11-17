@@ -114,12 +114,11 @@ aggregator_cleanup (void *cls,
  * @param ret[out] result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success
  */
 static int
 aggregator_traits (void *cls,
-                   void **ret,
+                   const void **ret,
                    const char *trait,
                    unsigned int index)
 {
@@ -142,7 +141,6 @@ aggregator_traits (void *cls,
  * @param label command label.
  * @param config_filename configuration file for the
  *                        aggregator to use.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command

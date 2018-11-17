@@ -39,7 +39,6 @@
  *        on offer; usually zero, as one command sticks to
  *        one bank account.
  * @param wire_details[out] where to write the wire details.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -49,10 +48,11 @@ TALER_TESTING_get_trait_wire_details
    const json_t **wire_details)
 {
   return cmd->traits (cmd->cls,
-                      (void **) wire_details,
+                      (const void **) wire_details,
                       TALER_TESTING_TRAIT_WIRE_DETAILS,
                       index);
 }
+
 
 /**
  * Offer wire details in a trait.
@@ -61,7 +61,6 @@ TALER_TESTING_get_trait_wire_details
  *        on offer; usually zero, as one command sticks to
  *        one bank account.
  * @param wire_details wire details to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
