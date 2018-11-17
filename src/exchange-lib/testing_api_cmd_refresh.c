@@ -715,7 +715,7 @@ refresh_link_run (void *cls,
     }
   }
 
-  struct TALER_CoinSpendPrivateKeyP *coin_priv;
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
     (coin_cmd, 0, &coin_priv))
   {
@@ -903,7 +903,7 @@ refresh_melt_run (void *cls,
     (num_fresh_coins,
      struct TALER_EXCHANGE_DenomPublicKey);
   {
-    struct TALER_CoinSpendPrivateKeyP *melt_priv;
+    const struct TALER_CoinSpendPrivateKeyP *melt_priv;
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
     struct TALER_DenominationSignature *melt_sig;

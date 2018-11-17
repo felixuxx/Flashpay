@@ -484,6 +484,19 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
                                              const struct GNUNET_HashCode *hc);
 
 
+/**
+ * Obtain meta data about an exchange (online) signing
+ * key.
+ *
+ * @param keys from where to obtain the meta data
+ * @param exchange_pub public key to lookup
+ * @return NULL on error (@a exchange_pub not known)
+ */
+const struct TALER_EXCHANGE_SigningPublicKey *
+TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *keys,
+					      const struct TALER_ExchangePublicKeyP *exchange_pub);
+
+
 /* *********************  /wire *********************** */
 
 

@@ -246,7 +246,7 @@ deposit_run (void *cls,
   struct DepositState *ds = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   struct TALER_TESTING_Command *this_cmd;
-  struct TALER_CoinSpendPrivateKeyP *coin_priv;
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   struct TALER_DenominationSignature *denom_pub_sig;
@@ -450,7 +450,7 @@ deposit_traits (void *cls,
   struct DepositState *ds = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   /* Will point to coin cmd internals. */
-  struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
+  const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
 
   coin_cmd = TALER_TESTING_interpreter_lookup_command
     (ds->is,

@@ -224,7 +224,7 @@ payback_run (void *cls,
 {
   struct PaybackState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
-  struct TALER_CoinSpendPrivateKeyP *coin_priv;
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_DenominationBlindingKeyP *blinding_key;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   struct TALER_DenominationSignature *coin_sig;

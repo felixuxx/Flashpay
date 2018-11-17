@@ -325,4 +325,29 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
 }
 
 
+/**
+ * Obtain meta data about an exchange (online) signing
+ * key.
+ *
+ * @param keys from where to obtain the meta data
+ * @param exchange_pub public key to lookup
+ * @return NULL on error (@a exchange_pub not known)
+ */
+const struct TALER_EXCHANGE_SigningPublicKey *
+TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *keys,
+					      const struct TALER_ExchangePublicKeyP *exchange_pub)
+{
+  for (unsigned int i=0;i<keys->num_sign_keys;i++)
+  {
+    const struct TALER_EXCHANGE_SigningPublicKey *spk;
+
+    spk = &keys->sign_keys[i];
+    if (0 == memcmp (exchange_pub,
+		     &spk->key,
+		     sizeof (struct TALER_ExchangePublicKeyP)))
+      return spk;
+  }
+  return NULL;
+}
+
 /* end of exchange_api_common.c */

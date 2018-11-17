@@ -259,14 +259,14 @@ deposit_wtid_cb
  * @param cmd the command to execute.
  * @param is the interpreter state.
  */
-void
+static void
 track_transaction_run (void *cls,
                        const struct TALER_TESTING_Command *cmd,
                        struct TALER_TESTING_Interpreter *is)
 {
   struct TrackTransactionState *tts = cls;
   const struct TALER_TESTING_Command *transaction_cmd;
-  struct TALER_CoinSpendPrivateKeyP *coin_priv;
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const char *contract_terms;
   const json_t *wire_details;

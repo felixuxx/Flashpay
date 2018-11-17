@@ -191,17 +191,15 @@ deposit_confirmation_run (void *cls,
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
   const struct TALER_Amount *amount_without_fee;
-  const struct TALER_CoinSpendPublicKeyP *coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_MerchantPublicKeyP *merchant_pub;
   const struct TALER_ExchangePublicKeyP *exchange_pub;
   const struct TALER_ExchangeSignatureP *exchange_sig;
-  const struct TALER_MasterPublicKeyP *master_pub;
-  struct GNUNET_TIME_Absolute ep_start;
-  struct GNUNET_TIME_Absolute ep_expire;
-  struct GNUNET_TIME_Absolute ep_end;
-  const struct TALER_MasterSignatureP *master_sig;
   const json_t *wire_details;
   const json_t *contract_terms;
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
+  const struct TALER_EXCHANGE_Keys *keys;
+  const struct TALER_EXCHANGE_SigningPublicKey *spk;
   
   dcs->is = is;
   this_cmd = &is->commands[is->ip]; // use this_cmd->label for logging!
@@ -225,7 +223,11 @@ deposit_confirmation_run (void *cls,
 		 TALER_TESTING_get_trait_exchange_sig (deposit_cmd,
 						       dcs->coin_index,
 						       &exchange_sig));
-
+  keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
+  GNUNET_assert (NULL != keys);
+  spk = TALER_EXCHANGE_get_exchange_signing_key_info (keys,
+						      exchange_pub);
+  
 #if 0  
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_contract_terms (deposit_cmd,
@@ -240,16 +242,13 @@ deposit_confirmation_run (void *cls,
 						       &wire_details));
   TALER_JSON_hash (wire_details,
 		   &h_wire);
-  
-#if 0
-  // FIXME: extract from deposit trait! 
-  /* Fixme: do prefer "interpreter fail" over assertions,
-   * as the former takes care of shutting down processes, too */
+
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_coin_priv (deposit_cmd,
-						    ds->coin_index,
+						    dcs->coin_index,
 						    &coin_priv));
-#endif
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &coin_pub.eddsa_pub);
   
   dcs->dc = TALER_AUDITOR_deposit_confirmation
     (dcs->auditor,
@@ -258,15 +257,15 @@ deposit_confirmation_run (void *cls,
      timestamp,
      refund_deadline,
      amount_without_fee,
-     coin_pub,
+     &coin_pub,
      merchant_pub,
      exchange_pub,
      exchange_sig,
-     master_pub,
-     ep_start,
-     ep_expire,
-     ep_end,
-     master_sig,
+     &keys->master_pub,
+     spk->valid_from,
+     spk->valid_until,
+     spk->valid_legal,
+     &spk->master_sig,
      &deposit_confirmation_cb,
      dcs);
 

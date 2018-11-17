@@ -143,7 +143,7 @@ refund_run (void *cls,
             struct TALER_TESTING_Interpreter *is)
 {
   struct RefundState *rs = cls;
-  struct TALER_CoinSpendPrivateKeyP *coin_priv;
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin;
   const char *contract_terms;
   struct GNUNET_HashCode h_contract_terms;
