@@ -489,6 +489,8 @@ deposit_traits (void *cls,
 					     ds->contract_terms),
     TALER_TESTING_make_trait_peer_key (0,
 				       &ds->merchant_priv.eddsa_priv),
+    TALER_TESTING_make_trait_amount (0,
+                                     ds->amount),
     TALER_TESTING_trait_end ()
   };
 

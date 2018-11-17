@@ -70,8 +70,8 @@ TALER_TESTING_cmd_exec_wire_auditor (const char *label,
  *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        deposits are implemented.
+ * @param amount_without_fee deposited amount without the fee
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -80,6 +80,7 @@ TALER_TESTING_cmd_deposit_confirmation
    struct TALER_AUDITOR_Handle *auditor,
    const char *deposit_reference,
    unsigned int coin_index,
+   const char *amount_without_fee,
    unsigned int expected_response_code);
 
 

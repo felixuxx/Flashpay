@@ -44,10 +44,16 @@ struct DepositConfirmationState
   const char *deposit_reference;
 
   /**
+   * What is the deposited amount without the fee (i.e. the
+   * amount we expect in the deposit confirmation)?
+   */
+  const char *amount_without_fee;
+
+  /**
    * Which coin of the @e deposit_reference should we confirm.
    */
   unsigned int coin_index;
-  
+
   /**
    * DepositConfirmation handle while operation is running.
    */
@@ -57,7 +63,7 @@ struct DepositConfirmationState
    * Auditor connection.
    */
   struct TALER_AUDITOR_Handle *auditor;
-  
+
   /**
    * Interpreter state.
    */
@@ -185,14 +191,14 @@ deposit_confirmation_run (void *cls,
 {
   struct DepositConfirmationState *dcs = cls;
   const struct TALER_TESTING_Command *deposit_cmd;
-  struct TALER_TESTING_Command *this_cmd;
   struct GNUNET_HashCode h_wire;
   struct GNUNET_HashCode h_contract_terms;
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
-  const struct TALER_Amount *amount_without_fee;
+  struct TALER_Amount amount_without_fee;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  const struct TALER_MerchantPublicKeyP *merchant_pub;
+  const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
+  struct TALER_MerchantPublicKeyP merchant_pub;
   const struct TALER_ExchangePublicKeyP *exchange_pub;
   const struct TALER_ExchangeSignatureP *exchange_sig;
   const json_t *wire_details;
@@ -200,9 +206,9 @@ deposit_confirmation_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
-  
+  const char *contract_terms_s;
+
   dcs->is = is;
-  this_cmd = &is->commands[is->ip]; // use this_cmd->label for logging!
   GNUNET_assert (NULL != dcs->deposit_reference);
   deposit_cmd
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -213,7 +219,6 @@ deposit_confirmation_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
 
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_exchange_pub (deposit_cmd,
@@ -227,15 +232,19 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (NULL != keys);
   spk = TALER_EXCHANGE_get_exchange_signing_key_info (keys,
 						      exchange_pub);
-  
-#if 0  
+
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_contract_terms (deposit_cmd,
 							 dcs->coin_index,
-							 &contract_terms));
+							 &contract_terms_s));
+  contract_terms = json_loads (contract_terms_s,
+                               JSON_REJECT_DUPLICATES,
+                               NULL);
+  /* Very unlikely to fail */
+  GNUNET_assert (NULL != contract_terms);
   TALER_JSON_hash (contract_terms,
 		   &h_contract_terms);
-#endif  
+  json_decref (contract_terms);
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_wire_details (deposit_cmd,
 						       dcs->coin_index,
@@ -249,16 +258,25 @@ deposit_confirmation_run (void *cls,
 						    &coin_priv));
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
-  
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_TESTING_get_trait_peer_key (deposit_cmd,
+                                                   dcs->coin_index,
+                                                   &merchant_priv));
+  GNUNET_CRYPTO_eddsa_key_get_public (merchant_priv,
+                                      &merchant_pub.eddsa_pub);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (dcs->amount_without_fee,
+                                         &amount_without_fee));
+
   dcs->dc = TALER_AUDITOR_deposit_confirmation
     (dcs->auditor,
      &h_wire,
      &h_contract_terms,
      timestamp,
      refund_deadline,
-     amount_without_fee,
+     &amount_without_fee,
      &coin_pub,
-     merchant_pub,
+     &merchant_pub,
      exchange_pub,
      exchange_sig,
      &keys->master_pub,
@@ -343,8 +361,8 @@ deposit_confirmation_traits (void *cls,
  *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        deposits are implemented.
+ * @param amount_without_fee deposited amount without the fee
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -353,6 +371,7 @@ TALER_TESTING_cmd_deposit_confirmation
    struct TALER_AUDITOR_Handle *auditor,
    const char *deposit_reference,
    unsigned int coin_index,
+   const char *amount_without_fee,
    unsigned int expected_response_code)
 {
   struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
@@ -362,6 +381,7 @@ TALER_TESTING_cmd_deposit_confirmation
   dcs->auditor = auditor;
   dcs->deposit_reference = deposit_reference;
   dcs->coin_index = coin_index;
+  dcs->amount_without_fee = amount_without_fee;
   dcs->expected_response_code = expected_response_code;
 
   cmd.cls = dcs;
@@ -369,7 +389,7 @@ TALER_TESTING_cmd_deposit_confirmation
   cmd.run = &deposit_confirmation_run;
   cmd.cleanup = &deposit_confirmation_cleanup;
   cmd.traits = &deposit_confirmation_traits;
-  
+
   return cmd;
 }
 

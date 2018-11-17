@@ -1937,7 +1937,6 @@ TALER_TESTING_make_trait_wire_details
  * @param index (tipically zero) which key to return if there
  *        are multiple on offer.
  * @param priv[out] set to the key coming from @a cmd.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -1945,6 +1944,8 @@ TALER_TESTING_get_trait_peer_key
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
    const struct GNUNET_CRYPTO_EddsaPrivateKey **priv);
+// FIXME: private get_trait_merchant_priv instead, rather have
+// more traits with precise types than this!
 
 
 /**
@@ -1960,6 +1961,8 @@ struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key
   (unsigned int index,
    const struct GNUNET_CRYPTO_EddsaPrivateKey *priv);
+// FIXME: private get_trait_merchant_priv instead, rather have
+// more traits with precise types than this!
 
 
 /**
