@@ -94,6 +94,32 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command cmd);
 
 
+/**
+ * Create a "list exchanges" command.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges
+  (const char *label,
+   struct TALER_AUDITOR_Handle *auditor,
+   unsigned int expected_response_code);
+
+
+/**
+ * Modify an exchanges command to enable retries when we get
+ * transient errors from the auditor.
+ *
+ * @param cmd a deposit confirmation command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges_with_retry (struct TALER_TESTING_Command cmd);
+
+
 /* ********************* Helper functions ********************* */
 
 

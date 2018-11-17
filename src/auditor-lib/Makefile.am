@@ -42,6 +42,7 @@ libtalerauditortesting_la_LDFLAGS = \
 libtalerauditortesting_la_SOURCES = \
   testing_auditor_api_helpers.c \
   testing_auditor_api_cmd_deposit_confirmation.c \
+  testing_auditor_api_cmd_exchanges.c \
   testing_auditor_api_cmd_exec_auditor.c \
   testing_auditor_api_cmd_exec_wire_auditor.c
 libtalerauditortesting_la_LIBADD = \
