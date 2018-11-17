@@ -65,6 +65,8 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_coin_priv.c \
   testing_api_trait_denom_pub.c \
   testing_api_trait_denom_sig.c \
+  testing_api_trait_exchange_pub.c \
+  testing_api_trait_exchange_sig.c \
   testing_api_trait_json.c \
   testing_api_trait_process.c \
   testing_api_trait_reserve_priv.c \

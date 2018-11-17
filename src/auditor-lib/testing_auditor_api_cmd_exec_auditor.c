@@ -137,11 +137,10 @@ auditor_traits (void *cls,
 
 
 /**
- * Make the "auditor" CMD.
+ * Make the "exec-auditor" CMD.
  *
  * @param label command label.
  * @param config_filename configuration filename.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command

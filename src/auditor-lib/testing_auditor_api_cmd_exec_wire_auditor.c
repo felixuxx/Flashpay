@@ -137,11 +137,10 @@ wire_auditor_traits (void *cls,
 
 
 /**
- * Make the "wire-auditor" CMD.
+ * Make the "exec wire-auditor" CMD.
  *
  * @param label command label.
  * @param config_filename configuration filename.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command

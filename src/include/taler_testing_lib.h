@@ -1539,6 +1539,64 @@ TALER_TESTING_get_trait_reserve_priv
 
 
 /**
+ * Make a trait for a exchange signature.
+ *
+ * @param index index number to associate to the offered exchange pub.
+ * @param exchange_sig exchange signature to offer with this trait.
+ *
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_exchange_sig
+  (unsigned int index,
+   const struct TALER_ExchangeSignatureP *exchange_sig);
+
+
+/**
+ * Obtain a exchange signature (online sig) from a @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index index number of the exchange to obtain.
+ * @param exchange_sig[out] set to the offered exchange signature.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_exchange_sig
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct TALER_ExchangeSignatureP **exchange_sig);
+
+
+/**
+ * Make a trait for a exchange public key.
+ *
+ * @param index index number to associate to the offered exchange pub.
+ * @param exchange_pub exchange pub to offer with this trait.
+ *
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_exchange_pub
+  (unsigned int index,
+   const struct TALER_ExchangePublicKeyP *exchange_pub);
+
+
+/**
+ * Obtain a exchange public key from a @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index index number of the exchange to obtain.
+ * @param exchange_pub[out] set to the offered exchange pub.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_exchange_pub
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct TALER_ExchangePublicKeyP **exchange_pub);
+
+
+/**
  * Obtain location where a command stores a pointer to a process.
  *
  * @param cmd command to extract trait from.
@@ -1798,6 +1856,7 @@ TALER_TESTING_get_trait_fresh_coins
    unsigned int index,
    struct FreshCoin **fresh_coins);
 
+
 /**
  * Obtain contract terms from @a cmd.
  *
@@ -1805,7 +1864,6 @@ TALER_TESTING_get_trait_fresh_coins
  * @param index contract terms index number.
  * @param contract_terms[out] where to write the contract
  *        terms.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -1814,12 +1872,12 @@ TALER_TESTING_get_trait_contract_terms
    unsigned int index,
    const char **contract_terms);
 
+
 /**
  * Offer contract terms.
  *
  * @param index contract terms index number.
  * @param contract_terms contract terms to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

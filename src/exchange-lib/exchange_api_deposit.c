@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2018 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -93,19 +93,19 @@ struct TALER_EXCHANGE_DepositHandle
  *
  * @param dh deposit handle
  * @param json json reply with the signature
- * @param exchange_pub set to the exchange's public key
+ * @param exchange_sig[out] set to the exchange's signature
+ * @param exchange_pub[out] set to the exchange's public key
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
                              const json_t *json,
+			     struct TALER_ExchangeSignatureP *exchange_sig,
                              struct TALER_ExchangePublicKeyP *exchange_pub)
 {
-  struct TALER_ExchangeSignatureP exchange_sig;
-
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("sig", exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
     GNUNET_JSON_spec_end()
   };
@@ -129,7 +129,7 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
                                   &dh->depconf.purpose,
-                                  &exchange_sig.eddsa_signature,
+                                  &exchange_sig->eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
@@ -158,9 +158,9 @@ verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *d
                              "history");
   if (GNUNET_OK !=
       TALER_EXCHANGE_verify_coin_history (dh->coin_value.currency,
-                                           &dh->depconf.coin_pub,
-                                           history,
-                                           &total))
+					  &dh->depconf.coin_pub,
+					  history,
+					  &total))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -201,7 +201,9 @@ handle_deposit_finished (void *cls,
                          const void *response)
 {
   struct TALER_EXCHANGE_DepositHandle *dh = cls;
+  struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP *es = NULL;
   struct TALER_ExchangePublicKeyP *ep = NULL;
   const json_t *j = response;
 
@@ -214,6 +216,7 @@ handle_deposit_finished (void *cls,
     if (GNUNET_OK !=
         verify_deposit_signature_ok (dh,
                                      j,
+				     &exchange_sig,
                                      &exchange_pub))
     {
       GNUNET_break_op (0);
@@ -221,6 +224,7 @@ handle_deposit_finished (void *cls,
     }
     else
     {
+      es = &exchange_sig;
       ep = &exchange_pub;
     }
     break;
@@ -263,6 +267,7 @@ handle_deposit_finished (void *cls,
   dh->cb (dh->cb_cls,
           response_code,
 	  TALER_JSON_get_error_code (j),
+	  es,
           ep,
           j);
   TALER_EXCHANGE_deposit_cancel (dh);

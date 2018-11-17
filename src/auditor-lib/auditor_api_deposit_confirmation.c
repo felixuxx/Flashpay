@@ -156,7 +156,7 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    const struct TALER_ExchangePublicKeyP *exchange_pub,
-                   const struct TALER_CoinSpendSignatureP *exchange_sig,
+                   const struct TALER_ExchangeSignatureP *exchange_sig,
                    const struct TALER_MasterPublicKeyP *master_pub,
                    struct GNUNET_TIME_Absolute ep_start,
                    struct GNUNET_TIME_Absolute ep_expire,
@@ -181,7 +181,7 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
                                   &dc.purpose,
                                   &exchange_sig->eddsa_signature,
                                   &exchange_pub->eddsa_pub))
-    {
+  {
     GNUNET_break_op (0);
     TALER_LOG_WARNING ("Invalid signature on /deposit-confirmation request!\n");
     {
@@ -261,7 +261,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct TALER_MerchantPublicKeyP *merchant_pub,
                                     const struct TALER_ExchangePublicKeyP *exchange_pub,
-                                    const struct TALER_CoinSpendSignatureP *exchange_sig,
+                                    const struct TALER_ExchangeSignatureP *exchange_sig,
                                     const struct TALER_MasterPublicKeyP *master_pub,
                                     struct GNUNET_TIME_Absolute ep_start,
                                     struct GNUNET_TIME_Absolute ep_expire,

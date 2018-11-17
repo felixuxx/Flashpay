@@ -628,6 +628,7 @@ struct TALER_EXCHANGE_DepositHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param exchange_sig signature provided by the exchange
  * @param sign_key exchange key used to sign @a obj, or NULL
  * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
  *            be forwarded to the customer)
@@ -636,7 +637,8 @@ typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (void *cls,
                                          unsigned int http_status,
 					 enum TALER_ErrorCode ec,
-                                         const struct TALER_ExchangePublicKeyP *sign_key,
+                                         const struct TALER_ExchangeSignatureP *exchange_sig,
+					 const struct TALER_ExchangePublicKeyP *sign_key,
                                          const json_t *obj);
 
 

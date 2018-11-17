@@ -33,6 +33,67 @@
 #include <microhttpd.h>
 
 
+/* ********************* Commands ********************* */
+
+/**
+ * Make the "exec-auditor" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_auditor (const char *label,
+                                const char *config_filename);
+
+
+/**
+ * Make the "exec wire-auditor" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_wire_auditor (const char *label,
+                                     const char *config_filename);
+
+
+/**
+ * Create a "deposit-confirmation" command.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param deposit_reference reference to any operation that can
+ *        provide a coin.
+ * @param coin_index if @a deposit_reference offers an array of
+ *        coins, this parameter selects which one in that array.
+ *        This value is currently ignored, as only one-coin
+ *        deposits are implemented.
+ * @param expected_response_code expected HTTP response code.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_confirmation
+  (const char *label,
+   struct TALER_AUDITOR_Handle *auditor,
+   const char *deposit_reference,
+   unsigned int coin_index,
+   unsigned int expected_response_code);
+
+
+/**
+ * Modify a deposit confirmation command to enable retries when we get
+ * transient errors from the auditor.
+ *
+ * @param cmd a deposit confirmation command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command cmd);
+
+
 /* ********************* Helper functions ********************* */
 
 

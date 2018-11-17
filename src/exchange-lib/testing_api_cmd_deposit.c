@@ -112,6 +112,24 @@ struct DepositState
    */
   int do_retry;
 
+  /**
+   * Set to #GNUNET_YES if the /deposit succeeded
+   * and we now can provide the resulting traits.
+   */
+  int traits_ready;
+
+  /**
+   * Signing key used by the exchange to sign the
+   * deposit confirmation.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * Signature from the exchange on the
+   * deposit confirmation.
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
 };
 
 
@@ -152,6 +170,8 @@ do_retry (void *cls)
  * @param cls closure.
  * @param http_status HTTP response code.
  * @param ec taler-specific error code.
+ * @param exchange_sig signature provided by the exchange
+ *        (NULL on errors)
  * @param exchange_pub public key of the exchange,
  *        used for signing the response.
  * @param obj raw response from the exchange.
@@ -160,6 +180,7 @@ static void
 deposit_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
+            const struct TALER_ExchangeSignatureP *exchange_sig,
             const struct TALER_ExchangePublicKeyP *exchange_pub,
             const json_t *obj)
 {
@@ -183,9 +204,10 @@ deposit_cb (void *cls,
 	  ds->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
 	  ds->backoff = EXCHANGE_LIB_BACKOFF (ds->backoff);
-	ds->retry_task = GNUNET_SCHEDULER_add_delayed (ds->backoff,
-						       &do_retry,
-						       ds);
+	ds->retry_task
+	  = GNUNET_SCHEDULER_add_delayed (ds->backoff,
+					  &do_retry,
+					  ds);
         return;
       }
     }
@@ -198,6 +220,12 @@ deposit_cb (void *cls,
     json_dumpf (obj, stderr, 0);
     TALER_TESTING_interpreter_fail (ds->is);
     return;
+  }
+  if (MHD_HTTP_OK == http_status)
+  {
+    ds->traits_ready = GNUNET_YES;
+    ds->exchange_pub = *exchange_pub;
+    ds->exchange_sig = *exchange_sig;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -425,7 +453,8 @@ deposit_traits (void *cls,
   struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
 
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (ds->is, ds->coin_reference);
+    (ds->is,
+     ds->coin_reference);
 
   if (NULL == coin_cmd)
   {
@@ -434,8 +463,10 @@ deposit_traits (void *cls,
     return GNUNET_NO;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-    (coin_cmd, ds->coin_index, &coin_spent_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_coin_priv (coin_cmd,
+					 ds->coin_index,
+					 &coin_spent_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
@@ -443,16 +474,27 @@ deposit_traits (void *cls,
   }
 
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_coin_priv (0, coin_spent_priv),
-    TALER_TESTING_make_trait_wire_details (0, ds->wire_details),
-    TALER_TESTING_make_trait_contract_terms
-      (0, ds->contract_terms),
-    TALER_TESTING_make_trait_peer_key
-      (0, &ds->merchant_priv.eddsa_priv),
+    /* First two traits are only available if
+       ds->traits is #GNUNET_YES */
+    TALER_TESTING_make_trait_exchange_pub (0,
+					   &ds->exchange_pub),
+    TALER_TESTING_make_trait_exchange_sig (0,
+					   &ds->exchange_sig),
+    /* These traits are always available */
+    TALER_TESTING_make_trait_coin_priv (0,
+					coin_spent_priv),
+    TALER_TESTING_make_trait_wire_details (0,
+					   ds->wire_details),
+    TALER_TESTING_make_trait_contract_terms (0,
+					     ds->contract_terms),
+    TALER_TESTING_make_trait_peer_key (0,
+				       &ds->merchant_priv.eddsa_priv),
     TALER_TESTING_trait_end ()
   };
 
-  return TALER_TESTING_get_trait (traits,
+  return TALER_TESTING_get_trait ((ds->traits_ready)
+				  ? traits
+				  : &traits[2],
                                   ret,
                                   trait,
                                   index);
