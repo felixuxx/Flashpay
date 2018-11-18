@@ -125,6 +125,9 @@ static char *exchange_url;
       EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
       subject, exchange_url)
 
+#define CMD_RUN_AUDITOR(label) \
+  TALER_TESTING_cmd_exec_auditor (label, CONFIG_FILE)
+
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -137,6 +140,9 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
+    CMD_RUN_AUDITOR_DBINIT("virgin-auditor"),
+    CMD_RUN_AUDITOR("virgin-auditor"),
+
     /**
      * End the suite.  Fixme: better to have a label for this
      * too, as it shows a "(null)" token on logs.

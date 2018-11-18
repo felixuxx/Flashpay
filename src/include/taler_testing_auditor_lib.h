@@ -48,6 +48,18 @@ TALER_TESTING_cmd_exec_auditor (const char *label,
 
 
 /**
+ * Make the "exec-auditor-dbinit" CMD. Always run with the "-r" option.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
+                                       const char *config_filename);
+
+
+/**
  * Make the "exec wire-auditor" CMD.
  *
  * @param label command label.
