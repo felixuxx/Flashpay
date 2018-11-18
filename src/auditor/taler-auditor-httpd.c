@@ -31,9 +31,24 @@
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_exchanges.h"
 #include "taler-auditor-httpd_parsing.h"
+#include "taler-auditor-httpd_responses.h"
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
 
+/**
+ * Auditor protocol version string.
+ *
+ * Taler protocol version in the format CURRENT:REVISION:AGE
+ * as used by GNU libtool.  See
+ * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
+ *
+ * Please be very careful when updating and follow
+ * https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html#Updating-version-info
+ * precisely.  Note that this version has NOTHING to do with the
+ * release version, and the format is NOT the same that semantic
+ * versioning uses either.
+ */
+#define AUDITOR_PROTOCOL_VERSION "0:0:0"
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -54,6 +69,11 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
  * Our DB plugin.
  */
 struct TALER_AUDITORDB_Plugin *TAH_plugin;
+
+/**
+ * Public key of this auditor.
+ */
+static struct TALER_AuditorPublicKeyP auditor_pub;
 
 /**
  * Default timeout in seconds for HTTP requests.
@@ -80,6 +100,10 @@ static char *serve_unixpath;
  */
 static mode_t unixpath_mode;
 
+/**
+ * Our currency.
+ */
+static char *currency;
 
 /**
  * Pipe used for signaling reloading of our key state.
@@ -274,6 +298,44 @@ handle_mhd_completion_callback (void *cls,
 
 
 /**
+ * Handle a "/version" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+static int
+handle_version (struct TAH_RequestHandler *rh,
+                struct MHD_Connection *connection,
+                void **connection_cls,
+                const char *upload_data,
+                size_t *upload_data_size)
+{
+  json_t *ver;
+
+  (void) rh;
+  (void) upload_data;
+  (void) upload_data_size;
+  (void) connection_cls;
+  ver = json_pack ("{s:s, s:s, s:o}",
+                   "version", AUDITOR_PROTOCOL_VERSION,
+                   "currency", currency,
+                   "auditor_public_key", GNUNET_JSON_from_data_auto (&auditor_pub));
+  if (NULL == ver)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  return TAH_RESPONSE_reply_json (connection,
+                                  ver,
+                                  MHD_HTTP_OK);
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
@@ -300,13 +362,15 @@ handle_mhd_request (void *cls,
     {
       /* Our most popular handler (thus first!), used by merchants to
          probabilistically report us their deposit confirmations. */
-      { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "text/plain",
+      { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "application/json",
         NULL, 0,
         &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK },
-      { "/exchanges", MHD_HTTP_METHOD_GET, "text/plain",
+      { "/exchanges", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
         &TAH_EXCHANGES_handler, MHD_HTTP_OK },
-
+      { "/version", MHD_HTTP_METHOD_GET, "application/json",
+        NULL, 0,
+        &handle_version, MHD_HTTP_OK },
       /* Landing page, for now tells humans to go away (FIXME: replace
          with auditor's welcome page!) */
       { "/", MHD_HTTP_METHOD_GET, "text/plain",
@@ -487,6 +551,8 @@ parse_port_config (const char *section,
 static int
 auditor_serve_process_config ()
 {
+  char *pub;
+
   if (NULL ==
       (TAH_plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {
@@ -501,6 +567,71 @@ auditor_serve_process_config ()
                          &unixpath_mode))
   {
     return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "TALER",
+                                             "CURRENCY",
+                                             &currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "TALER",
+                               "CURRENCY");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "AUDITOR",
+                                             "PUBLIC_KEY",
+                                             &pub))
+  {
+    /* Fall back to trying to read private key */
+    char *auditor_key_file;
+    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                 "auditor",
+                                                 "AUDITOR_PRIV_FILE",
+                                                 &auditor_key_file))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "AUDITOR",
+                                 "PUBLIC_KEY");
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "AUDITOR",
+                                 "AUDITOR_PRIV_FILE");
+      return GNUNET_SYSERR;
+    }
+    eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (auditor_key_file);
+    if (NULL == eddsa_priv)
+    {
+      /* Both failed, complain! */
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "AUDITOR",
+                                 "PUBLIC_KEY");
+      fprintf (stderr,
+               "Failed to initialize auditor key from file `%s'\n",
+               auditor_key_file);
+      GNUNET_free (auditor_key_file);
+      return 1;
+    }
+    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+                                        &auditor_pub.eddsa_pub);
+  }
+  else
+  {
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_public_key_from_string (pub,
+                                                    strlen (pub),
+                                                    &auditor_pub.eddsa_pub))
+    {
+      fprintf (stderr,
+               "Invalid public key given in auditor configuration.");
+      GNUNET_free (pub);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (pub);
   }
   return GNUNET_OK;
 }
@@ -690,7 +821,8 @@ main (int argc,
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR ==
-      GNUNET_CONFIGURATION_load (cfg, cfgfile))
+      GNUNET_CONFIGURATION_load (cfg,
+                                 cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 _("Malformed configuration file `%s', exit ...\n"),
@@ -699,6 +831,7 @@ main (int argc,
     return 1;
   }
   GNUNET_free_non_null (cfgfile);
+
   if (GNUNET_OK !=
       auditor_serve_process_config ())
     return 1;

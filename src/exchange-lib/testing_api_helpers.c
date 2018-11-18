@@ -869,6 +869,12 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
   if (0 != TALER_TESTING_wait_auditor_ready (base_url))
   {
     GNUNET_free (base_url);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (auditord,
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (auditord));
+    GNUNET_OS_process_destroy (auditord);
     return 77;
   }
   GNUNET_free (base_url);
@@ -911,14 +917,10 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
     .main_cb = main_cb,
     .main_cb_cls = main_cb_cls
   };
-  int result;
 
-  if (GNUNET_OK !=
-      (result = GNUNET_CONFIGURATION_parse_and_run (config_file,
-                                                    &TALER_TESTING_setup_with_auditor_and_exchange_cfg,
-                                                    &setup_ctx)))
-    return result;
-  return GNUNET_OK;
+  return GNUNET_CONFIGURATION_parse_and_run (config_file,
+                                             &TALER_TESTING_setup_with_auditor_and_exchange_cfg,
+                                             &setup_ctx);
 }
 
 

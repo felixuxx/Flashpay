@@ -107,6 +107,16 @@ struct MainWrapperContext
    */
   void *main_cb_cls;
 
+  /**
+   * Configuration we use.
+   */
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
+   * Name of the configuration file.
+   */
+  const char *config_filename;
+
 };
 
 
@@ -125,11 +135,11 @@ auditor_main_wrapper (void *cls,
   char *auditor_base_url;
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (is->cfg,
+      GNUNET_CONFIGURATION_get_value_string (mwc->cfg,
                                              "auditor",
                                              "BASE_URL",
                                              &auditor_base_url))
-  {
+    {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "auditor",
                                "BASE_URL");
@@ -160,6 +170,33 @@ auditor_main_wrapper (void *cls,
  * Install signal handlers plus schedules the main wrapper
  * around the "run" method.
  *
+ * @param cls our `struct MainWrapperContext`
+ * @param cfg configuration we use
+ * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
+ *         times.
+ */
+static int
+setup_with_cfg (void *cls,
+                const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  struct MainWrapperContext *mwc = cls;
+  struct TALER_TESTING_SetupContext setup_ctx = {
+    .config_filename = mwc->config_filename,
+    .main_cb = &auditor_main_wrapper,
+    .main_cb_cls = mwc
+  };
+
+  mwc->cfg = cfg;
+  return TALER_TESTING_setup_with_auditor_and_exchange_cfg (&setup_ctx,
+                                                            cfg);
+}
+
+
+/**
+ * Install signal handlers plus schedules the main wrapper
+ * around the "run" method.
+ *
  * @param main_cb the "run" method which contains all the
  *        commands.
  * @param main_cb_cls a closure for "run", typically NULL.
@@ -175,13 +212,15 @@ TALER_TESTING_AUDITOR_setup (TALER_TESTING_Main main_cb,
 {
   struct MainWrapperContext mwc = {
     .main_cb = main_cb,
-    .main_cb_cls = main_cb_cls
+    .main_cb_cls = main_cb_cls,
+    .config_filename = config_filename
   };
 
-  return TALER_TESTING_setup_with_auditor_and_exchange (&auditor_main_wrapper,
-                                                        &mwc,
-                                                        config_filename);
+  return GNUNET_CONFIGURATION_parse_and_run (config_filename,
+                                             &setup_with_cfg,
+                                             &mwc);
 }
+
 
 
 /* end of testing_auditor_api_helpers.c */
