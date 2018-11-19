@@ -1942,7 +1942,8 @@ run (void *cls)
   FAILIF (1 !=
           plugin->have_deposit (plugin->cls,
                                 session,
-                                &deposit));
+                                &deposit,
+                                GNUNET_YES));
   {
     struct GNUNET_TIME_Absolute start_range;
     struct GNUNET_TIME_Absolute end_range;
@@ -2032,13 +2033,15 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->have_deposit (plugin->cls,
                                 session,
-                                &deposit2));
+                                &deposit2,
+                                GNUNET_YES));
   deposit2.merchant_pub = deposit.merchant_pub;
   RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->have_deposit (plugin->cls,
                                 session,
-                                &deposit2));
+                                &deposit2,
+                                GNUNET_YES));
   FAILIF (GNUNET_OK !=
 	  test_melting (session));
 

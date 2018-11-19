@@ -1228,7 +1228,8 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           data = &state->cmd[source_index].exposed;
           ret = state->plugin->have_deposit (state->plugin->cls,
                                              state->session,
-                                             data->data.deposit);
+                                             data->data.deposit,
+                                             GNUNET_YES);
           GNUNET_assert (0 >= ret);
         }
         break;

@@ -1481,7 +1481,7 @@ request_keys (void *cls)
                                    kr));
   kr->job = GNUNET_CURL_job_add (exchange->ctx,
                                  eh,
-                                 GNUNET_NO,
+                                 GNUNET_YES,
                                  &keys_completed_cb,
                                  kr);
   exchange->kr = kr;

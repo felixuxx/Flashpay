@@ -61,6 +61,11 @@ static char *fakebank_url;
 static char *exchange_url;
 
 /**
+ * Auditor URL, unused but needed to achieve compilation.
+ */
+static char *auditor_url;
+
+/**
  * Twister process.
  */
 static struct GNUNET_OS_Process *twisterd;
@@ -367,6 +372,7 @@ main (int argc,
   TALER_TESTING_cleanup_files (CONFIG_FILE);
 
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+                                          &auditor_url,
                                           &exchange_url))
   {
   case GNUNET_SYSERR:
@@ -381,7 +387,8 @@ main (int argc,
         (CONFIG_FILE)))
       return 77;
 
-    ret = TALER_TESTING_setup_with_exchange (&run, NULL,
+    ret = TALER_TESTING_setup_with_exchange (&run,
+                                             NULL,
                                              CONFIG_FILE);
     purge_process (twisterd);
     GNUNET_free (twister_url);

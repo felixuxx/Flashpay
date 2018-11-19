@@ -113,7 +113,9 @@ auditor_iter (void *cls,
   }
   if (size < sizeof (struct AuditorFileHeaderP))
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Unrecognized size for file `%s', skipping\n",
+                filename);
     return GNUNET_OK;
   }
   af = GNUNET_malloc (size);

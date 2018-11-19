@@ -498,14 +498,19 @@ int
 main (int argc,
       char * const *argv)
 {
-  if (1)
-    return 77; // FIXME: test not yet ready
+
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-auditor-api",
                     "INFO",
                     NULL);
+  if (1)
+  {
+    TALER_LOG_WARNING ("Test not yet ready\n");
+    return 77; // FIXME: test not yet ready
+  }
+
   if (NULL == (fakebank_url
        /* Check fakebank port is available and config cares
         * about bank url. */

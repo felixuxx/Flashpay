@@ -153,6 +153,7 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
