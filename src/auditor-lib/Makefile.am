@@ -86,4 +86,5 @@ test_auditor_api_LDADD = \
 
 
 EXTRA_DIST = \
-  test_auditor_api.conf
+  test_auditor_api.conf \
+  test_auditor_api_expire_reserve_now.conf

@@ -42,6 +42,8 @@
  */
 #define CONFIG_FILE "test_auditor_api.conf"
 
+#define CONFIG_FILE_EXPIRE_RESERVE_NOW "test_auditor_api_expire_reserve_now.conf"
+
 /**
  * URL of the fakebank.  Obtained from CONFIG_FILE's
  * "exchange-wire-test:BANK_URI" option.
@@ -152,14 +154,337 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+  /**
+   * Test withdraw.
+   */
+  struct TALER_TESTING_Command withdraw[] = {
+    /**
+     * Move money to the exchange's bank account.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
+                              "EUR:5.01"),
+    /**
+     * Make a reserve exist, according to the previous transfer.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-1"),
+    /**
+     * Withdraw EUR:5.
+     */
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
+                                       is->exchange,
+                                       "create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command spend[] = {
+    /**
+     * Spend the coin.
+     */
+    TALER_TESTING_cmd_deposit ("deposit-simple",
+                               is->exchange,
+                               "withdraw-coin-1",
+                               0,
+                               TALER_TESTING_make_wire_details (42,
+                                                                fakebank_url),
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:5",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command refresh[] = {
+    /**
+     * Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
+     * test-suite gave a account number of _424_ to the user at
+     * this step; to type less, here the _42_ number is reused.
+     * Does this change the tests semantics?
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
+                              "EUR:5.01"),
+    /**
+     * Make previous command effective.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-2"),
+    /**
+     * Withdraw EUR:5.
+     */
+    TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin-1",
+                                       is->exchange,
+                                       "refresh-create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    /**
+     * Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in
+     * full) Merchant receives EUR:0.99 due to 1 ct deposit fee.
+     */
+    TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
+                               is->exchange,
+                               "refresh-withdraw-coin-1",
+                               0,
+                               TALER_TESTING_make_wire_details (42,
+                                                                fakebank_url),
+                               "{\"items\":[{\"name\":\"ice\",\"value\":\"EUR:1\"}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:1",
+                               MHD_HTTP_OK),
+    /**
+     * Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x
+     * EUR:0.13) */
+    TALER_TESTING_cmd_refresh_melt_double ("refresh-melt-1",
+                                           is->exchange,
+                                           "EUR:4",
+                                           "refresh-withdraw-coin-1",
+                                           MHD_HTTP_OK),
+    /**
+     * Complete (successful) melt operation, and withdraw the coins
+     */
+    TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-1",
+                                      is->exchange,
+                                      "refresh-melt-1",
+                                      MHD_HTTP_OK),
+    /**
+     * Try to spend a refreshed EUR:0.1 coin
+     */
+    TALER_TESTING_cmd_deposit ("refresh-deposit-refreshed-1b",
+                               is->exchange,
+                               "refresh-reveal-1",
+                               3,
+                               TALER_TESTING_make_wire_details (43,
+                                                                fakebank_url),
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":3}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.1",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command track[] = {
+    /**
+     * Run transfers. Note that _actual_ aggregation will NOT
+     * happen here, as each deposit operation is run with a
+     * fresh merchant public key! NOTE: this comment comes
+     * "verbatim" from the old test-suite, and IMO does not explain
+     * a lot!
+     */
+    CMD_EXEC_AGGREGATOR ("run-aggregator"),
+    TALER_TESTING_cmd_end ()
+  };
+
+  /**
+   * This block checks whether a wire deadline
+   * very far in the future does NOT get aggregated now.
+   */
+  struct TALER_TESTING_Command unaggregation[] = {
+    TALER_TESTING_cmd_check_bank_empty ("far-future-aggregation-a"),
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-unaggregated",
+                              "EUR:5.01"),
+    CMD_EXEC_WIREWATCH ("wirewatch-unaggregated"),
+    /* "consume" reserve creation transfer.  */
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-unaggregated",
+                                           exchange_url,
+                                           "EUR:5.01",
+                                           42,
+                                           2),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
+                                       is->exchange,
+                                       "create-reserve-unaggregated",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("deposit-unaggregated",
+                               is->exchange,
+                               "withdraw-coin-unaggregated",
+                               0,
+                               TALER_TESTING_make_wire_details
+                               (43,
+                                fakebank_url),
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_relative_multiply
+                               (GNUNET_TIME_UNIT_YEARS,
+                                3000),
+                               "EUR:5",
+                               MHD_HTTP_OK),
+    CMD_EXEC_AGGREGATOR ("aggregation-attempt"),
+    TALER_TESTING_cmd_check_bank_empty ("far-future-aggregation-b"),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command refund[] = {
+    /**
+     * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r1",
+                              "EUR:5.01"),
+    /**
+     * Run wire-watch to trigger the reserve creation.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-3"),
+    /**
+     * Withdraw a 5 EUR coin, at fee of 1 ct
+     */
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
+                                       is->exchange,
+                                       "create-reserve-r1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    /**
+     * Spend 5 EUR of the 5 EUR coin (in full). Merchant would
+     * receive EUR:4.99 due to 1 ct deposit fee.
+     */
+    TALER_TESTING_cmd_deposit ("deposit-refund-1",
+                               is->exchange,
+                               "withdraw-coin-r1",
+                               0,
+                               TALER_TESTING_make_wire_details (42,
+                                                                fakebank_url),
+                               "{\"items\":[{\"name\":\"ice\",\"value\":\"EUR:5\"}]}",
+                               GNUNET_TIME_UNIT_MINUTES,
+                               "EUR:5",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_refund ("refund-ok",
+                              MHD_HTTP_OK,
+                              "EUR:5",
+                              "EUR:0.01",
+                              "deposit-refund-1"),
+    /**
+     * Spend 4.99 EUR of the refunded 4.99 EUR coin (1ct gone
+     * due to refund) (merchant would receive EUR:4.98 due to
+     * 1 ct deposit fee) */
+    TALER_TESTING_cmd_deposit ("deposit-refund-2",
+                               is->exchange,
+                               "withdraw-coin-r1",
+                               0,
+                               TALER_TESTING_make_wire_details (42,
+                                                                fakebank_url),
+                               "{\"items\":[{\"name\":\"more\",\"value\":\"EUR:5\"}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:4.99",
+                               MHD_HTTP_OK),
+    /**
+     * Run transfers. This will do the transfer as refund deadline was
+     * 0.
+     */
+    CMD_EXEC_AGGREGATOR ("run-aggregator-3"),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command payback[] = {
+    /**
+     * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
+     * config.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-1",
+                              "EUR:5.01"),
+    /**
+     * Run wire-watch to trigger the reserve creation.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-4"),
+    /**
+     * Withdraw a 5 EUR coin, at fee of 1 ct
+     */
+    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-1",
+                                       is->exchange,
+                                       "payback-create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_revoke ("revoke-1",
+                              MHD_HTTP_OK,
+                              "payback-withdraw-coin-1",
+                              CONFIG_FILE),
+    TALER_TESTING_cmd_payback ("payback-1",
+                               MHD_HTTP_OK,
+                               "payback-withdraw-coin-1",
+                               "EUR:5"),
+    /**
+     * Re-withdraw from this reserve
+     */
+    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2",
+                                       is->exchange,
+                                       "payback-create-reserve-1",
+                                       "EUR:1",
+                                       MHD_HTTP_OK),
+    /**
+     * These commands should close the reserve because the aggregator
+     * is given a config file that ovverrides the reserve expiration
+     * time (making it now-ish)
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
+                              "EUR:5.01"),
+    TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
+                                      CONFIG_FILE_EXPIRE_RESERVE_NOW),
+    TALER_TESTING_cmd_exec_aggregator ("close-reserves",
+                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+    /**
+     * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
+     * config, then withdraw two coin, partially spend one, and
+     * then have the rest paid back.  Check deposit of other coin
+     * fails.  (Do not use EUR:5 here as the EUR:5 coin was
+     * revoked and we did not bother to create a new one...)
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
+                              "EUR:2.02"),
+    /**
+     * Make previous command effective.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-5"),
+    /**
+     * Withdraw a 1 EUR coin, at fee of 1 ct
+     */
+    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2a",
+                                       is->exchange,
+                                       "payback-create-reserve-2",
+                                       "EUR:1",
+                                       MHD_HTTP_OK),
+    /**
+     * Withdraw a 1 EUR coin, at fee of 1 ct
+     */
+    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2b",
+                                       is->exchange,
+                                       "payback-create-reserve-2",
+                                       "EUR:1",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("payback-deposit-partial",
+                               is->exchange,
+                               "payback-withdraw-coin-2a",
+                               0,
+                               TALER_TESTING_make_wire_details (42,
+                                                                fakebank_url),
+                               "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.5",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_revoke ("revoke-2",
+                              MHD_HTTP_OK,
+                              "payback-withdraw-coin-2a",
+                              CONFIG_FILE),
+    TALER_TESTING_cmd_payback ("payback-2",
+                               MHD_HTTP_OK,
+                               "payback-withdraw-coin-2a",
+                               "EUR:0.5"),
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command commands[] = {
     CMD_RUN_AUDITOR("virgin-auditor"),
     CMD_RUN_WIRE_AUDITOR("virgin-wire-auditor"),
-
-    /**
-     * End the suite.  Fixme: better to have a label for this
-     * too, as it shows a "(null)" token on logs.
-     */
+    TALER_TESTING_cmd_batch ("withdraw",
+                             withdraw),
+    TALER_TESTING_cmd_batch ("spend",
+                             spend),
+    TALER_TESTING_cmd_batch ("refresh",
+                             refresh),
+    TALER_TESTING_cmd_batch ("track",
+                             track),
+    TALER_TESTING_cmd_batch ("unaggregation",
+                             unaggregation),
+    TALER_TESTING_cmd_batch ("refund",
+                             refund),
+    TALER_TESTING_cmd_batch ("payback",
+                             payback),
+    CMD_RUN_AUDITOR("normal-auditor"),
+    CMD_RUN_WIRE_AUDITOR("normal-wire-auditor"),
     TALER_TESTING_cmd_end ()
   };
 
@@ -173,6 +498,8 @@ int
 main (int argc,
       char * const *argv)
 {
+  if (1)
+    return 77; // FIXME: test not yet ready
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

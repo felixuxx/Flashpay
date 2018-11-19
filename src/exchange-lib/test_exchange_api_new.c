@@ -901,7 +901,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_batch ("refresh",
                              refresh),
-    
+
     TALER_TESTING_cmd_batch ("track",
                              track),
 
