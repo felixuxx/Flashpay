@@ -51,7 +51,7 @@ main (int argc,
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct TALER_WIRE_Plugin *plugin;
 
-  GNUNET_log_setup ("test-sepa-wireformats",
+  GNUNET_log_setup ("test-ebics-wireformats",
                     "WARNING",
                     NULL);
   cfg = GNUNET_CONFIGURATION_create ();
@@ -61,7 +61,12 @@ main (int argc,
                                          "EUR");
   plugin = TALER_WIRE_plugin_load (cfg,
                                    "ebics");
-  GNUNET_assert (NULL != plugin);
+  if (NULL == plugin)
+  {
+    TALER_LOG_ERROR ("Could not load the ebics plugin\n");
+    return 77;
+  }
+
   GNUNET_assert (TALER_EC_NONE !=
                  plugin->wire_validate (plugin->cls,
                                         unsupported_wire_str));

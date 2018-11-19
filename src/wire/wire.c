@@ -72,7 +72,7 @@ static struct WirePlugin *wp_tail;
  *
  * @param cfg configuration to use
  * @param plugin_name name of the plugin to load
- * @return #GNUNET_OK on success
+ * @return the plugin object pointer, or NULL upon errors.
  */
 struct TALER_WIRE_Plugin *
 TALER_WIRE_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,

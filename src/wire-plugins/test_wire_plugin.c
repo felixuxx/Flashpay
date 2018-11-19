@@ -164,7 +164,13 @@ main (int argc,
 					   test->currency);
     plugin = TALER_WIRE_plugin_load (cfg,
                                      test->plugin_name);
-    GNUNET_assert (NULL != plugin);
+    if (NULL == plugin)
+    {
+      TALER_LOG_ERROR ("Could not load plugin `%s'\n",
+                       test->plugin_name);
+      return 77; 
+    }
+    
     ret = run_test (test, plugin);
     TALER_WIRE_plugin_unload (plugin);
     if (GNUNET_OK != ret)
