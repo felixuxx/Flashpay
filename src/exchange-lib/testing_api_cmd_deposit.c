@@ -63,7 +63,7 @@ struct DepositState
   /**
    * JSON string describing what a proposal is about.
    */
-  const char *contract_terms;
+  json_t *contract_terms;
 
   /**
    * Relative time (to add to 'now') to compute the refund
@@ -257,7 +257,6 @@ deposit_run (void *cls,
   struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
-  json_t *contract_terms;
   struct TALER_Amount amount;
 
   ds->is = is;
@@ -302,21 +301,11 @@ deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  contract_terms = json_loads (ds->contract_terms,
-                               JSON_REJECT_DUPLICATES,
-                               NULL);
-  if (NULL == contract_terms)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse proposal data `%s' at %u/%s\n",
-                ds->contract_terms, is->ip, this_cmd->label);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
+
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (contract_terms,
+                 TALER_JSON_hash (ds->contract_terms,
                                   &h_contract_terms));
-  json_decref (contract_terms);
+
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -427,6 +416,7 @@ deposit_cleanup (void *cls,
     ds->retry_task = NULL;
   }
   json_decref (ds->wire_details);
+  json_decref (ds->contract_terms);
   GNUNET_free (ds);
 }
 
@@ -545,7 +535,19 @@ TALER_TESTING_cmd_deposit
   ds->coin_reference = coin_reference;
   ds->coin_index = coin_index;
   ds->wire_details = wire_details;
-  ds->contract_terms = contract_terms;
+  ds->contract_terms = json_loads (contract_terms,
+                                   JSON_REJECT_DUPLICATES,
+                                   NULL);
+  if (NULL == ds->contract_terms)
+  {
+    GNUNET_log
+      (GNUNET_ERROR_TYPE_ERROR,
+       "Failed to parse contract terms `%s' for CMD `%s'\n",
+       contract_terms,
+       label);
+    GNUNET_assert (0);
+  }
+
   ds->refund_deadline = refund_deadline;
   ds->amount = amount;
   ds->expected_response_code = expected_response_code;

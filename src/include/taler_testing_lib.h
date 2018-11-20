@@ -1880,7 +1880,7 @@ int
 TALER_TESTING_get_trait_contract_terms
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   const char **contract_terms);
+   const json_t **contract_terms);
 
 
 /**
@@ -1893,7 +1893,7 @@ TALER_TESTING_get_trait_contract_terms
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_contract_terms
   (unsigned int index,
-   const char *contract_terms);
+   const json_t *contract_terms);
 
 
 /**

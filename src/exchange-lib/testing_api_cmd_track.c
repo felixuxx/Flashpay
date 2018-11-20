@@ -269,9 +269,8 @@ track_transaction_run (void *cls,
   const struct TALER_TESTING_Command *transaction_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  const char *contract_terms;
+  const json_t *contract_terms;
   const json_t *wire_details;
-  json_t *j_contract_terms;
   struct GNUNET_HashCode h_wire_details;
   struct GNUNET_HashCode h_contract_terms;
   const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
@@ -315,11 +314,7 @@ track_transaction_run (void *cls,
     return;
   }
 
-  /* Parse them.. */
-  j_contract_terms = json_loads
-    (contract_terms, JSON_REJECT_DUPLICATES, NULL);
-
-  if ((NULL == wire_details) || (NULL == j_contract_terms))
+  if ((NULL == wire_details) || (NULL == contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -332,7 +327,7 @@ track_transaction_run (void *cls,
        TALER_JSON_merchant_wire_signature_hash (wire_details,
                                                 &h_wire_details)) &&
       (GNUNET_OK ==
-       TALER_JSON_hash (j_contract_terms,
+       TALER_JSON_hash (contract_terms,
                         &h_contract_terms)) );
 
   if (GNUNET_OK != TALER_TESTING_get_trait_peer_key

@@ -145,9 +145,8 @@ refund_run (void *cls,
   struct RefundState *rs = cls;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin;
-  const char *contract_terms;
+  const json_t *contract_terms;
   struct GNUNET_HashCode h_contract_terms;
-  json_t *j_contract_terms;
   struct TALER_Amount refund_fee;
   struct TALER_Amount refund_amount;
   const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
@@ -199,16 +198,9 @@ refund_run (void *cls,
     return;
   }
 
-  j_contract_terms = json_loads
-    (contract_terms, JSON_REJECT_DUPLICATES, NULL);
-
-  /* Very unlikely to fail */
-  GNUNET_assert (NULL != j_contract_terms);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (j_contract_terms,
+                 TALER_JSON_hash (contract_terms,
                                   &h_contract_terms));
-
-  json_decref (j_contract_terms);
 
   /* Hunting for a coin .. */
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv

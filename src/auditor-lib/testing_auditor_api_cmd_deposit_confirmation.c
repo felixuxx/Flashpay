@@ -206,7 +206,6 @@ deposit_confirmation_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
-  const char *contract_terms_s;
 
   dcs->is = is;
   GNUNET_assert (NULL != dcs->deposit_reference);
@@ -236,15 +235,11 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_contract_terms (deposit_cmd,
 							 dcs->coin_index,
-							 &contract_terms_s));
-  contract_terms = json_loads (contract_terms_s,
-                               JSON_REJECT_DUPLICATES,
-                               NULL);
+							 &contract_terms));
   /* Very unlikely to fail */
   GNUNET_assert (NULL != contract_terms);
   TALER_JSON_hash (contract_terms,
 		   &h_contract_terms);
-  json_decref (contract_terms);
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_wire_details (deposit_cmd,
 						       dcs->coin_index,
