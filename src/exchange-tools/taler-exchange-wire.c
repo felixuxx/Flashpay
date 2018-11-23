@@ -103,7 +103,6 @@ sign_account_data (void *cls,
   ret = fprintf (out,
                  "%s",
                  json_out);
-  fclose (out);
   if ( (0 == fclose (out)) &&
        (-1 != ret) )
     fprintf (stdout,
