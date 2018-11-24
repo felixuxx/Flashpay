@@ -49,17 +49,11 @@ The source code for the template is available at \url{https://git.taler.net/}.
 \section{Operations}
 
 The balance of the escrow account should
-be {\bf
-\mbox{
-  {{ data.total_escrow_balance.value }}.{{ data.total_escrow_balance.fraction }}
-  {{ data.total_escrow_balance.currency }}}}.
+be {\bf {{ data.total_escrow_balance }}}.
 
 \noindent
 The active operational risk stands at
-\mbox{
-{\bf
-  {{ data.total_active_risk.value }}.{{ data.total_active_risk.fraction }}
-  {{ data.total_active_risk.currency }}}}.
+{\bf {{ data.total_active_risk }}}.
 
 
 \section{Income}
@@ -70,26 +64,14 @@ This section analyzes the income of the exchange operator from fees.
 \begin{center}
   \caption{Fee revenue summary}
   \label{table:revenue}
-  \begin{tabular}{l|rl}
-    Category    & Amount &   \\ \hline \hline
-  Withdraw fees &
-  {{ data.total_withdraw_fee_income.value }}.{{ data.total_withdraw_fee_income.fraction }} &
-  {{ data.total_withdraw_fee_income.currency }} \\
-  Deposit fees &
-  {{ data.total_deposit_fee_income.value }}.{{ data.total_deposit_fee_income.fraction }} &
-  {{ data.total_deposit_fee_income.currency }} \\
-  Melt fees &
-  {{ data.total_melt_fee_income.value }}.{{ data.total_melt_fee_income.fraction }} &
-  {{ data.total_melt_fee_income.currency }} \\
-  Refund fees &
-  {{ data.total_refund_fee_income.value }}.{{ data.total_refund_fee_income.fraction }} &
-  {{ data.total_refund_fee_income.currency }} \\
-  Aggregation fees &
-  {{ data.total_aggregation_fee_income.value }}.{{ data.total_aggregation_fee_income.fraction }} &
-  {{ data.total_aggregation_fee_income.currency }} \\
-  {\bf Total}  &
-  {{ data.income_fee_total.value }}.{{ data.income_fee_total.fraction }} &
-  {{ data.income_fee_total.currency }} \\
+  \begin{tabular}{l|r}
+    Category    & Amount  \\ \hline \hline
+  Withdraw fees & {{ data.total_withdraw_fee_income }} \\
+  Deposit fees  & {{ data.total_deposit_fee_income }} \\
+  Melt fees     & {{ data.total_melt_fee_income }} \\
+  Refund fees   & {{ data.total_refund_fee_income }} \\
+  Aggregation fees & {{ data.total_aggregation_fee_income }} \\
+  {\bf Total}  & {{ data.income_fee_total }} \\
 \end{tabular}
 \end{center}
 \end{table}
@@ -101,8 +83,7 @@ This section analyzes the lag, which is by how much the exchange's aggregator is
 making wire transfers that have been due.
 
 The total amount the exchange currently lags behind is
-{\bf  {{ wire.total_amount_lag.value }}.{{ wire.total_amount_lag.fraction }}
-      {{ wire.total_amount_lag.currency }}}.
+{\bf {{ wire.total_amount_lag }}}.
 
 Note that some lag is perfectly normal, as tiny amounts that are too small to be wired
 are deferred beyond the due date, hoping that additional transfers will push them above
@@ -111,7 +92,7 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
 {% if wire.lag_details|length() == 0 %}
   {\bf No non-tiny wire transfers that are lagging behind detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|rl|c|rl}
+  \begin{longtable}{p{1.5cm}|r|c|rl}
   \multicolumn{4}{l}{\bf Coin} \\
   {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
   \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
@@ -137,8 +118,7 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
 \nopagebreak
   &
   {{ item.deadline }} &
-  {{ item.amount.value }}.{{ item.amount.fraction }} &
-  {{ item.amount.currency }} &
+  {{ item.amount }} &
   {{ item.row }} &
   {{ item.claimed_done }} \\
 \nopagebreak
@@ -163,9 +143,8 @@ and should be answered by revoking the exchange's online siging keys.
 % FIXME: reference PhD thesis?
 
 The total amount the exchange currently lags behind is
-{\bf  {{ data.missing_deposit_confirmation_total.value }}.{{ data.missing_deposit_confirmation_total.fraction }}
-      {{ data.missing_deposit_confirmation_total.currency }}} or
-{\bf {{ data.total_missed_deposit_confirmations}} } deposit confirmations.
+{\bf {{ data.missing_deposit_confirmation_total }} } or
+{\bf {{ data.missing_deposit_confirmation_count }} } deposit confirmations.
 
 Note that some lag is perfectly normal.
 Below, we report {\em all} deposit confirmations that are lagging behind.
@@ -173,7 +152,7 @@ Below, we report {\em all} deposit confirmations that are lagging behind.
 {% if data.deposit_confirmation_inconsistencies|length() == 0 %}
   {\bf No deposit confirmations that are lagging behind detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|rl|c|rl}
+  \begin{longtable}{p{1.5cm}|r|c|r}
   {\bf Timestamp} & {\bf Amount} & {\bf Row} \\
   \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
 \endfirsthead
@@ -193,8 +172,7 @@ Below, we report {\em all} deposit confirmations that are lagging behind.
 {% for item in data.deposit_confirmation_inconsistencies %}
   &
   {{ item.timestamp }} &
-  {{ item.amount.value }}.{{ item.amount.fraction }} &
-  {{ item.amount.currency }} &
+  {{ item.amount }} &
   {{ item.row }} \\
 \nopagebreak
   \multicolumn{3}{l}{ {\tt {{ item.account }} } } \\ \hline
@@ -225,7 +203,7 @@ compromise.
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|rl|c|rl}
+  \begin{longtable}{p{1.5cm}|r|c|r}
   {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
 \endfirsthead
   {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
@@ -240,14 +218,12 @@ compromise.
     \label{table:emergencies}
 \endlastfoot
 {% for item in data.reserve_inconsistencies %}
-  \multicolumn{6}{l}{ {\tt {{ item.denompub_hash }} } } \\
+  \multicolumn{4}{l}{ {\tt {{ item.denompub_hash }} } } \\
 \nopagebreak
   &
-  {{ item.value.value }}.{{ item.value.fraction }} &
-  {{ item.value.currency }} &
+  {{ item.value }} &
   {{ item.start }} - {{ item.deposit_end }} &
-  {{ item.denom_risk.value }}.{{ item.denom_risk.fraction }} &
-  {{ item.denom_risk.currency }} \\ \hline
+  {{ item.denom_risk }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -264,7 +240,7 @@ the financial damage done to the customer).
 {% if data.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
 {% else %}
-  \begin{longtable}{p{3.5cm}|l|rl|rl}
+  \begin{longtable}{p{3.5cm}|l|r|r}
   {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
   \hline \hline
 \endfirsthead
@@ -275,20 +251,16 @@ the financial damage done to the customer).
 \endfoot
   \hline \hline
   \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
-  + {{ data.total_arithmetic_delta_plus.value }}.{{ data.total_arithmetic_delta_plus.fraction }} &
-  {{ data.total_arithmetic_delta_plus.currency }} &
-  - {{ data.total_arithmetic_delta_minus.value }}.{{ data.total_arithmetic_delta_minus.fraction }} &
-  {{ data.total_arithmetic_delta_minus.currency }} \\
+  + {{ data.total_arithmetic_delta_plus }} &
+  - {{ data.total_arithmetic_delta_minus }} \\
     \caption{Arithmetic inconsistencies.}
     \label{table:amount:arithmetic:inconsistencies}
 \endlastfoot
 {% for item in data.amount_arithmetic_inconsistencies %}
   {{ item.operation }} &
   {{ item.rowid }} &
-  {{ item.exchange.value }}.{{ item.exchange.fraction }} &
-  {{ item.exchange.currency }} &
-  {{ item.auditor.value }}.{{ item.auditor.fraction }} &
-  {{ item.auditor.currency }} \\ \hline
+  {{ item.exchange }} &
+  {{ item.auditor }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -303,7 +275,7 @@ compromise resulting in proportional financial losses to the exchange.
 {% if data.reserve_balance_insufficient_inconsistencies|length() == 0 %}
   {\bf All withdrawals were covered by sufficient reserve funding.}
 {% else %}
-  \begin{longtable}{p{4.5cm}|rl}
+  \begin{longtable}{p{4.5cm}|r}
   {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Loss}}  \\ \hline \hline
 \endfirsthead
   {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Loss}}  \\ \hline \hline
@@ -313,7 +285,7 @@ compromise resulting in proportional financial losses to the exchange.
 \endfoot
   \hline
   {\bf Total loss}  & &
-  {{ data.total_loss_balance_insufficient.value}}.{{ data.total_loss_balance_insufficient.fraction}} & {{ data.total_loss_balance_insufficient.currency}} \\
+  {{ data.total_loss_balance_insufficient }} \\
   \caption{Reserves with withdrawals higher than reserve funding.}
   \label{table:reserve:balance_insufficient}
 \endlastfoot
@@ -321,8 +293,7 @@ compromise resulting in proportional financial losses to the exchange.
   \multicolumn{3}{l}{ {\tt {{ item.reserve_pub }} } } \\
 \nopagebreak
   &
-  {{ item.loss.value }}.{{ item.loss.fraction }} &
-  {{ item.loss.currency }} \\ \hline
+  {{ item.loss }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -343,18 +314,18 @@ would be reported separately in Section~\ref{sec:wire_check_out}.
 {% if data.wire_out_inconsistencies|length() == 0 %}
   {\bf All aggregations matched up.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|l|rl|rl}
-  {\bf Destination account} & {\bf Database row} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Claimed}} \\ \hline \hline
+  \begin{longtable}{p{1.5cm}|l|r|r}
+  {\bf Destination account} & {\bf Database row} & {\bf Expected} & {\bf Claimed} \\ \hline \hline
 \endfirsthead
-  {\bf Destination account} & {\bf Database row} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Claimed}} \\ \hline \hline
+  {\bf Destination account} & {\bf Database row} & {\bf Expected} & {\bf Claimed} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Destination account} & {\bf Database row} & \multicolumn{2}{|c|}{ {\bf Expected}} & \multicolumn{2}{|c|}{ {\bf Claimed}} \\
+  {\bf Destination account} & {\bf Database row} & {\bf Expected} & {\bf Claimed} \\
 \endfoot
   \hline
   {\bf Total deltas}  & &
-  {{ data.total_wire_out_delta_plus.value}}.{{ data.total_wire_out_delta_plus.fraction}} & {{ data.total_wire_out_delta_plus.currency}} &
-  - {{ data.total_wire_out_delta_minus.value}}.{{ data.total_wire_out_delta_minus.fraction}} & {{ data.total_wire_out_delta_minus.currency}} \\
+  {{ data.total_wire_out_delta_plus}} &
+  - {{ data.total_wire_out_delta_minus}} \\
   \caption{Claimed wire out aggregate totals not matching up.}
   \label{table:reserve:wire_out_balance_inconsistencies}
 \endlastfoot
@@ -362,10 +333,8 @@ would be reported separately in Section~\ref{sec:wire_check_out}.
   \multicolumn{6}{l}{ {\tt {{ item.destination_account }} } } \\
 \nopagebreak
   & {{ item.rowid }} &
-  {{ item.expected.value }}.{{ item.expected.fraction }} &
-  {{ item.expected.currency }} &
-  {{ item.claimed.value }}.{{ item.claimed.fraction }} &
-  {{ item.claimed.currency }} \\ \hline
+  {{ item.expected }} &
+  {{ item.claimed }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -382,21 +351,19 @@ any effects on its own balance, those entries are excluded from the total.
 {% if data.coin_inconsistencies|length() == 0 %}
   {\bf All coin histories were unproblematic.}
 {% else %}
-  \begin{longtable}{p{1.8cm}|p{3cm}|rl|rl}
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
+  \begin{longtable}{p{1.8cm}|p{3cm}|r|r}
+  {\bf Operation} & {\bf Coin public key} & {\bf Exchange } & {\bf Auditor} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Coin public key} & {\bf Exchange} & {\bf Auditor} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Coin public key} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Coin public key} & {\bf Exchange} & {\bf Auditor} \\
 \endfoot
   \hline
   \multicolumn{2}{l|}{ $\sum$ {\bf Delta (Auditor-Exchange)} } &
-  {{ data.total_coin_delta_plus.value }}.{{ data.total_coin_delta_plus.fraction }} &
-  {{ data.total_coin_delta_plus.currency }} &
-  - {{ data.total_coin_delta_minus.value }}.{{ data.total_coin_delta_minus.fraction }} &
-  {{ data.total_coin_delta_minus.currency }} \\
+  {{ data.total_coin_delta_plus }} &
+  - {{ data.total_coin_delta_minus }} \\
     \caption{Arithmetic inconsistencies of amount calculations involving a coin.}
     \label{table:amount:arithmetic:coin:inconsistencies}
 \endlastfoot
@@ -404,10 +371,8 @@ any effects on its own balance, those entries are excluded from the total.
   {{ item.operation }} &
   \multicolumn{5}{l}{ {\tt {{ item.coin_pub }} } } \\
 \nopagebreak & &
-  {{ item.exchange.value }}.{{ item.exchange.fraction }} &
-  {{ item.exchange.currency }} &
-  {{ item.auditor.value }}.{{ item.auditor.fraction }} &
-  {{ item.auditor.currency }} \\ \hline
+  {{ item.exchange }} &
+  {{ item.auditor }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -430,18 +395,18 @@ public key for ``payback-master'' operations.
 {% if data.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|c|l|rl}
-  {\bf Public key} & {\bf Operation type} & Database row & \multicolumn{2}{|c|}{ {\bf Loss amount}} \\
+  \begin{longtable}{p{1.5cm}|c|l|r}
+  {\bf Public key} & {\bf Operation type} & Database row & {\bf Loss amount} \\
   \hline \hline
 \endfirsthead
-  {\bf Public key} & {\bf Operation type} & Database row & \multicolumn{2}{|c|}{ {\bf Loss amount}} \\ \hline \hline
+  {\bf Public key} & {\bf Operation type} & Database row & {\bf Loss amount} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Public key} & {\bf Operation type} & Database row & \multicolumn{2}{|c|}{ {\bf Loss amount}} \\
+  {\bf Public key} & {\bf Operation type} & Database row & {\bf Loss amount} \\
 \endfoot
   \hline
   {\bf Total losses}  & & &
-  {{ data.total_bad_sig_loss.value}}.{{ data.total_bad_sig_loss.fraction}} & {{ data.total_bad_sig_loss.currency}} \\
+  {{ data.total_bad_sig_loss}} \\
   \caption{Losses from operations performed on coins without proper signatures.}
   \label{table:bad_signature_losses}
 \endlastfoot
@@ -449,8 +414,7 @@ public key for ``payback-master'' operations.
   \multicolumn{5}{l}{ {\tt {{ item.key_pub }} } } \\
 \nopagebreak
   & {{ item.operation }} & {{ item.rowid }} &
-    {{ item.loss.value }}.{{ item.loss.fraction }} &
-    {{ item.loss.currency }} \\ \hline
+    {{ item.loss }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -465,23 +429,23 @@ incoming wire transfers does not match with that of the bank.
 {% if wire.reserve_in_amount_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer amounts and subjects matched up.}
 {% else %}
-  \begin{longtable}{p{5.5cm}|rl|rl}
+  \begin{longtable}{p{5.5cm}|r|r}
   \multicolumn{5}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
-  {\bf Diagnostic} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c}{ {\bf Expected}}  \\
+  {\bf Diagnostic} & {\bf Wired} & {\bf Expected}  \\
   \hline \hline
 \endfirsthead
   \multicolumn{5}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
-  {\bf Diagnostic} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c}{ {\bf Expected}}  \\
+  {\bf Diagnostic} & {\bf Wired} & {\bf Expected}  \\
   \hline \hline
 \endhead
   \hline \hline
   \multicolumn{5}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
-  {\bf Diagnostic} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c}{ {\bf Expected}}  \\
+  {\bf Diagnostic} & {\bf Wired} & {\bf Expected}  \\
 \endfoot
   \hline \hline
   {\bf Total deltas}  &
-  {{ wire.total_wire_in_delta_plus.value}}.{{ wire.total_wire_in_delta_plus.fraction}} & {{ wire.total_wire_in_delta_plus.currency}} &
-  - {{ wire.total_wire_in_delta_minus.value}}.{{ wire.total_wire_in_delta_minus.fraction}} & {{ wire.total_wire_in_delta_minus.currency}} \\
+  {{ wire.total_wire_in_delta_plus }} &
+  - {{ wire.total_wire_in_delta_minus}} \\
   \caption{Incoming wire transfer amounts not matching up.}
   \label{table:wire_in:transfer_amount_inconsistencies}
 \endlastfoot
@@ -489,10 +453,8 @@ incoming wire transfers does not match with that of the bank.
   \multicolumn{5}{l}{ {\tt {{ item.wtid }} } ({{ item.row }}) } \\
 \nopagebreak
   {{ item.timestamp }}: &
-  {{ item.amount_wired.value }}.{{ item.amount_wired.fraction }} &
-  {{ item.amount_wired.currency }} &
-  {{ item.amount_expected.value }}.{{ item.amount_expected.fraction }} &
-  {{ item.amount_expected.currency }} \\
+  {{ item.amount_wired }} &
+  {{ item.amount_expected }} \\
   {{ item.diagnostic }}  & & & & \\
 %\nopagebreak
 %  & \multicolumn{4}{|c}{ {{ item.timestamp }} }
@@ -514,26 +476,25 @@ account.
 {% if wire.missattribution_in_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer sender accounts matched up.}
 {% else %}
-  \begin{longtable}{p{6.5cm}|rl}
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  \begin{longtable}{p{6.5cm}|r}
+  {\bf Wire transfer identifier} & {\bf Amount} \\
   \hline \hline
 \endfirsthead
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  {\bf Wire transfer identifier} & {\bf Amount} \\
   \hline \hline
 \endhead
   \hline \hline
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  {\bf Wire transfer identifier} & {\bf Amount} \\
 \endfoot
   \hline
   {\bf Total amount}  &
-  {{ wire.total_missattribution_in_plus.value}}.{{ wire.total_missattribution_in_plus.fraction}} & {{ wire.total_missattribution_in_plus.currency}} \\
+  {{ wire.total_missattribution_in_plus}} \\
   \caption{Incoming wire transfer sender accounts not matching up.}
   \label{table:wire_in:sender_account_inconsistencies}
 \endlastfoot
 {% for item in wire.missattribution_in_inconsistencies %}
   {\tt {{ item.wtid }} } &
-  {{ item.amount.value }}.{{ item.amount.fraction }} &
-  {{ item.amount.currency }} \\ hline
+  {{ item.amount }} \\ hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -549,32 +510,30 @@ with respect to outgoing wire transfers.
 {% if wire.wire_out_amount_inconsistencies|length() == 0 %}
   {\bf All outgoing wire transfers matched up.}
 {% else %}
-  \begin{longtable}{p{6.5cm}|rl|rl}
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Justified}}  \\
-  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  \begin{longtable}{p{6.5cm}|r|r}
+  {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}}  \\
+  {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
   \hline \hline
 \endfirsthead
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Justified}}  \\
-  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
+  {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
   \hline \hline
 \endhead
   \hline \hline
-  {\bf Wire transfer identifier} & \multicolumn{2}{|c|}{ {\bf Wired}} & \multicolumn{2}{|c|}{ {\bf Justified}}  \\
-  {\bf Diagnostic}               & \multicolumn{2}{|c|}{ {\bf Row}} & \multicolumn{2}{|c|}{ {\bf Timestamp}}  \\
+  {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
+  {\bf Diagnostic}               & {\bf Row}} & {\bf Timestamp}  \\
 \endfoot
   \hline
   {\bf Total deltas}  & &
-  {{ wire.total_wire_out_delta_plus.value}}.{{ wire.total_wire_out_delta_plus.fraction}} & {{ wire.total_wire_out_delta_plus.currency}} &
-  - {{ wire.total_wire_out_delta_minus.value}}.{{ wire.total_bad_amount_out_minus.fraction}} & {{ wire.total_wire_out_delta_minus.currency}} \\
+  {{ wire.total_wire_out_delta_plus }} &
+  - {{ wire.total_wire_out_delta_minus }} \\
   \caption{Outgoing wire transfer amounts not matching up.}
   \label{table:wire_out:transfer_amount_inconsistencies}
 \endlastfoot
 {% for item in wire.wire_out_amount_inconsistencies %}
   {\tt {{ item.wtid }} } &
-  {{ item.amount_wired.value }}.{{ item.amount_wired.fraction }} &
-  {{ item.amount_wired.currency }} &
-  {{ item.amount_justified.value }}.{{ item.amount_justified.fraction }} &
-  {{ item.amount_justified.currency }} \\ \hline
+  {{ item.amount_wired }} &
+  {{ item.amount_justified }} \\ \hline
 \nopagebreak
   &
   {{ item.diagnostic }} &
@@ -598,18 +557,18 @@ translate into a financial loss (yet).
 {% if data.reserve_balance_summary_wrong_inconsistencies|length() == 0 %}
   {\bf All balances matched up.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|rl|rl}
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Auditor}} & \multicolumn{2}{|c|}{ {\bf Exchange}} \\ \hline \hline
+  \begin{longtable}{p{1.5cm}|r|r}
+  {\bf Reserve} & {\bf Auditor} & {\bf Exchange} \\ \hline \hline
 \endfirsthead
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Auditor}} & \multicolumn{2}{|c|}{ {\bf Exchange}} \\ \hline \hline
+  {\bf Reserve} & {\bf Auditor} & {\bf Exchange} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Reserve} & \multicolumn{2}{|c|}{ {\bf Auditor}} & \multicolumn{2}{|c|}{ {\bf Exchange}}
+  {\bf Reserve} & {\bf Auditor} & {\bf Exchange}
 \endfoot
   \hline
   {\bf Total deltas}  & &
-  {{ data.total_balance_summary_delta_plus.value}}.{{ data.total_balance_summary_delta_plus.fraction}} & {{ data.total_balance_summary_delta_plus.currency}} &
-  - {{ data.total_balance_summary_delta_minus.value}}.{{ data.total_balance_summary_delta_minus.fraction}} & {{ data.total_balance_summary_delta_minus.currency}} \\
+  {{ data.total_balance_summary_delta_plus}} &
+  - {{ data.total_balance_summary_delta_minus}} \\
   \caption{Reserves balances not matching up.}
   \label{table:reserve:balance_inconsistencies}
 \endlastfoot
@@ -617,10 +576,8 @@ translate into a financial loss (yet).
   \multicolumn{5}{l}{ {\tt {{ item.reserve_pub }} } } \\
 \nopagebreak
   &
-  {{ item.auditor.value }}.{{ item.auditor.fraction }} &
-  {{ item.auditor.currency }} &
-  {{ item.exchange.value }}.{{ item.exchange.fraction }} &
-  {{ item.exchange.currency }} \\ \hline
+  {{ item.auditor }} &
+  {{ item.exchange }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -670,24 +627,23 @@ with duplicate or malformed wire transfer subjects.
 {% if wire.wire_format_inconsistencies|length() == 0 %}
   {\bf No wire format inconsistencies found.}
 {% else %}
-  \begin{longtable}{p{4.5cm}|rl}
+  \begin{longtable}{p{4.5cm}|r}
   \multicolumn{3}{c}{ {\bf Row hash} } \\
-  {\bf Diagnostic} & \multicolumn{2}{c|}{ {\bf Amount} } \\
+  {\bf Diagnostic} & {\bf Amount} \\
   \hline \hline
 \endfirsthead
   \multicolumn{3}{c}{ {\bf Row hash} } \\
-  {\bf Diagnostic} & \multicolumn{2}{c|}{ {\bf Amount} } \\
+  {\bf Diagnostic} & {\bf Amount} \\
   \hline \hline
 \endhead
   \hline
   \multicolumn{3}{c}{ {\bf Row hash} } \\
-  {\bf Diagnostic} & \multicolumn{2}{c|}{ {\bf Amount} } \\
+  {\bf Diagnostic} & {\bf Amount} \\
 \endfoot
   \hline
   \hline
   {\bf Total} &
-  {{ wire.total_wire_format_amount.value }}.{{ wire.total_wire_format_amount.fraction }} &
-  {{ wire.total_wire_format_amount.currency }} \\
+  {{ wire.total_wire_format_amount }} \\
   \caption{Outgoing wire transfer subject issues found.}
   \label{table:outgoing:wtid}
 \endlastfoot
@@ -695,8 +651,7 @@ with duplicate or malformed wire transfer subjects.
   \multicolumn{3}{l}{ \verb! {{ item.wire_offset_hash }} ! } \\
 \nopagebreak
   {{ item.diagnostic }} &
-  {{ item.amount.value }}.{{ item.amount.fraction }} &
-  {{ item.amount.currency }} \\
+  {{ item.amount }} \\
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -781,17 +736,17 @@ reserve expired.
 {% if data.reserve_not_closed_inconsistencies|length() == 0 %}
   {\bf All expired reserves were closed.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|c|rl}
-  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c}{ {\bf Balance}} \\ \hline \hline
+  \begin{longtable}{p{1.5cm}|c|r}
+  {\bf Reserve} & {\bf Expired} & {\bf Balance} \\ \hline \hline
 \endfirsthead
-  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c}{ {\bf Balance}} \\ \hline \hline
+  {\bf Reserve} & {\bf Expired} & {\bf Balance} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Reserve} & {\bf Expired} & \multicolumn{2}{|c}{ {\bf Balance}}
+  {\bf Reserve} & {\bf Expired} & {\bf Balance}
 \endfoot
   \hline
   {\bf Sum}     & &
-  {{ data.total_balance_reserve_not_closed.value}}.{{ data.total_balance_reserve_not_closed.fraction}} & {{ data.total_balance_reserve_not_closed.currency}} \\
+  {{ data.total_balance_reserve_not_closed}} \\
   \caption{Reserves not closed on time.}
   \label{table:reserve:not_closed}
 \endlastfoot
@@ -800,8 +755,7 @@ reserve expired.
 \nopagebreak
   &
   {{ item.expiration_time }} &
-  {{ item.balance.value }}.{{ item.balance.fraction }} &
-  {{ item.balance.currency }} \\ \hline
+  {{ item.balance }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -818,19 +772,19 @@ may happen even if the exchange is correct.
 {% if data.refresh_hanging|length() == 0 %}
   {\bf All melted coins were refreshed.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|c|rl}
-  {\bf Key} & {\bf row} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  \begin{longtable}{p{1.5cm}|c|r}
+  {\bf Key} & {\bf row} & {\bf Amount} \\
   \hline \hline
 \endfirsthead
-  {\bf Key} & {\bf row} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  {\bf Key} & {\bf row} & {\bf Amount} \\
   \hline \hline
 \endhead
   \hline \hline
-  {\bf Key} & {\bf row} & \multicolumn{2}{|c|}{ {\bf Amount}} \\
+  {\bf Key} & {\bf row} & {\bf Amount} \\
 \endfoot
   \hline
   {\bf Sum}     & &
-  {{ data.total_refresh_hanging.value}}.{{ data.total_refresh_hanging.fraction}} & {{ data.total_refresh_hanging.currency}} \\
+  {{ data.total_refresh_hanging}} \\
   \caption{Refresh operations hanging.}
   \label{table:refresh:hanging}
 \endlastfoot
@@ -839,8 +793,7 @@ may happen even if the exchange is correct.
 \nopagebreak
   &
   {{ item.row }} &
-  {{ item.amount.value }}.{{ item.amount.fraction }} &
-  {{ item.amount.currency }} \\ \hline
+  {{ item.amount }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
