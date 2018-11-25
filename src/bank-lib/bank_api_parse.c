@@ -66,6 +66,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
       {
       case TALER_BANK_AUTH_NONE:
         auth->method = TALER_BANK_AUTH_NONE;
+        GNUNET_free (method);
         return GNUNET_OK;
       case TALER_BANK_AUTH_BASIC:
         if (GNUNET_OK !=
@@ -77,6 +78,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
           GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                      section,
                                      "USERNAME");
+          GNUNET_free (method);
           return GNUNET_SYSERR;
         }
         if (GNUNET_OK !=
@@ -90,13 +92,16 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
           GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                      section,
                                      "USERNAME");
+          GNUNET_free (method);
           return GNUNET_SYSERR;
         }
         auth->method = TALER_BANK_AUTH_BASIC;
+        GNUNET_free (method);
         return GNUNET_OK;
       }
     }
   }
+  GNUNET_free (method);
   return GNUNET_SYSERR;
 }
 

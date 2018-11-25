@@ -465,6 +465,7 @@ refresh_reveal_cleanup (void *cls,
   GNUNET_free_non_null (rrs->fresh_coins);
   rrs->fresh_coins = NULL;
   rrs->num_fresh_coins = 0;
+  GNUNET_free (rrs);
 }
 
 
@@ -765,6 +766,7 @@ refresh_link_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (rls->retry_task);
     rls->retry_task = NULL;
   }
+  GNUNET_free (rls);
 }
 
 
@@ -1036,6 +1038,7 @@ refresh_melt_cleanup (void *cls,
   GNUNET_free_non_null (rms->refresh_data);
   rms->refresh_data = NULL;
   rms->refresh_data_length = 0;
+  GNUNET_free (rms);
 }
 
 

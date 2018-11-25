@@ -280,7 +280,7 @@ parse_payto (const char *account_url,
                        "%llu",
                        &port))
       {
-        GNUNET_break (0); 
+        GNUNET_break (0);
         TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
         GNUNET_free (r_account->hostname);
         return TALER_EC_PAYTO_MALFORMED;
@@ -300,7 +300,7 @@ parse_payto (const char *account_url,
         (GNUNET_SYSERR != GNUNET_asprintf
           (&r_account->bank_base_url,
            "https://%s",
-           r_account->hostname));  
+           r_account->hostname));
     }
   }
   return TALER_EC_NONE;
@@ -578,6 +578,7 @@ taler_bank_prepare_wire_transfer (void *cls,
     GNUNET_free (a_in.bank_base_url);
     GNUNET_free (a_out.hostname);
     GNUNET_free (a_out.bank_base_url);
+    GNUNET_free (origin_account_url);
     return NULL;
   }
   GNUNET_free (a_in.hostname);
@@ -592,6 +593,7 @@ taler_bank_prepare_wire_transfer (void *cls,
                                  &pth->auth))
   {
     GNUNET_free (pth);
+    GNUNET_free (origin_account_url);
     return NULL;
   }
 

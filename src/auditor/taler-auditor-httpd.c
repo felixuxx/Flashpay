@@ -314,16 +314,19 @@ handle_version (struct TAH_RequestHandler *rh,
                 const char *upload_data,
                 size_t *upload_data_size)
 {
-  json_t *ver;
+  static json_t *ver; /* we build the response only once, keep around for next query! */
 
   (void) rh;
   (void) upload_data;
   (void) upload_data_size;
   (void) connection_cls;
-  ver = json_pack ("{s:s, s:s, s:o}",
-                   "version", AUDITOR_PROTOCOL_VERSION,
-                   "currency", currency,
-                   "auditor_public_key", GNUNET_JSON_from_data_auto (&auditor_pub));
+  if (NULL == ver)
+  {
+    ver = json_pack ("{s:s, s:s, s:o}",
+                     "version", AUDITOR_PROTOCOL_VERSION,
+                     "currency", currency,
+                     "auditor_public_key", GNUNET_JSON_from_data_auto (&auditor_pub));
+  }
   if (NULL == ver)
   {
     GNUNET_break (0);
@@ -616,8 +619,10 @@ auditor_serve_process_config ()
       GNUNET_free (auditor_key_file);
       return 1;
     }
+    GNUNET_free (auditor_key_file);
     GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
                                         &auditor_pub.eddsa_pub);
+    GNUNET_free (eddsa_priv);
   }
   else
   {
