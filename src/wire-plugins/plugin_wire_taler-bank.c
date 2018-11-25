@@ -253,12 +253,11 @@ parse_payto (const char *account_url,
     }
     GNUNET_free (s);
   }
-  else
+  else if (1 != sscanf (account,
+                        "%llu",
+                        &no))
   {
-    if (1 != sscanf (account,
-                     "%llu",
-                     &no))
-      return TALER_EC_PAYTO_MALFORMED;
+    return TALER_EC_PAYTO_MALFORMED;
   }
   if (no > MAX_ACCOUNT_NO)
     return TALER_EC_PAYTO_MALFORMED;
@@ -773,6 +772,8 @@ taler_bank_execute_wire_transfer (void *cls,
       parse_payto (destination_account_url,
                    &destination_account))
   {
+    GNUNET_free_non_null (origin_account.hostname);
+    GNUNET_free_non_null (origin_account.bank_base_url);
     GNUNET_break (0);
     return NULL;
   }
@@ -780,6 +781,10 @@ taler_bank_execute_wire_transfer (void *cls,
                        destination_account.hostname))
   {
     GNUNET_break (0);
+    GNUNET_free_non_null (origin_account.hostname);
+    GNUNET_free_non_null (destination_account.hostname);
+    GNUNET_free_non_null (origin_account.bank_base_url);
+    GNUNET_free_non_null (destination_account.bank_base_url);
     return NULL;
   }
 
@@ -798,6 +803,10 @@ taler_bank_execute_wire_transfer (void *cls,
 					    (uint64_t) destination_account.no,
                                             &execute_cb,
                                             eh);
+  GNUNET_free_non_null (origin_account.bank_base_url);
+  GNUNET_free_non_null (destination_account.bank_base_url);
+  GNUNET_free_non_null (origin_account.hostname);
+  GNUNET_free_non_null (destination_account.hostname);
   GNUNET_free (wire_s);
   if (NULL == eh->aaih)
   {

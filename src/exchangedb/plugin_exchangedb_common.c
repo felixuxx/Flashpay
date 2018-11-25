@@ -90,7 +90,8 @@ common_free_coin_transaction_list (void *cls,
     switch (list->type)
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
-      GNUNET_free_non_null (list->details.deposit->receiver_wire_account);
+      if (NULL != list->details.deposit->receiver_wire_account)
+        json_decref (list->details.deposit->receiver_wire_account);
       if (NULL != list->details.deposit->coin.denom_pub.rsa_public_key)
         GNUNET_CRYPTO_rsa_public_key_free (list->details.deposit->coin.denom_pub.rsa_public_key);
       if (NULL != list->details.deposit->coin.denom_sig.rsa_signature)

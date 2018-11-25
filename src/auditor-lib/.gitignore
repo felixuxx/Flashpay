@@ -1,1 +1,4 @@
 test_auditor_api
+test_exchange_api_home/.local/share/taler/auditors/
+test_exchange_api_home/.local/share/taler/exchange/live-keys/
+auditor.in
