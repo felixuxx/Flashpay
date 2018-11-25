@@ -397,7 +397,7 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
 
   if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
+      TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
@@ -406,10 +406,10 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->exchange = exchange;
   wh->cb = wire_cb;
   wh->cb_cls = wire_cb_cls;
-  wh->url = MAH_path_to_url (exchange, "/wire");
+  wh->url = TEAH_path_to_url (exchange, "/wire");
 
   eh = TEL_curl_easy_get (wh->url);
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   wh->job = GNUNET_CURL_job_add (ctx,
                          eh,
                          GNUNET_YES,

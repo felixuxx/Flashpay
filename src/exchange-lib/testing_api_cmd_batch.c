@@ -189,3 +189,17 @@ TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd)
 {
   return cmd->run == &batch_run;
 }
+
+
+/**
+ * Obtain what command the batch is at.
+ *
+ * @return cmd current batch command
+ */
+struct TALER_TESTING_Command *
+TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd)
+{
+  struct BatchState *bs = cmd->cls;
+
+  return &bs->batch[bs->batch_ip];
+}

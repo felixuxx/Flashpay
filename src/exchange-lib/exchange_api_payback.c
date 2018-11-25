@@ -284,7 +284,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
 
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (exchange));
+		 TEAH_handle_is_ready (exchange));
   pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
   pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
@@ -317,7 +317,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->pk = pk;
   ph->cb = payback_cb;
   ph->cb_cls = payback_cb_cls;
-  ph->url = MAH_path_to_url (exchange, "/payback");
+  ph->url = TEAH_path_to_url (exchange, "/payback");
 
   ph->json_enc = json_dumps (payback_obj,
                              JSON_COMPACT);
@@ -341,7 +341,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (ph->json_enc)));
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   ph->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,

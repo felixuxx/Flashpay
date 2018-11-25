@@ -216,6 +216,13 @@ TALER_TESTING_interpreter_fail
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Failed at command `%s'\n",
               cmd->label);
+  while (TALER_TESTING_cmd_is_batch (cmd))
+    {
+      cmd = TALER_TESTING_cmd_batch_get_current (cmd);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Batch is at command `%s'\n",
+                  cmd->label);
+    }
   is->result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_shutdown ();
 }
@@ -368,7 +375,7 @@ maint_child_death (void *cls)
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command *batch_cmd;
-    
+
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_get_trait_cmd
         (cmd, 0, &batch_cmd)); /* bad? */

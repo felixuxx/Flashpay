@@ -31,7 +31,7 @@
  * @return ctx context to execute jobs in
  */
 struct GNUNET_CURL_Context *
-MAH_handle_to_context (struct TALER_EXCHANGE_Handle *h);
+TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h);
 
 
 /**
@@ -41,7 +41,7 @@ MAH_handle_to_context (struct TALER_EXCHANGE_Handle *h);
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
 int
-MAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
+TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
 
 
 /**
@@ -52,7 +52,7 @@ MAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
  * @return the full URL to use with cURL
  */
 char *
-MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
+TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                  const char *path);
 
 
@@ -64,7 +64,7 @@ MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  * @return the full URL to use with cURL
  */
 char *
-MAH_path_to_url2 (const char *base_url,
+TEAH_path_to_url2 (const char *base_url,
                   const char *path);
 
 

@@ -607,7 +607,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   char *arg_str;
 
   if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
+      TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
@@ -623,12 +623,12 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   rsh->cb = cb;
   rsh->cb_cls = cb_cls;
   rsh->reserve_pub = *reserve_pub;
-  rsh->url = MAH_path_to_url (exchange,
+  rsh->url = TEAH_path_to_url (exchange,
                               arg_str);
   GNUNET_free (arg_str);
 
   eh = TEL_curl_easy_get (rsh->url);
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   rsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_NO,
@@ -1022,7 +1022,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   wsh->ps = *ps;
-  wsh->url = MAH_path_to_url (exchange, "/reserve/withdraw");
+  wsh->url = TEAH_path_to_url (exchange, "/reserve/withdraw");
 
   eh = TEL_curl_easy_get (wsh->url);
   GNUNET_assert (NULL != (wsh->json_enc =
@@ -1037,7 +1037,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (wsh->json_enc)));
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   wsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,

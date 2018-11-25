@@ -434,7 +434,7 @@ TALER_TESTING_cmd_withdraw_amount
   }
   ws->expected_response_code = expected_response_code;
   ws->exchange = exchange;
-  ws->exchange_url = MAH_path_to_url (exchange, "/");
+  ws->exchange_url = TEAH_path_to_url (exchange, "/");
 
   cmd.cls = ws;
   cmd.label = label;
@@ -481,7 +481,7 @@ TALER_TESTING_cmd_withdraw_denomination
   ws->pk = dk;
   ws->expected_response_code = expected_response_code;
   ws->exchange = exchange;
-  ws->exchange_url = MAH_path_to_url (exchange, "/");
+  ws->exchange_url = TEAH_path_to_url (exchange, "/");
 
   cmd.cls = ws;
   cmd.label = label;

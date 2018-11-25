@@ -976,7 +976,7 @@ keys_completed_cb (void *cls,
  * @return ctx context to execute jobs in
  */
 struct GNUNET_CURL_Context *
-MAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
+TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
 {
   return h->ctx;
 }
@@ -989,7 +989,7 @@ MAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
 int
-MAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
+TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
 {
   return (MHS_CERT == h->state) ? GNUNET_YES : GNUNET_NO;
 }
@@ -1003,10 +1003,10 @@ MAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
  * @return the full URL to use with cURL
  */
 char *
-MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
+TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                  const char *path)
 {
-  return MAH_path_to_url2 (h->url,
+  return TEAH_path_to_url2 (h->url,
                            path);
 }
 
@@ -1019,7 +1019,7 @@ MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  * @return the full URL to use with cURL
  */
 char *
-MAH_path_to_url2 (const char *base_url,
+TEAH_path_to_url2 (const char *base_url,
                   const char *path)
 {
   char *url;
@@ -1443,20 +1443,20 @@ request_keys (void *cls)
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
   if (GNUNET_YES ==
-      MAH_handle_is_ready (exchange))
+      TEAH_handle_is_ready (exchange))
   {
     char *arg;
 
     GNUNET_asprintf (&arg,
 		     "/keys?last_issue_date=%llu",
 		     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
-    kr->url = MAH_path_to_url (exchange,
+    kr->url = TEAH_path_to_url (exchange,
 			       arg);
     GNUNET_free (arg);
   }
   else
   {
-    kr->url = MAH_path_to_url (exchange,
+    kr->url = TEAH_path_to_url (exchange,
 			       "/keys");
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,

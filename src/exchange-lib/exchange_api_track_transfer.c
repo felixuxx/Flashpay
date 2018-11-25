@@ -334,7 +334,7 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
 
   if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
+      TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
@@ -350,13 +350,13 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_asprintf (&path,
                    "/track/transfer?wtid=%s",
                    buf);
-  wdh->url = MAH_path_to_url (wdh->exchange,
+  wdh->url = TEAH_path_to_url (wdh->exchange,
                               path);
   GNUNET_free (buf);
   GNUNET_free (path);
 
   eh = TEL_curl_easy_get (wdh->url);
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,

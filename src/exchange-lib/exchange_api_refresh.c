@@ -1153,7 +1153,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_RefreshMeltCoinAffirmationPS melt;
 
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (exchange));
+		 TEAH_handle_is_ready (exchange));
   md = deserialize_melt_data (refresh_data,
                               refresh_data_length);
   if (NULL == md)
@@ -1200,7 +1200,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   rmh->melt_cb = melt_cb;
   rmh->melt_cb_cls = melt_cb_cls;
   rmh->md = md;
-  rmh->url = MAH_path_to_url (exchange,
+  rmh->url = TEAH_path_to_url (exchange,
                               "/refresh/melt");
   eh = TEL_curl_easy_get (rmh->url);
   GNUNET_assert (NULL != (rmh->json_enc =
@@ -1215,7 +1215,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rmh->json_enc)));
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   rmh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
@@ -1533,7 +1533,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_TransferPublicKeyP transfer_pub;
 
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (exchange));
+		 TEAH_handle_is_ready (exchange));
   md = deserialize_melt_data (refresh_data,
                               refresh_data_length);
   if (NULL == md)
@@ -1627,7 +1627,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   rrh->reveal_cb = reveal_cb;
   rrh->reveal_cb_cls = reveal_cb_cls;
   rrh->md = md;
-  rrh->url = MAH_path_to_url (rrh->exchange,
+  rrh->url = TEAH_path_to_url (rrh->exchange,
                               "/refresh/reveal");
 
   eh = TEL_curl_easy_get (rrh->url);
@@ -1643,7 +1643,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rrh->json_enc)));
-  ctx = MAH_handle_to_context (rrh->exchange);
+  ctx = TEAH_handle_to_context (rrh->exchange);
   rrh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   GNUNET_YES,

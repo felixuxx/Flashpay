@@ -270,6 +270,27 @@ run (void *cls,
      * a lot!
      */
     CMD_EXEC_AGGREGATOR ("run-aggregator"),
+
+    /**
+     * Check all the transfers took place.
+     */
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_transfer-499c", exchange_url,
+       "EUR:4.98", 2, 42),
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_transfer-99c1", exchange_url,
+       "EUR:0.98", 2, 42),
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_transfer-99c", exchange_url,
+       "EUR:0.08", 2, 43),
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_transfer-aai-1", exchange_url,
+       "EUR:5.01", 42, 2),
+    TALER_TESTING_cmd_check_bank_transfer
+      ("check_bank_transfer-aai-2", exchange_url,
+       "EUR:5.01", 42, 2),
+
+    TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
     TALER_TESTING_cmd_end ()
   };
 
@@ -505,12 +526,6 @@ main (int argc,
   GNUNET_log_setup ("test-auditor-api",
                     "INFO",
                     NULL);
-  if (1)
-  {
-    TALER_LOG_WARNING ("Test not yet ready\n");
-    return 77; // FIXME: test not yet ready
-  }
-
   if (NULL == (fakebank_url
        /* Check fakebank port is available and config cares
         * about bank url. */

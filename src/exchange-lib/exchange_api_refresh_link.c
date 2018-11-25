@@ -387,7 +387,7 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   char *arg_str;
 
   if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
+      TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
@@ -407,12 +407,12 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   rlh->link_cb = link_cb;
   rlh->link_cb_cls = link_cb_cls;
   rlh->coin_priv = *coin_priv;
-  rlh->url = MAH_path_to_url (exchange, arg_str);
+  rlh->url = TEAH_path_to_url (exchange, arg_str);
   GNUNET_free (arg_str);
 
 
   eh = TEL_curl_easy_get (rlh->url);
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   rlh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,

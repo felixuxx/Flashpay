@@ -1452,6 +1452,15 @@ int
 TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd);
 
 
+/**
+ * Obtain what command the batch is at.
+ *
+ * @return cmd current batch command
+ */
+struct TALER_TESTING_Command *
+TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 /**

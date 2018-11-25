@@ -419,7 +419,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   (void) GNUNET_TIME_round_abs (&refund_deadline);
   GNUNET_assert (refund_deadline.abs_value_us <= wire_deadline.abs_value_us);
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (exchange));
+		 TEAH_handle_is_ready (exchange));
   /* initialize h_wire */
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire_details,
@@ -483,7 +483,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->url = MAH_path_to_url (exchange, "/deposit");
+  dh->url = TEAH_path_to_url (exchange, "/deposit");
   dh->depconf.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
   dh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dh->depconf.h_contract_terms = *h_contract_terms;
@@ -513,7 +513,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (dh->json_enc)));
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,

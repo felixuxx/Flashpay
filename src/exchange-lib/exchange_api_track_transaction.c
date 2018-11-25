@@ -279,7 +279,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
 
   if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
+      TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
@@ -314,7 +314,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->exchange = exchange;
   dwh->cb = cb;
   dwh->cb_cls = cb_cls;
-  dwh->url = MAH_path_to_url (exchange, "/track/transaction");
+  dwh->url = TEAH_path_to_url (exchange, "/track/transaction");
   dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   dwh->depconf.h_wire = *h_wire;
@@ -334,7 +334,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (dwh->json_enc)));
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   dwh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,

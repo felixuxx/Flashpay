@@ -256,7 +256,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_MerchantSignatureP merchant_sig;
 
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (exchange));
+		 TEAH_handle_is_ready (exchange));
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
   rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
   rr.h_contract_terms = *h_contract_terms;
@@ -355,7 +355,7 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
   rh->exchange = exchange;
   rh->cb = cb;
   rh->cb_cls = cb_cls;
-  rh->url = MAH_path_to_url (exchange, "/refund");
+  rh->url = TEAH_path_to_url (exchange, "/refund");
   rh->depconf.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
   rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
   rh->depconf.h_contract_terms = *h_contract_terms;
@@ -383,7 +383,7 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rh->json_enc)));
-  ctx = MAH_handle_to_context (exchange);
+  ctx = TEAH_handle_to_context (exchange);
   rh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
 				 GNUNET_YES,
