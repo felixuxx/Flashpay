@@ -96,13 +96,9 @@ gnunet-ecc -p master.priv
 
 4) Generate other exchange related keys ('denomination' and 'signing' keys), by issuing:
 
-taler-exchange-keyup -d `pwd` -m master.priv
+taler-exchange-keyup -m master.priv -o auditor.in
 
-5) Check with:
-
-taler-exchange-keycheck -d `pwd`
-
-6) A exchange needs a database to operate, so the following instructions relate to
+5) A exchange needs a database to operate, so the following instructions relate to
 how to set up PostgreSQL. On debian, the two packages needed are:
 
 * postgresql
