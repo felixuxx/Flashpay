@@ -460,6 +460,15 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Get exchange's base URL.
+ *
+ * @param exchange exchange handle.
+ * @return the base URL from the handle.
+ */
+const char *
+TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange);
+
+/**
  * Obtain the denomination key details from the exchange.
  *
  * @param keys the exchange's key set
