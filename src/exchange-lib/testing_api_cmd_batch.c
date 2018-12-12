@@ -94,8 +94,13 @@ batch_cleanup (void *cls,
   for (unsigned int i=0;
        NULL != bs->batch[i].label;
        i++)
+  {
+    TALER_LOG_DEBUG ("Batch-cleaning element %u, labelled '%s'\n",
+                     i,
+                     bs->batch[i].label);
     bs->batch[i].cleanup (bs->batch[i].cls,
                           &bs->batch[i]);
+  }
   GNUNET_free_non_null (bs->batch);
   GNUNET_free (bs);
 }

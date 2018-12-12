@@ -892,35 +892,45 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  struct TALER_TESTING_Command reserve_open_close[] = {
+  #define RESERVE_OPEN_CLOSE_CHUNK 4
+  #define RESERVE_OPEN_CLOSE_ITERATIONS 3
+  #define CONSTANT_KEY \
+    "09QGYPEKNHBACK135BNXZFHA0YTQXT1KJDRVXF4J822G99AYNQ8G"
 
-    #define CONSTANT_KEY \
-      "09QGYPEKNHBACK135BNXZFHA0YTQXT1KJDRVXF4J822G99AYNQ8G"
+  struct TALER_TESTING_Command reserve_open_close
+    [(RESERVE_OPEN_CLOSE_ITERATIONS
+      * RESERVE_OPEN_CLOSE_CHUNK) + 1];
+  
+  for (unsigned int i = 0;
+       i < RESERVE_OPEN_CLOSE_ITERATIONS;
+       i++)
+  {
+    reserve_open_close[i * RESERVE_OPEN_CLOSE_CHUNK]
+      = CMD_TRANSFER_TO_EXCHANGE_SUBJECT
+          ("reserve-open-close-key",
+           "EUR:20",
+           CONSTANT_KEY);
 
-    TALER_TESTING_cmd_check_bank_empty
-      ("reserve-open-close-empty"),
+    reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 1]
+      = TALER_TESTING_cmd_exec_wirewatch
+          ("reserve-open-close-wirewatch",
+           CONFIG_FILE_EXPIRE_RESERVE_NOW);
 
-    CMD_TRANSFER_TO_EXCHANGE_SUBJECT
-      ("reserve-open-close-key",
-       "EUR:20",
-       CONSTANT_KEY),
+    reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
+      = TALER_TESTING_cmd_exec_aggregator
+          ("reserve-open-close-aggregation",
+           CONFIG_FILE_EXPIRE_RESERVE_NOW);
 
-    TALER_TESTING_cmd_exec_wirewatch
-      ("reserve-open-close-wirewatch",
-       CONFIG_FILE_EXPIRE_RESERVE_NOW),
-
-    /* Wire back to the bank */
-    TALER_TESTING_cmd_exec_aggregator
-      ("reserve-open-close-aggregation",
-       CONFIG_FILE_EXPIRE_RESERVE_NOW),
-
-    TALER_TESTING_cmd_status ("reserve-open-close-status",
-                              is->exchange,
-                              "reserve-open-close-key",
-                              "EUR:0",
-                              MHD_HTTP_OK),
-    TALER_TESTING_cmd_end ()
-  };
+    reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 3]
+      = TALER_TESTING_cmd_status ("reserve-open-close-status",
+                                  is->exchange,
+                                  "reserve-open-close-key",
+                                  "EUR:0",
+                                  MHD_HTTP_OK);
+  }
+  reserve_open_close
+    [RESERVE_OPEN_CLOSE_ITERATIONS * RESERVE_OPEN_CLOSE_CHUNK]
+      = TALER_TESTING_cmd_end ();
 
   struct TALER_TESTING_Command commands[] = {
 
@@ -947,12 +957,12 @@ run (void *cls,
 
     TALER_TESTING_cmd_batch ("payback",
                              payback),
-
+    /* Fix #5462. */
     TALER_TESTING_cmd_batch ("reserve-open-close",
                              reserve_open_close),
     /**
      * End the suite.  Fixme: better to have a label for this
-     * too, as it shows a "(null)" token on logs.
+     * too, as it shows as "(null)" on logs.
      */
     TALER_TESTING_cmd_end ()
   };

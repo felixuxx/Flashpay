@@ -553,6 +553,11 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
+
+  TALER_LOG_DEBUG ("%s:FTS@%p\n",
+                   label,
+                   fts);
+
   fts->bank_url = bank_url;
   fts->credit_account_no = credit_account_no;
   fts->debit_account_no = debit_account_no;
