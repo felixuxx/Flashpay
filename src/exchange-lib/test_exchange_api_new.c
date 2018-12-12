@@ -909,17 +909,16 @@ run (void *cls,
       ("reserve-open-close-wirewatch",
        CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
-    TALER_TESTING_cmd_status ("reserve-open-close-status",
-                              is->exchange,
-                              "reserve-open-close-key",
-                              "EUR:0",
-                              MHD_HTTP_OK),
-
     /* Wire back to the bank */
     TALER_TESTING_cmd_exec_aggregator
       ("reserve-open-close-aggregation",
        CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
+    TALER_TESTING_cmd_status ("reserve-open-close-status",
+                              is->exchange,
+                              "reserve-open-close-key",
+                              "EUR:0",
+                              MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 
@@ -949,11 +948,8 @@ run (void *cls,
     TALER_TESTING_cmd_batch ("payback",
                              payback),
 
-    #if 0
     TALER_TESTING_cmd_batch ("reserve-open-close",
                              reserve_open_close),
-    #endif
-
     /**
      * End the suite.  Fixme: better to have a label for this
      * too, as it shows a "(null)" token on logs.

@@ -109,7 +109,8 @@ reserve_status_cb
   if (0 != TALER_amount_cmp (&eb, balance))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected amount in reserve\n");
+                "Unexpected amount in reserve: %s\n",
+                TALER_amount_to_string (balance));
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
@@ -167,6 +168,8 @@ status_run (void *cls,
     return;
   }
 
+  /* NOTE: the following line might generate a ERROR log
+   * statements, but it can be ignored.  */
   if (GNUNET_OK == TALER_TESTING_get_trait_reserve_priv
       (create_reserve,
        0,
