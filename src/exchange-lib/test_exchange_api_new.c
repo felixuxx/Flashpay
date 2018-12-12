@@ -135,7 +135,6 @@ static char *auditor_url;
       EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
       subject, exchange_url)
 
-
 /**
  * Main function that will tell the interpreter what commands to
  * run.
@@ -690,13 +689,17 @@ run (void *cls,
                                        "payback-create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_revoke ("revoke-1", MHD_HTTP_OK,
+    /* Make coin invalid */
+    TALER_TESTING_cmd_revoke ("revoke-1",
+                              MHD_HTTP_OK,
                               "payback-withdraw-coin-1",
                               CONFIG_FILE),
 
-    TALER_TESTING_cmd_payback ("payback-1", MHD_HTTP_OK,
-                               "payback-withdraw-coin-1", "EUR:5"),
+    /* Refund coin to bank account */
+    TALER_TESTING_cmd_payback ("payback-1",
+                               MHD_HTTP_OK,
+                               "payback-withdraw-coin-1",
+                               "EUR:5"),
 
     /* Check the money is back with the reserve */
     TALER_TESTING_cmd_status ("payback-reserve-status-1",
@@ -712,8 +715,9 @@ run (void *cls,
                                        "EUR:1",
                                        MHD_HTTP_OK),
 
-    /* This withdrawal will test the logic to create
-     * a "payback" element to insert into the reserve's history.
+    /**
+     * This withdrawal will test the logic to create a "payback"
+     * element to insert into the reserve's history.
      */
     TALER_TESTING_cmd_withdraw_amount
       ("payback-withdraw-coin-2-over",
@@ -888,6 +892,37 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  struct TALER_TESTING_Command reserve_open_close[] = {
+
+    #define CONSTANT_KEY \
+      "09QGYPEKNHBACK135BNXZFHA0YTQXT1KJDRVXF4J822G99AYNQ8G"
+
+    TALER_TESTING_cmd_check_bank_empty
+      ("reserve-open-close-empty"),
+
+    CMD_TRANSFER_TO_EXCHANGE_SUBJECT
+      ("reserve-open-close-key",
+       "EUR:20",
+       CONSTANT_KEY),
+
+    TALER_TESTING_cmd_exec_wirewatch
+      ("reserve-open-close-wirewatch",
+       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+
+    TALER_TESTING_cmd_status ("reserve-open-close-status",
+                              is->exchange,
+                              "reserve-open-close-key",
+                              "EUR:0",
+                              MHD_HTTP_OK),
+
+    /* Wire back to the bank */
+    TALER_TESTING_cmd_exec_aggregator
+      ("reserve-open-close-aggregation",
+       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command commands[] = {
 
     TALER_TESTING_cmd_batch ("wire",
@@ -913,6 +948,11 @@ run (void *cls,
 
     TALER_TESTING_cmd_batch ("payback",
                              payback),
+
+    #if 0
+    TALER_TESTING_cmd_batch ("reserve-open-close",
+                             reserve_open_close),
+    #endif
 
     /**
      * End the suite.  Fixme: better to have a label for this

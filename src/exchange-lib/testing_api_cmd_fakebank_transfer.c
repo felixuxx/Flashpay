@@ -405,7 +405,6 @@ fakebank_transfer_cleanup (void *cls,
   GNUNET_free (fts);
 }
 
-
 /**
  * Offer internal data from a "fakebank transfer" CMD to other
  * commands.
@@ -423,19 +422,30 @@ fakebank_transfer_traits (void *cls,
                           unsigned int index)
 {
   struct FakebankTransferState *fts = cls;
-  struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_reserve_priv
-      (0, &fts->reserve_priv),
+  #define MANDATORY 6
+  struct TALER_TESTING_Trait traits[MANDATORY + 1] = {
     TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT
       (&fts->debit_account_no),
     TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT
       (&fts->credit_account_no),
     TALER_TESTING_make_trait_url (0, fts->exchange_url),
-    TALER_TESTING_make_trait_transfer_subject (0, fts->subject),
     TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
-    TALER_TESTING_trait_end ()
   };
+
+  /**
+   * The user gave explicit subject,
+   * there must be NO reserve priv.  */
+  if (NULL != fts->subject)
+    traits[MANDATORY - 1] =
+      TALER_TESTING_make_trait_transfer_subject (0,
+                                                 fts->subject);
+  /* A reserve priv must exist if no subject was given.  */
+  else
+    traits[MANDATORY - 1] = TALER_TESTING_make_trait_reserve_priv
+      (0, &fts->reserve_priv),
+  
+  traits[MANDATORY] = TALER_TESTING_trait_end ();
 
   return TALER_TESTING_get_trait (traits,
                                   ret,
