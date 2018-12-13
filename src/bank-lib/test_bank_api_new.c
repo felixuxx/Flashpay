@@ -111,7 +111,7 @@ run (void *cls,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_CREDIT,
                                     NULL,
-                                    5),
+                                    -5),
 
     TALER_TESTING_cmd_bank_history ("history-1d",
                                     bank_url,

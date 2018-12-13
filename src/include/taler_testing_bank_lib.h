@@ -105,7 +105,7 @@ TALER_TESTING_cmd_bank_history
    uint64_t account_no,
    enum TALER_BANK_Direction direction,
    const char *start_row_reference,
-   unsigned int num_results);
+   long long num_results);
 
 /**
  * Create a "reject" CMD.

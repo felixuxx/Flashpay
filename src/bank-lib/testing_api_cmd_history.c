@@ -67,7 +67,7 @@ struct HistoryState
   /**
    * How many rows we want in the result.
    */
-  unsigned int num_results;
+  long long num_results;
 
   /**
    * Handle to a pending "history" operation.
@@ -781,7 +781,7 @@ TALER_TESTING_cmd_bank_history
    uint64_t account_no,
    enum TALER_BANK_Direction direction,
    const char *start_row_reference,
-   unsigned int num_results)
+   long long num_results)
 {
   struct HistoryState *hs;
   struct TALER_TESTING_Command cmd;
