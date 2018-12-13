@@ -1093,6 +1093,8 @@ taler_bank_get_history (void *cls,
                                 &whh->auth,
                                 (uint64_t) account.no,
                                 direction,
+                                /* Defaults to descending ordering always. */
+                                GNUNET_NO,
                                 start_row,
                                 num_results,
                                 &bhist_cb,

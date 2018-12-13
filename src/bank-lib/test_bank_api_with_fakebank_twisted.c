@@ -80,6 +80,7 @@ run (void *cls,
                                     fakebank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
+                                    GNUNET_NO,
                                     NULL,
                                     5),
     /**

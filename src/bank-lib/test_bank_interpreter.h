@@ -174,6 +174,12 @@ struct TBI_Command
        */
       int failed;
 
+      /**
+       * if true, the history elements will be asked in
+       * chronological order.
+       */
+      unsigned int ascending;
+
     } history;
 
     /**

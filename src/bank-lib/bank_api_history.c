@@ -256,6 +256,7 @@ handle_history_finished (void *cls,
  * @param auth authentication data to use
  * @param account_number which account number should we query
  * @param direction what kinds of wire transfers should be returned
+ * @param ascending if GNUNET_YES, history elements will be returned in chronological order.
  * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
@@ -272,6 +273,7 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
                     const struct TALER_BANK_AuthenticationData *auth,
                     uint64_t account_number,
                     enum TALER_BANK_Direction direction,
+                    unsigned int ascending,
                     uint64_t start_row,
                     int64_t num_results,
                     TALER_BANK_HistoryResultCallback hres_cb,
@@ -310,25 +312,28 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
     can = "show";
   else
     can = "omit";
+
   if (UINT64_MAX == start_row)
   {
     GNUNET_asprintf (&url,
-                     "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s",
+                     "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s",
                      (unsigned long long) account_number,
                      (long long) num_results,
                      dir,
-                     can);
+                     can,
+                     (GNUNET_YES == ascending) ? "ascending" : "descending");
 
   }
   else
   {
     GNUNET_asprintf (&url,
-                     "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu&direction=%s&cancelled=%s",
+                     "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu&direction=%s&cancelled=%s&ordering=%s",
                      (unsigned long long) account_number,
                      (long long) num_results,
                      (unsigned long long) start_row,
                      dir,
-                     can);
+                     can,
+                     (GNUNET_YES == ascending) ? "ascending" : "descending");
   }
 
   hh = GNUNET_new (struct TALER_BANK_HistoryHandle);

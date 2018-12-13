@@ -90,7 +90,8 @@ TALER_TESTING_prepare_bank (const char *config_filename);
  *        operation.
  * @param account_no bank account number to ask the history for.
  * @param direction which direction this operation is interested
- *        in.
+ * @param ascending if GNUNET_YES, it ask the bank to return results
+ *        in chronological order.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -104,6 +105,7 @@ TALER_TESTING_cmd_bank_history
    const char *bank_url,
    uint64_t account_no,
    enum TALER_BANK_Direction direction,
+   unsigned int ascending,
    const char *start_row_reference,
    long long num_results);
 

@@ -257,6 +257,7 @@ typedef void
  * @param auth authentication data to use
  * @param account_number which account number should we query
  * @param direction what kinds of wire transfers should be returned
+ * @param ascending if GNUNET_YES, history elements will be returned in chronological order.
  * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
@@ -273,6 +274,7 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
                     const struct TALER_BANK_AuthenticationData *auth,
                     uint64_t account_number,
                     enum TALER_BANK_Direction direction,
+                    unsigned int ascending,
                     uint64_t start_row,
                     int64_t num_results,
                     TALER_BANK_HistoryResultCallback hres_cb,

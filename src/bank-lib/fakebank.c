@@ -96,6 +96,30 @@ struct Transaction
 
 
 /**
+ * Needed to implement ascending/descending ordering
+ * of /history results.
+ */
+struct HistoryElement
+{
+
+  /**
+   * History JSON element.
+   */
+  json_t *element;
+
+  /**
+   * Previous element.
+   */
+  struct HistoryElement *prev;
+
+  /**
+   * Next element.
+   */
+  struct HistoryElement *next;
+};
+
+
+/**
  * Handle for the fake bank.
  */
 struct TALER_FAKEBANK_Handle
@@ -660,6 +684,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   const char *dir;
   const char *acc;
   const char *cancelled;
+  const char *ordering;
   unsigned long long account_number;
   unsigned long long start_number;
   long long count;
@@ -668,6 +693,10 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   json_t *history;
   json_t *jresponse;
   int ret;
+  int ascending;
+  struct HistoryElement *history_results_head = NULL;
+  struct HistoryElement *history_results_tail = NULL;
+  struct HistoryElement *history_element = NULL;
 
   auth = MHD_lookup_connection_value (connection,
                                       MHD_GET_ARGUMENT_KIND,
@@ -684,6 +713,9 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   start = MHD_lookup_connection_value (connection,
                                        MHD_GET_ARGUMENT_KIND,
                                        "start");
+  ordering = MHD_lookup_connection_value (connection,
+                                          MHD_GET_ARGUMENT_KIND,
+                                          "ordering");
   acc = MHD_lookup_connection_value (connection,
                                      MHD_GET_ARGUMENT_KIND,
                                      "account_number");
@@ -727,11 +759,11 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     return MHD_NO;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Client asked for up to %lld results of type %s for account %llu starting at %s\n",
+              "Client asked for up to %lld results of type %s for account %llu starting at %llu\n",
               count,
               dir,
               (unsigned long long) account_number,
-              start);
+              start_number);
   if (0 == strcasecmp (dir,
                        "CREDIT"))
   {
@@ -767,12 +799,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     return MHD_NO;
   }
   if (NULL == start)
-  {
-    if (count > 0)
-      pos = h->transactions_head;
-    else
-      pos = h->transactions_tail;
-  }
+    pos = h->transactions_tail;
   else if (NULL != h->transactions_head)
   {
     for (pos = h->transactions_head;
@@ -800,6 +827,13 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   }
 
   history = json_array ();
+  if ((NULL != ordering)
+      && 0 == strcmp ("ascending",
+                      ordering))
+    ascending = GNUNET_YES;
+  else
+    ascending = GNUNET_NO;
+
   while ( (NULL != pos) &&
           (0 != count) )
   {
@@ -846,8 +880,19 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                        "wt_subject", subject);
     GNUNET_assert (NULL != trans);
     GNUNET_free (subject);
-    GNUNET_assert (0 == json_array_append_new (history,
-                                               trans));
+    
+    history_element = GNUNET_new (struct HistoryElement);
+    history_element->element = trans;
+
+    if (((0 < count) && (GNUNET_YES == ascending))
+      || ((0 > count) && (GNUNET_NO == ascending)))
+    GNUNET_CONTAINER_DLL_insert_tail (history_results_head,
+                                      history_results_tail,
+                                      history_element);
+    else
+      GNUNET_CONTAINER_DLL_insert (history_results_head,
+                                   history_results_tail,
+                                   history_element);
     if (count > 0)
     {
       pos = pos->next;
@@ -859,6 +904,19 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       count++;
     }
   }
+
+  if (NULL != history_results_head)
+    history_element = history_results_head;
+  while (NULL != history_element)
+  {
+    json_array_append_new (history,
+                           history_element->element);
+    history_element = history_element->next;
+    if (NULL != history_element)
+      GNUNET_free_non_null (history_element->prev);
+  }
+  GNUNET_free_non_null (history_results_tail);
+
   if (0 == json_array_size (history))
   {
     struct MHD_Response *resp;

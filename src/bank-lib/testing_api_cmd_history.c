@@ -84,6 +84,12 @@ struct HistoryState
    * unexpected. 
    */
   int failed;
+
+  /**
+   * If GNUNET_YES, this parameter will ask for results in
+   * chronological order.
+   */
+  unsigned int ascending;
 };
 
 /**
@@ -726,6 +732,7 @@ history_run (void *cls,
                                auth,
                                hs->account_no,
                                hs->direction,
+                               hs->ascending,
                                row_id,
                                hs->num_results,
                                &history_cb,
@@ -765,8 +772,9 @@ history_cleanup
  * @param bank_url base URL of the bank offering the "history"
  *        operation.
  * @param account_no bank account number to ask the history for.
- * @param direction which direction this operation is interested
- *        in.
+ * @param direction which direction this operation is interested.
+ * @param ascending if GNUNET_YES, the bank will return the rows
+ *        in ascending (= chronological) order.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -780,6 +788,7 @@ TALER_TESTING_cmd_bank_history
    const char *bank_url,
    uint64_t account_no,
    enum TALER_BANK_Direction direction,
+   unsigned int ascending,
    const char *start_row_reference,
    long long num_results)
 {
@@ -792,6 +801,7 @@ TALER_TESTING_cmd_bank_history
   hs->direction = direction;
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
+  hs->ascending = ascending;
 
   cmd.label = label;
   cmd.cls = hs;
