@@ -1414,7 +1414,6 @@ TALER_TESTING_cmd_sleep (const char *label,
  * @param generation how many /keys responses are expected to
  *        have been returned when this CMD will be run.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
  *
  * @return the command.
  */
@@ -1422,8 +1421,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys
   (const char *label,
    unsigned int generation,
-   unsigned int num_denom_keys,
-   struct TALER_EXCHANGE_Handle *exchange);
+   unsigned int num_denom_keys);
 
 
 /**

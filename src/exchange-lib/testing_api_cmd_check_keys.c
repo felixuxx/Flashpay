@@ -46,12 +46,6 @@ struct CheckKeysState
    * have.
    */
   unsigned int num_denom_keys;
-
-  /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
 };
 
 
@@ -83,7 +77,7 @@ check_keys_run (void *cls,
 
     /* Means re-download /keys.  */
     GNUNET_break (0 == TALER_EXCHANGE_check_keys_current
-      (cks->exchange, GNUNET_YES).abs_value_us);
+      (is->exchange, GNUNET_YES).abs_value_us);
     return;
   }
   if (is->key_generation > cks->generation)
@@ -146,8 +140,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys
   (const char *label,
    unsigned int generation,
-   unsigned int num_denom_keys,
-   struct TALER_EXCHANGE_Handle *exchange)
+   unsigned int num_denom_keys)
 {
   struct CheckKeysState *cks;
   struct TALER_TESTING_Command cmd;
@@ -155,7 +148,6 @@ TALER_TESTING_cmd_check_keys
   cks = GNUNET_new (struct CheckKeysState);
   cks->generation = generation;
   cks->num_denom_keys = num_denom_keys;
-  cks->exchange = exchange;
   cmd.cls = cks;
   cmd.label = label;
   cmd.run = &check_keys_run;

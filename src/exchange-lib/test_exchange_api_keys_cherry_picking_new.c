@@ -75,8 +75,7 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_check_keys ("check-keys-1",
                                   1,
-                                  4,
-                                  is->exchange),
+                                  4),
     /* sleep a bit */
     TALER_TESTING_cmd_sleep ("sleep",
                              10),
@@ -90,9 +89,7 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_check_keys ("check-keys-2",
                                   2,
-                                  6,
-                                  is->exchange),
-
+                                  6),
     /* sleep a bit */
     TALER_TESTING_cmd_sleep ("sleep",
                              20),
@@ -106,8 +103,7 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_check_keys ("check-keys-3",
                                   3,
-                                  8,
-                                  is->exchange),
+                                  8),
     TALER_TESTING_cmd_end ()
   };
 
