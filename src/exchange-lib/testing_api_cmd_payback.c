@@ -95,11 +95,6 @@ struct PaybackState
   const char *amount;
 
   /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_PaybackHandle *ph;
@@ -231,7 +226,6 @@ payback_run (void *cls,
   struct TALER_PlanchetSecretsP planchet;
 
   ps->is = is;
-  ps->exchange = is->exchange;
   coin_cmd = TALER_TESTING_interpreter_lookup_command
     (is, ps->coin_reference);
 
@@ -280,7 +274,7 @@ payback_run (void *cls,
               "Trying to get '%s..' paid back\n",
               TALER_B2S (&denom_pub->h_key));
 
-  ps->ph = TALER_EXCHANGE_payback (ps->exchange,
+  ps->ph = TALER_EXCHANGE_payback (is->exchange,
                                    denom_pub,
                                    coin_sig,
                                    &planchet,
