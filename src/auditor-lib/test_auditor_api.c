@@ -171,7 +171,6 @@ run (void *cls,
      * Withdraw EUR:5.
      */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
-                                       is->exchange,
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -183,7 +182,6 @@ run (void *cls,
      * Spend the coin.
      */
     TALER_TESTING_cmd_deposit ("deposit-simple",
-                               is->exchange,
                                "withdraw-coin-1",
                                0,
                                TALER_TESTING_make_wire_details (42,
@@ -212,7 +210,6 @@ run (void *cls,
      * Withdraw EUR:5.
      */
     TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin-1",
-                                       is->exchange,
                                        "refresh-create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -221,7 +218,6 @@ run (void *cls,
      * full) Merchant receives EUR:0.99 due to 1 ct deposit fee.
      */
     TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
-                               is->exchange,
                                "refresh-withdraw-coin-1",
                                0,
                                TALER_TESTING_make_wire_details (42,
@@ -234,7 +230,6 @@ run (void *cls,
      * Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x
      * EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt_double ("refresh-melt-1",
-                                           is->exchange,
                                            "EUR:4",
                                            "refresh-withdraw-coin-1",
                                            MHD_HTTP_OK),
@@ -242,14 +237,12 @@ run (void *cls,
      * Complete (successful) melt operation, and withdraw the coins
      */
     TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-1",
-                                      is->exchange,
                                       "refresh-melt-1",
                                       MHD_HTTP_OK),
     /**
      * Try to spend a refreshed EUR:0.1 coin
      */
     TALER_TESTING_cmd_deposit ("refresh-deposit-refreshed-1b",
-                               is->exchange,
                                "refresh-reveal-1",
                                3,
                                TALER_TESTING_make_wire_details (43,
@@ -310,12 +303,10 @@ run (void *cls,
                                            42,
                                            2),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
-                                       is->exchange,
                                        "create-reserve-unaggregated",
                                        "EUR:5",
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("deposit-unaggregated",
-                               is->exchange,
                                "withdraw-coin-unaggregated",
                                0,
                                TALER_TESTING_make_wire_details
@@ -346,7 +337,6 @@ run (void *cls,
      * Withdraw a 5 EUR coin, at fee of 1 ct
      */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
-                                       is->exchange,
                                        "create-reserve-r1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -355,7 +345,6 @@ run (void *cls,
      * receive EUR:4.99 due to 1 ct deposit fee.
      */
     TALER_TESTING_cmd_deposit ("deposit-refund-1",
-                               is->exchange,
                                "withdraw-coin-r1",
                                0,
                                TALER_TESTING_make_wire_details (42,
@@ -374,7 +363,6 @@ run (void *cls,
      * due to refund) (merchant would receive EUR:4.98 due to
      * 1 ct deposit fee) */
     TALER_TESTING_cmd_deposit ("deposit-refund-2",
-                               is->exchange,
                                "withdraw-coin-r1",
                                0,
                                TALER_TESTING_make_wire_details (42,
@@ -406,7 +394,6 @@ run (void *cls,
      * Withdraw a 5 EUR coin, at fee of 1 ct
      */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-1",
-                                       is->exchange,
                                        "payback-create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -422,7 +409,6 @@ run (void *cls,
      * Re-withdraw from this reserve
      */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2",
-                                       is->exchange,
                                        "payback-create-reserve-1",
                                        "EUR:1",
                                        MHD_HTTP_OK),
@@ -454,7 +440,6 @@ run (void *cls,
      * Withdraw a 1 EUR coin, at fee of 1 ct
      */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2a",
-                                       is->exchange,
                                        "payback-create-reserve-2",
                                        "EUR:1",
                                        MHD_HTTP_OK),
@@ -462,12 +447,10 @@ run (void *cls,
      * Withdraw a 1 EUR coin, at fee of 1 ct
      */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2b",
-                                       is->exchange,
                                        "payback-create-reserve-2",
                                        "EUR:1",
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("payback-deposit-partial",
-                               is->exchange,
                                "payback-withdraw-coin-2a",
                                0,
                                TALER_TESTING_make_wire_details (42,
