@@ -67,11 +67,6 @@ struct WireState
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
-
-  /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
 };
 
 
@@ -171,7 +166,7 @@ wire_run (void *cls,
 {
   struct WireState *ws = cls;
   ws->is = is;
-  ws->wh = TALER_EXCHANGE_wire (ws->exchange,
+  ws->wh = TALER_EXCHANGE_wire (is->exchange,
                                 &wire_cb,
                                 ws);
 }
@@ -217,7 +212,6 @@ wire_cleanup (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire (const char *label,
-                        struct TALER_EXCHANGE_Handle *exchange,
                         const char *expected_method,
                         const char *expected_fee,
                         unsigned int expected_response_code)
@@ -226,7 +220,6 @@ TALER_TESTING_cmd_wire (const char *label,
   struct WireState *ws;
 
   ws = GNUNET_new (struct WireState);
-  ws->exchange = exchange;
   ws->expected_method = expected_method;
   ws->expected_fee = expected_fee;
   ws->expected_response_code = expected_response_code;

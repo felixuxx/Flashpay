@@ -155,7 +155,6 @@ run (void *cls,
      * by the exchange.
      */
     TALER_TESTING_cmd_wire ("wire-taler-bank-1",
-                            is->exchange,
                             "x-taler-bank",
                             NULL,
                             MHD_HTTP_OK),
@@ -164,7 +163,6 @@ run (void *cls,
      * Check if 'ebics' wire method is offered by the exchange.
      */
     TALER_TESTING_cmd_wire ("wire-sepa-1",
-                            is->exchange,
                             "ebics",
                             NULL,
                             MHD_HTTP_OK),
