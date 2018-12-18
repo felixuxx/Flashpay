@@ -115,18 +115,6 @@ refund_cb (void *cls,
     return;
   }
 
-  switch (http_status)
-  {
-  case MHD_HTTP_OK:
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Good /refund status code\n");
-    break;
-  default:
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Unmanaged HTTP status code: %u, command: %s\n",
-                http_status, refund_cmd->label);
-  }
-
   TALER_TESTING_interpreter_next (rs->is);
 }
 
