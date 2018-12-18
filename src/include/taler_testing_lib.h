@@ -998,7 +998,6 @@ TALER_TESTING_cmd_wire (const char *label,
  * Create a "reserve status" command.
  *
  * @param label the command label.
- * @param exchange the exchange to connect to.
  * @param reserve_reference reference to the reserve to check.
  * @param expected_balance expected balance for the reserve.
  * @param expected_response_code expected HTTP response code.
@@ -1007,7 +1006,6 @@ TALER_TESTING_cmd_wire (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_status (const char *label,
-                          struct TALER_EXCHANGE_Handle *exchange,
                           const char *reserve_reference,
                           const char *expected_balance,
                           unsigned int expected_response_code);

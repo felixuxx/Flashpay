@@ -190,7 +190,6 @@ run (void *cls,
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt",
-       is->exchange,
        "EUR:4",
        "refresh-withdraw-coin",
        MHD_HTTP_OK),
@@ -203,7 +202,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-(flipped-)reveal",
-       is->exchange,
        "refresh-melt",
        MHD_HTTP_CONFLICT),
 

@@ -204,7 +204,6 @@ run (void *cls,
      * Check the reserve is depleted.
      */
     TALER_TESTING_cmd_status ("status-1",
-                              is->exchange,
                               "create-reserve-1",
                               "EUR:0",
                               MHD_HTTP_OK),
@@ -702,7 +701,6 @@ run (void *cls,
 
     /* Check the money is back with the reserve */
     TALER_TESTING_cmd_status ("payback-reserve-status-1",
-                              is->exchange,
                               "payback-create-reserve-1",
                               "EUR:5.0",
                               MHD_HTTP_OK),
@@ -726,7 +724,6 @@ run (void *cls,
        MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_status ("payback-reserve-status-2",
-                              is->exchange,
                               "payback-create-reserve-1",
                               "EUR:3.99",
                               MHD_HTTP_OK),
@@ -749,7 +746,6 @@ run (void *cls,
        CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
     TALER_TESTING_cmd_status ("short-lived-status",
-                              is->exchange,
                               "short-lived-reserve",
                               "EUR:0",
                               MHD_HTTP_OK),
@@ -921,7 +917,6 @@ run (void *cls,
 
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 3]
       = TALER_TESTING_cmd_status ("reserve-open-close-status",
-                                  is->exchange,
                                   "reserve-open-close-key",
                                   "EUR:0",
                                   MHD_HTTP_OK);

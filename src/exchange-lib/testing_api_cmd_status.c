@@ -55,11 +55,6 @@ struct StatusState
   unsigned int expected_response_code;
 
   /**
-   * Connection handle to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -202,7 +197,7 @@ status_run (void *cls,
        sizeof (struct TALER_ReservePublicKeyP));
   }
 
-  ss->rsh = TALER_EXCHANGE_reserve_status (ss->exchange,
+  ss->rsh = TALER_EXCHANGE_reserve_status (is->exchange,
                                            &reserve_pub,
                                            &reserve_status_cb,
                                            ss);
@@ -239,7 +234,6 @@ status_cleanup (void *cls,
  * Create a "reserve status" command.
  *
  * @param label the command label.
- * @param exchange the exchange to connect to.
  * @param reserve_reference reference to the reserve to check.
  * @param expected_balance expected balance for the reserve.
  * @param expected_response_code expected HTTP response code.
@@ -248,7 +242,6 @@ status_cleanup (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_status (const char *label,
-                          struct TALER_EXCHANGE_Handle *exchange,
                           const char *reserve_reference,
                           const char *expected_balance,
                           unsigned int expected_response_code)
@@ -257,7 +250,6 @@ TALER_TESTING_cmd_status (const char *label,
   struct StatusState *ss;
 
   ss = GNUNET_new (struct StatusState);
-  ss->exchange = exchange;
   ss->reserve_reference = reserve_reference;
   ss->expected_balance = expected_balance;
   ss->expected_response_code = expected_response_code;
