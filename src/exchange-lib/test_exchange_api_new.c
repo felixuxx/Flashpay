@@ -381,7 +381,7 @@ run (void *cls,
      * the exchange knows about the deposit, but has no WTID yet.
      */
     TALER_TESTING_cmd_track_transaction
-    ("deposit-wtid-found", is->exchange,
+    ("deposit-wtid-found",
      "deposit-simple", 0, MHD_HTTP_ACCEPTED, NULL),
 
     /**
@@ -390,7 +390,7 @@ run (void *cls,
      * exchange does NOT know about the deposit.
      */
     TALER_TESTING_cmd_track_transaction
-    ("deposit-wtid-failing", is->exchange,
+    ("deposit-wtid-failing",
      "deposit-double-2", 0, MHD_HTTP_NOT_FOUND, NULL),
 
     /**
@@ -399,7 +399,7 @@ run (void *cls,
      * WTID value for any transaction.
      */
     TALER_TESTING_cmd_track_transfer_empty
-      ("wire-deposit-failing", is->exchange,
+      ("wire-deposit-failing",
        NULL, 0, MHD_HTTP_NOT_FOUND),
 
     /**
@@ -445,16 +445,16 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
 
     TALER_TESTING_cmd_track_transaction
-    ("deposit-wtid-ok", is->exchange,
+    ("deposit-wtid-ok",
      "deposit-simple", 0, MHD_HTTP_OK, "check_bank_transfer-499c"),
 
     TALER_TESTING_cmd_track_transfer
-      ("wire-deposit-success-bank", is->exchange,
+      ("wire-deposit-success-bank",
        "check_bank_transfer-99c1", 0, MHD_HTTP_OK, "EUR:0.98",
        "EUR:0.01"),
 
     TALER_TESTING_cmd_track_transfer
-      ("wire-deposits-success-wtid", is->exchange,
+      ("wire-deposits-success-wtid",
        "deposit-wtid-ok", 0, MHD_HTTP_OK, "EUR:4.98",
        "EUR:0.01"),
 

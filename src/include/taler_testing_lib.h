@@ -1161,7 +1161,6 @@ TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd);
  * Create a "track transaction" command.
  *
  * @param label the command label.
- * @param exchange the exchange to connect to.
  * @param transaction_reference reference to a deposit operation,
  *        will be used to get the input data for the track.
  * @param coin_index index of the coin involved in the transaction.
@@ -1175,7 +1174,6 @@ TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transaction
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *transaction_reference,
    unsigned int coin_index,
    unsigned int expected_response_code,
@@ -1188,7 +1186,6 @@ TALER_TESTING_cmd_track_transaction
  * when a bogus WTID was passed.
  *
  * @param label the command label
- * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
  *        a wtid.  If NULL is given, then a all zeroed WTID is
  *        used that will at 99.9999% probability NOT match any
@@ -1202,7 +1199,6 @@ TALER_TESTING_cmd_track_transaction
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *wtid_reference,
    unsigned int index,
    unsigned int expected_response_code);
@@ -1213,7 +1209,6 @@ TALER_TESTING_cmd_track_transfer_empty
  * wire fee are expected.
  *
  * @param label the command label.
- * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
  *        a wtid.  Will be the one tracked.
  * @param index in case there are multiple WTID offered, this
@@ -1228,7 +1223,6 @@ TALER_TESTING_cmd_track_transfer_empty
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *wtid_reference,
    unsigned int index,
    unsigned int expected_response_code,

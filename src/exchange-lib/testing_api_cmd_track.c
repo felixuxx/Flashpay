@@ -68,11 +68,6 @@ struct TrackTransactionState
   struct TALER_EXCHANGE_TrackTransactionHandle *tth;
 
   /**
-   * Handle to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -131,11 +126,6 @@ struct TrackTransferState
    * Handle to a pending "track transfer" operation.
    */
   struct TALER_EXCHANGE_TrackTransferHandle *tth;
-
-  /**
-   * Connection handle to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
 
   /**
    * Interpreter state.
@@ -339,7 +329,7 @@ track_transaction_run (void *cls,
   }
 
   tts->tth = TALER_EXCHANGE_track_transaction
-    (tts->exchange,
+    (is->exchange,
      (struct TALER_MerchantPrivateKeyP *) merchant_priv,
      &h_wire_details,
      &h_contract_terms,
@@ -410,7 +400,6 @@ track_transaction_traits (void *cls,
  * Create a "track transaction" command.
  *
  * @param label the command label.
- * @param exchange the exchange to connect to.
  * @param transaction_reference reference to a deposit operation,
  *        will be used to get the input data for the track.
  * @param coin_index index of the coin involved in the transaction.
@@ -424,7 +413,6 @@ track_transaction_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transaction
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *transaction_reference,
    unsigned int coin_index,
    unsigned int expected_response_code,
@@ -434,7 +422,6 @@ TALER_TESTING_cmd_track_transaction
   struct TrackTransactionState *tts;
 
   tts = GNUNET_new (struct TrackTransactionState);
-  tts->exchange = exchange;
   tts->transaction_reference = transaction_reference;
   tts->expected_response_code = expected_response_code;
   tts->bank_transfer_reference = bank_transfer_reference;
@@ -725,7 +712,7 @@ track_transfer_run (void *cls,
     }
     GNUNET_assert (NULL != wtid_ptr);
   }
-  tts->tth = TALER_EXCHANGE_track_transfer (tts->exchange,
+  tts->tth = TALER_EXCHANGE_track_transfer (is->exchange,
                                             wtid_ptr,
                                             &track_transfer_cb,
                                             tts);
@@ -739,7 +726,6 @@ track_transfer_run (void *cls,
  * when a bogus WTID was passed.
  *
  * @param label the command label
- * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
  *        a wtid.  If NULL is given, then a all zeroed WTID is
  *        used that will at 99.9999% probability NOT match any
@@ -753,7 +739,6 @@ track_transfer_run (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *wtid_reference,
    unsigned int index,
    unsigned int expected_response_code)
@@ -766,7 +751,6 @@ TALER_TESTING_cmd_track_transfer_empty
   tts->wtid_reference = wtid_reference;
   tts->index = index;
   tts->expected_response_code = expected_response_code;
-  tts->exchange = exchange;
 
   cmd.cls = tts;
   cmd.label = label;
@@ -781,7 +765,6 @@ TALER_TESTING_cmd_track_transfer_empty
  * wire fee are expected.
  *
  * @param label the command label.
- * @param exchange connection to the exchange.
  * @param wtid_reference reference to any command which can provide
  *        a wtid.  Will be the one tracked.
  * @param index in case there are multiple WTID offered, this
@@ -796,7 +779,6 @@ TALER_TESTING_cmd_track_transfer_empty
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *wtid_reference,
    unsigned int index,
    unsigned int expected_response_code,
@@ -811,7 +793,6 @@ TALER_TESTING_cmd_track_transfer
   tts->wtid_reference = wtid_reference;
   tts->index = index;
   tts->expected_response_code = expected_response_code;
-  tts->exchange = exchange;
   tts->expected_total_amount = expected_total_amount;
   tts->expected_wire_fee = expected_wire_fee;
 
