@@ -167,7 +167,6 @@ run (void *cls,
      */
     TALER_TESTING_cmd_withdraw_amount
       ("refresh-withdraw-coin",
-       is->exchange,
        "refresh-create-reserve",
        "EUR:5",
        MHD_HTTP_OK),
@@ -226,7 +225,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-r1",
-       is->exchange,
        "create-reserve-r1",
        "EUR:5",
        MHD_HTTP_OK),

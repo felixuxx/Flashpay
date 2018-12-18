@@ -193,7 +193,6 @@ run (void *cls,
      * Withdraw EUR:5.
      */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
-                                       is->exchange,
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -224,7 +223,6 @@ run (void *cls,
      * Try to overdraw.
      */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",
-                                       is->exchange,
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_FORBIDDEN),
@@ -290,7 +288,6 @@ run (void *cls,
      */
     TALER_TESTING_cmd_withdraw_amount
       ("refresh-withdraw-coin-1",
-       is->exchange,
        "refresh-create-reserve-1",
        "EUR:5",
        MHD_HTTP_OK),
@@ -484,7 +481,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-unaggregated",
-       is->exchange,
        "create-reserve-unaggregated",
        "EUR:5",
        MHD_HTTP_OK),
@@ -529,7 +525,6 @@ run (void *cls,
 
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
-                                       is->exchange,
                                        "create-reserve-r1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -626,7 +621,6 @@ run (void *cls,
     CMD_EXEC_WIREWATCH ("wirewatch-rb"),
 
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-rb",
-                                       is->exchange,
                                        "create-reserve-rb",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -681,7 +675,6 @@ run (void *cls,
 
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-1",
-                                       is->exchange,
                                        "payback-create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -705,7 +698,6 @@ run (void *cls,
 
     /* Re-withdraw from this reserve */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2",
-                                       is->exchange,
                                        "payback-create-reserve-1",
                                        "EUR:1",
                                        MHD_HTTP_OK),
@@ -716,7 +708,6 @@ run (void *cls,
      */
     TALER_TESTING_cmd_withdraw_amount
       ("payback-withdraw-coin-2-over",
-       is->exchange,
        "payback-create-reserve-1",
        "EUR:10",
        MHD_HTTP_FORBIDDEN),
@@ -750,7 +741,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_withdraw_amount
       ("expired-withdraw",
-       is->exchange,
        "short-lived-reserve",
        "EUR:1",
        MHD_HTTP_FORBIDDEN),
@@ -784,14 +774,12 @@ run (void *cls,
 
     /* Withdraw a 1 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2a",
-                                       is->exchange,
                                        "payback-create-reserve-2",
                                        "EUR:1",
                                        MHD_HTTP_OK),
 
     /* Withdraw a 1 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2b",
-                                       is->exchange,
                                        "payback-create-reserve-2",
                                        "EUR:1",
                                        MHD_HTTP_OK),
@@ -851,7 +839,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_withdraw_amount
       ("payback-withdraw-coin-3-revoked",
-       is->exchange,
        "payback-create-reserve-3",
        "EUR:1",
        MHD_HTTP_NOT_FOUND),

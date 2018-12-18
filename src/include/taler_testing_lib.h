@@ -923,7 +923,6 @@ TALER_TESTING_cmd_exec_auditor_sign (const char *label,
  * the desired amount as string.
  *
  * @param label command label.
- * @param exchange handle to the exchange.
  * @param amount how much we withdraw.
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
@@ -933,7 +932,6 @@ TALER_TESTING_cmd_exec_auditor_sign (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *reserve_reference,
    const char *amount,
    unsigned int expected_response_code);
@@ -944,7 +942,6 @@ TALER_TESTING_cmd_withdraw_amount
  * amount by a denomination key.
  *
  * @param label command label.
- * @param exchange connection handle to the exchange.
  * @param reserve_reference reference to the reserve to withdraw
  *        from; will provide reserve priv to sign the request.
  * @param dk denomination public key.
@@ -955,7 +952,6 @@ TALER_TESTING_cmd_withdraw_amount
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_denomination
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *reserve_reference,
    const struct TALER_EXCHANGE_DenomPublicKey *dk,
    unsigned int expected_response_code);

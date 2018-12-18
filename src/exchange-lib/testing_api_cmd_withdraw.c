@@ -59,12 +59,7 @@ struct WithdrawState
   const struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
-   * Exchange we should use for the withdrawal.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
-   * Exchange base URL.
+   * Exchange base URL.  Only used as offered trait.
    */
   char *exchange_url;
 
@@ -110,7 +105,6 @@ struct WithdrawState
    * enable retries?
    */
   int do_retry;
-
 };
 
 
@@ -268,13 +262,24 @@ withdraw_run (void *cls,
   }
   TALER_planchet_setup_random (&ws->ps);
   ws->is = is;
-  ws->wsh
-    = TALER_EXCHANGE_reserve_withdraw (ws->exchange,
-                                       ws->pk,
-                                       rp,
-                                       &ws->ps,
-                                       &reserve_withdraw_cb,
-                                       ws);
+  
+  ws->pk = TALER_TESTING_find_pk
+    (TALER_EXCHANGE_get_keys (is->exchange),
+     &ws->amount);
+  if (NULL == ws->pk)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to determine denomination key at %s\n",
+                cmd->label);
+    GNUNET_assert (0);
+  }
+
+  ws->wsh = TALER_EXCHANGE_reserve_withdraw (is->exchange,
+                                             ws->pk,
+                                             rp,
+                                             &ws->ps,
+                                             &reserve_withdraw_cb,
+                                             ws);
   if (NULL == ws->wsh)
   {
     GNUNET_break (0);
@@ -361,6 +366,9 @@ withdraw_traits (void *cls,
     return GNUNET_SYSERR;
   }
 
+  ws->exchange_url = GNUNET_strdup
+    (TALER_EXCHANGE_get_base_url (ws->is->exchange));
+
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
                                         &ws->ps.coin_priv),
@@ -391,7 +399,6 @@ withdraw_traits (void *cls,
  * the desired amount as string.
  *
  * @param label command label.
- * @param exchange handle to the exchange.
  * @param amount how much we withdraw.
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
@@ -401,7 +408,6 @@ withdraw_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *reserve_reference,
    const char *amount,
    unsigned int expected_response_code)
@@ -422,19 +428,8 @@ TALER_TESTING_cmd_withdraw_amount
                 label);
     GNUNET_assert (0);
   }
-  ws->pk = TALER_TESTING_find_pk
-    (TALER_EXCHANGE_get_keys (exchange),
-     &ws->amount);
-  if (NULL == ws->pk)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to determine denomination key at %s\n",
-                label);
-    GNUNET_assert (0);
-  }
+
   ws->expected_response_code = expected_response_code;
-  ws->exchange = exchange;
-  ws->exchange_url = TEAH_path_to_url (exchange, "/");
 
   cmd.cls = ws;
   cmd.label = label;
@@ -461,7 +456,6 @@ TALER_TESTING_cmd_withdraw_amount
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_denomination
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *reserve_reference,
    const struct TALER_EXCHANGE_DenomPublicKey *dk,
    unsigned int expected_response_code)
@@ -480,8 +474,6 @@ TALER_TESTING_cmd_withdraw_denomination
   ws->reserve_reference = reserve_reference;
   ws->pk = dk;
   ws->expected_response_code = expected_response_code;
-  ws->exchange = exchange;
-  ws->exchange_url = TEAH_path_to_url (exchange, "/");
 
   cmd.cls = ws;
   cmd.label = label;

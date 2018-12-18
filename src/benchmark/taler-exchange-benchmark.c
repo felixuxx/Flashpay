@@ -422,7 +422,6 @@ run (void *cls,
         TALER_TESTING_cmd_withdraw_with_retry
         (TALER_TESTING_cmd_withdraw_amount
          (withdraw_label,
-          is->exchange,
           create_reserve_label,
           AMOUNT_5,
           MHD_HTTP_OK));
