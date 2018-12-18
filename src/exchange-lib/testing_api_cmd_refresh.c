@@ -77,11 +77,6 @@ struct RefreshMeltState
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
 
   /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -160,11 +155,6 @@ struct RefreshRevealState
   struct FreshCoin *fresh_coins;
 
   /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -213,11 +203,6 @@ struct RefreshLinkState
    * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
-
-  /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
 
   /**
    * Interpreter state.
@@ -415,7 +400,7 @@ refresh_reveal_run (void *cls,
   }
   rms = melt_cmd->cls;
   rrs->rrh = TALER_EXCHANGE_refresh_reveal
-    (rrs->exchange,
+    (is->exchange,
      rms->refresh_data_length,
      rms->refresh_data,
      rms->noreveal_index,
@@ -727,7 +712,7 @@ refresh_link_run (void *cls,
 
   /* finally, use private key from withdraw sign command */
   rls->rlh = TALER_EXCHANGE_refresh_link
-    (rls->exchange, coin_priv, &link_cb, rls);
+    (is->exchange, coin_priv, &link_cb, rls);
 
   if (NULL == rls->rlh)
   {
@@ -865,7 +850,7 @@ melt_cb (void *cls,
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
     rms->rmh = TALER_EXCHANGE_refresh_melt
-      (rms->exchange, rms->refresh_data_length,
+      (rms->is->exchange, rms->refresh_data_length,
        rms->refresh_data, &melt_cb, rms);
     rms->double_melt = GNUNET_NO;
     return;
@@ -971,7 +956,7 @@ refresh_melt_run (void *cls,
         return;
       }
       fresh_pk = TALER_TESTING_find_pk
-        (TALER_EXCHANGE_get_keys (rms->exchange), &fresh_amount);
+        (TALER_EXCHANGE_get_keys (is->exchange), &fresh_amount);
       if (NULL == fresh_pk)
       {
         GNUNET_break (0);
@@ -994,7 +979,7 @@ refresh_melt_run (void *cls,
       return;
     }
     rms->rmh = TALER_EXCHANGE_refresh_melt
-      (rms->exchange, rms->refresh_data_length,
+      (is->exchange, rms->refresh_data_length,
        rms->refresh_data, &melt_cb, rms);
 
     if (NULL == rms->rmh)
@@ -1076,7 +1061,6 @@ refresh_melt_traits (void *cls,
  * Create a "refresh melt" command.
  *
  * @param label command label.
- * @param exchange connection to the exchange.
  * @param amount amount to be melted.
  * @param coin_reference reference to a command
  *        that will provide a coin to refresh.
@@ -1087,7 +1071,6 @@ refresh_melt_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *amount,
    const char *coin_reference,
    unsigned int expected_response_code)
@@ -1102,7 +1085,6 @@ TALER_TESTING_cmd_refresh_melt
   rms = GNUNET_new (struct RefreshMeltState);
   rms->melted_coin = md;
   rms->expected_response_code = expected_response_code;
-  rms->exchange = exchange;
 
   cmd.label = label;
   cmd.cls = rms;
@@ -1130,7 +1112,6 @@ TALER_TESTING_cmd_refresh_melt
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt_double
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *amount,
    const char *coin_reference,
    unsigned int expected_response_code)
@@ -1145,7 +1126,6 @@ TALER_TESTING_cmd_refresh_melt_double
   rms = GNUNET_new (struct RefreshMeltState);
   rms->melted_coin = md;
   rms->expected_response_code = expected_response_code;
-  rms->exchange = exchange;
   rms->double_melt = GNUNET_YES;
 
   cmd.label = label;
@@ -1244,7 +1224,6 @@ refresh_reveal_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *melt_reference,
    unsigned int expected_response_code)
 {
@@ -1253,7 +1232,6 @@ TALER_TESTING_cmd_refresh_reveal
 
   rrs = GNUNET_new (struct RefreshRevealState);
   rrs->melt_reference = melt_reference;
-  rrs->exchange = exchange;
   rrs->expected_response_code = expected_response_code;
 
   cmd.cls = rrs;
@@ -1287,7 +1265,6 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
  * Create a "refresh link" command.
  *
  * @param label command label.
- * @param exchange connection to the exchange.
  * @param reveal_reference reference to a "refresh reveal" CMD.
  * @param expected_response_code expected HTTP response code
  *
@@ -1296,7 +1273,6 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_link
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *reveal_reference,
    unsigned int expected_response_code)
 {
@@ -1305,7 +1281,6 @@ TALER_TESTING_cmd_refresh_link
 
   rrs = GNUNET_new (struct RefreshLinkState);
   rrs->reveal_reference = reveal_reference;
-  rrs->exchange = exchange;
   rrs->expected_response_code = expected_response_code;
 
   cmd.cls = rrs;

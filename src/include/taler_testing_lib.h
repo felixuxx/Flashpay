@@ -1059,7 +1059,6 @@ TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
  * Create a "refresh melt" command.
  *
  * @param label command label.
- * @param exchange connection to the exchange.
  * @param amount amount to be melted.
  * @param coin_reference reference to a command
  *        that will provide a coin to refresh.
@@ -1070,7 +1069,6 @@ TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *amount,
    const char *coin_reference,
    unsigned int expected_response_code);
@@ -1082,7 +1080,6 @@ TALER_TESTING_cmd_refresh_melt
  * request, see #5312.
  *
  * @param label command label
- * @param exchange connection to the exchange
  * @param amount FIXME not used.
  * @param coin_reference reference to a command that will provide
  *        a coin to refresh
@@ -1093,7 +1090,6 @@ TALER_TESTING_cmd_refresh_melt
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt_double
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *amount,
    const char *coin_reference,
    unsigned int expected_response_code);
@@ -1122,7 +1118,6 @@ TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *melt_reference,
    unsigned int expected_response_code);
 
@@ -1150,7 +1145,6 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_link
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *reveal_reference,
    unsigned int expected_response_code);
 

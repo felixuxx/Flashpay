@@ -457,7 +457,6 @@ run (void *cls,
           TALER_TESTING_cmd_refresh_melt_with_retry
           (TALER_TESTING_cmd_refresh_melt
            (melt_label,
-            is->exchange,
             AMOUNT_4,
             withdraw_label,
             MHD_HTTP_OK));
@@ -465,14 +464,12 @@ run (void *cls,
           TALER_TESTING_cmd_refresh_reveal_with_retry
           (TALER_TESTING_cmd_refresh_reveal
            (reveal_label,
-            is->exchange,
             melt_label,
             MHD_HTTP_OK));
         unit[4] =
           TALER_TESTING_cmd_refresh_link_with_retry
           (TALER_TESTING_cmd_refresh_link
            ("refresh-link",
-            is->exchange,
             reveal_label,
             MHD_HTTP_OK));
         unit[5] = TALER_TESTING_cmd_end ();

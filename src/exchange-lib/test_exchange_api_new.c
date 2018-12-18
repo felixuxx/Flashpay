@@ -315,14 +315,14 @@ run (void *cls,
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt_double
-      ("refresh-melt-1", is->exchange, "EUR:4",
+      ("refresh-melt-1", "EUR:4",
        "refresh-withdraw-coin-1", MHD_HTTP_OK),
     /**
      * Complete (successful) melt operation, and
      * withdraw the coins
      */
     TALER_TESTING_cmd_refresh_reveal
-      ("refresh-reveal-1", is->exchange,
+      ("refresh-reveal-1",
        "refresh-melt-1", MHD_HTTP_OK),
 
     /**
@@ -330,13 +330,13 @@ run (void *cls,
      */
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-1-idempotency",
-       is->exchange, "refresh-melt-1", MHD_HTTP_OK),
+       "refresh-melt-1", MHD_HTTP_OK),
 
     /**
      * Test that /refresh/link works
      */
     TALER_TESTING_cmd_refresh_link
-      ("refresh-link-1", is->exchange,
+      ("refresh-link-1",
        "refresh-reveal-1", MHD_HTTP_OK),
 
     /**
@@ -366,7 +366,7 @@ run (void *cls,
     /* Test running a failing melt operation (same operation
      * again must fail) */
     TALER_TESTING_cmd_refresh_melt
-      ("refresh-melt-failing", is->exchange, "EUR:4",
+      ("refresh-melt-failing", "EUR:4",
        "refresh-withdraw-coin-1", MHD_HTTP_FORBIDDEN),
 
     /* FIXME: also test with coin that was already melted
