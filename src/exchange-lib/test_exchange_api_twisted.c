@@ -174,7 +174,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-partial",
-       is->exchange,
        "refresh-withdraw-coin",
        0,
        TALER_TESTING_make_wire_details
@@ -236,7 +235,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1",
-       is->exchange,
        "withdraw-coin-r1",
        0,
        TALER_TESTING_make_wire_details
@@ -280,7 +278,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-to-fail",
-       is->exchange,
        "withdraw-coin-r1",
        0, /* coin index.  */
        TALER_TESTING_make_wire_details

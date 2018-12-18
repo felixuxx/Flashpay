@@ -1016,7 +1016,6 @@ TALER_TESTING_cmd_status (const char *label,
  * Create a "deposit" command.
  *
  * @param label command label.
- * @param exchange exchange connection.
  * @param coin_reference reference to any operation that can
  *        provide a coin.
  * @param coin_index if @a withdraw_reference offers an array of
@@ -1036,7 +1035,6 @@ TALER_TESTING_cmd_status (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *coin_reference,
    unsigned int coin_index,
    json_t *wire_details,

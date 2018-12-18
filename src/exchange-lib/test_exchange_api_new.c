@@ -217,7 +217,7 @@ run (void *cls,
      * Spend the coin.
      */
     TALER_TESTING_cmd_deposit
-      ("deposit-simple", is->exchange, "withdraw-coin-1", 0,
+      ("deposit-simple", "withdraw-coin-1", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
@@ -236,7 +236,7 @@ run (void *cls,
      * Try to double spend using different wire details.
      */
     TALER_TESTING_cmd_deposit
-      ("deposit-double-1", is->exchange, "withdraw-coin-1", 0,
+      ("deposit-double-1", "withdraw-coin-1", 0,
        TALER_TESTING_make_wire_details (43,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
@@ -252,7 +252,7 @@ run (void *cls,
      * how can a different id be generated?
      */
     TALER_TESTING_cmd_deposit
-      ("deposit-double-1", is->exchange, "withdraw-coin-1", 0,
+      ("deposit-double-1", "withdraw-coin-1", 0,
        TALER_TESTING_make_wire_details (43,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
@@ -262,7 +262,7 @@ run (void *cls,
      * Try to double spend with different proposal.
      */
     TALER_TESTING_cmd_deposit
-      ("deposit-double-2", is->exchange, "withdraw-coin-1", 0,
+      ("deposit-double-2", "withdraw-coin-1", 0,
        TALER_TESTING_make_wire_details (43,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
@@ -303,7 +303,7 @@ run (void *cls,
      * deposit fee)
      */
     TALER_TESTING_cmd_deposit
-      ("refresh-deposit-partial", is->exchange,
+      ("refresh-deposit-partial",
        "refresh-withdraw-coin-1", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
@@ -343,7 +343,7 @@ run (void *cls,
      * Try to spend a refreshed EUR:1 coin
      */
     TALER_TESTING_cmd_deposit
-      ("refresh-deposit-refreshed-1a", is->exchange,
+      ("refresh-deposit-refreshed-1a",
        "refresh-reveal-1-idempotency", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
@@ -355,7 +355,7 @@ run (void *cls,
      * Try to spend a refreshed EUR:0.1 coin
      */
     TALER_TESTING_cmd_deposit
-      ("refresh-deposit-refreshed-1b", is->exchange,
+      ("refresh-deposit-refreshed-1b",
        "refresh-reveal-1", 3,
        TALER_TESTING_make_wire_details (43,
                                         fakebank_url),
@@ -494,7 +494,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("deposit-unaggregated",
-       is->exchange,
        "withdraw-coin-unaggregated",
        0,
        TALER_TESTING_make_wire_details
@@ -542,7 +541,7 @@ run (void *cls,
      * receive EUR:4.99 due to 1 ct deposit fee)
      */
     TALER_TESTING_cmd_deposit
-      ("deposit-refund-1", is->exchange, "withdraw-coin-r1", 0,
+      ("deposit-refund-1", "withdraw-coin-r1", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\","
@@ -589,7 +588,7 @@ run (void *cls,
      * due to refund) (merchant would receive EUR:4.98 due to
      * 1 ct deposit fee) */
     TALER_TESTING_cmd_deposit
-      ("deposit-refund-2", is->exchange, "withdraw-coin-r1", 0,
+      ("deposit-refund-2", "withdraw-coin-r1", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"more ice cream\","
@@ -641,7 +640,7 @@ run (void *cls,
 
 
     TALER_TESTING_cmd_deposit
-      ("deposit-refund-1b", is->exchange, "withdraw-coin-rb", 0,
+      ("deposit-refund-1b", "withdraw-coin-rb", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\","
@@ -804,7 +803,7 @@ run (void *cls,
                                        MHD_HTTP_OK),
 
     TALER_TESTING_cmd_deposit
-      ("payback-deposit-partial", is->exchange,
+      ("payback-deposit-partial",
        "payback-withdraw-coin-2a", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
@@ -825,7 +824,7 @@ run (void *cls,
                                "EUR:0.5"),
 
     TALER_TESTING_cmd_deposit
-      ("payback-deposit-revoked", is->exchange,
+      ("payback-deposit-revoked",
        "payback-withdraw-coin-2b", 0,
        TALER_TESTING_make_wire_details (42,
                                         fakebank_url),
@@ -840,7 +839,6 @@ run (void *cls,
      * 404 on the DK! */
     TALER_TESTING_cmd_deposit
       ("payback-deposit-partial-after-payback",
-       is->exchange,
        "payback-withdraw-coin-2a",
        0,
        TALER_TESTING_make_wire_details

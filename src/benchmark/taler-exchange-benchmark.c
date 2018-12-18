@@ -430,7 +430,6 @@ run (void *cls,
         TALER_TESTING_cmd_deposit_with_retry
         (TALER_TESTING_cmd_deposit
          ("deposit",
-          is->exchange,
           withdraw_label,
           0, /* Index of the one withdrawn coin in the traits.  */
           TALER_TESTING_make_wire_details

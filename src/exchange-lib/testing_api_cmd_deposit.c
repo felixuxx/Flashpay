@@ -88,11 +88,6 @@ struct DepositState
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * Exchange connection.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Task scheduled to try later.
    */
   struct GNUNET_SCHEDULER_Task *retry_task;
@@ -129,7 +124,6 @@ struct DepositState
    * deposit confirmation.
    */
   struct TALER_ExchangeSignatureP exchange_sig;
-
 };
 
 
@@ -363,7 +357,7 @@ deposit_run (void *cls,
        &coin_sig.eddsa_signature));
   }
   ds->dh = TALER_EXCHANGE_deposit
-    (ds->exchange,
+    (is->exchange,
      &amount,
      wire_deadline,
      ds->wire_details,
@@ -496,7 +490,6 @@ deposit_traits (void *cls,
  * Create a "deposit" command.
  *
  * @param label command label.
- * @param exchange exchange connection.
  * @param coin_reference reference to any operation that can
  *        provide a coin.
  * @param coin_index if @a withdraw_reference offers an array of
@@ -518,7 +511,6 @@ deposit_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit
   (const char *label,
-   struct TALER_EXCHANGE_Handle *exchange,
    const char *coin_reference,
    unsigned int coin_index,
    json_t *wire_details,
@@ -531,7 +523,6 @@ TALER_TESTING_cmd_deposit
   struct DepositState *ds;
 
   ds = GNUNET_new (struct DepositState);
-  ds->exchange = exchange;
   ds->coin_reference = coin_reference;
   ds->coin_index = coin_index;
   ds->wire_details = wire_details;
