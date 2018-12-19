@@ -793,7 +793,6 @@ TALER_TESTING_cmd_bank_history
    long long num_results)
 {
   struct HistoryState *hs;
-  struct TALER_TESTING_Command cmd;
 
   hs = GNUNET_new (struct HistoryState);
   hs->bank_url = bank_url;
@@ -803,11 +802,13 @@ TALER_TESTING_cmd_bank_history
   hs->num_results = num_results;
   hs->ascending = ascending;
 
-  cmd.label = label;
-  cmd.cls = hs;
-  cmd.run = &history_run;
-  cmd.cleanup = &history_cleanup;
-  cmd.traits = &history_traits;
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = hs,
+    .run = &history_run,
+    .cleanup = &history_cleanup,
+    .traits = &history_traits
+  };
 
   return cmd;
 }

@@ -412,7 +412,6 @@ TALER_TESTING_cmd_withdraw_amount
    const char *amount,
    unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd;
   struct WithdrawState *ws;
 
   ws = GNUNET_new (struct WithdrawState);
@@ -431,11 +430,14 @@ TALER_TESTING_cmd_withdraw_amount
 
   ws->expected_response_code = expected_response_code;
 
-  cmd.cls = ws;
-  cmd.label = label;
-  cmd.run = &withdraw_run;
-  cmd.cleanup = &withdraw_cleanup;
-  cmd.traits = &withdraw_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = ws,
+    .label = label,
+    .run = &withdraw_run,
+    .cleanup = &withdraw_cleanup,
+    .traits = &withdraw_traits
+  };
+
   return cmd;
 }
 
@@ -460,7 +462,6 @@ TALER_TESTING_cmd_withdraw_denomination
    const struct TALER_EXCHANGE_DenomPublicKey *dk,
    unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd;
   struct WithdrawState *ws;
 
   if (NULL == dk)
@@ -475,11 +476,14 @@ TALER_TESTING_cmd_withdraw_denomination
   ws->pk = dk;
   ws->expected_response_code = expected_response_code;
 
-  cmd.cls = ws;
-  cmd.label = label;
-  cmd.run = &withdraw_run;
-  cmd.cleanup = &withdraw_cleanup;
-  cmd.traits = &withdraw_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = ws,
+    .label = label,
+    .run = &withdraw_run,
+    .cleanup = &withdraw_cleanup,
+    .traits = &withdraw_traits
+  };
+
   return cmd;
 }
 

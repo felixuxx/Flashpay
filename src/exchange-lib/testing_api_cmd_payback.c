@@ -444,17 +444,18 @@ TALER_TESTING_cmd_payback (const char *label,
                            const char *amount)
 {
   struct PaybackState *ps;
-  struct TALER_TESTING_Command cmd;
 
   ps = GNUNET_new (struct PaybackState);
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
   ps->amount = amount;
 
-  cmd.cls = ps;
-  cmd.label = label;
-  cmd.run = &payback_run;
-  cmd.cleanup = &payback_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = ps,
+    .label = label,
+    .run = &payback_run,
+    .cleanup = &payback_cleanup
+  };
 
   return cmd;
 }
@@ -479,18 +480,19 @@ TALER_TESTING_cmd_revoke (const char *label,
 {
 
   struct RevokeState *rs;
-  struct TALER_TESTING_Command cmd;
 
   rs = GNUNET_new (struct RevokeState);
   rs->expected_response_code = expected_response_code;
   rs->coin_reference = coin_reference;
   rs->config_filename = config_filename;
 
-  cmd.cls = rs;
-  cmd.label = label;
-  cmd.run = &revoke_run;
-  cmd.cleanup = &revoke_cleanup;
-  cmd.traits = &revoke_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = rs,
+    .label = label,
+    .run = &revoke_run,
+    .cleanup = &revoke_cleanup,
+    .traits = &revoke_traits
+  };
 
   return cmd;
 }

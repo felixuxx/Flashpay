@@ -486,7 +486,6 @@ TALER_TESTING_cmd_fakebank_transfer
    const char *auth_password,
    const char *exchange_url)
 {
-  struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
@@ -506,11 +505,15 @@ TALER_TESTING_cmd_fakebank_transfer
                 label);
     GNUNET_assert (0);
   }
-  cmd.cls = fts;
-  cmd.label = label;
-  cmd.run = &fakebank_transfer_run;
-  cmd.cleanup = &fakebank_transfer_cleanup;
-  cmd.traits = &fakebank_transfer_traits;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = fts,
+    .label = label,
+    .run = &fakebank_transfer_run,
+    .cleanup = &fakebank_transfer_cleanup,
+    .traits = &fakebank_transfer_traits
+  };
+
   return cmd;
 }
 
@@ -549,7 +552,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
    const char *subject,
    const char *exchange_url)
 {
-  struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
@@ -575,11 +577,15 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
                 label);
     GNUNET_assert (0);
   }
-  cmd.cls = fts;
-  cmd.label = label;
-  cmd.run = &fakebank_transfer_run;
-  cmd.cleanup = &fakebank_transfer_cleanup;
-  cmd.traits = &fakebank_transfer_traits;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = fts,
+    .label = label,
+    .run = &fakebank_transfer_run,
+    .cleanup = &fakebank_transfer_cleanup,
+    .traits = &fakebank_transfer_traits
+  };
+
   return cmd;
 }
 
@@ -619,7 +625,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
    const char *ref,
    const char *exchange_url)
 {
-  struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
@@ -640,11 +645,15 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
                 label);
     GNUNET_assert (0);
   }
-  cmd.cls = fts;
-  cmd.label = label;
-  cmd.run = &fakebank_transfer_run;
-  cmd.cleanup = &fakebank_transfer_cleanup;
-  cmd.traits = &fakebank_transfer_traits;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = fts,
+    .label = label,
+    .run = &fakebank_transfer_run,
+    .cleanup = &fakebank_transfer_cleanup,
+    .traits = &fakebank_transfer_traits
+  };
+
   return cmd;
 }
 
@@ -691,7 +700,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
    const char *exchange_url,
    const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
@@ -713,11 +721,15 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
                 label);
     GNUNET_assert (0);
   }
-  cmd.cls = fts;
-  cmd.label = label;
-  cmd.run = &fakebank_transfer_run;
-  cmd.cleanup = &fakebank_transfer_cleanup;
-  cmd.traits = &fakebank_transfer_traits;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = fts,
+    .label = label,
+    .run = &fakebank_transfer_run,
+    .cleanup = &fakebank_transfer_cleanup,
+    .traits = &fakebank_transfer_traits
+  };
+
   return cmd;
 }
 

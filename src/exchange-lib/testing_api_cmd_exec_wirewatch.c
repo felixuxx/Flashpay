@@ -148,16 +148,20 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_wirewatch (const char *label,
                                   const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct WirewatchState *ws;
 
   ws = GNUNET_new (struct WirewatchState);
   ws->config_filename = config_filename;
-  cmd.cls = ws;
-  cmd.label = label;
-  cmd.run = &wirewatch_run;
-  cmd.cleanup = &wirewatch_cleanup;
-  cmd.traits = &wirewatch_traits;
+
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = ws,
+    .label = label,
+    .run = &wirewatch_run,
+    .cleanup = &wirewatch_cleanup,
+    .traits = &wirewatch_traits
+  };
+
   return cmd;
 }
 

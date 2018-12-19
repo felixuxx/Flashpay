@@ -216,7 +216,6 @@ TALER_TESTING_cmd_wire (const char *label,
                         const char *expected_fee,
                         unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd;
   struct WireState *ws;
 
   ws = GNUNET_new (struct WireState);
@@ -224,10 +223,12 @@ TALER_TESTING_cmd_wire (const char *label,
   ws->expected_fee = expected_fee;
   ws->expected_response_code = expected_response_code;
 
-  cmd.cls = ws;
-  cmd.label = label;
-  cmd.run = &wire_run;
-  cmd.cleanup = &wire_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = ws,
+    .label = label,
+    .run = &wire_run,
+    .cleanup = &wire_cleanup
+  };
 
   return cmd;
 }

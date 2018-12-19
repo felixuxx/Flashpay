@@ -157,7 +157,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch (const char *label,
                          struct TALER_TESTING_Command *batch)
 {
-  struct TALER_TESTING_Command cmd;
   struct BatchState *bs;
   unsigned int i;
 
@@ -175,11 +174,13 @@ TALER_TESTING_cmd_batch (const char *label,
           batch,
           sizeof (struct TALER_TESTING_Command) * i);
 
-  cmd.cls = bs;
-  cmd.label = label;
-  cmd.run = &batch_run;
-  cmd.cleanup = &batch_cleanup;
-  cmd.traits = &batch_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = bs,
+    .label = label,
+    .run = &batch_run,
+    .cleanup = &batch_cleanup,
+    .traits = &batch_traits
+  };
 
   return cmd;
 }

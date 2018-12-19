@@ -147,16 +147,19 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_aggregator (const char *label,
                                    const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct AggregatorState *as;
 
   as = GNUNET_new (struct AggregatorState);
   as->config_filename = config_filename;
-  cmd.cls = as;
-  cmd.label = label;
-  cmd.run = &aggregator_run;
-  cmd.cleanup = &aggregator_cleanup;
-  cmd.traits = &aggregator_traits;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = as,
+    .label = label,
+    .run = &aggregator_run,
+    .cleanup = &aggregator_cleanup,
+    .traits = &aggregator_traits
+  };
+
   return cmd;
 }
 

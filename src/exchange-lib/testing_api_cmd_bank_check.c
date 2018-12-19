@@ -253,7 +253,6 @@ TALER_TESTING_cmd_check_bank_transfer
    uint64_t credit_account)
 {
   struct BankCheckState *bcs;
-  struct TALER_TESTING_Command cmd;
 
   bcs = GNUNET_new (struct BankCheckState);
   bcs->exchange_base_url = exchange_base_url;
@@ -263,11 +262,13 @@ TALER_TESTING_cmd_check_bank_transfer
 
   bcs->deposit_reference = NULL;
 
-  cmd.label = label;
-  cmd.cls = bcs;
-  cmd.run = &check_bank_transfer_run;
-  cmd.cleanup = &check_bank_transfer_cleanup;
-  cmd.traits = &check_bank_transfer_traits;
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = bcs,
+    .run = &check_bank_transfer_run,
+    .cleanup = &check_bank_transfer_cleanup,
+    .traits = &check_bank_transfer_traits
+  };
 
   return cmd;
 }

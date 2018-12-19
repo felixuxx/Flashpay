@@ -143,15 +143,18 @@ TALER_TESTING_cmd_check_keys
    unsigned int num_denom_keys)
 {
   struct CheckKeysState *cks;
-  struct TALER_TESTING_Command cmd;
 
   cks = GNUNET_new (struct CheckKeysState);
   cks->generation = generation;
   cks->num_denom_keys = num_denom_keys;
-  cmd.cls = cks;
-  cmd.label = label;
-  cmd.run = &check_keys_run;
-  cmd.cleanup = &check_keys_cleanup;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = cks,
+    .label = label,
+    .run = &check_keys_run,
+    .cleanup = &check_keys_cleanup
+  };
+
   return cmd;
 }
 

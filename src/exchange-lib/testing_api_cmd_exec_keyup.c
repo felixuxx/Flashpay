@@ -150,16 +150,19 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_keyup (const char *label,
                               const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct KeyupState *ks;
 
   ks = GNUNET_new (struct KeyupState);
   ks->config_filename = config_filename;
-  cmd.cls = ks;
-  cmd.label = label;
-  cmd.run = &keyup_run;
-  cmd.cleanup = &keyup_cleanup;
-  cmd.traits = &keyup_traits;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = ks,
+    .label = label,
+    .run = &keyup_run,
+    .cleanup = &keyup_cleanup,
+    .traits = &keyup_traits
+  };
+
   return cmd;
 }
 

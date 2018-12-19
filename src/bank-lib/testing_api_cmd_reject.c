@@ -200,20 +200,22 @@ TALER_TESTING_cmd_bank_reject (const char *label,
                                const char *deposit_reference)
 {
   struct RejectState *rs;
-  struct TALER_TESTING_Command cmd;
 
   rs = GNUNET_new (struct RejectState);
   rs->bank_url = bank_url;
   rs->deposit_reference = deposit_reference;
 
-  cmd.cls = rs;
-  cmd.run = &reject_run;
-  cmd.cleanup = &reject_cleanup;
-  cmd.label = label;
-  cmd.traits = &reject_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = rs,
+    .run = &reject_run,
+    .cleanup = &reject_cleanup,
+    .label = label,
+    .traits = &reject_traits
+  };
 
   return cmd;
 
 }
+
 
 /* end of testing_api_cmd_reject.c */

@@ -212,16 +212,20 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_auditor_sign (const char *label,
                                      const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct AuditorSignState *ass;
 
   ass = GNUNET_new (struct AuditorSignState);
   ass->config_filename = config_filename;
-  cmd.cls = ass;
-  cmd.label = label;
-  cmd.run = &auditor_sign_run;
-  cmd.cleanup = &auditor_sign_cleanup;
-  cmd.traits = &auditor_sign_traits;
+
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = ass,
+    .label = label,
+    .run = &auditor_sign_run,
+    .cleanup = &auditor_sign_cleanup,
+    .traits = &auditor_sign_traits
+  };
+
   return cmd;
 }
 

@@ -519,7 +519,6 @@ TALER_TESTING_cmd_deposit
    const char *amount,
    unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct DepositState *ds;
 
   ds = GNUNET_new (struct DepositState);
@@ -543,11 +542,13 @@ TALER_TESTING_cmd_deposit
   ds->amount = amount;
   ds->expected_response_code = expected_response_code;
 
-  cmd.cls = ds;
-  cmd.label = label;
-  cmd.run = &deposit_run;
-  cmd.cleanup = &deposit_cleanup;
-  cmd.traits = &deposit_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = ds,
+    .label = label,
+    .run = &deposit_run,
+    .cleanup = &deposit_cleanup,
+    .traits = &deposit_traits
+  };
 
   return cmd;
 }

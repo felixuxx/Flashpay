@@ -1077,7 +1077,6 @@ TALER_TESTING_cmd_refresh_melt
 {
   struct RefreshMeltState *rms;
   struct MeltDetails md;
-  struct TALER_TESTING_Command cmd;
 
   md.coin_reference = coin_reference;
   md.amount = amount;
@@ -1086,11 +1085,14 @@ TALER_TESTING_cmd_refresh_melt
   rms->melted_coin = md;
   rms->expected_response_code = expected_response_code;
 
-  cmd.label = label;
-  cmd.cls = rms;
-  cmd.run = &refresh_melt_run;
-  cmd.cleanup = &refresh_melt_cleanup;
-  cmd.traits = &refresh_melt_traits;
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = rms,
+    .run = &refresh_melt_run,
+    .cleanup = &refresh_melt_cleanup,
+    .traits = &refresh_melt_traits
+  };
+
   return cmd;
 }
 
@@ -1118,7 +1120,6 @@ TALER_TESTING_cmd_refresh_melt_double
 {
   struct RefreshMeltState *rms;
   struct MeltDetails md;
-  struct TALER_TESTING_Command cmd;
 
   md.coin_reference = coin_reference;
   md.amount = amount;
@@ -1128,11 +1129,14 @@ TALER_TESTING_cmd_refresh_melt_double
   rms->expected_response_code = expected_response_code;
   rms->double_melt = GNUNET_YES;
 
-  cmd.label = label;
-  cmd.cls = rms;
-  cmd.run = &refresh_melt_run;
-  cmd.cleanup = &refresh_melt_cleanup;
-  cmd.traits = &refresh_melt_traits;
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = rms,
+    .run = &refresh_melt_run,
+    .cleanup = &refresh_melt_cleanup,
+    .traits = &refresh_melt_traits
+  };
+
   return cmd;
 }
 
@@ -1228,17 +1232,19 @@ TALER_TESTING_cmd_refresh_reveal
    unsigned int expected_response_code)
 {
   struct RefreshRevealState *rrs;
-  struct TALER_TESTING_Command cmd;
 
   rrs = GNUNET_new (struct RefreshRevealState);
   rrs->melt_reference = melt_reference;
   rrs->expected_response_code = expected_response_code;
 
-  cmd.cls = rrs;
-  cmd.label = label;
-  cmd.run = &refresh_reveal_run;
-  cmd.cleanup = &refresh_reveal_cleanup;
-  cmd.traits = &refresh_reveal_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = rrs,
+    .label = label,
+    .run = &refresh_reveal_run,
+    .cleanup = &refresh_reveal_cleanup,
+    .traits = &refresh_reveal_traits
+  };
+
   return cmd;
 }
 
@@ -1277,16 +1283,18 @@ TALER_TESTING_cmd_refresh_link
    unsigned int expected_response_code)
 {
   struct RefreshLinkState *rrs;
-  struct TALER_TESTING_Command cmd;
 
   rrs = GNUNET_new (struct RefreshLinkState);
   rrs->reveal_reference = reveal_reference;
   rrs->expected_response_code = expected_response_code;
 
-  cmd.cls = rrs;
-  cmd.label = label;
-  cmd.run = &refresh_link_run;
-  cmd.cleanup = &refresh_link_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = rrs,
+    .label = label,
+    .run = &refresh_link_run,
+    .cleanup = &refresh_link_cleanup
+  };
+
   return cmd;
 }
 

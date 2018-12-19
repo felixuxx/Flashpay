@@ -418,7 +418,6 @@ TALER_TESTING_cmd_track_transaction
    unsigned int expected_response_code,
    const char *bank_transfer_reference)
 {
-  struct TALER_TESTING_Command cmd;
   struct TrackTransactionState *tts;
 
   tts = GNUNET_new (struct TrackTransactionState);
@@ -427,11 +426,13 @@ TALER_TESTING_cmd_track_transaction
   tts->bank_transfer_reference = bank_transfer_reference;
   tts->coin_index = coin_index;
 
-  cmd.cls = tts;
-  cmd.label = label;
-  cmd.run = &track_transaction_run;
-  cmd.cleanup = &track_transaction_cleanup;
-  cmd.traits = &track_transaction_traits;
+  struct TALER_TESTING_Command cmd = {
+    .cls = tts,
+    .label = label,
+    .run = &track_transaction_run,
+    .cleanup = &track_transaction_cleanup,
+    .traits = &track_transaction_traits
+  };
 
   return cmd;
 }
@@ -744,7 +745,6 @@ TALER_TESTING_cmd_track_transfer_empty
    unsigned int expected_response_code)
 {
   struct TrackTransferState *tts;
-  struct TALER_TESTING_Command cmd;
 
   tts = GNUNET_new (struct TrackTransferState);
 
@@ -752,10 +752,12 @@ TALER_TESTING_cmd_track_transfer_empty
   tts->index = index;
   tts->expected_response_code = expected_response_code;
 
-  cmd.cls = tts;
-  cmd.label = label;
-  cmd.run = &track_transfer_run;
-  cmd.cleanup = &track_transfer_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = tts,
+    .label = label,
+    .run = &track_transfer_run,
+    .cleanup = &track_transfer_cleanup
+  };
 
   return cmd;
 }
@@ -786,7 +788,6 @@ TALER_TESTING_cmd_track_transfer
    const char *expected_wire_fee)
 {
   struct TrackTransferState *tts;
-  struct TALER_TESTING_Command cmd;
 
   tts = GNUNET_new (struct TrackTransferState);
 
@@ -796,10 +797,12 @@ TALER_TESTING_cmd_track_transfer
   tts->expected_total_amount = expected_total_amount;
   tts->expected_wire_fee = expected_wire_fee;
 
-  cmd.cls = tts;
-  cmd.label = label;
-  cmd.run = &track_transfer_run;
-  cmd.cleanup = &track_transfer_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = tts,
+    .label = label,
+    .run = &track_transfer_run,
+    .cleanup = &track_transfer_cleanup
+  };
 
   return cmd;
 }

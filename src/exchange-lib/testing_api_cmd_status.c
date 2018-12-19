@@ -246,7 +246,6 @@ TALER_TESTING_cmd_status (const char *label,
                           const char *expected_balance,
                           unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd;
   struct StatusState *ss;
 
   ss = GNUNET_new (struct StatusState);
@@ -254,10 +253,12 @@ TALER_TESTING_cmd_status (const char *label,
   ss->expected_balance = expected_balance;
   ss->expected_response_code = expected_response_code;
 
-  cmd.cls = ss;
-  cmd.label = label;
-  cmd.run = &status_run;
-  cmd.cleanup = &status_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = ss,
+    .label = label,
+    .run = &status_run,
+    .cleanup = &status_cleanup
+  };
 
   return cmd;
 }

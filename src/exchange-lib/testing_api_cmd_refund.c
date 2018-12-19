@@ -268,7 +268,6 @@ TALER_TESTING_cmd_refund (const char *label,
                           const char *coin_reference)
 {
   struct RefundState *rs;
-  struct TALER_TESTING_Command cmd;
 
   rs = GNUNET_new (struct RefundState);
 
@@ -277,10 +276,12 @@ TALER_TESTING_cmd_refund (const char *label,
   rs->refund_fee = refund_fee;
   rs->coin_reference = coin_reference;
 
-  cmd.cls = rs;
-  cmd.label = label;
-  cmd.run = &refund_run;
-  cmd.cleanup = &refund_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = rs,
+    .label = label,
+    .run = &refund_run,
+    .cleanup = &refund_cleanup
+  };
 
   return cmd;
 }
@@ -310,7 +311,6 @@ TALER_TESTING_cmd_refund_with_id
    uint64_t refund_transaction_id)
 {
   struct RefundState *rs;
-  struct TALER_TESTING_Command cmd;
 
   rs = GNUNET_new (struct RefundState);
 
@@ -320,10 +320,12 @@ TALER_TESTING_cmd_refund_with_id
   rs->coin_reference = coin_reference;
   rs->refund_transaction_id = refund_transaction_id;
 
-  cmd.cls = rs;
-  cmd.label = label;
-  cmd.run = &refund_run;
-  cmd.cleanup = &refund_cleanup;
+  struct TALER_TESTING_Command cmd = {
+    .cls = rs,
+    .label = label,
+    .run = &refund_run,
+    .cleanup = &refund_cleanup
+  };
 
   return cmd;
 }

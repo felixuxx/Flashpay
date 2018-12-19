@@ -88,14 +88,17 @@ TALER_TESTING_cmd_sleep (const char *label,
                          unsigned int duration_s)
 {
   struct SleepState *ss;
-  struct TALER_TESTING_Command cmd;
 
   ss = GNUNET_new (struct SleepState);
   ss->duration = duration_s;
-  cmd.cls = ss;
-  cmd.label = label;
-  cmd.run = &sleep_run;
-  cmd.cleanup = &sleep_cleanup;
+
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = ss,
+    .label = label,
+    .run = &sleep_run,
+    .cleanup = &sleep_cleanup
+  };
 
   return cmd;
 }

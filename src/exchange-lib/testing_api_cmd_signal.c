@@ -99,15 +99,18 @@ TALER_TESTING_cmd_signal (const char *label,
                           int signal)
 {
   struct SignalState *ss;
-  struct TALER_TESTING_Command cmd;
 
   ss = GNUNET_new (struct SignalState);
   ss->process = process;
   ss->signal = signal;
-  cmd.cls = ss;
-  cmd.label = label;
-  cmd.run = &signal_run;
-  cmd.cleanup = &signal_cleanup;
+
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = ss,
+    .label = label,
+    .run = &signal_run,
+    .cleanup = &signal_cleanup
+  };
 
   return cmd;
 }
