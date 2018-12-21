@@ -36,14 +36,15 @@
 struct CheckKeysState
 {
   /**
-   * How many times the /keys response was received by the
-   * exchange under test.
+   * This number will instruct the CMD interpreter to
+   * make sure that /keys was downloaded `generation` times
+   * _before_ running the very CMD logic.
    */
   unsigned int generation;
 
   /**
-   * How many denomination keys the exchange is supposed to
-   * have.
+   * How many denomination keys the exchange is
+   * supposed to have.
    */
   unsigned int num_denom_keys;
 };
@@ -67,9 +68,9 @@ check_keys_run (void *cls,
               "cmd `%s', key generation: %d\n",
               cmd->label,
               is->key_generation);
+
   if (is->key_generation < cks->generation)
   {
-    /* Go back to waiting for /keys signal! */
     is->working = GNUNET_NO;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Triggering /keys dl, cmd `%s'\n",
@@ -129,8 +130,11 @@ check_keys_cleanup (void *cls,
  * @a exchange matches @a num_denom_keys.
  *
  * @param label command label
- * @param generation how many /keys responses are expected to
- *        have been returned when this CMD will be run.
+ * @param generation when this command is run, exactly @a
+ *        generation /keys downloads took place.  If the number
+ *        of downloads is less than @a generation, the logic will
+ *        first make sure that @a generation downloads are done,
+ *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
  * @param exchange connection handle to the exchange to test.
  *

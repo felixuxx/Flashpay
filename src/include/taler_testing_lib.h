@@ -1436,6 +1436,14 @@ TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd);
 struct TALER_TESTING_Command *
 TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd);
 
+/**
+ * Make a serialize-keys CMD.
+ *
+ * @param label CMD label
+ * @return the CMD.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_serialize_keys (const char *label);
 
 /* *** Generic trait logic for implementing traits ********* */
 
@@ -1913,6 +1921,36 @@ struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wire_details
   (unsigned int index,
    const json_t *wire_details);
+
+
+/**
+ * Obtain serialized exchange keys from @a cmd.
+ *
+ * @param cmd command to extract the keys from.
+ * @param index index number associate with the keys on offer.
+ * @param keys[out] where to write the serialized keys.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_exchange_keys
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const json_t **keys);
+
+
+/**
+ * Offer serialized keys in a trait.
+ *
+ * @param index index number associate with the serial keys
+ *        on offer.
+ * @param keys serialized keys to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_exchange_keys
+  (unsigned int index,
+   const json_t *keys);
+
 
 /**
  * Obtain a private key from a "peer".  Used e.g. to obtain

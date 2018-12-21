@@ -30,6 +30,49 @@
 #include "taler_testing_lib.h"
 
 #define TALER_TESTING_TRAIT_WIRE_DETAILS "wire-details"
+#define TALER_TESTING_TRAIT_EXCHANGE_KEYS "exchange-keys"
+
+/**
+ * Obtain serialized exchange keys from @a cmd.
+ *
+ * @param cmd command to extract the keys from.
+ * @param index index number associate with the keys on offer.
+ * @param keys[out] where to write the serialized keys.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_exchange_keys
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const json_t **keys)
+{
+  return cmd->traits (cmd->cls,
+                      (const void **) keys,
+                      TALER_TESTING_TRAIT_EXCHANGE_KEYS,
+                      index);
+}
+
+
+/**
+ * Offer serialized keys in a trait.
+ *
+ * @param index index number associate with the serial keys
+ *        on offer.
+ * @param keys serialized keys to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_exchange_keys
+  (unsigned int index,
+   const json_t *keys)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_EXCHANGE_KEYS,
+    .ptr = (const json_t *) keys
+  };
+  return ret;
+}
 
 /**
  * Obtain wire details from @a cmd.
