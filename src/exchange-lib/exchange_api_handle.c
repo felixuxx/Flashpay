@@ -1317,7 +1317,7 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
 			     k);
     }
 
-    a = json_pack ("{s:s, s:o, s:o}",
+    a = json_pack ("{s:s, s:s, s:o}",
 		   "auditor_pub",
 		   GNUNET_JSON_from_data_auto (&ai->auditor_pub),
 		   "auditor_url",
