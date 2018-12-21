@@ -1221,7 +1221,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
 
   krd->cherry_pick_date = cherry_pick_date;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating /keys for cherry pick date %s\n",
               GNUNET_STRINGS_absolute_time_to_string (cherry_pick_date));
 
