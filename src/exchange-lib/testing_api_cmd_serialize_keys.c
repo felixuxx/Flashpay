@@ -187,13 +187,14 @@ connect_with_state_run (void *cls,
      0,
      &exchange_url));
 
-  is->exchange = TALER_EXCHANGE_connect (is->ctx,
-                                         exchange_url,
-                                         cb,
-                                         is,
-                                         TALER_EXCHANGE_OPTION_DATA,
-                                         serialized_keys,
-                                         TALER_EXCHANGE_OPTION_END);
+  is->exchange = TALER_EXCHANGE_connect
+    (is->ctx,
+     exchange_url,
+     cb,
+     is,
+     TALER_EXCHANGE_OPTION_DATA,
+     serialized_keys,
+     TALER_EXCHANGE_OPTION_END);
 }
 
 /**
