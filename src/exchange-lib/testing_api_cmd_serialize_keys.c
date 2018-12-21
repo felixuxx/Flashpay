@@ -66,7 +66,8 @@ serialize_keys_run (void *cls,
   if (NULL == sks->keys)
     TALER_TESTING_interpreter_fail (is);
 
-  sks->exchange_url = TALER_EXCHANGE_get_base_url (is->exchange);
+  sks->exchange_url = GNUNET_strdup
+    (TALER_EXCHANGE_get_base_url (is->exchange));
   TALER_EXCHANGE_disconnect (is->exchange);
   is->exchange = NULL;
   TALER_TESTING_interpreter_next (is);
