@@ -1445,6 +1445,21 @@ TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_serialize_keys (const char *label);
 
+
+/**
+ * Make a connect-with-state CMD.  This command
+ * will use a serialized key state to reconnect
+ * to the exchange.
+ *
+ * @param label command label
+ * @param state_reference label of a CMD offering
+ *        a serialized key state.
+ * @return the CMD.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_connect_with_state (const char *label,
+                                      const char *state_reference);
+
 /* *** Generic trait logic for implementing traits ********* */
 
 /**
