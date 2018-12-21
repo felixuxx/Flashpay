@@ -216,7 +216,7 @@ connect_with_state_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
 {
-
+  return;
 }
 
 /**

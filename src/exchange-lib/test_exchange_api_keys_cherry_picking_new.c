@@ -68,42 +68,71 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+
+  struct TALER_TESTING_Command keys_serialization[] = {
+
+    /**
+     * Serialize keys, and disconnect from the exchange.
+     */
+    TALER_TESTING_cmd_serialize_keys ("serialize-keys"),
+
+    /**
+     * Reconnect to the exchange using the serialized keys.
+     */
+    TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
+                                          "serialize-keys"),
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command commands[] = {
     /* Trigger keys reloading from disk.  */
     TALER_TESTING_cmd_signal ("signal-reaction-1",
                               is->exchanged,
                               SIGUSR1),
+
     TALER_TESTING_cmd_check_keys ("check-keys-1",
                                   1,
                                   4),
     /* sleep a bit */
     TALER_TESTING_cmd_sleep ("sleep",
                              10),
+
     /* 1st keyup happens at start-up */
     TALER_TESTING_cmd_exec_keyup ("keyup-2",
                                   CONFIG_FILE_EXTENDED),
+
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
                                          CONFIG_FILE),
+
+    /* Cause exchange to reload (new) keys */
     TALER_TESTING_cmd_signal ("trigger-keys-reload-1",
                               is->exchanged,
                               SIGUSR1),
+
     TALER_TESTING_cmd_check_keys ("check-keys-2",
                                   2,
                                   6),
     /* sleep a bit */
     TALER_TESTING_cmd_sleep ("sleep",
                              20),
+
     /* Do 2nd keyup */
     TALER_TESTING_cmd_exec_keyup ("keyup-3",
                                   CONFIG_FILE_EXTENDED),
+
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-2",
                                          CONFIG_FILE),
+
     TALER_TESTING_cmd_signal ("trigger-keys-reload-2",
                               is->exchanged,
                               SIGUSR1),
+
     TALER_TESTING_cmd_check_keys ("check-keys-3",
                                   3,
                                   8),
+
+    TALER_TESTING_cmd_batch ("keys-serialization",
+                             keys_serialization),
     TALER_TESTING_cmd_end ()
   };
 
