@@ -183,6 +183,10 @@ connect_with_state_run (void *cls,
        0,
        &serialized_keys));
 
+  TALER_LOG_DEBUG ("Serialized key-state: %s\n",
+                   json_dumps (serialized_keys,
+                               JSON_INDENT (1)));
+
   GNUNET_assert
   (GNUNET_OK == TALER_TESTING_get_trait_url
     (state_cmd,
@@ -197,6 +201,22 @@ connect_with_state_run (void *cls,
      TALER_EXCHANGE_OPTION_DATA,
      serialized_keys,
      TALER_EXCHANGE_OPTION_END);
+}
+
+
+/**
+ * Cleanup the state of a "connect with state" CMD.  Just
+ * a placeholder to avoid jumping on an invalid address.
+ *
+ * @param cls closure.
+ * @param cmd the command which is being cleaned up.
+ */
+void
+connect_with_state_cleanup
+  (void *cls,
+   const struct TALER_TESTING_Command *cmd)
+{
+
 }
 
 /**
@@ -243,6 +263,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
     .cls = (char *) state_reference,
     .label = label,
     .run = connect_with_state_run, 
+    .cleanup = connect_with_state_cleanup
   };
 
   return cmd;
