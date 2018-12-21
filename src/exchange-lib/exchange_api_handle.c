@@ -1255,7 +1255,7 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
       continue; /* skip keys that have expired */
     denom = json_pack ("{s:o, s:o, s:o, s:o, s:o "
 		       ",s:o, s:o, s:o, s:o, s:o "
-		       ,"s:o}",
+		       ",s:o}",
 		       "stamp_expire_deposit",
 		       GNUNET_JSON_from_time_abs (dk->expire_deposit),
 		       "stamp_expire_withdraw",
