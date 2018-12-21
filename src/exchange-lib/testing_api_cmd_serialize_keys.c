@@ -68,6 +68,7 @@ serialize_keys_run (void *cls,
 
   sks->exchange_url = TALER_EXCHANGE_get_base_url (is->exchange);
   TALER_EXCHANGE_disconnect (is->exchange);
+  is->exchange = NULL;
   TALER_TESTING_interpreter_next (is);
 }
 
