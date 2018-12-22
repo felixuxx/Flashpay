@@ -1317,6 +1317,28 @@ enum TALER_ErrorCode
   TALER_EC_PROPOSAL_ORDER_PARSE_ERROR = 2505,
 
   /**
+   * The backend encountered an error while trying to find the
+   * existing proposal in the database.
+   * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PROPOSAL_STORE_DB_ERROR_HARD = 2506,
+
+  /**
+   * The backend encountered an error while trying to find the
+   * existing proposal in the database.
+   * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PROPOSAL_STORE_DB_ERROR_SOFT = 2507,
+
+  /**
+   * The backend encountered an error: the proposal already
+   * exists.
+   * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PROPOSAL_STORE_DB_ERROR_ALREADY_EXISTS = 2508,
+
+
+  /**
    * The client specified an unknown instance for any of the /refund operations
    */
   TALER_EC_REFUND_INSTANCE_UNKNOWN = 2600,
