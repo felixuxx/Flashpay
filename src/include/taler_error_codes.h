@@ -1514,7 +1514,7 @@ enum TALER_ErrorCode
    * This response is
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_CHECK_PAYMENT_FAILED_COMPUTE_PROPOSAL_HASH = 2014,
+  TALER_EC_CHECK_PAYMENT_FAILED_COMPUTE_PROPOSAL_HASH = 2914,
 
 
   /* *********** Auditor error codes ********* */
@@ -1523,21 +1523,28 @@ enum TALER_ErrorCode
    * The signature from the exchange on the deposit confirmation
    * is invalid.  Returned with a "400 Bad Request" status code.
    */
-  TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID = 2500,
+  TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID = 3000,
 
   /**
    * The auditor had trouble storing the deposit confirmation
    * in its database. Returned with an HTTP status code of
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR = 2501,
+  TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR = 3001,
 
   /**
    * The auditor had trouble retrieving the exchange list
    * from its database. Returned with an HTTP status code of
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_LIST_EXCHANGES_DB_ERROR = 2502,
+  TALER_EC_LIST_EXCHANGES_DB_ERROR = 3002,
+
+  /**
+   * The auditor had trouble storing an exchange in its
+   * database. Returned with an HTTP status code of
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR = 3003,
 
 
   /* ********** /test API error codes ************* */

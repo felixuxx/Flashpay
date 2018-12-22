@@ -75,7 +75,7 @@ store_exchange_signing_key_transaction (void *cls,
   {
     TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
     *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR);
+						     TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR);
   }
   return qs;
 }
