@@ -265,6 +265,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  sign_key->master_sig = sign_key_issue_sig;
   return GNUNET_OK;
 }
 
