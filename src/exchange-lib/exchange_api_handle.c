@@ -456,7 +456,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     if (NULL == dk)
     {
-      GNUNET_break_op (0);
+      GNUNET_break_op (0); /* FAILS: #5136 */
       continue;
     }
     if (check_sigs)
