@@ -456,7 +456,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     if (NULL == dk)
     {
-      GNUNET_break_op (0); /* FAILS: #5136 */
+      GNUNET_break_op (0); 
       continue;
     }
     if (check_sigs)
@@ -1303,6 +1303,8 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
       const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[adi->denom_key_offset];
       json_t *k;
 
+      if (now.abs_value_us > dk->expire_deposit.abs_value_us)
+	continue; /* skip auditor signatures for denomination keys that have expired */
       GNUNET_assert (adi->denom_key_offset < kd->num_denom_keys);
       k = json_pack ("{s:o, s:o}",
 		     "denom_pub_h",
