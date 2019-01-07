@@ -81,6 +81,12 @@ run (void *cls,
      */
     TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
                                           "serialize-keys"),
+
+    TALER_TESTING_cmd_wire ("verify-/wire-with-serialized-keys",
+                            "x-taler-bank",
+                            NULL,
+                            MHD_HTTP_OK),
+    
     TALER_TESTING_cmd_end ()
   };
 
