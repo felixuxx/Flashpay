@@ -2,18 +2,21 @@
   This file is part of TALER
   Copyright (C) 2014-2018 GNUnet e.V.
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published
+  by the Free Software Foundation; either version 3, or (at your
+  option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file exchange-lib/exchange_api_handle.c
  * @brief Implementation of the "handle" component of the exchange's HTTP API
@@ -1372,25 +1375,29 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
 
 /**
  * Initialise a connection to the exchange. Will connect to the
- * exchange and obtain information about the exchange's master public
- * key and the exchange's auditor.  The respective information will
- * be passed to the @a cert_cb once available, and all future
- * interactions with the exchange will be checked to be signed
- * (where appropriate) by the respective master key.
+ * exchange and obtain information about the exchange's master
+ * public key and the exchange's auditor.
+ * The respective information will be passed to the @a cert_cb
+ * once available, and all future interactions with the exchange
+ * will be checked to be signed (where appropriate) by the
+ * respective master key.
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param cert_cb function to call with the exchange's certification information
+ * @param cert_cb function to call with the exchange's
+ *        certification information
  * @param cert_cb_cls closure for @a cert_cb
- * @param ... list of additional arguments, terminated by #TALER_EXCHANGE_OPTION_END.
+ * @param ... list of additional arguments,
+ *        terminated by #TALER_EXCHANGE_OPTION_END.
  * @return the exchange handle; NULL upon error
  */
 struct TALER_EXCHANGE_Handle *
-TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
-                        const char *url,
-                        TALER_EXCHANGE_CertificationCallback cert_cb,
-                        void *cert_cb_cls,
-                        ...)
+TALER_EXCHANGE_connect
+  (struct GNUNET_CURL_Context *ctx,
+   const char *url,
+   TALER_EXCHANGE_CertificationCallback cert_cb,
+   void *cert_cb_cls,
+   ...)
 {
   struct TALER_EXCHANGE_Handle *exchange;
   va_list ap;

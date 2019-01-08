@@ -49,6 +49,34 @@ struct SerializeKeysState
 
 
 /**
+ * Internal state for a connect-with-state CMD.
+ */
+struct ConnectWithStateState
+{
+
+  /**
+   * Reference to a CMD that offers a serialized key-state
+   * that will be used in the reconnection.
+   */
+  const char *state_reference;
+
+  /**
+   * If set to GNUNET_YES, then the /keys callback has already
+   * been passed the control to the next CMD.  This is necessary
+   * because it is not uncommon that the /keys callback gets
+   * invoked multiple times, and without this flag, we would keep
+   * going "next" CMD upon every invocation (causing impredictable
+   * behaviour as for the instruction pointer.)
+   */
+  unsigned int consumed;
+
+  /**
+   * Interpreter state.
+   */
+  struct TALER_TESTING_Interpreter *is;
+};
+
+/**
  * Run the command.
  *
  * @param cls closure.
@@ -91,6 +119,7 @@ serialize_keys_cleanup (void *cls,
     json_decref (sks->keys);   
   }
 
+  GNUNET_free ((char *) sks->exchange_url);
   GNUNET_free (sks);
 }
 
@@ -140,14 +169,22 @@ cb (void *cls,
     const struct TALER_EXCHANGE_Keys *keys,
     enum TALER_EXCHANGE_VersionCompatibility compat)
 {
-  struct TALER_TESTING_Interpreter *is = cls;
+  struct ConnectWithStateState *cwss = cls;
 
+  if (GNUNET_YES == cwss->consumed)
+  {
+    TALER_LOG_DEBUG ("Reconnection /keys 'cb' invoked already,"
+                     " nothing to do\n"); 
+    return;
+  }
+
+  cwss->consumed = GNUNET_YES;
   if (NULL == keys)
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_interpreter_fail (cwss->is);
   
-  TALER_TESTING_interpreter_next (is);
+  TALER_LOG_DEBUG ("reconnect next CMD\n");
+  TALER_TESTING_interpreter_next (cwss->is);
 }
-
 
 /**
  * Run the command.
@@ -161,13 +198,14 @@ connect_with_state_run (void *cls,
                         const struct TALER_TESTING_Command *cmd,
                         struct TALER_TESTING_Interpreter *is)
 {
+  struct ConnectWithStateState *cwss = cls;
   const struct TALER_TESTING_Command *state_cmd;
   const json_t *serialized_keys;
-  const char *state_reference = cls;
   const char *exchange_url;
 
+  cwss->is = is;
   state_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, state_reference);
+    (is, cwss->state_reference);
 
   /* Command providing serialized keys not found.  */
   if (NULL == state_cmd)
@@ -197,7 +235,7 @@ connect_with_state_run (void *cls,
     (is->ctx,
      exchange_url,
      cb,
-     is,
+     cwss,
      TALER_EXCHANGE_OPTION_DATA,
      serialized_keys,
      TALER_EXCHANGE_OPTION_END);
@@ -216,7 +254,9 @@ connect_with_state_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
 {
-  return;
+  struct ConnectWithStateState *cwss = cls;
+
+  GNUNET_free (cwss);
 }
 
 /**
@@ -244,7 +284,6 @@ TALER_TESTING_cmd_serialize_keys (const char *label)
   return cmd;
 }
 
-
 /**
  * Make a connect-with-state CMD.  This command
  * will use a serialized key state to reconnect
@@ -259,8 +298,14 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_connect_with_state (const char *label,
                                       const char *state_reference)
 {
+  struct ConnectWithStateState *cwss;
+
+  cwss = GNUNET_new (struct ConnectWithStateState);
+  cwss->state_reference = state_reference;
+  cwss->consumed = GNUNET_NO;
+
   struct TALER_TESTING_Command cmd = {
-    .cls = (char *) state_reference,
+    .cls = cwss,
     .label = label,
     .run = connect_with_state_run, 
     .cleanup = connect_with_state_cleanup

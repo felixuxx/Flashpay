@@ -213,6 +213,7 @@ handle_wire_finished (void *cls,
   enum TALER_ErrorCode ec;
   const json_t *j = response;
 
+  TALER_LOG_DEBUG ("Checking raw /wire response\n");
   wh->job = NULL;
   ec = TALER_EC_NONE;
   switch (response_code)
@@ -411,10 +412,10 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   eh = TEL_curl_easy_get (wh->url);
   ctx = TEAH_handle_to_context (exchange);
   wh->job = GNUNET_CURL_job_add (ctx,
-                         eh,
-                         GNUNET_YES,
-                         &handle_wire_finished,
-                         wh);
+                                 eh,
+                                 GNUNET_YES,
+                                 &handle_wire_finished,
+                                 wh);
   return wh;
 }
 

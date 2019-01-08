@@ -94,6 +94,7 @@ wire_cb (void *cls,
     &ws->is->commands[ws->is->ip];
   struct TALER_Amount expected_fee;
 
+  TALER_LOG_DEBUG ("Checking parsed /wire response\n");
   ws->wh = NULL;
   if (ws->expected_response_code != http_status)
   {
@@ -137,6 +138,8 @@ wire_cb (void *cls,
           }
         }
       }
+      TALER_LOG_DEBUG ("Freeing method '%s'\n",
+                       method);
       GNUNET_free (method);
     }
     if (GNUNET_OK != ws->method_found)
@@ -148,6 +151,7 @@ wire_cb (void *cls,
       return;
     }
   }
+
   TALER_TESTING_interpreter_next (ws->is);
 }
 

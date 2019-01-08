@@ -237,6 +237,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_end (void)
 {
   static struct TALER_TESTING_Command cmd;
+  cmd.label = NULL;
+
   return cmd;
 }
 
@@ -269,13 +271,18 @@ interpreter_run (void *cls)
 
   if (NULL == cmd->label)
   {
+
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Running command END\n");
     is->result = GNUNET_OK;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Running command `%s'\n",
               cmd->label);
+
   cmd->run (cmd->cls,
             cmd,
             is);
@@ -293,10 +300,16 @@ do_shutdown (void *cls)
 {
   struct TALER_TESTING_Interpreter *is = cls;
   struct TALER_TESTING_Command *cmd;
+  const char *label;
+
+  label = is->commands[is->ip].label;
+  if (NULL == label)
+    label = "END";
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Executing shutdown at `%s'\n",
-              is->commands[is->ip].label);
+              label);
+
   for (unsigned int j=0;NULL != (cmd = &is->commands[j])->label;j++)
     cmd->cleanup (cmd->cls,
                   cmd);
