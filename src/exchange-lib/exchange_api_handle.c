@@ -773,6 +773,7 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
                      0);
   for (unsigned int i=0;i<key_data->num_denom_keys;i++)
     GNUNET_CRYPTO_rsa_public_key_free (key_data->denom_keys[i].key.rsa_public_key);
+
   GNUNET_array_grow (key_data->denom_keys,
                      key_data->denom_keys_size,
                      0);
@@ -909,6 +910,7 @@ keys_completed_cb (void *cls,
                           &kd,
 			  &vc))
     {
+      TALER_LOG_ERROR ("Could not decode /keys response\n");
       response_code = 0;
       for (unsigned int i=0;i<kd.num_auditors;i++)
       {
@@ -921,11 +923,13 @@ keys_completed_cb (void *cls,
       }
       GNUNET_free (kd.auditors);
       kd.auditors = NULL;
+      kd.num_auditors = 0;
       for (unsigned int i=0;i<kd_old.num_denom_keys;i++)
 	GNUNET_CRYPTO_rsa_public_key_free (kd.denom_keys[i].key.rsa_public_key);
       GNUNET_array_grow (kd.denom_keys,
 			 kd.denom_keys_size,
 			 0);
+      kd.num_denom_keys = 0;
       break;
     }
     json_decref (exchange->key_data_raw);
