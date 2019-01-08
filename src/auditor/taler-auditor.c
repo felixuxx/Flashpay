@@ -4368,6 +4368,29 @@ setup_sessions_and_run ()
 
 
 /**
+ * Test if the given @a mpub matches the #master_pub.
+ * If so, set "found" to GNUNET_YES.
+ *
+ * @param cls a `int *` pointing to "found"
+ * @param mpub exchange master public key to compare
+ * @param exchange_url URL of the exchange (ignored)
+ */
+static void
+test_master_present (void *cls,
+		     const struct TALER_MasterPublicKeyP *mpub,
+		     const char *exchange_url)
+{
+  int *found = cls;
+  
+  (void) exchange_url;
+  if (0 == memcmp (mpub,
+		   &master_pub,
+		   sizeof (master_pub)))
+    *found = GNUNET_YES;
+}
+
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -4384,6 +4407,8 @@ run (void *cls,
   static const struct TALER_MasterPublicKeyP zeromp;
   struct TALER_Amount income_fee_total;
   json_t *report;
+  struct TALER_AUDITORDB_Session *as;
+  int found;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
@@ -4461,6 +4486,31 @@ run (void *cls,
     fprintf (stderr,
              "Failed to initialize auditor database plugin.\n");
     global_ret = 1;
+    TALER_EXCHANGEDB_plugin_unload (edb);
+    return;
+  }
+  found = GNUNET_NO;
+  as = adb->get_session (adb->cls);
+  if (NULL == as)
+  {
+    fprintf (stderr,
+             "Failed to start session with auditor database.\n");
+    global_ret = 1;
+    TALER_AUDITORDB_plugin_unload (adb);
+    TALER_EXCHANGEDB_plugin_unload (edb);
+    return;
+  }
+  (void) adb->list_exchanges (adb->cls,
+			      as,
+			      &test_master_present,
+			      &found);
+  if (GNUNET_NO == found)
+  {
+    fprintf (stderr,
+             "Exchange's master public key `%s' not known to auditor DB. Did you forget to run `taler-auditor-exchange`?\n",
+	     TALER_B2S (&master_pub));
+    global_ret = 1;
+    TALER_AUDITORDB_plugin_unload (adb);
     TALER_EXCHANGEDB_plugin_unload (edb);
     return;
   }
