@@ -116,7 +116,6 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 				char **auditor_base_url,
 				char **exchange_base_url);
 
-
 /**
  * Wait for the exchange to have started. Waits for at
  * most 10s, after that returns 77 to indicate an error.

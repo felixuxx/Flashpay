@@ -96,8 +96,16 @@ run (void *cls,
     TALER_TESTING_cmd_exec_keyup ("keyup-serialization",
                                   CONFIG_FILE_EXTENDED_2),
 
-    TALER_TESTING_cmd_exec_auditor_sign ("auditor-sign-serialization",
-                                         CONFIG_FILE_EXTENDED_2),
+    TALER_TESTING_cmd_exec_auditor_sign
+      ("auditor-sign-serialization",
+       CONFIG_FILE_EXTENDED_2),
+
+    TALER_TESTING_cmd_sleep ("sleep-serialization",
+                             3),
+
+    TALER_TESTING_cmd_signal ("reload-keys-serialization",
+                              is->exchanged,
+                              SIGUSR1),
     TALER_TESTING_cmd_end ()
   };
 
