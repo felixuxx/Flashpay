@@ -469,7 +469,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
       kv.expire_deposit = GNUNET_TIME_absolute_hton (dk->expire_deposit);
       kv.expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal);
       TALER_amount_hton (&kv.value,
-                       &dk->value);
+                         &dk->value);
       TALER_amount_hton (&kv.fee_withdraw,
 			 &dk->fee_withdraw);
       TALER_amount_hton (&kv.fee_deposit,

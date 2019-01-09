@@ -48,6 +48,12 @@
   "test_exchange_api_keys_cherry_picking_extended.conf"
 
 /**
+ * Used to increase the number of denomination keys.
+ */
+#define CONFIG_FILE_EXTENDED_2 \
+  "test_exchange_api_keys_cherry_picking_extended_2.conf"
+
+/**
  * Exchange base URL; mainly purpose is to make the compiler happy.
  */
 static char *exchange_url;
@@ -86,7 +92,12 @@ run (void *cls,
                             "x-taler-bank",
                             NULL,
                             MHD_HTTP_OK),
-    
+
+    TALER_TESTING_cmd_exec_keyup ("keyup-serialization",
+                                  CONFIG_FILE_EXTENDED_2),
+
+    TALER_TESTING_cmd_exec_auditor_sign ("auditor-sign-serialization",
+                                         CONFIG_FILE_EXTENDED_2),
     TALER_TESTING_cmd_end ()
   };
 
@@ -108,7 +119,7 @@ run (void *cls,
                                   CONFIG_FILE_EXTENDED),
 
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
-                                         CONFIG_FILE),
+                                         CONFIG_FILE_EXTENDED),
 
     /* Cause exchange to reload (new) keys */
     TALER_TESTING_cmd_signal ("trigger-keys-reload-1",
