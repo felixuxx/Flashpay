@@ -502,14 +502,15 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 
 
 /**
- * Decode the JSON in @a resp_obj from the /keys response and store the data
- * in the @a key_data.
+ * Decode the JSON in @a resp_obj from the /keys response
+ * and store the data in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
  * @param check_sig #GNUNET_YES if we should check the signature
  * @param[out] key_data where to store the results we decoded
  * @param[out] where to store version compatibility data
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error (malformed JSON)
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * (malformed JSON)
  */
 static int
 decode_keys_json (const json_t *resp_obj,
@@ -517,7 +518,6 @@ decode_keys_json (const json_t *resp_obj,
                   struct TALER_EXCHANGE_Keys *key_data,
 		  enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
-  struct GNUNET_TIME_Absolute last_denom_issue_date;
   struct TALER_ExchangeSignatureP sig;
   struct GNUNET_HashContext *hash_context;
   struct TALER_ExchangePublicKeyP pub;
@@ -535,8 +535,9 @@ decode_keys_json (const json_t *resp_obj,
 				 &key_data->master_pub),
     GNUNET_JSON_spec_absolute_time ("list_issue_date",
 				    &key_data->list_issue_date),
-    GNUNET_JSON_spec_relative_time ("reserve_closing_delay",
-				    &key_data->reserve_closing_delay),
+    GNUNET_JSON_spec_relative_time
+      ("reserve_closing_delay",
+        &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_end()
   };
 
@@ -624,7 +625,6 @@ decode_keys_json (const json_t *resp_obj,
 
   /* parse the denomination keys, merging with the
      possibly EXISTING array as required (/keys cherry picking) */
-  last_denom_issue_date.abs_value_us = 0LLU;
   {
     json_t *denom_keys_array;
     json_t *denom_key_obj;
@@ -642,40 +642,40 @@ decode_keys_json (const json_t *resp_obj,
 
       EXITIF (GNUNET_SYSERR ==
               parse_json_denomkey (&dk,
-				   check_sig,
+                                   check_sig,
                                    denom_key_obj,
                                    &key_data->master_pub,
                                    hash_context));
       for (unsigned int j=0;j<key_data->num_denom_keys;j++)
       {
-	if (0 == memcmp (&dk,
-			 &key_data->denom_keys[j],
-			 sizeof (dk)))
-	{
-	  found = true;
-	  break;
-	}
+        if (0 == memcmp (&dk,
+                         &key_data->denom_keys[j],
+                         sizeof (dk)))
+        {
+          found = true;
+          break;
+        }
       }
       if (found)
       {
-	/* 0:0:0 did not support /keys cherry picking */
-	GNUNET_break_op (0 == current);
-	continue;
+        /* 0:0:0 did not support /keys cherry picking */
+        GNUNET_break_op (0 == current);
+        continue;
       }
       if (key_data->denom_keys_size == key_data->num_denom_keys)
-	GNUNET_array_grow (key_data->denom_keys,
-			   key_data->denom_keys_size,
-			   key_data->denom_keys_size * 2 + 2);
+        GNUNET_array_grow (key_data->denom_keys,
+                           key_data->denom_keys_size,
+                           key_data->denom_keys_size * 2 + 2);
       key_data->denom_keys[key_data->num_denom_keys++] = dk;
 
       /* Update "last_denom_issue_date" */
-      last_denom_issue_date
-        = GNUNET_TIME_absolute_max (last_denom_issue_date,
+      TALER_LOG_DEBUG ("Crawling DK 'valid_from': %s\n",
+                       GNUNET_STRINGS_absolute_time_to_string (dk.valid_from));  
+      key_data->last_denom_issue_date
+        = GNUNET_TIME_absolute_max (key_data->last_denom_issue_date,
                                     dk.valid_from);
     };
   }
-  key_data->last_denom_issue_date = last_denom_issue_date;
-
   /* parse the auditor information */
   {
     json_t *auditors_array;
@@ -874,9 +874,11 @@ keys_completed_cb (void *cls,
     /* We keep the denomination keys and auditor signatures from the
        previous iteration (/keys cherry picking) */
     kd.num_denom_keys = kd_old.num_denom_keys;
+    kd.last_denom_issue_date = kd_old.last_denom_issue_date;
     GNUNET_array_grow (kd.denom_keys,
                        kd.denom_keys_size,
                        kd.num_denom_keys);
+
     /* First make a shallow copy, we then need another pass for the RSA key... */
     memcpy (kd.denom_keys,
             kd_old.denom_keys,
@@ -943,6 +945,10 @@ keys_completed_cb (void *cls,
     break;
   }
   exchange->key_data = kd;
+  TALER_LOG_DEBUG ("Last DK issue date update to: %s\n",
+                   GNUNET_STRINGS_absolute_time_to_string
+                     (exchange->key_data.last_denom_issue_date));
+
 
   if (MHD_HTTP_OK != response_code)
   {
@@ -1177,10 +1183,10 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
     return; /* unsupported version */
   if (0 != strcmp (url,
 		   exchange->url))
-    {
-      GNUNET_break (0);
-      return;
-    }
+  {
+    GNUNET_break (0);
+    return;
+  }
   memset (&key_data,
 	  0,
           sizeof (struct TALER_EXCHANGE_Keys));
@@ -1211,9 +1217,10 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
  * disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more
  * efficiently recover the state).
  *
- * @param exchange which exchange's key and wire data should be serialized
- * @return NULL on error (i.e. no current data available); otherwise
- *         json object owned by the caller
+ * @param exchange which exchange's key and wire data should be
+ *        serialized
+ * @return NULL on error (i.e. no current data available);
+ *         otherwise JSON object owned by the caller
  */
 json_t *
 TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
@@ -1461,17 +1468,19 @@ request_keys (void *cls)
   {
     char *arg;
 
+    TALER_LOG_DEBUG ("Last DK issue date (before GETting /keys): %s\n",
+                     GNUNET_STRINGS_absolute_time_to_string (exchange->key_data.last_denom_issue_date));
     GNUNET_asprintf (&arg,
-		     "/keys?last_issue_date=%llu",
-		     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
+                     "/keys?last_issue_date=%llu",
+                     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
     kr->url = TEAH_path_to_url (exchange,
-			       arg);
+                                arg);
     GNUNET_free (arg);
   }
   else
   {
     kr->url = TEAH_path_to_url (exchange,
-			       "/keys");
+                                "/keys");
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
