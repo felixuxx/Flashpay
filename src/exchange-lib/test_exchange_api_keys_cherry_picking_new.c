@@ -106,6 +106,30 @@ run (void *cls,
     TALER_TESTING_cmd_signal ("reload-keys-serialization",
                               is->exchanged,
                               SIGUSR1),
+
+    TALER_TESTING_cmd_sleep ("sleep-serialization",
+                             3),
+
+    /**
+     * XXX.
+     *
+     * Current bug: this CMD here uses the "reconnect cert_cb",
+     * that has its 'consumed' field already set to GNUNET_YES.
+     * This way, there is no way to pass control to the next
+     * CMD making therefore the interpreter stuck.
+     *
+     * Doable solution: adapt the global "cert_cb" to handle
+     * "reconnect situations", or even provide some method to
+     * switch the 'consumed' field back to GNUNET_NO.
+     */
+    TALER_TESTING_cmd_check_keys ("check-freshest-keys",
+                                  4,
+                                  10),
+
+    TALER_TESTING_cmd_wire ("verify-/wire-with-fresh-keys",
+                              "x-taler-bank",
+                              NULL,
+                              MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 

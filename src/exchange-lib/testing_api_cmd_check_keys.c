@@ -73,7 +73,7 @@ check_keys_run (void *cls,
   {
     is->working = GNUNET_NO;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Triggering /keys dl, cmd `%s'\n",
+                "Triggering GET /keys, cmd `%s'\n",
                 cmd->label);
 
     /* Means re-download /keys.  */
