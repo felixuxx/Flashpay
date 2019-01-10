@@ -389,7 +389,7 @@ handle_mhd_request (void *cls,
  * Parse the configuration to determine on which port
  * or UNIX domain path we should run an HTTP service.
  *
- * @param section section of the configuration to parse ("exchange" or "exchange-admin")
+ * @param section section of the configuration to parse (usually "exchange")
  * @param[out] rport set to the port number, or 0 for none
  * @param[out] unix_path set to the UNIX path, or NULL for none
  * @param[out] unix_mode set to the mode to be used for @a unix_path
