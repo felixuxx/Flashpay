@@ -27,6 +27,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_track_transfer.c \
   exchange_api_wire.c
 libtalerexchange_la_LIBADD = \
+  $(top_builddir)/src/auditor-lib/libtalerauditor.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \

@@ -460,6 +460,18 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Lookup the given @a pub in @a keys.
+ *
+ * @param keys the exchange's key set
+ * @param pub claimed current online signing key for the exchange
+ * @return NULL if @a pub was not found
+ */
+const struct TALER_EXCHANGE_SigningPublicKey *
+TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
+					const struct TALER_ExchangePublicKeyP *pub);
+
+
+/**
  * Get exchange's base URL.
  *
  * @param exchange exchange handle.

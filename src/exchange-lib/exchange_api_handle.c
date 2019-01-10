@@ -28,6 +28,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
+#include "taler_auditor_service.h"
 #include "taler_signatures.h"
 #include "exchange_api_handle.h"
 #include "curl_defaults.h"
@@ -91,6 +92,77 @@ struct KeysRequest;
 
 
 /**
+ * Entry in list of ongoing interactions with an auditor.
+ */
+struct AuditorInteractionEntry
+{
+  /**
+   * DLL entry.
+   */
+  struct AuditorInteractionEntry *next;
+  
+  /**
+   * DLL entry.
+   */
+  struct AuditorInteractionEntry *prev;
+
+  /**
+   * Interaction state.
+   */
+  struct TALER_AUDITOR_DepositConfirmationHandle *dch;
+};
+
+
+/**
+ * Entry in DLL of auditors used by an exchange.
+ */
+struct AuditorListEntry
+{
+  /**
+   * Next pointer of DLL.
+   */
+  struct AuditorListEntry *next;
+
+  /**
+   * Prev pointer of DLL.
+   */
+  struct AuditorListEntry *prev;
+
+  /**
+   * Base URL of the auditor.
+   */
+  const char *auditor_url;
+
+  /**
+   * Handle to the auditor.
+   */
+  struct TALER_AUDITOR_Handle *ah;
+
+  /**
+   * Head of DLL of interactions with this auditor.
+   */
+  struct AuditorInteractionEntry *ai_head;
+  
+  /**
+   * Tail of DLL of interactions with this auditor.
+   */
+  struct AuditorInteractionEntry *ai_tail;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+  /**
+   * Flag indicating that the auditor is available and that protocol
+   * version compatibility is given.
+   */
+  int is_up;
+  
+};
+
+
+/**
  * Handle to the exchange
  */
 struct TALER_EXCHANGE_Handle
@@ -134,6 +206,16 @@ struct TALER_EXCHANGE_Handle
   json_t *key_data_raw;
 
   /**
+   * Head of DLL of auditors of this exchange.
+   */
+  struct AuditorListEntry *auditors_head;
+
+  /**
+   * Tail of DLL of auditors of this exchange.
+   */
+  struct AuditorListEntry *auditors_tail;
+  
+  /**
    * Key data of the exchange, only valid if
    * @e handshake_complete is past stage #MHS_CERT.
    */
@@ -152,8 +234,8 @@ struct TALER_EXCHANGE_Handle
   /**
    * Stage of the exchange's initialization routines.
    */
-  enum ExchangeHandleState state;
-
+  enum ExchangeHandleState state;  
+  
 };
 
 
@@ -186,6 +268,24 @@ struct KeysRequest
   struct GNUNET_TIME_Absolute expire;
 
 };
+
+
+/**
+ * Iterate over all available auditors for @a h, calling
+ * @param ah and giving it a chance to start a deposit
+ * confirmation interaction.
+ *
+ * @param h exchange to go over auditors for
+ * @param ac function to call per auditor
+ * @param ac_cls closure for @a ac
+ */
+void
+TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
+			  TEAH_AuditorCallback ac,
+			  void *ac_cls)
+{
+  // FIXME!
+}
 
 
 /**
@@ -1542,6 +1642,30 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 
 
 /**
+ * Lookup the given @a pub in @a keys.
+ *
+ * @param keys the exchange's key set
+ * @param pub claimed current online signing key for the exchange
+ * @return NULL if @a pub was not found
+ */
+const struct TALER_EXCHANGE_SigningPublicKey *
+TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
+					const struct TALER_ExchangePublicKeyP *pub)
+{
+  for (unsigned int i=0;i<keys->num_sign_keys;i++)
+  {
+    struct TALER_EXCHANGE_SigningPublicKey *spk = &keys->sign_keys[i];
+    
+    if (0 == memcmp (pub,
+		     &spk->key,
+		     sizeof (struct TALER_ExchangePublicKeyP)))
+      return spk;
+  }
+  return NULL;
+}
+
+
+/**
  * Test if the given @a pub is a the current signing key from the exchange
  * according to @a keys.
  *
@@ -1566,6 +1690,7 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
       return GNUNET_OK;
   return GNUNET_SYSERR;
 }
+
 
 /**
  * Get exchange's base URL.

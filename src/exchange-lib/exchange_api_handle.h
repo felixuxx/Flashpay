@@ -21,7 +21,39 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_curl_lib.h>
+#include "taler_auditor_service.h"
 #include "taler_exchange_service.h"
+#include "taler_crypto_lib.h"
+
+
+/**
+ * Function called for each auditor to give us a chance to possibly
+ * launch a deposit confirmation interaction.  
+ * 
+ * @param cls closure
+ * @param ah handle to the auditor
+ * @param auditor_pub public key of the auditor
+ * @return NULL if no deposit confirmation interaction was launched
+ */
+typedef struct TALER_AUDITOR_DepositConfirmationHandle *
+(*TEAH_AuditorCallback)(void *cls,
+			struct TALER_AUDITOR_Handle *ah,
+			const struct TALER_AuditorPublicKeyP *auditor_pub);
+
+
+/**
+ * Iterate over all available auditors for @a h, calling
+ * @param ah and giving it a chance to start a deposit
+ * confirmation interaction.
+ *
+ * @param h exchange to go over auditors for
+ * @param ac function to call per auditor
+ * @param ac_cls closure for @a ac
+ */
+void
+TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
+			  TEAH_AuditorCallback ac,
+			  void *ac_cls);
 
 
 /**

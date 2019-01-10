@@ -24,10 +24,10 @@ EXTRA_DIST = \
 
 SUBDIRS = include util wire json $(PQ_DIR) $(BANK_LIB) wire-plugins exchangedb exchange exchange-tools auditordb auditor 
 if HAVE_LIBCURL
- SUBDIRS += exchange-lib auditor-lib benchmark
+ SUBDIRS += auditor-lib exchange-lib benchmark
 else
 if HAVE_LIBGNURL
- SUBDIRS += exchange-lib auditor-lib benchmark
+ SUBDIRS += auditor-lib exchange-lib benchmark
 endif
 endif
 

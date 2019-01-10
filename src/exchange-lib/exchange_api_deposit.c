@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
+#include "taler_auditor_service.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -83,8 +84,27 @@ struct TALER_EXCHANGE_DepositHandle
    * Total value of the coin being transacted with.
    */
   struct TALER_Amount coin_value;
-
+  
 };
+
+
+/**
+ * Signature of functions called with the result from our call to the
+ * auditor's /deposit-confirmation handler.
+ *
+ * @param cls closure
+ * @param http_status HTTP status code, 200 on success
+ * @param ec taler protocol error status code, 0 on success
+ * @param json raw json response
+ */
+static void
+acc_confirmation_cb (void *cls,
+		     unsigned int http_status,
+		     enum TALER_ErrorCode ec,
+		     const json_t *json)
+{
+  /* FIXME: clean up state, some logging on errors! */
+}
 
 
 /**
@@ -135,6 +155,37 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if (0 /* #5447: replace with "for all auditors, if auditor selected for DC notification... */)
+  {
+    struct TALER_AUDITOR_DepositConfirmationHandle *dch;
+    const struct TALER_EXCHANGE_SigningPublicKey *spk;
+    struct TALER_Amount amount_without_fee;
+    
+    spk = TALER_EXCHANGE_get_signing_key_details (key_state,
+						  exchange_pub);
+    GNUNET_assert (NULL != spk);
+    TALER_amount_ntoh (&amount_without_fee,
+		       &dh->depconf.amount_without_fee);
+    dch = TALER_AUDITOR_deposit_confirmation (NULL /* FIXME: auditor */,
+					      &dh->depconf.h_wire,
+					      &dh->depconf.h_contract_terms,
+					      GNUNET_TIME_absolute_ntoh (dh->depconf.timestamp),
+					      GNUNET_TIME_absolute_ntoh (dh->depconf.refund_deadline),
+					      &amount_without_fee,
+					      &dh->depconf.coin_pub,
+					      &dh->depconf.merchant,
+					      exchange_pub,
+					      exchange_sig,
+					      &key_state->master_pub,
+					      spk->valid_from,
+					      spk->valid_until,
+					      spk->valid_legal,
+					      &spk->master_sig,
+					      &acc_confirmation_cb,
+					      NULL /* FIXME: context! */);
+  }
+
+  
   return GNUNET_OK;
 }
 
