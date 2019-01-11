@@ -31,7 +31,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
-#include "curl_defaults.h"
+#include "exchange_api_curl_defaults.h"
 
 
 /**
@@ -84,7 +84,7 @@ struct TALER_EXCHANGE_DepositHandle
    * Total value of the coin being transacted with.
    */
   struct TALER_Amount coin_value;
-  
+
 };
 
 
@@ -160,7 +160,7 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
     struct TALER_AUDITOR_DepositConfirmationHandle *dch;
     const struct TALER_EXCHANGE_SigningPublicKey *spk;
     struct TALER_Amount amount_without_fee;
-    
+
     spk = TALER_EXCHANGE_get_signing_key_details (key_state,
 						  exchange_pub);
     GNUNET_assert (NULL != spk);
@@ -185,7 +185,7 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
 					      NULL /* FIXME: context! */);
   }
 
-  
+
   return GNUNET_OK;
 }
 

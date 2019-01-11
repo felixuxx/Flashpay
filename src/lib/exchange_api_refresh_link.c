@@ -27,7 +27,7 @@
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
-#include "curl_defaults.h"
+#include "exchange_api_curl_defaults.h"
 
 
 /**

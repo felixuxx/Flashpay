@@ -16,7 +16,7 @@
 */
 
 /**
- * @file exchange-lib/curl_defaults.h
+ * @file lib/exchange_api_curl_defaults.h
  * @brief curl easy handle defaults
  * @author Florian Dold
  */

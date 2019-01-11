@@ -29,7 +29,7 @@
 #include "taler_auditor_service.h"
 #include "auditor_api_handle.h"
 #include "taler_signatures.h"
-#include "curl_defaults.h"
+#include "auditor_api_curl_defaults.h"
 
 
 /**

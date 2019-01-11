@@ -8,13 +8,15 @@ endif
 
 lib_LTLIBRARIES = \
   libtalerexchange.la \
-  libtalertesting.la
+  libtalertesting.la \
+  libtalerauditor.la \
+  libtalerauditortesting.la
 
 libtalerexchange_la_LDFLAGS = \
   -version-info 4:0:0 \
   -no-undefined
 libtalerexchange_la_SOURCES = \
-  curl_defaults.c \
+  exchange_api_curl_defaults.c exchange_api_curl_defaults.h \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_deposit.c \
@@ -27,7 +29,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_track_transfer.c \
   exchange_api_wire.c
 libtalerexchange_la_LIBADD = \
-  $(top_builddir)/src/auditor-lib/libtalerauditor.la \
+  libtalerauditor.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
@@ -36,11 +38,38 @@ libtalerexchange_la_LIBADD = \
   -ljansson \
   $(XLIB)
 
+
+libtalerauditor_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -no-undefined
+libtalerauditor_la_SOURCES = \
+  auditor_api_curl_defaults.c auditor_api_curl_defaults.h \
+  auditor_api_handle.c auditor_api_handle.h \
+  auditor_api_deposit_confirmation.c \
+  auditor_api_exchanges.c
+libtalerauditor_la_LIBADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+if HAVE_LIBCURL
+libtalerauditor_la_LIBADD += -lcurl
+else
+if HAVE_LIBGNURL
+libtalerauditor_la_LIBADD += -lgnurl
+endif
+endif
+
+
 libtalertesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalertesting_la_SOURCES = \
-  curl_defaults.c \
+  exchange_api_curl_defaults.c \
   testing_api_cmd_exec_aggregator.c \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_exec_keyup.c \
@@ -92,6 +121,30 @@ libtalertesting_la_LIBADD = \
   -ljansson \
   $(XLIB)
 
+libtalerauditortesting_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -no-undefined
+libtalerauditortesting_la_SOURCES = \
+  testing_auditor_api_helpers.c \
+  testing_auditor_api_cmd_deposit_confirmation.c \
+  testing_auditor_api_cmd_exchanges.c \
+  testing_auditor_api_cmd_exec_auditor.c \
+  testing_auditor_api_cmd_exec_auditor_dbinit.c \
+  testing_auditor_api_cmd_exec_wire_auditor.c
+libtalerauditortesting_la_LIBADD = \
+  libtalerauditor.la \
+  libtalerexchange.la \
+  libtalertesting.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+
 if HAVE_LIBCURL
 libtalerexchange_la_LIBADD += -lcurl
 else
@@ -103,7 +156,8 @@ endif
 check_PROGRAMS = \
   test_exchange_api_keys_cherry_picking_new \
   test_exchange_api_overlapping_keys_bug \
-  test_exchange_api_new
+  test_exchange_api_new \
+  test_auditor_api
 
 if HAVE_TWISTER
   check_PROGRAMS += \
@@ -113,10 +167,10 @@ test_exchange_api_twisted_SOURCES = \
   test_exchange_api_twisted.c
 test_exchange_api_twisted_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/exchange-lib/libtalertesting.la \
+  libtalertesting.la \
+  libtalerexchange.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/exchange-lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -ltalertwistertesting \
@@ -172,10 +226,30 @@ test_exchange_api_keys_cherry_picking_new_LDADD = \
   -lgnunetutil \
   -ljansson
 
+test_auditor_api_SOURCES = \
+  test_auditor_api.c
+test_auditor_api_LDADD = \
+  libtalerauditortesting.la \
+  libtalerauditor.la \
+  libtalertesting.la \
+  libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+
+
 EXTRA_DIST = \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_exchange_api_home/.config/taler/test.json \
   test_exchange_api_home/.config/taler/sepa.json \
   test_exchange_api.conf \
   test_exchange_api_keys_cherry_picking.conf \
-  test_exchange_api_keys_cherry_picking_extended.conf
+  test_exchange_api_keys_cherry_picking_extended.conf \
+  test_auditor_api.conf \
+  test_auditor_api_expire_reserve_now.conf

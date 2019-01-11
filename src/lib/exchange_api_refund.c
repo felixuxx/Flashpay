@@ -29,7 +29,7 @@
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
-#include "curl_defaults.h"
+#include "exchange_api_curl_defaults.h"
 
 
 /**
@@ -284,7 +284,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 				 cb_cls);
 }
 
-  
+
 /**
  * Submit a refund request to the exchange and get the exchange's
  * response.  This API is used by a merchant.  Note that

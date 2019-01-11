@@ -30,7 +30,7 @@
 #include "taler_signatures.h"
 #include "taler_wire_plugin.h"
 #include "exchange_api_handle.h"
-#include "curl_defaults.h"
+#include "exchange_api_curl_defaults.h"
 
 
 /**

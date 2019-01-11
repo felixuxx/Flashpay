@@ -45,7 +45,7 @@ struct ExchangesState
    * Auditor connection.
    */
   struct TALER_AUDITOR_Handle *auditor;
-  
+
   /**
    * Interpreter state.
    */
@@ -139,7 +139,7 @@ exchanges_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  es->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  es->backoff = AUDITOR_LIB_BACKOFF (es->backoff);
+	  es->backoff = EXCHANGE_LIB_BACKOFF (es->backoff);
 	es->retry_task = GNUNET_SCHEDULER_add_delayed (es->backoff,
 							&do_retry,
 							es);
@@ -173,7 +173,7 @@ exchanges_run (void *cls,
 	       struct TALER_TESTING_Interpreter *is)
 {
   struct ExchangesState *es = cls;
-  
+
   es->is = is;
   es->leh = TALER_AUDITOR_list_exchanges
     (es->auditor,
@@ -269,7 +269,7 @@ TALER_TESTING_cmd_exchanges
   cmd.run = &exchanges_run;
   cmd.cleanup = &exchanges_cleanup;
   cmd.traits = &exchanges_traits;
-  
+
   return cmd;
 }
 

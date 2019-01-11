@@ -31,7 +31,7 @@
 #include "taler_auditor_service.h"
 #include "taler_signatures.h"
 #include "exchange_api_handle.h"
-#include "curl_defaults.h"
+#include "exchange_api_curl_defaults.h"
 #include "backoff.h"
 
 /**
@@ -100,7 +100,7 @@ struct AuditorInteractionEntry
    * DLL entry.
    */
   struct AuditorInteractionEntry *next;
-  
+
   /**
    * DLL entry.
    */
@@ -142,7 +142,7 @@ struct AuditorListEntry
    * Head of DLL of interactions with this auditor.
    */
   struct AuditorInteractionEntry *ai_head;
-  
+
   /**
    * Tail of DLL of interactions with this auditor.
    */
@@ -158,7 +158,7 @@ struct AuditorListEntry
    * version compatibility is given.
    */
   int is_up;
-  
+
 };
 
 
@@ -214,7 +214,7 @@ struct TALER_EXCHANGE_Handle
    * Tail of DLL of auditors of this exchange.
    */
   struct AuditorListEntry *auditors_tail;
-  
+
   /**
    * Key data of the exchange, only valid if
    * @e handshake_complete is past stage #MHS_CERT.
@@ -234,8 +234,8 @@ struct TALER_EXCHANGE_Handle
   /**
    * Stage of the exchange's initialization routines.
    */
-  enum ExchangeHandleState state;  
-  
+  enum ExchangeHandleState state;
+
 };
 
 
@@ -559,7 +559,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     if (NULL == dk)
     {
-      GNUNET_break_op (0); 
+      GNUNET_break_op (0);
       continue;
     }
     if (check_sigs)
@@ -770,7 +770,7 @@ decode_keys_json (const json_t *resp_obj,
 
       /* Update "last_denom_issue_date" */
       TALER_LOG_DEBUG ("Crawling DK 'valid_from': %s\n",
-                       GNUNET_STRINGS_absolute_time_to_string (dk.valid_from));  
+                       GNUNET_STRINGS_absolute_time_to_string (dk.valid_from));
       key_data->last_denom_issue_date
         = GNUNET_TIME_absolute_max (key_data->last_denom_issue_date,
                                     dk.valid_from);
@@ -1655,7 +1655,7 @@ TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
   for (unsigned int i=0;i<keys->num_sign_keys;i++)
   {
     struct TALER_EXCHANGE_SigningPublicKey *spk = &keys->sign_keys[i];
-    
+
     if (0 == memcmp (pub,
 		     &spk->key,
 		     sizeof (struct TALER_ExchangePublicKeyP)))

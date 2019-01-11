@@ -156,7 +156,7 @@ deposit_confirmation_cb (void *cls,
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  dcs->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
-	  dcs->backoff = AUDITOR_LIB_BACKOFF (dcs->backoff);
+	  dcs->backoff = EXCHANGE_LIB_BACKOFF (dcs->backoff);
 	dcs->retry_task = GNUNET_SCHEDULER_add_delayed (dcs->backoff,
 							&do_retry,
 							dcs);

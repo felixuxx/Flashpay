@@ -15,12 +15,12 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/curl_defaults.c
+ * @file lib/exchange_api_curl_defaults.c
  * @brief curl easy handle defaults
  * @author Florian Dold
  */
 
-#include "curl_defaults.h"
+#include "exchange_api_curl_defaults.h"
 
 
 /**
@@ -30,7 +30,7 @@
  * @param url URL to query
  */
 CURL *
-TAL_curl_easy_get (const char *url)
+TEL_curl_easy_get (const char *url)
 {
   CURL *eh;
 

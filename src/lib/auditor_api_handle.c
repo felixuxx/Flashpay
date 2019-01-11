@@ -27,7 +27,7 @@
 #include "taler_auditor_service.h"
 #include "taler_signatures.h"
 #include "auditor_api_handle.h"
-#include "curl_defaults.h"
+#include "auditor_api_curl_defaults.h"
 #include "backoff.h"
 
 /**
@@ -299,7 +299,7 @@ version_completed_cb (void *cls,
     free_version_request (vr);
     auditor->vr = NULL;
     GNUNET_assert (NULL == auditor->retry_task);
-    auditor->retry_delay = AUDITOR_LIB_BACKOFF (auditor->retry_delay);
+    auditor->retry_delay = EXCHANGE_LIB_BACKOFF (auditor->retry_delay);
     auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
                                                         &request_version,
                                                         auditor);
