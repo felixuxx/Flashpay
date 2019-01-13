@@ -35,6 +35,15 @@
 
 
 /**
+ * 1:#AUDITOR_CHANCE is the probability that we report deposits
+ * to the auditor.
+ *
+ * 2==50% of going to auditor. This is way too high, but set
+ * deliberately this high for testing
+ */
+#define AUDITOR_CHANCE 2
+
+/**
  * @brief A Deposit Handle
  */
 struct TALER_EXCHANGE_DepositHandle
@@ -118,7 +127,8 @@ auditor_cb (void *cls,
   struct TALER_Amount amount_without_fee;
   struct TEAH_AuditorInteractionEntry *aie;
 
-  if (1 /* #5447: replace with "for all auditors, if auditor selected for DC notification... */)
+  if (0 != GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                     AUDITOR_CHANCE))
     return NULL;
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
   spk = TALER_EXCHANGE_get_signing_key_details (key_state,
