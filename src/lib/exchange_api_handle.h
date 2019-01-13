@@ -27,18 +27,67 @@
 
 
 /**
+ * Entry in DLL of auditors used by an exchange.
+ */
+struct TEAH_AuditorListEntry;
+
+
+/**
+ * Entry in list of ongoing interactions with an auditor.
+ */
+struct TEAH_AuditorInteractionEntry
+{
+  /**
+   * DLL entry.
+   */
+  struct TEAH_AuditorInteractionEntry *next;
+
+  /**
+   * DLL entry.
+   */
+  struct TEAH_AuditorInteractionEntry *prev;
+
+  /**
+   * Which auditor is this action associated with?
+   */
+  struct TEAH_AuditorListEntry *ale;
+
+  /**
+   * Interaction state.
+   */
+  struct TALER_AUDITOR_DepositConfirmationHandle *dch;
+};
+
+
+/**
  * Function called for each auditor to give us a chance to possibly
- * launch a deposit confirmation interaction.  
- * 
+ * launch a deposit confirmation interaction.
+ *
  * @param cls closure
  * @param ah handle to the auditor
  * @param auditor_pub public key of the auditor
  * @return NULL if no deposit confirmation interaction was launched
  */
-typedef struct TALER_AUDITOR_DepositConfirmationHandle *
+typedef struct TEAH_AuditorInteractionEntry *
 (*TEAH_AuditorCallback)(void *cls,
 			struct TALER_AUDITOR_Handle *ah,
 			const struct TALER_AuditorPublicKeyP *auditor_pub);
+
+
+/**
+ * Signature of functions called with the result from our call to the
+ * auditor's /deposit-confirmation handler.
+ *
+ * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
+ * @param http_status HTTP status code, 200 on success
+ * @param ec taler protocol error status code, 0 on success
+ * @param json raw json response
+ */
+void
+TEAH_acc_confirmation_cb (void *cls,
+                          unsigned int http_status,
+                          enum TALER_ErrorCode ec,
+                          const json_t *json);
 
 
 /**

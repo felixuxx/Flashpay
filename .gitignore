@@ -107,3 +107,5 @@ contrib/auditor-report.pdf
 src/bank-lib/taler-bank-transfer
 src/bank-lib/test_bank_api_twisted
 src/lib/test_exchange_api_new
+src/lib/test_auditor_api
+src/lib/test_exchange_api_overlapping_keys_bug

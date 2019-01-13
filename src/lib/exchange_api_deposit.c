@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2018 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2018, 2019 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -76,6 +76,16 @@ struct TALER_EXCHANGE_DepositHandle
   struct TALER_DepositConfirmationPS depconf;
 
   /**
+   * Exchange signature, set for #auditor_cb.
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * Exchange signing public key, set for #auditor_cb.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
    * Value of the /deposit transaction, including fee.
    */
   struct TALER_Amount amount_with_fee;
@@ -89,21 +99,52 @@ struct TALER_EXCHANGE_DepositHandle
 
 
 /**
- * Signature of functions called with the result from our call to the
- * auditor's /deposit-confirmation handler.
+ * Function called for each auditor to give us a chance to possibly
+ * launch a deposit confirmation interaction.
  *
  * @param cls closure
- * @param http_status HTTP status code, 200 on success
- * @param ec taler protocol error status code, 0 on success
- * @param json raw json response
+ * @param ah handle to the auditor
+ * @param auditor_pub public key of the auditor
+ * @return NULL if no deposit confirmation interaction was launched
  */
-static void
-acc_confirmation_cb (void *cls,
-		     unsigned int http_status,
-		     enum TALER_ErrorCode ec,
-		     const json_t *json)
+static struct TEAH_AuditorInteractionEntry *
+auditor_cb (void *cls,
+            struct TALER_AUDITOR_Handle *ah,
+            const struct TALER_AuditorPublicKeyP *auditor_pub)
 {
-  /* FIXME: clean up state, some logging on errors! */
+  struct TALER_EXCHANGE_DepositHandle *dh = cls;
+  const struct TALER_EXCHANGE_Keys *key_state;
+  const struct TALER_EXCHANGE_SigningPublicKey *spk;
+  struct TALER_Amount amount_without_fee;
+  struct TEAH_AuditorInteractionEntry *aie;
+
+  if (1 /* #5447: replace with "for all auditors, if auditor selected for DC notification... */)
+    return NULL;
+  key_state = TALER_EXCHANGE_get_keys (dh->exchange);
+  spk = TALER_EXCHANGE_get_signing_key_details (key_state,
+                                                &dh->exchange_pub);
+  GNUNET_assert (NULL != spk);
+  TALER_amount_ntoh (&amount_without_fee,
+                     &dh->depconf.amount_without_fee);
+  aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
+  aie->dch = TALER_AUDITOR_deposit_confirmation (ah,
+                                                 &dh->depconf.h_wire,
+                                                 &dh->depconf.h_contract_terms,
+                                                 GNUNET_TIME_absolute_ntoh (dh->depconf.timestamp),
+                                                 GNUNET_TIME_absolute_ntoh (dh->depconf.refund_deadline),
+                                                 &amount_without_fee,
+                                                 &dh->depconf.coin_pub,
+                                                 &dh->depconf.merchant,
+                                                 &dh->exchange_pub,
+                                                 &dh->exchange_sig,
+                                                 &key_state->master_pub,
+                                                 spk->valid_from,
+                                                 spk->valid_until,
+                                                 spk->valid_legal,
+                                                 &spk->master_sig,
+                                                 &TEAH_acc_confirmation_cb,
+                                                 aie);
+  return aie;
 }
 
 
@@ -118,7 +159,7 @@ acc_confirmation_cb (void *cls,
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
+verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
                              const json_t *json,
 			     struct TALER_ExchangeSignatureP *exchange_sig,
                              struct TALER_ExchangePublicKeyP *exchange_pub)
@@ -155,37 +196,11 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (0 /* #5447: replace with "for all auditors, if auditor selected for DC notification... */)
-  {
-    struct TALER_AUDITOR_DepositConfirmationHandle *dch;
-    const struct TALER_EXCHANGE_SigningPublicKey *spk;
-    struct TALER_Amount amount_without_fee;
-
-    spk = TALER_EXCHANGE_get_signing_key_details (key_state,
-						  exchange_pub);
-    GNUNET_assert (NULL != spk);
-    TALER_amount_ntoh (&amount_without_fee,
-		       &dh->depconf.amount_without_fee);
-    dch = TALER_AUDITOR_deposit_confirmation (NULL /* FIXME: auditor */,
-					      &dh->depconf.h_wire,
-					      &dh->depconf.h_contract_terms,
-					      GNUNET_TIME_absolute_ntoh (dh->depconf.timestamp),
-					      GNUNET_TIME_absolute_ntoh (dh->depconf.refund_deadline),
-					      &amount_without_fee,
-					      &dh->depconf.coin_pub,
-					      &dh->depconf.merchant,
-					      exchange_pub,
-					      exchange_sig,
-					      &key_state->master_pub,
-					      spk->valid_from,
-					      spk->valid_until,
-					      spk->valid_legal,
-					      &spk->master_sig,
-					      &acc_confirmation_cb,
-					      NULL /* FIXME: context! */);
-  }
-
-
+  dh->exchange_sig = *exchange_sig;
+  dh->exchange_pub = *exchange_pub;
+  TEAH_get_auditors_for_dc (dh->exchange,
+                            &auditor_cb,
+                            dh);
   return GNUNET_OK;
 }
 

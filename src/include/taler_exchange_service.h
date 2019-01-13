@@ -48,7 +48,7 @@ enum TALER_EXCHANGE_Option
    * /keys data (or at least only download the deltas).
    */
   TALER_EXCHANGE_OPTION_DATA
-  
+
 };
 
 
@@ -66,7 +66,7 @@ struct TALER_EXCHANGE_SigningPublicKey
    * Signature over this signing key by the exchange's master signature.
    */
   struct TALER_MasterSignatureP master_sig;
-  
+
   /**
    * Validity start time
    */
@@ -103,7 +103,7 @@ struct TALER_EXCHANGE_DenomPublicKey
    * Exchange's master signature over this denomination record.
    */
   struct TALER_MasterSignatureP master_sig;
-  
+
   /**
    * Timestamp indicating when the denomination key becomes valid
    */
@@ -167,7 +167,7 @@ struct TALER_EXCHANGE_AuditorDenominationInfo
    * denomination.
    */
   struct TALER_AuditorSignatureP auditor_sig;
-  
+
   /**
    * Offsets into the key's main `denom_keys` array identifying the
    * denomination being audited by this auditor.
@@ -201,7 +201,7 @@ struct TALER_EXCHANGE_AuditorInformation
 
   /**
    * Array of length @a num_denom_keys with the denomination
-   * keys audited by this auditor. 
+   * keys audited by this auditor.
    */
   struct TALER_EXCHANGE_AuditorDenominationInfo *denom_keys;
 
@@ -393,7 +393,7 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
 
 /**
  * Serialize the latest key data from @a exchange to be persisted
- * on disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more 
+ * on disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more
  * efficiently recover the state).
  *
  * @param exchange which exchange's key and wire data should be serialized

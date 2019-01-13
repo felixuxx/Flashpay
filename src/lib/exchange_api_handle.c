@@ -92,46 +92,24 @@ struct KeysRequest;
 
 
 /**
- * Entry in list of ongoing interactions with an auditor.
- */
-struct AuditorInteractionEntry
-{
-  /**
-   * DLL entry.
-   */
-  struct AuditorInteractionEntry *next;
-
-  /**
-   * DLL entry.
-   */
-  struct AuditorInteractionEntry *prev;
-
-  /**
-   * Interaction state.
-   */
-  struct TALER_AUDITOR_DepositConfirmationHandle *dch;
-};
-
-
-/**
  * Entry in DLL of auditors used by an exchange.
  */
-struct AuditorListEntry
+struct TEAH_AuditorListEntry
 {
   /**
    * Next pointer of DLL.
    */
-  struct AuditorListEntry *next;
+  struct TEAH_AuditorListEntry *next;
 
   /**
    * Prev pointer of DLL.
    */
-  struct AuditorListEntry *prev;
+  struct TEAH_AuditorListEntry *prev;
 
   /**
    * Base URL of the auditor.
    */
-  const char *auditor_url;
+  char *auditor_url;
 
   /**
    * Handle to the auditor.
@@ -141,12 +119,12 @@ struct AuditorListEntry
   /**
    * Head of DLL of interactions with this auditor.
    */
-  struct AuditorInteractionEntry *ai_head;
+  struct TEAH_AuditorInteractionEntry *ai_head;
 
   /**
    * Tail of DLL of interactions with this auditor.
    */
-  struct AuditorInteractionEntry *ai_tail;
+  struct TEAH_AuditorInteractionEntry *ai_tail;
 
   /**
    * Public key of the auditor.
@@ -208,12 +186,12 @@ struct TALER_EXCHANGE_Handle
   /**
    * Head of DLL of auditors of this exchange.
    */
-  struct AuditorListEntry *auditors_head;
+  struct TEAH_AuditorListEntry *auditors_head;
 
   /**
    * Tail of DLL of auditors of this exchange.
    */
-  struct AuditorListEntry *auditors_tail;
+  struct TEAH_AuditorListEntry *auditors_tail;
 
   /**
    * Key data of the exchange, only valid if
@@ -271,6 +249,39 @@ struct KeysRequest
 
 
 /**
+ * Signature of functions called with the result from our call to the
+ * auditor's /deposit-confirmation handler.
+ *
+ * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
+ * @param http_status HTTP status code, 200 on success
+ * @param ec taler protocol error status code, 0 on success
+ * @param json raw json response
+ */
+void
+TEAH_acc_confirmation_cb (void *cls,
+                          unsigned int http_status,
+                          enum TALER_ErrorCode ec,
+                          const json_t *json)
+{
+  struct TEAH_AuditorInteractionEntry *aie = cls;
+  struct TEAH_AuditorListEntry *ale = aie->ale;
+
+  if (MHD_HTTP_OK != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                _("Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n"),
+                ale->auditor_url,
+                http_status,
+                (int) ec);
+  }
+  GNUNET_CONTAINER_DLL_remove (ale->ai_head,
+                               ale->ai_tail,
+                               aie);
+  GNUNET_free (aie);
+}
+
+
+/**
  * Iterate over all available auditors for @a h, calling
  * @param ah and giving it a chance to start a deposit
  * confirmation interaction.
@@ -284,14 +295,38 @@ TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
 			  TEAH_AuditorCallback ac,
 			  void *ac_cls)
 {
-  // FIXME!
+  if (NULL == h->auditors_head)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                _("No auditor available for exchange `%s'. Not submitting deposit confirmations.\n"),
+                h->url);
+    return;
+  }
+  for (struct TEAH_AuditorListEntry *ale = h->auditors_head;
+       NULL != ale;
+       ale = ale->next)
+  {
+    struct TEAH_AuditorInteractionEntry *aie;
+
+    if (GNUNET_NO == ale->is_up)
+      continue;
+    aie = ac (ac_cls,
+              ale->ah,
+              &ale->auditor_pub);
+    if (NULL != aie)
+    {
+      aie->ale = ale;
+      GNUNET_CONTAINER_DLL_insert (ale->ai_head,
+                                   ale->ai_tail,
+                                   aie);
+    }
+  }
 }
 
 
 /**
- * Release memory occupied by a keys request.
- * Note that this does not cancel the request
- * itself.
+ * Release memory occupied by a keys request.  Note that this does not
+ * cancel the request itself.
  *
  * @param kr request to free
  */
@@ -602,6 +637,90 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 
 
 /**
+ * Function called with information about the auditor.  Marks an
+ * auditor as 'up'.
+ *
+ * @param cls closure, a `struct TEAH_AuditorListEntry *`
+ * @param vi basic information about the auditor
+ * @param compat protocol compatibility information
+ */
+static void
+auditor_version_cb (void *cls,
+                    const struct TALER_AUDITOR_VersionInformation *vi,
+                    enum TALER_AUDITOR_VersionCompatibility compat)
+{
+  struct TEAH_AuditorListEntry *ale = cls;
+
+  if (0 != (TALER_AUDITOR_VC_INCOMPATIBLE & compat))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                _("Auditor `%s' runs incompatible protocol version!\n"),
+                ale->auditor_url);
+    if (0 != (TALER_AUDITOR_VC_OLDER & compat))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  _("Auditor `%s' runs outdated protocol version!\n"),
+                  ale->auditor_url);
+    }
+    if (0 != (TALER_AUDITOR_VC_NEWER & compat))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  _("Auditor `%s' runs more recent incompatible version. We should upgrade!\n"),
+                  ale->auditor_url);
+    }
+    return;
+  }
+  ale->is_up = GNUNET_YES;
+}
+
+
+/**
+ * Recalculate our auditor list, we got /keys and it may have
+ * changed.
+ *
+ * @param exchange exchange for which to update the list.
+ */
+static void
+update_auditors (struct TALER_EXCHANGE_Handle *exchange)
+{
+  struct TALER_EXCHANGE_Keys *kd = &exchange->key_data;
+
+  for (unsigned int i=0;i<kd->num_auditors;i++)
+  {
+    struct TALER_EXCHANGE_AuditorInformation *auditor = &kd->auditors[i];
+    struct TEAH_AuditorListEntry *ale = NULL;
+
+    for (struct TEAH_AuditorListEntry *a = exchange->auditors_head;
+         NULL != a;
+         a = a->next)
+    {
+      if (0 == memcmp (&auditor->auditor_pub,
+                       &a->auditor_pub,
+                       sizeof (struct TALER_AuditorPublicKeyP)))
+      {
+        ale = a;
+        break;
+      }
+    }
+    if (NULL != ale)
+      continue; /* found, no need to add */
+    /* new auditor, add */
+    ale = GNUNET_new (struct TEAH_AuditorListEntry);
+    ale->auditor_pub = auditor->auditor_pub;
+    ale->auditor_url = GNUNET_strdup (auditor->auditor_url);
+    GNUNET_CONTAINER_DLL_insert (exchange->auditors_head,
+                                 exchange->auditors_tail,
+                                 ale);
+    ale->ah = TALER_AUDITOR_connect (exchange->ctx,
+                                     ale->auditor_url,
+                                     &auditor_version_cb,
+                                     ale);
+  }
+}
+
+
+
+/**
  * Decode the JSON in @a resp_obj from the /keys response
  * and store the data in the @a key_data.
  *
@@ -827,6 +946,7 @@ decode_keys_json (const json_t *resp_obj,
 	GNUNET_array_grow (key_data->auditors,
 			   key_data->auditors_size,
 			   key_data->auditors_size * 2 + 2);
+      GNUNET_assert (NULL != ai.auditor_url);
       key_data->auditors[key_data->num_auditors++] = ai;
     };
   }
@@ -997,6 +1117,7 @@ keys_completed_cb (void *cls,
       struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
 
       anew->auditor_pub = aold->auditor_pub;
+      GNUNET_assert (NULL != aold->auditor_url);
       anew->auditor_url = GNUNET_strdup (aold->auditor_url);
       GNUNET_array_grow (anew->denom_keys,
                          anew->num_denom_keys,
@@ -1072,6 +1193,7 @@ keys_completed_cb (void *cls,
   exchange->key_data_expiration = kr->expire;
   free_keys_request (kr);
   exchange->state = MHS_CERT;
+  update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
@@ -1305,6 +1427,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   exchange->key_data = key_data;
   exchange->key_data_expiration = expire;
   exchange->state = MHS_CERT;
+  update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
@@ -1619,6 +1742,31 @@ request_keys (void *cls)
 void
 TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 {
+  struct TEAH_AuditorListEntry *ale;
+
+  while (NULL != (ale = exchange->auditors_head))
+  {
+    struct TEAH_AuditorInteractionEntry *aie;
+
+    while (NULL != (aie = ale->ai_head))
+    {
+      GNUNET_assert (aie->ale == ale);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  _("Not sending deposit confirmation to auditor `%s' due to exchange disconnect\n"),
+                  ale->auditor_url);
+      TALER_AUDITOR_deposit_confirmation_cancel (aie->dch);
+      GNUNET_CONTAINER_DLL_remove (ale->ai_head,
+                                   ale->ai_tail,
+                                   aie);
+      GNUNET_free (aie);
+    }
+    GNUNET_CONTAINER_DLL_remove (exchange->auditors_head,
+                                 exchange->auditors_tail,
+                                 ale);
+    TALER_AUDITOR_disconnect (ale->ah);
+    GNUNET_free (ale->auditor_url);
+    GNUNET_free (ale);
+  }
   if (NULL != exchange->kr)
   {
     GNUNET_CURL_job_cancel (exchange->kr->job);
