@@ -47,6 +47,13 @@ struct CheckKeysState
    * supposed to have.
    */
   unsigned int num_denom_keys;
+
+  /**
+   * If this value is GNUNET_YES, then the "cherry
+   * picking" facility is turned off; whole /keys is
+   * downloaded.
+   */
+  unsigned int pull_all_keys;
 };
 
 
@@ -77,8 +84,11 @@ check_keys_run (void *cls,
                 cmd->label);
 
     /* Means re-download /keys.  */
-    GNUNET_break (0 == TALER_EXCHANGE_check_keys_current
-      (is->exchange, GNUNET_YES).abs_value_us);
+    GNUNET_break
+      (0 == TALER_EXCHANGE_check_keys_current
+        (is->exchange,
+         GNUNET_YES,
+         cks->pull_all_keys).abs_value_us);
     return;
   }
   if (is->key_generation > cks->generation)
@@ -161,5 +171,46 @@ TALER_TESTING_cmd_check_keys
 
   return cmd;
 }
+
+
+/**
+ * Make a "check keys" command that forcedly does NOT cherry pick;
+ * just redownload the whole /keys.  Then checks whether the number
+ * of denomination keys from @a exchange matches @a num_denom_keys.
+ *
+ * @param label command label
+ * @param generation when this command is run, exactly @a
+ *        generation /keys downloads took place.  If the number
+ *        of downloads is less than @a generation, the logic will
+ *        first make sure that @a generation downloads are done,
+ *        and _then_ execute the rest of the command.
+ * @param num_denom_keys expected number of denomination keys.
+ * @param exchange connection handle to the exchange to test.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_keys_pull_all_keys
+  (const char *label,
+   unsigned int generation,
+   unsigned int num_denom_keys)
+{
+  struct CheckKeysState *cks;
+
+  cks = GNUNET_new (struct CheckKeysState);
+  cks->generation = generation;
+  cks->num_denom_keys = num_denom_keys;
+  cks->pull_all_keys = GNUNET_YES;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = cks,
+    .label = label,
+    .run = &check_keys_run,
+    .cleanup = &check_keys_cleanup
+  };
+
+  return cmd;
+}
+
 
 /* end of testing_api_cmd_check_keys.c */

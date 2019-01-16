@@ -1022,19 +1022,33 @@ request_keys (void *cls);
 
 
 /**
+ * Put the handle back to the init state.  Might
+ * be useful to force-download all /keys.
+ *
+ * @param h exchange handle.
+ */
+void
+TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h);
+
+/**
  * Check if our current response for /keys is valid, and if
  * not trigger download.
  *
  * @param exchange exchange to check keys for
  * @param force_download #GNUNET_YES to force download even if /keys is still valid
+ * @param pull_all_keys if GNUNET_YES, then the exchange state is reset to 'init',
+ *        and all denoms will be redownloaded.
  * @return until when the response is current, 0 if we are re-downloading
  */
 struct GNUNET_TIME_Absolute
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   int force_download)
+                                   int force_download,
+                                   int pull_all_keys)
 {
   if (NULL != exchange->kr)
     return GNUNET_TIME_UNIT_ZERO_ABS;
+  if (GNUNET_YES == pull_all_keys)
+    TEAH_handle_reset (exchange);
   if ( (GNUNET_NO == force_download) &&
        (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;
@@ -1217,6 +1231,18 @@ TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
   return h->ctx;
 }
 
+
+/**
+ * Put the handle back to the init state.  Might
+ * be useful to force-download all /keys.
+ *
+ * @param h exchange handle.
+ */
+void
+TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h)
+{
+  h->state = MHS_INIT;
+}
 
 /**
  * Check if the handle is ready to process requests.
@@ -1903,6 +1929,7 @@ const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
+                                            GNUNET_NO,
                                             GNUNET_NO);
   return &exchange->key_data;
 }
@@ -1919,6 +1946,7 @@ json_t *
 TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
+                                            GNUNET_NO,
                                             GNUNET_NO);
   return json_deep_copy (exchange->key_data_raw);
 }

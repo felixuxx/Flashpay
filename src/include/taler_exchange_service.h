@@ -433,7 +433,8 @@ TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
  */
 struct GNUNET_TIME_Absolute
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   int force_download);
+                                   int force_download,
+                                   int pull_all_keys);
 
 
 /**

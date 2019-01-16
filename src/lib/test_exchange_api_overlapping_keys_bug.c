@@ -81,9 +81,12 @@ run (void *cls,
                                   1,
                                   4),
 
-    TALER_TESTING_cmd_check_keys ("second-download",
-                                  2,
-                                  6),
+    /**
+     * Avoid cherry-pick, just GET /keys.
+     */
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("second-download",
+                                                2,
+                                                4),
     TALER_TESTING_cmd_end ()
   };
 
