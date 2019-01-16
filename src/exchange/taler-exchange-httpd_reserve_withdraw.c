@@ -2,17 +2,21 @@
   This file is part of TALER
   Copyright (C) 2014-2017 GNUnet e.V.
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU Affero General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation; either version 3,
+  or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+  TALER is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty
+  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the GNU Affero General Public License for more details.
 
-  You should have received a copy of the GNU Affero General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+  You should have received a copy of the GNU Affero General
+  Public License along with TALER; see the file COPYING.  If not,
+  see <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file taler-exchange-httpd_reserve_withdraw.c
  * @brief Handle /reserve/withdraw requests
@@ -69,7 +73,7 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o, s:o}",
                                        "error", "Insufficient funds",
-				       "code", (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
+                                       "code", (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
                                        "balance", json_balance,
                                        "history", json_history);
 }
@@ -239,9 +243,19 @@ withdraw_transaction (void *cls,
   if (0 < TALER_amount_cmp (&wc->amount_required,
                             &r.balance))
   {
+    char *amount_required;
+    char *r_balance;
     struct TALER_EXCHANGEDB_ReserveHistory *rh;
-
+    /* The reserve does not have the required amount (actual
+     * amount + withdraw fee) */
     GNUNET_break_op (0);
+    amount_required = TALER_amount_to_string (&wc->amount_required);
+    r_balance = TALER_amount_to_string (&r.balance);
+    TALER_LOG_WARNING ("Asked %s over a reserve worth %s\n",
+                       amount_required,
+                       r_balance);
+    GNUNET_free (amount_required);
+    GNUNET_free (r_balance);
     qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                           session,
                                           &wc->wsrd.reserve_pub,
