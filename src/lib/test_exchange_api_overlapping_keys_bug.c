@@ -36,6 +36,21 @@
 #include "taler_testing_lib.h"
 
 /**
+ * XXX:
+ *
+ * This test case aims at reproducing one bug that appears
+ * when some /keys are redownloaded (although already owned
+ * by the client).  In particular, the bug makes signature
+ * verifications to fail (often times, auditor signatures
+ * have proven to be faulty).
+ *
+ * Another possible cause: a whole /keys redownload doesn't
+ * make the bug appear; a next try might be to redownload
+ * /keys using a 'last_issue_date=0' parameter (that was often
+ * observed along the bug).
+ */
+
+/**
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
