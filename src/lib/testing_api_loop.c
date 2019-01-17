@@ -588,6 +588,16 @@ sighandler_child_death ()
  * Called once a connection to the exchange has been
  * established.
  *
+ * Do:
+ *
+ *   recognized states:
+ *       got NULL for keys, or not.
+ *       interpreter is running or not.
+ *
+ *   in symbols:
+ *       !K, K
+ *       !IR, IR
+ *
  * @param cls closure, typically, the "run" method containing
  *        all the commands to be run, and a closure for it.
  * @param keys the exchange's keys.
@@ -605,24 +615,30 @@ cert_cb (void *cls,
   {
     if (GNUNET_NO == is->working)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Got NULL response for /keys during startup, retrying!\n");
+      GNUNET_log
+        (GNUNET_ERROR_TYPE_WARNING,
+         "Got NULL response for /keys during startup, retrying!\n");
       TALER_EXCHANGE_disconnect (is->exchange);
-      GNUNET_assert (NULL !=
-                     (is->exchange = TALER_EXCHANGE_connect (is->ctx,
-                                                             main_ctx->exchange_url,
-                                                             &cert_cb,
-                                                             main_ctx,
-                                                             TALER_EXCHANGE_OPTION_END)));
+      GNUNET_assert
+        (NULL != (is->exchange = TALER_EXCHANGE_connect
+          (is->ctx,
+           main_ctx->exchange_url,
+           &cert_cb,
+           main_ctx,
+           TALER_EXCHANGE_OPTION_END)));
+      // !K && !IR
       return;
     }
     else
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Got NULL response for /keys during execution!\n");
+      // !K && IR
+      GNUNET_log
+        (GNUNET_ERROR_TYPE_ERROR,
+         "Got NULL response for /keys during execution!\n");
 
   }
   else
   {
+    // K && ?IR
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Got %d DK from /keys\n",
                 keys->num_denom_keys);
@@ -633,6 +649,7 @@ cert_cb (void *cls,
   /* /keys has been called for some reason and
    * the interpreter is already running. */
   if (GNUNET_YES == is->working)
+    // ?K && IR
     return;
 
   is->working = GNUNET_YES;
@@ -642,6 +659,7 @@ cert_cb (void *cls,
   {
     main_ctx->main_cb (main_ctx->main_cb_cls,
                        is);
+    // ?IR && ?K
     return;
   }
 
@@ -649,6 +667,7 @@ cert_cb (void *cls,
    * next command. */
   GNUNET_SCHEDULER_add_now (&interpreter_run,
                             is);
+  // IR && ?K
 }
 
 
