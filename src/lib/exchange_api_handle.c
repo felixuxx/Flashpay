@@ -1030,6 +1030,21 @@ request_keys (void *cls);
 void
 TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h);
 
+
+
+/**
+ * Let the user set the last valid denomination time manually.
+ *
+ * @param exchange the exchange handle.
+ * @param last_denom_new new last denomination time.
+ */
+void
+TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
+                               struct GNUNET_TIME_Absolute last_denom_new)
+{
+  exchange->key_data.last_denom_issue_date = last_denom_new;
+}
+
 /**
  * Check if our current response for /keys is valid, and if
  * not trigger download.
@@ -1047,8 +1062,12 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
 {
   if (NULL != exchange->kr)
     return GNUNET_TIME_UNIT_ZERO_ABS;
+
   if (GNUNET_YES == pull_all_keys)
+  {
+    GNUNET_assert (GNUNET_YES == force_download);
     TEAH_handle_reset (exchange);
+  }
   if ( (GNUNET_NO == force_download) &&
        (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;

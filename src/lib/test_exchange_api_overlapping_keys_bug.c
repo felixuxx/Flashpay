@@ -96,12 +96,11 @@ run (void *cls,
                                   1,
                                   4),
 
-    /**
-     * Avoid cherry-pick, just GET /keys.
-     */
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("second-download",
-                                                2,
-                                                4),
+    /* Causes GET /keys?last_denom_issue=0 */
+    TALER_TESTING_cmd_check_keys_with_last_denom ("second-download",
+                                                  2,
+                                                  8,
+                                                  GNUNET_TIME_UNIT_ZERO_ABS),
     TALER_TESTING_cmd_end ()
   };
 

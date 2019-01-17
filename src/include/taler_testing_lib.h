@@ -1425,6 +1425,34 @@ TALER_TESTING_cmd_check_keys_pull_all_keys
 
 
 /**
+ * Make a "check keys" command.  This type of command
+ * checks whether the number of denomination keys from
+ * @a exchange matches @a num_denom_keys.  Additionally,
+ * it lets the user set a last denom issue date to be
+ * used in the request for /keys.
+ *
+ * @param label command label
+ * @param generation when this command is run, exactly @a
+ *        generation /keys downloads took place.  If the number
+ *        of downloads is less than @a generation, the logic will
+ *        first make sure that @a generation downloads are done,
+ *        and _then_ execute the rest of the command.
+ * @param num_denom_keys expected number of denomination keys.
+ * @param exchange connection handle to the exchange to test.
+ * @param last_denom_date date to be set in the "last_denom_issue"
+ *        URL parameter of /keys.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_keys_with_last_denom
+  (const char *label,
+   unsigned int generation,
+   unsigned int num_denom_keys,
+   struct GNUNET_TIME_Absolute last_denom_date);
+
+
+/**
  * Create a "batch" command.  Such command takes a
  * end_CMD-terminated array of CMDs and executed them.
  * Once it hits the end CMD, it passes the control

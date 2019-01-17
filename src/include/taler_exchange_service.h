@@ -422,6 +422,16 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange);
 const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
 
+/**
+ * Let the user set the last valid denomination time manually.
+ *
+ * @param exchange the exchange handle.
+ * @param last_denom_new new last denomination time.
+ */
+void
+TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
+                               struct GNUNET_TIME_Absolute last_denom_new);
+
 
 /**
  * Check if our current response for /keys is valid, and if
