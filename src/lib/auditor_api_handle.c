@@ -433,7 +433,8 @@ MAH_path_to_url2 (const char *base_url,
  *
  * @param ctx the context
  * @param url HTTP base URL for the auditor
- * @param version_cb function to call with the auditor's version information
+ * @param version_cb function to call with the
+ *        auditor's version information
  * @param version_cb_cls closure for @a version_cb
  * @return the auditor handle; NULL upon error
  */
@@ -450,8 +451,10 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
   auditor->url = GNUNET_strdup (url);
   auditor->version_cb = version_cb;
   auditor->version_cb_cls = version_cb_cls;
+  #if FIX_CHRISTIAN
   auditor->retry_task = GNUNET_SCHEDULER_add_now (&request_version,
 						  auditor);
+  #endif
   return auditor;
 }
 
@@ -490,6 +493,7 @@ request_version (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERDATA,
                                    vr));
+
   vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
                                  GNUNET_NO,
