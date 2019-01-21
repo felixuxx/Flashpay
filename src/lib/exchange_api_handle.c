@@ -711,13 +711,13 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
     GNUNET_CONTAINER_DLL_insert (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
+
     ale->ah = TALER_AUDITOR_connect (exchange->ctx,
                                      ale->auditor_url,
                                      &auditor_version_cb,
                                      ale);
   }
 }
-
 
 
 /**
@@ -1808,6 +1808,8 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
     GNUNET_CONTAINER_DLL_remove (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
+    TALER_LOG_DEBUG ("Disconnecting the auditor `%s'\n",
+                     ale->auditor_url);
     TALER_AUDITOR_disconnect (ale->ah);
     GNUNET_free (ale->auditor_url);
     GNUNET_free (ale);
