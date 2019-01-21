@@ -39,9 +39,9 @@ struct BatchState
   struct TALER_TESTING_Command *batch;
 
   /**
-   * Internal comand pointer.
+   * Internal command pointer.
    */
-  int batch_ip;
+  unsigned int batch_ip;
 };
 
 
@@ -59,7 +59,6 @@ batch_run (void *cls,
 {
   struct BatchState *bs = cls;
 
-  bs->batch_ip++;
   if (NULL != bs->batch[bs->batch_ip].label)
     TALER_LOG_DEBUG ("Running batched command: %s\n",
                      bs->batch[bs->batch_ip].label);
@@ -157,7 +156,6 @@ TALER_TESTING_cmd_batch (const char *label,
   unsigned int i;
 
   bs = GNUNET_new (struct BatchState);
-  bs->batch_ip = -1;
 
   /* Get number of commands.  */
   for (i=0;NULL != batch[i].label;i++)
@@ -181,6 +179,27 @@ TALER_TESTING_cmd_batch (const char *label,
   return cmd;
 }
 
+/**
+ * Advance internal pointer to next command.
+ *
+ * @param is interpreter state.
+ */
+void
+TALER_TESTING_cmd_batch_next
+  (struct TALER_TESTING_Interpreter *is)
+{
+  struct BatchState *bs = is->commands[is->ip].cls;
+
+  if (NULL == bs->batch[bs->batch_ip].label)
+  {
+    is->ip++;
+    return;
+  }
+
+  bs->batch_ip++;
+}
+
+
 
 /**
  * Test if this command is a batch command.
@@ -188,7 +207,8 @@ TALER_TESTING_cmd_batch (const char *label,
  * @return false if not, true if it is a batch command
  */
 int
-TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd)
+TALER_TESTING_cmd_is_batch
+  (const struct TALER_TESTING_Command *cmd)
 {
   return cmd->run == &batch_run;
 }
@@ -200,7 +220,8 @@ TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd)
  * @return cmd current batch command
  */
 struct TALER_TESTING_Command *
-TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd)
+TALER_TESTING_cmd_batch_get_current
+  (const struct TALER_TESTING_Command *cmd)
 {
   struct BatchState *bs = cmd->cls;
 
