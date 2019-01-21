@@ -98,6 +98,7 @@ serialize_keys_run (void *cls,
     (TALER_EXCHANGE_get_base_url (is->exchange));
   TALER_EXCHANGE_disconnect (is->exchange);
   is->exchange = NULL;
+  is->working = GNUNET_NO;
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -155,36 +156,6 @@ serialize_keys_traits (void *cls,
                                   index);
 }
 
-/**
- * /keys callback.  Just checks HTTP status is OK,
- * and step forward to next command.
- *
- * @param cls closure
- * @param keys information about the various keys used
- *        by the exchange, NULL if /keys failed
- * @param compat protocol compatibility information*
- */
-static void
-cb (void *cls,
-    const struct TALER_EXCHANGE_Keys *keys,
-    enum TALER_EXCHANGE_VersionCompatibility compat)
-{
-  struct ConnectWithStateState *cwss = cls;
-
-  if (GNUNET_YES == cwss->consumed)
-  {
-    TALER_LOG_DEBUG ("Reconnection /keys 'cb' invoked already,"
-                     " nothing to do\n"); 
-    return;
-  }
-
-  cwss->consumed = GNUNET_YES;
-  if (NULL == keys)
-    TALER_TESTING_interpreter_fail (cwss->is);
-  
-  TALER_LOG_DEBUG ("reconnect next CMD\n");
-  TALER_TESTING_interpreter_next (cwss->is);
-}
 
 /**
  * Run the command.
@@ -202,6 +173,12 @@ connect_with_state_run (void *cls,
   const struct TALER_TESTING_Command *state_cmd;
   const json_t *serialized_keys;
   const char *exchange_url;
+
+
+  /* This command usually gets rescheduled after serialized
+   * reconnection.  */
+  if (GNUNET_YES == cwss->consumed)
+    TALER_TESTING_interpreter_next (is);
 
   cwss->is = is;
   state_cmd = TALER_TESTING_interpreter_lookup_command
@@ -234,11 +211,13 @@ connect_with_state_run (void *cls,
   is->exchange = TALER_EXCHANGE_connect
     (is->ctx,
      exchange_url,
-     cb,
+     TALER_TESTING_cert_cb,
      cwss,
      TALER_EXCHANGE_OPTION_DATA,
      serialized_keys,
      TALER_EXCHANGE_OPTION_END);
+
+  cwss->consumed = GNUNET_YES;
 }
 
 
