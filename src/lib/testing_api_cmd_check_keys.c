@@ -86,8 +86,9 @@ check_keys_run (void *cls,
   struct CheckKeysState *cks = cls;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "cmd `%s', key generation: %d\n",
+              "cmd `%s' (ip: %u), key generation: %d\n",
               cmd->label,
+              is->ip,
               is->key_generation);
 
   if (is->key_generation < cks->generation)
@@ -112,6 +113,13 @@ check_keys_run (void *cls,
          cks->pull_all_keys).abs_value_us);
     return;
   }
+
+  /**
+   * Not sure this check makes sense: GET /keys is performed on
+   * a "maybe" basis, so it can get quite hard to track /keys
+   * request.  Rather, this CMD should just check if /keys was
+   * requested AT LEAST n times before going ahead with checks.
+   */
   if (is->key_generation > cks->generation)
   {
     /* We got /keys too often, strange. Fatal. May theoretically
@@ -119,6 +127,10 @@ check_keys_run (void *cls,
        "naturally", but obviously with a sane configuration this
        should also not be. */
     GNUNET_break (0);
+    TALER_LOG_ERROR ("Acutal- vs expected key"
+                     " generation: %u vs %u\n",
+                     is->key_generation,
+                     cks->generation);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
