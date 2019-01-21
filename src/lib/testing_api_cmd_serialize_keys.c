@@ -174,11 +174,13 @@ connect_with_state_run (void *cls,
   const json_t *serialized_keys;
   const char *exchange_url;
 
-
   /* This command usually gets rescheduled after serialized
    * reconnection.  */
   if (GNUNET_YES == cwss->consumed)
+  {
     TALER_TESTING_interpreter_next (is);
+    return;
+  }
 
   cwss->is = is;
   state_cmd = TALER_TESTING_interpreter_lookup_command
