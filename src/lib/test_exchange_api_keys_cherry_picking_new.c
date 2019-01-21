@@ -63,7 +63,6 @@ static char *exchange_url;
  */
 static char *auditor_url;
 
-
 /**
  * Main function that will tell the interpreter what commands to
  * run.
@@ -109,31 +108,24 @@ run (void *cls,
 
     TALER_TESTING_cmd_sleep ("sleep-serialization",
                              3),
-
     /**
-     * XXX.
-     *
-     * Current bug: this CMD here uses the "reconnect cert_cb",
-     * that has its 'consumed' field already set to GNUNET_YES.
-     * This way, there is no way to pass control to the next
-     * CMD making therefore the interpreter stuck.
-     *
-     * Doable solution: adapt the global "cert_cb" to handle
-     * "reconnect situations", or even provide some method to
-     * switch the 'consumed' field back to GNUNET_NO.
+     * Why keys number decrease?
      */
     TALER_TESTING_cmd_check_keys ("check-freshest-keys",
-                                  4,
-                                  10),
+                                  8,
+                                  8),
 
     TALER_TESTING_cmd_wire ("verify-/wire-with-fresh-keys",
-                              "x-taler-bank",
-                              NULL,
-                              MHD_HTTP_OK),
-    TALER_TESTING_cmd_end ()
+                            "x-taler-bank",
+                            NULL,
+                            MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_end (),
+
   };
 
-  struct TALER_TESTING_Command commands[] = {
+  struct TALER_TESTING_Command ordinary_cherry_pick[] = {
+
     /* Trigger keys reloading from disk.  */
     TALER_TESTING_cmd_signal ("signal-reaction-1",
                               is->exchanged,
@@ -179,9 +171,18 @@ run (void *cls,
     TALER_TESTING_cmd_check_keys ("check-keys-3",
                                   3,
                                   8),
+    TALER_TESTING_cmd_end ()
+  };
+
+
+  struct TALER_TESTING_Command commands[] = {
+
+    TALER_TESTING_cmd_batch ("ordinary-cherry-pick",
+                             ordinary_cherry_pick),
 
     TALER_TESTING_cmd_batch ("keys-serialization",
                              keys_serialization),
+
     TALER_TESTING_cmd_end ()
   };
 
@@ -198,7 +199,9 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-exchange-api-cherry-picking-new",
-                    "DEBUG", NULL);
+                    "DEBUG",
+                    NULL);
+
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
