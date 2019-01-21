@@ -175,16 +175,7 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
   if (GNUNET_SYSERR == is->result)
     return; /* ignore, we already failled! */
   if (TALER_TESTING_cmd_is_batch (cmd))
-  {
-#define CURRENT_BATCH_SUBCMD_INDEX 0
-    struct TALER_TESTING_Command *sub_cmd;
-
-    GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_cmd
-      (cmd, CURRENT_BATCH_SUBCMD_INDEX, &sub_cmd));
-
-    if (NULL == sub_cmd->label)
-      is->ip++;
-  }
+    TALER_TESTING_cmd_batch_next (is);
   else
     is->ip++;
   if (0 == (ipc % 1000))
@@ -310,9 +301,12 @@ do_shutdown (void *cls)
               "Executing shutdown at `%s'\n",
               label);
 
-  for (unsigned int j=0;NULL != (cmd = &is->commands[j])->label;j++)
+  for (unsigned int j=0;
+       NULL != (cmd = &is->commands[j])->label;
+       j++)
     cmd->cleanup (cmd->cls,
                   cmd);
+
   if (NULL != is->exchange)
   {
     TALER_EXCHANGE_disconnect (is->exchange);
@@ -585,28 +579,19 @@ sighandler_child_death ()
 
 
 /**
- * Called once a connection to the exchange has been
- * established.
- *
- * Do:
- *
- *   recognized states:
- *       got NULL for keys, or not.
- *       interpreter is running or not.
- *
- *   in symbols:
- *       !K, K
- *       !IR, IR
+ * "Canonical" cert_cb used when we are connecting to the
+ * Exchange.
  *
  * @param cls closure, typically, the "run" method containing
  *        all the commands to be run, and a closure for it.
  * @param keys the exchange's keys.
  * @param compat protocol compatibility information.
  */
-static void
-cert_cb (void *cls,
-         const struct TALER_EXCHANGE_Keys *keys,
-	 enum TALER_EXCHANGE_VersionCompatibility compat)
+void
+TALER_TESTING_cert_cb
+  (void *cls,
+   const struct TALER_EXCHANGE_Keys *keys,
+   enum TALER_EXCHANGE_VersionCompatibility compat)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
@@ -617,28 +602,27 @@ cert_cb (void *cls,
     {
       GNUNET_log
         (GNUNET_ERROR_TYPE_WARNING,
-         "Got NULL response for /keys during startup, retrying!\n");
+         "Got NULL response for /keys"
+         " during startup, retrying!\n");
       TALER_EXCHANGE_disconnect (is->exchange);
       GNUNET_assert
         (NULL != (is->exchange = TALER_EXCHANGE_connect
           (is->ctx,
            main_ctx->exchange_url,
-           &cert_cb,
+           &TALER_TESTING_cert_cb,
            main_ctx,
            TALER_EXCHANGE_OPTION_END)));
-      // !K && !IR
       return;
     }
     else
-      // !K && IR
       GNUNET_log
         (GNUNET_ERROR_TYPE_ERROR,
-         "Got NULL response for /keys during execution!\n");
+         "Got NULL response for /keys"
+         " during execution!\n");
 
   }
   else
   {
-    // K && ?IR
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Got %d DK from /keys\n",
                 keys->num_denom_keys);
@@ -649,7 +633,6 @@ cert_cb (void *cls,
   /* /keys has been called for some reason and
    * the interpreter is already running. */
   if (GNUNET_YES == is->working)
-    // ?K && IR
     return;
 
   is->working = GNUNET_YES;
@@ -659,15 +642,15 @@ cert_cb (void *cls,
   {
     main_ctx->main_cb (main_ctx->main_cb_cls,
                        is);
-    // ?IR && ?K
     return;
   }
 
   /* Tests already started, just trigger the
    * next command. */
+  TALER_LOG_DEBUG ("Cert_cb, scheduling CMD (ip: %d)\n",
+                   is->ip);
   GNUNET_SCHEDULER_add_now (&interpreter_run,
                             is);
-  // IR && ?K
 }
 
 
@@ -719,8 +702,9 @@ do_abort (void *cls)
  * @param cfg configuration to use
  */
 static int
-main_exchange_connect_with_cfg (void *cls,
-                                const struct GNUNET_CONFIGURATION_Handle *cfg)
+main_exchange_connect_with_cfg
+  (void *cls,
+   const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
@@ -741,12 +725,13 @@ main_exchange_connect_with_cfg (void *cls,
   is->cfg = cfg;
   is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
 						    main_ctx);
-  GNUNET_break (NULL !=
-                (is->exchange = TALER_EXCHANGE_connect (is->ctx,
-                                                        exchange_url,
-                                                        &cert_cb,
-                                                        main_ctx,
-                                                        TALER_EXCHANGE_OPTION_END)));
+  GNUNET_break
+    (NULL != (is->exchange = TALER_EXCHANGE_connect
+      (is->ctx,
+       exchange_url,
+       &TALER_TESTING_cert_cb,
+       main_ctx,
+       TALER_EXCHANGE_OPTION_END)));
   is->cfg = NULL;
   return GNUNET_OK;
 }

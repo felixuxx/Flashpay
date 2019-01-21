@@ -117,6 +117,21 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 				char **exchange_base_url);
 
 /**
+ * "Canonical" cert_cb used when we are connecting to the
+ * Exchange.
+ *
+ * @param cls closure, typically, the "run" method containing
+ *        all the commands to be run, and a closure for it.
+ * @param keys the exchange's keys.
+ * @param compat protocol compatibility information.
+ */
+void
+TALER_TESTING_cert_cb
+  (void *cls,
+   const struct TALER_EXCHANGE_Keys *keys,
+   enum TALER_EXCHANGE_VersionCompatibility compat);
+
+/**
  * Wait for the exchange to have started. Waits for at
  * most 10s, after that returns 77 to indicate an error.
  *
@@ -1477,6 +1492,14 @@ TALER_TESTING_cmd_batch (const char *label,
 int
 TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd);
 
+/**
+ * Advance internal pointer to next command.
+ *
+ * @param is interpreter state.
+ */
+void
+TALER_TESTING_cmd_batch_next
+  (struct TALER_TESTING_Interpreter *is);
 
 /**
  * Obtain what command the batch is at.
