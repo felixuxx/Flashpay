@@ -719,6 +719,50 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
   }
 }
 
+/**
+ * Compare two denomination keys.
+ *
+ * @param denoma first denomination key
+ * @param denomb second denomination key
+ * @return 0 if the two keys are equal (not necessarily
+ *  the same object), 1 otherwise.
+ */
+unsigned int
+TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
+                  struct TALER_EXCHANGE_DenomPublicKey *denom2)
+{
+  struct GNUNET_CRYPTO_RsaPublicKey *tmp1;
+  struct GNUNET_CRYPTO_RsaPublicKey *tmp2;
+
+  /* First check if pub is the same.  */
+  if (0 != GNUNET_CRYPTO_rsa_public_key_cmp
+    (denom1->key.rsa_public_key,
+     denom2->key.rsa_public_key))
+    return 1;
+  
+  tmp1 = denom1->key.rsa_public_key;
+  tmp2 = denom2->key.rsa_public_key;
+
+  denom1->key.rsa_public_key = NULL;
+  denom2->key.rsa_public_key = NULL;
+
+  /* Then procede with the rest of the object.  */
+  if (0 != memcmp (denom1,
+                   denom2,
+                   sizeof (struct TALER_EXCHANGE_DenomPublicKey)))
+  {
+    denom1->key.rsa_public_key = tmp1; 
+    denom2->key.rsa_public_key = tmp2;
+
+    return 1;
+  }
+
+  denom1->key.rsa_public_key = tmp1; 
+  denom2->key.rsa_public_key = tmp2;
+
+  return 0;
+}
+
 
 /**
  * Decode the JSON in @a resp_obj from the /keys response
@@ -857,7 +901,7 @@ decode_keys_json (const json_t *resp_obj,
     index = 0;
     json_array_foreach (denom_keys_array, index, denom_key_obj) {
       struct TALER_EXCHANGE_DenomPublicKey dk;
-      bool found = false;
+      int found = GNUNET_NO;
 
       EXITIF (GNUNET_SYSERR ==
               parse_json_denomkey (&dk,
@@ -865,17 +909,19 @@ decode_keys_json (const json_t *resp_obj,
                                    denom_key_obj,
                                    &key_data->master_pub,
                                    hash_context));
-      for (unsigned int j=0;j<key_data->num_denom_keys;j++)
+
+      for (unsigned int j=0;
+           j<key_data->num_denom_keys;
+           j++)
       {
-        if (0 == memcmp (&dk,
-                         &key_data->denom_keys[j],
-                         sizeof (dk)))
+        if (0 == TALER_denoms_cmp (&dk,
+                                   &key_data->denom_keys[j]))
         {
-          found = true;
+          found = GNUNET_YES;
           break;
         }
       }
-      if (found)
+      if (GNUNET_YES == found)
       {
         /* 0:0:0 did not support /keys cherry picking */
         GNUNET_break_op (0 == current);
@@ -910,7 +956,7 @@ decode_keys_json (const json_t *resp_obj,
     index = 0;
     json_array_foreach (auditors_array, index, auditor_info) {
       struct TALER_EXCHANGE_AuditorInformation ai;
-      bool found = false;
+      int found = GNUNET_NO;
 
       memset (&ai,
 	      0,
@@ -928,7 +974,7 @@ decode_keys_json (const json_t *resp_obj,
 			 &aix->auditor_pub,
 			 sizeof (struct TALER_AuditorPublicKeyP)))
 	{
-	  found = true;
+	  found = GNUNET_YES;
           /* Merge denomination key signatures of downloaded /keys into existing
              auditor information 'aix'. */
           GNUNET_array_grow (aix->denom_keys,
@@ -940,7 +986,7 @@ decode_keys_json (const json_t *resp_obj,
 	  break;
 	}
       }
-      if (found)
+      if (GNUNET_YES == found)
         continue; /* we are done */
       if (key_data->auditors_size == key_data->num_auditors)
 	GNUNET_array_grow (key_data->auditors,
@@ -1077,7 +1123,6 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
   return GNUNET_TIME_UNIT_ZERO_ABS;
 }
 
-
 /**
  * Callback used when downloading the reply to a /keys request
  * is complete.
@@ -1136,6 +1181,7 @@ keys_completed_cb (void *cls,
     memcpy (kd.denom_keys,
             kd_old.denom_keys,
             kd_old.num_denom_keys * sizeof (struct TALER_EXCHANGE_DenomPublicKey));
+
     for (unsigned int i=0;i<kd_old.num_denom_keys;i++)
       kd.denom_keys[i].key.rsa_public_key
         = GNUNET_CRYPTO_rsa_public_key_dup (kd_old.denom_keys[i].key.rsa_public_key);
