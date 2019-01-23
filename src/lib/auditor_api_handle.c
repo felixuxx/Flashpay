@@ -259,7 +259,6 @@ decode_version_json (const json_t *resp_obj,
   return GNUNET_OK;
 }
 
-
 /**
  * Initiate download of /version from the auditor.
  *
@@ -307,6 +306,7 @@ version_completed_cb (void *cls,
   case MHD_HTTP_OK:
     if (NULL == resp_obj)
     {
+      TALER_LOG_WARNING ("NULL body for a 200-OK /version\n");
       response_code = 0;
       break;
     }
@@ -342,6 +342,7 @@ version_completed_cb (void *cls,
 
   auditor->vr = NULL;
   free_version_request (vr);
+  TALER_LOG_DEBUG ("Switching auditor state to 'version'\n");
   auditor->state = MHS_VERSION;
   /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
