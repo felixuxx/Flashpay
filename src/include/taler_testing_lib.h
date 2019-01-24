@@ -370,12 +370,6 @@ struct TALER_TESTING_Interpreter
   int working;
 
   /**
-   * Is the auditor running (#GNUNET_YES) or waiting
-   * for /version (#GNUNET_NO)?
-   */
-  int auditor_working;
-
-  /**
    * How often have we gotten a /keys response so far?
    */
   unsigned int key_generation;

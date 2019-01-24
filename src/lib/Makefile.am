@@ -156,7 +156,6 @@ endif
 check_PROGRAMS = \
   test_exchange_api_keys_cherry_picking_new \
   test_exchange_api_overlapping_keys_bug \
-  test_exchange_api_interpreter_on-off \
   test_exchange_api_new \
   test_auditor_api_version \
   test_auditor_api
@@ -198,19 +197,6 @@ test_exchange_api_new_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
-
-test_exchange_api_interpreter_on_off_SOURCES = \
-  test_exchange_api_interpreter_on-off.c
-test_exchange_api_interpreter_on_off_LDADD = \
-  libtalertesting.la \
-  libtalerexchange.la \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson

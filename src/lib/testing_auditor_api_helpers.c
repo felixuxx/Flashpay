@@ -70,28 +70,6 @@ cleanup_auditor (void *cls)
   GNUNET_free (cc);
 }
 
-
-
-/**
- * Function called with information about the auditor.
- *
- * @param cls closure
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
- */
-static void
-auditor_version_cb (void *cls,
-                    const struct TALER_AUDITOR_VersionInformation *vi,
-                    enum TALER_AUDITOR_VersionCompatibility compat)
-{
-  struct TALER_TESTING_Interpreter *is = cls;
-
-  /* TODO: check vi/compat? */
-  is->auditor_working = GNUNET_YES;
-}
-
-
-
 /**
  * Closure for #auditor_main_wrapper()
  */
@@ -145,21 +123,13 @@ auditor_main_wrapper (void *cls,
                                "BASE_URL");
     return;
   }
-  is->auditor = TALER_AUDITOR_connect (is->ctx,
-                                       auditor_base_url,
-                                       &auditor_version_cb,
-                                       is);
+
   GNUNET_free (auditor_base_url);
-  if (NULL == is->auditor)
-  {
-    GNUNET_break (0);
-    return;
-  }
   cc = GNUNET_new (struct CleanupContext);
   cc->is = is;
   cc->fcb = is->final_cleanup_cb;
   cc->fcb_cls = is->final_cleanup_cb;
-  is->final_cleanup_cb = &cleanup_auditor;
+  is->final_cleanup_cb = NULL;
   is->final_cleanup_cb_cls = cc;
   mwc->main_cb (mwc->main_cb_cls,
                 is);

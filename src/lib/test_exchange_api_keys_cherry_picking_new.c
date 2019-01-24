@@ -113,7 +113,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_keys ("check-freshest-keys",
                                   8,
-                                  8),
+                                  10),
 
     TALER_TESTING_cmd_wire ("verify-/wire-with-fresh-keys",
                             "x-taler-bank",
