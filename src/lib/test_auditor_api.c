@@ -474,6 +474,7 @@ run (void *cls,
 
     #if 0
     CMD_RUN_AUDITOR("virgin-auditor"),
+    #endif
     CMD_RUN_WIRE_AUDITOR("virgin-wire-auditor"),
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
@@ -491,7 +492,6 @@ run (void *cls,
                              payback),
     CMD_RUN_AUDITOR("normal-auditor"),
     CMD_RUN_WIRE_AUDITOR("normal-wire-auditor"),
-    #endif
 
     TALER_TESTING_cmd_end ()
   };
