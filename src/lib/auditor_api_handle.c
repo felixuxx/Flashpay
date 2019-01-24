@@ -213,7 +213,7 @@ decode_version_json (const json_t *resp_obj,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("version",
 			     &ver),
-    GNUNET_JSON_spec_fixed_auto ("master_public_key",
+    GNUNET_JSON_spec_fixed_auto ("auditor_public_key",
 				 &vi->auditor_pub),
     GNUNET_JSON_spec_end()
   };
@@ -232,14 +232,13 @@ decode_version_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (3 != sscanf (vi->version,
+  if (3 != sscanf (ver,
 		   "%u:%u:%u",
 		   &current,
 		   &revision,
 		   &age))
   {
     GNUNET_break_op (0);
-    free_version_info (vi);
     return GNUNET_SYSERR;
   }
   vi->version = GNUNET_strdup (ver);
@@ -510,11 +509,6 @@ request_version (void *cls)
                                    CURLOPT_TIMEOUT,
                                    (long) 300));
 #endif
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_HEADERDATA,
-                                   vr));
-
   vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
                                  GNUNET_NO,
