@@ -495,20 +495,10 @@ request_version (void *cls)
               "Requesting auditor version with URL `%s'.\n",
               vr->url);
   eh = TAL_curl_easy_get (vr->url);
-#if 0
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_VERBOSE,
-                                   0L));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_FRESH_CONNECT,
-                                   0L));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_TIMEOUT,
                                    (long) 300));
-#endif
   vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
                                  GNUNET_NO,

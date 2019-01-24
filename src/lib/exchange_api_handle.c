@@ -732,7 +732,7 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
  * @return 0 if the two keys are equal (not necessarily
  *  the same object), 1 otherwise.
  */
-unsigned int
+static unsigned int
 TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
                   struct TALER_EXCHANGE_DenomPublicKey *denom2)
 {
