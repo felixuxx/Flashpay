@@ -307,6 +307,7 @@ version_completed_cb (void *cls,
   case MHD_HTTP_OK:
     if (NULL == resp_obj)
     {
+      GNUNET_break_op (0);
       response_code = 0;
       break;
     }
@@ -316,6 +317,7 @@ version_completed_cb (void *cls,
                              &auditor->vi,
                              &vc))
     {
+      GNUNET_break_op (0);
       response_code = 0;
       break;
     }
@@ -329,6 +331,10 @@ version_completed_cb (void *cls,
   }
   if (MHD_HTTP_OK != response_code)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"/version failed for auditor %p: %u!\n",
+		auditor,
+		(unsigned int) response_code);
     auditor->vr = NULL;
     free_version_request (vr);
     auditor->state = MHS_FAILED;
@@ -343,6 +349,9 @@ version_completed_cb (void *cls,
   auditor->vr = NULL;
   free_version_request (vr);
   auditor->state = MHS_VERSION;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Auditor %p is now READY!\n",
+              auditor);
   /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
                        &auditor->vi,
@@ -375,6 +384,10 @@ MAH_handle_to_context (struct TALER_AUDITOR_Handle *h)
 int
 MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking if auditor %p is now ready: %s\n",
+              h,
+	      (MHD_VERSION == h->state) ? "yes" : "no");
   return (MHS_VERSION == h->state) ? GNUNET_YES : GNUNET_NO;
 }
 
@@ -446,6 +459,9 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
 {
   struct TALER_AUDITOR_Handle *auditor;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Connecting to auditor at URL `%s'.\n",
+              url);
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);
@@ -475,18 +491,24 @@ request_version (void *cls)
   vr->auditor = auditor;
   vr->url = MAH_path_to_url (auditor,
 			     "/version");
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Requesting version with URL `%s'.\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requesting auditor version with URL `%s'.\n",
               vr->url);
   eh = TAL_curl_easy_get (vr->url);
+#if 0
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_VERBOSE,
-                                   0));
+                                   0L));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_FRESH_CONNECT,
+                                   0L));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_TIMEOUT,
                                    (long) 300));
+#endif
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERDATA,

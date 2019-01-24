@@ -158,6 +158,7 @@ check_PROGRAMS = \
   test_exchange_api_overlapping_keys_bug \
   test_exchange_api_interpreter_on-off \
   test_exchange_api_new \
+  test_auditor_api_version \
   test_auditor_api
 
 if HAVE_TWISTER
@@ -251,6 +252,17 @@ test_auditor_api_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+
+test_auditor_api_version_SOURCES = \
+  test_auditor_api_version.c
+test_auditor_api_version_LDADD = \
+  libtalerauditor.la \
+  $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
