@@ -309,6 +309,7 @@ do_shutdown (void *cls)
 
   if (NULL != is->exchange)
   {
+    TALER_LOG_DEBUG ("Disconnecting the exchange\n");
     TALER_EXCHANGE_disconnect (is->exchange);
     is->exchange = NULL;
   }

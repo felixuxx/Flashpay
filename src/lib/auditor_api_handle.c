@@ -447,6 +447,9 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
 {
   struct TALER_AUDITOR_Handle *auditor;
 
+  TALER_LOG_DEBUG ("Connecting to the auditor (%s)\n",
+                   url);
+
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);

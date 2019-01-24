@@ -685,8 +685,11 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
 {
   struct TALER_EXCHANGE_Keys *kd = &exchange->key_data;
 
+  TALER_LOG_DEBUG ("Updating auditors\n");
   for (unsigned int i=0;i<kd->num_auditors;i++)
   {
+    /* Compare auditor data from /keys with auditor data
+     * from owned exchange structures.  */
     struct TALER_EXCHANGE_AuditorInformation *auditor = &kd->auditors[i];
     struct TEAH_AuditorListEntry *ale = NULL;
 
@@ -704,7 +707,9 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
     }
     if (NULL != ale)
       continue; /* found, no need to add */
+
     /* new auditor, add */
+    TALER_LOG_DEBUG ("Found new auditor!\n");
     ale = GNUNET_new (struct TEAH_AuditorListEntry);
     ale->auditor_pub = auditor->auditor_pub;
     ale->auditor_url = GNUNET_strdup (auditor->auditor_url);
@@ -1206,6 +1211,7 @@ keys_completed_cb (void *cls,
               aold->num_denom_keys * sizeof (struct TALER_EXCHANGE_AuditorDenominationInfo));
     }
 
+    /* Old auditors got just copied into new ones.  */
     if (GNUNET_OK !=
         decode_keys_json (j,
 			  GNUNET_YES,
@@ -1727,6 +1733,9 @@ TALER_EXCHANGE_connect
   struct TALER_EXCHANGE_Handle *exchange;
   va_list ap;
   enum TALER_EXCHANGE_Option opt;
+
+  TALER_LOG_DEBUG ("Connecting to the exchange (%s)\n",
+                   url);
 
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
