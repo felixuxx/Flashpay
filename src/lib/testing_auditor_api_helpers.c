@@ -113,7 +113,12 @@ auditor_version_cb
 {
   struct TALER_TESTING_Interpreter *is = cls;
 
-  /* TODO: check vi/compat? */
+  if (TALER_AUDITOR_VC_MATCH != compat)
+  {
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
   is->auditor_working = GNUNET_YES;
 }
 
