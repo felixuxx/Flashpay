@@ -310,7 +310,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
 		 " s:o, s:o," /* master_pub, ep_start */
 		 " s:o, s:o," /* ep_expire, ep_end */
                  " s:o}",     /* master_sig */
-		 "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
+		 "h_wire", GNUNET_JSON_from_data_auto (&h_wire),
 		 "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
 		 "timestamp", GNUNET_JSON_from_time_abs (timestamp),
 		 "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
