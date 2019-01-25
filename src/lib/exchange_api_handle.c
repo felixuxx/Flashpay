@@ -645,9 +645,10 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
  * @param compat protocol compatibility information
  */
 static void
-auditor_version_cb (void *cls,
-                    const struct TALER_AUDITOR_VersionInformation *vi,
-                    enum TALER_AUDITOR_VersionCompatibility compat)
+auditor_version_cb
+  (void *cls,
+   const struct TALER_AUDITOR_VersionInformation *vi,
+   enum TALER_AUDITOR_VersionCompatibility compat)
 {
   struct TEAH_AuditorListEntry *ale = cls;
 
