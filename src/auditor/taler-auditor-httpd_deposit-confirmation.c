@@ -237,9 +237,9 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",  &dc.exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",  &dc.exchange_pub),
     GNUNET_JSON_spec_fixed_auto ("master_pub",  &es.master_public_key),
-    GNUNET_JSON_spec_fixed_auto ("ep_start",  &es.ep_start),
-    GNUNET_JSON_spec_fixed_auto ("ep_expire",  &es.ep_expire),
-    GNUNET_JSON_spec_fixed_auto ("ep_end",  &es.ep_end),
+    GNUNET_JSON_spec_absolute_time ("ep_start",  &es.ep_start),
+    GNUNET_JSON_spec_absolute_time ("ep_expire",  &es.ep_expire),
+    GNUNET_JSON_spec_absolute_time ("ep_end",  &es.ep_end),
     GNUNET_JSON_spec_fixed_auto ("master_sig",  &es.master_sig),
     GNUNET_JSON_spec_end ()
   };

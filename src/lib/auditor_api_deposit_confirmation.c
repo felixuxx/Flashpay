@@ -309,8 +309,8 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
 		 " s:o, s:o," /* merchant_pub, exchange_sig */
 		 " s:o, s:o," /* master_pub, ep_start */
 		 " s:o, s:o," /* ep_expire, ep_end */
-                 " s:o}",     /* master_sig */
-		 "h_wire", GNUNET_JSON_from_data_auto (&h_wire),
+                 " s:o, s:o}", /* master_sig, exchange_pub */
+		 "h_wire", GNUNET_JSON_from_data_auto (h_wire),
 		 "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
 		 "timestamp", GNUNET_JSON_from_time_abs (timestamp),
 		 "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
@@ -322,7 +322,9 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
 		 "ep_start", GNUNET_JSON_from_time_abs (ep_start),
 		 "ep_expire", GNUNET_JSON_from_time_abs (ep_expire),
 		 "ep_end", GNUNET_JSON_from_time_abs (ep_end),
-		 "master_sig", GNUNET_JSON_from_data_auto (master_sig));
+		 "master_sig", GNUNET_JSON_from_data_auto (master_sig),
+		 "exchange_pub", GNUNET_JSON_from_data_auto (exchange_pub));
+
   if (NULL == deposit_confirmation_obj)
   {
     GNUNET_break (0);
