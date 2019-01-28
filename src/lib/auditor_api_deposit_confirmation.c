@@ -343,6 +343,11 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit-confirmation: `%s'\n",
               dh->url);
+
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_CUSTOMREQUEST,
+                                   "PUT"));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
