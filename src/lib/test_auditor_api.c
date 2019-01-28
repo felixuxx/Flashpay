@@ -472,8 +472,11 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
 
-    CMD_RUN_AUDITOR("virgin-auditor"),
-    CMD_RUN_WIRE_AUDITOR("virgin-wire-auditor"),
+    CMD_RUN_AUDITOR ("virgin-auditor"),
+    CMD_RUN_WIRE_AUDITOR ("virgin-wire-auditor"),
+    TALER_TESTING_cmd_exchanges_with_url ("check-exchange",
+                                          MHD_HTTP_OK,
+                                          "http://localhost:8081/"),
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("spend",

@@ -67,6 +67,11 @@ struct ExchangesState
   unsigned int expected_response_code;
 
   /**
+   * URL of the exchange expected to be included in the response.
+   */
+  const char *exchange_url;
+
+  /**
    * Should we retry on (transient) failures?
    */
   int do_retry;
@@ -146,15 +151,38 @@ exchanges_cb (void *cls,
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                http_status,
-                es->is->commands[es->is->ip].label,
-                __FILE__,
-                __LINE__);
+    GNUNET_log
+      (GNUNET_ERROR_TYPE_ERROR,
+       "Unexpected response code %u to command %s in %s:%u\n",
+       http_status,
+       es->is->commands[es->is->ip].label,
+       __FILE__,
+       __LINE__);
     json_dumpf (raw_response, stderr, 0);
     TALER_TESTING_interpreter_fail (es->is);
     return;
+  }
+  if (NULL != es->exchange_url)
+  {
+    unsigned int found = GNUNET_NO;
+
+    for (unsigned int i=0;
+         i<num_exchanges;
+         i++)
+      if (0 == strcmp (es->exchange_url,
+                       ei[i].exchange_url))
+        found = GNUNET_YES;
+    if (GNUNET_NO == found)
+    {
+      TALER_LOG_ERROR
+        ("Exchange '%s' doesn't exist at this auditor\n",
+         es->exchange_url);
+      TALER_TESTING_interpreter_fail (es->is);
+      return;
+    }
+
+    TALER_LOG_DEBUG ("Exchange '%s' exists at this auditor!\n",
+                     es->exchange_url);
   }
   TALER_TESTING_interpreter_next (es->is);
 }
@@ -176,7 +204,7 @@ exchanges_run (void *cls,
 
   es->is = is;
   es->leh = TALER_AUDITOR_list_exchanges
-    (es->auditor,
+    (is->auditor,
      &exchanges_cb,
      es);
 
@@ -273,6 +301,39 @@ TALER_TESTING_cmd_exchanges
   return cmd;
 }
 
+
+/**
+ * Create a "list exchanges" command and check whether
+ * a particular exchange belongs to the returned bundle.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param expected_response_code expected HTTP response code.
+ * @param exchange_url URL of the exchange supposed to
+ *  be included in the response.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges_with_url
+  (const char *label,
+   unsigned int expected_response_code,
+   const char *exchange_url)
+{
+  struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
+  struct ExchangesState *es;
+
+  es = GNUNET_new (struct ExchangesState);
+  es->expected_response_code = expected_response_code;
+  es->exchange_url = exchange_url;
+
+  cmd.cls = es;
+  cmd.label = label;
+  cmd.run = &exchanges_run;
+  cmd.cleanup = &exchanges_cleanup;
+  cmd.traits = &exchanges_traits;
+
+  return cmd;
+}
 
 /**
  * Modify an exchanges command to enable retries when we get

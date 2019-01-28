@@ -123,6 +123,23 @@ TALER_TESTING_cmd_exchanges
 
 
 /**
+ * Create a "list exchanges" command and check whether
+ * a particular exchange belongs to the returned bundle.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param expected_response_code expected HTTP response code.
+ * @param exchange_url URL of the exchange supposed to
+ *  be included in the response.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges_with_url
+  (const char *label,
+   unsigned int expected_response_code,
+   const char *exchange_url);
+
+/**
  * Modify an exchanges command to enable retries when we get
  * transient errors from the auditor.
  *
