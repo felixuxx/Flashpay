@@ -176,6 +176,10 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
 {
   struct GNUNET_OS_Process *proc;
 
+  TALER_LOG_DEBUG ("Add exchange (%s,%s) to the auditor\n",
+                   exchange_base_url,
+                   exchange_master_pub);
+
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
