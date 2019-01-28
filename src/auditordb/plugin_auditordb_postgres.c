@@ -568,7 +568,7 @@ postgres_prepare (PGconn *db_conn)
 			    ",exchange_pub"
 			    ",master_sig" /* master_sig could be normalized... */
 			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
-			    11),
+			    13),
     /* Used in #postgres_get_deposit_confirmations() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
 			    "SELECT"
