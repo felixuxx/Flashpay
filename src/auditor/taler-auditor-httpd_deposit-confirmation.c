@@ -226,6 +226,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   int res;
   struct TALER_AUDITORDB_DepositConfirmation dc;
   struct TALER_AUDITORDB_ExchangeSigningKey es;
+
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &dc.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &dc.h_wire),
@@ -259,11 +260,13 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                              spec);
   json_decref (json);
   es.exchange_pub = dc.exchange_pub; /* used twice! */
+  dc.master_public_key = es.master_public_key;
 
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
+
   res = verify_and_execute_deposit_confirmation (connection,
                                                  &dc,
                                                  &es);
