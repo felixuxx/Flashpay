@@ -732,6 +732,8 @@ run (void *cls,
        "EUR:1",
        MHD_HTTP_OK),
 
+    CMD_RUN_AUDITOR("massive-auditor"),
+
     TALER_TESTING_cmd_end ()
   };
 
@@ -742,7 +744,6 @@ run (void *cls,
     TALER_TESTING_cmd_exchanges_with_url ("check-exchange",
                                           MHD_HTTP_OK,
                                           "http://localhost:8081/"),
-
     TALER_TESTING_cmd_batch ("massive-deposit-confirms",
                              massive_deposit_confirms),
     TALER_TESTING_cmd_batch ("withdraw",
