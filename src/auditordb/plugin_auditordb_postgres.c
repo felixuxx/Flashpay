@@ -572,7 +572,8 @@ postgres_prepare (PGconn *db_conn)
     /* Used in #postgres_get_deposit_confirmations() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
 			    "SELECT"
-			    " h_contract_terms"
+                            " serial_id"
+			    ",h_contract_terms"
 			    ",h_wire"
 			    ",timestamp"
 			    ",refund_deadline"
@@ -1494,7 +1495,7 @@ deposit_confirmation_cb (void *cls,
                                             &dc.h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
-      GNUNET_PQ_result_spec_absolute_time ("timetamp",
+      GNUNET_PQ_result_spec_absolute_time ("timestamp",
                                            &dc.timestamp),
       GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
                                            &dc.refund_deadline),
