@@ -414,8 +414,9 @@ find_account_by_url (const char *url)
 
 
 /**
- * Function called with information about a wire account.  Adds the
- * account to our list (if it is enabled and we can load the plugin).
+ * Function called with information about a wire account.  Adds
+ * the account to our list (if it is enabled and we can load the
+ * plugin).
  *
  * @param cls closure, NULL
  * @param ai account information

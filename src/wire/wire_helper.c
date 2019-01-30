@@ -2,16 +2,19 @@
   This file is part of TALER
   (C) 2018 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 3,
+  or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
+  <http://www.gnu.org/licenses/>
 */
 
 /**
@@ -28,6 +31,23 @@
  */
 #define PAYTO "payto://"
 
+
+/**
+ * Maps wire methods to plugin names.
+ */
+struct ConversionTable
+{
+
+  /**
+   * Wire method (e.g. 'sepa', 'x-taler-bank', ..)
+   */
+  const char *method;
+
+  /**
+   * Plugin name, e.g. 'ebics', 'taler_bank', ..
+   */
+  const char *plugin_name;
+};
 
 /**
  * Obtain the payment method from a @a payto_url
@@ -52,6 +72,35 @@ TALER_WIRE_payto_get_method (const char *payto_url)
     return NULL;
   return GNUNET_strndup (start,
                          end - start);
+}
+
+
+/**
+ * Get the plugin name from the payment method.
+ *
+ * @param method the method implemented by the plugin (for
+ *  simplicity, we assume 1 method is implemented by 1 plugin).
+ * @return the plugin name, NULL if not found.
+ */
+const char *
+TALER_WIRE_get_plugin_from_method (const char *method)
+{
+  static const struct ConversionTable ct[] = {
+    {"x-taler-bank", "taler_bank"}, 
+    {"sepa", "ebics"},
+    {NULL, NULL}
+  };
+  
+  for (unsigned int i=0;
+       NULL != ct[i].method;
+       i++)
+  {
+    if (0 == strcmp (method,
+                     ct[i].method)) 
+      return ct[i].plugin_name;
+  }
+
+  return NULL;
 }
 
 /* end of wire_helper.c */

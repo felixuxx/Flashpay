@@ -1828,7 +1828,8 @@ struct AggregationContext
  * Find the relevant wire plugin.
  *
  * @param ac context to search
- * @param type type of the wire plugin to load
+ * @param type type of the wire plugin to load; it
+ *  will be used _as is_ from the dynamic loader.
  * @return NULL on error
  */
 static struct TALER_WIRE_Plugin *
@@ -1842,6 +1843,8 @@ get_wire_plugin (struct AggregationContext *ac,
     if (0 == strcmp (type,
                      wp->type))
       return wp->plugin;
+
+  /* Wants the exact *plugin name* (!= method)  */
   plugin = TALER_WIRE_plugin_load (cfg,
                                    type);
   if (NULL == plugin)
@@ -2486,12 +2489,13 @@ get_wire_fee (struct AggregationContext *ac,
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
 static int
-check_wire_out_cb (void *cls,
-                   uint64_t rowid,
-                   struct GNUNET_TIME_Absolute date,
-                   const struct TALER_WireTransferIdentifierRawP *wtid,
-                   const json_t *wire,
-                   const struct TALER_Amount *amount)
+check_wire_out_cb 
+  (void *cls,
+   uint64_t rowid,
+   struct GNUNET_TIME_Absolute date,
+   const struct TALER_WireTransferIdentifierRawP *wtid,
+   const json_t *wire,
+   const struct TALER_Amount *amount)
 {
   struct AggregationContext *ac = cls;
   struct WireCheckContext wcc;
@@ -2544,12 +2548,14 @@ check_wire_out_cb (void *cls,
     GNUNET_free (method);
     return GNUNET_SYSERR;
   }
+
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != wcc.qs)
   {
     /* FIXME: can we provide a more detailed error report? */
-    report_row_inconsistency ("wire_out",
-                              rowid,
-                              "audit of associated transactions failed");
+    report_row_inconsistency
+      ("wire_out",
+       rowid,
+       "audit of associated transactions failed");
     GNUNET_free (method);
     return GNUNET_OK;
   }
@@ -2570,18 +2576,22 @@ check_wire_out_cb (void *cls,
                              &wcc.total_deposits,
                              wire_fee))
   {
-    report_amount_arithmetic_inconsistency ("wire out (fee structure)",
-                                            rowid,
-                                            &wcc.total_deposits,
-                                            wire_fee,
-                                            -1);
+
+    report_amount_arithmetic_inconsistency
+      ("wire out (fee structure)",
+       rowid,
+       &wcc.total_deposits,
+       wire_fee,
+       -1);
+
     GNUNET_free (method);
     return GNUNET_OK;
   }
 
   /* Round down to amount supported by wire method */
-  plugin = get_wire_plugin (ac,
-                            method);
+  plugin = get_wire_plugin
+    (ac,
+     TALER_WIRE_get_plugin_from_method (method));
   if (NULL == plugin)
   {
     GNUNET_break (0);

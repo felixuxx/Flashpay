@@ -36,6 +36,17 @@ TALER_WIRE_payto_get_method (const char *payto_url);
 
 
 /**
+ * Get the plugin name from the payment method.
+ *
+ * @param method the method implemented by the plugin (for
+ *  simplicity, we assume 1 method is implemented by 1 plugin).
+ * @return the plugin name, NULL if not found.
+ */
+const char *
+TALER_WIRE_get_plugin_from_method (const char *method);
+
+
+/**
  * Load a WIRE plugin.
  *
  * @param cfg configuration to use
