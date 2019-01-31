@@ -927,6 +927,13 @@ enum TALER_ErrorCode
   TALER_EC_CONTRACT_INSTANCE_UNKNOWN = 2000,
 
   /**
+   * The frontend specified two different instances within
+   * the same order: one in the top level, and the other one
+   * within the 'merchant' object.
+   */
+  TALER_EC_CONTRACT_INSTANCE_INCONSISTENT = 2001,
+
+  /**
    * The exchange failed to provide a meaningful response
    * to a /deposit request.  This response is provided
    * with HTTP status code MHD_HTTP_SERVICE_UNAVAILABLE.
