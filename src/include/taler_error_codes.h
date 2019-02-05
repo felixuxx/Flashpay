@@ -1700,6 +1700,19 @@ enum TALER_ErrorCode
 
   /* *************** Taler BANK/FAKEBANK error codes *************** */
 
+
+  /**
+   * Negative number was used (as value and/or fraction) to initiate
+   * a Amount object.
+   */
+  TALER_EC_BANK_NEGATIVE_NUMBER_AMOUNT = 5400,
+
+  /**
+   * A number too big was used (as value and/or fraction) to initiate
+   * a amount object.
+   */
+  TALER_EC_BANK_NUMBER_TOO_BIG = 5401,
+
   /**
    * The request cannot be served because the client failed to
    * login.  To be returned along HTTP 401 Unauthorized.
