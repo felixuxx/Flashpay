@@ -15,7 +15,15 @@ bin_PROGRAMS = \
   taler-exchange-keyup \
   taler-exchange-keycheck \
   taler-exchange-wire \
-  taler-exchange-dbinit
+  taler-exchange-dbinit \
+  taler-wire
+
+taler_wire_SOURCES = \
+  taler-wire.c
+taler_wire_LDADD = \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
+  -lgnunetutil
 
 taler_exchange_keyup_SOURCES = \
   taler-exchange-keyup.c
