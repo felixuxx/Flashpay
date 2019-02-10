@@ -26,6 +26,7 @@
 
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
+#include <taler/taler_util.h>
 
 /**
  * Plugin name specified by the user.
@@ -56,6 +57,8 @@ run (void *cls,
   if (NULL == plugin)
   {
     global_ret = 1;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "The PLUGIN command line option is mandatory.\n");
     return;
   }
 }
@@ -87,7 +90,7 @@ main (int argc,
 
   GNUNET_assert
     (GNUNET_OK == GNUNET_log_setup ("taler-wire",
-                                    NULL, /* takes default level */
+                                    NULL,
                                     NULL)); /* filename */
 
   if (GNUNET_OK != GNUNET_PROGRAM_run
