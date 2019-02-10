@@ -27,16 +27,22 @@
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <taler/taler_util.h>
+#include <taler/taler_wire_lib.h>
 
 /**
  * Plugin name specified by the user.
  */
-char *plugin;
+char *plugin_name;
 
 /**
  * Global return code.
  */
 unsigned int global_ret;
+
+/**
+ * Wire plugin handle.
+ */
+struct TALER_WIRE_Plugin *plugin_handle;
 
 
 /**
@@ -54,11 +60,21 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  if (NULL == plugin)
+  if (NULL == plugin_name)
   {
     global_ret = 1;
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "The PLUGIN command line option is mandatory.\n");
+    return;
+  }
+
+  plugin_handle = TALER_WIRE_plugin_load (cfg,
+                                          plugin_name);
+  if (NULL == plugin_handle)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not load the wire plugin\n");
+    global_ret = 1;
     return;
   }
 }
@@ -83,7 +99,7 @@ main (int argc,
                                  "plugin",
                                  "PLUGIN",
                                  "Wire plugin to use",
-                                 &plugin),
+                                 &plugin_name),
 
     GNUNET_GETOPT_OPTION_END
   };
