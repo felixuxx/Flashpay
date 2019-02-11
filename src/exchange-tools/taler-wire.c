@@ -53,6 +53,13 @@ char *plugin_name;
 unsigned int global_ret = 0;
 
 /**
+ * When a wire transfer is being performed, this value
+ * specifies the amount to wire-transfer.  It's given in
+ * the usual CURRENCY:X[.Y] format.
+ */
+char *amount;
+
+/**
  * Base32 encoding of a transaction ID.  When asking the
  * bank for a transaction history, all the results will
  * have a transaction ID settled *after* this one.
@@ -68,6 +75,13 @@ char *account_section;
  * Binary version of the 'since-when' CLI option.
  */
 void *since_when_bin;
+
+/**
+ * URL identifying the account that is going to receive the
+ * wire transfer.
+ */
+char *destination_account_url;
+
 
 /**
  * Wire plugin handle.
@@ -111,15 +125,102 @@ cb (void *cls,
 
   GNUNET_free (row_off_enc);
 
-  return GNUNET_SYSERR;
+  if (TALER_BANK_DIRECTION_NONE == dir)
+    global_ret = 0;
+
+  return GNUNET_OK;
 }
+
+/**
+ * Callback that processes the outcome of a wire transfer
+ * execution.
+ */
+void
+confirmation_cb (void *cls,
+                 int success,
+                 uint64_t serial_id,
+                 const char *emsg)
+{
+  if (GNUNET_YES != success)
+  {
+    fprintf (stderr,
+             "The wire transfer didn't execute correctly\n"); 
+    GNUNET_assert (NULL != emsg);
+    fprintf (stderr,
+             emsg);
+    return;
+  }
+  global_ret = 0;
+}
+
+
+/**
+ * Takes prepared blob and executes the wire-transfer.
+ *
+ * @param cls NULL.
+ * @param buf prepared wire transfer data.
+ * @param buf_size size of the prepared wire transfer data.
+ */
+void
+prepare_cb (void *cls,
+            const char *buf,
+            size_t buf_size)
+{
+  struct TALER_WIRE_ExecuteHandle *eh;
+
+  if (NULL == (eh = plugin_handle->execute_wire_transfer
+      (plugin_handle->cls,
+      buf,
+      buf_size,
+      confirmation_cb,
+      NULL)))
+  {
+    fprintf (stderr,
+             "Could not execute the wire transfer\n"); 
+    return;
+  }
+}
+
 
 /**
  * Ask the bank to execute a wire transfer.
  */
 void
 execute_wire_transfer ()
-{}
+{
+  struct TALER_Amount a;
+  struct TALER_WireTransferIdentifierRawP wtid;
+  struct TALER_WIRE_PrepareHandle *ph;
+
+  /* Not the best thing to fail a assert here.  */
+  GNUNET_assert (GNUNET_YES == transfer);
+
+  if (GNUNET_OK != TALER_string_to_amount (amount,
+                                           &a))
+  {
+    fprintf (stderr,
+             "Amount string incorrect.\n"); 
+    return;
+  }
+  
+  if (NULL == (ph = plugin_handle->prepare_wire_transfer
+    (plugin_handle->cls,
+     account_section,
+     destination_account_url,
+     &a,
+     "http://exchange.example.com/",
+     &wtid, /* Any value will do.  */
+     prepare_cb,
+     NULL)))
+  {
+    fprintf (stderr,
+             "Could not prepare the wire transfer\n");
+    return;
+  }
+
+  plugin_handle->prepare_wire_transfer_cancel (plugin_handle->cls,
+                                               ph);
+}
 
 /**
  * Ask the bank the list of transactions for the bank account
@@ -134,7 +235,6 @@ execute_history ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Missing since-when option\n");
-    global_ret = 1;
     return;
   }
 
@@ -158,7 +258,6 @@ execute_history ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not request the transaction history.\n");
-    global_ret = 1;
     return;
   }
     
@@ -181,7 +280,6 @@ run (void *cls,
 {
   if (NULL == account_section)
   {
-    global_ret = 1;
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "The ACCOUNT-SECTION is mandatory.\n");
     return;
@@ -196,7 +294,6 @@ run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not find the 'plugin' value under %s\n",
                 account_section);
-    global_ret = 1;
     return;
   }
 
@@ -206,7 +303,6 @@ run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not load the wire plugin\n");
-    global_ret = 1;
     return;
   }
 
@@ -232,7 +328,7 @@ main (int argc,
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
 
-    GNUNET_GETOPT_option_flag ('a',
+    GNUNET_GETOPT_option_flag ('H',
                                "history",
                                "Ask to get the list of transactions.",
                                &history),
@@ -260,6 +356,18 @@ main (int argc,
                                  " bank.  Mandatory.\n",
                                  &account_section),
 
+    GNUNET_GETOPT_option_string ('a',
+                                 "amount",
+                                 "AMOUNT",
+                                 "Specify the amount to transfer.",
+                                 &amount),
+
+    GNUNET_GETOPT_option_string ('d',
+                                 "destination",
+                                 "PAYTO-URL",
+                                 "Destination account for the"
+                                 " wire transfer.",
+                                 &destination_account_url),
     GNUNET_GETOPT_OPTION_END
   };
 
