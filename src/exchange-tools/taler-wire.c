@@ -308,8 +308,11 @@ run (void *cls,
 
   if (GNUNET_YES == history)
     execute_history ();
-  else
+  else if (GNUNET_YES == transfer)
     execute_wire_transfer ();
+  else
+    fprintf (stderr,
+           "Please give either --history/-H or --transfer/t\n");
 }
 
 /**
