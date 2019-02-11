@@ -232,9 +232,9 @@ main (int argc,
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
 
-    GNUNET_GETOPT_option_flag ('h',
+    GNUNET_GETOPT_option_flag ('a',
                                "history",
-                               "Wire plugin to use",
+                               "Ask to get the list of transactions.",
                                &history),
 
     GNUNET_GETOPT_option_flag ('t',
@@ -257,7 +257,7 @@ main (int argc,
                                  "ACCOUNT-SECTION",
                                  "Which config section has the"
                                  " credentials to access the"
-                                 " bank.\n",
+                                 " bank.  Mandatory.\n",
                                  &account_section),
 
     GNUNET_GETOPT_OPTION_END
@@ -272,7 +272,7 @@ main (int argc,
       (argc,
        argv,
        "taler-wire",
-       "Perform wire transfers using plugin PLUGIN",
+       "CLI bank client.",
        options,
        &run,
        NULL))
