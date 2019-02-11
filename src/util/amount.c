@@ -83,7 +83,7 @@ TALER_string_to_amount (const char *str,
        ((colon - str) >= TALER_CURRENCY_LEN) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Invalid currency specified before colon: `%s'",
+                "Invalid currency specified before colon: `%s'\n",
                 str);
     goto fail;
   }

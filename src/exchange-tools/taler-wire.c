@@ -50,7 +50,7 @@ char *plugin_name;
 /**
  * Global return code.
  */
-unsigned int global_ret = 0;
+unsigned int global_ret = 1;
 
 /**
  * When a wire transfer is being performed, this value
