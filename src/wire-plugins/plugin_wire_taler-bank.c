@@ -1096,8 +1096,6 @@ taler_bank_get_history (void *cls,
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Requesting the transaction history.\n");
   whh->hh = TALER_BANK_history (tc->ctx,
                                 account.bank_base_url,
                                 &whh->auth,

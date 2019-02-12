@@ -112,6 +112,15 @@ history_cb (void *cls,
 {
   char *row_off_enc;
 
+  if (TALER_BANK_DIRECTION_NONE == dir)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Hit end of transactions list.\n");
+    global_ret = 0;
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_NO;
+  }
+
   row_off_enc = GNUNET_STRINGS_data_to_string_alloc (row_off,
                                                      row_off_size);
   /* Give more details on screen (??) */
@@ -120,9 +129,6 @@ history_cb (void *cls,
            row_off_enc);
 
   GNUNET_free (row_off_enc);
-
-  if (TALER_BANK_DIRECTION_NONE == dir)
-    global_ret = 0;
 
   return GNUNET_OK;
 }
