@@ -281,8 +281,8 @@ execute_history ()
        history_cb,
        NULL))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not request the transaction history.\n");
+    fprintf (stderr,
+             "Could not request the transaction history.\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -317,8 +317,8 @@ run (void *cls,
 {
   if (NULL == account_section)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "The option: -s ACCOUNT-SECTION, is mandatory.\n");
+    fprintf (stderr,
+             "The option: -s ACCOUNT-SECTION, is mandatory.\n");
     return;
   }
 
@@ -328,9 +328,9 @@ run (void *cls,
        "plugin",
        &plugin_name))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not find the 'plugin' value under %s\n",
-                account_section);
+    fprintf (stderr,
+             "Could not find the 'plugin' value under %s\n",
+             account_section);
     return;
   }
 
@@ -338,8 +338,8 @@ run (void *cls,
                                           plugin_name);
   if (NULL == plugin_handle)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not load the wire plugin\n");
+    fprintf (stderr,
+             "Could not load the wire plugin\n");
     return;
   }
 
@@ -419,7 +419,7 @@ main (int argc,
 
   GNUNET_assert
     (GNUNET_OK == GNUNET_log_setup ("taler-wire",
-                                    NULL,
+                                    "WARNING",
                                     NULL)); /* filename */
   GNUNET_PROGRAM_run
     (argc,
