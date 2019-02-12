@@ -82,6 +82,10 @@ void *since_when_bin;
  */
 char *destination_account_url;
 
+/**
+ * Handle for the wire transfer preparation task.
+ */
+struct TALER_WIRE_PrepareHandle *ph;
 
 /**
  * Wire plugin handle.
@@ -144,13 +148,19 @@ confirmation_cb (void *cls,
   if (GNUNET_YES != success)
   {
     fprintf (stderr,
-             "The wire transfer didn't execute correctly\n"); 
+             "The wire transfer didn't execute correctly.\n"); 
     GNUNET_assert (NULL != emsg);
     fprintf (stderr,
              emsg);
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
+
+  fprintf (stdout,
+           "Wire transfer executed successfully.\n");
+
   global_ret = 0;
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -177,7 +187,16 @@ prepare_cb (void *cls,
   {
     fprintf (stderr,
              "Could not execute the wire transfer\n"); 
-    return;
+
+    plugin_handle->prepare_wire_transfer_cancel
+      (plugin_handle->cls,
+       ph);
+
+    plugin_handle->execute_wire_transfer_cancel
+      (plugin_handle->cls,
+       eh);
+
+    GNUNET_SCHEDULER_shutdown ();
   }
 }
 
@@ -190,19 +209,23 @@ execute_wire_transfer ()
 {
   struct TALER_Amount a;
   struct TALER_WireTransferIdentifierRawP wtid;
-  struct TALER_WIRE_PrepareHandle *ph;
-
-  /* Not the best thing to fail a assert here.  */
-  GNUNET_assert (GNUNET_YES == transfer);
 
   if (GNUNET_OK != TALER_string_to_amount (amount,
                                            &a))
   {
     fprintf (stderr,
              "Amount string incorrect.\n"); 
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  
+  if (NULL == destination_account_url)
+  {
+    fprintf (stderr,
+             "Please give destination"
+             " account URL (--destination/-d)\n"); 
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   if (NULL == (ph = plugin_handle->prepare_wire_transfer
     (plugin_handle->cls,
      account_section,
@@ -215,11 +238,8 @@ execute_wire_transfer ()
   {
     fprintf (stderr,
              "Could not prepare the wire transfer\n");
-    return;
+    GNUNET_SCHEDULER_shutdown ();
   }
-
-  plugin_handle->prepare_wire_transfer_cancel (plugin_handle->cls,
-                                               ph);
 }
 
 /**
@@ -235,6 +255,7 @@ execute_history ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Missing since-when option\n");
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
 
@@ -258,9 +279,22 @@ execute_history ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not request the transaction history.\n");
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
     
+}
+
+/**
+ * Gets executed upon shutdown.  Main duty is
+ * wire-plugin unloading.
+ *
+ * @param cls closure.
+ */
+void
+do_shutdown (void *cls)
+{
+  TALER_WIRE_plugin_unload (plugin_handle);
 }
 
 /**
@@ -313,6 +347,9 @@ run (void *cls,
   else
     fprintf (stderr,
            "Please give either --history/-H or --transfer/t\n");
+
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
 }
 
 /**
@@ -333,7 +370,8 @@ main (int argc,
 
     GNUNET_GETOPT_option_flag ('H',
                                "history",
-                               "Ask to get the list of transactions.",
+                               "Ask to get the list of"
+                               " transactions.",
                                &history),
 
     GNUNET_GETOPT_option_flag ('t',
@@ -378,16 +416,14 @@ main (int argc,
     (GNUNET_OK == GNUNET_log_setup ("taler-wire",
                                     NULL,
                                     NULL)); /* filename */
-
-  if (GNUNET_OK != GNUNET_PROGRAM_run
-      (argc,
-       argv,
-       "taler-wire",
-       "CLI bank client.",
-       options,
-       &run,
-       NULL))
-    return 1;
+  GNUNET_PROGRAM_run
+    (argc,
+     argv,
+     "taler-wire",
+     "CLI bank client.",
+     options,
+     &run,
+     NULL);
 
   return global_ret;
 }
