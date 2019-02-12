@@ -1073,7 +1073,12 @@ taler_bank_get_history (void *cls,
       parse_account_cfg (tc->cfg,
                          account_section,
                          &account))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not parse the config section '%s'\n",
+                account_section);
     return NULL;
+  }
 
   whh = GNUNET_new (struct TALER_WIRE_HistoryHandle);
   if (GNUNET_OK !=
@@ -1081,6 +1086,9 @@ taler_bank_get_history (void *cls,
                                  account_section,
                                  &whh->auth))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not parse the auth values from '%s'\n",
+                account_section);
     GNUNET_free (whh);
     return NULL;
   }
@@ -1088,6 +1096,8 @@ taler_bank_get_history (void *cls,
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requesting the transaction history.\n");
   whh->hh = TALER_BANK_history (tc->ctx,
                                 account.bank_base_url,
                                 &whh->auth,
@@ -1110,6 +1120,7 @@ taler_bank_get_history (void *cls,
   }
   GNUNET_free (account.hostname);
   GNUNET_free (account.bank_base_url);
+  GNUNET_assert (NULL != whh);
   return whh;
 }
 

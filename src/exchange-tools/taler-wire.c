@@ -72,11 +72,6 @@ char *since_when;
 char *account_section; 
 
 /**
- * Binary version of the 'since-when' CLI option.
- */
-void *since_when_bin;
-
-/**
  * URL identifying the account that is going to receive the
  * wire transfer.
  */
@@ -96,6 +91,7 @@ struct TALER_WIRE_Plugin *plugin_handle;
 /**
  * Callback used to process ONE entry in the transaction
  * history returned by the bank.
+ *
  * @param cls closure
  * @param ec taler error code
  * @param dir direction of the transfer
@@ -107,21 +103,17 @@ struct TALER_WIRE_Plugin *plugin_handle;
  *         abort iteration
  */
 int
-cb (void *cls,
-    enum TALER_ErrorCode ec,
-    enum TALER_BANK_Direction dir,
-    const void *row_off,
-    size_t row_off_size,
-    const struct TALER_WIRE_TransferDetails *details)
+history_cb (void *cls,
+            enum TALER_ErrorCode ec,
+            enum TALER_BANK_Direction dir,
+            const void *row_off,
+            size_t row_off_size,
+            const struct TALER_WIRE_TransferDetails *details)
 {
   char *row_off_enc;
 
   row_off_enc = GNUNET_STRINGS_data_to_string_alloc (row_off,
                                                      row_off_size);
-
-  fprintf (stdout,
-           "History of transactions:\n");
-
   /* Give more details on screen (??) */
   fprintf (stdout,
            "%s\n",
@@ -249,23 +241,21 @@ execute_wire_transfer ()
 void
 execute_history ()
 {
-  size_t bin_len = (strlen (since_when) * 5) / 8;
+  size_t bin_len = 0;
+  void *since_when_bin = NULL;
 
-  if (NULL == since_when)
+  if (NULL != since_when)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Missing since-when option\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+    bin_len = (strlen (since_when) * 5) / 8;
 
-  since_when_bin = GNUNET_malloc (bin_len);
+    since_when_bin = GNUNET_malloc (bin_len);
     GNUNET_assert
       (GNUNET_OK == GNUNET_STRINGS_string_to_data
         (since_when,
          strlen (since_when),
          since_when_bin,
          bin_len));
+  }
 
   if (NULL == plugin_handle->get_history
       (plugin_handle->cls,
@@ -274,15 +264,14 @@ execute_history ()
        since_when_bin,
        bin_len,
        10,
-       cb,
-       NULL));
+       history_cb,
+       NULL))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not request the transaction history.\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-    
 }
 
 /**
@@ -370,7 +359,7 @@ main (int argc,
 
     GNUNET_GETOPT_option_flag ('H',
                                "history",
-                               "Ask to get the list of"
+                               "Ask to get a list of 10"
                                " transactions.",
                                &history),
 
@@ -386,7 +375,9 @@ main (int argc,
                                  " transactions history, this"
                                  " option commands that all the"
                                  " results should have IDs settled"
-                                 " after SW",
+                                 " after SW.  If not given, then"
+                                 " the 10 youngest transactions"
+                                 " are returned.",
                                  &since_when),
 
     GNUNET_GETOPT_option_string ('s',
