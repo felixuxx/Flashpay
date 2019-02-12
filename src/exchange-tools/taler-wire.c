@@ -208,6 +208,14 @@ execute_wire_transfer ()
   struct TALER_Amount a;
   struct TALER_WireTransferIdentifierRawP wtid;
 
+  if (NULL == amount)
+  {
+    fprintf (stderr,
+             "The option -a: AMOUNT, is mandatory.\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+
   if (GNUNET_OK != TALER_string_to_amount (amount,
                                            &a))
   {
@@ -269,7 +277,7 @@ execute_history ()
        TALER_BANK_DIRECTION_BOTH,
        since_when_bin,
        bin_len,
-       10,
+       -10,
        history_cb,
        NULL))
   {
@@ -310,7 +318,7 @@ run (void *cls,
   if (NULL == account_section)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "The ACCOUNT-SECTION is mandatory.\n");
+                "The option: -s ACCOUNT-SECTION, is mandatory.\n");
     return;
   }
 
