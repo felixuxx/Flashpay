@@ -148,9 +148,9 @@ struct TALER_WIRE_HistoryHandle;
 typedef void
 (*TALER_WIRE_ConfirmationCallback)(void *cls,
                                    int success,
-                                   uint64_t serial_id,
+                                   const void *row_id,
+                                   size_t row_id_size,
                                    const char *emsg);
-
 
 /**
  * @brief The plugin API, returned from the plugin's "init" function.

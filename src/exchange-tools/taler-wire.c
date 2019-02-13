@@ -140,7 +140,8 @@ history_cb (void *cls,
 void
 confirmation_cb (void *cls,
                  int success,
-                 uint64_t serial_id,
+                 const void *row_id,
+                 size_t row_id_size,
                  const char *emsg)
 {
   if (GNUNET_YES != success)

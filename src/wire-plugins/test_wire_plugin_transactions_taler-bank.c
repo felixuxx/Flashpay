@@ -153,18 +153,21 @@ timeout_cb (void *cls)
  * @param cls closure
  * @param ec taler status code
  * @param dir direction of the transfer
- * @param row_off identification of the position at which we are querying
+ * @param row_off identification of the position at
+ *        which we are querying
  * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to
+ *         abort iteration
  */
 static int
-history_result_cb (void *cls,
-                   enum TALER_ErrorCode ec,
-                   enum TALER_BANK_Direction dir,
-                   const void *row_off,
-                   size_t row_off_size,
-                   const struct TALER_WIRE_TransferDetails *details)
+history_result_cb
+  (void *cls,
+   enum TALER_ErrorCode ec,
+   enum TALER_BANK_Direction dir,
+   const void *row_off,
+   size_t row_off_size,
+   const struct TALER_WIRE_TransferDetails *details)
 {
   uint64_t *serialp;
   uint64_t serialh;
@@ -222,16 +225,20 @@ history_result_cb (void *cls,
  * Function called with the result from the execute step.
  *
  * @param cls closure
- * @param success #GNUNET_OK on success, #GNUNET_SYSERR on failure
- * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param success #GNUNET_OK on success,
+ *        #GNUNET_SYSERR on failure
+ * @param row_id ID of the fresh transaction,
+ *        in _network_ byte order.
  * @param emsg NULL on success, otherwise an error message
  */
 static void
 confirmation_cb (void *cls,
                  int success,
-                 uint64_t serial_id,
+                 const void *row_id,
+                 size_t row_id_size,
                  const char *emsg)
 {
+  uint64_t tmp;
   eh = NULL;
   if (GNUNET_OK != success)
   {
@@ -240,7 +247,13 @@ confirmation_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  serial_target = serial_id;
+
+  memcpy (&tmp,
+          row_id,
+          row_id_size);
+
+  serial_target = GNUNET_ntohll (tmp);
+
   hh = plugin->get_history (plugin->cls,
                             my_account,
                             TALER_BANK_DIRECTION_BOTH,

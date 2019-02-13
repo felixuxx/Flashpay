@@ -1647,7 +1647,8 @@ prepare_cb (void *cls,
 static void
 wire_confirm_cb (void *cls,
                  int success,
-                 uint64_t serial_id,
+                 const void *row_id,
+                 size_t row_id_size,
                  const char *emsg)
 {
   struct TALER_EXCHANGEDB_Session *session = wpd->session;

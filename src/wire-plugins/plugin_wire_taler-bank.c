@@ -632,6 +632,7 @@ execute_cb (void *cls,
   json_t *reason;
   const char *emsg;
   char *s;
+  uint64_t serial_id_nbo;
 
   eh->aaih = NULL;
   emsg = NULL;
@@ -653,10 +654,15 @@ execute_cb (void *cls,
                      "%u/%u",
                      http_status,
                      (unsigned int) ec);
+
+  serial_id_nbo = GNUNET_htonll (serial_id);
+
   eh->cc (eh->cc_cls,
           (MHD_HTTP_OK == http_status) ? GNUNET_OK : GNUNET_SYSERR,
-          serial_id,
+          &serial_id_nbo,
+          sizeof (uint64_t),
           (MHD_HTTP_OK == http_status) ? NULL : s);
+
   GNUNET_free (s);
   GNUNET_free (eh);
 }
