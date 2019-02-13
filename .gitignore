@@ -57,6 +57,7 @@ src/exchange-tools/taler-exchange-dbinit
 src/exchange-tools/taler-exchange-keycheck
 src/exchange-tools/taler-exchange-keyup
 src/exchange-tools/taler-exchange-wire
+src/exchange-tools/taler-wire
 src/exchangedb/perf-exchangedb
 src/benchmark/taler-exchange-benchmark
 src/benchmark/auditor.in
