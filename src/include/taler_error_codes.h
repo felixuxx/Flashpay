@@ -1788,6 +1788,12 @@ enum TALER_ErrorCode
   TALER_EC_BANK_ADD_INCOMING_JSON_INVALID = 5106,
 
   /**
+   * The client tried a /admin/add/incoming request by using
+   * a currency different from the one the bank operates with.
+   */
+  TALER_EC_BANK_ADD_INCOMING_CURRENCY_MISMATCH = 5111,
+
+  /**
    * The client failed to login for /admin/add/incoming.  To be returned
    * along HTTP 401 Unauthorized.
    */
