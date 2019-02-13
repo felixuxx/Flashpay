@@ -114,8 +114,8 @@ history_cb (void *cls,
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Hit end of transactions list.\n");
+    fprintf (stdout,
+             "End of transactions list.\n");
     global_ret = 0;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_NO;
