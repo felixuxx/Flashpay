@@ -105,7 +105,8 @@ run (void *cls)
     return;
   }
 
-  (void) plugin->drop_tables (plugin->cls);
+  (void) plugin->drop_tables (plugin->cls,
+                              GNUNET_YES);
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -767,7 +768,8 @@ drop:
                             session));
   }
   GNUNET_break (GNUNET_OK ==
-                plugin->drop_tables (plugin->cls));
+                plugin->drop_tables (plugin->cls,
+                                     GNUNET_YES));
  unload:
   TALER_AUDITORDB_plugin_unload (plugin);
   plugin = NULL;
