@@ -151,6 +151,12 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
           data,
           offset);
   GNUNET_free (data);
+  if (0 == GNUNET_TIME_absolute_get_remaining
+      (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw)).rel_value_us)
+  {
+    /* FIXME: #5536: we should delete this file, the
+       private key is no longer needed (and return SYSERR!) */
+  }
   return GNUNET_OK;
 }
 

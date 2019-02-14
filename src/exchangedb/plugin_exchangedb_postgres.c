@@ -1981,6 +1981,31 @@ postgres_get_denomination_info (void *cls,
 
 
 /**
+ * Fetch information about all known denomination keys.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cb function to call on each denomination key
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_iterate_denomination_info (void *cls,
+                                    TALER_EXCHANGEDB_DenominationInfoIterator cb,
+                                    void *cb_cls)
+{
+#if 0
+  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+#endif
+
+  GNUNET_break (0); // not implemented! #5536
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
  * Get the summary of a reserve.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -7099,6 +7124,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->rollback = &postgres_rollback;
   plugin->insert_denomination_info = &postgres_insert_denomination_info;
   plugin->get_denomination_info = &postgres_get_denomination_info;
+  plugin->iterate_denomination_info = &postgres_iterate_denomination_info;
   plugin->reserve_get = &postgres_reserve_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_latest_reserve_in_reference = &postgres_get_latest_reserve_in_reference;

@@ -73,6 +73,12 @@ signkeys_iterate_dir_iter (void *cls,
                 (unsigned int) sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
     return GNUNET_OK;
   }
+  if (0 == GNUNET_TIME_absolute_get_remaining
+      (GNUNET_TIME_absolute_ntoh (issue.issue.expire)).rel_value_us)
+  {
+    /* FIXME: #5536: we should delete this file, the
+       private key is no longer needed (and return SYSERR!) */
+  }
   return skc->it (skc->it_cls,
                   filename,
                   &issue);

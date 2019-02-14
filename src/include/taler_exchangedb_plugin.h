@@ -711,7 +711,6 @@ typedef int
                                     int done);
 
 
-
 /**
  * Callback used to process data of a merchant under KYC monitoring.
  *
@@ -1140,6 +1139,19 @@ typedef void
 
 
 /**
+ * Function called with information about the exchange's denomination keys.
+ *
+ * @parma cls closure
+ * @param denom_pub public key of the denomination
+ * @param issue detailed information about the denomination (value, expiration times, fees)
+ */
+typedef void
+(*TALER_EXCHANGEDB_DenominationInfoIterator)(void *cls,
+                                             const struct TALER_DenominationPublicKey *denom_pub,
+                                             const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
+
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
@@ -1272,6 +1284,20 @@ struct TALER_EXCHANGEDB_Plugin
                             const struct TALER_DenominationPublicKey *denom_pub,
                             struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
+
+  /**
+   * Function called on every known denomination key.  Runs in its
+   * own read-only transaction (hence no session provided).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param cb function to call on each denomination key
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_denomination_info) (void *cls,
+                                TALER_EXCHANGEDB_DenominationInfoIterator cb,
+                                void *cb_cls);
 
   /**
    * Get the summary of a reserve.

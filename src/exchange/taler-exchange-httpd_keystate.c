@@ -1503,7 +1503,14 @@ make_fresh_key_state ()
     destroy_response_factory (&rfc);
     return NULL;
   }
-
+#if FIX_FOR_5536
+  /* Once we no longer get expired DKIs from
+     TALER_EXCHANGEDB_denomination_keys_iterate(),
+     we must fetch the information from the database! */
+  qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
+                                              &reload_public_denoms_cb,
+                                              &rfc);
+#endif
   /* Initialize `current_sign_key_issue` and `rfc.sign_keys_array` */
   TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                          &reload_keys_sign_iter,
