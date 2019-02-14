@@ -1605,7 +1605,8 @@ run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Full audit restart requested, dropping old audit data.\n");
     GNUNET_break (GNUNET_OK ==
-                  adb->drop_tables (adb->cls));
+                  adb->drop_tables (adb->cls,
+                                    GNUNET_NO));
     TALER_AUDITORDB_plugin_unload (adb);
     if (NULL ==
         (adb = TALER_AUDITORDB_plugin_load (cfg)))

@@ -401,10 +401,12 @@ struct TALER_AUDITORDB_Plugin
    * Drop the Taler tables.  This should only be used in testcases.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param drop_exchangelist should we also drop the list of audited exchanges
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
   int
-  (*drop_tables) (void *cls);
+  (*drop_tables) (void *cls,
+                  int drop_exchangelist);
 
 
   /**

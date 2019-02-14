@@ -2489,7 +2489,7 @@ get_wire_fee (struct AggregationContext *ac,
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
 static int
-check_wire_out_cb 
+check_wire_out_cb
   (void *cls,
    uint64_t rowid,
    struct GNUNET_TIME_Absolute date,
@@ -4391,7 +4391,7 @@ test_master_present (void *cls,
 		     const char *exchange_url)
 {
   int *found = cls;
-  
+
   (void) exchange_url;
   if (0 == memcmp (mpub,
 		   &master_pub,
@@ -4529,7 +4529,8 @@ run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Full audit restart requested, dropping old audit data.\n");
     GNUNET_break (GNUNET_OK ==
-                  adb->drop_tables (adb->cls));
+                  adb->drop_tables (adb->cls,
+                                    GNUNET_NO));
     TALER_AUDITORDB_plugin_unload (adb);
     if (NULL ==
         (adb = TALER_AUDITORDB_plugin_load (cfg)))

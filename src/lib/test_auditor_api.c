@@ -292,77 +292,66 @@ run (void *cls,
        "EUR:10.10",
        42,
        2),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-1",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-2",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-3",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-4",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-5",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-6",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-7",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-8",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-9",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-10",
         exchange_url,
        "EUR:0.98",
        2,
        43),
-
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
     TALER_TESTING_cmd_end ()
   };
@@ -559,9 +548,7 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("massive-reserve",
                               "EUR:10.10"),
-
     CMD_EXEC_WIREWATCH ("massive-wirewatch"),
-    
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-1",
                                        "massive-reserve",
                                        "EUR:1",
@@ -615,130 +602,118 @@ run (void *cls,
       ("massive-deposit-1",
        "massive-withdraw-1",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-2",
        "massive-withdraw-2",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-3",
        "massive-withdraw-3",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-4",
        "massive-withdraw-4",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-5",
        "massive-withdraw-5",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-6",
        "massive-withdraw-6",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-7",
        "massive-withdraw-7",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-8",
        "massive-withdraw-8",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-9",
        "massive-withdraw-9",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
-
     TALER_TESTING_cmd_deposit
       ("massive-deposit-10",
        "massive-withdraw-10",
        0,
-       TALER_TESTING_make_wire_details 
+       TALER_TESTING_make_wire_details
          (43,
           fakebank_url),
        "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
-
     CMD_RUN_AUDITOR("massive-auditor"),
 
     TALER_TESTING_cmd_end ()
   };
 
   struct TALER_TESTING_Command commands[] = {
-
     CMD_RUN_AUDITOR ("virgin-auditor"),
     CMD_RUN_WIRE_AUDITOR ("virgin-wire-auditor"),
     TALER_TESTING_cmd_exchanges_with_url ("check-exchange",

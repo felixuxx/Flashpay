@@ -131,10 +131,12 @@ connect_to_postgres (struct PostgresClosure *pc)
  * Drop all Taler tables.  This should only be used by testcases.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param drop_exchangelist should we also drop the exchange table?
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
-postgres_drop_tables (void *cls)
+postgres_drop_tables (void *cls,
+                      int drop_exchangelist)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
@@ -152,8 +154,11 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+  struct GNUNET_PQ_ExecuteStatement esx[] = {
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
@@ -166,6 +171,10 @@ postgres_drop_tables (void *cls)
        "Dropping ALL tables\n");
   ret = GNUNET_PQ_exec_statements (conn,
                                    es);
+  if ( (ret >= 0) &&
+       (drop_exchangelist) )
+    ret = GNUNET_PQ_exec_statements (conn,
+                                     esx);
   /* TODO: we probably need a bit more fine-grained control
      over drops for the '-r' option of taler-auditor; also,
      for the testcase, we currently fail to drop the
