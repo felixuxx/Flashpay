@@ -103,8 +103,8 @@ run (void *cls,
      * Why keys number decrease?
      */
     TALER_TESTING_cmd_check_keys ("check-freshest-keys",
-                                  9, /* generation */
-                                  10),
+                                  8, /* generation */
+                                  8),
 
     TALER_TESTING_cmd_wire ("verify-/wire-with-fresh-keys",
                             "x-taler-bank",
