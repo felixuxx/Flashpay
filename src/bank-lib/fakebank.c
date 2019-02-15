@@ -154,7 +154,7 @@ struct TALER_FAKEBANK_Handle
    * Boxed @e mhd_fd.
    */
   struct GNUNET_NETWORK_Handle *mhd_rfd;
-  
+
   /**
    * File descriptor to use to wait for MHD.
    */
@@ -730,6 +730,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_break (0);
     return MHD_NO;
   }
+  start_number = 0;
   if ( (1 != sscanf (delta,
                      "%lld",
                      &count)) ||
@@ -880,7 +881,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                        "wt_subject", subject);
     GNUNET_assert (NULL != trans);
     GNUNET_free (subject);
-    
+
     history_element = GNUNET_new (struct HistoryElement);
     history_element->element = trans;
 

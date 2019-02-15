@@ -625,8 +625,9 @@ TALER_TESTING_cert_cb
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Got %d DK from /keys\n",
-                keys->num_denom_keys);
+                "Got %d DK from /keys in generation %u\n",
+                keys->num_denom_keys,
+                is->key_generation + 1);
   }
   is->key_generation++;
   is->keys = keys;
