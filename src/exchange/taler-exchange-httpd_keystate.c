@@ -197,8 +197,7 @@ struct ResponseFactoryContext
 
   /**
    * Sorted array of denomination keys.  Length is @e denomkey_array_length.
-   * Entries are sorted by the validity period's starting time.  All entries
-   * must also be in the #denomkey_map.
+   * Entries are sorted by the validity period's starting time.
    */
   struct DenominationKeyEntry *denomkey_array;
 
@@ -376,7 +375,8 @@ free_denom_key (void *cls,
 {
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
 
-  GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
+  if (NULL != dki->denom_priv.rsa_private_key)
+    GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
   GNUNET_free (dki);
   return GNUNET_OK;
@@ -545,8 +545,9 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
 
   d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation);
   d2->issue = dki->issue;
-  d2->denom_priv.rsa_private_key
-    = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
+  if (NULL != dki->denom_priv.rsa_private_key)
+    d2->denom_priv.rsa_private_key
+      = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
   d2->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
   res = GNUNET_CONTAINER_multihashmap_put (map,
@@ -558,7 +559,8 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Duplicate denomination key `%s'\n",
                 GNUNET_h2s (&d2->issue.properties.denom_hash));
-    GNUNET_CRYPTO_rsa_private_key_free (d2->denom_priv.rsa_private_key);
+    if (NULL != d2->denom_priv.rsa_private_key)
+      GNUNET_CRYPTO_rsa_private_key_free (d2->denom_priv.rsa_private_key);
     GNUNET_CRYPTO_rsa_public_key_free (d2->denom_pub.rsa_public_key);
     GNUNET_free (d2);
     return GNUNET_NO;
@@ -1431,6 +1433,45 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
 
 
 /**
+ * Function called with information about the exchange's denomination
+ * keys based on what is known in the database. Used to learn our
+ * public keys (after the private keys are deleted, we still need to
+ * have the public keys around for a while to verify signatures).
+ *
+ * This function checks if the @a denom_pub is already known to us,
+ * and if not adds it to our set.
+ *
+ * @parma cls closure, a `struct ResponseFactoryContext *`
+ * @param denom_pub public key of the denomination
+ * @param issue detailed information about the denomination (value, expiration times, fees)
+ */
+static void
+reload_public_denoms_cb (void *cls,
+                         const struct TALER_DenominationPublicKey *denom_pub,
+                         const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+{
+  struct ResponseFactoryContext *rfc = cls;
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
+
+  if (NULL !=
+      GNUNET_CONTAINER_multihashmap_get (rfc->key_state->denomkey_map,
+                                         &issue->properties.denom_hash))
+    return; /* exists / known */
+  /* zero-out, just for future-proofing */
+  memset (&dki,
+          0,
+          sizeof (dki));
+  dki.denom_priv.rsa_private_key = NULL; /* not available! */
+  dki.denom_pub.rsa_public_key   = denom_pub->rsa_public_key;
+  dki.issue = *issue;
+  /* we can assert here as we checked for duplicates just above */
+  GNUNET_assert (GNUNET_OK ==
+                 store_in_map (rfc->key_state->denomkey_map,
+                               &dki /* makes a deep copy of dki */));
+}
+
+
+/**
  * Actual "main" logic that builds the state which this module
  * evolves around.  This function will import the key data from
  * the exchangedb module and convert it into (1) internally used
@@ -1446,6 +1487,7 @@ make_fresh_key_state ()
   struct ResponseFactoryContext rfc;
   struct GNUNET_TIME_Absolute last;
   unsigned int off;
+  enum GNUNET_DB_QueryStatus qs;
 
   memset (&rfc,
           0,
@@ -1503,14 +1545,16 @@ make_fresh_key_state ()
     destroy_response_factory (&rfc);
     return NULL;
   }
-#if FIX_FOR_5536
   /* Once we no longer get expired DKIs from
      TALER_EXCHANGEDB_denomination_keys_iterate(),
      we must fetch the information from the database! */
-  qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
-                                              &reload_public_denoms_cb,
-                                              &rfc);
-#endif
+  if (0 /* #5536 */)
+  {
+    qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
+                                                &reload_public_denoms_cb,
+                                                &rfc);
+    GNUNET_break (0 <= qs); /* warn, but continue, fingers crossed */
+  }
   /* Initialize `current_sign_key_issue` and `rfc.sign_keys_array` */
   TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                          &reload_keys_sign_iter,
@@ -1792,6 +1836,13 @@ TEH_KS_denomination_key_lookup_by_hash (const struct TEH_KS_StateHandle *key_sta
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to create coins has passed\n",
+		  GNUNET_h2s (denom_pub_hash));
+      return NULL;
+    }
+    if (NULL == dki->denom_priv.rsa_private_key)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		  "Not returning DKI of %s for WITHDRAW operation as we lack the private key, even though the withdraw period did not yet expire!\n",
 		  GNUNET_h2s (denom_pub_hash));
       return NULL;
     }
