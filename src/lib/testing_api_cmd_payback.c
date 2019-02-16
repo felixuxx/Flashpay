@@ -198,7 +198,8 @@ payback_cb (void *cls,
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Unmanaged HTTP status code.\n");
+                "Unmanaged HTTP status code %u.\n",
+                http_status);
     break;
   }
   TALER_TESTING_interpreter_next (is);
