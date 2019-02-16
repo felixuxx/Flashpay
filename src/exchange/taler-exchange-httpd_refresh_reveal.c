@@ -195,11 +195,16 @@ check_exists_cb (void *cls,
   GNUNET_break_op (0 == memcmp (tprivs,
                                 &rctx->transfer_privs,
                                 sizeof (struct TALER_TransferPrivateKeyP) * num_tprivs));
-  rctx->ev_sigs = GNUNET_new_array (num_newcoins,
-                                    struct TALER_DenominationSignature);
-  for (unsigned int i=0;i<num_newcoins;i++)
-    rctx->ev_sigs[i].rsa_signature
-      = GNUNET_CRYPTO_rsa_signature_dup (rrcs[i].coin_sig.rsa_signature);
+  /* We usually sign early (optimistic!), but in case we change that *and*
+     we do find the operation in the database, we could use this: */
+  if (NULL == rctx->ev_sigs)
+  {
+    rctx->ev_sigs = GNUNET_new_array (num_newcoins,
+                                      struct TALER_DenominationSignature);
+    for (unsigned int i=0;i<num_newcoins;i++)
+      rctx->ev_sigs[i].rsa_signature
+        = GNUNET_CRYPTO_rsa_signature_dup (rrcs[i].coin_sig.rsa_signature);
+  }
 }
 
 
