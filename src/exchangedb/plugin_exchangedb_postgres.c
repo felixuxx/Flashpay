@@ -2007,9 +2007,19 @@ postgres_get_denomination_info (void *cls,
 }
 
 
+/**
+ * Closure for #domination_cb_helper()
+ */
 struct DenomIteratorContext
 {
+  /**
+   * Function to call with the results.
+   */
   TALER_EXCHANGEDB_DenominationInfoIterator cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
   void *cb_cls;
 };
 
