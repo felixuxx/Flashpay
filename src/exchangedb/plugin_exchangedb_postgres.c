@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2017, 2018 GNUnet e.V.
+  Copyright (C) 2014--2019 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -547,6 +547,33 @@ postgres_prepare (PGconn *db_conn)
                             " $11, $12, $13, $14, $15, $16, $17, $18,"
                             " $19, $20, $21, $22, $23);",
                             23),
+    /* Used in #postgres_iterate_denomination_info() */
+    GNUNET_PQ_make_prepare ("denomination_iterate",
+                            "SELECT"
+                            " master_pub"
+                            ",master_sig"
+                            ",valid_from"
+                            ",expire_withdraw"
+                            ",expire_deposit"
+                            ",expire_legal"
+                            ",coin_val"  /* value of this denom */
+                            ",coin_frac" /* fractional value of this denom */
+                            ",coin_curr" /* assuming same currency for fees */
+                            ",fee_withdraw_val"
+                            ",fee_withdraw_frac"
+                            ",fee_withdraw_curr" /* must match coin_curr */
+                            ",fee_deposit_val"
+                            ",fee_deposit_frac"
+                            ",fee_deposit_curr"  /* must match coin_curr */
+                            ",fee_refresh_val"
+                            ",fee_refresh_frac"
+                            ",fee_refresh_curr" /* must match coin_curr */
+                            ",fee_refund_val"
+                            ",fee_refund_frac"
+                            ",fee_refund_curr" /* must match coin_curr */
+                            ",denom_pub"
+                            " FROM denominations;",
+                            0),
     /* Used in #postgres_get_denomination_info() */
     GNUNET_PQ_make_prepare ("denomination_get",
                             "SELECT"
@@ -1980,6 +2007,82 @@ postgres_get_denomination_info (void *cls,
 }
 
 
+struct DenomIteratorContext
+{
+  TALER_EXCHANGEDB_DenominationInfoIterator cb;
+  void *cb_cls;
+};
+
+
+/**
+ * Helper function for #postgres_iterate_denomination_info().
+ * Calls the callback with each denomination key.
+ *
+ * @param cls a `struct DenomIteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+domination_cb_helper (void *cls,
+                      PGresult *result,
+                      unsigned int num_results)
+{
+  struct DenomIteratorContext *dic = cls;
+
+  for (unsigned int i=0;i<num_results;i++)
+  {
+    struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+       GNUNET_PQ_result_spec_auto_from_type ("master_pub",
+                                             &issue.properties.master),
+       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                             &issue.signature),
+       TALER_PQ_result_spec_absolute_time_nbo ("valid_from",
+                                               &issue.properties.start),
+       TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
+                                               &issue.properties.expire_withdraw),
+       TALER_PQ_result_spec_absolute_time_nbo ("expire_deposit",
+                                               &issue.properties.expire_deposit),
+       TALER_PQ_result_spec_absolute_time_nbo ("expire_legal",
+                                               &issue.properties.expire_legal),
+       TALER_PQ_result_spec_amount_nbo ("coin",
+                                        &issue.properties.value),
+       TALER_PQ_result_spec_amount_nbo ("fee_withdraw",
+                                        &issue.properties.fee_withdraw),
+       TALER_PQ_result_spec_amount_nbo ("fee_deposit",
+                                        &issue.properties.fee_deposit),
+       TALER_PQ_result_spec_amount_nbo ("fee_refresh",
+                                        &issue.properties.fee_refresh),
+       TALER_PQ_result_spec_amount_nbo ("fee_refund",
+                                        &issue.properties.fee_refund),
+       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                             &denom_pub.rsa_public_key),
+       GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    issue.properties.purpose.size
+      = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
+    issue.properties.purpose.purpose
+      = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                       &issue.properties.denom_hash);
+    dic->cb (dic->cb_cls,
+             &denom_pub,
+             &issue);
+    GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
+  }
+}
+
+
 /**
  * Fetch information about all known denomination keys.
  *
@@ -1993,15 +2096,20 @@ postgres_iterate_denomination_info (void *cls,
                                     TALER_EXCHANGEDB_DenominationInfoIterator cb,
                                     void *cb_cls)
 {
-#if 0
-  enum GNUNET_DB_QueryStatus qs;
+  struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
-#endif
+  struct DenomIteratorContext dic = {
+    .cb = cb,
+    .cb_cls = cb_cls
+  };
 
-  GNUNET_break (0); // not implemented! #5536
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (postgres_get_session (pc)->conn,
+					       "denomination_iterate",
+					       params,
+					       &domination_cb_helper,
+					       &dic);
 }
 
 
