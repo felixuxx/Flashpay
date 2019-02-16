@@ -262,7 +262,7 @@ withdraw_run (void *cls,
   }
   TALER_planchet_setup_random (&ws->ps);
   ws->is = is;
-  
+
   ws->pk = TALER_TESTING_find_pk
     (TALER_EXCHANGE_get_keys (is->exchange),
      &ws->amount);
@@ -365,9 +365,9 @@ withdraw_traits (void *cls,
     TALER_TESTING_interpreter_fail (ws->is);
     return GNUNET_SYSERR;
   }
-
-  ws->exchange_url = GNUNET_strdup
-    (TALER_EXCHANGE_get_base_url (ws->is->exchange));
+  if (NULL == ws->exchange_url)
+    ws->exchange_url
+      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
 
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
@@ -383,7 +383,6 @@ withdraw_traits (void *cls,
     TALER_TESTING_make_trait_amount_obj (0,
                                          &ws->amount),
     TALER_TESTING_make_trait_url (0, ws->exchange_url),
-
     TALER_TESTING_trait_end ()
   };
 
