@@ -392,6 +392,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
 					   TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND,
                                            "denom_pub");
   }
+  GNUNET_assert (NULL != wc.dki->denom_priv.rsa_private_key);
   TALER_amount_ntoh (&amount,
                      &wc.dki->issue.properties.value);
   TALER_amount_ntoh (&fee_withdraw,

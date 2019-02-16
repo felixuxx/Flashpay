@@ -614,6 +614,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
                                                TALER_EC_REFRESH_REVEAL_FRESH_DENOMINATION_KEY_NOT_FOUND,
                                                "new_denoms");
       }
+      GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
     }
 
     /* Parse coin envelopes */
