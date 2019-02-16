@@ -447,6 +447,7 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
       break;
     }
   }
+  GNUNET_free (rhistory);
 }
 
 
@@ -503,9 +504,10 @@ handle_reserve_status_finished (void *cls,
       }
       len = json_array_size (history);
       {
-        struct TALER_EXCHANGE_ReserveHistory rhistory[len];
+        struct TALER_EXCHANGE_ReserveHistory *rhistory;
 
-        memset (rhistory, 0, sizeof (rhistory));
+        rhistory = GNUNET_new_array (len,
+                                     struct TALER_EXCHANGE_ReserveHistory);
         if (GNUNET_OK !=
             parse_reserve_history (rsh->exchange,
                                    history,
