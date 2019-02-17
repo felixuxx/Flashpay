@@ -268,6 +268,7 @@ denomkeys_iterate_keydir_iter (void *cls,
   struct TALER_MasterDenominationKeyRevocation rm;
   const struct TALER_MasterSignatureP *revoked;
 
+  /* FIXME: #5536: should move .rev files into DB! */
   if ( (strlen(filename) > strlen (".rev")) &&
        (0 == strcmp (&filename[strlen(filename) - strlen (".rev")],
                      ".rev")) )

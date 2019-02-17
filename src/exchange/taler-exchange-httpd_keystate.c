@@ -1457,6 +1457,10 @@ reload_public_denoms_cb (void *cls,
       GNUNET_CONTAINER_multihashmap_get (rfc->key_state->denomkey_map,
                                          &issue->properties.denom_hash))
     return; /* exists / known */
+  if (NULL !=
+      GNUNET_CONTAINER_multihashmap_get (rfc->key_state->revoked_map,
+                                         &issue->properties.denom_hash))
+    return; /* exists / known */
   /* zero-out, just for future-proofing */
   memset (&dki,
           0,
@@ -1548,13 +1552,10 @@ make_fresh_key_state ()
   /* Once we no longer get expired DKIs from
      TALER_EXCHANGEDB_denomination_keys_iterate(),
      we must fetch the information from the database! */
-  if (0 /* #5536 */)
-  {
-    qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
-                                                &reload_public_denoms_cb,
-                                                &rfc);
-    GNUNET_break (0 <= qs); /* warn, but continue, fingers crossed */
-  }
+  qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
+                                              &reload_public_denoms_cb,
+                                              &rfc);
+  GNUNET_break (0 <= qs); /* warn, but continue, fingers crossed */
   /* Initialize `current_sign_key_issue` and `rfc.sign_keys_array` */
   TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                          &reload_keys_sign_iter,
