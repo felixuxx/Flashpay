@@ -42,6 +42,10 @@ src/bank-lib/test_bank_api_with_fakebank_new
 src/bank-lib/test_bank_api_with_fakebank_twisted
 src/lib/test_exchange_api_new
 src/lib/test_exchange_api
+src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
+src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
+src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditor/
+src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditors/
 src/lib/test_exchange_api_home/.local/share/taler/exchange/live-keys/
 src/lib/test_exchange_api_home/.local/share/taler/exchange/wirefees/
 src/lib/test_exchange_api_home/.local/share/taler/auditor/
