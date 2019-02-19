@@ -826,19 +826,21 @@ melt_cb (void *cls,
 	  rms->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
 	  rms->backoff = EXCHANGE_LIB_BACKOFF (rms->backoff);
-	rms->retry_task = GNUNET_SCHEDULER_add_delayed (rms->backoff,
-                                                        &do_melt_retry,
-                                                        rms);
+	rms->retry_task = GNUNET_SCHEDULER_add_delayed
+          (rms->backoff,
+           &do_melt_retry,
+           rms);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                http_status,
-                (int) ec,
-                rms->is->commands[rms->is->ip].label,
-                __FILE__,
-                __LINE__);
+    GNUNET_log
+      (GNUNET_ERROR_TYPE_ERROR,
+       "Unexpected response code %u/%d to command %s in %s:%u\n",
+       http_status,
+       (int) ec,
+       rms->is->commands[rms->is->ip].label,
+       __FILE__,
+       __LINE__);
     json_dumpf (full_response, stderr, 0);
     TALER_TESTING_interpreter_fail (rms->is);
     return;
