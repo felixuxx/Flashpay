@@ -930,6 +930,9 @@ decode_keys_json (const json_t *resp_obj,
       if (GNUNET_YES == found)
       {
         /* 0:0:0 did not support /keys cherry picking */
+
+        /* Okay, but why breaking here? It could be that the
+         * user redownloaded all the keys in a forced way. */
         GNUNET_break_op (0 == current);
         continue;
       }
