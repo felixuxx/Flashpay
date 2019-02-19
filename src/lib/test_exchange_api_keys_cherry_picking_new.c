@@ -74,24 +74,22 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command keys_serialization[] = {
-    /**
-     * Serialize keys, and disconnect from the exchange.
-     */
     TALER_TESTING_cmd_serialize_keys ("serialize-keys"),
-    /**
-     * Reconnect to the exchange using the serialized keys.
-     */
     TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
                                           "serialize-keys"),
     TALER_TESTING_cmd_wire ("verify-/wire-with-serialized-keys",
                             "x-taler-bank",
                             NULL,
                             MHD_HTTP_OK),
+    /**
+     * This loads a very big lookahead_sign (3500s).
+     */
     TALER_TESTING_cmd_exec_keyup ("keyup-serialization",
                                   CONFIG_FILE_EXTENDED_2),
     TALER_TESTING_cmd_exec_auditor_sign
       ("auditor-sign-serialization",
        CONFIG_FILE_EXTENDED_2),
+
     TALER_TESTING_cmd_sleep ("sleep-serialization",
                              3),
     TALER_TESTING_cmd_signal ("reload-keys-serialization",
@@ -99,12 +97,17 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_sleep ("sleep-serialization",
                              3),
-    /**
-     * Why keys number decrease?
-     */
+
     TALER_TESTING_cmd_check_keys ("check-freshest-keys",
-                                  8, /* generation */
-                                  8),
+                       /* At this point, /keys has been
+                        * downloaded roughly 6 times, so by
+                        * forcing 10 here we make sure we get
+                        * all the new ones.  */
+                                  10, 
+                       /* We use a very high number here to make
+                        * sure the "big" lookahead value got
+                        * respected.  */
+                                  45),
 
     TALER_TESTING_cmd_wire ("verify-/wire-with-fresh-keys",
                             "x-taler-bank",
@@ -116,32 +119,44 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command ordinary_cherry_pick[] = {
+
     /* Trigger keys reloading from disk.  */
     TALER_TESTING_cmd_signal ("signal-reaction-1",
                               is->exchanged,
                               SIGUSR1),
+    /**
+     * 1 DK with 80s spend duration.
+     */
     TALER_TESTING_cmd_check_keys ("check-keys-1",
                                   1, /* generation */
-                                  4),
-    /* sleep a bit */
+                                  1),
+
     TALER_TESTING_cmd_sleep ("sleep",
                              10),
-    /* 1st keyup happens at start-up */
+
+    /**
+     * We set lookahead_sign to 90s.
+     */
     TALER_TESTING_cmd_exec_keyup ("keyup-2",
                                   CONFIG_FILE_EXTENDED),
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
                                          CONFIG_FILE_EXTENDED),
-    /* Cause exchange to reload (new) keys */
+
     TALER_TESTING_cmd_signal ("trigger-keys-reload-1",
                               is->exchanged,
                               SIGUSR1),
+    /**
+     * First DK has still 70s of remaining life
+     * (duration_withdraw), so it's not enough to cover the new
+     * 90s window, so a new one should be created.
+     * Total 2 DKs.
+     */
     TALER_TESTING_cmd_check_keys ("check-keys-2",
                                   2, /* generation */
-                                  6),
-    /* sleep a bit */
+                                  2),
+
     TALER_TESTING_cmd_sleep ("sleep",
                              20),
-    /* Do 2nd keyup */
     TALER_TESTING_cmd_exec_keyup ("keyup-3",
                                   CONFIG_FILE_EXTENDED),
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-2",
@@ -149,12 +164,19 @@ run (void *cls,
     TALER_TESTING_cmd_signal ("trigger-keys-reload-2",
                               is->exchanged,
                               SIGUSR1),
+
+    /**
+     * First DK has 50s of remaining life (duration_withdraw).
+     * The second DK has ~60s of remaining life, therefore two
+     * keys should be (still) returned.
+     */
     TALER_TESTING_cmd_check_keys ("check-keys-3",
-                                  3, /* generation */
-                                  8),
+                                  3,
+                                  2),
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command commands[] = {
+
     TALER_TESTING_cmd_batch ("ordinary-cherry-pick",
                              ordinary_cherry_pick),
     TALER_TESTING_cmd_batch ("keys-serialization",
@@ -177,7 +199,6 @@ main (int argc,
   GNUNET_log_setup ("test-exchange-api-cherry-picking-new",
                     "DEBUG",
                     NULL);
-
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
