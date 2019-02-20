@@ -651,7 +651,7 @@ deserialize_melt_data (const char *buf,
  * so the safest operation only melts one coin at a time.
  *
  * This API is typically used by a wallet.  Note that to ensure that
- * no money is lost in case of hardware failures, is operation does
+ * no money is lost in case of hardware failures, this operation does
  * not actually initiate the request. Instead, it generates a buffer
  * which the caller must store before proceeding with the actual call
  * to #TALER_EXCHANGE_refresh_melt() that will generate the request.
