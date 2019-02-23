@@ -677,7 +677,6 @@ add_denomination_transaction (void *cls,
  * @param cls closure with a `struct ResponseFactoryContext *`
  * @param dki the denomination key issue
  * @param alias coin alias
- * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -685,8 +684,7 @@ add_denomination_transaction (void *cls,
 static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
-                        const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                        const struct TALER_MasterSignatureP *revocation_master_sig)
+                        const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
@@ -719,40 +717,6 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
 
-  if (NULL != revocation_master_sig)
-  {
-    struct AddRevocationContext arc;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Adding denomination key `%s' (%s) to revocation set\n",
-                alias,
-		GNUNET_h2s (&dki->issue.properties.denom_hash));
-    res = store_in_map (key_state->revoked_map,
-                        dki);
-    if (GNUNET_NO == res)
-      return GNUNET_OK;
-    /* Try to insert DKI into DB until we succeed; note that if the DB
-       failure is persistent, we need to die, as we cannot continue
-       without the DKI being in the DB). */
-    arc.dki = dki;
-    arc.revocation_master_sig = revocation_master_sig;
-    if (GNUNET_OK !=
-	TEH_DB_run_transaction (NULL,
-                                "add denomination key revocations",
-				NULL,
-				&add_revocations_transaction,
-				&arc))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		  "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
-      handle_signal (SIGTERM);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_assert (0 ==
-                   json_array_append_new (rfc->payback_array,
-                                          GNUNET_JSON_from_data_auto (&dki->issue.properties.denom_hash)));
-    return GNUNET_OK;
-  }
   horizon = GNUNET_TIME_relative_to_absolute (TALER_EXCHANGE_conf_duration_provide ());
   start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
   if (start.abs_value_us > horizon.abs_value_us)
@@ -789,6 +753,67 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   key_state->min_dk_expire = GNUNET_TIME_absolute_min (key_state->min_dk_expire,
                                                        expire_deposit);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Iterator for revocation of denomination keys.
+ *
+ * @param cls closure with a `struct ResponseFactoryContext *`
+ * @param denom_hash hash of revoked denomination public key
+ * @param revocation_master_sig signature showing @a denom_hash was revoked
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+revocations_iter (void *cls,
+		  const struct GNUNET_HashCode *denom_hash,
+		  const struct TALER_MasterSignatureP *revocation_master_sig)
+{
+  struct ResponseFactoryContext *rfc = cls;
+  struct TEH_KS_StateHandle *key_state = rfc->key_state;
+  int res;
+  struct AddRevocationContext arc;
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+	      "Adding denomination key `%s' to revocation set\n",
+	      GNUNET_h2s (denom_hash));
+  dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
+					   denom_hash);
+  if (NULL == dki)
+  {
+    GNUNET_assert (GNUNET_YES ==
+		   GNUNET_CONTAINER_multihashmap_remove (key_state->denomkey_map,
+							 denom_hash,
+							 dki));
+    res = store_in_map (key_state->revoked_map,
+			dki);
+    if (GNUNET_NO == res)
+      return GNUNET_OK;
+  }
+  /* Try to insert DKI into DB until we succeed; note that if the DB
+     failure is persistent, we need to die, as we cannot continue
+     without the DKI being in the DB). */
+  arc.dki = dki;
+  arc.revocation_master_sig = revocation_master_sig;
+  if (GNUNET_OK !=
+      TEH_DB_run_transaction (NULL,
+			      "add denomination key revocations",
+			      NULL,
+			      &add_revocations_transaction,
+			      &arc))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+    handle_signal (SIGTERM);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (0 ==
+		 json_array_append_new (rfc->payback_array,
+					GNUNET_JSON_from_data_auto (denom_hash)));
   return GNUNET_OK;
 }
 
@@ -1527,9 +1552,24 @@ make_fresh_key_state ()
      'rfc.payback_array' */
   if (-1 ==
       TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
-                                                  &TEH_master_public_key,
                                                   &reload_keys_denom_iter,
                                                   &rfc))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to load denomination keys from `%s'.\n",
+                TEH_exchange_directory);
+    key_state->refcnt = 1;
+    ks_release (key_state);
+    json_decref (rfc.payback_array);
+    json_decref (rfc.sign_keys_array);
+    return NULL;
+  }
+  
+  if (-1 ==
+      TALER_EXCHANGEDB_revocations_iterate (TEH_revocation_directory,
+					    &TEH_master_public_key,
+					    &revocations_iter,
+					    &rfc))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to load denomination keys from `%s'.\n",

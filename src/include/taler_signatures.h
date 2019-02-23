@@ -943,7 +943,7 @@ struct TALER_MasterWireFeePS
 /**
  * @brief Message confirming that a denomination key was revoked.
  */
-struct TALER_MasterDenominationKeyRevocation
+struct TALER_MasterDenominationKeyRevocationPS
 {
   /**
    * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED.

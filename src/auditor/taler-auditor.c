@@ -1148,7 +1148,7 @@ handle_payback_by_reserve (void *cls,
     else
     {
       /* verify msig */
-      struct TALER_MasterDenominationKeyRevocation kr;
+      struct TALER_MasterDenominationKeyRevocationPS kr;
 
       kr.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
       kr.purpose.size = htonl (sizeof (kr));

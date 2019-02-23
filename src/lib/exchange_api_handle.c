@@ -1740,7 +1740,10 @@ TALER_EXCHANGE_connect
 
   TALER_LOG_DEBUG ("Connecting to the exchange (%s)\n",
                    url);
-
+  /* Disable 100 continue processing */
+  GNUNET_break (GNUNET_OK ==
+		GNUNET_CURL_append_header (ctx,
+					   "Expect:"));
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);

@@ -169,7 +169,6 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
  * @param cls closure
  * @param alias coin alias
  * @param dki the denomination key
- * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -177,8 +176,23 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
 typedef int
 (*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
                                             const char *alias,
-                                            const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                                            const struct TALER_MasterSignatureP *revocation_master_sig);
+                                            const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+
+
+/**
+ * @brief Iterator over revoked denomination keys.
+ *
+ * @param cls closure
+ * @param denom_hash hash of the denomination public key
+ * @param revocation_master_sig signature showing @a denom_hash was revoked
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+typedef int
+(*TALER_EXCHANGEDB_RevocationIterator)(void *cls,
+				       const struct GNUNET_HashCode *denom_hash,
+				       const struct TALER_MasterSignatureP *revocation_master_sig);
 
 
 /**
@@ -187,7 +201,6 @@ typedef int
  * @param exchange_base_dir base directory for the exchange,
  *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
  *                      subdirectory
- * @param master_pub master public key (used to check revocations)
  * @param it function to call on each denomination key found
  * @param it_cls closure for @a it
  * @return -1 on error, 0 if no files were found, otherwise
@@ -197,27 +210,41 @@ typedef int
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
-                                            const struct TALER_MasterPublicKeyP *master_pub,
                                             TALER_EXCHANGEDB_DenominationKeyIterator it,
                                             void *it_cls);
+
+
+/**
+ * Call @a it for each revoked denomination key found in the @a revocation_dir.
+ *
+ * @param revocation_dir base directory where revocations are stored
+ * @param master_pub master public key (used to check revocations)
+ * @param it function to call on each revoked denomination key found
+ * @param it_cls closure for @a it
+ * @return -1 on error, 0 if no files were found, otherwise
+ *         a positive number (however, even with a positive
+ *         number it is possible that @a it was never called
+ *         as maybe none of the files were well-formed)
+ */
+int
+TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
+				      const struct TALER_MasterPublicKeyP *master_pub,
+				      TALER_EXCHANGEDB_RevocationIterator it,
+				      void *it_cls);
 
 
 /**
  * Mark the given denomination key as revoked and request the wallets
  * to initiate /payback.
  *
- * @param exchange_base_dir base directory for the exchange,
- *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
- *                      subdirectory
- * @param alias coin alias
- * @param dki the denomination key to revoke
- * @param mpriv master private key to sign
+ * @param revocation_dir where to write the revocation certificate
+ * @param denom_hash hash of the denomination key to revoke
+ * @param mpriv master private key to sign with
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_denomination_key_revoke (const char *exchange_base_dir,
-                                          const char *alias,
-                                          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
+                                          const struct GNUNET_HashCode *denom_hash,
                                           const struct TALER_MasterPrivateKeyP *mpriv);
 
 

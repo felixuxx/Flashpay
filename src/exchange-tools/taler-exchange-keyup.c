@@ -1112,73 +1112,6 @@ create_wire_fees ()
 
 
 /**
- * Closure for functions processing a request to revoke a denomination
- * public key and request the wallets to initiate /payback.
- */
-struct RevokeClosure
-{
-  /**
-   * Hash of the denomination public key to revoke.
-   */
-  const struct GNUNET_HashCode *hc;
-
-  /**
-   * Base directory for keys.
-   */
-  char *basedir;
-
-  /**
-   * Set to #GNUNET_OK if we found a matching key,
-   * Set to #GNUNET_SYSERR on error.
-   */
-  int ok;
-};
-
-
-
-/**
- * Revoke denomination keys matching the given hash.
- *
- * @param cls a `struct RevokeClosure` with information about what to revoke
- * @param dki the denomination key
- * @param alias coin alias
- * @param revocation_master_sig non-NULL if @a dki was revoked
- * @return #GNUNET_OK to continue to iterate,
- *  #GNUNET_NO to stop iteration with no error,
- *  #GNUNET_SYSERR to abort iteration with error!
- */
-static int
-exchange_keys_revoke_by_dki (void *cls,
-                             const char *alias,
-                             const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                             const struct TALER_MasterSignatureP *revocation_master_sig)
-{
-  struct RevokeClosure *rc = cls;
-
-  if (NULL != revocation_master_sig)
-    return GNUNET_OK; /* refuse to do it twice */
-  if (0 != memcmp (rc->hc,
-                   &dki->issue.properties.denom_hash,
-                   sizeof (struct GNUNET_HashCode)))
-    return GNUNET_OK;
-  rc->ok = GNUNET_OK;
-  if (GNUNET_OK !=
-      TALER_EXCHANGEDB_denomination_key_revoke (rc->basedir,
-                                                alias,
-                                                dki,
-                                                &master_priv))
-  {
-    rc->ok = GNUNET_SYSERR;
-    return GNUNET_SYSERR;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Successfully revoking denom '%s..'\n",
-              TALER_B2S (rc->hc));
-  return GNUNET_NO;
-}
-
-
-/**
  * Revoke the denomination key matching @a hc and request /payback to be
  * initiated.
  *
@@ -1190,32 +1123,30 @@ exchange_keys_revoke_by_dki (void *cls,
 static int
 revoke_denomination (const struct GNUNET_HashCode *hc)
 {
-  struct RevokeClosure rc;
-
-  rc.hc = hc;
-  rc.ok = GNUNET_NO;
+  char *basedir;
+  
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
                                                "exchange",
-                                               "KEYDIR",
-                                               &rc.basedir))
+                                               "REVOCATION_DIR",
+                                               &basedir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "KEYDIR");
+                               "REVOCATION_DIR");
     return GNUNET_SYSERR;
   }
-  if (-1 ==
-      TALER_EXCHANGEDB_denomination_keys_iterate (rc.basedir,
-                                                  &master_public_key,
-                                                  &exchange_keys_revoke_by_dki,
-                                                  &rc))
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_denomination_key_revoke (basedir,
+						hc,
+						&master_priv))
   {
+    GNUNET_free (basedir);
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  GNUNET_free (rc.basedir);
-  return rc.ok;
+  GNUNET_free (basedir);
+  return GNUNET_OK;
 }
 
 

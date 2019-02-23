@@ -120,7 +120,6 @@ exchange_signkeys_check ()
  * @param cls closure (NULL)
  * @param dki the denomination key
  * @param alias coin alias
- * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -128,8 +127,7 @@ exchange_signkeys_check ()
 static int
 denomkeys_iter (void *cls,
                 const char *alias,
-                const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                const struct TALER_MasterSignatureP *revocation_master_sig)
+                const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
 {
   struct GNUNET_HashCode hc;
 
@@ -206,7 +204,6 @@ exchange_denomkeys_check ()
     return GNUNET_NO;
   }
   if (0 > TALER_EXCHANGEDB_denomination_keys_iterate (exchange_directory,
-                                                      &master_public_key_from_cfg,
                                                       &denomkeys_iter,
                                                       NULL))
     return GNUNET_NO;

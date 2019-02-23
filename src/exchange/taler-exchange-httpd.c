@@ -70,6 +70,11 @@ int TEH_exchange_connection_close;
 char *TEH_exchange_directory;
 
 /**
+ * Directory where revocations are stored (global)
+ */
+char *TEH_revocation_directory;
+
+/**
  * The exchange's configuration (global)
  */
 struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -521,6 +526,17 @@ exchange_serve_process_config ()
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "KEYDIR");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchange",
+                                               "REVOCATION_DIR",
+                                               &TEH_revocation_directory))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "REVOCATION_DIR");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=

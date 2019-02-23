@@ -49,6 +49,11 @@ extern struct GNUNET_CONFIGURATION_Handle *cfg;
 extern char *TEH_exchange_directory;
 
 /**
+ * Main directory with revocation data.
+ */
+extern char *TEH_revocation_directory;
+
+/**
  * Master public key (according to the
  * configuration in the exchange directory).
  */
