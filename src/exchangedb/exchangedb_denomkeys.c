@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Inria & GNUnet e.V.
+  Copyright (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -386,7 +386,7 @@ revocations_iterate_cb (void *cls,
   struct TALER_MasterDenominationKeyRevocationPS rm;
 
   /* Check if revocation is valid... */
-  if (sizeof (rm) !=
+  if (sizeof (rf) !=
       GNUNET_DISK_fn_read (filename,
 			   &rf,
 			   sizeof (rf)))
@@ -443,6 +443,10 @@ TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
     .master_pub = master_pub
   };
 
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create (revocation_dir))
+    return 0; /* directory doesn't exist and we couldn't even create it,
+		 clearly means there are no revocations there */
   return GNUNET_DISK_directory_scan (revocation_dir,
 				     &revocations_iterate_cb,
 				     &ric);

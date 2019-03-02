@@ -150,7 +150,8 @@ confirmation_cb (void *cls,
              "The wire transfer didn't execute correctly.\n"); 
     GNUNET_assert (NULL != emsg);
     fprintf (stderr,
-             emsg);
+             "%s",
+	     emsg);
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
