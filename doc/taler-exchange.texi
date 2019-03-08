@@ -512,7 +512,7 @@ requests.
 
 The @code{taler_bank} plugin implements the wire method ``x-taler-bank''.
 
-The format of the @code{payto://} URL is @code{payto://x-taler-bank/HOSTNAME:PORT}.
+The format of the @code{payto://} URL is @code{payto://x-taler-bank/HOSTNAME[:PORT]}.
 
 For basic authentication, the @code{taler_bank} plugin only supports
 simple password-based authentication.  For this, the configuration
