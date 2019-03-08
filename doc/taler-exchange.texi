@@ -472,14 +472,17 @@ ENABLE for each account whether it should be used, and for what
 [account-1]
 URL = "payto://sepa/CH9300762011623852957"
 WIRE_RESPONSE = $@{TALER_CONFIG_HOME@}/account-1.json
-PLUGIN = ebics
+
+# Currently, only the 'taler_bank' plugin is implemented.
+PLUGIN = <plugin_name_here>
 
 # Use for exchange-aggregator (outgoing transfers)
 ENABLE_DEBIT = YES
 # Use for exchange-wirewatch (and listed in /wire)
 ENABLE_CREDIT = YES
 
-# ... add authentication options here
+# Authentication options for the chosen plugin go here.
+# (Next sections have examples of authentication mechanisms)
 @end example
 
 The command line tool @cite{taler-exchange-wire} is used to create
@@ -520,8 +523,14 @@ account at the bank.
 
 @setsyntax ini
 @example
-[account-2]
-URL = "payto://test/localhost:8080"
+[account-1]
+
+# Bank account details here..
+# ..
+
+# Authentication options for the taler_bank plugin below:
+
+TALER_BANK_AUTH_METHOD = basic
 USERNAME = exchange
 PASSWORD = super-secure
 @end example
