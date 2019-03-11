@@ -783,16 +783,27 @@ revocations_iter (void *cls,
 	      GNUNET_h2s (denom_hash));
   dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
 					   denom_hash);
-  if (NULL == dki)
+  // FIXME: what do we do if dki is not known?
+  // especially what if we have neither private key NOR
+  // DB entry? (maybe ancient revocation? should we ignore it?)
+  if (NULL != dki)
   {
     GNUNET_assert (GNUNET_YES ==
 		   GNUNET_CONTAINER_multihashmap_remove (key_state->denomkey_map,
 							 denom_hash,
 							 dki));
-    res = store_in_map (key_state->revoked_map,
-			dki);
-    if (GNUNET_NO == res)
+    if (GNUNET_NO ==
+	GNUNET_CONTAINER_multihashmap_put (key_state->revoked_map,
+                                           &dki->issue.properties.denom_hash,
+                                           dki,
+                                           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+    {
+      /* revocation file must exist twice, keep only one of the dkis */
+      GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
+      GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
+      GNUNET_free (dki);
       return GNUNET_OK;
+    }
   }
   /* Try to insert DKI into DB until we succeed; note that if the DB
      failure is persistent, we need to die, as we cannot continue
