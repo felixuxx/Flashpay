@@ -86,6 +86,7 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
+  TALER_gcrypt_init (); /* must trigger initialization manually at this point! */
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-auditor-exchange",
                                    "WARNING",

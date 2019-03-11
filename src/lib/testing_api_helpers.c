@@ -106,8 +106,7 @@ TALER_TESTING_run_keyup (const char *config_filename,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`,"
-                " is your PATH correct?\n");
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_wait (proc);
@@ -149,8 +148,7 @@ TALER_TESTING_run_auditor_sign (const char *config_filename,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-sign`,"
-                " is your PATH correct?\n");
+		"Failed to run `taler-auditor-sign`, is your PATH correct?\n");
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_wait (proc);
@@ -175,6 +173,8 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
                                     int do_remove)
 {
   struct GNUNET_OS_Process *proc;
+  enum GNUNET_OS_ProcessStatusType type;
+  unsigned long code;
 
   TALER_LOG_DEBUG ("Add exchange (%s,%s) to the auditor\n",
                    exchange_base_url,
@@ -195,12 +195,23 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-exchange`,"
-                " is your PATH correct?\n");
+		"Failed to run `taler-auditor-exchange`, is your PATH correct?\n");
     return GNUNET_SYSERR;
   }
-  GNUNET_OS_process_wait (proc);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_OS_process_wait_status (proc,
+                                                &type,
+                                                &code));
   GNUNET_OS_process_destroy (proc);
+  if ( (0 != code) ||
+       (GNUNET_OS_PROCESS_EXITED != type) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"taler-auditor-exchange terminated with error (%d/%d)\n",
+                (int) type,
+                (int) code);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -229,8 +240,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-dbinit`,"
-                " is your PATH correct?\n");
+		"Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
     return GNUNET_NO;
   }
   if (GNUNET_SYSERR ==
@@ -247,15 +257,17 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to setup (exchange) database\n");
+		"Failed to setup (exchange) database, exit code %d\n",
+                (int) code);
     return GNUNET_NO;
   }
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Unexpected error running"
-		" `taler-exchange-dbinit'!\n");
+		"Unexpected error (%d/%d) running `taler-exchange-dbinit'!\n",
+                (int) type,
+                (int) code);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -286,8 +298,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-dbinit`,"
-                " is your PATH correct?\n");
+		"Failed to run `taler-auditor-dbinit`, is your PATH correct?\n");
     return GNUNET_NO;
   }
   if (GNUNET_SYSERR ==
@@ -304,15 +315,17 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to setup (auditor) database\n");
+		"Failed to setup (auditor) database, exit code %d\n",
+                (int) code);
     return GNUNET_NO;
   }
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Unexpected error running"
-		" `taler-auditor-dbinit'!\n");
+		"Unexpected error (%d/%d) running `taler-auditor-dbinit'!\n",
+                (int) type,
+                (int) code);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
