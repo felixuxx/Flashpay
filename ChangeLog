@@ -1,3 +1,7 @@
+Mon Mar 11 03:24:07 CET 2019
+	Completed implementation of #5536 (delete private keys once we
+	no longer need them). -CG
+
 Sat Mar  2 19:09:43 CET 2019
 	Changing denomination key revocation file format and moving them
 	to their own directory (preparations for #5536 resolution). -CG

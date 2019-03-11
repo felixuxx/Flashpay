@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 GNUnet e.V.
+  Copyright (C) 2014--2019 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -629,7 +629,19 @@ add_revocations_transaction (void *cls,
 			     int *mhd_ret)
 {
   struct AddRevocationContext *arc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_MasterSignatureP master_sig;
+  uint64_t rowid;
 
+  qs = TEH_plugin->get_denomination_revocation (TEH_plugin->cls,
+                                                session,
+                                                &arc->dki->issue.properties.denom_hash,
+                                                &master_sig,
+                                                &rowid);
+  if (0 > qs)
+    return qs; /* failure */
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    return qs; /* already exists == success */
   return TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
 						     session,
 						     &arc->dki->issue.properties.denom_hash,
@@ -692,7 +704,6 @@ reload_keys_denom_iter (void *cls,
   struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
-  int res;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Loading denomination key `%s' (%s)\n",
@@ -747,10 +758,10 @@ reload_keys_denom_iter (void *cls,
 	      "Adding denomination key `%s' (%s) to active set\n",
 	      alias,
 	      GNUNET_h2s (&dki->issue.properties.denom_hash));
-  res = store_in_map (key_state->denomkey_map,
-                      dki);
-  if (GNUNET_NO == res)
-    return GNUNET_OK;
+  if (GNUNET_NO /* entry already exists */ ==
+      store_in_map (key_state->denomkey_map,
+                    dki))
+    return GNUNET_OK; /* do not update expiration if entry exists */
   key_state->min_dk_expire = GNUNET_TIME_absolute_min (key_state->min_dk_expire,
                                                        expire_deposit);
   return GNUNET_OK;
@@ -774,51 +785,43 @@ revocations_iter (void *cls,
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
-  int res;
   struct AddRevocationContext arc;
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   
+  dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
+					   denom_hash);
+  if (NULL == dki)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Revoked denomination `%s' unknown (or duplicate file), ignoring revocation\n",
+                GNUNET_h2s (denom_hash));
+    return GNUNET_OK;
+
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Adding denomination key `%s' to revocation set\n",
 	      GNUNET_h2s (denom_hash));
-  dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
-					   denom_hash);
-  // FIXME: what do we do if dki is not known?
-  // especially what if we have neither private key NOR
-  // DB entry? (maybe ancient revocation? should we ignore it?)
-  if (NULL != dki)
-  {
-    GNUNET_assert (GNUNET_YES ==
-		   GNUNET_CONTAINER_multihashmap_remove (key_state->denomkey_map,
-							 denom_hash,
-							 dki));
-    if (GNUNET_NO ==
-	GNUNET_CONTAINER_multihashmap_put (key_state->revoked_map,
-                                           &dki->issue.properties.denom_hash,
-                                           dki,
-                                           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
-    {
-      /* revocation file must exist twice, keep only one of the dkis */
-      GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
-      GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
-      GNUNET_free (dki);
-      return GNUNET_OK;
-    }
-  }
-  /* Try to insert DKI into DB until we succeed; note that if the DB
-     failure is persistent, we need to die, as we cannot continue
-     without the DKI being in the DB). */
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CONTAINER_multihashmap_remove (key_state->denomkey_map,
+                                                       denom_hash,
+                                                       dki));
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CONTAINER_multihashmap_put (key_state->revoked_map,
+                                                    &dki->issue.properties.denom_hash,
+                                                    dki,
+                                                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  /* Try to insert revocation into DB */
   arc.dki = dki;
   arc.revocation_master_sig = revocation_master_sig;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (NULL,
-			      "add denomination key revocations",
+			      "add denomination key revocation",
 			      NULL,
 			      &add_revocations_transaction,
 			      &arc))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+		"Failed to add revocation to database. This is fatal. Committing suicide via SIGTERM.\n");
     handle_signal (SIGTERM);
     return GNUNET_SYSERR;
   }
@@ -1575,7 +1578,17 @@ make_fresh_key_state ()
     json_decref (rfc.sign_keys_array);
     return NULL;
   }
-  
+
+  /* We do not get expired DKIs from
+     TALER_EXCHANGEDB_denomination_keys_iterate(), so we must fetch
+     the old keys (where we only have the public keys) from the
+     database! */
+  qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
+                                              &reload_public_denoms_cb,
+                                              &rfc);
+  GNUNET_break (0 <= qs); /* warn, but continue, fingers crossed */
+
+  /* process revocations */
   if (-1 ==
       TALER_EXCHANGEDB_revocations_iterate (TEH_revocation_directory,
 					    &TEH_master_public_key,
@@ -1591,22 +1604,7 @@ make_fresh_key_state ()
     json_decref (rfc.sign_keys_array);
     return NULL;
   }
-  if (0 == GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Have no denomination keys. Bad configuration.\n");
-    key_state->refcnt = 1;
-    ks_release (key_state);
-    destroy_response_factory (&rfc);
-    return NULL;
-  }
-  /* Once we no longer get expired DKIs from
-     TALER_EXCHANGEDB_denomination_keys_iterate(),
-     we must fetch the information from the database! */
-  qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
-                                              &reload_public_denoms_cb,
-                                              &rfc);
-  GNUNET_break (0 <= qs); /* warn, but continue, fingers crossed */
+  
   /* Initialize `current_sign_key_issue` and `rfc.sign_keys_array` */
   TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                          &reload_keys_sign_iter,
@@ -1618,6 +1616,17 @@ make_fresh_key_state ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Have no signing key. Bad configuration.\n");
+    key_state->refcnt = 1;
+    ks_release (key_state);
+    destroy_response_factory (&rfc);
+    return NULL;
+  }
+
+  /* sanity check */
+  if (0 == GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Have no denomination keys. Bad configuration.\n");
     key_state->refcnt = 1;
     ks_release (key_state);
     destroy_response_factory (&rfc);

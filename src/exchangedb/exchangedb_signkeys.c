@@ -76,8 +76,16 @@ signkeys_iterate_dir_iter (void *cls,
   if (0 == GNUNET_TIME_absolute_get_remaining
       (GNUNET_TIME_absolute_ntoh (issue.issue.expire)).rel_value_us)
   {
-    /* FIXME: #5536: we should delete this file, the
-       private key is no longer needed (and return SYSERR!) */
+    if (0 != UNLINK (filename))
+    {
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                "unlink",
+                                filename);
+      return GNUNET_OK; /* yes, we had an error, but continue to iterate anyway */
+    }
+    /* Expired file deleted, continue to iterate -without- calling iterator
+       as this key is expired */
+    return GNUNET_OK;
   }
   return skc->it (skc->it_cls,
                   filename,

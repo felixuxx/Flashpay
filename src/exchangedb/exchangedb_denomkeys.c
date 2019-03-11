@@ -158,8 +158,14 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
   if (0 == GNUNET_TIME_absolute_get_remaining
       (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw)).rel_value_us)
   {
-    /* FIXME: #5536: we should delete this file, the
-       private key is no longer needed (and return SYSERR!) */
+    if (0 != UNLINK (filename))
+    {
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                "unlink",
+                                filename);
+      return GNUNET_OK; /* yes, we had an error, but the file content
+                           was fine and is being returned */
+    }
   }
   return GNUNET_OK;
 }
