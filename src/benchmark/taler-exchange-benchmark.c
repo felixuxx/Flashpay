@@ -223,6 +223,7 @@ pick_exchange_account_cb (void *cls,
                         strlen ("account-")))
   {
     const char **s = cls;
+    
     *s = section;
   }
 }
@@ -568,7 +569,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
-
     /* start fakebank */
     fakebank = fork ();
     if (0 == fakebank)
@@ -646,7 +646,9 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                      remote_dir,
                      config_file);
 
-    printf ("remote command: %s\n", remote_cmd);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "remote command: %s\n",
+                remote_cmd);
 
     exchange_slave = GNUNET_OS_start_process (GNUNET_NO,
                                               GNUNET_OS_INHERIT_STD_ALL,
@@ -665,6 +667,9 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
      remotely */
   if (0 != TALER_TESTING_wait_exchange_ready (exchange_url))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to detect running exchange at `%s'\n",
+                exchange_url);
     GNUNET_OS_process_kill (exchanged,
                             SIGTERM);
     if ( (MODE_BOTH == mode) || (MODE_CLIENT == mode))
@@ -911,7 +916,7 @@ main (int argc,
 
 
   {
-    char *bank_details_section;
+    const char *bank_details_section;
     char *exchange_payto_url;
 
     GNUNET_CONFIGURATION_iterate_sections
@@ -935,7 +940,6 @@ main (int argc,
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  bank_details_section,
                                  "url");
-      GNUNET_free (bank_details_section);
       return BAD_CONFIG_FILE;
     }
 
@@ -947,7 +951,6 @@ main (int argc,
                   _("Malformed payto:// URL `%s' in configuration\n"),
                   exchange_payto_url);
       GNUNET_free (exchange_payto_url);
-      GNUNET_free (bank_details_section);
       return BAD_CONFIG_FILE;      
     }
     GNUNET_free (exchange_payto_url);
@@ -982,7 +985,7 @@ main (int argc,
   }
   else
   {
-     if (GNUNET_OK !=
+    if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "exchange",
                                                "BASE_URL",
