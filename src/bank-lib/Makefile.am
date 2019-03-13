@@ -9,6 +9,12 @@ endif
 bin_PROGRAMS = \
   taler-bank-transfer
 
+taler_fakebank_run_SOURCES = \
+  taler-fakebank-run.c
+taler_fakebank_run_LDADD = \
+  libtalerfakebank.la \
+  -lgnunetutil
+
 taler_bank_transfer_SOURCES = \
   taler-bank-transfer.c
 taler_bank_transfer_LDADD = \
@@ -87,7 +93,8 @@ check_PROGRAMS = \
   test_bank_api \
   test_bank_api_new \
   test_bank_api_with_fakebank \
-  test_bank_api_with_fakebank_new
+  test_bank_api_with_fakebank_new \
+  taler-fakebank-run
 
 if HAVE_TWISTER
 check_PROGRAMS += \
