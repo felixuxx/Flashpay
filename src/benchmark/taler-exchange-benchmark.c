@@ -908,20 +908,42 @@ main (int argc,
 
     GNUNET_CONFIGURATION_iterate_sections
       (cfg,
-       pick_exchange_account_cb,
+       &pick_exchange_account_cb,
        &bank_details_section);
 
-    GNUNET_assert (NULL != bank_details_section);
-    GNUNET_assert
-      (GNUNET_OK == GNUNET_CONFIGURATION_get_value_string
+    if (NULL == bank_details_section)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  _("Missing specification of bank account in configuration\n"));
+      return BAD_CONFIG_FILE;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string
         (cfg,
          bank_details_section,
          "url",
-         &exchange_payto_url));
+         &exchange_payto_url))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 bank_details_section,
+                                 "url");
+      GNUNET_free (bank_details_section);
+      return BAD_CONFIG_FILE;
+    }
 
-    GNUNET_assert
-      (TALER_EC_NONE == parse_payto (exchange_payto_url,
-                                     &exchange_bank_account));
+    if (TALER_EC_NONE !=
+        parse_payto (exchange_payto_url,
+                     &exchange_bank_account))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  _("Malformed payto:// URL `%s' in configuration\n"),
+                  exchange_payto_url);
+      GNUNET_free (exchange_payto_url);
+      GNUNET_free (bank_details_section);
+      return BAD_CONFIG_FILE;      
+    }
+    GNUNET_free (exchange_payto_url);
+    GNUNET_free (bank_details_section);
   }
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
