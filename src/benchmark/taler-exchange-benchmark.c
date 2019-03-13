@@ -950,7 +950,6 @@ main (int argc,
       return BAD_CONFIG_FILE;      
     }
     GNUNET_free (exchange_payto_url);
-    GNUNET_free (bank_details_section);
   }
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
