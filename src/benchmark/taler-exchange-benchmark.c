@@ -678,6 +678,13 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     }
     GNUNET_OS_process_wait (exchanged);
     GNUNET_OS_process_destroy (exchanged);
+    if (NULL != wirewatch)
+    { 
+      GNUNET_OS_process_kill (wirewatch,
+                              SIGTERM);
+      GNUNET_OS_process_wait (wirewatch);
+      GNUNET_OS_process_destroy (wirewatch);
+    }
     return 77;
   }
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
