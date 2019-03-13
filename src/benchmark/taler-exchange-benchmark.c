@@ -701,6 +701,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
         GNUNET_log_setup ("benchmark-worker",
                           NULL == loglev ? "INFO" : loglev,
                           logfile);
+
         result = TALER_TESTING_setup
           (run,
            NULL,
@@ -972,11 +973,12 @@ main (int argc,
     }
     GNUNET_OS_process_wait (compute_wire_response);
     GNUNET_OS_process_destroy (compute_wire_response);
+
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_prepare_exchange
         (cfg_filename,
-         &exchange_url,
-	 &auditor_url));
+	 &auditor_url,
+         &exchange_url));
   }
   else
   {
