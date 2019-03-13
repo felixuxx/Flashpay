@@ -605,7 +605,8 @@ TALER_TESTING_wait_exchange_ready (const char *base_url)
                    base_url); // make sure ends with '/'
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for `taler-exchange-httpd' to be ready\n");
+           "Waiting for `taler-exchange-httpd' to be ready (check with: %s)\n",
+           wget_cmd);
   iter = 0;
   do
     {
