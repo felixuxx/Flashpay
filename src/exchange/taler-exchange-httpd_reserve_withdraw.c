@@ -223,6 +223,24 @@ withdraw_transaction (void *cls,
 
   /* Check if balance is sufficient */
   r.pub = wc->wsrd.reserve_pub;
+
+  /**
+   * Debug block.
+   */
+  {
+#define PUBSIZE 80
+    char pub_s[PUBSIZE]; 
+
+    GNUNET_break
+      (NULL != GNUNET_STRINGS_data_to_string (&r.pub,
+                                              sizeof (r.pub),
+                                              &pub_s[0],
+                                              PUBSIZE));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Trying to withdraw from reserve: %s\n",
+                pub_s);
+  }
+
   qs = TEH_plugin->reserve_get (TEH_plugin->cls,
                                 session,
                                 &r);

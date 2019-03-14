@@ -500,9 +500,28 @@ history_cb (void *cls,
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Adding wire transfer over %s with subject `%s'\n",
+              "Adding wire transfer over %s with (hashed) subject `%s'\n",
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->wtid));
+
+  /**
+   * Debug block.
+   */
+  {
+/* Should be 53, give 80 just to be redundant.  */
+#define PUBSIZE 80
+    char wtid_s[PUBSIZE];
+
+    GNUNET_break
+      (NULL != GNUNET_STRINGS_data_to_string (&details->wtid,
+                                              sizeof (details->wtid),
+                                              &wtid_s[0],
+                                              PUBSIZE));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Plain text subject (= reserve_pub): %s\n",
+                wtid_s);
+  }
+
   current_batch_size++;
   /* Wire transfer identifier == reserve public key */
   GNUNET_assert (sizeof (reserve_pub) == sizeof (details->wtid));
