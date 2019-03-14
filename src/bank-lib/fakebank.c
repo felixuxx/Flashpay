@@ -508,6 +508,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     uint64_t credit_account;
     const char *base_url;
     struct TALER_Amount amount;
+    char *amount_s;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("subject", &subject),
       GNUNET_JSON_spec_uint64 ("debit_account", &debit_account),
@@ -531,11 +532,15 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                               &amount,
                                               subject,
                                               base_url);
+    amount_s = TALER_amount_to_string (&amount);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Receiving incoming wire transfer: %llu->%llu from %s\n",
+                "Receiving incoming wire transfer: %llu->%llu, subject: %s, amount: %s, from %s\n",
                 (unsigned long long) debit_account,
                 (unsigned long long) credit_account,
+                subject,
+                amount_s,
                 base_url);
+    GNUNET_free (amount_s);
   }
   json_decref (json);
 
