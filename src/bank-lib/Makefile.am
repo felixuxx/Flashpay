@@ -93,8 +93,7 @@ check_PROGRAMS = \
   test_bank_api \
   test_bank_api_new \
   test_bank_api_with_fakebank \
-  test_bank_api_with_fakebank_new \
-  taler-fakebank-run
+  test_bank_api_with_fakebank_new
 
 if HAVE_TWISTER
 check_PROGRAMS += \
