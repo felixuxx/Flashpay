@@ -168,7 +168,7 @@ static int reset_mode;
 /**
  * How many transactions do we retrieve per batch?
  */
-static unsigned int batch_size = 1024;
+static long long int batch_size = 1024;
 
 /**
  * How many transactions did we see in the current batch?
@@ -640,12 +640,13 @@ find_transfers (void *cls)
                     (0 != last_row_off_size) ) );
   delay = GNUNET_YES;
   current_batch_size = 0;
+
   hh = wa_pos->wire_plugin->get_history (wa_pos->wire_plugin->cls,
                                          wa_pos->section_name,
                                          TALER_BANK_DIRECTION_CREDIT,
                                          last_row_off,
                                          last_row_off_size,
-                                         batch_size,
+                                         NULL != last_row_off ? batch_size : (-1) * batch_size,
                                          &history_cb,
                                          session);
   if (NULL == hh)
