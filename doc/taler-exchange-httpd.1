@@ -32,8 +32,11 @@ Print version information.
 This option is only available if the exchange was compiled with the configure option
 \-\-enable\-developer\-mode.  It is used for generating test cases against the exchange using AFL.  When this option is present, the HTTP server will (1) terminate after the first client's HTTP connection is completed, and (2) automatically start such a client using a helper process based on the 'nc' or 'ncat' binary using FILENAME as the standard input to the helper process.  As a result, the process will effectively run with FILENAME as the input from an HTTP client and then immediately exit.  This is useful to test taler\-exchange\-httpd against many different possible inputs in a controlled way.
 .B
-.IP \"-t SECONDS, \-\-timeout=SECONDS"
+.IP "\-t SECONDS, \-\-timeout=SECONDS"
 Specifies the number of SECONDS after which the HTTPD should close (idle) HTTP connections.
+.B
+.IP "\-L LOGLEVEL, \-\-loglevel=LOGLEVEL"
+Specifies the log level to use.  Accepted values are: DEBUG, INFO, WARNING, ERROR.
 
 .SH SIGNALS
 .B
