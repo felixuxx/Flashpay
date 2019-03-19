@@ -1019,7 +1019,7 @@ bhist_cb (void *cls,
  * @param account_section specifies the configuration section which
  *        identifies the account for which we should get the history
  * @param direction what kinds of wire transfers should be returned
- * @param start_off from which row on do we want to get results, use NULL for the lataler_bank; exclusive
+ * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
  * @param start_off_len number of bytes in @a start_off; must be `sizeof(uint64_t)`.
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
