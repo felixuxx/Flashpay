@@ -168,7 +168,7 @@ static int reset_mode;
 /**
  * How many transactions do we retrieve per batch?
  */
-static long long int batch_size = 1024;
+static unsigned int batch_size = 1024;
 
 /**
  * How many transactions did we see in the current batch?
@@ -646,7 +646,9 @@ find_transfers (void *cls)
                                          TALER_BANK_DIRECTION_CREDIT,
                                          last_row_off,
                                          last_row_off_size,
-                                         NULL != last_row_off ? batch_size : (-1) * batch_size,
+                                         NULL != last_row_off
+                                         ? (int64_t) batch_size
+                                         : (-1) * (int64_t) batch_size,
                                          &history_cb,
                                          session);
   if (NULL == hh)
