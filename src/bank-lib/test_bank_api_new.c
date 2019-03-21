@@ -68,22 +68,14 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
 
-    /**
-     * NOTE: this command uses internally the _fakebank_ version
-     * of the add-incoming command.  However, this does seem to
-     * work fine against the Python bank too!  Some renaming is
-     * required..
-     */
     TALER_TESTING_cmd_bank_history ("history-0",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_NO,
-                                    NULL,
+                                    NULL, /* start */
                                     5),
 
-    /* WARNING: old API has expected http response code among
-     * the parameters, although it was always set as '200 OK' */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-1",
        "KUDOS:5.01",
@@ -111,15 +103,15 @@ run (void *cls,
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_CREDIT,
-                                    GNUNET_NO,
+                                    GNUNET_YES,
                                     NULL,
-                                    -5),
+                                    5),
 
     TALER_TESTING_cmd_bank_history ("history-1d",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_DEBIT,
-                                    GNUNET_NO,
+                                    GNUNET_YES,
                                     NULL,
                                     5),
 
@@ -127,15 +119,15 @@ run (void *cls,
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_DEBIT,
-                                    GNUNET_NO,
+                                    GNUNET_YES,
                                     NULL,
-                                    -5),
+                                    5),
 
     TALER_TESTING_cmd_bank_history ("history-2fwd",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_DEBIT,
-                                    GNUNET_NO,
+                                    GNUNET_YES,
                                     "deposit-1",
                                     5),
 

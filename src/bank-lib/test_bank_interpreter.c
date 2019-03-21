@@ -794,7 +794,7 @@ interpreter_run (void *cls)
                             &auth,
                             cmd->details.history.account_number,
                             cmd->details.history.direction,
-                            cmd->details.history.ascending,
+                            GNUNET_YES,
                             rowid,
                             cmd->details.history.num_results,
                             &history_cb,

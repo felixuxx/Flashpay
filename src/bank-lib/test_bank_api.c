@@ -74,7 +74,7 @@ run (void *cls)
       .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_CREDIT,
       .details.history.start_row_ref = NULL,
-      .details.history.num_results = -5 },
+      .details.history.num_results = 5 },
     /* Ask Exchange's outgoing history, 5 records into the future */
     { .oc = TBI_OC_HISTORY,
       .label = "history-2d",
@@ -88,7 +88,7 @@ run (void *cls)
       .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
       .details.history.start_row_ref = NULL,
-      .details.history.num_results = -5 },
+      .details.history.num_results = 5 },
     { .oc = TBI_OC_HISTORY,
       .label = "history-2fwd",
       .details.history.account_number = 2,
@@ -103,7 +103,7 @@ run (void *cls)
       .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_CREDIT,
       .details.history.start_row_ref = NULL,
-      .details.history.num_results = -5 },
+      .details.history.num_results = 5 },
     { .oc = TBI_OC_HISTORY,
       .label = "history-r2",
       .details.history.account_number = 2,
@@ -115,7 +115,7 @@ run (void *cls)
       .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_BOTH | TALER_BANK_DIRECTION_CANCEL,
       .details.history.start_row_ref = NULL,
-      .details.history.num_results = -5 },
+      .details.history.num_results = 5 },
     { .oc = TBI_OC_END }
   };
 
