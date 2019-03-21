@@ -6,8 +6,11 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-bin_PROGRAMS = \
+noinst_PROGRAMS = \
   taler-bank-transfer
+
+noinst_PROGRAMS = \
+  taler-fakebank-run
 
 taler_fakebank_run_SOURCES = \
   taler-fakebank-run.c
