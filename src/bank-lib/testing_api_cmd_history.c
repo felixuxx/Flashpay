@@ -243,10 +243,21 @@ print_expected (struct History *h,
 }
 
 /**
- * Build history of transactions matching the current
- * command in @a is.
+ * This function constructs the list of history elements that
+ * interest the account number of the caller.  It has two main
+ * loops: the first to figure out how many history elements have
+ * to be allocated, and the second to actually populate every
+ * element.
  *
- * @param is interpreter state.
+ * This command has a limitation currently: it orders the history
+ * list with descending elements if and only if the 'delta' was
+ * given negative; and will order the list with ascending elements
+ * if and only if the 'delta' was given positive.  Therefore,
+ * for now it is NOT possible to test such a "/history" request:
+ * "/history?auth=basic&direction=both&delta=10&ordering=descending"
+ *
+ * @param is interpreter state (supposedly having the
+ *        current CMD pointing at a "history" CMD).
  * @param[out] rh history array to initialize.
  *
  * @return number of entries in @a rh.
@@ -262,6 +273,12 @@ build_history (struct TALER_TESTING_Interpreter *is,
   int inc;
   unsigned int start;
   unsigned int end;
+
+  /**
+   * @var turns GNUNET_YES whenever either no 'start' value was
+   *      given for the history query, or the given value is found
+   *      in the list of all the CMDs.
+   */
   int ok;
   const uint64_t *row_id_start = NULL;
 
@@ -279,14 +296,17 @@ build_history (struct TALER_TESTING_Interpreter *is,
   }
 
   GNUNET_assert (0 != hs->num_results);
+
   if (0 == is->ip)
   {
     *rh = NULL;
     return 0;
   }
+
+  /* AKA 'delta'.  */
   if (hs->num_results > 0)
   {
-    inc = 1;
+    inc = 1;  /* _inc_rement */
     start = 0;
     end = is->ip - 1;
   }
@@ -303,6 +323,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
   if (NULL == row_id_start)
     ok = GNUNET_YES;
 
+  /* This loop counts how many commands in the list off _all_
+   * the commands belong to the history of the caller.  This
+   * is stored in the @var total variable.  */
   for (unsigned int off = start;off != end + inc; off += inc)
   {
     const struct TALER_TESTING_Command *pos = &is->commands[off];
@@ -310,8 +333,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const uint64_t *row_id;
 
     /**
-     * Skip non-add_incoming commands, choose upon "do they
-     * offer row_id trait?".
+     * The following command allows us to skip over those CMDs
+     * that do not offer a "row_id" trait.  Such skipped CMDs are
+     * not interesting for building a history.
      */
 
     if (GNUNET_OK != TALER_TESTING_get_trait_uint64
@@ -328,8 +352,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
         continue;
       }
     }
+    /* when 'start' was _not_ given, then ok == GNUNET_YES */
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
+
     if (total >= hs->num_results * inc)
       break; /* hit limit specified by command */
 
@@ -369,12 +395,17 @@ build_history (struct TALER_TESTING_Interpreter *is,
       total++; /* found matching record */
     }
   }
+
+
   GNUNET_assert (GNUNET_YES == ok);
+
   if (0 == total)
   {
     *rh = NULL;
     return 0;
   }
+
+
   GNUNET_assert (total < UINT_MAX);
   h = GNUNET_new_array ((unsigned int) total,
                         struct History);
@@ -382,6 +413,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
   ok = GNUNET_NO;
   if (NULL == row_id_start)
     ok = GNUNET_YES;
+
+
+  /**
+   * This loop _only_ populates the array of history elements.
+   */
   for (unsigned int off = start;off != end + inc; off += inc)
   {
     const struct TALER_TESTING_Command *pos = &is->commands[off];
@@ -541,9 +577,8 @@ compute_result_count (struct TALER_TESTING_Interpreter *is)
 }
 
 /**
- * Check that @a dir and @a details are the transaction
- * results we expect at offset @a off in the history of
- * the current command executed by @a is.
+ * Check that the "/history" response matches the
+ * CMD whose offset in the list of CMDs is @a off.
  *
  * @param is the interpreter state.
  * @param off the offset (of the CMD list) where the command
