@@ -527,11 +527,11 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     row_id = TALER_FAKEBANK_make_transfer (h,
-                                              debit_account,
-                                              credit_account,
-                                              &amount,
-                                              subject,
-                                              base_url);
+                                           debit_account,
+                                           credit_account,
+                                           &amount,
+                                           subject,
+                                           base_url);
     amount_s = TALER_amount_to_string (&amount);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Receiving incoming wire transfer: %llu->%llu, subject: %s, amount: %s, from %s\n",
@@ -804,8 +804,10 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_assert (0);
     return MHD_NO;
   }
+
   if (NULL == start)
-    pos = h->transactions_tail;
+    pos = 0 > count ? h->transactions_tail : h->transactions_head;
+
   else if (NULL != h->transactions_head)
   {
     for (pos = h->transactions_head;
