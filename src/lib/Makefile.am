@@ -7,9 +7,9 @@ if USE_COVERAGE
 endif
 
 lib_LTLIBRARIES = \
+  libtalerauditor.la \
   libtalerexchange.la \
   libtalertesting.la \
-  libtalerauditor.la \
   libtalerauditortesting.la
 
 libtalerexchange_la_LDFLAGS = \
