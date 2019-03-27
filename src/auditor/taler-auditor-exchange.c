@@ -96,6 +96,11 @@ main (int argc,
                          argc, argv) <= 0)
     return 1;
   cfg = GNUNET_CONFIGURATION_create ();
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loading config file: %s\n",
+              cfgfile);
+
   if (GNUNET_SYSERR ==
       GNUNET_CONFIGURATION_load (cfg,
                                  cfgfile))
