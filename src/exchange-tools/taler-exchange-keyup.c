@@ -818,15 +818,25 @@ exchange_keys_update_cointype (void *cls,
 
   while (p.anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Future time not covered yet for type `%s': %s\n",
+                coin_alias,
+                GNUNET_STRINGS_relative_time_to_string
+                  (GNUNET_TIME_absolute_get_difference (p.anchor,
+                                                        lookahead_sign_stamp),
+                                                        GNUNET_NO));
+
     dkf = get_cointype_file (&p,
                              p.anchor);
     GNUNET_break (GNUNET_YES !=
                   GNUNET_DISK_file_test (dkf));
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Generating denomination key for type `%s', start %s at %s\n",
                 coin_alias,
                 GNUNET_STRINGS_absolute_time_to_string (p.anchor),
                 dkf);
+
     create_denomkey_issue (&p,
                            &denomkey_issue);
     if (GNUNET_OK !=
