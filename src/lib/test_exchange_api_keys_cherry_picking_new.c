@@ -97,8 +97,9 @@ run (void *cls,
                               SIGUSR1),
     TALER_TESTING_cmd_sleep ("sleep-serialization",
                              3),
-
     #if 0
+
+    FIXME: #5672
     
     The test below fails on different systems.  Infact, different
     systems can generate different "anchors" values for their denoms,
