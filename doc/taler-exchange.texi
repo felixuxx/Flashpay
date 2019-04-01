@@ -557,7 +557,7 @@ measure, may want to instruct the bank that the incoming bank account is only su
 
 For each wire method (``sepa'' or ``x-taler-wire'', but not per plugin!) the
 exchange configuration must specify applicable wire fees.  This is done
-in configuration sections of the format @code{fee-METHOD}.  There are two
+in configuration sections of the format @code{fees-METHOD}.  There are two
 types of fees, simple wire fees and closing fees.  Wire fees apply whenever
 the aggregator transfers funds to a merchant.  Closing fees apply whenever
 the exchange closes a reserve (sending back funds to the customer).  The
@@ -566,13 +566,13 @@ of the option.
 
 @setsyntax ini
 @example
-[fee-iban]
+[fees-iban]
 WIRE-FEE-2018 = EUR:0.01
 WIRE-FEE-2019 = EUR:0.01
 CLOSING-FEE-2018 = EUR:0.01
 CLOSING-FEE-2019 = EUR:0.01
 
-[fee-x-taler-bank]
+[fees-x-taler-bank]
 WIRE-FEE-2018 = KUDOS:0.01
 WIRE-FEE-2019 = KUDOS:0.01
 CLOSING-FEE-2018 = KUDOS:0.01
