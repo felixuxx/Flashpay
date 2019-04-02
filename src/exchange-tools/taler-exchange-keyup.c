@@ -373,9 +373,9 @@ get_anchor_iter (void *cls,
        (0 != *end) ||
        (0 > bval) )
   {
-    fprintf(stderr,
-            "Ignoring unexpected file `%s'.\n",
-            filename);
+    fprintf (stderr,
+             "Ignoring unexpected file `%s'.\n",
+             filename);
     return GNUNET_OK;
   }
   stamp.abs_value_us = (uint64_t) bval;
