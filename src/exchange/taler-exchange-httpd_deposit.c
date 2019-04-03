@@ -274,7 +274,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   }
 
   /* check denomination */
-  mks = TEH_KS_acquire ();
+  mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == mks)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");
@@ -479,7 +479,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   }
 
   /* check denomination exists and is valid */
-  key_state = TEH_KS_acquire ();
+  key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");

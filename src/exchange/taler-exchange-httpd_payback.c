@@ -318,7 +318,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   int mhd_ret;
 
   /* check denomination exists and is in payback mode */
-  key_state = TEH_KS_acquire ();
+  key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");

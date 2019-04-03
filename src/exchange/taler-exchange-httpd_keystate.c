@@ -211,6 +211,10 @@ struct ResponseFactoryContext
    */
   unsigned int denomkey_array_length;
 
+  /**
+   * Time stamp used as "now".
+   */
+  struct GNUNET_TIME_Absolute now;
 };
 
 
@@ -700,7 +704,6 @@ reload_keys_denom_iter (void *cls,
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
-  struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
@@ -709,9 +712,8 @@ reload_keys_denom_iter (void *cls,
               "Loading denomination key `%s' (%s)\n",
               alias,
 	      GNUNET_h2s (&dki->issue.properties.denom_hash));
-  now = GNUNET_TIME_absolute_get ();
   expire_deposit = GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit);
-  if (expire_deposit.abs_value_us < now.abs_value_us)
+  if (expire_deposit.abs_value_us < rfc->now.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping expired denomination key `%s'\n",
@@ -1524,7 +1526,7 @@ reload_public_denoms_cb (void *cls,
  * @return NULL on error (usually pretty fatal...)
  */
 static struct TEH_KS_StateHandle *
-make_fresh_key_state ()
+make_fresh_key_state (struct GNUNET_TIME_Absolute now)
 {
   struct TEH_KS_StateHandle *key_state;
   struct ResponseFactoryContext rfc;
@@ -1551,6 +1553,7 @@ make_fresh_key_state ()
 
   key_state = GNUNET_new (struct TEH_KS_StateHandle);
   rfc.key_state = key_state;
+  rfc.now = now;
   key_state->min_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
   key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                   GNUNET_NO);
@@ -1774,9 +1777,9 @@ TEH_KS_release_ (const char *location,
  * @return the key state, NULL on error (usually pretty fatal)
  */
 struct TEH_KS_StateHandle *
-TEH_KS_acquire_ (const char *location)
+TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
+                 const char *location)
 {
-  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TEH_KS_StateHandle *key_state;
   unsigned int rcd;
 
@@ -1795,7 +1798,7 @@ TEH_KS_acquire_ (const char *location)
   }
   if (NULL == internal_key_state)
   {
-    internal_key_state = make_fresh_key_state ();
+    internal_key_state = make_fresh_key_state (now);
     /* bump RC by 1 if we released internal_key_state above */
     if (NULL == internal_key_state)
     {
@@ -2041,7 +2044,7 @@ TEH_KS_loop (void)
     }
     /* This will re-initialize 'internal_key_state' with
        an initial refcnt of 1 */
-    if (NULL == TEH_KS_acquire ())
+    if (NULL == TEH_KS_acquire (GNUNET_TIME_absolute_get ()))
     {
       ret = GNUNET_SYSERR;
       break;
@@ -2133,7 +2136,7 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
 {
   struct TEH_KS_StateHandle *key_state;
 
-  key_state = TEH_KS_acquire ();
+  key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
   {
     /* This *can* happen if the exchange's keys are
@@ -2195,34 +2198,57 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
 {
   struct TEH_KS_StateHandle *key_state;
   int ret;
-  const char *have;
+  const char *have_cherrypick;
+  const char *have_fakenow;
   struct GNUNET_TIME_Absolute last_issue_date;
+  struct GNUNET_TIME_Absolute now;
   const struct KeysResponseData *krd;
 
-  have = MHD_lookup_connection_value (connection,
-				      MHD_GET_ARGUMENT_KIND,
-				      "last_issue_date");
-  if (NULL != have)
+  have_cherrypick = MHD_lookup_connection_value (connection,
+                                                 MHD_GET_ARGUMENT_KIND,
+                                                 "last_issue_date");
+  if (NULL != have_cherrypick)
   {
-    unsigned long long haven;
+    unsigned long long cherrypickn;
 
     if (1 !=
-	sscanf (have,
+	sscanf (have_cherrypick,
 		"%llu",
-		&haven))
+		&cherrypickn))
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_arg_invalid (connection,
 					     TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-					     "have");
+					     "last_issue_date");
     }
-    last_issue_date.abs_value_us = (uint64_t) haven * 1000000LLU;
+    last_issue_date.abs_value_us = (uint64_t) cherrypickn * 1000000LLU;
   }
   else
   {
     last_issue_date.abs_value_us = 0LLU;
   }
-  key_state = TEH_KS_acquire ();
+  now = GNUNET_TIME_absolute_get ();
+  have_fakenow = MHD_lookup_connection_value (connection,
+                                              MHD_GET_ARGUMENT_KIND,
+                                              "now");
+  if (NULL != have_fakenow)
+  {
+    unsigned long long fakenown;
+
+    if (1 !=
+	sscanf (have_fakenow,
+		"%llu",
+		&fakenown))
+    {
+      GNUNET_break_op (0);
+      return TEH_RESPONSE_reply_arg_invalid (connection,
+					     TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+					     "now");
+    }
+    now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
+  }
+
+  key_state = TEH_KS_acquire (now);
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");

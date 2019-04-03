@@ -390,7 +390,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  wc.key_state = TEH_KS_acquire ();
+  wc.key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == wc.key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");

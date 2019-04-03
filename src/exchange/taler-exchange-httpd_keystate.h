@@ -45,7 +45,8 @@ struct TEH_KS_StateHandle;
  * @return the key state, NULL on error (usually pretty fatal)
  */
 struct TEH_KS_StateHandle *
-TEH_KS_acquire_ (const char *location);
+TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
+                 const char *location);
 
 
 /**
@@ -64,9 +65,11 @@ TEH_KS_release_ (const char *location,
  * For every call to #TEH_KS_acquire(), a matching call
  * to #TEH_KS_release() must be made.
  *
+ * @param now current time snapshot; either true, or given by the
+ *        client via the "now" URL parameter of "/keys".
  * @return the key state
  */
-#define TEH_KS_acquire(void) TEH_KS_acquire_(__FUNCTION__)
+#define TEH_KS_acquire(now) TEH_KS_acquire_(now, __FUNCTION__)
 
 
 /**

@@ -455,7 +455,7 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   }
 
   /* run actual logic, now that the request was parsed */
-  key_state = TEH_KS_acquire ();
+  key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");

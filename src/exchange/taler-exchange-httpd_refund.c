@@ -331,7 +331,7 @@ refund_transaction (void *cls,
 
   // FIXME: do this outside of transaction function?
   /* Check refund fee matches fee of denomination key! */
-  mks = TEH_KS_acquire ();
+  mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == mks)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");

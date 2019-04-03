@@ -579,7 +579,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     int res;
 
     /* Resolve denomination hashes */
-    key_state = TEH_KS_acquire ();
+    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
     if (NULL == key_state)
     {
       TALER_LOG_ERROR ("Lacking keys to operate\n");
