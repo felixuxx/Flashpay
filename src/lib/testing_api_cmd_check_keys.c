@@ -68,6 +68,18 @@ struct CheckKeysState
    * equals GNUNET_YES.
    */
   struct GNUNET_TIME_Absolute last_denom_date;
+
+  /**
+   * If GNUNET_YES, then we'll provide the "/keys" request.
+   * with the "now" argument.
+   */
+  unsigned int with_now;
+
+  /**
+   * Fake now as passed by the user.
+   */
+  struct GNUNET_TIME_Absolute now;
+
 };
 
 
@@ -105,7 +117,10 @@ check_keys_run (void *cls,
                                      cks->last_denom_date);  
     }
 
-    /* Means re-download /keys.  */
+    if (GNUNET_YES == cks->with_now)
+      TALER_EXCHANGE_set_now (is->exchange,
+                              cks->now);
+    /* Redownload /keys.  */
     GNUNET_break
       (0 == TALER_EXCHANGE_check_keys_current
         (is->exchange,
@@ -147,6 +162,9 @@ check_keys_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
+  /* Let's unset the fake now before moving on.  */
+  TALER_EXCHANGE_unset_now (is->exchange);
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -249,6 +267,49 @@ TALER_TESTING_cmd_check_keys
 
   return cmd;
 }
+
+
+/**
+ * Make a "check keys" command.  This type of command
+ * checks whether the number of denomination keys from
+ * @a exchange matches @a num_denom_keys.
+ *
+ * @param label command label
+ * @param generation when this command is run, exactly @a
+ *        generation /keys downloads took place.  If the number
+ *        of downloads is less than @a generation, the logic will
+ *        first make sure that @a generation downloads are done,
+ *        and _then_ execute the rest of the command.
+ * @param num_denom_keys expected number of denomination keys.
+ * @param exchange connection handle to the exchange to test.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_keys_with_now
+  (const char *label,
+   unsigned int generation,
+   unsigned int num_denom_keys,
+   struct GNUNET_TIME_Absolute now)
+{
+  struct CheckKeysState *cks;
+
+  cks = GNUNET_new (struct CheckKeysState);
+  cks->generation = generation;
+  cks->num_denom_keys = num_denom_keys;
+  cks->now = now;
+  cks->with_now = GNUNET_YES;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = cks,
+    .label = label,
+    .run = &check_keys_run,
+    .cleanup = &check_keys_cleanup
+  };
+
+  return cmd;
+}
+
 
 
 /**
