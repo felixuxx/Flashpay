@@ -310,7 +310,7 @@ To download and install the GNU Taler exchange, proceeds as follows:
 
 @setsyntax shell
 @example
-$ git clone git://taler.net/exchange
+$ git clone git://git.taler.net/exchange
 $ cd exchange
 $ ./bootstrap
 $ ./configure [--prefix=EXCHANGEPFX] \
