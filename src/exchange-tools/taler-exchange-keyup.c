@@ -195,10 +195,16 @@ static char *feedir;
 static const struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 /**
- * Time when the key update is executed.  Either the actual current time, or a
- * pretended time.
+ * Time when the key update is executed.
+ * Either the actual current time, or a pretended time.
  */
 static struct GNUNET_TIME_Absolute now;
+
+/**
+ * The time for the key update, as passed by the user
+ * on the command line.
+ */
+static struct GNUNET_TIME_Absolute now_tmp;
 
 /**
  * Master private key of the exchange.
@@ -726,6 +732,12 @@ get_cointype_params (const char *ct,
               params->duration_withdraw,
               params->duration_overlap,
               &params->anchor);
+
+  /**
+   * The "anchor" is merely the latest denom key filename
+   * converted to a GNUnet absolute date.
+   */
+
   return GNUNET_OK;
 }
 
@@ -809,6 +821,7 @@ exchange_keys_update_cointype (void *cls,
     *ret = GNUNET_SYSERR;
     return;
   }
+  /* p has the right anchor now = latest denom filename converted to time.  */
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create (get_cointype_dir (&p)))
   {
@@ -1179,6 +1192,15 @@ run (void *cls,
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
   kcfg = cfg;
+
+  if (now.abs_value_us != now_tmp.abs_value_us)
+  {
+    /* The user gave "--now", use it */ 
+    now = now_tmp;
+  }
+  /* The user _might_ have given "--now" but it matched
+   * exactly the normal now, so no change required.  */
+
   if (NULL == feedir)
   {
     if (GNUNET_OK !=
@@ -1387,7 +1409,7 @@ main (int argc,
                                         "time",
                                         "TIMESTAMP",
                                         "pretend it is a different time for the update",
-                                        &now),
+                                        &now_tmp),
     GNUNET_GETOPT_OPTION_END
   };
 
@@ -1395,7 +1417,7 @@ main (int argc,
                  GNUNET_log_setup ("taler-exchange-keyup",
                                    "WARNING",
                                    NULL));
-  now = GNUNET_TIME_absolute_get ();
+  now = now_tmp = GNUNET_TIME_absolute_get ();
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
 			 "taler-exchange-keyup",

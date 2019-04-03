@@ -58,7 +58,7 @@ struct CheckKeysState
   /**
    * If GNUNET_YES, then the user must specify the
    * last_denom_issue_date manually.  This way, it is possible
-   * to force whatever X value here: /keys?last_denom_issue=X.
+   * to force whatever X value here (including 0): /keys?last_denom_issue=X.
    */
   unsigned int set_last_denom;
 
