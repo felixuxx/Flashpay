@@ -35,6 +35,7 @@ doc/doxygen/doxygen_sqlite3.db
 src/auditor/taler-auditor
 src/auditor/taler-auditor-dbinit
 src/auditor/taler-auditor-sign
+src/bank-lib/taler-fakebank-run
 src/bank-lib/test_bank_api
 src/bank-lib/test_bank_api_new
 src/bank-lib/test_bank_api_with_fakebank
