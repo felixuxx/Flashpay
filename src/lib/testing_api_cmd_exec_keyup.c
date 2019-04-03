@@ -49,7 +49,7 @@ struct KeyupState
 
   /**
    * If GNUNET_YES, then the fake @e now value will be
-   * passed to taler-exchange-keyup via the --timestamp
+   * passed to taler-exchange-keyup via the --time
    * option.
    */
   unsigned int with_now;
@@ -85,7 +85,7 @@ keyup_run (void *cls,
        "taler-exchange-keyup",
        "-c", ks->config_filename,
        "-o", "auditor.in",
-       "--timestamp",
+       "--time",
        GNUNET_STRINGS_absolute_time_to_string (ks->now),
        NULL);
   }
@@ -106,6 +106,9 @@ keyup_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
+  /* This function does not tell whether the command
+   * succeeded or not!  */
   TALER_TESTING_wait_for_sigchld (is);
 }
 
