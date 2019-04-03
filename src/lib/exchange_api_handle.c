@@ -214,6 +214,17 @@ struct TALER_EXCHANGE_Handle
    */
   enum ExchangeHandleState state;
 
+  /**
+   * If GNUNET_YES, use fake now given by the user, in
+   * request of "/keys".
+   */
+  unsigned int with_now;
+
+  /**
+   * Fake now given by the user.
+   */
+  struct GNUNET_TIME_Absolute now;
+
 };
 
 
@@ -1086,6 +1097,31 @@ void
 TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h);
 
 
+/**
+ * Set the fake now to be used when requesting "/keys".
+ *
+ * @param exchange exchange handle.
+ * @param now fake now to use.  Note: this value will be
+ *        used _until_ its use will be unset via @a TALER_EXCHANGE_unset_now()
+ */
+void
+TALER_EXCHANGE_set_now (struct TALER_EXCHANGE_Handle *exchange,
+                        struct GNUNET_TIME_Absolute now)
+{
+  exchange->with_now = GNUNET_YES;
+  exchange->now = now;
+}
+
+/**
+ * Unset the fake now to be used when requesting "/keys".
+ *
+ * @param exchange exchange handle.
+ */
+void
+TALER_EXCHANGE_unset_now (struct TALER_EXCHANGE_Handle *exchange)
+{
+  exchange->with_now = GNUNET_NO;
+}
 
 /**
  * Let the user set the last valid denomination time manually.

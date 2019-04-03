@@ -422,6 +422,26 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange);
 const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
 
+
+/**
+ * Set the fake now to be used when requesting "/keys".
+ *
+ * @param exchange exchange handle.
+ * @param now fake now to use.  Note: this value will be
+ *        used _until_ its use will be unset via @a TALER_EXCHANGE_unset_now()
+ */
+void
+TALER_EXCHANGE_set_now (struct TALER_EXCHANGE_Handle *exchange,
+                        struct GNUNET_TIME_Absolute now);
+
+/**
+ * Unset the fake now to be used when requesting "/keys".
+ *
+ * @param exchange exchange handle.
+ */
+void
+TALER_EXCHANGE_unset_now (struct TALER_EXCHANGE_Handle *exchange);
+
 /**
  * Let the user set the last valid denomination time manually.
  *
