@@ -46,6 +46,18 @@ struct KeyupState
    * Configuration file used by the command.
    */
   const char *config_filename;
+
+  /**
+   * If GNUNET_YES, then the fake @e now value will be
+   * passed to taler-exchange-keyup via the --timestamp
+   * option.
+   */
+  unsigned int with_now;
+
+  /**
+   * User-provided fake now.
+   */
+  struct GNUNET_TIME_Absolute now;
 };
 
 
@@ -63,15 +75,30 @@ keyup_run (void *cls,
 {
   struct KeyupState *ks = cls;
 
-  ks->keyup_proc = GNUNET_OS_start_process
-    (GNUNET_NO,
-     GNUNET_OS_INHERIT_STD_ALL,
-     NULL, NULL, NULL,
-     "taler-exchange-keyup",
-     "taler-exchange-keyup",
-     "-c", ks->config_filename,
-     "-o", "auditor.in",
-     NULL);
+  if (GNUNET_YES == ks->with_now)
+  {
+     ks->keyup_proc = GNUNET_OS_start_process
+      (GNUNET_NO,
+       GNUNET_OS_INHERIT_STD_ALL,
+       NULL, NULL, NULL,
+       "taler-exchange-keyup",
+       "taler-exchange-keyup",
+       "-c", ks->config_filename,
+       "-o", "auditor.in",
+       "--timestamp",
+       GNUNET_STRINGS_absolute_time_to_string (ks->now),
+       NULL);
+  }
+  else
+    ks->keyup_proc = GNUNET_OS_start_process
+      (GNUNET_NO,
+       GNUNET_OS_INHERIT_STD_ALL,
+       NULL, NULL, NULL,
+       "taler-exchange-keyup",
+       "taler-exchange-keyup",
+       "-c", ks->config_filename,
+       "-o", "auditor.in",
+       NULL);
 
   if (NULL == ks->keyup_proc)
   {
@@ -137,6 +164,39 @@ keyup_traits (void *cls,
                                   index);
 }
 
+
+/**
+ * Make the "keyup" CMD, with "--timestamp" option.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @param now Unix timestamp representing the fake "now".
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_keyup_with_now
+  (const char *label,
+   const char *config_filename,
+   struct GNUNET_TIME_Absolute now)
+{
+  struct KeyupState *ks;
+
+  ks = GNUNET_new (struct KeyupState);
+  ks->config_filename = config_filename;
+  ks->now = now;
+  ks->with_now = GNUNET_YES;
+
+  struct TALER_TESTING_Command cmd = {
+    .cls = ks,
+    .label = label,
+    .run = &keyup_run,
+    .cleanup = &keyup_cleanup,
+    .traits = &keyup_traits
+  };
+
+  return cmd;
+}
 
 /**
  * Make the "keyup" CMD.

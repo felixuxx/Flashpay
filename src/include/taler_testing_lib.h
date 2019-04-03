@@ -920,6 +920,22 @@ TALER_TESTING_cmd_exec_keyup (const char *label,
                               const char *config_filename);
 
 /**
+ * Make the "keyup" CMD, with "--timestamp" option.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @param now Unix timestamp representing the fake "now".
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_keyup_with_now
+  (const char *label,
+   const char *config_filename,
+   struct GNUNET_TIME_Absolute now);
+
+
+/**
  * Make a "auditor sign" CMD.
  *
  * @param label command label

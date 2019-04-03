@@ -35,6 +35,7 @@
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
 
+
 /**
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
@@ -53,6 +54,23 @@
 #define CONFIG_FILE_EXTENDED_2 \
   "test_exchange_api_keys_cherry_picking_extended_2.conf"
 
+/**
+ * Current time.
+ */
+struct GNUNET_TIME_Absolute now;
+
+/**
+ * Adds to the current time.  XXX, open question: shall  we
+ * also _set_ the global current time after the faking?
+ *
+ * @param relative number of _seconds_ to add to the current time.
+ * @return a new absolute time, modified according to @e relative.
+ */
+#define NOWPLUSSECS(secs) \
+  GNUNET_TIME_absolute_add \
+    (now, \
+     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                    secs))
 /**
  * Exchange base URL; mainly purpose is to make the compiler happy.
  */
@@ -140,20 +158,18 @@ run (void *cls,
                               is->exchanged,
                               SIGUSR1),
     /**
-     * 1 DK with 80s spend duration.
+     * 1 DK with 80s withdraw duration.  Lookahead_sign is 60s.
      */
     TALER_TESTING_cmd_check_keys ("check-keys-1",
                                   1, /* generation */
                                   1),
-
-    TALER_TESTING_cmd_sleep ("sleep",
-                             10),
-
     /**
-     * We set lookahead_sign to 90s.
+     * We now set lookahead_sign to 90s, and fake 10s passed.
      */
-    TALER_TESTING_cmd_exec_keyup ("keyup-2",
-                                  CONFIG_FILE_EXTENDED),
+    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-2",
+                                           CONFIG_FILE_EXTENDED,
+                                           NOWPLUSSECS (10)),
+
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
                                          CONFIG_FILE_EXTENDED),
 
@@ -170,10 +186,10 @@ run (void *cls,
                                   2, /* generation */
                                   2),
 
-    TALER_TESTING_cmd_sleep ("sleep",
-                             20),
-    TALER_TESTING_cmd_exec_keyup ("keyup-3",
-                                  CONFIG_FILE_EXTENDED),
+    /* Must fake 20s lapse now.  */
+    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-3",
+                                           CONFIG_FILE_EXTENDED,
+                                           NOWPLUSSECS (20)),
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-2",
                                          CONFIG_FILE),
     TALER_TESTING_cmd_signal ("trigger-keys-reload-2",

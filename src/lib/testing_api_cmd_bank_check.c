@@ -335,12 +335,13 @@ check_bank_empty_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_empty (const char *label)
 {
-  struct TALER_TESTING_Command cmd;
 
-  cmd.label = label;
-  cmd.run = &check_bank_empty_run;
-  cmd.cleanup = &check_bank_empty_cleanup;
-  cmd.traits = &check_bank_empty_traits;
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .run = &check_bank_empty_run,
+    .cleanup = &check_bank_empty_cleanup,
+    .traits = &check_bank_empty_traits
+  };
   
   return cmd;
 }
@@ -364,16 +365,17 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
 {
 
   struct BankCheckState *bcs;
-  struct TALER_TESTING_Command cmd;
 
   bcs = GNUNET_new (struct BankCheckState);
   bcs->deposit_reference = deposit_reference;
 
-  cmd.label = label;
-  cmd.cls = bcs;
-  cmd.run = &check_bank_transfer_run;
-  cmd.cleanup = &check_bank_transfer_cleanup;
-  cmd.traits = &check_bank_transfer_traits;
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = bcs,
+    .run = &check_bank_transfer_run,
+    .cleanup = &check_bank_transfer_cleanup,
+    .traits = &check_bank_transfer_traits
+  };
 
   return cmd;
 }
