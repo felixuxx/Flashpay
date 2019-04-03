@@ -292,7 +292,7 @@ to export some of the tooling required by Taler.
 To download and install libgnunetutil, proceed as follows:
 
 @example
-$ git clone https://gnunet.org/git/gnunet/
+$ git clone https://git.gnunet.org/gnunet/
 $ cd gnunet/
 $ ./bootstrap
 $ ./configure [--prefix=GNUNETPFX]
