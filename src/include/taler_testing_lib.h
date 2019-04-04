@@ -936,6 +936,30 @@ TALER_TESTING_cmd_exec_keyup_with_now
 
 
 /**
+ * Make a "check keys" command.  This type of command
+ * checks whether the number of denomination keys from
+ * @a exchange matches @a num_denom_keys.
+ *
+ * @param label command label
+ * @param generation when this command is run, exactly @a
+ *        generation /keys downloads took place.  If the number
+ *        of downloads is less than @a generation, the logic will
+ *        first make sure that @a generation downloads are done,
+ *        and _then_ execute the rest of the command.
+ * @param num_denom_keys expected number of denomination keys.
+ * @param exchange connection handle to the exchange to test.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_keys_with_now
+  (const char *label,
+   unsigned int generation,
+   unsigned int num_denom_keys,
+   struct GNUNET_TIME_Absolute now);
+
+
+/**
  * Make a "auditor sign" CMD.
  *
  * @param label command label

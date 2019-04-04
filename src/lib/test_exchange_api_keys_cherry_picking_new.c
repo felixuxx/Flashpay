@@ -151,6 +151,7 @@ run (void *cls,
 
   };
 
+  now = GNUNET_TIME_absolute_get ();
   struct TALER_TESTING_Command ordinary_cherry_pick[] = {
 
     /* Trigger keys reloading from disk.  */
@@ -164,11 +165,12 @@ run (void *cls,
                                   1, /* generation */
                                   1),
     /**
-     * We now set lookahead_sign to 90s, and fake 10s passed.
+     * We now set lookahead_sign to 90s, and expect a new DK
+     * to be created.  The first one lives (= has withdraw_duration of)
+     * only 80s.
      */
-    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-2",
-                                           CONFIG_FILE_EXTENDED,
-                                           NOWPLUSSECS (10)),
+    TALER_TESTING_cmd_exec_keyup ("keyup-2",
+                                  CONFIG_FILE_EXTENDED),
 
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
                                          CONFIG_FILE_EXTENDED),
@@ -177,19 +179,15 @@ run (void *cls,
                               is->exchanged,
                               SIGUSR1),
     /**
-     * First DK has still 70s of remaining life
-     * (duration_withdraw), so it's not enough to cover the new
-     * 90s window, so a new one should be created.
      * Total 2 DKs.
      */
     TALER_TESTING_cmd_check_keys ("check-keys-2",
                                   2, /* generation */
                                   2),
 
-    /* Must fake 20s lapse now.  */
-    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-3",
-                                           CONFIG_FILE_EXTENDED,
-                                           NOWPLUSSECS (20)),
+    /* Nothing should happen now.  */
+    TALER_TESTING_cmd_exec_keyup ("keyup-3",
+                                  CONFIG_FILE_EXTENDED),
     TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-2",
                                          CONFIG_FILE),
     TALER_TESTING_cmd_signal ("trigger-keys-reload-2",
@@ -197,13 +195,15 @@ run (void *cls,
                               SIGUSR1),
 
     /**
-     * First DK has 50s of remaining life (duration_withdraw).
-     * The second DK has ~60s of remaining life, therefore two
-     * keys should be (still) returned.
+     * Make 30s time lapse (by passing the "now" argument to
+     * "/keys").  First DK has 50s of remaining life
+     * (duration_withdraw).  The second DK has ~60s of remaining
+     * life, therefore two keys should be (still) returned.
      */
-    TALER_TESTING_cmd_check_keys ("check-keys-3",
-                                  3,
-                                  2),
+    TALER_TESTING_cmd_check_keys_with_now ("check-keys-3",
+                                           3,
+                                           2,
+                                           NOWPLUSSECS (30)),
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command commands[] = {

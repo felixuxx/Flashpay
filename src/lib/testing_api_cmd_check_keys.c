@@ -73,7 +73,7 @@ struct CheckKeysState
    * If GNUNET_YES, then we'll provide the "/keys" request.
    * with the "now" argument.
    */
-  unsigned int with_now;
+  int with_now;
 
   /**
    * Fake now as passed by the user.

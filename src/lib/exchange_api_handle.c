@@ -218,7 +218,7 @@ struct TALER_EXCHANGE_Handle
    * If GNUNET_YES, use fake now given by the user, in
    * request of "/keys".
    */
-  unsigned int with_now;
+  int with_now;
 
   /**
    * Fake now given by the user.
@@ -1824,30 +1824,36 @@ request_keys (void *cls)
   struct TALER_EXCHANGE_Handle *exchange = cls;
   struct KeysRequest *kr;
   CURL *eh;
+  char url[200] = "/keys?";
 
   exchange->retry_task = NULL;
   GNUNET_assert (NULL == exchange->kr);
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
-  if (GNUNET_YES ==
-      TEAH_handle_is_ready (exchange))
-  {
-    char *arg;
 
+  if (GNUNET_YES == TEAH_handle_is_ready (exchange))
+  {
     TALER_LOG_DEBUG ("Last DK issue date (before GETting /keys): %s\n",
                      GNUNET_STRINGS_absolute_time_to_string (exchange->key_data.last_denom_issue_date));
-    GNUNET_asprintf (&arg,
-                     "/keys?last_issue_date=%llu",
-                     (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
-    kr->url = TEAH_path_to_url (exchange,
-                                arg);
-    GNUNET_free (arg);
+    sprintf (&url[strlen (url)],
+             "last_issue_date=%llu&",
+             (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
   }
-  else
+  
+  if (GNUNET_YES == exchange->with_now)
   {
-    kr->url = TEAH_path_to_url (exchange,
-                                "/keys");
+    TALER_LOG_DEBUG ("Faking now to GET /keys): %s\n",
+                     GNUNET_STRINGS_absolute_time_to_string (exchange->now));
+    sprintf (&url[strlen (url)],
+             "now=%llu&",
+             (unsigned long long) exchange->now.abs_value_us / 1000000LLU);
   }
+
+  /* Clean the last '&'/'?' sign that we optimistically put.  */
+  url[strlen (url) - 1] = '\0';
+  kr->url = TEAH_path_to_url (exchange,
+                              url);
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
               kr->url);
