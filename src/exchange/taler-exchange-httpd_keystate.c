@@ -1494,6 +1494,13 @@ reload_public_denoms_cb (void *cls,
   struct ResponseFactoryContext *rfc = cls;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
 
+  if (rfc->now.abs_value_us > GNUNET_TIME_absolute_ntoh
+    (issue->properties.expire_legal).abs_value_us)
+  {
+    /* Expired key, discard.  */
+    return;
+  }
+
   if (NULL !=
       GNUNET_CONTAINER_multihashmap_get (rfc->key_state->denomkey_map,
                                          &issue->properties.denom_hash))
