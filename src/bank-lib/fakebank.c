@@ -159,11 +159,12 @@ struct HistoryRangeIds
 
   /**
    * How many transactions we want in the result set.  If
-   * negative/positive, @a start_number will be strictly
-   * younger/older of any element in the result set.
+   * negative/positive, @a start will be strictly younger/older
+   * of any element in the result set.
    */
   long long count;
 };
+
 
 /**
  * This is the "base" structure for both the /history and the
@@ -237,6 +238,17 @@ struct TALER_FAKEBANK_Handle
   int mhd_fd;
 #endif
 };
+
+typedef int (*CheckAdvance)(const struct HistoryArgs *ha,
+                            struct Transaction *pos);
+
+typedef struct Transaction * (*Step)
+  (const struct HistoryArgs *ha,
+   const struct Transaction *pos);
+
+typedef struct Transaction * (*Skip)
+  (const struct HistoryArgs *ha,
+   const struct Transaction *pos);
 
 
 /**
@@ -756,9 +768,8 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
  * @return GNUNET_OK only if the parsing succeedes.
  */
 static int
-parse_history_args_ (struct MHD_Connection *connection,
-                     struct HistoryArgs *ha,
-                     const char *function_name)
+parse_history_common_args (struct MHD_Connection *connection,
+                           struct HistoryArgs *ha)
 {
   /**
    * @variable
@@ -865,72 +876,6 @@ parse_history_args_ (struct MHD_Connection *connection,
   else
     ha->ascending = GNUNET_NO;
 
-  /* To be removed from here, and put within the dedicate method */
-  if (0 == strcmp ("handle_history",
-                   function_name))
-  {
-    const char *start;
-    const char *delta;
-    struct HistoryRangeIds *hi = ha->range;
-
-    start = MHD_lookup_connection_value (connection,
-                                         MHD_GET_ARGUMENT_KIND,
-                                         "start");
-    delta = MHD_lookup_connection_value (connection,
-                                         MHD_GET_ARGUMENT_KIND,
-                                         "delta");
-    if ( (NULL == start) || (1 != sscanf (start,
-                                          "%llu",
-                                          &hi->start)) ||
-      (NULL == delta) || (1 != sscanf (delta,
-                                       "%lld",
-                                       &hi->count)) )
-    {
-      GNUNET_break (0);
-      return GNUNET_NO;
-    }
-  }
-
-  /* To be removed from here, and put within the dedicate method */
-  else if (0 == strcmp ("handle_history_range",
-                        function_name))
-  {
-    const char *start;
-    const char *end;
-    long long unsigned int start_stamp; 
-    long long unsigned int end_stamp; 
-    struct HistoryRangeDates *hr = ha->range;;
-
-    start = MHD_lookup_connection_value (connection,
-                                         MHD_GET_ARGUMENT_KIND,
-                                         "start");
-    end = MHD_lookup_connection_value (connection,
-                                       MHD_GET_ARGUMENT_KIND,
-                                       "end");
-
-    if ( (NULL == start) || (1 != sscanf (start,
-                                          "%llu",
-                                          &start_stamp)) ||
-      (NULL == end) || (1 != sscanf (end,
-                                     "%lld",
-                                     &end_stamp)) )
-    {
-      GNUNET_break (0);
-      return GNUNET_NO;
-    }
-
-    hr->start.abs_value_us = start_stamp * 1000LL * 1000LL;
-    hr->end.abs_value_us = end_stamp * 1000LL * 1000LL;
-  }
-
-  /* Unknown caller.  */
-  else
-  {
-    GNUNET_break (0);
-    return GNUNET_NO;
-  }
-
-
   return GNUNET_OK;
 }
 
@@ -948,11 +893,305 @@ handle_history_new (struct TALER_FAKEBANK_Handle *h,
                     void **con_cls)
 {
   struct HistoryArgs ha;
+  struct HistoryRangeIds hri;
+  const char *start;
+  const char *delta;
+  struct Transaction *pos;
 
-  GNUNET_assert (GNUNET_OK == PARSE_HISTORY_ARGS (connection,
-                                                  &ha));
+  if (GNUNET_OK != parse_history_common_args (connection,
+                                              &ha))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  start = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "start");
+  delta = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "delta");
+  if ( ((NULL != start) && (1 != sscanf (start,
+                                        "%llu",
+                                        &hri.start))) ||
+    (NULL == delta) || (1 != sscanf (delta,
+                                     "%lld",
+                                     &hri.count)) )
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  if (NULL == start)
+    pos = 0 > hri.count ?
+      h->transactions_tail : h->transactions_head;
+
+  else if (NULL != h->transactions_head)
+  {
+    for (pos = h->transactions_head;
+         NULL != pos;
+         pos = pos->next)
+      if (pos->row_id  == hri.start)
+        break;
+    if (NULL == pos)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid range specified,"
+                  " transaction %llu not known!\n",
+                  (unsigned long long) hri.start);
+      return MHD_NO;
+    }
+    /* range is exclusive, skip the matching entry */
+    if (hri.count > 0)
+      pos = pos->next;
+    if (hri.count < 0)
+      pos = pos->prev;
+  }
+  else
+  {
+    /* list is empty */
+    pos = NULL;
+  }
+
+}
+
+/**
+ * Handle incoming HTTP request for /history-range.
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param con_cls place to store state, not used
+ * @return MHD result code
+ */
+static int
+handle_history_range (struct TALER_FAKEBANK_Handle *h,
+                      struct MHD_Connection *connection,
+                      void **con_cls)
+{
+
+  struct HistoryArgs ha;
+  struct HistoryRangeDates hrd;
+  const char *start;
+  const char *end;
+  long long unsigned int start_stamp; 
+  long long unsigned int end_stamp; 
+
+  if (GNUNET_OK != parse_history_common_args (connection,
+                                              &ha))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  start = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "start");
+  end = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "end");
+
+  if ( (NULL == start) || (1 != sscanf (start,
+                                        "%llu",
+                                        &start_stamp)) ||
+    (NULL == end) || (1 != sscanf (end,
+                                   "%lld",
+                                   &end_stamp)) )
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+
+  hrd.start.abs_value_us = start_stamp * 1000LL * 1000LL;
+  hrd.end.abs_value_us = end_stamp * 1000LL * 1000LL;
+}
 
 
+/**
+ * Decides whether the history builder will advance or not
+ * to the next element.
+ *
+ * @param ha history args
+ * @return GNUNET_YES/NO to advance/not-advance.
+ */
+static int
+handle_history_advance (const struct HistoryArgs *ha,
+                        struct Transaction *pos)
+{
+  const struct HistoryRangeIds *hri = ha->range;
+
+  return (NULL != pos) && (0 != hri->count);
+}
+
+
+/**
+ * Iterates on the "next" element to be processed.  To
+ * be used when the current element does not get inserted in
+ * the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_skip (const struct HistoryArgs *ha,
+                     const struct Transaction *pos)
+{
+  const struct HistoryRangeIds *hri = ha->range;
+
+  if (hri->count > 0)
+    return pos->next;
+  if (hri->count < 0)
+    return pos->prev;
+}
+
+
+/**
+ * Iterates on the "next" element to be processed.  To
+ * be used when the current element _gets_ inserted in the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_step (struct HistoryArgs *ha,
+                     const struct Transaction *pos)
+{
+  struct HistoryRangeIds *hri = ha->range;
+
+  if (hri->count > 0)
+  {
+    hri->count--;
+    return pos->next;
+  }
+  if (hri->count < 0)
+  {
+    hri->count++;
+    return pos->prev;
+  }
+}
+
+
+/**
+ * Decides whether the history builder will advance or not
+ * to the next element.
+ *
+ * @param ha history args
+ * @return GNUNET_YES/NO to advance/not-advance.
+ */
+static int
+handle_history_range_advance (const struct HistoryArgs *ha)
+{
+  const struct HistoryRangeDates *hrd = ha->range;
+}
+
+
+/**
+ * Iterates towards the "next" element to be processed.  To
+ * be used when the current element does not get inserted in
+ * the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_range_skip (const struct HistoryArgs *ha)
+{
+  const struct HistoryRangeDates *hrd = ha->range;
+}
+
+/**
+ * Iterates on the "next" element to be processed.  To
+ * be used when the current element _gets_ inserted in the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_range_step (const struct HistoryArgs *ha)
+{
+  const struct HistoryRangeDates *hrd = ha->range;
+}
+
+/**
+ * Actual history response builder.
+ *
+ * @param pos first (included) element in the result set.
+ * @param ha history arguments.
+ * @param caller_name which function is building the history.
+ * @return MHD response object, or NULL if any error occurs.
+ */
+static struct MHD_response *
+build_history_response (struct Transaction *pos,
+                        struct HistoryArgs *ha,
+                        Skip skip,
+                        Step step,
+                        CheckAdvance advance)
+{
+
+  struct HistoryElement *history_results_head = NULL;
+  struct HistoryElement *history_results_tail = NULL;
+  struct HistoryElement *history_element = NULL;
+
+  while (GNUNET_YES == advance (ha,
+                                pos))
+  {
+    json_t *trans;
+    char *subject;
+    const char *sign;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found transaction over %s from %llu to %llu\n",
+                TALER_amount2s (&pos->amount),
+                (unsigned long long) pos->debit_account,
+                (unsigned long long) pos->credit_account);
+
+    if ( (! ( ( (ha->account_number == pos->debit_account) &&
+                (0 != (ha->direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
+              ( (ha->account_number == pos->credit_account) &&
+                (0 != (ha->direction & TALER_BANK_DIRECTION_CREDIT) ) ) ) ) ||
+         ( (0 == (ha->direction & TALER_BANK_DIRECTION_CANCEL)) &&
+           (GNUNET_YES == pos->rejected) ) )
+    {
+      pos = skip (ha,
+                  pos);
+      continue;
+    }
+
+    GNUNET_asprintf (&subject,
+                     "%s %s",
+                     pos->subject,
+                     pos->exchange_base_url);
+    sign =
+      (ha->account_number == pos->debit_account)
+      ? (pos->rejected ? "cancel-" : "-")
+      : (pos->rejected ? "cancel+" : "+");
+    trans = json_pack
+      ("{s:I, s:o, s:o, s:s, s:I, s:s}",
+       "row_id", (json_int_t) pos->row_id,
+       "date", GNUNET_JSON_from_time_abs (pos->date),
+       "amount", TALER_JSON_from_amount (&pos->amount),
+       "sign", sign,
+       "counterpart", (json_int_t)
+         ( (ha->account_number == pos->debit_account)
+            ? pos->credit_account
+            : pos->debit_account),
+       "wt_subject", subject);
+    GNUNET_assert (NULL != trans);
+    GNUNET_free (subject);
+
+    history_element = GNUNET_new (struct HistoryElement);
+    history_element->element = trans;
+
+
+    /* XXX: the ordering feature is missing.  */
+
+    GNUNET_CONTAINER_DLL_insert_tail (history_results_head,
+                                      history_results_tail,
+                                      history_element);
+    pos = step (ha, pos);
+  }
 }
 
 
