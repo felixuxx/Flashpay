@@ -2,16 +2,19 @@
   This file is part of TALER
   (C) 2016, 2017, 2018 Inria and GNUnet e.V.
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 3,
+  or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not,
+  see <http://www.gnu.org/licenses/>
 */
 
 /**
@@ -29,6 +32,14 @@
 #define REQUEST_BUFFER_MAX (4*1024)
 
 
+/**
+ * Parse URL arguments of a /history[-range] HTTP request.
+ *
+ * @param connection MHD connection object.
+ * @param ha @a HistoryArgs structure.
+ */
+#define PARSE_HISTORY_ARGS(connection, ha) \
+  parse_history_args_ (connection, ha, __FUNCTION__)
 
 /**
  * Details about a transcation we (as the simulated bank) received.
@@ -118,6 +129,71 @@ struct HistoryElement
   struct HistoryElement *next;
 };
 
+
+/**
+ * Values to implement the "/history-range" range.
+ */
+struct HistoryRangeDates
+{
+  /**
+   * Oldest row in the results.
+   */
+  struct GNUNET_TIME_Absolute start;
+
+  /**
+   * Youngest row in the results.
+   */
+  struct GNUNET_TIME_Absolute end;
+};
+
+/**
+ * Values to implement the "/history" range.
+ */
+struct HistoryRangeIds
+{
+
+  /**
+   * (Exclusive) row ID for the result set.
+   */
+  unsigned long long start;
+
+  /**
+   * How many transactions we want in the result set.  If
+   * negative/positive, @a start_number will be strictly
+   * younger/older of any element in the result set.
+   */
+  long long count;
+};
+
+/**
+ * This is the "base" structure for both the /history and the
+ * /history-range API calls.
+ */
+struct HistoryArgs
+{
+
+  /**
+   * Direction asked by the client: CREDIT / DEBIT / BOTH / CANCEL.
+   */
+  enum TALER_BANK_Direction direction;
+
+  /**
+   * Bank account number of the requesting client.
+   */
+  unsigned long long account_number;
+
+  /**
+   * Ordering of the results.
+   */
+  unsigned int ascending;
+
+  /**
+   * Overloaded type that indicates the "range" to be returned
+   * in the results; this can be either a date range, or a
+   * starting row id + the count.
+   */
+  void *range;
+};
 
 /**
  * Handle for the fake bank.
@@ -671,6 +747,216 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
+ * Parse URL history arguments, of _both_ APIs:
+ * /history and /history-range.
+ *
+ * @param connection MHD connection.
+ * @param function_name name of the caller.
+ * @param ha[out] will contain the parsed values.
+ * @return GNUNET_OK only if the parsing succeedes.
+ */
+static int
+parse_history_args_ (struct MHD_Connection *connection,
+                     struct HistoryArgs *ha,
+                     const char *function_name)
+{
+  /**
+   * @variable
+   * Just check if given and == "basic", no need to keep around.
+   */
+  const char *auth;
+
+  /**
+   * All those will go into the structure, after parsing.
+   */
+  const char *direction;
+  const char *cancelled;
+  const char *ordering;
+  const char *account_number;
+
+
+  auth = MHD_lookup_connection_value (connection,
+                                      MHD_GET_ARGUMENT_KIND,
+                                      "auth");
+  direction = MHD_lookup_connection_value (connection,
+                                           MHD_GET_ARGUMENT_KIND,
+                                           "direction");
+  cancelled = MHD_lookup_connection_value (connection,
+                                           MHD_GET_ARGUMENT_KIND,
+                                           "cancelled");
+  ordering = MHD_lookup_connection_value (connection,
+                                          MHD_GET_ARGUMENT_KIND,
+                                          "ordering");
+  account_number = MHD_lookup_connection_value
+    (connection,
+     MHD_GET_ARGUMENT_KIND,
+     "account_number");
+
+  /* Fail if one of the above failed.  */
+  if ( (NULL == direction) ||
+       (NULL == cancelled) ||
+       ( (0 != strcasecmp (cancelled,
+                           "OMIT")) &&
+         (0 != strcasecmp (cancelled,
+                           "SHOW")) ) ||
+       ( (0 != strcasecmp (direction,
+                           "BOTH")) &&
+         (0 != strcasecmp (direction,
+                           "CREDIT")) &&
+         (0 != strcasecmp (direction,
+                           "DEBIT")) ) ||
+         (1 != sscanf (account_number,
+                       "%llu",
+                       &ha->account_number)) ||
+         ( (NULL == auth) || (0 != strcasecmp (auth,
+                                               "basic")) ) )
+  {
+    /* Invalid request, given that this is fakebank we impolitely
+     * just kill the connection instead of returning a nice error.
+     */
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+
+  if (0 == strcasecmp (direction,
+                       "CREDIT"))
+  {
+    ha->direction = TALER_BANK_DIRECTION_CREDIT;
+  }
+  else if (0 == strcasecmp (direction,
+                            "DEBIT"))
+  {
+    ha->direction = TALER_BANK_DIRECTION_DEBIT;
+  }
+  else if (0 == strcasecmp (direction,
+                            "BOTH"))
+  {
+    ha->direction = TALER_BANK_DIRECTION_BOTH;
+  }
+
+  /* Direction is invalid.  */
+  else
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+
+  if (0 == strcasecmp (cancelled,
+                       "OMIT"))
+  {
+    /* nothing */
+  } else if (0 == strcasecmp (cancelled,
+                              "SHOW"))
+  {
+    ha->direction |= TALER_BANK_DIRECTION_CANCEL;
+  }
+
+  /* Cancel-showing policy is invalid.  */
+  else
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+
+  if ((NULL != ordering)
+      && 0 == strcmp ("ascending",
+                      ordering))
+    ha->ascending = GNUNET_YES;
+  else
+    ha->ascending = GNUNET_NO;
+
+  /* To be removed from here, and put within the dedicate method */
+  if (0 == strcmp ("handle_history",
+                   function_name))
+  {
+    const char *start;
+    const char *delta;
+    struct HistoryRangeIds *hi = ha->range;
+
+    start = MHD_lookup_connection_value (connection,
+                                         MHD_GET_ARGUMENT_KIND,
+                                         "start");
+    delta = MHD_lookup_connection_value (connection,
+                                         MHD_GET_ARGUMENT_KIND,
+                                         "delta");
+    if ( (NULL == start) || (1 != sscanf (start,
+                                          "%llu",
+                                          &hi->start)) ||
+      (NULL == delta) || (1 != sscanf (delta,
+                                       "%lld",
+                                       &hi->count)) )
+    {
+      GNUNET_break (0);
+      return GNUNET_NO;
+    }
+  }
+
+  /* To be removed from here, and put within the dedicate method */
+  else if (0 == strcmp ("handle_history_range",
+                        function_name))
+  {
+    const char *start;
+    const char *end;
+    long long unsigned int start_stamp; 
+    long long unsigned int end_stamp; 
+    struct HistoryRangeDates *hr = ha->range;;
+
+    start = MHD_lookup_connection_value (connection,
+                                         MHD_GET_ARGUMENT_KIND,
+                                         "start");
+    end = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "end");
+
+    if ( (NULL == start) || (1 != sscanf (start,
+                                          "%llu",
+                                          &start_stamp)) ||
+      (NULL == end) || (1 != sscanf (end,
+                                     "%lld",
+                                     &end_stamp)) )
+    {
+      GNUNET_break (0);
+      return GNUNET_NO;
+    }
+
+    hr->start.abs_value_us = start_stamp * 1000LL * 1000LL;
+    hr->end.abs_value_us = end_stamp * 1000LL * 1000LL;
+  }
+
+  /* Unknown caller.  */
+  else
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+
+
+  return GNUNET_OK;
+}
+
+/**
+ * Handle incoming HTTP request for /history
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param con_cls place to store state, not used
+ * @return MHD result code
+ */
+static int
+handle_history_new (struct TALER_FAKEBANK_Handle *h,
+                    struct MHD_Connection *connection,
+                    void **con_cls)
+{
+  struct HistoryArgs ha;
+
+  GNUNET_assert (GNUNET_OK == PARSE_HISTORY_ARGS (connection,
+                                                  &ha));
+
+
+}
+
+
+/**
  * Handle incoming HTTP request for /history
  *
  * @param h the fakebank handle
@@ -759,8 +1045,9 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
          (0 != strcasecmp (dir,
                            "DEBIT")) ) )
   {
-    /* Invalid request, given that this is fakebank we impolitely just
-       kill the connection instead of returning a nice error. */
+    /* Invalid request, given that this is fakebank we impolitely
+     * just kill the connection instead of returning a nice error.
+     */
     GNUNET_break (0);
     return MHD_NO;
   }
