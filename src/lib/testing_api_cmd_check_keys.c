@@ -19,7 +19,14 @@
 
 /**
  * @file exchange-lib/testing_api_cmd_check_keys.c
- * @brief Implementation of "check keys" test command.
+ * @brief Implementation of "check keys" test command.  XXX-NOTE:
+ *        the number of 'expected keys' is NOT the number of the
+ *        downloaded keys, but rather the number of keys that the
+ *        libtalerutil library keeps locally.  As for the current
+ *        design, keys are _never_ discarded by the library,
+ *        therefore their (expected) number is monotonically
+ *        ascending.
+ *
  * @author Marcello Stanisci
  */
 
@@ -149,7 +156,7 @@ check_keys_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  /* /keys was updated, let's check they were OK! */
+  /* "/keys" was updated, let's check they were OK! */
   if (cks->num_denom_keys != is->keys->num_denom_keys)
   {
     /* Did not get the expected number of denomination keys! */
@@ -299,6 +306,9 @@ TALER_TESTING_cmd_check_keys_with_now
   cks->num_denom_keys = num_denom_keys;
   cks->now = now;
   cks->with_now = GNUNET_YES;
+
+  /* Force to NOT cherry pick, otherwise they conflict.  */
+  cks->pull_all_keys = GNUNET_YES;
 
   struct TALER_TESTING_Command cmd = {
     .cls = cks,

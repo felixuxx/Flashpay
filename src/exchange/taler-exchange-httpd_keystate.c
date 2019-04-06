@@ -730,7 +730,8 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
 
-  horizon = GNUNET_TIME_relative_to_absolute (TALER_EXCHANGE_conf_duration_provide ());
+  horizon = GNUNET_TIME_absolute_add (rfc->now,
+                                      TALER_EXCHANGE_conf_duration_provide ());
   start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
   if (start.abs_value_us > horizon.abs_value_us)
   {

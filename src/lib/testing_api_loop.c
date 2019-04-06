@@ -620,7 +620,6 @@ TALER_TESTING_cert_cb
         (GNUNET_ERROR_TYPE_ERROR,
          "Got NULL response for /keys"
          " during execution!\n");
-
   }
   else
   {

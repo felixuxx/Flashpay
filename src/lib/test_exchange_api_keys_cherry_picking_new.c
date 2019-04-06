@@ -60,8 +60,7 @@
 struct GNUNET_TIME_Absolute now;
 
 /**
- * Adds to the current time.  XXX, open question: shall  we
- * also _set_ the global current time after the faking?
+ * Adds to the current time.
  *
  * @param relative number of _seconds_ to add to the current time.
  * @return a new absolute time, modified according to @e relative.
@@ -71,6 +70,9 @@ struct GNUNET_TIME_Absolute now;
     (now, \
      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
                                     secs))
+#define JAN1971 "1971-01-01"
+#define JAN2030 "2030-01-01"
+
 /**
  * Exchange base URL; mainly purpose is to make the compiler happy.
  */
@@ -80,6 +82,24 @@ static char *exchange_url;
  * Auditor base URL; mainly purpose is to make the compiler happy.
  */
 static char *auditor_url;
+
+/**
+ * Wrapper around the time parser.
+ *
+ * @param str human-readable time string.
+ * @return the parsed time from @a str.
+ */
+static struct GNUNET_TIME_Absolute
+TTH_parse_time (const char *str)
+{
+  struct GNUNET_TIME_Absolute ret;
+
+  GNUNET_assert
+    (GNUNET_OK == GNUNET_STRINGS_fancy_time_to_absolute (str,
+                                                         &ret));
+  return ret;
+}
+
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -92,9 +112,11 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command keys_serialization[] = {
+
     TALER_TESTING_cmd_serialize_keys ("serialize-keys"),
     TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
                                           "serialize-keys"),
+
     TALER_TESTING_cmd_wire ("verify-/wire-with-serialized-keys",
                             "x-taler-bank",
                             NULL,
@@ -104,25 +126,15 @@ run (void *cls,
      */
     TALER_TESTING_cmd_exec_keyup ("keyup-serialization",
                                   CONFIG_FILE_EXTENDED_2),
-    TALER_TESTING_cmd_exec_auditor_sign
-      ("auditor-sign-serialization",
-       CONFIG_FILE_EXTENDED_2),
 
-    TALER_TESTING_cmd_sleep ("sleep-serialization",
-                             3),
-    TALER_TESTING_cmd_signal ("reload-keys-serialization",
-                              is->exchanged,
-                              SIGUSR1),
-    TALER_TESTING_cmd_sleep ("sleep-serialization",
-                             3),
     #if 0
 
     FIXME: #5672
     
     The test below fails on different systems.  Infact, different
-    systems can generate different "anchors" values for their denoms,
-    therefore the fixed value required by the test below (45) is
-    condemned to fail.
+    systems can generate different "anchors" values for their
+    denoms, therefore the fixed value required by the test below
+    (45) is condemned to fail.
 
     However, this seems to happen only when very big values are
     used for the "lookahead_sign" value.  Here we use 3500 seconds,
@@ -159,59 +171,36 @@ run (void *cls,
                               is->exchanged,
                               SIGUSR1),
     /**
-     * 1 DK with 80s withdraw duration.  Lookahead_sign is 60s.
+     * 1 DK with 80s withdraw duration, lookahead_sign is 60s
+     * => expect 1 DK.
      */
     TALER_TESTING_cmd_check_keys ("check-keys-1",
                                   1, /* generation */
                                   1),
     /**
-     * We now set lookahead_sign to 90s, and expect a new DK
-     * to be created.  The first one lives (= has withdraw_duration of)
-     * only 80s.
+     * This has a lookahead_sign == 60, and DK withdraw_time == 80
+     * => one DK should be created.
      */
-    TALER_TESTING_cmd_exec_keyup ("keyup-2",
-                                  CONFIG_FILE_EXTENDED),
-
-    TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-1",
-                                         CONFIG_FILE_EXTENDED),
-
-    TALER_TESTING_cmd_signal ("trigger-keys-reload-1",
-                              is->exchanged,
-                              SIGUSR1),
-    /**
-     * Total 2 DKs.
+    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-serialization",
+                                           CONFIG_FILE,
+                                           TTH_parse_time (JAN2030)),
+     /**
+     * Should return 1 key, + the original one = 2.
      */
-    TALER_TESTING_cmd_check_keys ("check-keys-2",
-                                  2, /* generation */
-                                  2),
+    TALER_TESTING_cmd_check_keys_with_now
+      ("check-keys-2",
+       2, /* generation */
+       2,
+       TTH_parse_time (JAN2030)),
 
-    /* Nothing should happen now.  */
-    TALER_TESTING_cmd_exec_keyup ("keyup-3",
-                                  CONFIG_FILE_EXTENDED),
-    TALER_TESTING_cmd_exec_auditor_sign ("sign-keys-2",
-                                         CONFIG_FILE),
-    TALER_TESTING_cmd_signal ("trigger-keys-reload-2",
-                              is->exchanged,
-                              SIGUSR1),
-
-    /**
-     * Make 30s time lapse (by passing the "now" argument to
-     * "/keys").  First DK has 50s of remaining life
-     * (duration_withdraw).  The second DK has ~60s of remaining
-     * life, therefore two keys should be (still) returned.
-     */
-    TALER_TESTING_cmd_check_keys_with_now ("check-keys-3",
-                                           3,
-                                           2,
-                                           NOWPLUSSECS (30)),
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command commands[] = {
 
     TALER_TESTING_cmd_batch ("ordinary-cherry-pick",
                              ordinary_cherry_pick),
-    TALER_TESTING_cmd_batch ("keys-serialization",
-                             keys_serialization),
+    /*TALER_TESTING_cmd_batch ("keys-serialization",
+                             keys_serialization),*/
     TALER_TESTING_cmd_end ()
   };
 
