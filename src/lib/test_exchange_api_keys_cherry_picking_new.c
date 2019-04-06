@@ -211,11 +211,12 @@ run (void *cls,
        TTH_parse_time (JAN2030)),
 
     /**
-     * For each DK with a withdraw duration of 80 s, and for
-     * the latest 3500 s lookahead_sign value, we should have
-     * ((3500 - _80_) / 80) keys we just downloaded + 2 old DK
-     * keys stored in memory (total 45).  The _80_ seconds
-     * we subtract are from the one key generated at "keyup-1".
+     * For each DK with a withdraw duration of 80 s
+     * (- 1 s of overlap), and for the latest 3500 s
+     * lookahead_sign value, we should have ((3500 - _79_) / 79)
+     * keys we just downloaded + 2 old DK keys stored in memory
+     * (total 46).  The _79_ seconds we subtract are from the one
+     * key generated at "keyup-1".
      *
      * This currently fails: look for XXX-ANCHOR at
      * taler-exchange-keyup.c to get some insight about the reason
@@ -224,7 +225,7 @@ run (void *cls,
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-3",
        3, 
-       45,
+       46,
        TTH_parse_time (JAN2030)),
 
     TALER_TESTING_cmd_end ()
