@@ -113,19 +113,25 @@ run (void *cls,
 {
   struct TALER_TESTING_Command keys_serialization[] = {
 
-    TALER_TESTING_cmd_serialize_keys ("serialize-keys"),
-    TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
-                                          "serialize-keys"),
+    TALER_TESTING_cmd_serialize_keys
+      ("serialize-keys"),
 
-    TALER_TESTING_cmd_wire ("verify-/wire-with-serialized-keys",
-                            "x-taler-bank",
-                            NULL,
-                            MHD_HTTP_OK),
+    TALER_TESTING_cmd_connect_with_state
+      ("reconnect-with-state",
+       "serialize-keys"),
+
+    TALER_TESTING_cmd_wire
+      ("verify-/wire-with-serialized-keys",
+       "x-taler-bank",
+       NULL,
+       MHD_HTTP_OK),
+
     /**
      * This loads a very big lookahead_sign (3500s).
      */
-    TALER_TESTING_cmd_exec_keyup ("keyup-serialization",
-                                  CONFIG_FILE_EXTENDED_2),
+    TALER_TESTING_cmd_exec_keyup
+      ("keyup-serialization",
+       CONFIG_FILE_EXTENDED_2),
 
     #if 0
 
@@ -166,10 +172,6 @@ run (void *cls,
   now = GNUNET_TIME_absolute_get ();
   struct TALER_TESTING_Command ordinary_cherry_pick[] = {
 
-    /* Trigger keys reloading from disk.  */
-    TALER_TESTING_cmd_signal ("signal-reaction-1",
-                              is->exchanged,
-                              SIGUSR1),
     /**
      * 1 DK with 80s withdraw duration, lookahead_sign is 60s
      * => expect 1 DK.
@@ -178,19 +180,51 @@ run (void *cls,
                                   1, /* generation */
                                   1),
     /**
-     * This has a lookahead_sign == 60, and DK withdraw_time == 80
-     * => one DK should be created.
+     * The far-future now will cause "keyup" to start a fresh
+     * key set.  The new KS will have only one key, because the
+     * current lookahead_sign == 60 seconds and the key's withdraw
+     * duration is 80 seconds.
      */
-    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-serialization",
-                                           CONFIG_FILE,
-                                           TTH_parse_time (JAN2030)),
+    TALER_TESTING_cmd_exec_keyup_with_now
+      ("keyup-1",
+       CONFIG_FILE,
+       TTH_parse_time (JAN2030)),
+
      /**
-     * Should return 1 key, + the original one = 2.
+     * Should return 1 new key, + the original one.  NOTE: the
+     * original DK will never be 'cancelled' as for the current
+     * libtalerexchange logic, so it must always be counted.
      */
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-2",
        2, /* generation */
        2,
+       TTH_parse_time (JAN2030)),
+
+    /**
+     * We now load a very high lookahead_sign value of 3500 s,
+     * with now == JAN2030.
+     */
+    TALER_TESTING_cmd_exec_keyup_with_now
+      ("keyup-3",
+       CONFIG_FILE_EXTENDED_2,
+       TTH_parse_time (JAN2030)),
+
+    /**
+     * For each DK with a withdraw duration of 80 s, and for
+     * the latest 3500 s lookahead_sign value, we should have
+     * ((3500 - _80_) / 80) keys we just downloaded + 2 old DK
+     * keys stored in memory (total 45).  The _80_ seconds
+     * we subtract are from the one key generated at "keyup-1".
+     *
+     * This currently fails: look for XXX-ANCHOR at
+     * taler-exchange-keyup.c to get some insight about the reason
+     * behind.
+     */
+    TALER_TESTING_cmd_check_keys_with_now
+      ("check-keys-3",
+       3, 
+       45,
        TTH_parse_time (JAN2030)),
 
     TALER_TESTING_cmd_end ()
@@ -199,8 +233,10 @@ run (void *cls,
 
     TALER_TESTING_cmd_batch ("ordinary-cherry-pick",
                              ordinary_cherry_pick),
-    /*TALER_TESTING_cmd_batch ("keys-serialization",
-                             keys_serialization),*/
+    /*
+    TALER_TESTING_cmd_batch ("keys-serialization",
+                             keys_serialization),
+    */
     TALER_TESTING_cmd_end ()
   };
 

@@ -439,12 +439,20 @@ get_anchor (const char *dir,
   }
   else if (anchor->abs_value_us != now.abs_value_us)
   {
-    /* Real starting time is the last start time + duration - overlap */
+
+    /**
+     * XXX-ANCHOR question: why adding the duration only in this
+     * case, and not _all the times we found a anchor_ ?  Like
+     * for instance out of this block below ?
+     */
     *anchor = GNUNET_TIME_absolute_add (*anchor,
                                         duration);
     *anchor = GNUNET_TIME_absolute_subtract (*anchor,
                                              overlap);
   }
+  
+
+
   /* anchor is now the stamp where we need to create a new key */
 }
 
@@ -838,7 +846,6 @@ exchange_keys_update_cointype (void *cls,
                   (GNUNET_TIME_absolute_get_difference (p.anchor,
                                                         lookahead_sign_stamp),
                                                         GNUNET_NO));
-
     dkf = get_cointype_file (&p,
                              p.anchor);
     GNUNET_break (GNUNET_YES !=
