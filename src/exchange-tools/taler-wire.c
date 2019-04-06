@@ -26,8 +26,8 @@
 
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
-#include <taler/taler_util.h>
-#include <taler/taler_wire_lib.h>
+#include "taler_util.h"
+#include "taler_wire_lib.h"
 
 /**
  * If set to GNUNET_YES, then we'll ask the bank for a list

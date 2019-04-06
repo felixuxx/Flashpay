@@ -25,17 +25,17 @@
  */
 
 #include "platform.h"
-#include <taler/taler_util.h>
-#include <taler/taler_signatures.h>
-#include <taler/taler_exchange_service.h>
-#include <taler/taler_json_lib.h>
+#include "taler_util.h"
+#include "taler_signatures.h"
+#include "taler_exchange_service.h"
+#include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
-#include <taler/taler_bank_service.h>
-#include <taler/taler_fakebank_lib.h>
-#include <taler/taler_testing_lib.h>
+#include "taler_bank_service.h"
+#include "taler_fakebank_lib.h"
+#include "taler_testing_lib.h"
 #include <taler/taler_twister_testing_lib.h>
-#include <taler/taler_testing_bank_lib.h>
+#include "taler_testing_bank_lib.h"
 #include <taler/taler_twister_service.h>
 
 /**
