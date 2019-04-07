@@ -239,37 +239,37 @@ Please install the following packages before proceeding with the exchange compil
 @itemize
 
 @item
-GNU autoconf @geq{} 2.69
+GNU autoconf >= 2.69
 
 @item
-GNU automake @geq{} 1.14
+GNU automake >= 1.14
 
 @item
-GNU libtool @geq{} 2.4
+GNU libtool >= 2.4
 
 @item
-GNU autopoint @geq{} 0.19
+GNU autopoint >= 0.19
 
 @item
-GNU libltdl @geq{} 2.4
+GNU libltdl >= 2.4
 
 @item
-GNU libunistring @geq{} 0.9.3
+GNU libunistring >= 0.9.3
 
 @item
-libcurl @geq{} 7.26 (or libgnurl @geq{} 7.26)
+libcurl >= 7.26 (or libgnurl >= 7.26)
 
 @item
-GNU libmicrohttpd @geq{} 0.9.59
+GNU libmicrohttpd >= 0.9.59
 
 @item
-GNU libgcrypt @geq{} 1.6
+GNU libgcrypt >= 1.6
 
 @item
-libjansson @geq{} 2.7
+libjansson >= 2.7
 
 @item
-Postgres @geq{} 9.6, including libpq
+Postgres >= 9.6, including libpq
 
 @item
 libgnunetutil (from Git)
