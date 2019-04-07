@@ -46,7 +46,6 @@
  */
 struct Transaction
 {
-
   /**
    * We store transactions in a DLL.
    */
@@ -1256,6 +1255,9 @@ handle_history_new (struct TALER_FAKEBANK_Handle *h,
     /* list is empty */
     pos = NULL;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "/history, start row (0 == no transactions exist): %llu\n",
+              NULL != pos ? pos->row_id : 0);
 
   return build_history_response (connection,
                                  pos,
