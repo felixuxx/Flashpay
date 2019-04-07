@@ -924,8 +924,8 @@ build_history_response (struct MHD_Connection *connection,
   json_t *jresponse;
   int ret;
 
-  while (GNUNET_YES == advance (ha,
-                                pos))
+  while (advance (ha,
+                  pos))
   {
     json_t *trans;
     char *subject;
@@ -1224,6 +1224,7 @@ handle_history_new (struct TALER_FAKEBANK_Handle *h,
     GNUNET_break (0);
     return MHD_NO;
   }
+  ha.range = &hri;
 
   if (NULL == start)
     pos = 0 > hri.count ?
@@ -1258,7 +1259,6 @@ handle_history_new (struct TALER_FAKEBANK_Handle *h,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "/history, start row (0 == no transactions exist): %llu\n",
               NULL != pos ? pos->row_id : 0);
-
   return build_history_response (connection,
                                  pos,
                                  &ha,
