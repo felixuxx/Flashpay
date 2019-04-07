@@ -239,13 +239,34 @@ struct TALER_FAKEBANK_Handle
 #endif
 };
 
-typedef int (*CheckAdvance)(const struct HistoryArgs *ha,
-                            struct Transaction *pos);
 
+/**
+ * Type for a function that decides whether or not
+ * the history-building loop should iterate once again.
+ * Typically called from inside the 'while' condition.
+ *
+ * @param ha history argument.
+ * @param pos current position.
+ * @return GNUNET_YES if the iteration shuold go on.
+ */
+typedef int (*CheckAdvance)
+  (const struct HistoryArgs *ha,
+   struct Transaction *pos);
+
+/**
+ * Type for a function that steps over the next element
+ * in the list of all transactions, after the current @a pos
+ * _got_ included in the result.
+ */
 typedef struct Transaction * (*Step)
   (const struct HistoryArgs *ha,
    const struct Transaction *pos);
 
+/*
+ * Type for a function that steps over the next element
+ * in the list of all transactions, after the current @a pos
+ * did _not_ get included in the result.
+ */
 typedef struct Transaction * (*Skip)
   (const struct HistoryArgs *ha,
    const struct Transaction *pos);
@@ -953,6 +974,7 @@ handle_history_new (struct TALER_FAKEBANK_Handle *h,
     pos = NULL;
   }
 
+  /* Loop starts here.  */
 }
 
 /**
@@ -1120,10 +1142,12 @@ handle_history_range_step (const struct HistoryArgs *ha)
  * @param pos first (included) element in the result set.
  * @param ha history arguments.
  * @param caller_name which function is building the history.
- * @return MHD response object, or NULL if any error occurs.
+ * @return MHD_YES / MHD_NO, after having enqueued the response
+ *         object into MHD.
  */
 static struct MHD_response *
-build_history_response (struct Transaction *pos,
+build_history_response (struct MHD_Connection *connection,
+                        struct Transaction *pos,
                         struct HistoryArgs *ha,
                         Skip skip,
                         Step step,
@@ -1133,6 +1157,9 @@ build_history_response (struct Transaction *pos,
   struct HistoryElement *history_results_head = NULL;
   struct HistoryElement *history_results_tail = NULL;
   struct HistoryElement *history_element = NULL;
+  json_t *history;
+  json_t *jresponse;
+  int ret;
 
   while (GNUNET_YES == advance (ha,
                                 pos))
@@ -1192,6 +1219,81 @@ build_history_response (struct Transaction *pos,
                                       history_element);
     pos = step (ha, pos);
   }
+
+  history = json_array ();
+  if (NULL != history_results_head)
+    history_element = history_results_head;
+
+  while (NULL != history_element)
+  {
+    json_array_append_new (history,
+                           history_element->element);
+    history_element = history_element->next;
+    if (NULL != history_element)
+      GNUNET_free_non_null (history_element->prev);
+  }
+  GNUNET_free_non_null (history_results_tail);
+
+  if (0 == json_array_size (history))
+  {
+    struct MHD_Response *resp;
+
+    json_decref (history);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning empty transaction history\n");
+    resp = MHD_create_response_from_buffer
+      (0,
+       "",
+       MHD_RESPMEM_PERSISTENT);
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_NO_CONTENT,
+                              resp);
+    MHD_destroy_response (resp);
+    return ret;
+  }
+
+  jresponse = json_pack ("{s:o}",
+                         "data",
+                         history);
+  if (NULL == jresponse)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  /* Finally build response object */
+  {
+    struct MHD_Response *resp;
+    void *json_str;
+    size_t json_len;
+
+    json_str = json_dumps (jresponse,
+                           JSON_INDENT(2));
+    json_decref (jresponse);
+    if (NULL == json_str)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
+    json_len = strlen (json_str);
+    resp = MHD_create_response_from_buffer (json_len,
+                                            json_str,
+                                            MHD_RESPMEM_MUST_FREE);
+    if (NULL == resp)
+    {
+      GNUNET_break (0);
+      free (json_str);
+      return MHD_NO;
+    }
+    (void) MHD_add_response_header (resp,
+                                    MHD_HTTP_HEADER_CONTENT_TYPE,
+                                    "application/json");
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_OK,
+                              resp);
+    MHD_destroy_response (resp);
+  }
+  return ret;
 }
 
 
@@ -1255,7 +1357,8 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
        (NULL == acc) ||
        (NULL == delta) )
   {
-    /* Invalid request, given that this is fakebank we impolitely just
+    /* Invalid request,
+       given that this is fakebank we impolitely just
        kill the connection instead of returning a nice error. */
     GNUNET_break (0);
     return MHD_NO;
