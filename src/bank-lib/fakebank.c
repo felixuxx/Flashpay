@@ -241,38 +241,6 @@ struct TALER_FAKEBANK_Handle
 
 
 /**
- * Type for a function that decides whether or not
- * the history-building loop should iterate once again.
- * Typically called from inside the 'while' condition.
- *
- * @param ha history argument.
- * @param pos current position.
- * @return GNUNET_YES if the iteration shuold go on.
- */
-typedef int (*CheckAdvance)
-  (const struct HistoryArgs *ha,
-   struct Transaction *pos);
-
-/**
- * Type for a function that steps over the next element
- * in the list of all transactions, after the current @a pos
- * _got_ included in the result.
- */
-typedef struct Transaction * (*Step)
-  (const struct HistoryArgs *ha,
-   const struct Transaction *pos);
-
-/*
- * Type for a function that steps over the next element
- * in the list of all transactions, after the current @a pos
- * did _not_ get included in the result.
- */
-typedef struct Transaction * (*Skip)
-  (const struct HistoryArgs *ha,
-   const struct Transaction *pos);
-
-
-/**
  * Check that the @a want_amount was transferred from
  * the @a want_debit to the @a want_credit account.  If
  * so, set the @a subject to the transfer identifier.
@@ -783,6 +751,39 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
  * Serving "/history" starts here. *
  ***********************************/
 
+/**
+ * Type for a function that decides whether or not
+ * the history-building loop should iterate once again.
+ * Typically called from inside the 'while' condition.
+ *
+ * @param ha history argument.
+ * @param pos current position.
+ * @return GNUNET_YES if the iteration shuold go on.
+ */
+typedef int (*CheckAdvance)
+  (const struct HistoryArgs *ha,
+   const struct Transaction *pos);
+
+/**
+ * Type for a function that steps over the next element
+ * in the list of all transactions, after the current @a pos
+ * _got_ included in the result.
+ */
+typedef struct Transaction * (*Step)
+  (const struct HistoryArgs *ha,
+   const struct Transaction *pos);
+
+/*
+ * Type for a function that steps over the next element
+ * in the list of all transactions, after the current @a pos
+ * did _not_ get included in the result.
+ */
+typedef struct Transaction * (*Skip)
+  (const struct HistoryArgs *ha,
+   const struct Transaction *pos);
+
+
+
 
 /**
  * Decides whether the history builder will advance or not
@@ -793,7 +794,7 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
  */
 static int
 handle_history_advance (const struct HistoryArgs *ha,
-                        struct Transaction *pos)
+                        const struct Transaction *pos)
 {
   const struct HistoryRangeIds *hri = ha->range;
 
@@ -858,9 +859,16 @@ handle_history_step (const struct HistoryArgs *ha,
  * @return GNUNET_YES/NO to advance/not-advance.
  */
 static int
-handle_history_range_advance (const struct HistoryArgs *ha)
+handle_history_range_advance (const struct HistoryArgs *ha,
+                              const struct Transaction *pos)
 {
   const struct HistoryRangeDates *hrd = ha->range;
+
+  if ( (NULL != pos) &&
+      (pos->date.abs_value_us <= hrd->end.abs_value_us) )
+    return GNUNET_YES;
+
+  return GNUNET_NO;
 }
 
 
@@ -874,25 +882,21 @@ handle_history_range_advance (const struct HistoryArgs *ha)
  * @return the next element to be processed.
  */
 static struct Transaction *
-handle_history_range_skip (const struct HistoryArgs *ha)
+handle_history_range_skip (const struct HistoryArgs *ha,
+                           const struct Transaction *pos)
 {
-  const struct HistoryRangeDates *hrd = ha->range;
+  /* Transactions
+   * are stored from "head"/older to "tail"/younger.  */
+  return pos->next;
 }
 
 /**
  * Iterates on the "next" element to be processed.  To
  * be used when the current element _gets_ inserted in the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
+ * Same implementation of the "skip" counterpart, as /history-range
+ * does not have the notion of count/delta.
  */
-static struct Transaction *
-handle_history_range_step (const struct HistoryArgs *ha)
-{
-  const struct HistoryRangeDates *hrd = ha->range;
-}
-
+Step handle_history_range_step = handle_history_range_skip;
 
 /**
  * Actual history response builder.
@@ -1272,13 +1276,13 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
                       struct MHD_Connection *connection,
                       void **con_cls)
 {
-
   struct HistoryArgs ha;
   struct HistoryRangeDates hrd;
   const char *start;
   const char *end;
   long long unsigned int start_stamp; 
   long long unsigned int end_stamp; 
+  struct Transaction *pos;
 
   if (GNUNET_OK != parse_history_common_args (connection,
                                               &ha))
@@ -1306,6 +1310,23 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
 
   hrd.start.abs_value_us = start_stamp * 1000LL * 1000LL;
   hrd.end.abs_value_us = end_stamp * 1000LL * 1000LL;
+  ha.range = &hrd;
+
+  pos = NULL;
+  /* hunt for 'pos' in the Transaction(s) LL.  */
+  for (pos = h->transactions_head;
+       NULL != pos;
+       pos = pos->next)
+  {
+    if (hrd.start.abs_value_us <= pos->date.abs_value_us)
+      break; 
+  }
+  return build_history_response (connection,
+                                 pos,
+                                 &ha,
+                                 &handle_history_range_skip,
+                                 handle_history_range_step,
+                                 &handle_history_range_advance);
 }
 
 /**
@@ -1673,6 +1694,13 @@ handle_mhd_request (void *cls,
                           upload_data,
                           upload_data_size,
                           con_cls);
+  if ( (0 == strcasecmp (url,
+                         "/history-range")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_history_range (h,
+                                 connection,
+                                 con_cls);
   if ( (0 == strcasecmp (url,
                          "/history")) &&
        (0 == strcasecmp (method,
