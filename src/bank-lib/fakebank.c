@@ -763,10 +763,11 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
   json_decref (json);
 
   if (GNUNET_OK != found)
-    return create_bank_error (connection,
-                              MHD_HTTP_NOT_FOUND,
-                              TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND,
-                              "transaction unknown");
+    return create_bank_error
+      (connection,
+       MHD_HTTP_NOT_FOUND,
+       TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND,
+       "transaction unknown");
   /* finally build regular response */
   resp = MHD_create_response_from_buffer (0,
                                           NULL,
@@ -777,6 +778,282 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
   MHD_destroy_response (resp);
   return ret;
 }
+
+/***********************************
+ * Serving "/history" starts here. *
+ ***********************************/
+
+
+/**
+ * Decides whether the history builder will advance or not
+ * to the next element.
+ *
+ * @param ha history args
+ * @return GNUNET_YES/NO to advance/not-advance.
+ */
+static int
+handle_history_advance (const struct HistoryArgs *ha,
+                        struct Transaction *pos)
+{
+  const struct HistoryRangeIds *hri = ha->range;
+
+  return (NULL != pos) && (0 != hri->count);
+}
+
+
+/**
+ * Iterates on the "next" element to be processed.  To
+ * be used when the current element does not get inserted in
+ * the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_skip (const struct HistoryArgs *ha,
+                     const struct Transaction *pos)
+{
+  const struct HistoryRangeIds *hri = ha->range;
+
+  if (hri->count > 0)
+    return pos->next;
+  if (hri->count < 0)
+    return pos->prev;
+}
+
+
+/**
+ * Iterates on the "next" element to be processed.  To
+ * be used when the current element _gets_ inserted in the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_step (const struct HistoryArgs *ha,
+                     const struct Transaction *pos)
+{
+  struct HistoryRangeIds *hri = ha->range;
+
+  if (hri->count > 0)
+  {
+    hri->count--;
+    return pos->next;
+  }
+  if (hri->count < 0)
+  {
+    hri->count++;
+    return pos->prev;
+  }
+}
+
+
+/**
+ * Decides whether the history builder will advance or not
+ * to the next element.
+ *
+ * @param ha history args
+ * @return GNUNET_YES/NO to advance/not-advance.
+ */
+static int
+handle_history_range_advance (const struct HistoryArgs *ha)
+{
+  const struct HistoryRangeDates *hrd = ha->range;
+}
+
+
+/**
+ * Iterates towards the "next" element to be processed.  To
+ * be used when the current element does not get inserted in
+ * the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_range_skip (const struct HistoryArgs *ha)
+{
+  const struct HistoryRangeDates *hrd = ha->range;
+}
+
+/**
+ * Iterates on the "next" element to be processed.  To
+ * be used when the current element _gets_ inserted in the result.
+ *
+ * @param ha history arguments.
+ * @param pos current element being processed.
+ * @return the next element to be processed.
+ */
+static struct Transaction *
+handle_history_range_step (const struct HistoryArgs *ha)
+{
+  const struct HistoryRangeDates *hrd = ha->range;
+}
+
+
+/**
+ * Actual history response builder.
+ *
+ * @param pos first (included) element in the result set.
+ * @param ha history arguments.
+ * @param caller_name which function is building the history.
+ * @return MHD_YES / MHD_NO, after having enqueued the response
+ *         object into MHD.
+ */
+static int
+build_history_response (struct MHD_Connection *connection,
+                        struct Transaction *pos,
+                        struct HistoryArgs *ha,
+                        Skip skip,
+                        Step step,
+                        CheckAdvance advance)
+{
+
+  struct HistoryElement *history_results_head = NULL;
+  struct HistoryElement *history_results_tail = NULL;
+  struct HistoryElement *history_element = NULL;
+  json_t *history;
+  json_t *jresponse;
+  int ret;
+
+  while (GNUNET_YES == advance (ha,
+                                pos))
+  {
+    json_t *trans;
+    char *subject;
+    const char *sign;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found transaction over %s from %llu to %llu\n",
+                TALER_amount2s (&pos->amount),
+                (unsigned long long) pos->debit_account,
+                (unsigned long long) pos->credit_account);
+
+    if ( (! ( ( (ha->account_number == pos->debit_account) &&
+                (0 != (ha->direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
+              ( (ha->account_number == pos->credit_account) &&
+                (0 != (ha->direction & TALER_BANK_DIRECTION_CREDIT) ) ) ) ) ||
+         ( (0 == (ha->direction & TALER_BANK_DIRECTION_CANCEL)) &&
+           (GNUNET_YES == pos->rejected) ) )
+    {
+      pos = skip (ha,
+                  pos);
+      continue;
+    }
+
+    GNUNET_asprintf (&subject,
+                     "%s %s",
+                     pos->subject,
+                     pos->exchange_base_url);
+    sign =
+      (ha->account_number == pos->debit_account)
+      ? (pos->rejected ? "cancel-" : "-")
+      : (pos->rejected ? "cancel+" : "+");
+    trans = json_pack
+      ("{s:I, s:o, s:o, s:s, s:I, s:s}",
+       "row_id", (json_int_t) pos->row_id,
+       "date", GNUNET_JSON_from_time_abs (pos->date),
+       "amount", TALER_JSON_from_amount (&pos->amount),
+       "sign", sign,
+       "counterpart", (json_int_t)
+         ( (ha->account_number == pos->debit_account)
+            ? pos->credit_account
+            : pos->debit_account),
+       "wt_subject", subject);
+    GNUNET_assert (NULL != trans);
+    GNUNET_free (subject);
+
+    history_element = GNUNET_new (struct HistoryElement);
+    history_element->element = trans;
+
+
+    /* XXX: the ordering feature is missing.  */
+
+    GNUNET_CONTAINER_DLL_insert_tail (history_results_head,
+                                      history_results_tail,
+                                      history_element);
+    pos = step (ha, pos);
+  }
+
+  history = json_array ();
+  if (NULL != history_results_head)
+    history_element = history_results_head;
+
+  while (NULL != history_element)
+  {
+    json_array_append_new (history,
+                           history_element->element);
+    history_element = history_element->next;
+    if (NULL != history_element)
+      GNUNET_free_non_null (history_element->prev);
+  }
+  GNUNET_free_non_null (history_results_tail);
+
+  if (0 == json_array_size (history))
+  {
+    struct MHD_Response *resp;
+
+    json_decref (history);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning empty transaction history\n");
+    resp = MHD_create_response_from_buffer
+      (0,
+       "",
+       MHD_RESPMEM_PERSISTENT);
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_NO_CONTENT,
+                              resp);
+    MHD_destroy_response (resp);
+    return ret;
+  }
+
+  jresponse = json_pack ("{s:o}",
+                         "data",
+                         history);
+  if (NULL == jresponse)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  /* Finally build response object */
+  {
+    struct MHD_Response *resp;
+    void *json_str;
+    size_t json_len;
+
+    json_str = json_dumps (jresponse,
+                           JSON_INDENT(2));
+    json_decref (jresponse);
+    if (NULL == json_str)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
+    json_len = strlen (json_str);
+    resp = MHD_create_response_from_buffer (json_len,
+                                            json_str,
+                                            MHD_RESPMEM_MUST_FREE);
+    if (NULL == resp)
+    {
+      GNUNET_break (0);
+      free (json_str);
+      return MHD_NO;
+    }
+    (void) MHD_add_response_header (resp,
+                                    MHD_HTTP_HEADER_CONTENT_TYPE,
+                                    "application/json");
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_OK,
+                              resp);
+    MHD_destroy_response (resp);
+  }
+  return ret;
+}
+
 
 
 /**
@@ -974,7 +1251,12 @@ handle_history_new (struct TALER_FAKEBANK_Handle *h,
     pos = NULL;
   }
 
-  /* Loop starts here.  */
+  return build_history_response (connection,
+                                 pos,
+                                 &ha,
+                                 &handle_history_skip,
+                                 &handle_history_step,
+                                 &handle_history_advance);
 }
 
 /**
@@ -1025,277 +1307,6 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
   hrd.start.abs_value_us = start_stamp * 1000LL * 1000LL;
   hrd.end.abs_value_us = end_stamp * 1000LL * 1000LL;
 }
-
-
-/**
- * Decides whether the history builder will advance or not
- * to the next element.
- *
- * @param ha history args
- * @return GNUNET_YES/NO to advance/not-advance.
- */
-static int
-handle_history_advance (const struct HistoryArgs *ha,
-                        struct Transaction *pos)
-{
-  const struct HistoryRangeIds *hri = ha->range;
-
-  return (NULL != pos) && (0 != hri->count);
-}
-
-
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element does not get inserted in
- * the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-static struct Transaction *
-handle_history_skip (const struct HistoryArgs *ha,
-                     const struct Transaction *pos)
-{
-  const struct HistoryRangeIds *hri = ha->range;
-
-  if (hri->count > 0)
-    return pos->next;
-  if (hri->count < 0)
-    return pos->prev;
-}
-
-
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element _gets_ inserted in the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-static struct Transaction *
-handle_history_step (struct HistoryArgs *ha,
-                     const struct Transaction *pos)
-{
-  struct HistoryRangeIds *hri = ha->range;
-
-  if (hri->count > 0)
-  {
-    hri->count--;
-    return pos->next;
-  }
-  if (hri->count < 0)
-  {
-    hri->count++;
-    return pos->prev;
-  }
-}
-
-
-/**
- * Decides whether the history builder will advance or not
- * to the next element.
- *
- * @param ha history args
- * @return GNUNET_YES/NO to advance/not-advance.
- */
-static int
-handle_history_range_advance (const struct HistoryArgs *ha)
-{
-  const struct HistoryRangeDates *hrd = ha->range;
-}
-
-
-/**
- * Iterates towards the "next" element to be processed.  To
- * be used when the current element does not get inserted in
- * the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-static struct Transaction *
-handle_history_range_skip (const struct HistoryArgs *ha)
-{
-  const struct HistoryRangeDates *hrd = ha->range;
-}
-
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element _gets_ inserted in the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-static struct Transaction *
-handle_history_range_step (const struct HistoryArgs *ha)
-{
-  const struct HistoryRangeDates *hrd = ha->range;
-}
-
-/**
- * Actual history response builder.
- *
- * @param pos first (included) element in the result set.
- * @param ha history arguments.
- * @param caller_name which function is building the history.
- * @return MHD_YES / MHD_NO, after having enqueued the response
- *         object into MHD.
- */
-static struct MHD_response *
-build_history_response (struct MHD_Connection *connection,
-                        struct Transaction *pos,
-                        struct HistoryArgs *ha,
-                        Skip skip,
-                        Step step,
-                        CheckAdvance advance)
-{
-
-  struct HistoryElement *history_results_head = NULL;
-  struct HistoryElement *history_results_tail = NULL;
-  struct HistoryElement *history_element = NULL;
-  json_t *history;
-  json_t *jresponse;
-  int ret;
-
-  while (GNUNET_YES == advance (ha,
-                                pos))
-  {
-    json_t *trans;
-    char *subject;
-    const char *sign;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Found transaction over %s from %llu to %llu\n",
-                TALER_amount2s (&pos->amount),
-                (unsigned long long) pos->debit_account,
-                (unsigned long long) pos->credit_account);
-
-    if ( (! ( ( (ha->account_number == pos->debit_account) &&
-                (0 != (ha->direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
-              ( (ha->account_number == pos->credit_account) &&
-                (0 != (ha->direction & TALER_BANK_DIRECTION_CREDIT) ) ) ) ) ||
-         ( (0 == (ha->direction & TALER_BANK_DIRECTION_CANCEL)) &&
-           (GNUNET_YES == pos->rejected) ) )
-    {
-      pos = skip (ha,
-                  pos);
-      continue;
-    }
-
-    GNUNET_asprintf (&subject,
-                     "%s %s",
-                     pos->subject,
-                     pos->exchange_base_url);
-    sign =
-      (ha->account_number == pos->debit_account)
-      ? (pos->rejected ? "cancel-" : "-")
-      : (pos->rejected ? "cancel+" : "+");
-    trans = json_pack
-      ("{s:I, s:o, s:o, s:s, s:I, s:s}",
-       "row_id", (json_int_t) pos->row_id,
-       "date", GNUNET_JSON_from_time_abs (pos->date),
-       "amount", TALER_JSON_from_amount (&pos->amount),
-       "sign", sign,
-       "counterpart", (json_int_t)
-         ( (ha->account_number == pos->debit_account)
-            ? pos->credit_account
-            : pos->debit_account),
-       "wt_subject", subject);
-    GNUNET_assert (NULL != trans);
-    GNUNET_free (subject);
-
-    history_element = GNUNET_new (struct HistoryElement);
-    history_element->element = trans;
-
-
-    /* XXX: the ordering feature is missing.  */
-
-    GNUNET_CONTAINER_DLL_insert_tail (history_results_head,
-                                      history_results_tail,
-                                      history_element);
-    pos = step (ha, pos);
-  }
-
-  history = json_array ();
-  if (NULL != history_results_head)
-    history_element = history_results_head;
-
-  while (NULL != history_element)
-  {
-    json_array_append_new (history,
-                           history_element->element);
-    history_element = history_element->next;
-    if (NULL != history_element)
-      GNUNET_free_non_null (history_element->prev);
-  }
-  GNUNET_free_non_null (history_results_tail);
-
-  if (0 == json_array_size (history))
-  {
-    struct MHD_Response *resp;
-
-    json_decref (history);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Returning empty transaction history\n");
-    resp = MHD_create_response_from_buffer
-      (0,
-       "",
-       MHD_RESPMEM_PERSISTENT);
-    ret = MHD_queue_response (connection,
-                              MHD_HTTP_NO_CONTENT,
-                              resp);
-    MHD_destroy_response (resp);
-    return ret;
-  }
-
-  jresponse = json_pack ("{s:o}",
-                         "data",
-                         history);
-  if (NULL == jresponse)
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  /* Finally build response object */
-  {
-    struct MHD_Response *resp;
-    void *json_str;
-    size_t json_len;
-
-    json_str = json_dumps (jresponse,
-                           JSON_INDENT(2));
-    json_decref (jresponse);
-    if (NULL == json_str)
-    {
-      GNUNET_break (0);
-      return MHD_NO;
-    }
-    json_len = strlen (json_str);
-    resp = MHD_create_response_from_buffer (json_len,
-                                            json_str,
-                                            MHD_RESPMEM_MUST_FREE);
-    if (NULL == resp)
-    {
-      GNUNET_break (0);
-      free (json_str);
-      return MHD_NO;
-    }
-    (void) MHD_add_response_header (resp,
-                                    MHD_HTTP_HEADER_CONTENT_TYPE,
-                                    "application/json");
-    ret = MHD_queue_response (connection,
-                              MHD_HTTP_OK,
-                              resp);
-    MHD_destroy_response (resp);
-  }
-  return ret;
-}
-
 
 /**
  * Handle incoming HTTP request for /history
@@ -1615,6 +1626,9 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   return ret;
 }
 
+/***********************************
+ * End of /history implementation. *
+ ***********************************/
 
 /**
  * Handle incoming HTTP request.
