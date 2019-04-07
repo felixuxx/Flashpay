@@ -821,6 +821,7 @@ handle_history_skip (const struct HistoryArgs *ha,
     return pos->next;
   if (hri->count < 0)
     return pos->prev;
+  return NULL;
 }
 
 
@@ -848,6 +849,7 @@ handle_history_step (const struct HistoryArgs *ha,
     hri->count++;
     return pos->prev;
   }
+  return NULL;
 }
 
 
@@ -1705,9 +1707,9 @@ handle_mhd_request (void *cls,
                          "/history")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
-    return handle_history (h,
-                           connection,
-                           con_cls);
+    return handle_history_new (h,
+                               connection,
+                               con_cls);
 
   /* Unexpected URL path, just close the connection. */
   /* we're rather impolite here, but it's a testcase. */
