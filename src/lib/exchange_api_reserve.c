@@ -238,9 +238,8 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                           &uuid[uuid_off]);
       for (i=0;i<uuid_off;i++)
       {
-        if (0 == memcmp (&uuid[uuid_off],
-                         &uuid[i],
-                         sizeof (struct GNUNET_HashCode)))
+        if (0 == GNUNET_memcmp (&uuid[uuid_off],
+                                &uuid[i]))
         {
           GNUNET_break_op (0);
           GNUNET_JSON_parse_free (withdraw_spec);
