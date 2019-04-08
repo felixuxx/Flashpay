@@ -60,16 +60,14 @@ test_high_level ()
                                      &coin_pub,
                                      &secret2);
   GNUNET_assert (0 ==
-		 memcmp (&secret,
-			 &secret2,
-			 sizeof (secret)));
+                 GNUNET_memcmp (&secret,
+                                &secret2));
   TALER_link_recover_transfer_secret (&trans_pub,
                                       &coin_priv,
                                       &secret2);
   GNUNET_assert (0 ==
-		 memcmp (&secret,
-			 &secret2,
-			 sizeof (secret)));
+                 GNUNET_memcmp (&secret,
+                                &secret2));
   TALER_planchet_setup_refresh (&secret,
                                 0,
                                 &fc1);
@@ -77,9 +75,8 @@ test_high_level ()
                                 1,
                                 &fc2);
   GNUNET_assert (0 !=
-                 memcmp (&fc1,
-                         &fc2,
-                         sizeof (struct TALER_PlanchetSecretsP)));
+                 GNUNET_memcmp (&fc1,
+                                &fc2));
   return 0;
 }
 
