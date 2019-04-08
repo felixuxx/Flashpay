@@ -442,16 +442,17 @@ get_anchor (const char *dir,
 
     /**
      * XXX-ANCHOR question: why adding the duration only in this
-     * case, and not _all the times we found a anchor_ ?  Like
-     * for instance out of this block below ?
+     * case, and not _all the times we found a anchor_ ?  Like for
+     * instance, below out of this block?  
+     *
      */
     *anchor = GNUNET_TIME_absolute_add (*anchor,
                                         duration);
     *anchor = GNUNET_TIME_absolute_subtract (*anchor,
                                              overlap);
   }
-  
 
+  /* ==>Missing to add the duration to the anchor here?<== */ 
 
   /* anchor is now the stamp where we need to create a new key */
 }
