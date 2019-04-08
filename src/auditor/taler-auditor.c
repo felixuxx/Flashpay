@@ -1975,12 +1975,10 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       }
       /* Check if this deposit is within the remit of the aggregation
          we are investigating, if so, include it in the totals. */
-      if ( (0 == memcmp (merchant_pub,
-                         &tl->details.deposit->merchant_pub,
-                         sizeof (struct TALER_MerchantPublicKeyP))) &&
-           (0 == memcmp (h_contract_terms,
-                         &tl->details.deposit->h_contract_terms,
-                         sizeof (struct GNUNET_HashCode))) )
+      if ( (0 == GNUNET_memcmp (merchant_pub,
+                                &tl->details.deposit->merchant_pub)) &&
+           (0 == GNUNET_memcmp (h_contract_terms,
+                                &tl->details.deposit->h_contract_terms)) )
       {
         struct TALER_Amount amount_without_fee;
 
@@ -2063,12 +2061,10 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       }
       /* Check if this refund is within the remit of the aggregation
          we are investigating, if so, include it in the totals. */
-      if ( (0 == memcmp (merchant_pub,
-                         &tl->details.refund->merchant_pub,
-                         sizeof (struct TALER_MerchantPublicKeyP))) &&
-           (0 == memcmp (h_contract_terms,
-                         &tl->details.refund->h_contract_terms,
-                         sizeof (struct GNUNET_HashCode))) )
+      if ( (0 == GNUNET_memcmp (merchant_pub,
+                                &tl->details.refund->merchant_pub)) &&
+           (0 == GNUNET_memcmp (h_contract_terms,
+                                &tl->details.refund->h_contract_terms)) )
       {
         if (GNUNET_OK !=
             TALER_amount_add (&merchant_loss,
@@ -2223,9 +2219,8 @@ wire_transfer_information_cb (void *cls,
     return;
   }
   if (0 !=
-      memcmp (&hw,
-              h_wire,
-              sizeof (struct GNUNET_HashCode)))
+      GNUNET_memcmp (&hw,
+                     h_wire))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
@@ -2320,18 +2315,16 @@ wire_transfer_information_cb (void *cls,
                                    tl);
 
   /* Check other details of wire transfer match */
-  if (0 != memcmp (h_wire,
-                   &wcc->h_wire,
-                   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (h_wire,
+                          &wcc->h_wire))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
                               rowid,
                               "wire method of aggregate do not match wire transfer");
   }
-  if (0 != memcmp (h_wire,
-                   &wcc->h_wire,
-                   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (h_wire,
+                          &wcc->h_wire))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
@@ -4393,9 +4386,8 @@ test_master_present (void *cls,
   int *found = cls;
 
   (void) exchange_url;
-  if (0 == memcmp (mpub,
-		   &master_pub,
-		   sizeof (master_pub)))
+  if (0 == GNUNET_memcmp (mpub,
+                          &master_pub))
     *found = GNUNET_YES;
 }
 
@@ -4423,9 +4415,8 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
-  if (0 == memcmp (&zeromp,
-                   &master_pub,
-                   sizeof (struct TALER_MasterPublicKeyP)))
+  if (0 == GNUNET_memcmp (&zeromp,
+                          &master_pub))
   {
     /* -m option not given, try configuration */
     char *master_public_key_str;
