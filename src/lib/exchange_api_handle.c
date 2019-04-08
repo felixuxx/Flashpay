@@ -594,9 +594,8 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     dk_off = UINT_MAX;
     for (unsigned int j=0;j<key_data->num_denom_keys;j++)
     {
-      if (0 == memcmp (&denom_h,
-                       &key_data->denom_keys[j].h_key,
-                       sizeof (struct GNUNET_HashCode)))
+      if (0 == GNUNET_memcmp (&denom_h,
+                              &key_data->denom_keys[j].h_key))
       {
         dk = &key_data->denom_keys[j];
         dk_off = j;
@@ -756,7 +755,7 @@ TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
     (denom1->key.rsa_public_key,
      denom2->key.rsa_public_key))
     return 1;
-  
+
   tmp1 = denom1->key.rsa_public_key;
   tmp2 = denom2->key.rsa_public_key;
 
@@ -764,9 +763,8 @@ TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
   denom2->key.rsa_public_key = NULL;
 
   /* Then procede with the rest of the object.  */
-  if (0 != memcmp (denom1,
-                   denom2,
-                   sizeof (struct TALER_EXCHANGE_DenomPublicKey)))
+  if (0 != GNUNET_memcmp (denom1,
+                          denom2))
   {
     denom1->key.rsa_public_key = tmp1; 
     denom2->key.rsa_public_key = tmp2;
