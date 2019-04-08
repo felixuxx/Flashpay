@@ -613,9 +613,8 @@ track_transfer_cb
          TALER_JSON_merchant_wire_signature_hash (wire_details,
                                                   &h_wire_details));
 
-      if (0 != memcmp (&h_wire_details,
-                       h_wire,
-                       sizeof (struct GNUNET_HashCode)))
+      if (0 != GNUNET_memcmp (&h_wire_details,
+                              h_wire))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Wire hash missmath to command %s\n",
