@@ -1308,9 +1308,8 @@ run (void *cls,
       return;
     }
     if (0 !=
-        memcmp (&master_public_key,
-                &master_public_key_from_cfg,
-                sizeof (struct TALER_MasterPublicKeyP)))
+        GNUNET_memcmp (&master_public_key,
+                       &master_public_key_from_cfg))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
@@ -1363,9 +1362,7 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if ( (0 != memcmp (&zero,
-                     &revoke_dkh,
-                     sizeof (zero))) &&
+  if ( (0 != GNUNET_is_zero memcmp (&revoke_dkh)) &&
        (GNUNET_OK !=
         revoke_denomination (&revoke_dkh)) )
   {
