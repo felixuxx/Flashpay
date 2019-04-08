@@ -47,9 +47,8 @@ ski_iter (void *cls,
 {
   const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *exp = cls;
 
-  if (0 != memcmp (ski,
-                   exp,
-                   sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP)))
+  if (0 != GNUNET_memcmp (ski,
+                          exp))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
