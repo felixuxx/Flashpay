@@ -1362,7 +1362,7 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if ( (0 != GNUNET_is_zero memcmp (&revoke_dkh)) &&
+  if ( (0 != GNUNET_is_zero (&revoke_dkh)) &&
        (GNUNET_OK !=
         revoke_denomination (&revoke_dkh)) )
   {
