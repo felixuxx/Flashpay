@@ -278,9 +278,8 @@ create_denom_key_pair (unsigned int size,
     destroy_denom_key_pair (dkp);
     return NULL;
   }
-  if (0 != memcmp (&dki.issue,
-                   &issue2,
-                   sizeof (issue2)))
+  if (0 != GNUNET_memcmp (&dki.issue,
+                          &issue2))
   {
     GNUNET_break(0);
     destroy_denom_key_pair (dkp);
@@ -428,9 +427,8 @@ check_refresh_reveal_cb (void *cls,
 
     GNUNET_assert (acoin->coin_ev_size == bcoin->coin_ev_size);
     GNUNET_assert (0 ==
-                   memcmp (acoin->coin_ev,
-                           bcoin->coin_ev,
-                           acoin->coin_ev_size));
+                   GNUNET_memcmp (acoin->coin_ev,
+                                  bcoin->coin_ev));
     GNUNET_assert (0 ==
                    GNUNET_CRYPTO_rsa_public_key_cmp (acoin->denom_pub.rsa_public_key,
                                                      bcoin->denom_pub.rsa_public_key));
