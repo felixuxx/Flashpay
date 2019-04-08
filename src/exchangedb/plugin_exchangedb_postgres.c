@@ -2924,9 +2924,8 @@ postgres_have_deposit (void *cls,
             deposit2.timestamp.abs_value_us) ) ) ||
        (deposit->refund_deadline.abs_value_us !=
         deposit2.refund_deadline.abs_value_us) ||
-       (0 != memcmp (&deposit->h_wire,
-                     &deposit2.h_wire,
-                     sizeof (struct GNUNET_HashCode)) ) )
+       (0 != GNUNET_memcmp (&deposit->h_wire,
+                            &deposit2.h_wire) ) )
   {
     /* Inconsistencies detected! Does not match!  (We might want to
        expand the API with a 'get_deposit' function to return the
@@ -4114,9 +4113,8 @@ add_ldl (void *cls,
       }
     }
     if ( (NULL != ldctx->last) &&
-         (0 == memcmp (&transfer_pub,
-                       &ldctx->transfer_pub,
-                       sizeof (struct TALER_TransferPublicKeyP))) )
+         (0 == GNUNET_memcmp (&transfer_pub,
+                              &ldctx->transfer_pub)) )
     {
       pos->next = ldctx->last;
     }
@@ -4964,9 +4962,8 @@ postgres_insert_wire_fee (void *cls,
     return qs;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    if (0 != memcmp (&sig,
-                     master_sig,
-                     sizeof (sig)))
+    if (0 != GNUNET_memcmp (&sig,
+                            master_sig))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
