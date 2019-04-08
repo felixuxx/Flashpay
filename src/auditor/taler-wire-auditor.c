@@ -1244,9 +1244,8 @@ history_credit_cb (void *cls,
                        "diagnostic", "wire reference size missmatch"));
     return GNUNET_OK;
   }
-  if (0 != memcmp (&details->wtid,
-		   &rii->details.wtid,
-		   sizeof (struct TALER_WireTransferIdentifierRawP)))
+  if (0 != GNUNET_memcmp (&details->wtid,
+                          &rii->details.wtid))
   {
     report (report_reserve_in_inconsistencies,
             json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
@@ -1536,9 +1535,8 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
-  if (0 == memcmp (&zeromp,
-                   &master_pub,
-                   sizeof (struct TALER_MasterPublicKeyP)))
+  if (0 == GNUNET_memcmp (&zeromp,
+                          &master_pub))
   {
     /* -m option not given, try configuration */
     char *master_public_key_str;
