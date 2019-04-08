@@ -342,9 +342,8 @@ TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *
     const struct TALER_EXCHANGE_SigningPublicKey *spk;
 
     spk = &keys->sign_keys[i];
-    if (0 == memcmp (exchange_pub,
-		     &spk->key,
-		     sizeof (struct TALER_ExchangePublicKeyP)))
+    if (0 == GNUNET_memcmp (exchange_pub,
+                            &spk->key))
       return spk;
   }
   return NULL;
