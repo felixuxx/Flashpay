@@ -107,7 +107,8 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_key_peer.c \
   testing_api_trait_wtid.c \
   testing_api_trait_amount.c \
-  testing_api_trait_cmd.c
+  testing_api_trait_cmd.c \
+  testing_api_trait_time.c
 libtalertesting_la_LIBADD = \
   libtalerexchange.la \
   $(top_builddir)/src/wire/libtalerwire.la \

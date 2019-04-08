@@ -90,6 +90,27 @@ struct HistoryState
    * chronological order.
    */
   unsigned int ascending;
+
+  /**********************************
+   * Following defs are specific to *
+   * the "/history-range" version.  *
+   **********************************/
+
+  /**
+   * Last row number we want in the result.  Only used
+   * as a trait source when using the /history-range API.
+   */
+  const char *end_row_reference;
+
+  /**
+   * Start date for /history-range.
+   */
+  struct GNUNET_TIME_Absolute start_date;
+
+  /**
+   * End date for /history-range.
+   */
+  struct GNUNET_TIME_Absolute end_date;
 };
 
 /**
@@ -669,6 +690,8 @@ history_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = cls;
   struct HistoryState *hs = is->commands[is->ip].cls;
 
+  /* Possibly we got the 204 status code
+   * as a "end of list" marker.  */
   if (MHD_HTTP_OK != http_status)
   {
     hs->hh = NULL;
@@ -710,7 +733,7 @@ history_cb (void *cls,
                         JSON_COMPACT);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Result %u was `%s'\n",
-                  (unsigned int) hs->results_obtained,
+                  (unsigned int) hs->results_obtained++,
                   acc);
       if (NULL != acc)
         free (acc);
@@ -758,7 +781,6 @@ history_run (void *cls,
 
     TALER_LOG_DEBUG ("row id (from trait) is %llu\n",
                      (unsigned long long) row_id);
-
   }
 
   auth = &AUTHS[hs->account_no - 1];
@@ -772,6 +794,81 @@ history_run (void *cls,
                                hs->num_results,
                                &history_cb,
                                is);
+  GNUNET_assert (NULL != hs->hh);
+}
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
+history_range_run (void *cls,
+                   const struct TALER_TESTING_Command *cmd,
+                   struct TALER_TESTING_Interpreter *is)
+{
+  
+  struct HistoryState *hs = cls;
+  const struct GNUNET_TIME_Absolute *start_date;
+  const struct GNUNET_TIME_Absolute *end_date;
+  struct TALER_BANK_AuthenticationData *auth;
+
+  if (NULL != hs->start_row_reference)
+  {
+      
+    const struct TALER_TESTING_Command *history_cmd;
+
+    history_cmd = TALER_TESTING_interpreter_lookup_command
+      (is, hs->start_row_reference);
+
+    if (NULL == history_cmd)
+      TALER_TESTING_FAIL (is);
+
+    if (GNUNET_OK != TALER_TESTING_get_trait_absolute_time
+        (history_cmd, 0, &start_date))
+      TALER_TESTING_FAIL (is);
+  }
+  else
+  {
+    GNUNET_assert (UINT64_MAX != hs->start_date.abs_value_us);
+    start_date = &hs->start_date;
+  }
+
+  if (NULL != hs->end_row_reference)
+  {
+
+    const struct TALER_TESTING_Command *history_cmd;
+
+    history_cmd = TALER_TESTING_interpreter_lookup_command
+      (is, hs->end_row_reference);
+
+    if (NULL == history_cmd)
+      TALER_TESTING_FAIL (is);
+
+    if (GNUNET_OK != TALER_TESTING_get_trait_absolute_time
+        (history_cmd, 0, &end_date))
+      TALER_TESTING_FAIL (is);
+  }
+  else
+  {
+    GNUNET_assert (UINT64_MAX != hs->end_date.abs_value_us);
+    end_date = &hs->end_date;
+  }
+
+  auth = &AUTHS[hs->account_no - 1];
+  hs->hh = TALER_BANK_history_range (is->ctx,
+                                     hs->bank_url,
+                                     auth,
+                                     hs->account_no,
+                                     hs->direction,
+                                     hs->ascending,
+                                     *start_date,
+                                     *end_date,
+                                     &history_cb,
+                                     is);
   GNUNET_assert (NULL != hs->hh);
 }
 
@@ -841,6 +938,114 @@ TALER_TESTING_cmd_bank_history
     .label = label,
     .cls = hs,
     .run = &history_run,
+    .cleanup = &history_cleanup,
+    .traits = &history_traits
+  };
+
+  return cmd;
+}
+
+
+/**
+ * Make a "history-range" CMD, picking dates from traits.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank offering the "history"
+ *        operation.
+ * @param account_no bank account number to ask the history for.
+ * @param direction which direction this operation is interested.
+ * @param ascending if GNUNET_YES, the bank will return the rows
+ *        in ascending (= chronological) order.
+ * @param start_row_reference reference to a command that can
+ *        offer a absolute time to use as the 'start' argument
+ *        for "/history-range".
+ * @param end_row_reference reference to a command that can
+ *        offer a absolute time to use as the 'end' argument
+ *        for "/history-range".
+ * @param num_result how many rows we want in the result. 
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_history_range
+  (const char *label,
+   const char *bank_url,
+   uint64_t account_no,
+   enum TALER_BANK_Direction direction,
+   unsigned int ascending,
+   const char *start_row_reference,
+   const char *end_row_reference,
+   long long num_results)
+{
+  struct HistoryState *hs;
+
+  hs = GNUNET_new (struct HistoryState);
+  hs->bank_url = bank_url;
+  hs->account_no = account_no;
+  hs->direction = direction;
+  hs->start_row_reference = start_row_reference;
+  hs->end_row_reference = end_row_reference;
+  hs->num_results = num_results;
+  hs->ascending = ascending;
+  hs->start_date = GNUNET_TIME_UNIT_FOREVER_ABS;
+  hs->end_date = GNUNET_TIME_UNIT_FOREVER_ABS;
+
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = hs,
+    .run = &history_range_run,
+    .cleanup = &history_cleanup,
+    .traits = &history_traits
+  };
+
+  return cmd;
+}
+
+
+/**
+ * Make a "history-range" CMD, picking dates from the arguments.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank offering the "history"
+ *        operation.
+ * @param account_no bank account number to ask the history for.
+ * @param direction which direction this operation is interested.
+ * @param ascending if GNUNET_YES, the bank will return the rows
+ *        in ascending (= chronological) order.
+ * @param start_date value for the 'start' argument
+ *        of "/history-range".
+ * @param end_date value for the 'end' argument
+ *        of "/history-range".
+ * @param num_result how many rows we want in the result. 
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_history_range_with_dates
+  (const char *label,
+   const char *bank_url,
+   uint64_t account_no,
+   enum TALER_BANK_Direction direction,
+   unsigned int ascending,
+   struct GNUNET_TIME_Absolute start_date,
+   struct GNUNET_TIME_Absolute end_date,
+   long long num_results)
+{
+  struct HistoryState *hs;
+
+  hs = GNUNET_new (struct HistoryState);
+  hs->bank_url = bank_url;
+  hs->account_no = account_no;
+  hs->direction = direction;
+  hs->num_results = num_results;
+  hs->ascending = ascending;
+  hs->start_date = start_date;
+  hs->end_date = start_date;
+
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .cls = hs,
+    .run = &history_range_run,
     .cleanup = &history_cleanup,
     .traits = &history_traits
   };

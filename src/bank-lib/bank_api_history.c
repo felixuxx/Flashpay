@@ -2,22 +2,26 @@
   This file is part of TALER
   Copyright (C) 2017 GNUnet e.V. & Inria
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 3,
+  or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
-  <http://www.gnu.org/licenses/>
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not,
+  see <http://www.gnu.org/licenses/>
 */
 /**
  * @file bank-lib/bank_api_history.c
- * @brief Implementation of the /history requests of the bank's HTTP API
+ * @brief Implementation of the /history[-range]
+ *        requests of the bank's HTTP API.
  * @author Christian Grothoff
+ * @author Marcello Stanisci
  */
 #include "platform.h"
 #include "bank_api_common.h"
@@ -60,7 +64,23 @@ struct TALER_BANK_HistoryHandle
    * Closure for @a cb.
    */
   void *hcb_cls;
+};
 
+
+/**
+ * Represent a URL argument+value pair.
+ */
+struct HistoryArgumentURL
+{
+  /**
+   * Name of the URL argument.
+   */
+  char argument[20];
+
+  /**
+   * Value of the URL argument.
+   */
+  char value[20];
 };
 
 
@@ -248,101 +268,39 @@ handle_history_finished (void *cls,
 }
 
 
+
 /**
- * Request the wire transfer history of a bank account.
+ * Backend of both the /history[-range] requests.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank (used to execute this request)
+ * @param bank_base_url base URL of the bank.
+ * @param urlargs path + URL arguments.
  * @param auth authentication data to use
- * @param account_number which account number should we query
- * @param direction what kinds of wire transfers should be returned
- * @param ascending if GNUNET_YES, history elements will be returned in chronological order.
- * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
- * @param num_results how many results do we want; negative numbers to go into the past,
- *                    positive numbers to go into the future starting at @a start_row;
- *                    must not be zero.
- * @param hres_cb the callback to call with the transaction history
+ * @param hres_cb the callback to call with the transaction
+ *        history
  * @param hres_cb_cls closure for the above callback
- * @return NULL
- *         if the inputs are invalid (i.e. zero value for @e num_results).
- *         In this case, the callback is not called.
+ * @return NULL if the inputs are invalid (i.e. zero value for
+ *         @e num_results). In this case, the callback is not
+ *         called.
  */
-struct TALER_BANK_HistoryHandle *
-TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
-                    const char *bank_base_url,
-                    const struct TALER_BANK_AuthenticationData *auth,
-                    uint64_t account_number,
-                    enum TALER_BANK_Direction direction,
-                    unsigned int ascending,
-                    uint64_t start_row,
-                    int64_t num_results,
-                    TALER_BANK_HistoryResultCallback hres_cb,
-                    void *hres_cb_cls)
+static struct TALER_BANK_HistoryHandle *
+put_history_job (struct GNUNET_CURL_Context *ctx,
+                 const char *bank_base_url,
+                 const char *urlargs,
+                 const struct TALER_BANK_AuthenticationData *auth,
+                 TALER_BANK_HistoryResultCallback hres_cb,
+                 void *hres_cb_cls)
 {
   struct TALER_BANK_HistoryHandle *hh;
   CURL *eh;
-  char *url;
-  const char *dir;
-  const char *can;
-
-  if (0 == num_results)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  if (TALER_BANK_DIRECTION_NONE == direction)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
-  dir = NULL;
-  if (TALER_BANK_DIRECTION_BOTH == (TALER_BANK_DIRECTION_BOTH & direction))
-    dir = "both";
-  else if (TALER_BANK_DIRECTION_CREDIT == (TALER_BANK_DIRECTION_CREDIT & direction))
-    dir = "credit";
-  else if (TALER_BANK_DIRECTION_DEBIT == (TALER_BANK_DIRECTION_BOTH & direction))
-    dir = "debit";
-  if (NULL == dir)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  if (TALER_BANK_DIRECTION_CANCEL == (TALER_BANK_DIRECTION_CANCEL & direction))
-    can = "show";
-  else
-    can = "omit";
-
-  if (UINT64_MAX == start_row)
-  {
-    GNUNET_asprintf (&url,
-                     "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s",
-                     (unsigned long long) account_number,
-                     (long long) num_results,
-                     dir,
-                     can,
-                     (GNUNET_YES == ascending) ? "ascending" : "descending");
-
-  }
-  else
-  {
-    GNUNET_asprintf (&url,
-                     "/history?auth=basic&account_number=%llu&delta=%lld&start=%llu&direction=%s&cancelled=%s&ordering=%s",
-                     (unsigned long long) account_number,
-                     (long long) num_results,
-                     (unsigned long long) start_row,
-                     dir,
-                     can,
-                     (GNUNET_YES == ascending) ? "ascending" : "descending");
-  }
 
   hh = GNUNET_new (struct TALER_BANK_HistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
   hh->bank_base_url = GNUNET_strdup (bank_base_url);
   hh->request_url = TALER_BANK_path_to_url_ (bank_base_url,
-                                             url);
-  GNUNET_free (url);
+                                             urlargs);
+
   hh->authh = TALER_BANK_make_auth_header_ (auth);
   eh = curl_easy_init ();
   GNUNET_assert (CURLE_OK ==
@@ -363,8 +321,201 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
 
 
 /**
- * Cancel a history request.  This function cannot be used on a request
- * handle if a response is already served for it.
+ * Convert fixed value 'direction' into string.
+ *
+ * @param direction the value to convert.
+ * @return string representation of @a direction.  When length
+ *         is zero, an error occurred.
+ */
+static struct HistoryArgumentURL
+conv_direction (enum TALER_BANK_Direction direction)
+{
+  struct HistoryArgumentURL ret;
+
+  if (TALER_BANK_DIRECTION_NONE == direction)
+  {
+    /* Should just never happen.  */
+    GNUNET_assert (0);
+    return ret;
+  }
+
+  if (TALER_BANK_DIRECTION_BOTH ==
+      (TALER_BANK_DIRECTION_BOTH & direction))
+    strcpy (&ret.value[0],
+            "both");
+  else if (TALER_BANK_DIRECTION_CREDIT ==
+      (TALER_BANK_DIRECTION_CREDIT & direction))
+    strcpy (&ret.value[0],
+            "credit");
+  else if (TALER_BANK_DIRECTION_DEBIT ==
+      (TALER_BANK_DIRECTION_BOTH & direction)) /*why use 'both' flag?*/
+    strcpy (&ret.value[0],
+            "debit");
+  return ret;
+}
+
+
+/**
+ * Convert fixed value 'direction' into string representation
+ * of the "cancel" argument.
+ *
+ * @param direction the value to convert.
+ * @return string representation of @a direction.  When length
+ *         is zero, an error occurred.
+ */
+static struct HistoryArgumentURL
+conv_cancel (enum TALER_BANK_Direction direction)
+{
+  struct HistoryArgumentURL ret;
+
+  if (TALER_BANK_DIRECTION_CANCEL ==
+      (TALER_BANK_DIRECTION_CANCEL & direction))
+    strcpy (&ret.value[0],
+            "show");
+  else
+    strcpy (&ret.value[0],
+            "omit");
+  return ret;
+}
+
+/**
+ * Request the wire transfer history of a bank account,
+ * using time stamps to narrow the results.
+ *
+ * @param ctx curl context for the event loop
+ * @param bank_base_url URL of the bank (used to execute this
+ *        request)
+ * @param auth authentication data to use
+ * @param account_number which account number should we query
+ * @param direction what kinds of wire transfers should be
+ *        returned
+ * @param ascending if GNUNET_YES, history elements will
+ *        be returned in chronological order.
+ * @param start_date threshold for oldest result.
+ * @param end_date threshold for youngest result.
+ * @param hres_cb the callback to call with the transaction
+ *        history
+ * @param hres_cb_cls closure for the above callback
+ * @return NULL if the inputs are invalid (i.e. zero value for
+ *         @e num_results). In this case, the callback is not
+ *         called.
+ */
+struct TALER_BANK_HistoryHandle *
+TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
+                          const char *bank_base_url,
+                          const struct TALER_BANK_AuthenticationData *auth,
+                          uint64_t account_number,
+                          enum TALER_BANK_Direction direction,
+                          unsigned int ascending,
+                          struct GNUNET_TIME_Absolute start_date,
+                          struct GNUNET_TIME_Absolute end_date,
+                          TALER_BANK_HistoryResultCallback hres_cb,
+                          void *hres_cb_cls)
+{
+  struct TALER_BANK_HistoryHandle *hh;
+  char *url;
+
+  GNUNET_TIME_round_abs (&start_date);
+  GNUNET_TIME_round_abs (&end_date);
+
+  GNUNET_asprintf (&url,
+                   "/history?auth=basic&account_number=%llu&start=%llu&end=%llu&direction=%s&cancelled=%s&ordering=%s",
+                   (unsigned long long) account_number,
+                   start_date.abs_value_us / 1000LL / 1000LL,
+                   end_date.abs_value_us / 1000LL / 1000LL,
+                   conv_direction (direction).value,
+                   conv_cancel (direction).value,
+                   (GNUNET_YES == ascending) ? "ascending" : "descending");
+
+  hh = put_history_job (ctx,
+                        bank_base_url,
+                        url,
+                        auth,
+                        hres_cb,
+                        hres_cb_cls);
+
+  GNUNET_free (url);
+  return hh;
+}
+
+
+
+/**
+ * Request the wire transfer history of a bank account.
+ *
+ * @param ctx curl context for the event loop
+ * @param bank_base_url URL of the bank (used to execute this
+ *        request)
+ * @param auth authentication data to use
+ * @param account_number which account number should we query
+ * @param direction what kinds of wire transfers should be
+ *        returned
+ * @param ascending if GNUNET_YES, history elements will
+ *        be returned in chronological order.
+ * @param start_row from which row on do we want to get results,
+ *        use UINT64_MAX for the latest; exclusive
+ * @param num_results how many results do we want;
+ *        negative numbers to go into the past, positive numbers
+ *        to go into the future starting at @a start_row;
+ *        must not be zero.
+ * @param hres_cb the callback to call with the transaction
+ *        history
+ * @param hres_cb_cls closure for the above callback
+ * @return NULL if the inputs are invalid (i.e. zero value for
+ *         @e num_results). In this case, the callback is not
+ *         called.
+ */
+struct TALER_BANK_HistoryHandle *
+TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
+                    const char *bank_base_url,
+                    const struct TALER_BANK_AuthenticationData *auth,
+                    uint64_t account_number,
+                    enum TALER_BANK_Direction direction,
+                    unsigned int ascending,
+                    uint64_t start_row,
+                    int64_t num_results,
+                    TALER_BANK_HistoryResultCallback hres_cb,
+                    void *hres_cb_cls)
+{
+  struct TALER_BANK_HistoryHandle *hh;
+  char *url;
+
+  if (0 == num_results)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+
+  GNUNET_asprintf (&url,
+                   "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s&start=%llu",
+                   (unsigned long long) account_number,
+                   (long long) num_results,
+                   conv_direction (direction).value,
+                   conv_cancel (direction).value,
+                   (GNUNET_YES == ascending) ? "ascending" : "descending",
+                   start_row);
+
+  /* Locate and "cut" the 'start' argument,
+   * if the user didn't provide one.  */
+  if (UINT64_MAX == start_row)
+    *strstr (url, "&start=") = '\0';
+
+  hh = put_history_job (ctx,
+                        bank_base_url,
+                        url,
+                        auth,
+                        hres_cb,
+                        hres_cb_cls);
+
+  GNUNET_free (url);
+  return hh;
+}
+
+
+/**
+ * Cancel a history request.  This function cannot be
+ * used on a request handle if a response is already
+ * served for it.
  *
  * @param hh the history request handle
  */

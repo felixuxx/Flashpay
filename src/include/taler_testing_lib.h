@@ -654,8 +654,9 @@ struct TALER_TESTING_SetupContext
  * @return #GNUNET_OK if no errors occurred.
  */
 int
-TALER_TESTING_setup_with_exchange_cfg (void *cls,
-                                       const struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_TESTING_setup_with_exchange_cfg
+  (void *cls,
+   const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
@@ -681,22 +682,23 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
 
 /**
  * Initialize scheduler loop and curl context for the test case
- * including starting and stopping the auditor and exchange using the
- * given configuration file.
+ * including starting and stopping the auditor and exchange using
+ * the given configuration file.
  *
  * @param cls must be a `struct TALER_TESTING_SetupContext *`
  * @param cfg configuration to use.
  * @return #GNUNET_OK if no errors occurred.
  */
 int
-TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
-                                                   const struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_TESTING_setup_with_auditor_and_exchange_cfg
+  (void *cls,
+   const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
  * Initialize scheduler loop and curl context for the test case
- * including starting and stopping the auditor and exchange using the
- * given configuration file.
+ * including starting and stopping the auditor and exchange using
+ * the given configuration file.
  *
  * @param main_cb main method.
  * @param main_cb_cls main method closure.
@@ -709,12 +711,10 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
  * @return #GNUNET_OK if no errors occurred.
  */
 int
-TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
-                                               void *main_cb_cls,
-                                               const char *config_file);
-
-
-
+TALER_TESTING_setup_with_auditor_and_exchange
+  (TALER_TESTING_Main main_cb,
+   void *main_cb_cls,
+   const char *config_file);
 
 /* ************** Specific interpreter commands ************ */
 
@@ -872,14 +872,15 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
 
 /**
  * Modify a fakebank transfer command to enable retries when the
- * reserve is not yet full or we get other transient errors from the
- * fakebank.
+ * reserve is not yet full or we get other transient errors from
+ * the fakebank.
  *
  * @param cmd a fakebank transfer command
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_retry (struct TALER_TESTING_Command cmd);
+TALER_TESTING_cmd_fakebank_transfer_retry
+  (struct TALER_TESTING_Command cmd);
 
 
 /**
@@ -1020,7 +1021,8 @@ TALER_TESTING_cmd_withdraw_denomination
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd);
+TALER_TESTING_cmd_withdraw_with_retry
+  (struct TALER_TESTING_Command cmd);
 
 
 /**
@@ -1098,7 +1100,8 @@ TALER_TESTING_cmd_deposit
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
+TALER_TESTING_cmd_deposit_with_retry
+  (struct TALER_TESTING_Command cmd);
 
 
 /**
@@ -1148,7 +1151,8 @@ TALER_TESTING_cmd_refresh_melt_double
  * @return modified command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd);
+TALER_TESTING_cmd_refresh_melt_with_retry
+  (struct TALER_TESTING_Command cmd);
 
 
 /**
@@ -2406,5 +2410,33 @@ TALER_TESTING_get_trait_cmd
    unsigned int index,
    struct TALER_TESTING_Command **_cmd);
 
+
+/**
+ * Obtain a absolute time from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which time stamp to pick if
+ *        @a cmd has multiple on offer.
+ * @param time[out] set to the wanted WTID.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_absolute_time
+  (const struct TALER_TESTING_Command *cmd,
+   unsigned int index,
+   const struct GNUNET_TIME_Absolute **time);
+
+
+/**
+ * Offer a absolute time.
+ *
+ * @param index associate the object with this index
+ * @param time which object should be returned
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_absolute_time
+  (unsigned int index,
+   const struct GNUNET_TIME_Absolute *time);
 
 #endif

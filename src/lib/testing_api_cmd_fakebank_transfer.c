@@ -102,6 +102,11 @@ struct FakebankTransferState
   uint64_t serial_id;
 
   /**
+   * Timestamp of the transaction (as returned from the bank).
+   */
+  struct GNUNET_TIME_Absolute timestamp;
+
+  /**
    * Exchange URL.  This value is fed to the bank when requesting
    * the wire transfer; note: the bank needs it because a merchant
    * might want to know which exchange performed a wire transfer to
@@ -182,6 +187,7 @@ do_retry (void *cls)
  *        bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param serial_id unique ID of the wire transfer
+ * @param timestamp time stamp of the transaction made.
  * @param full_response full response from the exchange (for
  *        logging, in case of errors)
  */
@@ -190,13 +196,13 @@ add_incoming_cb (void *cls,
                  unsigned int http_status,
 		 enum TALER_ErrorCode ec,
                  uint64_t serial_id,
+                 struct GNUNET_TIME_Absolute timestamp,
                  const json_t *full_response)
 {
   struct FakebankTransferState *fts = cls;
   struct TALER_TESTING_Interpreter *is = fts->is;
 
   fts->aih = NULL;
-  fts->serial_id = serial_id;
   if (MHD_HTTP_OK != http_status)
   {
     if (GNUNET_YES == fts->do_retry)
@@ -205,18 +211,20 @@ add_incoming_cb (void *cls,
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
 	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Retrying fakebank transfer failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+        GNUNET_log
+          (GNUNET_ERROR_TYPE_INFO,
+           "Retrying fakebank transfer failed with %u/%d\n",
+           http_status,
+           (int) ec);
 	/* on DB conflicts, do not use backoff */
 	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
 	  fts->backoff = GNUNET_TIME_UNIT_ZERO;
 	else
 	  fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
-	fts->retry_task = GNUNET_SCHEDULER_add_delayed (fts->backoff,
-                                                        &do_retry,
-                                                        fts);
+	fts->retry_task = GNUNET_SCHEDULER_add_delayed
+          (fts->backoff,
+           &do_retry,
+           fts);
 	return;
       }
     }
@@ -228,6 +236,9 @@ add_incoming_cb (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
+  fts->serial_id = serial_id;
+  fts->timestamp = timestamp;
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -422,7 +433,7 @@ fakebank_transfer_traits (void *cls,
                           unsigned int index)
 {
   struct FakebankTransferState *fts = cls;
-  #define MANDATORY 6
+  #define MANDATORY 7
   struct TALER_TESTING_Trait traits[MANDATORY + 1] = {
     TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT
       (&fts->debit_account_no),
@@ -431,6 +442,7 @@ fakebank_transfer_traits (void *cls,
     TALER_TESTING_make_trait_url (0, fts->exchange_url),
     TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
+    TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp)
   };
 
   /**

@@ -160,11 +160,12 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
   struct Transaction *t;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Making transfer from %llu to %llu over %s and subject %s\n",
+              "Making transfer from %llu to %llu over %s and subject %s; for exchange: %s\n",
               (unsigned long long) debit_account,
               (unsigned long long) credit_account,
               TALER_amount2s (amount),
-              subject);
+              subject,
+              exchange_base_url);
   t = GNUNET_new (struct Transaction);
   t->debit_account = debit_account;
   t->credit_account = credit_account;
@@ -463,9 +464,11 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     void *json_str;
     size_t json_len;
 
-    json = json_pack ("{s:I}",
+    json = json_pack ("{s:I, s:s}",
                       "row_id",
-                      (json_int_t) row_id);
+                      (json_int_t) row_id,
+                      "timestamp", "/Date(0)/"); /*dummy tmp */
+
     json_str = json_dumps (json,
                            JSON_INDENT(2));
     json_decref (json);

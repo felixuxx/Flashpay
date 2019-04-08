@@ -530,6 +530,7 @@ next (struct InterpreterState *is)
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
  * @param ec taler status code
  * @param row_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param timestamp time stamp of when the transaction settled at the bank
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
@@ -537,6 +538,7 @@ add_incoming_cb (void *cls,
                  unsigned int http_status,
                  enum TALER_ErrorCode ec,
                  uint64_t row_id,
+                 struct GNUNET_TIME_Absolute timestamp,
                  const json_t *json)
 {
   struct InterpreterState *is = cls;

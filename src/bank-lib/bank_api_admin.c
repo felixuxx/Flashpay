@@ -79,6 +79,7 @@ handle_admin_add_incoming_finished (void *cls,
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
   uint64_t row_id = UINT64_MAX;
+  struct GNUNET_TIME_Absolute timestamp;
   enum TALER_ErrorCode ec;
   const json_t *j = response;
 
@@ -93,6 +94,8 @@ handle_admin_add_incoming_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("row_id",
                                  &row_id),
+        GNUNET_JSON_spec_absolute_time ("timestamp",
+                                        &timestamp),
         GNUNET_JSON_spec_end()
       };
 
@@ -148,6 +151,7 @@ handle_admin_add_incoming_finished (void *cls,
            response_code,
            ec,
            row_id,
+           timestamp,
            j);
   TALER_BANK_admin_add_incoming_cancel (aai);
 }

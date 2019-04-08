@@ -101,6 +101,7 @@ struct TALER_BANK_AdminAddIncomingHandle;
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
  * @param ec detailed error code
  * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param timestamp time when the transaction was made.
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
@@ -108,6 +109,7 @@ typedef void
                                               unsigned int http_status,
                                               enum TALER_ErrorCode ec,
                                               uint64_t serial_id,
+                                              struct GNUNET_TIME_Absolute timestamp,
                                               const json_t *json);
 
 
@@ -279,6 +281,41 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
                     int64_t num_results,
                     TALER_BANK_HistoryResultCallback hres_cb,
                     void *hres_cb_cls);
+
+
+/**
+ * Request the wire transfer history of a bank account,
+ * using time stamps to narrow the results.
+ *
+ * @param ctx curl context for the event loop
+ * @param bank_base_url URL of the bank (used to execute this
+ *        request)
+ * @param auth authentication data to use
+ * @param account_number which account number should we query
+ * @param direction what kinds of wire transfers should be
+ *        returned
+ * @param ascending if GNUNET_YES, history elements will
+ *        be returned in chronological order.
+ * @param start_date threshold for oldest result.
+ * @param end_date threshold for youngest result.
+ * @param hres_cb the callback to call with the transaction
+ *        history
+ * @param hres_cb_cls closure for the above callback
+ * @return NULL if the inputs are invalid (i.e. zero value for
+ *         @e num_results). In this case, the callback is not
+ *         called.
+ */
+struct TALER_BANK_HistoryHandle *
+TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
+                          const char *bank_base_url,
+                          const struct TALER_BANK_AuthenticationData *auth,
+                          uint64_t account_number,
+                          enum TALER_BANK_Direction direction,
+                          unsigned int ascending,
+                          struct GNUNET_TIME_Absolute start_date,
+                          struct GNUNET_TIME_Absolute end_date,
+                          TALER_BANK_HistoryResultCallback hres_cb,
+                          void *hres_cb_cls);
 
 
 /**

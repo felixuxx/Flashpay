@@ -619,6 +619,7 @@ taler_bank_prepare_wire_transfer (void *cls,
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
  * @param ec error code from the bank
  * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param timestamp time when the transfer was settled by the bank.
  * @param json detailed response from the HTTPD, or NULL if reply was not JSON
  */
 static void
@@ -626,6 +627,7 @@ execute_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
             uint64_t serial_id,
+            struct GNUNET_TIME_Absolute timestamp,
             const json_t *json)
 {
   struct TALER_WIRE_ExecuteHandle *eh = cls;
