@@ -49,9 +49,8 @@ dki_iter (void *cls,
 {
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
 
-  if (0 != memcmp (&exp->issue,
-                   &dki->issue,
-                   sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP)))
+  if (0 != GNUNET_memcmp (&exp->issue,
+                          &dki->issue))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
