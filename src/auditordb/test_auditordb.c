@@ -70,9 +70,8 @@ select_denomination_info_result (void *cls,
 {
   const struct TALER_DenominationKeyValidityPS *issue1 = cls;
 
-  if (0 != memcmp (issue1,
-		   issue2,
-		   sizeof (*issue2)))
+  if (0 != GNUNET_memcmp (issue1,
+                          issue2))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_denomination_info_result: issue does not match\n");
@@ -317,9 +316,9 @@ run (void *cls)
                                     &withdraw_fee_balance2,
                                     &date));
 
-  FAILIF (0 != memcmp (&date, &future, sizeof (future))
-          || 0 != memcmp (&reserve_balance2, &reserve_balance, sizeof (reserve_balance))
-          || 0 != memcmp (&withdraw_fee_balance2, &withdraw_fee_balance, sizeof (withdraw_fee_balance)));
+  FAILIF (0 != GNUNET_memcmp (&date, &future)
+          || 0 != GNUNET_memcmp (&reserve_balance2, &reserve_balance)
+          || 0 != GNUNET_memcmp (&withdraw_fee_balance2, &withdraw_fee_balance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_summary\n");
@@ -354,12 +353,10 @@ run (void *cls)
                                        &reserve_balance2,
                                        &withdraw_fee_balance2));
 
-  FAILIF ( (0 != memcmp (&reserve_balance2,
-			 &reserve_balance,
-			 sizeof (reserve_balance)) ||
-	    (0 != memcmp (&withdraw_fee_balance2,
-			  &withdraw_fee_balance,
-			  sizeof (withdraw_fee_balance))) ) );
+  FAILIF ( (0 != GNUNET_memcmp (&reserve_balance2,
+                                &reserve_balance) ||
+	    (0 != GNUNET_memcmp (&withdraw_fee_balance2,
+                             &withdraw_fee_balance)) ) );
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_balance\n");
@@ -426,8 +423,8 @@ run (void *cls)
                                             &rbalance2,
                                             &nissued));
 
-  FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance)));
-  FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
+  FAILIF (0 != GNUNET_memcmp (&denom_balance2, &denom_balance));
+  FAILIF (0 != GNUNET_memcmp (&rbalance2, &rbalance));
   FAILIF (62 != nissued);
 
 
@@ -476,21 +473,16 @@ run (void *cls)
                                             &refund_fee_balance2,
                                             &rbalance2));
 
-  FAILIF ( (0 != memcmp (&denom_balance2,
-			 &denom_balance,
-			 sizeof (denom_balance)) ) ||
-	   (0 != memcmp (&deposit_fee_balance2,
-			 &deposit_fee_balance,
-			 sizeof (deposit_fee_balance)) ) ||
-	   (0 != memcmp (&melt_fee_balance2,
-			 &melt_fee_balance,
-			 sizeof (melt_fee_balance)) ) ||
-	   (0 != memcmp (&refund_fee_balance2,
-			 &refund_fee_balance,
-			 sizeof (refund_fee_balance))) );
-  FAILIF (0 != memcmp (&rbalance2,
-		       &rbalance,
-		       sizeof (rbalance)));
+  FAILIF ( (0 != GNUNET_memcmp (&denom_balance2,
+                                &denom_balance) ) ||
+	   (0 != GNUNET_memcmp (&deposit_fee_balance2,
+                            &deposit_fee_balance) ) ||
+	   (0 != GNUNET_memcmp (&melt_fee_balance2,
+                            &melt_fee_balance) ) ||
+	   (0 != GNUNET_memcmp (&refund_fee_balance2,
+                            &refund_fee_balance)) );
+  FAILIF (0 != GNUNET_memcmp (&rbalance2,
+                              &rbalance));
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -528,11 +520,11 @@ run (void *cls)
 
     if (2 <= n++
         || cls != NULL
-        || (0 != memcmp (&revenue_timestamp2, &past, sizeof (past))
-            && 0 != memcmp (&revenue_timestamp2, &now, sizeof (now)))
-        || (0 != memcmp (denom_pub_hash2, &denom_pub_hash, sizeof (denom_pub_hash))
-            && 0 != memcmp (denom_pub_hash2, &rnd_hash, sizeof (rnd_hash)))
-        || 0 != memcmp (revenue_balance2, &rbalance, sizeof (rbalance)))
+        || (0 != GNUNET_memcmp (&revenue_timestamp2, &past)
+            && 0 != GNUNET_memcmp (&revenue_timestamp2, &now))
+        || (0 != GNUNET_memcmp (denom_pub_hash2, &denom_pub_hash)
+            && 0 != GNUNET_memcmp (denom_pub_hash2, &rnd_hash))
+        || 0 != GNUNET_memcmp (revenue_balance2, &rbalance))
     {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_historic_denom_revenue_result: result does not match\n");
@@ -585,11 +577,11 @@ run (void *cls)
 
     if (2 <= n++
         || cls != NULL
-        || (0 != memcmp (&loss_timestamp2, &past, sizeof (past))
-            && 0 != memcmp (&loss_timestamp2, &now, sizeof (now)))
-        || (0 != memcmp (denom_pub_hash2, &denom_pub_hash, sizeof (denom_pub_hash))
-            && 0 != memcmp (denom_pub_hash2, &rnd_hash, sizeof (rnd_hash)))
-        || 0 != memcmp (loss_balance2, &rbalance, sizeof (rbalance)))
+        || (0 != GNUNET_memcmp (&loss_timestamp2, &past)
+            && 0 != GNUNET_memcmp (&loss_timestamp2, &now))
+        || (0 != GNUNET_memcmp (denom_pub_hash2, &denom_pub_hash)
+            && 0 != GNUNET_memcmp (denom_pub_hash2, &rnd_hash))
+        || 0 != GNUNET_memcmp (loss_balance2, &rbalance))
     {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_historic_denom_revenue_result: result does not match\n");
@@ -646,10 +638,10 @@ run (void *cls)
 
     if (2 <= n++
         || cls != NULL
-        || (0 != memcmp (&start_time2, &past, sizeof (past))
-            && 0 != memcmp (&start_time2, &now, sizeof (now)))
-        || 0 != memcmp (&end_time2, &future, sizeof (future))
-        || 0 != memcmp (reserve_profits2, &reserve_profits, sizeof (reserve_profits)))
+        || (0 != GNUNET_memcmp (&start_time2, &past)
+            && 0 != GNUNET_memcmp (&start_time2, &now))
+        || 0 != GNUNET_memcmp (&end_time2, &future)
+        || 0 != GNUNET_memcmp (reserve_profits2, &reserve_profits))
     {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_historic_reserve_revenue_result: result does not match\n");
