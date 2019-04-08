@@ -207,9 +207,8 @@ history_result_cb
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_SYSERR;
   }
-  if (0 != memcmp (&wtid,
-                   &details->wtid,
-                   sizeof (struct TALER_WireTransferIdentifierRawP)))
+  if (0 != GNUNET_memcmp (&wtid,
+                          &details->wtid))
   {
     GNUNET_break (0);
     global_ret = GNUNET_SYSERR;
