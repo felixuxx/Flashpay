@@ -720,9 +720,8 @@ reload_keys_denom_iter (void *cls,
                 alias);
     return GNUNET_OK;
   }
-  if (0 != memcmp (&dki->issue.properties.master,
-                   &TEH_master_public_key,
-                   sizeof (struct TALER_MasterPublicKeyP)))
+  if (0 != GNUNET_memcmp (&dki->issue.properties.master,
+                          &TEH_master_public_key))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Master key in denomination key file `%s' does not match! Skipping it.\n",
@@ -903,9 +902,8 @@ reload_keys_sign_iter (void *cls,
     return GNUNET_OK;
   }
 
-  if (0 != memcmp (&ski->issue.master_public_key,
-                   &TEH_master_public_key,
-                   sizeof (struct TALER_MasterPublicKeyP)))
+  if (0 != GNUNET_memcmp (&ski->issue.master_public_key,
+                          &TEH_master_public_key))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Master key in signing key file `%s' does not match! Skipping it.\n",
