@@ -57,6 +57,7 @@ libtalerfakebank_la_LDFLAGS = \
   -no-undefined
 
 libtalerfakebank_la_SOURCES = \
+  fakebank_history.c \
   fakebank.c
 
 libtalerfakebank_la_LIBADD = \
