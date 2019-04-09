@@ -124,10 +124,6 @@ TALER_TESTING_cmd_bank_history
  *        of "/history-range".
  * @param end_date value for the 'end' argument
  *        of "/history-range".
- * @param num_results how many results we want from the bank; NOTE,
- *        this value is NOT used to issue any "delta" parameter in
- *        the HTTP request.  Rather, it is only checked against
- *        the results returned by the bank.
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -138,8 +134,7 @@ TALER_TESTING_cmd_bank_history_range_with_dates
    enum TALER_BANK_Direction direction,
    unsigned int ascending,
    struct GNUNET_TIME_Absolute start_date,
-   struct GNUNET_TIME_Absolute end_date,
-   long long num_results);
+   struct GNUNET_TIME_Absolute end_date);
 
 
 /**
@@ -158,11 +153,6 @@ TALER_TESTING_cmd_bank_history_range_with_dates
  * @param end_row_reference reference to a command that can
  *        offer a absolute time to use as the 'end' argument
  *        for "/history-range".
- * @param num_results how many results we want from the bank; NOTE,
- *        this value is NOT used to issue any "delta" parameter in
- *        the HTTP request.  Rather, it is only checked against
- *        the results returned by the bank.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -173,8 +163,7 @@ TALER_TESTING_cmd_bank_history_range
    enum TALER_BANK_Direction direction,
    unsigned int ascending,
    const char *start_row_reference,
-   const char *end_row_reference,
-   long long num_results);
+   const char *end_row_reference);
 
 
 /**

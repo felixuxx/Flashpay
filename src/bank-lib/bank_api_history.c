@@ -419,7 +419,7 @@ TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
   GNUNET_TIME_round_abs (&end_date);
 
   GNUNET_asprintf (&url,
-                   "/history?auth=basic&account_number=%llu&start=%llu&end=%llu&direction=%s&cancelled=%s&ordering=%s",
+                   "/history-range?auth=basic&account_number=%llu&start=%llu&end=%llu&direction=%s&cancelled=%s&ordering=%s",
                    (unsigned long long) account_number,
                    start_date.abs_value_us / 1000LL / 1000LL,
                    end_date.abs_value_us / 1000LL / 1000LL,

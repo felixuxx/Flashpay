@@ -354,7 +354,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
       (add_incoming_cmd, 0, &row_id_start));
   }
 
-  GNUNET_assert (0 != hs->num_results);
+  GNUNET_assert ((0 != hs->num_results) ||
+    (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
+      hs->start_date.abs_value_us));
+
   if (0 == is->ip)
   {
     *rh = NULL;
@@ -784,9 +787,8 @@ history_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = cls;
   struct HistoryState *hs = is->commands[is->ip].cls;
 
-  /* Possibly we got the 204 status code
-   * as a "end of list" marker.  */
-  if (MHD_HTTP_OK != http_status)
+  /*NOTE: "204 No Content" is used to signal the end of results.*/
+  if (MHD_HTTP_NO_CONTENT == http_status)
   {
     hs->hh = NULL;
     if ( (hs->results_obtained != compute_result_count (is)) ||
@@ -813,6 +815,19 @@ history_cb (void *cls,
     TALER_TESTING_interpreter_next (is);
     return;
   }
+  
+  if (MHD_HTTP_OK != http_status)
+  {
+    hs->hh = NULL;
+    GNUNET_log
+      (GNUNET_ERROR_TYPE_ERROR,
+       "Unwanted response code from /history[-range]: %u\n",
+       http_status);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
+  /* check current element */
   if (GNUNET_OK != check_result (is,
                                  hs->results_obtained,
                                  dir,
@@ -1065,11 +1080,6 @@ TALER_TESTING_cmd_bank_history
  * @param end_row_reference reference to a command that can
  *        offer a absolute time to use as the 'end' argument
  *        for "/history-range".
- * @param num_results how many results we want from the bank; NOTE,
- *        this value is NOT used to issue any "delta" parameter in
- *        the HTTP request.  Rather, it is only checked against
- *        the results returned by the bank.
- *        
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1080,8 +1090,7 @@ TALER_TESTING_cmd_bank_history_range
    enum TALER_BANK_Direction direction,
    unsigned int ascending,
    const char *start_row_reference,
-   const char *end_row_reference,
-   long long num_results)
+   const char *end_row_reference)
 {
   struct HistoryState *hs;
 
@@ -1091,7 +1100,6 @@ TALER_TESTING_cmd_bank_history_range
   hs->direction = direction;
   hs->start_row_reference = start_row_reference;
   hs->end_row_reference = end_row_reference;
-  hs->num_results = num_results;
   hs->ascending = ascending;
   hs->start_date = GNUNET_TIME_UNIT_FOREVER_ABS;
   hs->end_date = GNUNET_TIME_UNIT_FOREVER_ABS;
@@ -1122,11 +1130,6 @@ TALER_TESTING_cmd_bank_history_range
  *        of "/history-range".
  * @param end_date value for the 'end' argument
  *        of "/history-range".
- * @param num_results how many results we want from the bank; NOTE,
- *        this value is NOT used to issue any "delta" parameter in
- *        the HTTP request.  Rather, it is only checked against
- *        the results returned by the bank.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1137,8 +1140,7 @@ TALER_TESTING_cmd_bank_history_range_with_dates
    enum TALER_BANK_Direction direction,
    unsigned int ascending,
    struct GNUNET_TIME_Absolute start_date,
-   struct GNUNET_TIME_Absolute end_date,
-   long long num_results)
+   struct GNUNET_TIME_Absolute end_date)
 {
   struct HistoryState *hs;
 
@@ -1146,7 +1148,6 @@ TALER_TESTING_cmd_bank_history_range_with_dates
   hs->bank_url = bank_url;
   hs->account_no = account_no;
   hs->direction = direction;
-  hs->num_results = num_results;
   hs->ascending = ascending;
   hs->start_date = start_date;
   hs->end_date = start_date;

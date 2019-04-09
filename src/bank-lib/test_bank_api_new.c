@@ -76,7 +76,7 @@ run (void *cls,
                                     NULL, /* start */
                                     5),
 
-    #if 0
+    #if 1
     /**
      * Just a dummy call to check if the logic doesn't crash.
      */
