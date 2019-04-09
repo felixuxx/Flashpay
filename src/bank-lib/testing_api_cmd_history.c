@@ -1150,7 +1150,7 @@ TALER_TESTING_cmd_bank_history_range_with_dates
   hs->direction = direction;
   hs->ascending = ascending;
   hs->start_date = start_date;
-  hs->end_date = start_date;
+  hs->end_date = end_date;
 
   struct TALER_TESTING_Command cmd = {
     .label = label,
