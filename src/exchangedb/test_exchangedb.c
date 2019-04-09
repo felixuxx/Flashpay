@@ -815,22 +815,18 @@ cb_wt_check (void *cls,
              const struct TALER_Amount *coin_fee)
 {
   GNUNET_assert (cls == &cb_wt_never);
-  GNUNET_assert (0 == memcmp (merchant_pub,
-                              &merchant_pub_wt,
-                              sizeof (struct TALER_MerchantPublicKeyP)));
+  GNUNET_assert (0 == GNUNET_memcmp (merchant_pub,
+                                     &merchant_pub_wt));
   GNUNET_assert (0 == strcmp (json_string_value (json_object_get (wire,
                                                                   "url")),
                               "payto://sepa/DE67830654080004822650"));
-  GNUNET_assert (0 == memcmp (h_wire,
-                              &h_wire_wt,
-                              sizeof (struct GNUNET_HashCode)));
+  GNUNET_assert (0 == GNUNET_memcmp (h_wire,
+                                     &h_wire_wt));
   GNUNET_assert (exec_time.abs_value_us == wire_out_date.abs_value_us);
-  GNUNET_assert (0 == memcmp (h_contract_terms,
-                              &h_contract_terms_wt,
-                              sizeof (struct GNUNET_HashCode)));
-  GNUNET_assert (0 == memcmp (coin_pub,
-                              &coin_pub_wt,
-                              sizeof (struct TALER_CoinSpendPublicKeyP)));
+  GNUNET_assert (0 == GNUNET_memcmp (h_contract_terms,
+                                     &h_contract_terms_wt));
+  GNUNET_assert (0 == GNUNET_memcmp (coin_pub,
+                                     &coin_pub_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_value,
                                         &coin_value_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
@@ -849,9 +845,8 @@ cb_wtid_check (void *cls,
                struct GNUNET_TIME_Absolute execution_time)
 {
   GNUNET_assert (cls == &cb_wtid_never);
-  GNUNET_assert (0 == memcmp (wtid,
-                              &wire_out_wtid,
-                              sizeof (struct TALER_WireTransferIdentifierRawP)));
+  GNUNET_assert (0 == GNUNET_memcmp (wtid,
+                                     &wire_out_wtid));
   GNUNET_assert (execution_time.abs_value_us ==
                  wire_out_date.abs_value_us);
   GNUNET_assert (0 == TALER_amount_cmp (coin_contribution,
@@ -904,23 +899,20 @@ deposit_cb (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (wire,
                                                             &h_wire));
-  if ( (0 != memcmp (merchant_pub,
-                     &deposit->merchant_pub,
-                     sizeof (struct TALER_MerchantPublicKeyP))) ||
+  if ( (0 != GNUNET_memcmp (merchant_pub,
+                            &deposit->merchant_pub)) ||
        (0 != TALER_amount_cmp (amount_with_fee,
                                &deposit->amount_with_fee)) ||
        (0 != TALER_amount_cmp (deposit_fee,
                                &deposit->deposit_fee)) ||
-       (0 != memcmp (h_contract_terms,
-                     &deposit->h_contract_terms,
-                     sizeof (struct GNUNET_HashCode))) ||
+       (0 != GNUNET_memcmp (h_contract_terms,
+                            &deposit->h_contract_terms)) ||
        (0 != memcmp (coin_pub,
                      &deposit->coin.coin_pub,
                      sizeof (struct TALER_CoinSpendPublicKeyP))) ||
        ( (NULL != wire) &&
-         (0 != memcmp (&h_wire,
-                       &deposit->h_wire,
-                       sizeof (struct GNUNET_HashCode))) ) )
+         (0 != GNUNET_memcmp (&h_wire,
+                              &deposit->h_wire)) ) )
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -1205,9 +1197,8 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
                                &wire_fee)) ||
        (0 != TALER_amount_cmp (&fee2,
                                &closing_fee)) ||
-       (0 != memcmp (&ms,
-                     &master_sig,
-                     sizeof (ms))) )
+       (0 != GNUNET_memcmp (&ms,
+                            &master_sig)) )
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -1243,9 +1234,8 @@ audit_wire_cb (void *cls,
                  TALER_amount_cmp (amount,
                                    &wire_out_amount));
   GNUNET_assert (0 ==
-                 memcmp (wtid,
-                         &wire_out_wtid,
-                         sizeof (*wtid)));
+                 GNUNET_memcmp (wtid,
+                                &wire_out_wtid));
   GNUNET_assert (date.abs_value_us == wire_out_date.abs_value_us);
   return GNUNET_OK;
 }
@@ -1399,9 +1389,8 @@ payback_cb (void *cls,
 {
   const struct TALER_DenominationBlindingKeyP *cb = cls;
 
-  FAILIF (0 != memcmp (cb,
-                       coin_blind,
-                       sizeof (*cb)));
+  FAILIF (0 != GNUNET_memcmp (cb,
+                              coin_blind));
   return GNUNET_OK;
  drop:
   return GNUNET_SYSERR;
@@ -1458,16 +1447,14 @@ wire_missing_cb (void *cls,
     GNUNET_break (0);
     result = 66;
   }
-  if (0 != memcmp (coin_pub,
-                   &deposit->coin.coin_pub,
-                   sizeof (struct TALER_CoinSpendPublicKeyP)))
+  if (0 != GNUNET_memcmp (coin_pub,
+                          &deposit->coin.coin_pub))
   {
     GNUNET_break (0);
     result = 66;
   }
-  if (0 != memcmp (&h_wire,
-                   &deposit->h_wire,
-                   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (&h_wire,
+                          &deposit->h_wire))
   {
     GNUNET_break (0);
     result = 66;
@@ -1499,23 +1486,20 @@ check_refund_cb (void *cls,
 {
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
 
-  if (0 != memcmp (merchant_pub,
-		   &refund->merchant_pub,
-		   sizeof (struct TALER_MerchantPublicKeyP)))
+  if (0 != GNUNET_memcmp (merchant_pub,
+                          &refund->merchant_pub))
   {
     GNUNET_break (0);
     result = 66;
   }
-  if (0 != memcmp (merchant_sig,
-		   &refund->merchant_sig,
-		   sizeof (struct TALER_MerchantSignatureP)))
+  if (0 != GNUNET_memcmp (merchant_sig,
+                          &refund->merchant_sig))
   {
     GNUNET_break (0);
     result = 66;
   }
-  if (0 != memcmp (h_contract,
-		   &refund->h_contract_terms,
-		   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (h_contract,
+                          &refund->h_contract_terms))
   {
     GNUNET_break (0);
     result = 66;
@@ -1748,9 +1732,8 @@ run (void *cls)
                                           session,
                                           &cbc.h_coin_envelope,
                                           &reserve_pub2));
-  FAILIF (0 != memcmp (&reserve_pub,
-                       &reserve_pub2,
-                       sizeof (reserve_pub)));
+  FAILIF (0 != GNUNET_memcmp (&reserve_pub,
+                              &reserve_pub2));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_withdraw_info (plugin->cls,
