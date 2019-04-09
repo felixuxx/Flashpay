@@ -76,6 +76,20 @@ run (void *cls,
                                     NULL, /* start */
                                     5),
 
+    #if 0
+    /**
+     * Just a dummy call to check if the logic doesn't crash.
+     */
+    TALER_TESTING_cmd_bank_history_range_with_dates
+      ("history-0-range",
+       bank_url,
+       EXCHANGE_ACCOUNT_NUMBER,
+       TALER_BANK_DIRECTION_BOTH,
+       GNUNET_NO,
+       GNUNET_TIME_UNIT_ZERO_ABS,
+       GNUNET_TIME_UNIT_FOREVER_ABS),
+    #endif
+
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-1",
        "KUDOS:5.01",

@@ -109,6 +109,74 @@ TALER_TESTING_cmd_bank_history
    const char *start_row_reference,
    long long num_results);
 
+
+/**
+ * Make a "history-range" CMD, picking dates from the arguments.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank offering the "history"
+ *        operation.
+ * @param account_no bank account number to ask the history for.
+ * @param direction which direction this operation is interested.
+ * @param ascending if GNUNET_YES, the bank will return the rows
+ *        in ascending (= chronological) order.
+ * @param start_date value for the 'start' argument
+ *        of "/history-range".
+ * @param end_date value for the 'end' argument
+ *        of "/history-range".
+ * @param num_results how many results we want from the bank; NOTE,
+ *        this value is NOT used to issue any "delta" parameter in
+ *        the HTTP request.  Rather, it is only checked against
+ *        the results returned by the bank.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_history_range_with_dates
+  (const char *label,
+   const char *bank_url,
+   uint64_t account_no,
+   enum TALER_BANK_Direction direction,
+   unsigned int ascending,
+   struct GNUNET_TIME_Absolute start_date,
+   struct GNUNET_TIME_Absolute end_date,
+   long long num_results);
+
+
+/**
+ * Make a "history-range" CMD, picking dates from traits.
+ *
+ * @param label command label.
+ * @param bank_url base URL of the bank offering the "history"
+ *        operation.
+ * @param account_no bank account number to ask the history for.
+ * @param direction which direction this operation is interested.
+ * @param ascending if GNUNET_YES, the bank will return the rows
+ *        in ascending (= chronological) order.
+ * @param start_row_reference reference to a command that can
+ *        offer a absolute time to use as the 'start' argument
+ *        for "/history-range".
+ * @param end_row_reference reference to a command that can
+ *        offer a absolute time to use as the 'end' argument
+ *        for "/history-range".
+ * @param num_results how many results we want from the bank; NOTE,
+ *        this value is NOT used to issue any "delta" parameter in
+ *        the HTTP request.  Rather, it is only checked against
+ *        the results returned by the bank.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_history_range
+  (const char *label,
+   const char *bank_url,
+   uint64_t account_no,
+   enum TALER_BANK_Direction direction,
+   unsigned int ascending,
+   const char *start_row_reference,
+   const char *end_row_reference,
+   long long num_results);
+
+
 /**
  * Create a "reject" CMD.
  *
