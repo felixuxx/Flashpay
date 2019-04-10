@@ -1,4 +1,4 @@
-    /*
+/*
   This file is part of TALER
   Copyright (C) 2018 Taler Systems SA
 
@@ -354,12 +354,13 @@ build_history (struct TALER_TESTING_Interpreter *is,
       (add_incoming_cmd, 0, &row_id_start));
   }
 
-  GNUNET_assert ((0 != hs->num_results) ||
-    (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
+  GNUNET_assert ((0 != hs->num_results) || /* "/history" */
+    (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us != /* "/history-range" */
       hs->start_date.abs_value_us));
 
   if (0 == is->ip)
   {
+    TALER_LOG_DEBUG ("Checking history at first CMD..\n");
     *rh = NULL;
     return 0;
   }
@@ -416,14 +417,19 @@ build_history (struct TALER_TESTING_Interpreter *is,
     }
 
     /* Seek "/history-range" starting row, _if_ that's the case */
-    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
-        hs->start_date.abs_value_us)
+    if ((GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
+        hs->start_date.abs_value_us) && (GNUNET_YES != ok))
     {
       const struct GNUNET_TIME_Absolute *timestamp;
 
       TALER_TESTING_get_trait_absolute_time (pos,
                                              0,
                                              &timestamp);
+      TALER_LOG_DEBUG
+        ("Seeking first row, start vs timestamp: %llu vs %llu\n",
+         hs->start_date.abs_value_us,
+         timestamp->abs_value_us);
+
       if (hs->start_date.abs_value_us <= timestamp->abs_value_us)
       {
         total = 0;
@@ -436,10 +442,15 @@ build_history (struct TALER_TESTING_Interpreter *is,
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
 
+    TALER_LOG_DEBUG ("Found first row\n");
+
     if (build_history_hit_limit (total,
                                  hs,
                                  pos))
+    {
+      TALER_LOG_DEBUG ("Hit history limit\n");
       break;
+    }
 
     cancelled = test_cancelled (is, off);
 
@@ -478,11 +489,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
     }
   }
 
-
   GNUNET_assert (GNUNET_YES == ok);
 
   if (0 == total)
   {
+    TALER_LOG_DEBUG ("Checking history at first CMD.. (2)\n");
     *rh = NULL;
     return 0;
   }
@@ -517,8 +528,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
       if (*row_id_start == *row_id)
       {
-        /* Warning: this zeroing is superfluous, as total doesn't
-         * get incremented if 'start' was given and couldn't be found.
+        /**
+         * Warning: this zeroing is superfluous, as
+         * total doesn't get incremented if 'start'
+         * was given and couldn't be found. 
          */
         total = 0;
         ok = GNUNET_YES;
@@ -527,14 +540,19 @@ build_history (struct TALER_TESTING_Interpreter *is,
     }
 
     /* Seek "/history-range" starting row, _if_ that's the case */
-    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
-        hs->start_date.abs_value_us)
+    if ((GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
+        hs->start_date.abs_value_us) && (GNUNET_YES != ok))
     {
       const struct GNUNET_TIME_Absolute *timestamp;
 
       TALER_TESTING_get_trait_absolute_time (pos,
                                              0,
                                              &timestamp);
+      TALER_LOG_DEBUG
+        ("Seeking first row, start vs timestamp (2): %llu vs %llu\n",
+         hs->start_date.abs_value_us,
+         timestamp->abs_value_us);
+
       if (hs->start_date.abs_value_us <= timestamp->abs_value_us)
       {
         total = 0;
@@ -542,6 +560,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
         continue;
       }
     }
+
+    TALER_LOG_INFO ("Found first row (2)\n");
 
     if (GNUNET_NO == ok)
     {
@@ -554,7 +574,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                  hs,
                                  pos))
     {
-      TALER_LOG_INFO ("hit limit specified by command\n");
+      TALER_LOG_INFO ("Hit history limit (2)\n");
       break;
     }
 
@@ -1149,6 +1169,7 @@ TALER_TESTING_cmd_bank_history_range_with_dates
   hs->account_no = account_no;
   hs->direction = direction;
   hs->ascending = ascending;
+  hs->start_row_reference = NULL;
   hs->start_date = start_date;
   hs->end_date = end_date;
 

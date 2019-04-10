@@ -40,26 +40,27 @@
 #define CONFIG_FILE "bank.conf"
 
 /**
- * Adds to the current time.
+ * Add seconds.
  *
- * @param relative number of _seconds_ to add to the current time.
+ * @param base absolute time to add seconds to.
+ * @param relative number of seconds to add.
  * @return a new absolute time, modified according to @e relative.
  */
-#define NOWPLUSSECS(secs) \
+#define ADDSECS(base, secs) \
   GNUNET_TIME_absolute_add \
-    (now, \
+    (base, \
      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
                                     secs))
-
 /**
- * Subtracts from the current time.
+ * Subtract seconds.
  *
- * @param relative number of _seconds_ to add to the current time.
+ * @param base absolute time to subtract seconds to.
+ * @param secs relative number of _seconds_ to subtract.
  * @return a new absolute time, modified according to @e relative.
  */
-#define NOWMINUSSECS(secs) \
+#define SUBSECS(base, secs) \
   GNUNET_TIME_absolute_subtract \
-    (now, \
+    (base, \
      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
                                     secs))
 /**
@@ -84,12 +85,8 @@ run (void *cls,
 {
   
   extern struct TALER_BANK_AuthenticationData AUTHS[];
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Bank serves at `%s'\n",
-              bank_url);
-  now = GNUNET_TIME_absolute_get ();
   struct TALER_TESTING_Command commands[] = {
 
     TALER_TESTING_cmd_bank_history ("history-0",
@@ -106,9 +103,10 @@ run (void *cls,
        EXCHANGE_ACCOUNT_NUMBER,
        TALER_BANK_DIRECTION_BOTH,
        GNUNET_NO,
-       NOWMINUSSECS (5),
-       NOWPLUSSECS (5)),
-
+       SUBSECS (now,
+                5),
+       ADDSECS (now,
+                5)),
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-1",
        "KUDOS:5.01",
@@ -173,8 +171,10 @@ run (void *cls,
        EXCHANGE_ACCOUNT_NUMBER,
        TALER_BANK_DIRECTION_BOTH,
        GNUNET_NO,
-       NOWMINUSSECS (5),
-       NOWPLUSSECS (5)),
+       SUBSECS (now,
+                50),
+       ADDSECS (now,
+                5)),
 
     TALER_TESTING_cmd_bank_reject ("reject-1",
                                    bank_url,

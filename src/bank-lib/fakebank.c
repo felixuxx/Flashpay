@@ -980,7 +980,9 @@ TALER_FAKEBANK_start (uint16_t port)
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
 #if EPOLL_SUPPORT
-				  | MHD_USE_EPOLL
+				  | MHD_USE_EPOLL_INTERNAL_THREAD
+#else
+                                  | MHD_USE_INTERNAL_POLLING_THREAD
 #endif
 				  | MHD_USE_DUAL_STACK,
                                   port,

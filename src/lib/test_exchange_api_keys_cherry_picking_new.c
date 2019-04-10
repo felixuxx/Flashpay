@@ -75,7 +75,7 @@
  * @return a new absolute time, modified according to @e relative.
  */
 #define SUBSECS(base, secs) \
-  GNUNET_TIME_absolute_sub \
+  GNUNET_TIME_absolute_subtract \
     (base, \
      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
                                     secs))

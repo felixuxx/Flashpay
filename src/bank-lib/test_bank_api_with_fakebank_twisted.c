@@ -82,8 +82,8 @@ run (void *cls,
      * Can't use the "wait service" CMD here because the
      * fakebank runs inside the same process of the test.
      */
-    TALER_TESTING_cmd_sleep ("wait interface",
-                             2),
+    TALER_TESTING_cmd_wait_service ("wait-service",
+                                    TWISTED_BANK_URL),
 
     TALER_TESTING_cmd_bank_history ("history-0",
                                     TWISTED_BANK_URL,
