@@ -498,7 +498,8 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   /* Locate and "cut" the 'start' argument,
    * if the user didn't provide one.  */
   if (UINT64_MAX == start_row)
-    *strstr (url, "&start=") = '\0';
+    *strstr (url,
+             "&start=") = '\0';
 
   hh = put_history_job (ctx,
                         bank_base_url,

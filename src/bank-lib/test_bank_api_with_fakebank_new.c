@@ -63,12 +63,6 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
 
-    /**
-     * NOTE: this command uses internally the _fakebank_ version
-     * of the add-incoming command.  However, this does seem to
-     * work fine against the Python bank too!  Some renaming is
-     * required..
-     */
     TALER_TESTING_cmd_bank_history ("history-0",
                                     fakebank_url,
                                     BANK_ACCOUNT_NUMBER,

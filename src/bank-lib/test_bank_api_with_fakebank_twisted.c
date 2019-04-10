@@ -77,7 +77,7 @@ run (void *cls,
 {
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_bank_history ("history-0",
-                                    fakebank_url,
+                                    twister_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_NO,
