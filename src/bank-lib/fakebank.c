@@ -695,7 +695,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "/history, start row (0 == no transactions exist): %llu\n",
-              NULL != pos ? pos->row_id : 0);
+              NULL != pos ? pos->row_id : 0LL);
   return TFH_build_history_response (connection,
                                      pos,
                                      &ha,

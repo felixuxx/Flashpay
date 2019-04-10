@@ -77,7 +77,7 @@ struct Transaction
   /**
    * Number of this transaction.
    */
-  uint64_t row_id;
+  long long unsigned int row_id;
 
   /**
    * Flag set if the transfer was rejected.
