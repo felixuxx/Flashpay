@@ -78,30 +78,26 @@ auditor_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (0 != memcmp (&want_apub,
-                   apub,
-                   sizeof (struct TALER_AuditorPublicKeyP)))
+  if (0 != GNUNET_memcmp (&want_apub,
+                          apub))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (0 != memcmp (&want_mpub,
-                   mpub,
-                   sizeof (struct TALER_MasterPublicKeyP)))
+  if (0 != GNUNET_memcmp (&want_mpub,
+                          mpub))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (0 != memcmp (&want_asigs,
-                   asigs,
-                   sizeof (struct TALER_AuditorSignatureP)))
+  if (0 != GNUNET_memcmp (&want_asigs,
+                          asigs))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (0 != memcmp (&want_dki,
-                   dki,
-                   sizeof (struct TALER_DenominationKeyValidityPS)))
+  if (0 != GNUNET_memcmp (&want_dki,
+                          dki))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
