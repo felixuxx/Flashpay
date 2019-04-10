@@ -988,9 +988,8 @@ decode_keys_json (const json_t *resp_obj,
       {
         struct TALER_EXCHANGE_AuditorInformation *aix = &key_data->auditors[j];
 
-	if (0 == memcmp (&ai.auditor_pub,
-			 &aix->auditor_pub,
-			 sizeof (struct TALER_AuditorPublicKeyP)))
+	if (0 == GNUNET_memcmp (&ai.auditor_pub,
+                            &aix->auditor_pub))
 	{
 	  found = GNUNET_YES;
           /* Merge denomination key signatures of downloaded /keys into existing
@@ -1953,9 +1952,8 @@ TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
   {
     struct TALER_EXCHANGE_SigningPublicKey *spk = &keys->sign_keys[i];
 
-    if (0 == memcmp (pub,
-		     &spk->key,
-		     sizeof (struct TALER_ExchangePublicKeyP)))
+    if (0 == GNUNET_memcmp (pub,
+                            &spk->key))
       return spk;
   }
   return NULL;
@@ -1981,9 +1979,8 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
   for (unsigned int i=0;i<keys->num_sign_keys;i++)
     if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us + 60 * 60 * 1000LL * 1000LL) &&
          (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us - 60 * 60 * 1000LL * 1000LL) &&
-         (0 == memcmp (pub,
-                       &keys->sign_keys[i].key,
-                       sizeof (struct TALER_ExchangePublicKeyP))) )
+         (0 == GNUNET_memcmp (pub,
+                              &keys->sign_keys[i].key)) )
       return GNUNET_OK;
   return GNUNET_SYSERR;
 }
@@ -2034,9 +2031,8 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
                                              const struct GNUNET_HashCode *hc)
 {
   for (unsigned int i=0;i<keys->num_denom_keys;i++)
-    if (0 == memcmp (hc,
-                     &keys->denom_keys[i].h_key,
-                     sizeof (struct GNUNET_HashCode)))
+    if (0 == GNUNET_memcmp (hc,
+                            &keys->denom_keys[i].h_key))
       return &keys->denom_keys[i];
   return NULL;
 }
