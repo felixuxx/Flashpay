@@ -95,9 +95,8 @@ dki_iter_revoked (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (0 != memcmp (denom_hash,
-                   &exp->issue.properties.denom_hash,
-                   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (denom_hash,
+                          &exp->issue.properties.denom_hash))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
