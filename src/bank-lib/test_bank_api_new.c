@@ -40,6 +40,29 @@
 #define CONFIG_FILE "bank.conf"
 
 /**
+ * Adds to the current time.
+ *
+ * @param relative number of _seconds_ to add to the current time.
+ * @return a new absolute time, modified according to @e relative.
+ */
+#define NOWPLUSSECS(secs) \
+  GNUNET_TIME_absolute_add \
+    (now, \
+     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                    secs))
+
+/**
+ * Subtracts from the current time.
+ *
+ * @param relative number of _seconds_ to add to the current time.
+ * @return a new absolute time, modified according to @e relative.
+ */
+#define NOWMINUSSECS(secs) \
+  GNUNET_TIME_absolute_subtract \
+    (now, \
+     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                    secs))
+/**
  * Bank process.
  */
 struct GNUNET_OS_Process *bankd;
@@ -61,11 +84,12 @@ run (void *cls,
 {
   
   extern struct TALER_BANK_AuthenticationData AUTHS[];
+  struct GNUNET_TIME_Absolute now;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Bank serves at `%s'\n",
               bank_url);
-
+  now = GNUNET_TIME_absolute_get ();
   struct TALER_TESTING_Command commands[] = {
 
     TALER_TESTING_cmd_bank_history ("history-0",
@@ -75,6 +99,15 @@ run (void *cls,
                                     GNUNET_NO,
                                     NULL, /* start */
                                     5),
+
+    TALER_TESTING_cmd_bank_history_range_with_dates
+      ("history-0-range",
+       bank_url,
+       EXCHANGE_ACCOUNT_NUMBER,
+       TALER_BANK_DIRECTION_BOTH,
+       GNUNET_NO,
+       NOWMINUSSECS (5),
+       NOWPLUSSECS (5)),
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-1",
@@ -130,6 +163,18 @@ run (void *cls,
                                     GNUNET_YES,
                                     "deposit-1",
                                     5),
+
+    /**
+     * Just check that the two transactions show up.
+     */
+    TALER_TESTING_cmd_bank_history_range_with_dates
+      ("history-2-range",
+       bank_url,
+       EXCHANGE_ACCOUNT_NUMBER,
+       TALER_BANK_DIRECTION_BOTH,
+       GNUNET_NO,
+       NOWMINUSSECS (5),
+       NOWPLUSSECS (5)),
 
     TALER_TESTING_cmd_bank_reject ("reject-1",
                                    bank_url,

@@ -52,7 +52,6 @@ TALER_TESTING_get_trait_absolute_time
                       index);
 }
 
-
 /**
  * Offer a absolute time.
  *

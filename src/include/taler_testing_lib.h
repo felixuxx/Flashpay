@@ -1442,6 +1442,19 @@ TALER_TESTING_cmd_sleep (const char *label,
 
 
 /**
+ * This CMD simply tries to connect via HTTP to the
+ * service addressed by @a url.  It attemps 10 times
+ * before giving up and make the test fail.
+ *
+ * @param label label for the command.
+ * @param url complete URL to connect to.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_wait_service (const char *label,
+                                const char *url);
+
+
+/**
  * Make a "check keys" command.  This type of command
  * checks whether the number of denomination keys from
  * @a exchange matches @a num_denom_keys.

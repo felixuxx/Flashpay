@@ -1195,7 +1195,6 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  static struct GNUNET_HashCode zero;
   struct GNUNET_TIME_Relative lookahead_sign;
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 

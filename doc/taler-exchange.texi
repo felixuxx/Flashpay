@@ -663,7 +663,7 @@ the two primes) have for this type of coin.
 
 
 Both @cite{signkeys} and @cite{denom keys} have a starting date. The
-option @cite{lookahead_provide}, under section @cite{[exchange_keys]},
+option @cite{lookahead_provide}, under section @cite{[exchange]},
 is such that only keys whose starting date is younger than
 @cite{lookahead_provide} will be issued by the exchange.
 

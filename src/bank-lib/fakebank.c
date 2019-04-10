@@ -587,6 +587,7 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
   return ret;
 }
 
+
 /**
  * Handle incoming HTTP request for /history
  *
@@ -596,9 +597,40 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
  * @return MHD result code
  */
 static int
-handle_history_new (struct TALER_FAKEBANK_Handle *h,
-                    struct MHD_Connection *connection,
-                    void **con_cls)
+handle_home_page (struct TALER_FAKEBANK_Handle *h,
+                  struct MHD_Connection *connection,
+                  void **con_cls)
+{
+  int ret;
+  struct MHD_Response *resp;
+#define HELLOMSG "Hello, Fakebank!"
+  
+  resp = MHD_create_response_from_buffer
+    (strlen (HELLOMSG),
+     HELLOMSG,
+     MHD_RESPMEM_MUST_COPY);
+
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_OK,
+                            resp);
+
+  MHD_destroy_response (resp);
+  return ret;
+}
+
+
+/**
+ * Handle incoming HTTP request for /history
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param con_cls place to store state, not used
+ * @return MHD result code
+ */
+static int
+handle_history (struct TALER_FAKEBANK_Handle *h,
+                struct MHD_Connection *connection,
+                void **con_cls)
 {
   struct HistoryArgs ha;
   struct HistoryRangeIds hri;
@@ -763,6 +795,18 @@ handle_mhd_request (void *cls,
 {
   struct TALER_FAKEBANK_Handle *h = cls;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Fakebank, serving: %s\n",
+              url);
+
+
+  if ( (0 == strcasecmp (url,
+                         "/")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_home_page (h,
+                             connection,
+                             con_cls);
   if ( (0 == strcasecmp (url,
                          "/admin/add/incoming")) &&
        (0 == strcasecmp (method,
@@ -792,9 +836,9 @@ handle_mhd_request (void *cls,
                          "/history")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
-    return handle_history_new (h,
-                               connection,
-                               con_cls);
+    return handle_history (h,
+                           connection,
+                           con_cls);
 
   /* Unexpected URL path, just close the connection. */
   /* we're rather impolite here, but it's a testcase. */

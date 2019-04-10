@@ -144,8 +144,6 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-
-
   /**
    * This batch aims to trigger the 409 Conflict
    * response from a refresh-reveal operation.

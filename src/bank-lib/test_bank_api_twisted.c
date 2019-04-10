@@ -81,24 +81,23 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-
   struct TALER_TESTING_Command commands[] = {
 
+    TALER_TESTING_cmd_wait_service ("wait-service",
+                                    "http://localhost:8888/"),
+
     TALER_TESTING_cmd_bank_history ("history-0",
-                                    twister_url,
+                                    TWISTED_BANK_URL,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_NO,
                                     NULL,
                                     5),
-    /**
-     * End the suite.  Fixme: better to have a label for this
-     * too, as it shows a "(null)" token on logs.
-     */
     TALER_TESTING_cmd_end ()
   };
 
-  TALER_TESTING_run (is, commands);
+  TALER_TESTING_run (is,
+                     commands);
 }
 
 /**
@@ -109,7 +108,8 @@ run (void *cls,
 static void
 purge_process (struct GNUNET_OS_Process *process)
 {
-  GNUNET_OS_process_kill (process, SIGINT);
+  GNUNET_OS_process_kill (process,
+                          SIGINT);
   GNUNET_OS_process_wait (process);
   GNUNET_OS_process_destroy (process);
 }
@@ -124,14 +124,16 @@ main (int argc,
   unsetenv ("XDG_CONFIG_HOME");
 
   GNUNET_log_setup ("test-bank-api-twisted",
-                    "DEBUG", NULL);
+                    "DEBUG",
+                    NULL);
 
   if (NULL == (bank_url = TALER_TESTING_prepare_bank
       (CONFIG_FILE)))
     return 77;
 
   if (NULL == (bankd = TALER_TESTING_run_bank
-      (CONFIG_FILE, bank_url)))
+      (CONFIG_FILE,
+       bank_url)))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
