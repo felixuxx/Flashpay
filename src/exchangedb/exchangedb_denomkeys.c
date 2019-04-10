@@ -200,7 +200,7 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
   if (NULL == (fh = GNUNET_DISK_file_open
                (filename,
                 GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
-                GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
+                GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_OPEN_FAILIFEXISTS)))
     goto cleanup;
   wsize = sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,

@@ -55,19 +55,28 @@
   "test_exchange_api_keys_cherry_picking_extended_2.conf"
 
 /**
- * Current time.
- */
-struct GNUNET_TIME_Absolute now;
-
-/**
- * Adds to the current time.
+ * Add seconds.
  *
- * @param relative number of _seconds_ to add to the current time.
+ * @param base absolute time to add seconds to.
+ * @param relative number of seconds to add.
  * @return a new absolute time, modified according to @e relative.
  */
-#define NOWPLUSSECS(secs) \
+#define ADDSECS(base, secs) \
   GNUNET_TIME_absolute_add \
-    (now, \
+    (base, \
+     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                    secs))
+
+/**
+ * Subtract seconds.
+ *
+ * @param base absolute time to subtract seconds to.
+ * @param secs relative number of _seconds_ to subtract.
+ * @return a new absolute time, modified according to @e relative.
+ */
+#define SUBSECS(base, secs) \
+  GNUNET_TIME_absolute_sub \
+    (base, \
      GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
                                     secs))
 #define JAN1971 "1971-01-01"
@@ -169,7 +178,6 @@ run (void *cls,
 
   };
 
-  now = GNUNET_TIME_absolute_get ();
   struct TALER_TESTING_Command ordinary_cherry_pick[] = {
 
     /**
@@ -201,26 +209,29 @@ run (void *cls,
        2,
        TTH_parse_time (JAN2030)),
 
-    /**
-     * We now load a very high lookahead_sign value of 3500 s,
-     * with now == JAN2030.
-     */
     TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-3",
        CONFIG_FILE_EXTENDED_2,
-       TTH_parse_time (JAN2030)),
+       /* Taking care of not using a 'now' that equals the
+        * last DK timestamp, otherwise it would get silently
+        * overridden.  */
+       ADDSECS (TTH_parse_time (JAN2030),
+                10)),
 
     /**
-     * For each DK with a withdraw duration of 80 s
-     * (- 1 s of overlap), and for the latest 3500 s
-     * lookahead_sign value, we should have ((3500 - _79_) / 79)
-     * keys we just downloaded + 2 old DK keys stored in memory
-     * (total 46).  The _79_ seconds we subtract are from the one
-     * key generated at "keyup-1".
+     * Expected number of DK:
      *
-     * This currently fails: look for XXX-ANCHOR at
-     * taler-exchange-keyup.c to get some insight about the reason
-     * behind.
+     * 3500 (the lookaeahd_sign time frame, in seconds)
+     * - 69 (how many seconds are covered by the latest DK)
+     * ----
+     * 3431
+     * / 79 (how many seconds each DK will cover)
+     * ----
+     *   44 (rounded up)
+     *  + 2 (old DKs already stored locally: 1 from the
+     *       very initial setup, and 1 from the 'keyup-1' CMD)
+     * ----
+     *   46
      */
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-3",
