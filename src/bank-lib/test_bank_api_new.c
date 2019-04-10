@@ -164,6 +164,18 @@ run (void *cls,
                                     "deposit-1",
                                     5),
 
+    /**
+     * Just check that the two transactions show up.
+     */
+    TALER_TESTING_cmd_bank_history_range_with_dates
+      ("history-2-range",
+       bank_url,
+       EXCHANGE_ACCOUNT_NUMBER,
+       TALER_BANK_DIRECTION_BOTH,
+       GNUNET_NO,
+       NOWMINUSSECS (5),
+       NOWPLUSSECS (5)),
+
     TALER_TESTING_cmd_bank_reject ("reject-1",
                                    bank_url,
                                    "deposit-1"),
