@@ -82,6 +82,10 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
+
+    TALER_TESTING_cmd_wait_service ("wait-service",
+                                    "http://localhost:8888/"),
+
     TALER_TESTING_cmd_bank_history ("history-0",
                                     TWISTED_BANK_URL,
                                     EXCHANGE_ACCOUNT_NUMBER,

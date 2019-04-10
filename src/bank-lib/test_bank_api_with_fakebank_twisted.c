@@ -75,18 +75,23 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+
   struct TALER_TESTING_Command commands[] = {
+    
+    /**
+     * Can't use the "wait service" CMD here because the
+     * fakebank runs inside the same process of the test.
+     */
+    TALER_TESTING_cmd_sleep ("wait interface",
+                             2),
+
     TALER_TESTING_cmd_bank_history ("history-0",
-                                    twister_url,
+                                    TWISTED_BANK_URL,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_NO,
                                     NULL,
                                     5),
-    /**
-     * End the suite.  Fixme: better to have a label for this
-     * too, as it shows a "(null)" token on logs.
-     */
     TALER_TESTING_cmd_end ()
   };
 
@@ -120,8 +125,9 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
 
-  GNUNET_log_setup ("test-bank-api-twisted",
-                    "DEBUG", NULL);
+  GNUNET_log_setup ("test-bank-api-with-fakebank-twisted",
+                    "DEBUG",
+                    NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
                (CONFIG_FILE,
