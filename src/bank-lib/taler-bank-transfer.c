@@ -115,13 +115,15 @@ do_shutdown (void *cls)
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
  * @param ec detailed error code
  * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param timestamp timestamp when the transaction got settled at the bank.
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
 res_cb (void *cls,
         unsigned int http_status,
         enum TALER_ErrorCode ec,
-        uint64_t serial_id,
+        long long unsigned serial_id,
+        struct GNUNET_TIME_Absolute timestamp,
         const json_t *json)
 {
   op = NULL;
