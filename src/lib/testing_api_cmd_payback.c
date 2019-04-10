@@ -188,8 +188,7 @@ payback_cb (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    if (0 != memcmp (reserve_pub, &rp,
-                     sizeof (struct TALER_ReservePublicKeyP)))
+    if (0 != GNUNET_memcmp (reserve_pub, &rp))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);
