@@ -7,9 +7,7 @@ if USE_COVERAGE
 endif
 
 noinst_PROGRAMS = \
-  taler-bank-transfer
-
-noinst_PROGRAMS = \
+  taler-bank-transfer \
   taler-fakebank-run
 
 taler_fakebank_run_SOURCES = \
