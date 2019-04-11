@@ -1570,9 +1570,10 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
- * Serialize the latest key data from @a exchange to be persisted on
- * disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more
- * efficiently recover the state).
+ * Serialize the latest key data from @a
+ * exchange to be persisted on disk (to be used with
+ * #TALER_EXCHANGE_OPTION_DATA to more efficiently recover
+ * the state).
  *
  * @param exchange which exchange's key and wire data should be
  *        serialized
@@ -1580,7 +1581,8 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
  *         otherwise JSON object owned by the caller
  */
 json_t *
-TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
+TALER_EXCHANGE_serialize_data
+  (struct TALER_EXCHANGE_Handle *exchange)
 {
   const struct TALER_EXCHANGE_Keys *kd = &exchange->key_data;
   struct GNUNET_TIME_Absolute now;
@@ -1600,15 +1602,20 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
       continue; /* skip keys that have expired */
     signkey = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
 			 "key",
-			 GNUNET_JSON_from_data_auto (&sk->key),
+			 GNUNET_JSON_from_data_auto
+                           (&sk->key),
 			 "master_sig",
-			 GNUNET_JSON_from_data_auto (&sk->master_sig),
+			 GNUNET_JSON_from_data_auto
+                           (&sk->master_sig),
 			 "stamp_start",
-			 GNUNET_JSON_from_time_abs (sk->valid_from),
+			 GNUNET_JSON_from_time_abs
+                           (sk->valid_from),
 			 "stamp_expire",
-			 GNUNET_JSON_from_time_abs (sk->valid_until),
+			 GNUNET_JSON_from_time_abs
+                           (sk->valid_until),
 			 "stamp_end",
-			 GNUNET_JSON_from_time_abs (sk->valid_legal));
+			 GNUNET_JSON_from_time_abs
+                           (sk->valid_legal));
     if (NULL == signkey)
     {
       GNUNET_break (0);
@@ -1839,7 +1846,7 @@ request_keys (void *cls)
   
   if (GNUNET_YES == exchange->with_now)
   {
-    TALER_LOG_DEBUG ("Faking now to GET /keys): %s\n",
+    TALER_LOG_DEBUG ("Faking now to GET /keys: %s\n",
                      GNUNET_STRINGS_absolute_time_to_string (exchange->now));
     sprintf (&url[strlen (url)],
              "now=%llu&",
