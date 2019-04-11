@@ -1131,6 +1131,37 @@ taler_bank_get_history (void *cls,
 }
 
 
+
+/**
+ * Query transfer history of an account.  The query is based on
+ * the dates where the wire transfers got settled at the bank.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param account_section specifies the configuration section which
+ *        identifies the account for which we should get the history
+ * @param direction what kinds of wire transfers should be returned
+ * @param start_date each history entry in the result will be time
+ *        stamped after, or at this date.
+ * @param end_date each history entry in the result will be time
+ *        stamped before, or at this date.
+ * @param hres_cb the callback to call with the transaction history
+ * @param hres_cb_cls closure for the above callback
+ * @param return the operation handle, or NULL on errors.
+ */
+static struct TALER_WIRE_HistoryHandle *
+taler_bank_get_history_range (void *cls,
+                              const char *account_section,
+                              enum TALER_BANK_Direction direction,
+                              struct GNUNET_TIME_Absolute start_date,
+                              struct GNUNET_TIME_Absolute end_date,
+                              TALER_WIRE_HistoryResultCallback hres_cb,
+                              void *hres_cb_cls)
+{
+  GNUNET_break (0);
+  return NULL;
+}
+
+
 /**
  * Context for a rejection operation.
  */
@@ -1333,6 +1364,7 @@ libtaler_plugin_wire_taler_bank_init (void *cls)
   plugin->execute_wire_transfer = &taler_bank_execute_wire_transfer;
   plugin->execute_wire_transfer_cancel = &taler_bank_execute_wire_transfer_cancel;
   plugin->get_history = &taler_bank_get_history;
+  plugin->get_history_range = &taler_bank_get_history_range;
   plugin->get_history_cancel = &taler_bank_get_history_cancel;
   plugin->reject_transfer = &taler_bank_reject_transfer;
   plugin->reject_transfer_cancel = &taler_bank_reject_transfer_cancel;

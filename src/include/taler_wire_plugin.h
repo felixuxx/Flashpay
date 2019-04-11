@@ -310,6 +310,30 @@ struct TALER_WIRE_Plugin
                   TALER_WIRE_HistoryResultCallback hres_cb,
                   void *hres_cb_cls);
 
+  /**
+   * Query transfer history of an account.  The query is based on
+   * the dates where the wire transfers got settled at the bank.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param account_section specifies the configuration section which
+   *        identifies the account for which we should get the history
+   * @param direction what kinds of wire transfers should be returned
+   * @param start_date each history entry in the result will be time
+   *        stamped after, or at this date.
+   * @param end_date each history entry in the result will be time
+   *        stamped before, or at this date.
+   * @param hres_cb the callback to call with the transaction history
+   * @param hres_cb_cls closure for the above callback
+   * @param return the operation handle, or NULL on errors.
+   */
+  struct TALER_WIRE_HistoryHandle *
+  (*get_history_range) (void *cls,
+                        const char *account_section,
+                        enum TALER_BANK_Direction direction,
+                        struct GNUNET_TIME_Absolute start_date,
+                        struct GNUNET_TIME_Absolute end_date,
+                        TALER_WIRE_HistoryResultCallback hres_cb,
+                        void *hres_cb_cls);
 
   /**
    * Cancel going over the account's history.
