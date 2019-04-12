@@ -626,7 +626,7 @@ static void
 execute_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
-            uint64_t serial_id,
+            long long unsigned int serial_id,
             struct GNUNET_TIME_Absolute timestamp,
             const json_t *json)
 {

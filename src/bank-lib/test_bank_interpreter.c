@@ -537,7 +537,7 @@ static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
                  enum TALER_ErrorCode ec,
-                 uint64_t row_id,
+                 long long unsigned int row_id,
                  struct GNUNET_TIME_Absolute timestamp,
                  const json_t *json)
 {
