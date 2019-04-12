@@ -427,8 +427,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                              &timestamp);
       TALER_LOG_DEBUG
         ("Seeking first row, start vs timestamp: %llu vs %llu\n",
-         hs->start_date.abs_value_us,
-         timestamp->abs_value_us);
+         (long long unsigned int) hs->start_date.abs_value_us,
+         (long long unsigned int) timestamp->abs_value_us);
 
       if (hs->start_date.abs_value_us <= timestamp->abs_value_us)
       {
@@ -550,8 +550,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                              &timestamp);
       TALER_LOG_DEBUG
         ("Seeking first row, start vs timestamp (2): %llu vs %llu\n",
-         hs->start_date.abs_value_us,
-         timestamp->abs_value_us);
+         (long long unsigned int) hs->start_date.abs_value_us,
+         (long long unsigned int) timestamp->abs_value_us);
 
       if (hs->start_date.abs_value_us <= timestamp->abs_value_us)
       {
