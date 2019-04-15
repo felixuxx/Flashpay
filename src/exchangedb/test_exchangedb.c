@@ -2086,9 +2086,8 @@ run (void *cls)
                                                  &dkp_pub_hash,
                                                  &msig,
 						 &rev_rowid));
-    FAILIF (0 != memcmp (&msig,
-                         &master_sig,
-                         sizeof (msig)));
+    FAILIF (0 != GNUNET_memcmp (&msig,
+                                &master_sig));
   }
 
 
@@ -2178,15 +2177,12 @@ run (void *cls)
         /* Note: we're not comparing the denomination keys, as there is
            still the question of whether we should even bother exporting
            them here. */
-        FAILIF (0 != memcmp (&have->merchant_pub,
-                             &refund.merchant_pub,
-                             sizeof (struct TALER_MerchantPublicKeyP)));
-        FAILIF (0 != memcmp (&have->merchant_sig,
-                             &refund.merchant_sig,
-                             sizeof (struct TALER_MerchantSignatureP)));
-        FAILIF (0 != memcmp (&have->h_contract_terms,
-                             &refund.h_contract_terms,
-                             sizeof (struct GNUNET_HashCode)));
+        FAILIF (0 != GNUNET_memcmp (&have->merchant_pub,
+                                    &refund.merchant_pub));
+        FAILIF (0 != GNUNET_memcmp (&have->merchant_sig,
+                                    &refund.merchant_sig));
+        FAILIF (0 != GNUNET_memcmp (&have->h_contract_terms,
+                                    &refund.h_contract_terms));
         FAILIF (have->rtransaction_id != refund.rtransaction_id);
         FAILIF (0 != TALER_amount_cmp (&have->refund_amount,
                                        &refund.refund_amount));
@@ -2199,15 +2195,12 @@ run (void *cls)
       {
         struct TALER_EXCHANGEDB_Payback *payback = tlp->details.payback;
 
-        FAILIF (0 != memcmp (&payback->coin_sig,
-                             &coin_sig,
-                             sizeof (coin_sig)));
-        FAILIF (0 != memcmp (&payback->coin_blind,
-                             &coin_blind,
-                             sizeof (coin_blind)));
-        FAILIF (0 != memcmp (&payback->reserve_pub,
-                             &reserve_pub,
-                             sizeof (reserve_pub)));
+        FAILIF (0 != GNUNET_memcmp (&payback->coin_sig,
+                                    &coin_sig));
+        FAILIF (0 != GNUNET_memcmp (&payback->coin_blind,
+                                    &coin_blind));
+        FAILIF (0 != GNUNET_memcmp (&payback->reserve_pub,
+                                    &reserve_pub));
         FAILIF (0 != memcmp (&payback->coin.coin_pub,
                              &deposit.coin.coin_pub,
                              sizeof (deposit.coin.coin_pub)));
