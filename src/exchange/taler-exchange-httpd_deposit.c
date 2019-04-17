@@ -467,9 +467,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
 					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
                                            "wire");
   }
-  if (0 != memcmp (&deposit.h_wire,
-		   &my_h_wire,
-		   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (&deposit.h_wire,
+                          &my_h_wire))
   {
     /* Client hashed contract differently than we did, reject */
     GNUNET_JSON_parse_free (spec);
