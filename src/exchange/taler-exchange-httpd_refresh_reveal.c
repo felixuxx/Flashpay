@@ -399,9 +399,8 @@ refresh_reveal_transaction (void *cls,
     }
 
     /* Verify rc_expected matches rc */
-    if (0 != memcmp (&rctx->rc,
-                     &rc_expected,
-                     sizeof (struct TALER_RefreshCommitmentP)))
+    if (0 != GNUNET_memcmp (&rctx->rc,
+                            &rc_expected))
     {
       GNUNET_break_op (0);
       *mhd_ret = reply_refresh_reveal_missmatch (connection,
