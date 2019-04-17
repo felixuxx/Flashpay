@@ -624,13 +624,11 @@ refund_by_coin_cb (void *cls,
 
   /* TODO: potential optimization: include these conditions
      in the SELECT! */
-  if (0 != memcmp (merchant_pub,
-		   &au->merchant_pub,
-		   sizeof (struct TALER_MerchantPublicKeyP)))
+  if (0 != GNUNET_memcmp (merchant_pub,
+                          &au->merchant_pub))
     return GNUNET_OK; /* different merchant */
-  if (0 != memcmp (h_contract,
-		   au->h_contract,
-		   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (h_contract,
+                          au->h_contract))
     return GNUNET_OK; /* different contract */
   if (GNUNET_OK !=
       TALER_amount_subtract (&au->total_amount,
@@ -795,10 +793,8 @@ aggregate_cb (void *cls,
   struct TALER_Amount delta;
   enum GNUNET_DB_QueryStatus qs;
 
-  GNUNET_break (0 ==
-                memcmp (&au->merchant_pub,
-                        merchant_pub,
-                        sizeof (struct TALER_MerchantPublicKeyP)));
+  GNUNET_break (0 == GNUNET_memcmp (&au->merchant_pub,
+                                    merchant_pub));
   /* compute contribution of this coin after fees */
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&delta,
