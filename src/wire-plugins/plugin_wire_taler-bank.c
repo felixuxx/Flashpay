@@ -1014,10 +1014,11 @@ bhist_cb (void *cls,
  * transfers.  The @a start_off value must thus match the value of
  * a `row_off` argument previously given to the @a hres_cb.  Use
  * NULL to query transfers from the beginning of time (with
- * positive @a num_results) or from the lataler_bank committed transfers
- * (with negative @a num_results).
+ * positive @a num_results) or from the lataler_bank committed
+ * transfers (with negative @a num_results).
  *
- * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cls the @e cls of this struct with the plugin-specific
+ *        state
  * @param account_section specifies the configuration section which
  *        identifies the account for which we should get the history
  * @param direction what kinds of wire transfers should be returned
@@ -1059,13 +1060,18 @@ taler_bank_get_history (void *cls,
        (sizeof (uint64_t) != start_off_len) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Wire plugin 'taler_bank' got start offset of wrong size (%llu instead of %llu)\n",
+                "Wire plugin 'taler_bank' got"
+                " start offset of wrong size (%llu"
+                " instead of %llu)\n",
                 (unsigned long long) start_off_len,
                 (unsigned long long) sizeof (uint64_t));
     GNUNET_break (0);
-    /* Probably something is wrong with the DB, some other component
-     * wrote a wrong value to it.  Instead of completely stopping to work,
-     * we just scan from the beginning. */
+
+    /**
+     * Probably something is wrong with the DB, some
+     * other component wrote a wrong value to it.  Instead
+     * of completely stopping to work, we just scan from the
+     * beginning. */
     start_off = NULL;
   }
   if (NULL == start_off)
@@ -1109,7 +1115,7 @@ taler_bank_get_history (void *cls,
                                 &whh->auth,
                                 (uint64_t) account.no,
                                 direction,
-                                /* Defaults to descending ordering always. */
+               /* Defaults to descending ordering always. */
                                 GNUNET_NO,
                                 start_row,
                                 num_results,
@@ -1136,9 +1142,11 @@ taler_bank_get_history (void *cls,
  * Query transfer history of an account.  The query is based on
  * the dates where the wire transfers got settled at the bank.
  *
- * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cls the @e cls of this struct with the plugin-specific
+ *        state
  * @param account_section specifies the configuration section which
- *        identifies the account for which we should get the history
+ *        identifies the account for which we should get the
+ *        history
  * @param direction what kinds of wire transfers should be returned
  * @param start_date each history entry in the result will be time
  *        stamped after, or at this date.
@@ -1149,16 +1157,76 @@ taler_bank_get_history (void *cls,
  * @param return the operation handle, or NULL on errors.
  */
 static struct TALER_WIRE_HistoryHandle *
-taler_bank_get_history_range (void *cls,
-                              const char *account_section,
-                              enum TALER_BANK_Direction direction,
-                              struct GNUNET_TIME_Absolute start_date,
-                              struct GNUNET_TIME_Absolute end_date,
-                              TALER_WIRE_HistoryResultCallback hres_cb,
-                              void *hres_cb_cls)
+taler_bank_get_history_range
+  (void *cls,
+   const char *account_section,
+   enum TALER_BANK_Direction direction,
+   struct GNUNET_TIME_Absolute start_date,
+   struct GNUNET_TIME_Absolute end_date,
+   TALER_WIRE_HistoryResultCallback hres_cb,
+   void *hres_cb_cls)
 {
   GNUNET_break (0);
   return NULL;
+
+  struct Account account;
+  struct TalerBankClosure *tc = cls;
+  struct TALER_WIRE_HistoryHandle *whh;
+
+  if (GNUNET_OK !=
+      parse_account_cfg (tc->cfg,
+                         account_section,
+                         &account))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not parse the config section '%s'\n",
+                account_section);
+    return NULL;
+  }
+
+  whh = GNUNET_new (struct TALER_WIRE_HistoryHandle);
+  whh->hres_cb = hres_cb;
+  whh->hres_cb_cls = hres_cb_cls;
+
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (tc->cfg,
+                                 account_section,
+                                 &whh->auth))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not parse the auth values from '%s'\n",
+                account_section);
+    GNUNET_free (whh);
+    return NULL;
+  }
+
+
+  whh->hh = TALER_BANK_history_range (tc->ctx,
+                                      account.bank_base_url,
+                                      &whh->auth,
+                                      account.no,
+                                      direction,
+                            /* Just always descending.  */
+                                      GNUNET_NO,
+                                      start_date,
+                                      end_date,
+                                      &bhist_cb,
+                                      whh);
+  if (NULL == whh->hh)
+  {
+    GNUNET_break (0);
+    taler_bank_get_history_cancel (NULL,
+                                   whh);
+    GNUNET_free (account.hostname);
+    GNUNET_free (account.bank_base_url);
+    return NULL;
+  }
+
+  GNUNET_free (account.hostname);
+  GNUNET_free (account.bank_base_url);
+  GNUNET_assert (NULL != whh);
+
+  return whh;
 }
 
 
