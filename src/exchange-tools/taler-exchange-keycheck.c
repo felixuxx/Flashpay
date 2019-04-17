@@ -163,9 +163,8 @@ denomkeys_iter (void *cls,
   }
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &hc);
-  if (0 != memcmp (&hc,
-                   &dki->issue.properties.denom_hash,
-                   sizeof (struct GNUNET_HashCode)))
+  if (0 != GNUNET_memcmp (&hc,
+                          &dki->issue.properties.denom_hash))
   {
     fprintf (stderr,
              "Public key for `%s' does not match signature\n",
