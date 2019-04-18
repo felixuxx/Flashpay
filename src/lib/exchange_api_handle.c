@@ -708,9 +708,8 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
          NULL != a;
          a = a->next)
     {
-      if (0 == memcmp (&auditor->auditor_pub,
-                       &a->auditor_pub,
-                       sizeof (struct TALER_AuditorPublicKeyP)))
+      if (0 == GNUNET_memcmp (&auditor->auditor_pub,
+                              &a->auditor_pub))
       {
         ale = a;
         break;
@@ -766,13 +765,13 @@ TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
   if (0 != GNUNET_memcmp (denom1,
                           denom2))
   {
-    denom1->key.rsa_public_key = tmp1; 
+    denom1->key.rsa_public_key = tmp1;
     denom2->key.rsa_public_key = tmp2;
 
     return 1;
   }
 
-  denom1->key.rsa_public_key = tmp1; 
+  denom1->key.rsa_public_key = tmp1;
   denom2->key.rsa_public_key = tmp2;
 
   return 0;
@@ -1843,7 +1842,7 @@ request_keys (void *cls)
              "last_issue_date=%llu&",
              (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
   }
-  
+
   if (GNUNET_YES == exchange->with_now)
   {
     TALER_LOG_DEBUG ("Faking now to GET /keys: %s\n",
