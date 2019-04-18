@@ -289,14 +289,12 @@ handle_transaction_data (void *cls,
   }
   else
   {
-    if ( (0 != memcmp (&ctx->merchant_pub,
-                       merchant_pub,
-                       sizeof (struct TALER_MerchantPublicKeyP))) ||
+    if ( (0 != GNUNET_memcmp (&ctx->merchant_pub,
+                              merchant_pub)) ||
          (0 != strcmp (wire_method,
                        ctx->wire_method)) ||
-         (0 != memcmp (&ctx->h_wire,
-                       h_wire,
-                       sizeof (struct GNUNET_HashCode))) )
+         (0 != GNUNET_memcmp (&ctx->h_wire,
+                              h_wire)) )
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
