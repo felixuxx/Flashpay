@@ -130,9 +130,9 @@ struct DepositContext
  */
 static enum GNUNET_DB_QueryStatus
 deposit_transaction (void *cls,
-		     struct MHD_Connection *connection,
-		     struct TALER_EXCHANGEDB_Session *session,
-		     int *mhd_ret)
+                     struct MHD_Connection *connection,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     int *mhd_ret)
 {
   struct DepositContext *dc = cls;
   const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
@@ -141,8 +141,8 @@ deposit_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
-				 session,
-				 deposit,
+                                 session,
+                                 deposit,
                                  GNUNET_YES /* check refund deadline */);
   if (qs < 0)
   {
@@ -159,19 +159,19 @@ deposit_transaction (void *cls,
     struct TALER_Amount amount_without_fee;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		"/deposit replay, accepting again!\n");
+                "/deposit replay, accepting again!\n");
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_subtract (&amount_without_fee,
                                           &deposit->amount_with_fee,
                                           &deposit->deposit_fee));
     *mhd_ret = reply_deposit_success (connection,
-				      &deposit->coin.coin_pub,
-				      &deposit->h_wire,
-				      &deposit->h_contract_terms,
-				      deposit->timestamp,
-				      deposit->refund_deadline,
-				      &deposit->merchant_pub,
-				      &amount_without_fee);
+                                      &deposit->coin.coin_pub,
+                                      &deposit->h_wire,
+                                      &deposit->h_contract_terms,
+                                      deposit->timestamp,
+                                      deposit->refund_deadline,
+                                      &deposit->merchant_pub,
+                                      &amount_without_fee);
     /* Treat as 'hard' DB error as we want to rollback and
        never try again. */
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -184,13 +184,13 @@ deposit_transaction (void *cls,
                                           session,
                                           &deposit->coin.coin_pub,
                                           GNUNET_NO,
-					  &tl);
+                                          &tl);
   if (0 > qs)
     return qs;
   if (GNUNET_OK !=
       TEH_DB_calculate_transaction_list_totals (tl,
-						&spent,
-						&spent))
+                                                &spent,
+                                                &spent))
   {
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
@@ -239,7 +239,7 @@ deposit_transaction (void *cls,
  */
 static int
 verify_and_execute_deposit (struct MHD_Connection *connection,
-			    const struct TALER_EXCHANGEDB_Deposit *deposit)
+                            const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct TALER_DepositRequestPS dr;
   int mhd_ret;
@@ -269,7 +269,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_DEPOSIT_COIN_SIGNATURE_INVALID,
+                                                 TALER_EC_DEPOSIT_COIN_SIGNATURE_INVALID,
                                                  "coin_sig");
   }
 
@@ -284,7 +284,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   }
   dki = TEH_KS_denomination_key_lookup (mks,
                                         &deposit->coin.denom_pub,
-					TEH_KS_DKU_DEPOSIT);
+                                        TEH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     TEH_KS_release (mks);
@@ -300,9 +300,9 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "execute deposit",
-			      &mhd_ret,
-			      &deposit_transaction,
-			      &dc))
+                              &mhd_ret,
+                              &deposit_transaction,
+                              &dc))
     return mhd_ret;
 
   /* generate regular response */
@@ -311,13 +311,13 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                         &deposit->amount_with_fee,
                                         &deposit->deposit_fee));
   return reply_deposit_success (connection,
-				&deposit->coin.coin_pub,
-				&deposit->h_wire,
-				&deposit->h_contract_terms,
-				deposit->timestamp,
-				deposit->refund_deadline,
-				&deposit->merchant_pub,
-				&amount_without_fee);
+                                &deposit->coin.coin_pub,
+                                &deposit->h_wire,
+                                &deposit->h_contract_terms,
+                                deposit->timestamp,
+                                deposit->refund_deadline,
+                                &deposit->merchant_pub,
+                                &amount_without_fee);
 }
 
 

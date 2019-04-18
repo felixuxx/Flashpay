@@ -1075,11 +1075,9 @@ postgres_prepare (PGconn *db_conn)
                             ",h_contract_terms"
                             ",h_wire"
                             " FROM deposits"
-                            " WHERE ("
-                            "        (coin_pub=$1)"
+                            " WHERE ((coin_pub=$1)"
                             "    AND (merchant_pub=$3)"
-                            "    AND (h_contract_terms=$2)"
-                            " )"
+                            "    AND (h_contract_terms=$2))"
                             " FOR UPDATE;",
                             3),
     /* Fetch deposits with rowid '\geq' the given parameter */
@@ -2893,15 +2891,15 @@ postgres_have_deposit (void *cls,
   struct TALER_EXCHANGEDB_Deposit deposit2;
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("amount_with_fee",
-				 &deposit2.amount_with_fee),
+                                 &deposit2.amount_with_fee),
     TALER_PQ_result_spec_absolute_time ("timestamp",
-					 &deposit2.timestamp),
+                                        &deposit2.timestamp),
     TALER_PQ_result_spec_absolute_time ("refund_deadline",
-					 &deposit2.refund_deadline),
+                                        &deposit2.refund_deadline),
     TALER_PQ_result_spec_absolute_time ("wire_deadline",
-					 &deposit2.wire_deadline),
+                                        &deposit2.wire_deadline),
     GNUNET_PQ_result_spec_auto_from_type ("h_wire",
-					  &deposit2.h_wire),
+                                          &deposit2.h_wire),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -2910,9 +2908,9 @@ postgres_have_deposit (void *cls,
               "Getting deposits for coin %s\n",
               TALER_B2S (&deposit->coin.coin_pub));
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						 "get_deposit",
-						 params,
-						 rs);
+                                                 "get_deposit",
+                                                 params,
+                                                 rs);
   if (0 >= qs)
     return qs;
   /* Now we check that the other information in @a deposit
@@ -3650,19 +3648,19 @@ postgres_get_melt (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-					  &refresh_melt->session.coin.denom_pub.rsa_public_key),
+                                          &refresh_melt->session.coin.denom_pub.rsa_public_key),
     TALER_PQ_result_spec_amount ("fee_refresh",
-				 &refresh_melt->melt_fee),
+                                 &refresh_melt->melt_fee),
     GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-					 &refresh_melt->session.coin.denom_sig.rsa_signature),
+                                         &refresh_melt->session.coin.denom_sig.rsa_signature),
     GNUNET_PQ_result_spec_uint32 ("noreveal_index",
-				  &refresh_melt->session.noreveal_index),
+                                  &refresh_melt->session.noreveal_index),
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
-					  &refresh_melt->session.coin.coin_pub),
+                                          &refresh_melt->session.coin.coin_pub),
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
-					  &refresh_melt->session.coin_sig),
+                                          &refresh_melt->session.coin_sig),
     TALER_PQ_result_spec_amount ("amount_with_fee",
-				 &refresh_melt->session.amount_with_fee),
+                                 &refresh_melt->session.amount_with_fee),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;

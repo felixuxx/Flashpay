@@ -87,9 +87,9 @@ TEH_DB_know_coin_transaction (void *cls,
 int
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
-			int *mhd_ret,
-			TEH_DB_TransactionCallback cb,
-			void *cb_cls)
+                        int *mhd_ret,
+                        TEH_DB_TransactionCallback cb,
+                        void *cb_cls)
 {
   struct TALER_EXCHANGEDB_Session *session;
 
@@ -100,7 +100,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     GNUNET_break (0);
     if (NULL != mhd_ret)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_DB_SETUP_FAILED);
+                                                       TALER_EC_DB_SETUP_FAILED);
     return GNUNET_SYSERR;
   }
   TEH_plugin->preflight (TEH_plugin->cls,
@@ -110,23 +110,23 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     enum GNUNET_DB_QueryStatus qs;
 
     if (GNUNET_OK !=
-	TEH_plugin->start (TEH_plugin->cls,
-			   session,
+        TEH_plugin->start (TEH_plugin->cls,
+                           session,
                            name))
     {
       GNUNET_break (0);
       if (NULL != mhd_ret)
-	*mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-							 TALER_EC_DB_START_FAILED);
+        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                         TALER_EC_DB_START_FAILED);
       return GNUNET_SYSERR;
     }
     qs = cb (cb_cls,
-	     connection,
-	     session,
-	     mhd_ret);
+             connection,
+             session,
+             mhd_ret);
     if (0 > qs)
       TEH_plugin->rollback (TEH_plugin->cls,
-			    session);
+                            session);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       return GNUNET_SYSERR;
     if (0 <= qs)
@@ -135,13 +135,13 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       if (NULL != mhd_ret)
-	*mhd_ret = TEH_RESPONSE_reply_commit_error (connection,
-						    TALER_EC_DB_COMMIT_FAILED_HARD);
+        *mhd_ret = TEH_RESPONSE_reply_commit_error (connection,
+                                                    TALER_EC_DB_COMMIT_FAILED_HARD);
       return GNUNET_SYSERR;
     }
     /* make sure callback did not violate invariants! */
     GNUNET_assert ( (NULL == mhd_ret) ||
-		    (-1 == *mhd_ret) );
+                    (-1 == *mhd_ret) );
     if (0 <= qs)
       return GNUNET_OK;
   }

@@ -146,6 +146,12 @@ handle_mhd_completion_callback (void *cls,
     return;
   TEH_PARSE_post_cleanup_callback (*con_cls);
   *con_cls = NULL;
+  /* check that we didn't leave any transactions hanging */
+  /* NOTE: In high-performance production, we might want to
+     remove this. */
+  TEH_plugin->preflight (TEH_plugin->cls,
+                         TEH_plugin->get_session (TEH_plugin->cls));
+
 }
 
 
