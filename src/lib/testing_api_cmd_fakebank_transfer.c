@@ -194,8 +194,8 @@ do_retry (void *cls)
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
-		 enum TALER_ErrorCode ec,
-                 long long unsigned int serial_id,
+                 enum TALER_ErrorCode ec,
+                 uint64_t serial_id,
                  struct GNUNET_TIME_Absolute timestamp,
                  const json_t *full_response)
 {
@@ -456,7 +456,7 @@ fakebank_transfer_traits (void *cls,
   else
     traits[MANDATORY - 1] = TALER_TESTING_make_trait_reserve_priv
       (0, &fts->reserve_priv),
-  
+
   traits[MANDATORY] = TALER_TESTING_trait_end ();
 
   return TALER_TESTING_get_trait (traits,

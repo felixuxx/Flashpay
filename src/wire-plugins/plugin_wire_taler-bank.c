@@ -626,7 +626,7 @@ static void
 execute_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
-            long long unsigned int serial_id,
+            uint64_t serial_id,
             struct GNUNET_TIME_Absolute timestamp,
             const json_t *json)
 {
@@ -808,7 +808,7 @@ taler_bank_execute_wire_transfer (void *cls,
                                             wire_s,
                                             &amount,
                                             (uint64_t) origin_account.no,
-					    (uint64_t) destination_account.no,
+                                            (uint64_t) destination_account.no,
                                             &execute_cb,
                                             eh);
   GNUNET_free_non_null (origin_account.bank_base_url);

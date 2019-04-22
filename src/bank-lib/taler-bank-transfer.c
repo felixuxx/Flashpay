@@ -122,7 +122,7 @@ static void
 res_cb (void *cls,
         unsigned int http_status,
         enum TALER_ErrorCode ec,
-        long long unsigned serial_id,
+        uint64_t serial_id,
         struct GNUNET_TIME_Absolute timestamp,
         const json_t *json)
 {
