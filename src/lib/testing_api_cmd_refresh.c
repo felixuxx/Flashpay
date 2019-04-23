@@ -611,9 +611,8 @@ link_cb (void *cls,
     for (unsigned int i=0;i<num_coins;i++)
       for (unsigned int j=0;j<num_coins;j++)
       {
-	if ( (0 == memcmp
-                (&coin_privs[i], &fc[j].coin_priv,
-                sizeof (struct TALER_CoinSpendPrivateKeyP))) &&
+	if ( (0 == GNUNET_memcmp
+          (&coin_privs[i], &fc[j].coin_priv)) &&
 	     (0 == GNUNET_CRYPTO_rsa_signature_cmp
                 (fc[i].sig.rsa_signature,
                  sigs[j].rsa_signature)) &&
