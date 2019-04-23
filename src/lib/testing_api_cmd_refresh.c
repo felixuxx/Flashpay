@@ -506,7 +506,7 @@ do_link_retry (void *cls)
 static void
 link_cb (void *cls,
          unsigned int http_status,
-	 enum TALER_ErrorCode ec,
+         enum TALER_ErrorCode ec,
          unsigned int num_coins,
          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
          const struct TALER_DenominationSignature *sigs,
@@ -591,10 +591,9 @@ link_cb (void *cls,
     /* check that the coins match */
     for (unsigned int i=0;i<num_coins;i++)
       for (unsigned int j=i+1;j<num_coins;j++)
-	if (0 == memcmp
-          (&coin_privs[i], &coin_privs[j],
-           sizeof (struct TALER_CoinSpendPrivateKeyP)))
-	  GNUNET_break (0);
+        if (0 == GNUNET_memcmp
+            (&coin_privs[i], &coin_privs[j]))
+          GNUNET_break (0);
     /* Note: coins might be legitimately permutated in here... */
     found = 0;
 
