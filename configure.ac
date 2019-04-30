@@ -180,43 +180,38 @@ AS_IF([test $libgnunetjson != 1],
 *** ]])])
 
 
-# libcurl-gnutls
-LIBCURL_CHECK_CONFIG(,7.34.0,[curl=true],[curl=false])
-AS_IF([test "x$curl" = xtrue],
-      [LDFLAGS="-L$with_libcurl/lib $LDFLAGS"
-       CPPFLAGS="-I$with_libcurl/include $CPPFLAGS"
-       AC_CHECK_HEADERS([curl/curl.h],
-                        [AC_CHECK_DECLS(CURLINFO_TLS_SESSION,
-                         [curl=true],
-                         [curl=false],
-                         [[#include <curl/curl.h>]])],
-                        [curl=false])
-       # need libcurl-gnutls.so, everything else is not acceptable
-       AC_CHECK_LIB([curl-gnutls],
-                    [curl_easy_getinfo],,
-                    [curl=false])])
-       # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 
-# Check for curl/curl.h and gnurl/curl.h so we can use #ifdef
-# HAVE_CURL_CURL_H later (the above LIBCURL_CHECK_CONFIG accepted
-# *either* header set).
-AC_CHECK_HEADERS([curl/curl.h],,
-  curl=false
-  AC_CHECK_HEADERS([gnurl/curl.h],,
-  gnurl=false))
-
+# check for libgnurl
 # libgnurl
-AS_IF([test "x$gnurl" = "x0"],
-      [AS_IF([test "x$curl" = "x0"],
-              [AC_MSG_NOTICE([NOTICE: libgnurl not found. taler-bank support will not be compiled.])],
-              [AC_MSG_NOTICE([WARNING: libgnurl not found, trying to use libcurl-gnutls instead.])])])
+LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
+LIBCURL_CHECK_CONFIG(,7.34.0,[curl=1],[curl=0])
 
-AS_IF([test x$curl = xfalse],
-       [AM_CONDITIONAL(HAVE_LIBCURL, false)
-        AS_IF([test "x$gnurl" = "x0"],
-              [AC_MSG_WARN([GNU Taler requires libcurl-gnutls  >= 7.34])])],
-       [AM_CONDITIONAL(HAVE_LIBCURL, true)
-	AC_DEFINE([HAVE_LIBCURL],[1],[Have CURL])])
+if test "x$curl" = x1
+then
+ AC_CHECK_HEADER([curl/curl.h],
+  AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=1],[curl=0],[[#include <curl/curl.h>]]),
+  [curl=0])
+ # need libcurl-gnutls.so, everything else is not acceptable
+ AC_CHECK_LIB([curl-gnutls],[curl_easy_getinfo],,[curl=0])
+ # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
+fi
+
+# libcurl and libgnurl should be mutually exclusive
+AS_IF([test "$gnurl" = 1],
+      [AM_CONDITIONAL(HAVE_LIBGNURL, true)
+       AC_DEFINE([HAVE_LIBGNURL],[1],[Have libgnurl])
+       AM_CONDITIONAL(HAVE_LIBCURL, false)
+       AC_DEFINE([HAVE_LIBCURL],[0],[Lacking libcurl])],
+      [AS_IF([test "$curl" = 1],
+             [AM_CONDITIONAL(HAVE_LIBGNURL, false)
+              AC_DEFINE([HAVE_LIBGNURL],[0],[Lacking libgnurl])
+              AM_CONDITIONAL(HAVE_LIBCURL, true)
+              AC_DEFINE([HAVE_LIBCURL],[1],[Have libcurl])],
+             [AC_MSG_WARN([WARNING: No libgnurl/libcurl, taler-bank support will not be compiled])
+              AM_CONDITIONAL(HAVE_LIBGNURL, false)
+              AC_DEFINE([HAVE_LIBGNURL],[0],[Lacking libgnurl])
+              AM_CONDITIONAL(HAVE_LIBCURL, false)
+              AC_DEFINE([HAVE_LIBCURL],[0],[Lacking libcurl])])])
 
 # Check for GNUnet's libgnunetcurl.
 libgnunetcurl=0
@@ -382,19 +377,6 @@ LIBS_SAVE="$LIBS"
 
 
 AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
-
-# check for libgnurl
-# libgnurl
-LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
-if test "$gnurl" = 1
-then
-        LDFLAGS="-L$with_libgnurl/lib $LDFLAGS"
-        CPPFLAGS="-I$with_libgnurl/include $CPPFLAGS"
-	AM_CONDITIONAL(HAVE_LIBGNURL, [true])
-	AC_DEFINE([HAVE_LIBGNURL],[1],[Have libgnurl])
-else
-	AM_CONDITIONAL(HAVE_LIBGNURL, [false])
-fi
 
 CFLAGS=$CFLAGS_SAVE
 LDFLAGS=$LDFLAGS_SAVE
