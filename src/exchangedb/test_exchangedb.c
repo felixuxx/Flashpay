@@ -433,14 +433,10 @@ check_refresh_reveal_cb (void *cls,
                    GNUNET_CRYPTO_rsa_public_key_cmp (acoin->denom_pub.rsa_public_key,
                                                      bcoin->denom_pub.rsa_public_key));
   }
-  GNUNET_assert (0 ==
-                 memcmp (&tpub,
-                         tpr,
-                         sizeof (tpub)));
-  GNUNET_assert (0 ==
-                 memcmp (tprivs,
-                         tprivsr,
-                         sizeof (struct TALER_TransferPrivateKeyP) * (TALER_CNC_KAPPA - 1)));
+  GNUNET_assert(0 == GNUNET_memcmp(&tpub, tpr));
+  GNUNET_assert(0 == memcmp(tprivs, tprivsr,
+                            sizeof(struct TALER_TransferPrivateKeyP) *
+                                (TALER_CNC_KAPPA - 1)));
 }
 
 
@@ -609,14 +605,10 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   FAILIF (0 !=
           TALER_amount_cmp (&fee_refresh,
                             &ret_refresh_session.melt_fee));
-  FAILIF (0 !=
-          memcmp (&refresh_session.rc,
-                  &ret_refresh_session.session.rc,
-                  sizeof (struct TALER_RefreshCommitmentP)));
-  FAILIF (0 !=
-          memcmp (&refresh_session.coin_sig,
-                  &ret_refresh_session.session.coin_sig,
-                  sizeof (struct TALER_CoinSpendSignatureP)));
+  FAILIF(0 !=
+         GNUNET_memcmp(&refresh_session.rc, &ret_refresh_session.session.rc));
+  FAILIF(0 != GNUNET_memcmp(&refresh_session.coin_sig,
+                            &ret_refresh_session.session.coin_sig));
   FAILIF (0 !=
           GNUNET_CRYPTO_rsa_signature_cmp (refresh_session.coin.denom_sig.rsa_signature,
                                            ret_refresh_session.session.coin.denom_sig.rsa_signature));
@@ -1741,12 +1733,8 @@ run (void *cls)
                                      &cbc.h_coin_envelope,
                                      &cbc2));
   FAILIF (NULL == cbc2.denom_pub.rsa_public_key);
-  FAILIF (0 != memcmp (&cbc2.reserve_sig,
-                       &cbc.reserve_sig,
-                       sizeof (cbc2.reserve_sig)));
-  FAILIF (0 != memcmp (&cbc2.reserve_pub,
-                       &cbc.reserve_pub,
-                       sizeof (cbc2.reserve_pub)));
+  FAILIF(0 != GNUNET_memcmp(&cbc2.reserve_sig, &cbc.reserve_sig));
+  FAILIF(0 != GNUNET_memcmp(&cbc2.reserve_pub, &cbc.reserve_pub));
   result = 6;
   FAILIF (GNUNET_OK !=
           GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope,
