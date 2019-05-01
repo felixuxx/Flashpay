@@ -816,8 +816,8 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *exchange_url;
-  char *auditor_url;
+  char *exchange_url = NULL;
+  char *auditor_url = NULL;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
@@ -1031,8 +1031,8 @@ main (int argc,
                                NULL,
                                cfg_filename,
                                exchange_url);
-  GNUNET_free (exchange_url);
-  GNUNET_free (auditor_url);
+  GNUNET_free_non_null (exchange_url);
+  GNUNET_free_non_null (auditor_url);
   duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {
