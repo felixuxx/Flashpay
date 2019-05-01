@@ -44,12 +44,10 @@ TAL_curl_easy_get (const char *url)
                  curl_easy_setopt (eh,
                                    CURLOPT_ENCODING,
                                    "deflate"));
-#ifdef CURLOPT_TCP_FASTOPEN
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_TCP_FASTOPEN,
                                    1L));
-#endif
   {
     /* Unfortunately libcurl needs chunk to be alive until after
     curl_easy_perform.  To avoid manual cleanup, we keep
