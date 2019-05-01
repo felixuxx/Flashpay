@@ -760,6 +760,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   {
     GNUNET_assert (NULL != exchange_slave);
     GNUNET_OS_process_kill (exchange_slave, SIGTERM);
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (exchange_slave));
     GNUNET_OS_process_destroy (exchange_slave);
   }
 
