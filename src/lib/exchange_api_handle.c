@@ -432,7 +432,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
  */
 static int
 parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
-		     int check_sigs,
+                     int check_sigs,
                      json_t *denom_key_obj,
                      struct TALER_MasterPublicKeyP *master_key,
                      struct GNUNET_HashContext *hash_context)

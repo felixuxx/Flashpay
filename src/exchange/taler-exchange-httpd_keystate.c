@@ -39,7 +39,7 @@
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
  */
-#define TALER_PROTOCOL_VERSION "2:0:0"
+#define TALER_PROTOCOL_VERSION "3:0:0"
 
 
 /**
@@ -674,7 +674,7 @@ add_denomination_transaction (void *cls,
 
   qs = TEH_plugin->get_denomination_info (TEH_plugin->cls,
 					  session,
-					  &dki->denom_pub,
+					  &dki->issue.properties.denom_hash,
 					  &issue_exists);
   if (0 > qs)
     return qs;
@@ -789,7 +789,7 @@ revocations_iter (void *cls,
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
   struct AddRevocationContext arc;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  
+
   dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
 					   denom_hash);
   if (NULL == dki)
@@ -1613,7 +1613,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
     json_decref (rfc.sign_keys_array);
     return NULL;
   }
-  
+
   /* Initialize `current_sign_key_issue` and `rfc.sign_keys_array` */
   TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                          &reload_keys_sign_iter,

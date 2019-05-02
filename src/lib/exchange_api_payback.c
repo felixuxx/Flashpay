@@ -280,6 +280,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct TALER_PaybackRequestPS pr;
   struct TALER_CoinSpendSignatureP coin_sig;
+  struct GNUNET_HashCode h_denom_pub;
   json_t *payback_obj;
   CURL *eh;
 
@@ -289,6 +290,8 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &pr.coin_pub.eddsa_pub);
+  GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
+                                     &h_denom_pub);
   pr.h_denom_pub = pk->h_key;
   pr.coin_blind = ps->blinding_key;
   GNUNET_assert (GNUNET_OK ==
@@ -299,7 +302,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   payback_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
                            " s:o, s:o," /* coin pub/sig */
                            " s:o}", /* coin_bks */
-                           "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
+                           "denom_pub_hash", GNUNET_JSON_from_data_auto (&h_denom_pub),
                            "denom_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
                            "coin_pub", GNUNET_JSON_from_data_auto (&pr.coin_pub),
                            "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),

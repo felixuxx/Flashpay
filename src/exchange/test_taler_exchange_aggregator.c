@@ -383,7 +383,8 @@ fake_coin (struct TALER_CoinPublicInfo *coin)
 {
   struct GNUNET_HashCode hc;
 
-  coin->denom_pub.rsa_public_key = coin_pub;
+  GNUNET_CRYPTO_rsa_public_key_hash (coin_pub,
+                                     &coin->denom_pub_hash);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &hc);
   coin->denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign_fdh (coin_pk,

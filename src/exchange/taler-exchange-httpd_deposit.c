@@ -246,7 +246,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   struct TALER_Amount amount_without_fee;
   struct DepositContext dc;
   struct TEH_KS_StateHandle *mks;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
 
   /* check signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
@@ -282,9 +282,9 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                               "no keys");
   }
-  dki = TEH_KS_denomination_key_lookup (mks,
-                                        &deposit->coin.denom_pub,
-                                        TEH_KS_DKU_DEPOSIT);
+  dki = TEH_KS_denomination_key_lookup_by_hash (mks,
+                                                &deposit->coin.denom_pub_hash,
+                                                TEH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     TEH_KS_release (mks);
@@ -392,7 +392,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),
     TALER_JSON_spec_amount ("contribution", &deposit.amount_with_fee),
-    TALER_JSON_spec_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
+    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash", &deposit.coin.denom_pub_hash),
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &deposit.merchant_pub),
@@ -487,9 +487,9 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                               "no keys");
   }
-  dki = TEH_KS_denomination_key_lookup (key_state,
-                                        &deposit.coin.denom_pub,
-					TEH_KS_DKU_DEPOSIT);
+  dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                &deposit.coin.denom_pub_hash,
+                                                TEH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     /* FIXME: #3887: if DK was revoked, we might want to give a 403 and not a 404! */
@@ -504,7 +504,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                      &dki->issue.properties.fee_deposit);
   /* check coin signature */
   if (GNUNET_YES !=
-      TALER_test_coin_valid (&deposit.coin))
+      TALER_test_coin_valid (&deposit.coin,
+                             &dki->denom_pub))
   {
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
     TEH_KS_release (key_state);

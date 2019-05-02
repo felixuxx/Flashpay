@@ -187,8 +187,8 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &sig),
-	TALER_JSON_spec_amount_nbo ("withdraw_fee",
-				    &withdraw_purpose.withdraw_fee),
+        TALER_JSON_spec_amount_nbo ("withdraw_fee",
+                                    &withdraw_purpose.withdraw_fee),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &withdraw_purpose.h_denomination_pub),
         GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
@@ -1001,6 +1001,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   json_t *withdraw_obj;
   CURL *eh;
+  struct GNUNET_HashCode h_denom_pub;
 
   wsh = GNUNET_new (struct TALER_EXCHANGE_ReserveWithdrawHandle);
   wsh->exchange = exchange;
@@ -1009,9 +1010,11 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wsh->pk = pk;
   wsh->reserve_pub = *reserve_pub;
   wsh->c_hash = pd->c_hash;
-  withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub and coin_ev */
+  GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
+                                     &h_denom_pub);
+  withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub_hash and coin_ev */
                             " s:o, s:o}",/* reserve_pub and reserve_sig */
-                            "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
+                            "denom_pub_hash", GNUNET_JSON_from_data_auto (&h_denom_pub),
                             "coin_ev", GNUNET_JSON_from_data (pd->coin_ev,
                                                               pd->coin_ev_size),
                             "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),

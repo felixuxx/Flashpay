@@ -1151,6 +1151,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   struct MeltData *md;
   struct TALER_CoinSpendSignatureP confirm_sig;
   struct TALER_RefreshMeltCoinAffirmationPS melt;
+  struct GNUNET_HashCode h_denom_pub;
 
   GNUNET_assert (GNUNET_YES ==
 		 TEAH_handle_is_ready (exchange));
@@ -1174,11 +1175,13 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
                             &melt.purpose,
                             &confirm_sig.eddsa_signature);
+  GNUNET_CRYPTO_rsa_public_key_hash (md->melted_coin.pub_key.rsa_public_key,
+                                     &h_denom_pub);
   melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                         "coin_pub",
                         GNUNET_JSON_from_data_auto (&melt.coin_pub),
-                        "denom_pub",
-                        GNUNET_JSON_from_rsa_public_key (md->melted_coin.pub_key.rsa_public_key),
+                        "denom_pub_hash",
+                        GNUNET_JSON_from_data_auto (&h_denom_pub),
                         "denom_sig",
                         GNUNET_JSON_from_rsa_signature (md->melted_coin.sig.rsa_signature),
                         "confirm_sig",
