@@ -1048,8 +1048,14 @@ main (int argc,
                                NULL,
                                cfg_filename,
                                exchange_url);
+
   GNUNET_free_non_null (exchange_url);
   GNUNET_free_non_null (auditor_url);
+
+  /* If we're the exchange worker, we're done now.  No need to print results */
+  if (MODE_EXCHANGE == mode)
+    return (GNUNET_OK == result) ? 0 : result;
+
   duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {
