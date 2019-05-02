@@ -70,6 +70,7 @@ TAH_PARSE_post_json (struct MHD_Connection *connection,
   enum GNUNET_JSON_PostResult pr;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                connection,
                                 con_cls,
                                 upload_data,
                                 upload_data_size,
