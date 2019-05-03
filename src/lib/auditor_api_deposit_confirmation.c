@@ -49,9 +49,10 @@ struct TALER_AUDITOR_DepositConfirmationHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -338,26 +339,26 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   dh->url = MAH_path_to_url (auditor, "/deposit-confirmation");
 
   eh = TAL_curl_easy_get (dh->url);
-  GNUNET_assert (NULL != (dh->json_enc =
-                          json_dumps (deposit_confirmation_obj,
-                                      JSON_COMPACT)));
-  json_decref (deposit_confirmation_obj);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "URL for deposit-confirmation: `%s'\n",
-              dh->url);
-
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_CUSTOMREQUEST,
                                    "PUT"));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   dh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (dh->json_enc)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&dh->ctx,
+                           eh,
+                           deposit_confirmation_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (deposit_confirmation_obj);
+    GNUNET_free (dh->url);
+    GNUNET_free (dh);
+    return NULL;
+  }
+  json_decref (deposit_confirmation_obj);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "URL for deposit-confirmation: `%s'\n",
+              dh->url);
   ctx = MAH_handle_to_context (auditor);
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
@@ -383,7 +384,7 @@ TALER_AUDITOR_deposit_confirmation_cancel (struct TALER_AUDITOR_DepositConfirmat
     deposit_confirmation->job = NULL;
   }
   GNUNET_free (deposit_confirmation->url);
-  GNUNET_free (deposit_confirmation->json_enc);
+  TEAH_curl_easy_post_finished (&deposit_confirmation->ctx);
   GNUNET_free (deposit_confirmation);
 }
 

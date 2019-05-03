@@ -60,9 +60,10 @@ struct TALER_EXCHANGE_DepositHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -581,21 +582,22 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->coin_value = dki->value;
 
   eh = TEL_curl_easy_get (dh->url);
-  GNUNET_assert (NULL != (dh->json_enc =
-                          json_dumps (deposit_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&dh->ctx,
+                           eh,
+                           deposit_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (deposit_obj);
+    GNUNET_free (dh->url);
+    GNUNET_free (dh);
+    return NULL;
+  }
   json_decref (deposit_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit: `%s'\n",
               dh->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   dh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (dh->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
@@ -621,7 +623,7 @@ TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
     deposit->job = NULL;
   }
   GNUNET_free (deposit->url);
-  GNUNET_free (deposit->json_enc);
+  TEAH_curl_easy_post_finished (&deposit->ctx);
   GNUNET_free (deposit);
 }
 

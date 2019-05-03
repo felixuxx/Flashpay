@@ -677,9 +677,10 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -1022,25 +1023,26 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   if (NULL == withdraw_obj)
   {
     GNUNET_break (0);
+    GNUNET_free (wsh);
     return NULL;
   }
 
   wsh->ps = *ps;
   wsh->url = TEAH_path_to_url (exchange, "/reserve/withdraw");
-
   eh = TEL_curl_easy_get (wsh->url);
-  GNUNET_assert (NULL != (wsh->json_enc =
-                          json_dumps (withdraw_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&wsh->ctx,
+                           eh,
+                           withdraw_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (withdraw_obj);
+    GNUNET_free (wsh->url);
+    GNUNET_free (wsh);
+    return NULL;
+  }
   json_decref (withdraw_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   wsh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (wsh->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   wsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
@@ -1199,7 +1201,7 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
     sign->job = NULL;
   }
   GNUNET_free (sign->url);
-  GNUNET_free (sign->json_enc);
+  TEAH_curl_easy_post_finished (&sign->ctx);
   GNUNET_free (sign);
 }
 

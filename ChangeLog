@@ -1,3 +1,7 @@
+Fri 03 May 2019 05:36:10 PM CEST
+    Add support for compressing bodies during HTTP uploads to
+    exchange and auditor. -CG
+
 Thu 02 May 2019 09:15:37 PM CEST
     Pass hash of denomination public key in operations from
     clients to exchange instead of the (larger) full public key.

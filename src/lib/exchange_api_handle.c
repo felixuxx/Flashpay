@@ -33,6 +33,7 @@
 #include "exchange_api_handle.h"
 #include "exchange_api_curl_defaults.h"
 #include "backoff.h"
+#include "teah_common.h"
 
 /**
  * Which revision of the Taler protocol is implemented
@@ -1783,6 +1784,12 @@ TALER_EXCHANGE_connect
   GNUNET_break (GNUNET_OK ==
 		GNUNET_CURL_append_header (ctx,
 					   "Expect:"));
+#if COMPRESS_BODIES
+  /* Tell exchange we compress bodies */
+  GNUNET_break (GNUNET_OK ==
+		GNUNET_CURL_append_header (ctx,
+                                   "Content-encoding: deflate"));
+#endif
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);
@@ -1814,6 +1821,7 @@ TALER_EXCHANGE_connect
   va_end (ap);
   return exchange;
 }
+
 
 
 /**
