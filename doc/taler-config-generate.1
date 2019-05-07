@@ -1,63 +1,74 @@
-.TH TALER\-CONFIG\-GENERATE 1 "May 5, 2016" "GNU Taler"
-
-.SH NAME
-taler\-config\-generate \- tool to simplify Taler configuration generation
-
-.SH SYNOPSIS
-.B taler\-config\-generate
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-config\-generate\fP can be used to generate configuration files for the Taler exchange or Taler merchants
-
-.SH OPTIONS
-.B
-.IP "\-c FILENAME, \-\-config=FILENAME"
-Location where to write the generated configuration.  Existing file will be updated, not overwritten.
-.B
-.IP "\-C CURRENCY, \-\-currency=CURRENCY"
+.Dd May 5, 2016
+.Dt TALER-CONFIG-GENERATE 1
+.Os
+.Sh NAME
+.Nm taler-config-generate
+.Nd
+tool to simplify Taler configuration generation
+.Os
+.Sh SYNOPSIS
+.Nm
+.Op Fl c Ar FILENAME | Fl \-config= Ns Ar FILENAME
+.Op Fl C Ar CURRENCY | Fl \-currency= Ns Ar CURRENCY
+.Op Fl e | \-exchange
+.Op Fl f Ar AMOUNT | \-wirefee= Ns Ar AMOUNT
+.Op Fl m | \-merchant
+.Op Fl t | \-trusted
+.Op Fl w Ar WIREFORMAT | Fl \-wire Ar WIREFORMAT
+.Op Fl j Ar JSON | Fl \-wire-json-merchant= Ns Ar JSON
+.Op Fl J Ar JSON | Fl \-wire-json-exchange= Ns Ar JSON
+.Op Fl \-bank-uri
+.Op Fl \-exchange-bank-account
+.Op Fl \-merchant-bank-account
+.Op Fl h | \-help
+.Op Fl L Ar LOGLEVEL | Fl \-loglevel= Ns Ar LOGLEVEL
+.Op Fl v | \-version
+.Sh DESCRIPTION
+.Nm
+can be used to generate configuration files for the Taler exchange or Taler merchants.
+.Bl -tag -width Ds
+.It Fl c Ar FILENAME | Fl \-config= Ns Ar FILENAME
+Location where to write the generated configuration.
+Existing file will be updated, not overwritten.
+.It Fl C Ar CURRENCY | Fl \-currency= Ns Ar CURRENCY
 Which currency should we use in the configuration.
-.B
-.IP "\-e, \-\-exchange"
+.It Fl e | \-exchange
 Generate configuration for a Taler exchange.
-.B
-.IP "\-f AMOUNT, \-\-wirefee=AMOUNT"
+.It Fl f Ar AMOUNT | \-wirefee= Ns Ar AMOUNT
 Setup wire transfer fees for the next 5 years for the exchange (for all wire methods).
-.B
-.IP "\-m, \-\-merchant"
+.It Fl m | \-merchant
 Generate configuration for a Taler merchant.
-.B
-.IP "\-t, \-\-trusted"
-Setup current exchange as trusted with current merchant. Generally only useful when configuring for testcases.
-.B
-.IP "\-w WIREFORMAT, \-\-wire WIREFORMAT"
+.It Fl t | \-trusted
+Setup current exchange as trusted with current merchant.
+Generally only useful when configuring for testcases.
+.It Fl w Ar WIREFORMAT | Fl \-wire Ar WIREFORMAT
 Specifies which wire format to use (i.e. "test" or "sepa")
-.B
-.IP "\-j JSON, \-\-wire-json-merchant=JSON"
+.It Fl j Ar JSON | Fl \-wire-json-merchant= Ns Ar JSON
 Wire configuration to use for the merchant.
-.B
-.IP "\-J JSON, \-\-wire-json-exchange=JSON"
+.It Fl J Ar JSON | Fl \-wire-json-exchange= Ns Ar JSON
 Wire configuration to use for the exchange.
-.B
-.IP "\-\-bank-uri"
-Alternative to specify wire configuration to use for the exchange and merchant for the "test" wire method. Only useful if WIREFORMAT was set to "test".  Specifies the URI of the bank.
-.B
-.IP "\-\-exchange-bank-account"
-Alternative to specify wire configuration to use for the exchange for the "test" wire method. Only useful if WIREFORMAT was set to "test".  Specifies the bank account number of the exchange.
-.B
-.IP "\-\-merchant-bank-account"
-Alternative to specify wire configuration to use for the merchant for the "test" wire method. Only useful if WIREFORMAT was set to "test". Specifies the bank account number of the merchant.
-.B
-.IP "\-h, \-\-help"
+.It Fl \-bank-uri
+Alternative to specify wire configuration to use for the exchange and merchant for the "test" wire method.
+Only useful if WIREFORMAT was set to "test".
+Specifies the URI of the bank.
+.It Fl \-exchange-bank-account
+Alternative to specify wire configuration to use for the exchange for the "test" wire method.
+Only useful if WIREFORMAT was set to "test".
+Specifies the bank account number of the exchange.
+.It Fl \-merchant-bank-account
+Alternative to specify wire configuration to use for the merchant for the "test" wire method.
+Only useful if WIREFORMAT was set to "test".
+Specifies the bank account number of the merchant.
+.It Fl h | \-help
 Shows this man page.
-.B
-.IP "\-L LOGLEVEL, \-\-loglevel=LOGLEVEL"
-Use LOGLEVEL for logging.  Valid values are DEBUG, INFO, WARNING and ERROR.
-.B
-.IP "\-v, \-\-version"
+.It Fl L Ar LOGLEVEL | Fl \-loglevel= Ns Ar LOGLEVEL
+Use LOGLEVEL for logging.
+Valid values are DEBUG, INFO, WARNING and ERROR.
+.It Fl v | \-version
 Print GNUnet version number.
-
-
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <gnunet\-developers@gnu.org>
+.El
+.Sh BUGS
+Report bugs by using
+.Lk https://gnunet.org/bugs/
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .

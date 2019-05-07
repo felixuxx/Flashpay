@@ -1,41 +1,44 @@
-.TH TALER\-EXCHANGE\-BENCHMARK 1 "Jul 25, 2018" "GNU Taler"
-
-.SH NAME
-taler\-exchange\-benchmark \- Measure exchange performance.
-
-.SH SYNOPSIS
-.B taler\-exchange\-benchmark
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-exchange\-benchmark\fP is a command line tool to measure the time spent to serve withdrawals/deposits/refreshes.  It usually needs a dedicate configuration file where all the services - the exchange and the (fake)bank - listen to URLs not subject to any reverse proxy, as say Nginx.  Moreover, the benchmark runs on a "volatile" database, that means that table are always erased during a single benchmark run.
-
-.SH OPTIONS
-
-.B
-.IP "\-c CONFIG_FILENAME,  \-\-config=CONFIG_FILENAME"
+.Dd July 25, 2018
+.Dt TALER-EXCHANGE-BENCHMARK 1
+.Os
+.Sh NAME
+.Nm taler-exchange-benchmark
+.Nd
+Measure exchange performance
+.Sh SYNOPSIS
+.Nm
+.Op Fl c Ar CONFIG_FILENAME | Fl \-config= Ns Ar CONFIG_FILENAME
+.Op Fl b Ar BANK_URL | Fl --bank-url= Ns Ar BANK_URL
+.Op Fl n Ar HOWMANY_COINS | Fl \-coins-number= Ns Ar HOWMANY_COINS
+.Op Fl l Ar LOGLEVEL | Fl \-log\-level= Ns Ar LOGLEVEL
+.Op Fl h | \-help
+.Sh DESCRIPTION
+.Nm
+is a command line tool to measure the time spent to serve withdrawals/deposits/refreshes.
+It usually needs a dedicate configuration file where all the services - the exchange and the (fake)bank - listen to URLs not subject to any reverse proxy, as say Nginx.
+Moreover, the benchmark runs on a "volatile" database, that means that table are always erased during a single benchmark run.
+.Bl -tag -width Ds
+.It Fl c Ar CONFIG_FILENAME | Fl \-config= Ns Ar CONFIG_FILENAME
 (Mandatory) Use CONFIG_FILENAME.
-
-.B
-.IP "\-b BANK_URL, --bank-url=BANK_URL"
-(Mandatory) The URL where the fakebank listens at.  Must match the host component in the exchange's escrow account "payto" URL.
-
-.B
-.IP "\-n HOWMANY_COINS, \-\-coins-number=HOWMANY_COINS"
-Defaults to 1.  Specifies how many coins this benchmark should withdraw and spend.  After being spent, each coin will be refreshed with a REFRESH_PROBABILITY probability, which is (hardcoded as) 0.1; future versions of this tool should offer this parameter as a CLI option.
-
-.B
-.IP "\-l LOGLEVEL, \-\-log\-level=LOGLEVEL"
+.It Fl b Ar BANK_URL | Fl --bank-url= Ns Ar BANK_URL
+(Mandatory) The URL where the fakebank listens at.
+Must match the host component in the exchange's escrow account "payto" URL.
+.It Fl n Ar HOWMANY_COINS | Fl \-coins-number= Ns Ar HOWMANY_COINS
+Defaults to 1.
+Specifies how many coins this benchmark should withdraw and spend.
+After being spent, each coin will be refreshed with a REFRESH_PROBABILITY probability, which is (hardcoded as) 0.1; future versions of this tool should offer this parameter as a CLI option.
+.It Fl l Ar LOGLEVEL | Fl \-log\-level= Ns Ar LOGLEVEL
 GNUnet-compatible log level, takes values "ERROR/WARNING/INFO/DEBUG"
-
-.B
-.IP "\-h, \-\-help"
+.It Fl h | \-help
 Prints a compiled-in help text.
-
-.B
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
-
-.SH "SEE ALSO"
-\fBtaler\-exchange\-dbinit\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)
+.El
+.Sh SEE ALSO
+.Xr taler-exchange-dbinit 1 ,
+.Xr taler-exchange-keyup 1 ,
+.Xr taler-exchange-httpd 1 ,
+.Xr taler.conf 5
+.Sh BUGS
+Report bugs by using
+.Lk https://gnunet.org/bugs/
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .
