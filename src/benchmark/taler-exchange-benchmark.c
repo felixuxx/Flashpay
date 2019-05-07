@@ -566,6 +566,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   struct GNUNET_OS_Process *exchanged = NULL;
   struct GNUNET_OS_Process *wirewatch = NULL;
   struct GNUNET_OS_Process *exchange_slave = NULL;
+  struct GNUNET_DISK_PipeHandle *exchange_slave_pipe;
 
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
@@ -650,9 +651,14 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                 "remote command: %s\n",
                 remote_cmd);
 
+    GNUNET_assert (NULL != (exchange_slave_pipe =
+                            GNUNET_DISK_pipe (GNUNET_YES,
+                                              GNUNET_YES,
+                                              0, 0)));
+
     exchange_slave = GNUNET_OS_start_process (GNUNET_NO,
-                                              GNUNET_OS_INHERIT_STD_ALL,
-                                              NULL, NULL, NULL,
+                                              GNUNET_OS_INHERIT_STD_OUT_AND_ERR,
+                                              exchange_slave_pipe, NULL, NULL,
                                               "ssh",
                                               "ssh",
                                               /* Don't ask for pw/passphrase, rather fail */
@@ -758,8 +764,19 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 
   if (MODE_CLIENT == mode)
   {
+    char c = 'q';
+
     GNUNET_assert (NULL != exchange_slave);
-    GNUNET_OS_process_kill (exchange_slave, SIGTERM);
+
+    /* Write a character to the pipe to end the exchange slave.
+     * We can't send a signal here, as it would just kill SSH and
+     * not necessarily the process on the other machine. */
+    GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
+                            (exchange_slave_pipe, GNUNET_DISK_PIPE_END_WRITE),
+                            &c, sizeof (c));
+
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (exchange_slave));
     GNUNET_OS_process_destroy (exchange_slave);
   }
 
@@ -816,8 +833,8 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *exchange_url;
-  char *auditor_url;
+  char *exchange_url = NULL;
+  char *auditor_url = NULL;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
@@ -1031,8 +1048,14 @@ main (int argc,
                                NULL,
                                cfg_filename,
                                exchange_url);
-  GNUNET_free (exchange_url);
-  GNUNET_free (auditor_url);
+
+  GNUNET_free_non_null (exchange_url);
+  GNUNET_free_non_null (auditor_url);
+
+  /* If we're the exchange worker, we're done now.  No need to print results */
+  if (MODE_EXCHANGE == mode)
+    return (GNUNET_OK == result) ? 0 : result;
+
   duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {

@@ -750,7 +750,6 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       {
-	struct GNUNET_HashCode h_denom_pub;
 	struct TALER_Amount value;
 
 	value = pos->details.withdraw->amount_with_fee;
@@ -771,15 +770,13 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 	  }
 	}
 	ret |= 2;
-	GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
-					   &h_denom_pub);
 	GNUNET_assert (0 ==
 		       json_array_append_new (json_history,
 					      json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
 							 "type", "WITHDRAW",
 							 "reserve_sig", GNUNET_JSON_from_data_auto (&pos->details.withdraw->reserve_sig),
 							 "h_coin_envelope", GNUNET_JSON_from_data_auto (&pos->details.withdraw->h_coin_envelope),
-							 "h_denom_pub", GNUNET_JSON_from_data_auto (&h_denom_pub),
+							 "h_denom_pub", GNUNET_JSON_from_data_auto (&pos->details.withdraw->denom_pub_hash),
 							 "withdraw_fee", TALER_JSON_from_amount (&pos->details.withdraw->withdraw_fee),
 							 "amount", TALER_JSON_from_amount (&value))));
       }

@@ -397,6 +397,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   uint64_t row_id;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                connection,
                                 con_cls,
                                 upload_data,
                                 upload_data_size,
@@ -523,6 +524,7 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
   int found;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                connection,
                                 con_cls,
                                 upload_data,
                                 upload_data_size,
@@ -604,7 +606,7 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
   int ret;
   struct MHD_Response *resp;
 #define HELLOMSG "Hello, Fakebank!"
-  
+
   resp = MHD_create_response_from_buffer
     (strlen (HELLOMSG),
      HELLOMSG,
@@ -721,8 +723,8 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
   struct HistoryRangeDates hrd;
   const char *start;
   const char *end;
-  long long unsigned int start_stamp; 
-  long long unsigned int end_stamp; 
+  long long unsigned int start_stamp;
+  long long unsigned int end_stamp;
   struct Transaction *pos;
 
   if (GNUNET_OK != TFH_parse_history_common_args (connection,
@@ -760,7 +762,7 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
        pos = pos->next)
   {
     if (hrd.start.abs_value_us <= pos->date.abs_value_us)
-      break; 
+      break;
   }
   return TFH_build_history_response (connection,
                                      pos,

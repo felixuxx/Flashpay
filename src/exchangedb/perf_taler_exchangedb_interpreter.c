@@ -1342,12 +1342,15 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           unsigned int denom_index;
           enum GNUNET_DB_QueryStatus qs;
           struct PERF_TALER_EXCHANGEDB_Data *data;
+          struct GNUNET_HashCode hc;
 
           denom_index = state->cmd[state->i].details.get_denomination.index_denom;
           data = &state->cmd[denom_index].exposed;
+          GNUNET_CRYPTO_rsa_public_key_hash (data->data.dki->denom_pub.rsa_public_key,
+                                             &hc);
           qs = state->plugin->get_denomination_info (state->plugin->cls,
 						     state->session,
-						     &data->data.dki->denom_pub,
+                                                     &hc,
 						     &data->data.dki->issue);
           GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
         }

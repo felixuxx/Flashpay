@@ -263,9 +263,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
                                          &deposit_fee));
   {
     deposit->coin.coin_pub = coin->public_info.coin_pub;
-    deposit->coin.denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
-      coin->public_info.denom_pub.rsa_public_key);
-    GNUNET_assert (NULL != coin->public_info.denom_pub.rsa_public_key);
+    deposit->coin.denom_pub_hash = coin->public_info.denom_pub_hash;
     deposit->coin.denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup (
       coin->public_info.denom_sig.rsa_signature);
     GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
@@ -298,8 +296,6 @@ PERF_TALER_EXCHANGEDB_deposit_copy (const struct TALER_EXCHANGEDB_Deposit *depos
   copy = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
   *copy = *deposit;
   copy->receiver_wire_account = json_incref (deposit->receiver_wire_account);
-  copy->coin.denom_pub.rsa_public_key =
-    GNUNET_CRYPTO_rsa_public_key_dup (deposit->coin.denom_pub.rsa_public_key);
   copy->coin.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (deposit->coin.denom_sig.rsa_signature);
   return copy;
@@ -315,7 +311,6 @@ PERF_TALER_EXCHANGEDB_deposit_free (struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   if (NULL == deposit)
     return GNUNET_OK;
-  GNUNET_CRYPTO_rsa_public_key_free (deposit->coin.denom_pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (deposit->coin.denom_sig.rsa_signature);
   json_decref (deposit->receiver_wire_account);
   GNUNET_free (deposit);
@@ -350,24 +345,21 @@ PERF_TALER_EXCHANGEDB_coin_init (
   /* public_info */
   GNUNET_CRYPTO_eddsa_key_get_public (&coin->priv,
                                       &coin->public_info.coin_pub.eddsa_pub);
-  coin->public_info.denom_pub.rsa_public_key =
-    GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
+                                     &coin->public_info.denom_pub_hash);
   GNUNET_CRYPTO_hash (&coin->public_info.coin_pub,
                       sizeof (struct TALER_CoinSpendPublicKeyP),
                       &hc);
   coin->public_info.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_sign_fdh (dki->denom_priv.rsa_private_key,
                                 &hc);
-  GNUNET_assert (NULL != coin->public_info.denom_pub.rsa_public_key);
   GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
 
   /* blind */
   coin->blind.sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
-  coin->blind.denom_pub.rsa_public_key =
-    GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  coin->blind.denom_pub_hash = coin->public_info.denom_pub_hash;
   GNUNET_assert (NULL != coin->blind.sig.rsa_signature);
-  GNUNET_assert (NULL != coin->blind.denom_pub.rsa_public_key);
   TALER_amount_ntoh (&coin->blind.amount_with_fee,
                      &dki->issue.properties.value);
   TALER_amount_ntoh (&coin->blind.withdraw_fee,
@@ -396,16 +388,14 @@ PERF_TALER_EXCHANGEDB_coin_copy (const struct PERF_TALER_EXCHANGEDB_Coin *coin)
   copy->priv = coin->priv;
   /* public_info */
   copy->public_info.coin_pub = coin->public_info.coin_pub;
-  copy->public_info.denom_pub.rsa_public_key =
-    GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key);
+  copy->public_info.denom_pub_hash = coin->public_info.denom_pub_hash;
   copy->public_info.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
 
   /* blind */
   copy->blind.sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->blind.sig.rsa_signature);
-  copy->blind.denom_pub.rsa_public_key =
-    GNUNET_CRYPTO_rsa_public_key_dup (coin->blind.denom_pub.rsa_public_key);
+  copy->blind.denom_pub_hash = coin->blind.denom_pub_hash;
   copy->blind.amount_with_fee = coin->blind.amount_with_fee;
   copy->blind.withdraw_fee = coin->blind.withdraw_fee;
   copy->blind.reserve_pub = coin->blind.reserve_pub;
@@ -426,10 +416,8 @@ PERF_TALER_EXCHANGEDB_coin_free (struct PERF_TALER_EXCHANGEDB_Coin *coin)
 {
   if (NULL == coin)
     return GNUNET_OK;
-  GNUNET_CRYPTO_rsa_public_key_free (coin->public_info.denom_pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (coin->public_info.denom_sig.rsa_signature);
   GNUNET_CRYPTO_rsa_signature_free (coin->blind.sig.rsa_signature);
-  GNUNET_CRYPTO_rsa_public_key_free (coin->blind.denom_pub.rsa_public_key);
   GNUNET_free (coin);
   return GNUNET_OK;
 }
@@ -475,9 +463,7 @@ PERF_TALER_EXCHANGEDB_refresh_melt_init (struct TALER_RefreshCommitmentP *rc,
   melt->session.coin.coin_pub = coin->public_info.coin_pub;
   melt->session.coin.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
-  melt->session.coin.denom_pub.rsa_public_key =
-    GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key);
-  GNUNET_assert (NULL != melt->session.coin.denom_pub.rsa_public_key);
+  melt->session.coin.denom_pub_hash = coin->public_info.denom_pub_hash;
   GNUNET_assert (NULL != melt->session.coin.denom_sig.rsa_signature);
   melt->session.coin_sig = coin_sig;
   melt->session.rc = *rc;

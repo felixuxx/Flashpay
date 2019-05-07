@@ -49,9 +49,10 @@ struct TALER_EXCHANGE_RefundHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -368,21 +369,22 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
                      refund_fee);
 
   eh = TEL_curl_easy_get (rh->url);
-  GNUNET_assert (NULL != (rh->json_enc =
-                          json_dumps (refund_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&rh->ctx,
+                           eh,
+                           refund_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (refund_obj);
+    GNUNET_free (rh->url);
+    GNUNET_free (rh);
+    return NULL;
+  }
   json_decref (refund_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for refund: `%s'\n",
               rh->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   rh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (rh->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   rh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
@@ -408,7 +410,7 @@ TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund)
     refund->job = NULL;
   }
   GNUNET_free (refund->url);
-  GNUNET_free (refund->json_enc);
+  TEAH_curl_easy_post_finished (&refund->ctx);
   GNUNET_free (refund);
 }
 

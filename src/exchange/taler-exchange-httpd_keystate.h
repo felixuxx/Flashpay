@@ -127,7 +127,7 @@ enum TEH_KS_DenominationKeyUse {
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
 TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
                                 const struct TALER_DenominationPublicKey *denom_pub,
-				enum TEH_KS_DenominationKeyUse use);
+                                enum TEH_KS_DenominationKeyUse use);
 
 
 /**

@@ -562,25 +562,18 @@ static struct GNUNET_CONTAINER_MultiHashMap *denominations;
 /**
  * Obtain information about a @a denom_pub.
  *
- * @param denom_pub key to look up
+ * @param dh hash of the denomination public key to look up
  * @param[out] dki set to detailed information about @a denom_pub, NULL if not found, must
  *                 NOT be freed by caller
- * @param[out] dh set to the hash of @a denom_pub, may be NULL
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
-                       const struct TALER_EXCHANGEDB_DenominationKeyInformationP **dki,
-                       struct GNUNET_HashCode *dh)
+get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
+                       const struct TALER_EXCHANGEDB_DenominationKeyInformationP **dki)
 {
-  struct GNUNET_HashCode hc;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP *dkip;
   enum GNUNET_DB_QueryStatus qs;
 
-  if (NULL == dh)
-    dh = &hc;
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
-                                     dh);
   if (NULL == denominations)
     denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                           GNUNET_NO);
@@ -594,9 +587,9 @@ get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
   }
   dkip = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyInformationP);
   qs = edb->get_denomination_info (edb->cls,
-				   esession,
-				   denom_pub,
-				   dkip);
+                                   esession,
+                                   dh,
+                                   dkip);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_free (dkip);
@@ -620,6 +613,31 @@ get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
                                                     dkip,
                                                     GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+/**
+ * Obtain information about a @a denom_pub.
+ *
+ * @param denom_pub key to look up
+ * @param[out] dki set to detailed information about @a denom_pub, NULL if not found, must
+ *                 NOT be freed by caller
+ * @param[out] dh set to the hash of @a denom_pub, may be NULL
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
+                       const struct TALER_EXCHANGEDB_DenominationKeyInformationP **dki,
+                       struct GNUNET_HashCode *dh)
+{
+  struct GNUNET_HashCode hc;
+
+  if (NULL == dh)
+    dh = &hc;
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                     dh);
+  return get_denomination_info_by_hash (dh,
+                                        dki);
 }
 
 
@@ -1065,6 +1083,7 @@ handle_payback_by_reserve (void *cls,
                            const struct TALER_Amount *amount,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_CoinPublicInfo *coin,
+                           const struct TALER_DenominationPublicKey *denom_pub,
                            const struct TALER_CoinSpendSignatureP *coin_sig,
                            const struct TALER_DenominationBlindingKeyP *coin_blind)
 {
@@ -1081,11 +1100,12 @@ handle_payback_by_reserve (void *cls,
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_payback_serial_id);
   ppr.last_reserve_payback_serial_id = rowid + 1;
-  GNUNET_CRYPTO_rsa_public_key_hash (coin->denom_pub.rsa_public_key,
-                                     &pr.h_denom_pub);
+  // FIXME: should probably check that denom_pub hashes to this hash code!
+  pr.h_denom_pub = coin->denom_pub_hash;
 
   if (GNUNET_OK !=
-      TALER_test_coin_valid (coin))
+      TALER_test_coin_valid (coin,
+                             denom_pub))
   {
     report (report_bad_sig_losses,
             json_pack ("{s:s, s:I, s:o, s:o}",
@@ -2263,9 +2283,8 @@ wire_transfer_information_cb (void *cls,
     break;
   }
   GNUNET_assert (NULL != coin); /* hard check that switch worked */
-  qs = get_denomination_info (&coin->denom_pub,
-			      &dki,
-			      NULL);
+  qs = get_denomination_info_by_hash (&coin->denom_pub_hash,
+                                      &dki);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

@@ -326,9 +326,9 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                               "no keys");
   }
-  dki = TEH_KS_denomination_key_lookup (key_state,
-                                        &coin->denom_pub,
-					TEH_KS_DKU_PAYBACK);
+  dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                &coin->denom_pub_hash,
+                                                TEH_KS_DKU_PAYBACK);
   if (NULL == dki)
   {
     TEH_KS_release (key_state);
@@ -342,7 +342,8 @@ verify_and_execute_payback (struct MHD_Connection *connection,
 
   /* check denomination signature */
   if (GNUNET_YES !=
-      TALER_test_coin_valid (coin))
+      TALER_test_coin_valid (coin,
+                             &dki->denom_pub))
   {
     TALER_LOG_WARNING ("Invalid coin passed for /payback\n");
     TEH_KS_release (key_state);
@@ -358,8 +359,6 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   pr.h_denom_pub = dki->issue.properties.denom_hash;
   pr.coin_blind = *coin_bks;
 
-  TEH_KS_release (key_state);
-
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
                                   &pr.purpose,
@@ -367,6 +366,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                                   &coin->coin_pub.eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on /payback request\n");
+    TEH_KS_release (key_state);
     return TEH_RESPONSE_reply_signature_invalid (connection,
 						 TALER_EC_PAYBACK_SIGNATURE_INVALID,
                                                  "coin_sig");
@@ -378,15 +378,18 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   if (GNUNET_YES !=
       GNUNET_CRYPTO_rsa_blind (&c_hash,
                                &coin_bks->bks,
-                               coin->denom_pub.rsa_public_key,
+                               dki->denom_pub.rsa_public_key,
                                &coin_ev,
                                &coin_ev_size))
   {
     GNUNET_break (0);
+    TEH_KS_release (key_state);
+
     return TEH_RESPONSE_reply_internal_error (connection,
                                               TALER_EC_PAYBACK_BLINDING_FAILED,
                                               "coin_bks");
   }
+  TEH_KS_release (key_state);
   GNUNET_CRYPTO_hash (coin_ev,
                       coin_ev_size,
                       &pc.h_blind);
@@ -454,8 +457,8 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
   struct TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                             &coin.denom_pub),
+    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                 &coin.denom_pub_hash),
     TALER_JSON_spec_denomination_signature ("denom_sig",
                                             &coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",

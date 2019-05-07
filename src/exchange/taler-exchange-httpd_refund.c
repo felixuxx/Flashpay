@@ -342,9 +342,9 @@ refund_transaction (void *cls,
                                                   "no keys");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  dki = TEH_KS_denomination_key_lookup (mks,
-                                        &dep->coin.denom_pub,
-					TEH_KS_DKU_DEPOSIT);
+  dki = TEH_KS_denomination_key_lookup_by_hash (mks,
+                                                &dep->coin.denom_pub_hash,
+                                                TEH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     /* DKI not found, but we do have a coin with this DK in our database;

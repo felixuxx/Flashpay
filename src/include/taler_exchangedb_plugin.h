@@ -147,9 +147,9 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
   struct TALER_DenominationSignature sig;
 
   /**
-   * Denomination key (which coin was generated).
+   * Hash of the denomination key (which coin was generated).
    */
-  struct TALER_DenominationPublicKey denom_pub;
+  struct GNUNET_HashCode denom_pub_hash;
 
   /**
    * Value of the coin being exchangeed (matching the denomination key)
@@ -1045,6 +1045,7 @@ typedef int
                                     const struct TALER_Amount *amount,
                                     const struct TALER_ReservePublicKeyP *reserve_pub,
                                     const struct TALER_CoinPublicInfo *coin,
+                                    const struct TALER_DenominationPublicKey *denom_pub,
                                     const struct TALER_CoinSpendSignatureP *coin_sig,
                                     const struct TALER_DenominationBlindingKeyP *coin_blind);
 
@@ -1274,14 +1275,14 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
-   * @param denom_pub the public key used for signing coins of this denomination
+   * @param denom_pub_hash hash of the public key used for signing coins of this denomination
    * @param[out] issue set to issue information with value, fees and other info about the coin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_denomination_info) (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
-                            const struct TALER_DenominationPublicKey *denom_pub,
+                            const struct GNUNET_HashCode *denom_pub_hash,
                             struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
 

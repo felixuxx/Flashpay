@@ -49,9 +49,10 @@ struct TALER_EXCHANGE_TrackTransactionHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -322,18 +323,19 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->depconf.coin_pub = *coin_pub;
 
   eh = TEL_curl_easy_get (dwh->url);
-  GNUNET_assert (NULL != (dwh->json_enc =
-                          json_dumps (deposit_wtid_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&dwh->ctx,
+                           eh,
+                           deposit_wtid_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (deposit_wtid_obj);
+    GNUNET_free (dwh->url);
+    GNUNET_free (dwh);
+    return NULL;
+  }
   json_decref (deposit_wtid_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   dwh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (dwh->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   dwh->job = GNUNET_CURL_job_add (ctx,
                           eh,
@@ -359,9 +361,9 @@ TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionH
     dwh->job = NULL;
   }
   GNUNET_free (dwh->url);
-  GNUNET_free (dwh->json_enc);
+  TEAH_curl_easy_post_finished (&dwh->ctx);
   GNUNET_free (dwh);
 }
 
 
-/* end of exchange_api_deposit_wtid.c */
+/* end of exchange_api_track_transaction.c */

@@ -265,7 +265,6 @@ static void
 free_refresh_melt (struct TALER_EXCHANGEDB_RefreshMelt *refresh_melt)
 {
   GNUNET_CRYPTO_rsa_signature_free (refresh_melt->session.coin.denom_sig.rsa_signature);
-  GNUNET_CRYPTO_rsa_public_key_free (refresh_melt->session.coin.denom_pub.rsa_public_key);
 }
 
 

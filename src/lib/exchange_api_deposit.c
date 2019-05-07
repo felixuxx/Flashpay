@@ -60,9 +60,10 @@ struct TALER_EXCHANGE_DepositHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -359,6 +360,7 @@ handle_deposit_finished (void *cls,
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed
+ * @param denom_pub_hash hash of @a denom_pub
  * @param denom_sig exchange’s unblinded signature of the coin
  * @param timestamp timestamp when the deposit was finalized
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
@@ -374,6 +376,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
+                   const struct GNUNET_HashCode *denom_pub_hash,
                    struct GNUNET_TIME_Absolute timestamp,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    struct GNUNET_TIME_Absolute refund_deadline,
@@ -414,10 +417,11 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 
   /* check coin signature */
   coin_info.coin_pub = *coin_pub;
-  coin_info.denom_pub = *denom_pub;
+  coin_info.denom_pub_hash = *denom_pub_hash;
   coin_info.denom_sig = *denom_sig;
   if (GNUNET_YES !=
-      TALER_test_coin_valid (&coin_info))
+      TALER_test_coin_valid (&coin_info,
+                             denom_pub))
   {
     GNUNET_break_op (0);
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
@@ -489,6 +493,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   json_t *deposit_obj;
   CURL *eh;
   struct GNUNET_HashCode h_wire;
+  struct GNUNET_HashCode denom_pub_hash;
   struct TALER_Amount amount_without_fee;
 
   (void) GNUNET_TIME_round_abs (&wire_deadline);
@@ -512,6 +517,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 		 TALER_amount_subtract (&amount_without_fee,
 					amount,
 					&dki->fee_deposit));
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                     &denom_pub_hash);
   if (GNUNET_OK !=
       verify_signatures (dki,
                          amount,
@@ -520,6 +527,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                          coin_pub,
                          denom_sig,
                          denom_pub,
+                         &denom_pub_hash,
                          timestamp,
                          merchant_pub,
                          refund_deadline,
@@ -541,7 +549,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
                            "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
                            "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-                           "denom_pub", GNUNET_JSON_from_rsa_public_key (denom_pub->rsa_public_key),
+                           "denom_pub_hash", GNUNET_JSON_from_data_auto (&denom_pub_hash),
                            "ub_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
                            "timestamp", GNUNET_JSON_from_time_abs (timestamp),
                            "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
@@ -574,21 +582,22 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->coin_value = dki->value;
 
   eh = TEL_curl_easy_get (dh->url);
-  GNUNET_assert (NULL != (dh->json_enc =
-                          json_dumps (deposit_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&dh->ctx,
+                           eh,
+                           deposit_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (deposit_obj);
+    GNUNET_free (dh->url);
+    GNUNET_free (dh);
+    return NULL;
+  }
   json_decref (deposit_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit: `%s'\n",
               dh->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   dh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (dh->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   dh->job = GNUNET_CURL_job_add (ctx,
 				 eh,
@@ -614,7 +623,7 @@ TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
     deposit->job = NULL;
   }
   GNUNET_free (deposit->url);
-  GNUNET_free (deposit->json_enc);
+  TEAH_curl_easy_post_finished (&deposit->ctx);
   GNUNET_free (deposit);
 }
 

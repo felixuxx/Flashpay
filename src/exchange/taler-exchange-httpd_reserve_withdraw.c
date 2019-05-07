@@ -116,9 +116,9 @@ struct WithdrawContext
   struct TALER_Amount amount_required;
 
   /**
-   * Denomination public key.
+   * Hash of the denomination public key.
    */
-  struct TALER_DenominationPublicKey denomination_pub;
+  struct GNUNET_HashCode denom_pub_hash;
 
   /**
    * Signature over the request.
@@ -229,7 +229,7 @@ withdraw_transaction (void *cls,
    */
   {
 #define PUBSIZE 80
-    char pub_s[PUBSIZE]; 
+    char pub_s[PUBSIZE];
 
     GNUNET_break
       (NULL != GNUNET_STRINGS_data_to_string (&r.pub,
@@ -312,7 +312,7 @@ withdraw_transaction (void *cls,
 #endif
   TALER_amount_ntoh (&fee_withdraw,
                      &wc->dki->issue.properties.fee_withdraw);
-  wc->collectable.denom_pub = wc->denomination_pub;
+  wc->collectable.denom_pub_hash = wc->denom_pub_hash;
   wc->collectable.amount_with_fee = wc->amount_required;
   wc->collectable.withdraw_fee = fee_withdraw;
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
@@ -370,8 +370,8 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
                                  &wc.wsrd.reserve_pub),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &wc.signature),
-    TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                             &wc.denomination_pub),
+    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                 &wc.denom_pub_hash),
     GNUNET_JSON_spec_end ()
   };
 
@@ -399,9 +399,9 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                               "no keys");
   }
-  wc.dki = TEH_KS_denomination_key_lookup (wc.key_state,
-					   &wc.denomination_pub,
-					   TEH_KS_DKU_WITHDRAW);
+  wc.dki = TEH_KS_denomination_key_lookup_by_hash (wc.key_state,
+                                                   &wc.denom_pub_hash,
+                                                   TEH_KS_DKU_WITHDRAW);
   if (NULL == wc.dki)
   {
     GNUNET_JSON_parse_free (spec);
@@ -435,8 +435,8 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
     = htonl (sizeof (struct TALER_WithdrawRequestPS));
   wc.wsrd.purpose.purpose
     = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-  GNUNET_CRYPTO_rsa_public_key_hash (wc.denomination_pub.rsa_public_key,
-                                     &wc.wsrd.h_denomination_pub);
+  wc.wsrd.h_denomination_pub
+    = wc.denom_pub_hash;
   GNUNET_CRYPTO_hash (wc.blinded_msg,
                       wc.blinded_msg_len,
                       &wc.wsrd.h_coin_envelope);

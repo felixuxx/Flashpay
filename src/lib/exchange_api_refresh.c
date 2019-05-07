@@ -834,9 +834,10 @@ struct TALER_EXCHANGE_RefreshMeltHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -1151,6 +1152,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   struct MeltData *md;
   struct TALER_CoinSpendSignatureP confirm_sig;
   struct TALER_RefreshMeltCoinAffirmationPS melt;
+  struct GNUNET_HashCode h_denom_pub;
 
   GNUNET_assert (GNUNET_YES ==
 		 TEAH_handle_is_ready (exchange));
@@ -1174,11 +1176,13 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
                             &melt.purpose,
                             &confirm_sig.eddsa_signature);
+  GNUNET_CRYPTO_rsa_public_key_hash (md->melted_coin.pub_key.rsa_public_key,
+                                     &h_denom_pub);
   melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                         "coin_pub",
                         GNUNET_JSON_from_data_auto (&melt.coin_pub),
-                        "denom_pub",
-                        GNUNET_JSON_from_rsa_public_key (md->melted_coin.pub_key.rsa_public_key),
+                        "denom_pub_hash",
+                        GNUNET_JSON_from_data_auto (&h_denom_pub),
                         "denom_sig",
                         GNUNET_JSON_from_rsa_signature (md->melted_coin.sig.rsa_signature),
                         "confirm_sig",
@@ -1203,18 +1207,19 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   rmh->url = TEAH_path_to_url (exchange,
                               "/refresh/melt");
   eh = TEL_curl_easy_get (rmh->url);
-  GNUNET_assert (NULL != (rmh->json_enc =
-                          json_dumps (melt_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&rmh->ctx,
+                           eh,
+                           melt_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (melt_obj);
+    GNUNET_free (rmh->url);
+    GNUNET_free (rmh);
+    return NULL;
+  }
   json_decref (melt_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   rmh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (rmh->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   rmh->job = GNUNET_CURL_job_add (ctx,
                           eh,
@@ -1242,7 +1247,7 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
   free_melt_data (rmh->md); /* does not free 'md' itself */
   GNUNET_free (rmh->md);
   GNUNET_free (rmh->url);
-  GNUNET_free (rmh->json_enc);
+  TEAH_curl_easy_post_finished (&rmh->ctx);
   GNUNET_free (rmh);
 }
 
@@ -1267,9 +1272,10 @@ struct TALER_EXCHANGE_RefreshRevealHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Handle for the request.
@@ -1631,18 +1637,19 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                               "/refresh/reveal");
 
   eh = TEL_curl_easy_get (rrh->url);
-  GNUNET_assert (NULL != (rrh->json_enc =
-                          json_dumps (reveal_obj,
-                                      JSON_COMPACT)));
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&rrh->ctx,
+                           eh,
+                           reveal_obj))
+  {
+    GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (reveal_obj);
+    GNUNET_free (rrh->url);
+    GNUNET_free (rrh);
+    return NULL;
+  }
   json_decref (reveal_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   rrh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (rrh->json_enc)));
   ctx = TEAH_handle_to_context (rrh->exchange);
   rrh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
@@ -1668,7 +1675,7 @@ TALER_EXCHANGE_refresh_reveal_cancel (struct TALER_EXCHANGE_RefreshRevealHandle 
     rrh->job = NULL;
   }
   GNUNET_free (rrh->url);
-  GNUNET_free (rrh->json_enc);
+  TEAH_curl_easy_post_finished (&rrh->ctx);
   free_melt_data (rrh->md); /* does not free 'md' itself */
   GNUNET_free (rrh->md);
   GNUNET_free (rrh);

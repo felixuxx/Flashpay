@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/auditor_api_handle.c
+ * @file lib/auditor_api_handle.c
  * @brief Implementation of the "handle" component of the auditor's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
@@ -462,6 +462,16 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Connecting to auditor at URL `%s'.\n",
               url);
+  /* Disable 100 continue processing */
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_CURL_append_header (ctx,
+                                           "Expect:"));
+#if COMPRESS_BODIES
+  /* Tell auditor we compress bodies */
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_CURL_append_header (ctx,
+                                           "Content-encoding: deflate"));
+#endif
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);

@@ -49,9 +49,10 @@ struct TALER_EXCHANGE_PaybackHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
+   * Context for #TEH_curl_easy_post(). Keeps the data that must
+   * persist for Curl to make the upload.
    */
-  char *json_enc;
+  struct TEAH_PostContext ctx;
 
   /**
    * Denomination key of the coin.
@@ -280,6 +281,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct TALER_PaybackRequestPS pr;
   struct TALER_CoinSpendSignatureP coin_sig;
+  struct GNUNET_HashCode h_denom_pub;
   json_t *payback_obj;
   CURL *eh;
 
@@ -289,6 +291,8 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &pr.coin_pub.eddsa_pub);
+  GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
+                                     &h_denom_pub);
   pr.h_denom_pub = pk->h_key;
   pr.coin_blind = ps->blinding_key;
   GNUNET_assert (GNUNET_OK ==
@@ -299,7 +303,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   payback_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
                            " s:o, s:o," /* coin pub/sig */
                            " s:o}", /* coin_bks */
-                           "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
+                           "denom_pub_hash", GNUNET_JSON_from_data_auto (&h_denom_pub),
                            "denom_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
                            "coin_pub", GNUNET_JSON_from_data_auto (&pr.coin_pub),
                            "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
@@ -318,29 +322,23 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->cb = payback_cb;
   ph->cb_cls = payback_cb_cls;
   ph->url = TEAH_path_to_url (exchange, "/payback");
-
-  ph->json_enc = json_dumps (payback_obj,
-                             JSON_COMPACT);
-  json_decref (payback_obj);
-  if (NULL == ph->json_enc)
+  eh = TEL_curl_easy_get (ph->url);
+  if (GNUNET_OK !=
+      TEAH_curl_easy_post (&ph->ctx,
+                           eh,
+                           payback_obj))
   {
     GNUNET_break (0);
+    curl_easy_cleanup (eh);
+    json_decref (payback_obj);
     GNUNET_free (ph->url);
     GNUNET_free (ph);
     return NULL;
   }
-  eh = TEL_curl_easy_get (ph->url);
+  json_decref (payback_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for payback: `%s'\n",
               ph->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   ph->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (ph->json_enc)));
   ctx = TEAH_handle_to_context (exchange);
   ph->job = GNUNET_CURL_job_add (ctx,
 				 eh,
@@ -366,7 +364,7 @@ TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph)
     ph->job = NULL;
   }
   GNUNET_free (ph->url);
-  GNUNET_free (ph->json_enc);
+  TEAH_curl_easy_post_finished (&ph->ctx);
   GNUNET_free (ph);
 }
 

@@ -49,11 +49,9 @@ TEL_curl_easy_get (const char *url)
                  curl_easy_setopt (eh,
                                    CURLOPT_FOLLOWLOCATION,
                                    1L));
-#ifdef CURLOPT_TCP_FASTOPEN
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_TCP_FASTOPEN,
                                    1L));
-#endif
   return eh;
 }

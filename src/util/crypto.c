@@ -77,22 +77,33 @@ TALER_gcrypt_init ()
  * is not expired, and the signature is correct.
  *
  * @param coin_public_info the coin public info to check for validity
+ * @param denom_pub denomination key, must match @a coin_public_info's `denom_pub_hash`
  * @return #GNUNET_YES if the coin is valid,
  *         #GNUNET_NO if it is invalid
  *         #GNUNET_SYSERR if an internal error occured
  */
 int
-TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
+TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
+                       const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct GNUNET_HashCode c_hash;
+#if 1 /* sanity check of invariant, could probably be disabled in production
+         for slightly more performance */
+  struct GNUNET_HashCode d_hash;
 
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                     &d_hash);
+  GNUNET_assert (0 ==
+                 GNUNET_memcmp (&d_hash,
+                                &coin_public_info->denom_pub_hash));
+#endif
   GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       &c_hash);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_rsa_verify (&c_hash,
                                 coin_public_info->denom_sig.rsa_signature,
-                                coin_public_info->denom_pub.rsa_public_key))
+                                denom_pub->rsa_public_key))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "coin signature is invalid\n");

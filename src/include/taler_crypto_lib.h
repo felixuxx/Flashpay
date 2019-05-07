@@ -354,10 +354,10 @@ struct TALER_CoinPublicInfo
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Public key representing the denomination of the coin
-   * that is being deposited.
+   * Hash of the public key representing the denomination of the coin that is
+   * being deposited.
    */
-  struct TALER_DenominationPublicKey denom_pub;
+  struct GNUNET_HashCode denom_pub_hash;
 
   /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
@@ -401,12 +401,14 @@ struct TALER_TrackTransferDetails
  * is not expired, and the signature is correct.
  *
  * @param coin_public_info the coin public info to check for validity
+ * @param denom_pub denomination key, must match @a coin_public_info's `denom_pub_hash`
  * @return #GNUNET_YES if the coin is valid,
  *         #GNUNET_NO if it is invalid
  *         #GNUNET_SYSERR if an internal error occured
  */
 int
-TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
+TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
+                       const struct TALER_DenominationPublicKey *denom_pub);
 
 
 GNUNET_NETWORK_STRUCT_BEGIN

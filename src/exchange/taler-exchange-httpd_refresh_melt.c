@@ -412,8 +412,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                                  &rmc.refresh_session.coin.coin_pub),
     TALER_JSON_spec_denomination_signature ("denom_sig",
                                             &rmc.refresh_session.coin.denom_sig),
-    TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                             &rmc.refresh_session.coin.denom_pub),
+    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                 &rmc.refresh_session.coin.denom_pub_hash),
     GNUNET_JSON_spec_fixed_auto ("confirm_sig",
                                  &rmc.refresh_session.coin_sig),
     TALER_JSON_spec_amount ("value_with_fee",
@@ -444,17 +444,6 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
 
-  if (GNUNET_OK !=
-      TALER_test_coin_valid (&rmc.refresh_session.coin))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID,
-                                                 "denom_sig");
-  }
-
-  /* run actual logic, now that the request was parsed */
   key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
   {
@@ -464,9 +453,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                                              "no keys");
     goto cleanup;
   }
-  rmc.dki = TEH_KS_denomination_key_lookup (key_state,
-                                            &rmc.refresh_session.coin.denom_pub,
-                                            TEH_KS_DKU_DEPOSIT);
+  rmc.dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                    &rmc.refresh_session.coin.denom_pub_hash,
+                                                    TEH_KS_DKU_DEPOSIT);
   if (NULL == rmc.dki)
   {
     TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
@@ -475,6 +464,20 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                                           "denom_pub");
     goto cleanup;
   }
+
+  if (GNUNET_OK !=
+      TALER_test_coin_valid (&rmc.refresh_session.coin,
+                             &rmc.dki->denom_pub))
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    TEH_KS_release (key_state);
+    return TEH_RESPONSE_reply_signature_invalid (connection,
+                                                 TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID,
+                                                 "denom_sig");
+  }
+
+  /* run actual logic, now that the request was parsed */
 
   /* make sure coin is 'known' in database */
   {
@@ -501,11 +504,6 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   {
     TEH_KS_release (key_state);
     key_state = NULL;
-  }
-  if (NULL != rmc.refresh_session.coin.denom_pub.rsa_public_key)
-  {
-    GNUNET_CRYPTO_rsa_public_key_free (rmc.refresh_session.coin.denom_pub.rsa_public_key);
-    rmc.refresh_session.coin.denom_pub.rsa_public_key = NULL;
   }
   if (NULL != rmc.refresh_session.coin.denom_sig.rsa_signature)
   {

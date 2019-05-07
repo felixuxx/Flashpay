@@ -180,6 +180,10 @@ AS_IF([test $libgnunetjson != 1],
 *** ]])])
 
 
+# Save before checking libgnurl/libcurl
+CFLAGS_SAVE=$CFLAGS
+LDFLAGS_SAVE=$LDFLAGS
+LIBS_SAVE=$LIBS
 
 # check for libgnurl
 # libgnurl
@@ -240,6 +244,10 @@ AS_IF([test $libgnunetcurl != 1],
 *** ]])])
 
 
+# Restore after gnurl/curl checks messed up these values
+CFLAGS=$CFLAGS_SAVE
+LDFLAGS=$LDFLAGS_SAVE
+LIBS=$LIBS_SAVE
 
 # Check for GNUnet's libgnunetpq.
 libgnunetpq=0
@@ -325,9 +333,9 @@ else
 
 CFLAGS_SAVE=$CFLAGS
 LDFLAGS_SAVE=$LDFLAGS
+LIBS_SAVE=$LIBS
 CFLAGS="$CFLAGS $LIBGCRYPT_CFLAGS"
 LDFLAGS="$LDFLAGS $LIBGCRYPT_LDFLAGS"
-LIBS_SAVE="$LIBS"
 LIBS="-lgcrypt -lgpg-error $LIBS"
 
 
