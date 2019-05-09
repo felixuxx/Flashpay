@@ -1732,12 +1732,12 @@ postgres_get_session (void *cls)
      properly use indices */
   {
     struct GNUNET_PQ_ExecuteStatement es[] = {
-      GNUNET_PQ_make_execute ("LOAD 'auto_explain';"),
-      GNUNET_PQ_make_execute ("SET auto_explain.log_min_duration=50;"),
-      GNUNET_PQ_make_execute ("SET auto_explain.log_timing=TRUE;"),
-      GNUNET_PQ_make_execute ("SET auto_explain.log_analyze=TRUE;"),
-      GNUNET_PQ_make_execute ("SET enable_sort=OFF;"),
-      GNUNET_PQ_make_execute ("SET enable_seqscan=OFF;"),
+      GNUNET_PQ_make_try_execute ("LOAD 'auto_explain';"),
+      GNUNET_PQ_make_try_execute ("SET auto_explain.log_min_duration=50;"),
+      GNUNET_PQ_make_try_execute ("SET auto_explain.log_timing=TRUE;"),
+      GNUNET_PQ_make_try_execute ("SET auto_explain.log_analyze=TRUE;"),
+      GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
       GNUNET_PQ_EXECUTE_STATEMENT_END
     };
 
