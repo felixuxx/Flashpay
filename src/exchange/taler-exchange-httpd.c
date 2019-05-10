@@ -54,6 +54,24 @@
  */
 #define UNIX_BACKLOG 500
 
+
+/**
+ * Type of the closure associated with each HTTP request to the exchange.
+ */
+struct ExchangeHttpRequestClosure
+{
+  /**
+   * Async Scope ID associated with this request.
+   */
+  struct GNUNET_AsyncScopeId async_scope_id;
+
+  /**
+   * Opaque parsing context.
+   */
+  void *opaque_post_parsing_context;
+};
+
+
 /**
  * Which currency is used by this exchange?
  */
@@ -142,16 +160,38 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
-  if (NULL == *con_cls)
+  struct ExchangeHttpRequestClosure *ecls = *con_cls;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Request completed\n");
+
+  if (NULL == ecls)
     return;
-  TEH_PARSE_post_cleanup_callback (*con_cls);
+  TEH_PARSE_post_cleanup_callback (ecls->opaque_post_parsing_context);
+  GNUNET_free (ecls);
   *con_cls = NULL;
   /* check that we didn't leave any transactions hanging */
   /* NOTE: In high-performance production, we might want to
      remove this. */
   TEH_plugin->preflight (TEH_plugin->cls,
                          TEH_plugin->get_session (TEH_plugin->cls));
+}
 
+
+/**
+ * Return GNUNET_YES if given a valid correlation ID and
+ * GNUNET_NO otherwise.
+ *
+ * @returns GNUNET_YES iff given a valid correlation ID
+ */
+static int
+is_valid_correlation_id (const char *correlation_id)
+{
+  if (strlen (correlation_id) >= 64)
+    return GNUNET_NO;
+  for (int i = 0; i < strlen (correlation_id); i++)
+    if (!(isalnum (correlation_id[i]) || correlation_id[i] == '-'))
+      return GNUNET_NO;
+  return GNUNET_YES;
 }
 
 
@@ -367,10 +407,45 @@ handle_mhd_request (void *cls,
       &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
     };
   struct TEH_RequestHandler *rh;
+  struct ExchangeHttpRequestClosure *ecls = *con_cls;
+  int ret;
+  void **inner_cls;
+  struct GNUNET_AsyncScopeSave old_scope;
+  const char *correlation_id = NULL;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Handling request for URL '%s'\n",
-              url);
+  if (NULL == ecls) {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Handling new request\n");
+    /* We're in a new async scope! */
+    ecls = *con_cls = GNUNET_new (struct ExchangeHttpRequestClosure);
+    GNUNET_async_scope_fresh (&ecls->async_scope_id);
+    /* We only read the correlation ID on the first callback for every client */
+    correlation_id = MHD_lookup_connection_value (connection,
+                                                  MHD_HEADER_KIND,
+                                                  "Taler-Correlation-Id");
+    if ((NULL != correlation_id) &&
+        (GNUNET_YES != is_valid_correlation_id (correlation_id)))
+    {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "illegal incoming correlation ID\n");
+        correlation_id = NULL;
+    }
+  }
+
+  inner_cls = &ecls->opaque_post_parsing_context;
+
+  GNUNET_async_scope_enter (&ecls->async_scope_id, &old_scope);
+
+  if (NULL != correlation_id)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Handling request (%s) for URL '%s', correlation_id=%s\n",
+                method,
+                url,
+                correlation_id);
+  else
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Handling request (%s) for URL '%s'\n",
+                method,
+                url);
+
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
@@ -382,17 +457,24 @@ handle_mhd_request (void *cls,
          ( (NULL == rh->method) ||
            (0 == strcasecmp (method,
                              rh->method)) ) )
-      return rh->handler (rh,
-                          connection,
-                          con_cls,
-                          upload_data,
-                          upload_data_size);
+    {
+      ret = rh->handler (rh,
+                         connection,
+                         inner_cls,
+                         upload_data,
+                         upload_data_size);
+      GNUNET_async_scope_restore (&old_scope);
+      return ret;
+    }
   }
-  return TEH_MHD_handler_static_response (&h404,
-                                          connection,
-                                          con_cls,
-                                          upload_data,
-                                          upload_data_size);
+  ret = TEH_MHD_handler_static_response (&h404,
+                                         connection,
+                                         inner_cls,
+                                         upload_data,
+                                         upload_data_size);
+  GNUNET_async_scope_restore (&old_scope);
+
+  return ret;
 }
 
 

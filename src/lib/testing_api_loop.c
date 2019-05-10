@@ -807,6 +807,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   is.ctx = GNUNET_CURL_init
     (&GNUNET_CURL_gnunet_scheduler_reschedule,
      &is.rc);
+  GNUNET_CURL_enable_async_scope_header (is.ctx, "Taler-Correlation-Id");
   GNUNET_assert (NULL != is.ctx);
   is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
 
