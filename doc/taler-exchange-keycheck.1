@@ -1,29 +1,39 @@
-.TH TALER\-EXCHANGE\-KEYCHECK 1 "Apr 22, 2015" "GNU Taler"
-
-.SH NAME
-taler\-exchange\-keycheck \- Check validity of Taler signing and denomination keys.
-
-.SH SYNOPSIS
-.B taler\-exchange\-keycheck
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-exchange\-keycheck\fP can be used to check if the signing and denomination keys in the operation directory are well-formed. This can be useful after importing fresh keys from the offline system to ensure that the files are correct.
-
-.SH OPTIONS
-.B
-.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
-Use the configuration and other resources for the exchange to operate from DIRNAME.
-.B
-.IP "\-h, \-\-help"
+.Dd April 22, 2015
+.Dt TALER-EXCHANGE-KEYCHECK 1
+.Os
+.Sh NAME
+.Nm taler\-exchange\-keycheck
+.Nd check validity of Taler signing and denomination keys
+.Sh SYNOPSIS
+.Nm
+.Op Fl d Ar DIRNAME | Fl -exchange-dir= Ns Ar DIRNAME
+.Op Fl h | -help
+.Op Fl v | -version
+.Sh DESCRIPTION
+.Nm
+can be used to check if the signing and denomination keys in the
+operation directory are well-formed.
+This can be useful after importing fresh keys from the
+offline system to ensure that the files are correct.
+.Pp
+Its options are as follows:
+.Bl -tag -width indent
+.It Fl d Ar DIRNAME | Fl -exchange-dir= Ns Ar DIRNAME
+Use the configuration and other resources for the exchange
+to operate from
+.Ar DIRNAME .
+.It Fl h | -help
 Print short help on options.
-.B
-.IP "\-v, \-\-version"
+.It Fl v | -version
 Print version information.
-
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
-
-.SH "SEE ALSO"
-\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-dbinit\fP(1), \fBtaler.conf\fP(5)
+.El
+.Sh SEE ALSO
+.Xr taler-exchange-httpd 1 ,
+.Xr taler-exchange-keyup 1 ,
+.Xr taler-exchange-dbinit 1 ,
+.Xr taler.conf 5 .
+.Sh BUGS
+Report bugs by using
+.Lk https://gnunet.org/bugs/
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .

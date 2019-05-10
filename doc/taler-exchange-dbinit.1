@@ -1,35 +1,47 @@
-.TH TALER\-EXCHANGE\-DBINIT 1 "May 31, 2016" "GNU Taler"
-
-.SH NAME
-taler\-exchange\-dbinit \- Initialize Taler exchange database.
-
-.SH SYNOPSIS
-.B taler\-exchange\-dbinit
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-exchange\-dbinit\fP is a command line tool to initialize the Taler exchange database.  It creates the necessary tables and indices for the Taler exchange to operate.
-
-.SH OPTIONS
-.B
-.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
-Use the configuration and other resources for the exchange to operate from DIRNAME.
-.B
-.IP "\-h, \-\-help"
+.Dd May 31, 2016
+.Dt TALER-EXCHANGE-DBINIT 1
+.Os
+.Sh NAME
+.Nm taler-exchange-dbinit
+.Nd Initialize Taler exchange database.
+.Sh SYNOPSIS
+.Nm
+.Op Fl d Ar DIRNAME | Fl -exchange-dir= Ns Ar DIRNAME
+.Op Fl h | -help
+.Op Fl g | -gc
+.Op Fl r | -reset
+.Op Fl v | -version
+.Sh DESCRIPTION
+.Nm
+is a command line tool to initialize the Taler exchange database.
+It creates the necessary tables and indices for the Taler exchange
+to operate.
+.Pp
+Its options are as follows:
+.Bl -tag -width indent
+.It Fl d Ar DIRNAME | Fl -exchange-dir= Ns Ar DIRNAME
+Use the configuration and other resources for the exchange to
+operate from
+.Ar DIRNAME .
+.It Fl h | -help
 Print short help on options.
-.B
-.IP "\-g, \-\-gc"
-Garbage collect database.  Deletes all unnecessary data in the database.
-.B
-.IP "\-r, \-\-reset"
-Drop tables. Dangerous, will delete all existing data in the database before creating the tables.
-.B
-.IP "\-v, \-\-version"
+.It Fl g | -gc
+Garbage collect database.
+Deletes all unnecessary data in the database.
+.It Fl r | -reset
+Drop tables.
+Dangerous, will delete all existing data in the database before
+creating the tables.
+.It Fl v | -version
 Print version information.
-
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
-
-.SH "SEE ALSO"
-\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-reservemod\fP(1), \fBtaler.conf\fP(5)
+.El
+.Sh SEE ALSO
+.Xr taler-exchange-httpd 1 ,
+.Xr taler-exchange-keyup 1 ,
+.Xr taler-exchange-reservemod 1 ,
+.Xr taler.conf 5 .
+.Sh BUGS
+Report bugs by using
+.Lk https://bugs.gnunet.org
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .

@@ -1,28 +1,34 @@
-.TH TALER\-EXCHANGE\-WIRE 1 "Mar 18, 2018" "GNU Taler"
-
-.SH NAME
-taler\-exchange\-wire \- Create the master-key signed responses to /wire.
-
-.SH SYNOPSIS
-.B taler\-exchange\-wire
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-exchange\-wire\fP is used to create the exchange's reply to a /wire request.  It converts the bank details into the appropriate signed response.  This needs to be done using the long-term offline master key.
-
-.SH OPTIONS
-.B
-.IP "\-m MASTERKEYFILE,  \-\-master=MASTERKEYFILE"
-Specifies the name of the file containing the exchange's master key.
-.IP "\-h, \-\-help"
+.Dd March 18, 2018
+.Dt TALER-EXCHANGE-WIRE 1
+.Os
+.Sh NAME
+.Nm taler-exchange-wire
+.Nd create the master-key signed responses to /wire
+.Sh SYNOPSIS
+.Nm
+.Op Fl h | -help
+.Op Fl m Ar MASTERKEYFILE | Fl -master= Ns Ar MASTERKEYFILE
+.Op Fl v | -version
+.Sh DESCRIPTION
+.Nm
+is used to create the exchange's reply to a /wire request.
+It converts the bank details into the appropriate signed response.
+This needs to be done using the long-term offline master key.
+.Pp
+Its options are as follows:
+.Bl -tag -width indent
+.It Fl h | -help
 Print short help on options.
-.B
-.IP "\-v, \-\-version"
+.It Fl m Ar MASTERKEYFILE | Fl -master= Ns Ar MASTERKEYFILE
+Specifies the name of the file containing the exchange's master key.
+.It Fl v | -version
 Print version information.
-
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
-
-.SH "SEE ALSO"
-\fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)
+.El
+.Sh SEE ALSO
+.Xr taler-exchange-httpd 1 ,
+.Xr taler.conf 5 .
+.Sh BUGS
+Report bugs by using
+.Lk https://gnunet.org/bugs/
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .

@@ -1,41 +1,55 @@
-.TH TALER\-EXCHANGE\-KEYUP 1 "Apr 7, 2017" "GNU Taler"
-
-.SH NAME
-taler\-exchange\-keyup \- Setup Taler exchange denomination and signing keys.
-
-.SH SYNOPSIS
-.B taler\-exchange\-keyup
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-exchange\-keyup\fP is a command line tool to setup Taler denomination and signing keys.  This tool requires access to the exchange's long-term offline signing key and should be run in a secure (offline) environment under strict controls. The resulting keys can then be copied to the main online directory where the Taler HTTP server operates.
-
-.SH OPTIONS
-.B
-.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
-Use the configuration and other resources for the exchange to operate from DIRNAME.
-.B
-.IP "\-h, \-\-help"
+.Dd April 7, 2017
+.Dt TALER\-EXCHANGE\-KEYUP 1
+.Os
+.Sh NAME
+.Nm taler\-exchange\-keyup
+.Nd setup Taler exchange denomination and signing keys
+.Sh SYNOPSIS
+.Nm
+.Op Fl d Ar DIRNAME | Fl -exchange-dir= Ns Ar DIRNAME
+.Op Fl h | -help
+.Op Fl m Ar FILE | Fl -master-key= Ns Ar FILE
+.Op Fl o Ar FILE | Fl -output= Ns Ar FILE
+.Op Fl r Ar DKH | Fl -revoke= Ns Ar DKH
+.Op Fl t Ar TIMESTAMP | Fl -time= Ns Ar TIMESTAMP
+.Op Fl v | -version
+.Sh DESCRIPTION
+.Nm
+is a command line tool to setup Taler denomination and signing keys.
+This tool requires access to the exchange's long-term offline signing
+key and should be run in a secure (offline) environment under strict
+controls.
+The resulting keys can then be copied to the main online directory
+where the Taler HTTP server operates.
+.Pp
+Its options are as follows:
+.Bl -tag -width indent
+.It Fl d Ar DIRNAME | Fl -exchange-dir= Ns Ar DIRNAME
+Use the configuration and other resources for the exchange to
+operate from
+.Ar DIRNAME .
+.It Fl h | -help
 Print short help on options.
-.B
-.IP "\-m FILE,  \-\-master-key=FILE"
+.It Fl m Ar FILE | Fl -master-key= Ns Ar FILE
 Location of the private EdDSA offline master key of the exchange.
-.B
-.IP "\-o FILE,  \-\-ouptut=FILE"
-Where to write a denomination key signing request file to be given to the auditor.
-.B
-.IP "\-r DKH,  \-\-revoke=DKH"
+.It Fl o Ar FILE | Fl -output= Ns Ar FILE
+Where to write a denomination key signing request file to be given
+to the auditor.
+.It Fl r Ar DKH | Fl -revoke= Ns Ar DKH
 Revoke the denomination key where the denomination public key's hash is DKH.
-.B
-.IP "\-t TIMESTAMP,  \-\-time=TIMESTAMP"
-Operate as if the current time was TIMESTAMP.
-.B
-.IP "\-v, \-\-version"
+.It Fl t Ar TIMESTAMP | Fl -time= Ns Ar TIMESTAMP
+Operate as if the current time was
+.Ar TIMESTAMP .
+.It Fl v | -version
 Print version information.
-
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
-
-.SH "SEE ALSO"
-\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-keycheck\fP(1), \fBtaler.conf\fP(5)
+.El
+.Sh SEE ALSO
+.Xr taler-exchange-httpd 1 ,
+.Xr taler-exchange-keyup 1 ,
+.Xr taler-exchange-keycheck 1 ,
+.Xr taler.conf 5 .
+.Sh BUGS
+Report bugs by using
+.Lk https://gnunet.org/bugs/
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .

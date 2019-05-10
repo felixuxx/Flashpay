@@ -1,35 +1,41 @@
-.TH TALER\-EXCHANGE\-WIREWATCH 1 "May 5, 2017" "GNU Taler"
-
-.SH NAME
-taler\-exchange\-wirewatch \- Watch for incoming wire transfers
-
-.SH SYNOPSIS
-.B taler\-exchange\-wirewatch
-.RI [ options ]
-.br
-
-.SH DESCRIPTION
-\fBtaler\-exchange\-wirewatch\fP is a command line tool to import wire transactions into the Taler exchange database.
-
-.SH OPTIONS
-.B
-.IP "\-t PLUGINNAME,  \-\-type=PLUGINNAME"
+.Dd May 5, 2017
+.Dt TALER-EXCHANGE-WIREWATCH 1
+.Os
+.Sh NAME
+.Nm taler-exchange-wirewatch
+.Nd watch for incoming wire transfers
+.Sh SYNOPSIS
+.Nm
+.Op Fl t Ar PLUGINNAME | Fl -type= Ns Ar PLUGINNAME
+.Op Fl h | -help
+.Op Fl T | -test
+.Op Fl r | -reset
+.Op Fl v | -version
+.Sh DESCRIPTION
+.Nm
+is a command line tool to import wire transactions into the
+Taler exchange database.
+.Pp
+Its options are as follows:
+.Bl -tag -width indent
+.It Fl t Ar PLUGINNAME | Fl -type= Ns Ar PLUGINNAME
 Use the specified wire plugin and its configuration to talk to the bank.
-.B
-.IP "\-h, \-\-help"
+.It Fl h | -help
 Print short help on options.
-.B
-.IP "\-T,  \-\-test"
+.It Fl T | -test
 Run in test mode and exit when idle.
-.B
-.IP "\-r,  \-\-reset"
-Ignore our own database and start with transactions from the beginning of time.
-.B
-.IP "\-v, \-\-version"
+.It Fl r | -reset
+Ignore our own database and start with transactions
+from the beginning of time.
+.It Fl v | -version
 Print version information.
-.B
-.SH BUGS
-Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
-
-.SH "SEE ALSO"
-\fBtaler\-exchange\-aggregator\fP(1), \fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)
+.El
+.Sh SEE ALSO
+.Xr taler-exchange-aggregator 1 ,
+.Xr taler-exchange-httpd 1 ,
+.Xr taler.conf 5 .
+.Sh BUGS
+Report bugs by using
+.Lk https://gnunet.org/bugs/
+or by sending electronic mail to
+.Aq Mt taler@gnu.org .
