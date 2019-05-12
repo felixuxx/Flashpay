@@ -323,9 +323,8 @@ AS_IF([test $jansson = 0],
 
 # test for postgres
 AX_LIB_POSTGRESQL([9.3])
-if test "$found_postgresql" = "yes"; then
-  postgres=true
-fi
+AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
+
 
 else
 
@@ -444,9 +443,7 @@ fi])
 # Currently these options are ELF specific - you can't use this with MacOSX
 AC_ARG_ENABLE(linker-hardening,
   AS_HELP_STRING(--enable-linker-hardening, enable linker security fixups),
-[if test x$enableval = xyes; then
-   LDFLAGS="$LDFLAGS -z relro -z now"
-fi])
+  [AS_IF([test x$enableval = xyes],[LDFLAGS="$LDFLAGS -z relro -z now"])])
 
 
 # logging
