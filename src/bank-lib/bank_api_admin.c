@@ -23,6 +23,8 @@
 #include "bank_api_common.h"
 #include <microhttpd.h> /* just for HTTP status codes */
 #include "taler_signatures.h"
+// FIXME(dold): temporary hack
+#include "../lib/teah_common.h"
 
 
 /**
@@ -37,19 +39,14 @@ struct TALER_BANK_AdminAddIncomingHandle
   char *request_url;
 
   /**
-   * JSON encoding of the request to POST.
+   * POST context.
    */
-  char *json_enc;
+  struct TEAH_PostContext *post_ctx;
 
   /**
    * Handle for the request.
    */
   struct GNUNET_CURL_Job *job;
-
-  /**
-   * HTTP authentication-related headers for the request.
-   */
-  struct curl_slist *authh;
 
   /**
    * Function to call with the result.
@@ -192,6 +189,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   struct TALER_BANK_AdminAddIncomingHandle *aai;
   json_t *admin_obj;
   CURL *eh;
+  struct curl_slist *headers = NULL;
 
   if (NULL == exchange_base_url)
   {
@@ -215,45 +213,28 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->cb_cls = res_cb_cls;
   aai->request_url = TALER_BANK_path_to_url_ (bank_base_url,
                                               "/admin/add/incoming");
-  aai->authh = TALER_BANK_make_auth_header_ (auth);
-  /* Append content type header here, can't do it in GNUNET_CURL_job_add
-     as that would override the CURLOPT_HTTPHEADER instead of appending. */
-  {
-    struct curl_slist *ext;
+  headers = TALER_BANK_make_auth_header_ (auth);
 
-    ext = curl_slist_append (aai->authh,
-                             "Content-Type: application/json");
-    if (NULL == ext)
-      GNUNET_break (0);
-    else
-      aai->authh = ext;
-  }
+  GNUNET_assert (NULL !=
+                 (headers = curl_slist_append (headers,
+                                               "Content-Type: application/json")));
   eh = curl_easy_init ();
-  GNUNET_assert (NULL != (aai->json_enc =
-                          json_dumps (admin_obj,
-                                      JSON_COMPACT)));
+
+  GNUNET_assert (GNUNET_OK ==
+                 TEAH_curl_easy_post (aai->post_ctx, eh, admin_obj));
+
   json_decref (admin_obj);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_HTTPHEADER,
-                                   aai->authh));
+
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    aai->request_url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   aai->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (aai->json_enc)));
-  aai->job = GNUNET_CURL_job_add (ctx,
-                                  eh,
-                                  GNUNET_NO,
-                                  &handle_admin_add_incoming_finished,
-                                  aai);
+
+  aai->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   headers,
+                                   &handle_admin_add_incoming_finished,
+                                   aai);
   return aai;
 }
 
@@ -272,9 +253,7 @@ TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *
     GNUNET_CURL_job_cancel (aai->job);
     aai->job = NULL;
   }
-  curl_slist_free_all (aai->authh);
   GNUNET_free (aai->request_url);
-  GNUNET_free (aai->json_enc);
   GNUNET_free (aai);
 }
 

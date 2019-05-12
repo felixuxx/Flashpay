@@ -42,7 +42,8 @@ libtalerbank_la_SOURCES = \
   bank_api_common.c bank_api_common.h \
   bank_api_history.c \
   bank_api_reject.c \
-  bank_api_parse.c
+  bank_api_parse.c \
+  ../lib/teah_common.c # FIXME: ugly hack!!
 
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
