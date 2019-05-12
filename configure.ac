@@ -123,8 +123,7 @@ fd = epoll_create1(EPOLL_CLOEXEC);]])],
     AC_DEFINE([[HAVE_EPOLL_CREATE1]], [[1]], [Define if you have epoll_create1 function.])]))
 
 
-if test "$wallet_only" != yes
-then
+AS_IF([test "x$wallet_only" != xyes],[
 
 
 # Check for GNUnet's libgnunetutil.
@@ -199,6 +198,7 @@ AS_IF([test "x$curl" = x1],[
  AC_CHECK_LIB([curl-gnutls],[curl_easy_getinfo],,[curl=0])
  # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 ])
+
 
 # libcurl and libgnurl should be mutually exclusive
 AS_IF([test "$gnurl" = 1],
@@ -326,7 +326,9 @@ AX_LIB_POSTGRESQL([9.3])
 AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
 
 
-else
+# true clause: test wallet-only set to false
+],[
+# false clause: for test wallet-only set to true
 
 # Check for GNUnet's libgnunetutil_taler_wallet.
 
@@ -370,7 +372,7 @@ LIBS=$LIBS_SAVE
 
 
 # end of wallet/no-wallet specific logic
-fi
+])
 
 TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
 TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
