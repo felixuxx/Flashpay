@@ -41,7 +41,7 @@ struct TALER_BANK_AdminAddIncomingHandle
   /**
    * POST context.
    */
-  struct TEAH_PostContext *post_ctx;
+  struct TEAH_PostContext post_ctx;
 
   /**
    * Handle for the request.
@@ -221,7 +221,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   eh = curl_easy_init ();
 
   GNUNET_assert (GNUNET_OK ==
-                 TEAH_curl_easy_post (aai->post_ctx, eh, admin_obj));
+                 TEAH_curl_easy_post (&aai->post_ctx, eh, admin_obj));
 
   json_decref (admin_obj);
 
@@ -253,6 +253,7 @@ TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *
     GNUNET_CURL_job_cancel (aai->job);
     aai->job = NULL;
   }
+  TEAH_curl_easy_post_finished (&aai->post_ctx);
   GNUNET_free (aai->request_url);
   GNUNET_free (aai);
 }
