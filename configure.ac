@@ -31,11 +31,11 @@ AC_CONFIG_MACRO_DIR([m4])
 LT_INIT
 
 DX_INIT_DOXYGEN([taler-exchange],,,
-DX_PS_FEATURE(OFF),
-DX_PDF_FEATURE(OFF),
-DX_RTF_FEATURE(OFF),
-DX_CHI_FEATURE(OFF),
-DX_XML_FEATURE(OFF))
+ DX_PS_FEATURE(OFF),
+ DX_PDF_FEATURE(OFF),
+ DX_RTF_FEATURE(OFF),
+ DX_CHI_FEATURE(OFF),
+ DX_XML_FEATURE(OFF))
 
 AC_MSG_CHECKING([whether to compile documentation ONLY])
 AC_ARG_ENABLE([only-doc],
@@ -45,8 +45,9 @@ AC_ARG_ENABLE([only-doc],
 AC_MSG_RESULT($doc_only)
 AM_CONDITIONAL([DOC_ONLY], [test "x$doc_only" = "xyes"])
 
-if test "$doc_only" != yes
-then
+
+# Not indented, as most of the file falls under this one...
+AS_IF([test "x$doc_only" != xyes],[
 
 # Checks for programs.
 
@@ -514,7 +515,8 @@ test "x$enable_doc" = "xno" || enable_doc=yes
 AM_CONDITIONAL([ENABLE_DOC], [test "x$enable_doc" = "xyes"])
 
 
-else
+],[  # This is the big test "$doc_only" on top of the file!
+
 
 # logic if doc_only is set, make sure conditionals are still defined
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
@@ -529,7 +531,7 @@ AM_CONDITIONAL([ENABLE_DOC], [true])
 AM_CONDITIONAL([HAVE_TWISTER], [false])
 
 # end of 'doc_only'
-fi
+])
 
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
