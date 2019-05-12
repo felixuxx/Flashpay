@@ -4,6 +4,7 @@
 *app.info
 *.gcno
 *.gcda
+.dirstamp
 doc/coverage/
 doc/taler-exchange.cps
 aclocal.m4
