@@ -305,17 +305,13 @@ put_history_job (struct GNUNET_CURL_Context *ctx,
   eh = curl_easy_init ();
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
-                                   CURLOPT_HTTPHEADER,
-                                   hh->authh));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    hh->request_url));
-  hh->job = GNUNET_CURL_job_add (ctx,
-                                 eh,
-                                 GNUNET_NO,
-                                 &handle_history_finished,
-                                 hh);
+  hh->job = GNUNET_CURL_job_add2 (ctx,
+                                  eh,
+                                  hh->authh,
+                                  &handle_history_finished,
+                                  hh);
   return hh;
 }
 

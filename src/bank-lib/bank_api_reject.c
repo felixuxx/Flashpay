@@ -199,10 +199,6 @@ TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
   json_decref (reject_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
-                                   CURLOPT_HTTPHEADER,
-                                   rh->authh));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    rh->request_url));
   GNUNET_assert (CURLE_OK ==
@@ -213,11 +209,11 @@ TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rh->json_enc)));
-  rh->job = GNUNET_CURL_job_add (ctx,
-                                 eh,
-                                 GNUNET_NO,
-                                 &handle_reject_finished,
-                                 rh);
+  rh->job = GNUNET_CURL_job_add2 (ctx,
+                                  eh,
+                                  rh->authh,
+                                  &handle_reject_finished,
+                                  rh);
   return rh;
 }
 
