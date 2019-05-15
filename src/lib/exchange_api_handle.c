@@ -1788,7 +1788,7 @@ TALER_EXCHANGE_connect
   /* Tell exchange we compress bodies */
   GNUNET_break (GNUNET_OK ==
 		GNUNET_CURL_append_header (ctx,
-                                   "Content-encoding: deflate"));
+                                   "Content-Encoding: deflate"));
 #endif
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;

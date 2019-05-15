@@ -470,7 +470,7 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
   /* Tell auditor we compress bodies */
   GNUNET_break (GNUNET_OK ==
                 GNUNET_CURL_append_header (ctx,
-                                           "Content-encoding: deflate"));
+                                           "Content-Encoding: deflate"));
 #endif
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
   auditor->ctx = ctx;
