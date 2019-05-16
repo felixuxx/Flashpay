@@ -30,7 +30,7 @@
 /**
  * Should we compress PUT/POST bodies with 'deflate' encoding?
  */
-#define COMPRESS_BODIES 0
+#define COMPRESS_BODIES 1
 
 /**
  * State used for #TEAL_curl_easy_post() and
@@ -43,6 +43,10 @@ struct TEAH_PostContext
    */
   char *json_enc;
 
+  /**
+   * Custom headers.
+   */
+  struct curl_slist *headers;
 };
 
 

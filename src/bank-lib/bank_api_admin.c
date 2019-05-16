@@ -189,7 +189,6 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   struct TALER_BANK_AdminAddIncomingHandle *aai;
   json_t *admin_obj;
   CURL *eh;
-  struct curl_slist *headers = NULL;
 
   if (NULL == exchange_base_url)
   {
@@ -213,11 +212,13 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->cb_cls = res_cb_cls;
   aai->request_url = TALER_BANK_path_to_url_ (bank_base_url,
                                               "/admin/add/incoming");
-  headers = TALER_BANK_make_auth_header_ (auth);
+  aai->post_ctx.headers = TALER_BANK_make_auth_header_ (auth);
 
-  GNUNET_assert (NULL !=
-                 (headers = curl_slist_append (headers,
-                                               "Content-Type: application/json")));
+  GNUNET_assert
+    (NULL != (aai->post_ctx.headers = curl_slist_append
+      (aai->post_ctx.headers,
+       "Content-Type: application/json")));
+
   eh = curl_easy_init ();
 
   GNUNET_assert (GNUNET_OK ==
@@ -232,7 +233,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
 
   aai->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
-                                   headers,
+                                   aai->post_ctx.headers,
                                    &handle_admin_add_incoming_finished,
                                    aai);
   return aai;
