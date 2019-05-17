@@ -466,12 +466,6 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
   GNUNET_break (GNUNET_OK ==
                 GNUNET_CURL_append_header (ctx,
                                            "Expect:"));
-#if COMPRESS_BODIES
-  /* Tell auditor we compress bodies */
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_CURL_append_header (ctx,
-                                           "Content-Encoding: deflate"));
-#endif
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);

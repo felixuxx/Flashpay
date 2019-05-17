@@ -42,11 +42,6 @@ TEL_curl_easy_get (const char *url)
                                    url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
-                                   CURLOPT_ENCODING,
-                                   "deflate"));
-
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
                                    CURLOPT_FOLLOWLOCATION,
                                    1L));
   GNUNET_assert (CURLE_OK ==

@@ -340,11 +340,11 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
               "URL for payback: `%s'\n",
               ph->url);
   ctx = TEAH_handle_to_context (exchange);
-  ph->job = GNUNET_CURL_job_add (ctx,
-				 eh,
-				 GNUNET_YES,
-				 &handle_payback_finished,
-				 ph);
+  ph->job = GNUNET_CURL_job_add2 (ctx,
+			          eh,
+				  ph->ctx.headers,
+				  &handle_payback_finished,
+				  ph);
   return ph;
 }
 

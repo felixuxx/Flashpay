@@ -337,11 +337,11 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   }
   json_decref (deposit_wtid_obj);
   ctx = TEAH_handle_to_context (exchange);
-  dwh->job = GNUNET_CURL_job_add (ctx,
-                          eh,
-                          GNUNET_YES,
-                          &handle_deposit_wtid_finished,
-                          dwh);
+  dwh->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   dwh->ctx.headers,
+                                   &handle_deposit_wtid_finished,
+                                   dwh);
   return dwh;
 }
 

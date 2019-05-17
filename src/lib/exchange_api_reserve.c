@@ -1044,11 +1044,11 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   }
   json_decref (withdraw_obj);
   ctx = TEAH_handle_to_context (exchange);
-  wsh->job = GNUNET_CURL_job_add (ctx,
-                          eh,
-                          GNUNET_YES,
-                          &handle_reserve_withdraw_finished,
-                          wsh);
+  wsh->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   wsh->ctx.headers,
+                                   &handle_reserve_withdraw_finished,
+                                   wsh);
   return wsh;
 }
 

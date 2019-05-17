@@ -386,11 +386,11 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
               "URL for refund: `%s'\n",
               rh->url);
   ctx = TEAH_handle_to_context (exchange);
-  rh->job = GNUNET_CURL_job_add (ctx,
-				 eh,
-				 GNUNET_YES,
-				 &handle_refund_finished,
-				 rh);
+  rh->job = GNUNET_CURL_job_add2 (ctx,
+			          eh,
+				  rh->ctx.headers,
+				  &handle_refund_finished,
+				  rh);
   return rh;
 }
 
