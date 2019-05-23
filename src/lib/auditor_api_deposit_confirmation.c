@@ -344,7 +344,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                                    CURLOPT_CUSTOMREQUEST,
                                    "PUT"));
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&dh->ctx,
+      TALER_curl_easy_post (&dh->ctx,
                            eh,
                            deposit_confirmation_obj))
   {
@@ -384,7 +384,7 @@ TALER_AUDITOR_deposit_confirmation_cancel (struct TALER_AUDITOR_DepositConfirmat
     deposit_confirmation->job = NULL;
   }
   GNUNET_free (deposit_confirmation->url);
-  TEAH_curl_easy_post_finished (&deposit_confirmation->ctx);
+  TALER_curl_easy_post_finished (&deposit_confirmation->ctx);
   GNUNET_free (deposit_confirmation);
 }
 

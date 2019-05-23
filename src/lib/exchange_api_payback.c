@@ -324,7 +324,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->url = TEAH_path_to_url (exchange, "/payback");
   eh = TEL_curl_easy_get (ph->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&ph->ctx,
+      TALER_curl_easy_post (&ph->ctx,
                            eh,
                            payback_obj))
   {
@@ -364,7 +364,7 @@ TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph)
     ph->job = NULL;
   }
   GNUNET_free (ph->url);
-  TEAH_curl_easy_post_finished (&ph->ctx);
+  TALER_curl_easy_post_finished (&ph->ctx);
   GNUNET_free (ph);
 }
 

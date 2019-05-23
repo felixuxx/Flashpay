@@ -1208,7 +1208,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                               "/refresh/melt");
   eh = TEL_curl_easy_get (rmh->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&rmh->ctx,
+      TALER_curl_easy_post (&rmh->ctx,
                            eh,
                            melt_obj))
   {
@@ -1247,7 +1247,7 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
   free_melt_data (rmh->md); /* does not free 'md' itself */
   GNUNET_free (rmh->md);
   GNUNET_free (rmh->url);
-  TEAH_curl_easy_post_finished (&rmh->ctx);
+  TALER_curl_easy_post_finished (&rmh->ctx);
   GNUNET_free (rmh);
 }
 
@@ -1638,7 +1638,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
 
   eh = TEL_curl_easy_get (rrh->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&rrh->ctx,
+      TALER_curl_easy_post (&rrh->ctx,
                            eh,
                            reveal_obj))
   {
@@ -1675,7 +1675,7 @@ TALER_EXCHANGE_refresh_reveal_cancel (struct TALER_EXCHANGE_RefreshRevealHandle 
     rrh->job = NULL;
   }
   GNUNET_free (rrh->url);
-  TEAH_curl_easy_post_finished (&rrh->ctx);
+  TALER_curl_easy_post_finished (&rrh->ctx);
   free_melt_data (rrh->md); /* does not free 'md' itself */
   GNUNET_free (rrh->md);
   GNUNET_free (rrh);

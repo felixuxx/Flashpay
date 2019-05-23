@@ -60,7 +60,7 @@ struct TEAH_PostContext
  * @return #GNUNET_OK on success #GNUNET_SYSERR on failure
  */
 int
-TEAH_curl_easy_post (struct TEAH_PostContext *ctx,
+TALER_curl_easy_post (struct TEAH_PostContext *ctx,
                      CURL *eh,
                      const json_t *body);
 
@@ -71,7 +71,7 @@ TEAH_curl_easy_post (struct TEAH_PostContext *ctx,
  * @param ctx[in] a request context (updated)
  */
 void
-TEAH_curl_easy_post_finished (struct TEAH_PostContext *ctx);
+TALER_curl_easy_post_finished (struct TEAH_PostContext *ctx);
 
 
 

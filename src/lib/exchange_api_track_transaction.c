@@ -324,7 +324,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
 
   eh = TEL_curl_easy_get (dwh->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&dwh->ctx,
+      TALER_curl_easy_post (&dwh->ctx,
                            eh,
                            deposit_wtid_obj))
   {
@@ -361,7 +361,7 @@ TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionH
     dwh->job = NULL;
   }
   GNUNET_free (dwh->url);
-  TEAH_curl_easy_post_finished (&dwh->ctx);
+  TALER_curl_easy_post_finished (&dwh->ctx);
   GNUNET_free (dwh);
 }
 

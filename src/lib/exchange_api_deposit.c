@@ -583,7 +583,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 
   eh = TEL_curl_easy_get (dh->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&dh->ctx,
+      TALER_curl_easy_post (&dh->ctx,
                            eh,
                            deposit_obj))
   {
@@ -623,7 +623,7 @@ TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
     deposit->job = NULL;
   }
   GNUNET_free (deposit->url);
-  TEAH_curl_easy_post_finished (&deposit->ctx);
+  TALER_curl_easy_post_finished (&deposit->ctx);
   GNUNET_free (deposit);
 }
 

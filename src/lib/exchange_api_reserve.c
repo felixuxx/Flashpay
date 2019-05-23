@@ -1031,7 +1031,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wsh->url = TEAH_path_to_url (exchange, "/reserve/withdraw");
   eh = TEL_curl_easy_get (wsh->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&wsh->ctx,
+      TALER_curl_easy_post (&wsh->ctx,
                            eh,
                            withdraw_obj))
   {
@@ -1201,7 +1201,7 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
     sign->job = NULL;
   }
   GNUNET_free (sign->url);
-  TEAH_curl_easy_post_finished (&sign->ctx);
+  TALER_curl_easy_post_finished (&sign->ctx);
   GNUNET_free (sign);
 }
 

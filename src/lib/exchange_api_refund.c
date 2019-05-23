@@ -370,7 +370,7 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
 
   eh = TEL_curl_easy_get (rh->url);
   if (GNUNET_OK !=
-      TEAH_curl_easy_post (&rh->ctx,
+      TALER_curl_easy_post (&rh->ctx,
                            eh,
                            refund_obj))
   {
@@ -410,7 +410,7 @@ TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund)
     refund->job = NULL;
   }
   GNUNET_free (refund->url);
-  TEAH_curl_easy_post_finished (&refund->ctx);
+  TALER_curl_easy_post_finished (&refund->ctx);
   GNUNET_free (refund);
 }
 
