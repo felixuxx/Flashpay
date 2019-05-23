@@ -77,18 +77,20 @@ TEH_PARSE_post_json (struct MHD_Connection *connection,
                                 json);
   switch (pr)
   {
+
   case GNUNET_JSON_PR_OUT_OF_MEMORY:
-    return (MHD_NO ==
-            TEH_RESPONSE_reply_internal_error (connection,
-					       TALER_EC_PARSER_OUT_OF_MEMORY,
-                                               "out of memory"))
-      ? GNUNET_SYSERR : GNUNET_NO;
+    return (MHD_NO == TEH_RESPONSE_reply_internal_error
+      (connection,
+       TALER_EC_PARSER_OUT_OF_MEMORY,
+       "out of memory")) ? GNUNET_SYSERR : GNUNET_NO;
+
   case GNUNET_JSON_PR_CONTINUE:
     return GNUNET_YES;
+
   case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
-    return (MHD_NO ==
-            TEH_RESPONSE_reply_request_too_large (connection))
-      ? GNUNET_SYSERR : GNUNET_NO;
+    return (MHD_NO == TEH_RESPONSE_reply_request_too_large
+      (connection)) ? GNUNET_SYSERR : GNUNET_NO;
+
   case GNUNET_JSON_PR_JSON_INVALID:
     return (MHD_YES ==
             TEH_RESPONSE_reply_invalid_json (connection))

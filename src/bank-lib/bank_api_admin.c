@@ -24,7 +24,7 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include "taler_signatures.h"
 // FIXME(dold): temporary hack
-#include "../lib/teah_common.h"
+#include "teah_common.h"
 
 
 /**
