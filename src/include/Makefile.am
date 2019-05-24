@@ -31,7 +31,7 @@ talerinclude_HEADERS = \
   taler_wire_lib.h \
   taler_wire_plugin.h \
   taler_testing_bank_lib.h \
-  teah_common.h
+  taler_curl_lib.h
 
 endif
 

@@ -33,7 +33,7 @@
 #include "exchange_api_handle.h"
 #include "exchange_api_curl_defaults.h"
 #include "backoff.h"
-#include "teah_common.h"
+#include "taler_curl_lib.h"
 
 /**
  * Which revision of the Taler protocol is implemented

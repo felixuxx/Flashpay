@@ -23,7 +23,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "teah_common.h"
+#include "taler_curl_lib.h"
 
 #if COMPRESS_BODIES
 #include <zlib.h>

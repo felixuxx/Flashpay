@@ -22,7 +22,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_auditor_service.h"
-#include "teah_common.h"
+#include "taler_curl_lib.h"
 
 /**
  * Get the context of a auditor.

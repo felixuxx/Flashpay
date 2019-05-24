@@ -24,7 +24,7 @@
 #include "taler_auditor_service.h"
 #include "taler_exchange_service.h"
 #include "taler_crypto_lib.h"
-#include "teah_common.h"
+#include "taler_curl_lib.h"
 
 /**
  * Entry in DLL of auditors used by an exchange.
