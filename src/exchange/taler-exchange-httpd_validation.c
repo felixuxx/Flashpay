@@ -157,6 +157,17 @@ load_account (void *cls,
       return;
     }
     GNUNET_free (url);
+    /* Provide friendly error message if user forgot to sign wire response. */
+    if (NULL == json_object_get (wire_s, "master_sig"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire response file `%s' has not been signed."
+                  " Use taler-exchange-wire to sign it.\n",
+                  ai->wire_response_filename);
+      json_decref (wire_s);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
     if (GNUNET_OK !=
         TALER_JSON_exchange_wire_signature_check (wire_s,
                                                   &TEH_master_public_key))
