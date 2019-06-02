@@ -482,21 +482,23 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
     return NULL;
   }
 
-  GNUNET_asprintf (&url,
-                   "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s&start=%llu",
+  if (UINT64_MAX == start_row)
+    GNUNET_asprintf (&url,
+                   "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s",
                    (unsigned long long) account_number,
                    (long long) num_results,
                    conv_direction (direction).value,
                    conv_cancel (direction).value,
-                   (GNUNET_YES == ascending) ? "ascending" : "descending",
-                   start_row);
-
-  /* Locate and "cut" the 'start' argument,
-   * if the user didn't provide one.  */
-  if (UINT64_MAX == start_row)
-    *strstr (url,
-             "&start=") = '\0';
-
+                   (GNUNET_YES == ascending) ? "ascending" : "descending");
+  else
+    GNUNET_asprintf (&url,
+                     "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s&start=%llu",
+                     (unsigned long long) account_number,
+                     (long long) num_results,
+                     conv_direction (direction).value,
+                     conv_cancel (direction).value,
+                     (GNUNET_YES == ascending) ? "ascending" : "descending",
+                     start_row);
   hh = put_history_job (ctx,
                         bank_base_url,
                         url,
