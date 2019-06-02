@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-wire.c
  * @brief Utility performing wire transfers.
@@ -69,7 +68,7 @@ char *since_when;
 /**
  * Which config section has the credentials to access the bank.
  */
-char *account_section; 
+char *account_section;
 
 /**
  * URL identifying the account that is going to receive the
@@ -102,7 +101,7 @@ struct TALER_WIRE_Plugin *plugin_handle;
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to
  *         abort iteration
  */
-int
+static int
 history_cb (void *cls,
             enum TALER_ErrorCode ec,
             enum TALER_BANK_Direction dir,
@@ -133,11 +132,12 @@ history_cb (void *cls,
   return GNUNET_OK;
 }
 
+
 /**
  * Callback that processes the outcome of a wire transfer
  * execution.
  */
-void
+static void
 confirmation_cb (void *cls,
                  int success,
                  const void *row_id,
@@ -147,7 +147,7 @@ confirmation_cb (void *cls,
   if (GNUNET_YES != success)
   {
     fprintf (stderr,
-             "The wire transfer didn't execute correctly.\n"); 
+             "The wire transfer didn't execute correctly.\n");
     GNUNET_assert (NULL != emsg);
     fprintf (stderr,
              "%s",
@@ -171,7 +171,7 @@ confirmation_cb (void *cls,
  * @param buf prepared wire transfer data.
  * @param buf_size size of the prepared wire transfer data.
  */
-void
+static void
 prepare_cb (void *cls,
             const char *buf,
             size_t buf_size)
@@ -186,7 +186,7 @@ prepare_cb (void *cls,
       NULL)))
   {
     fprintf (stderr,
-             "Could not execute the wire transfer\n"); 
+             "Could not execute the wire transfer\n");
 
     plugin_handle->prepare_wire_transfer_cancel
       (plugin_handle->cls,
@@ -204,7 +204,7 @@ prepare_cb (void *cls,
 /**
  * Ask the bank to execute a wire transfer.
  */
-void
+static void
 execute_wire_transfer ()
 {
   struct TALER_Amount a;
@@ -222,7 +222,7 @@ execute_wire_transfer ()
                                            &a))
   {
     fprintf (stderr,
-             "Amount string incorrect.\n"); 
+             "Amount string incorrect.\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -230,7 +230,7 @@ execute_wire_transfer ()
   {
     fprintf (stderr,
              "Please give destination"
-             " account URL (--destination/-d)\n"); 
+             " account URL (--destination/-d)\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -250,11 +250,12 @@ execute_wire_transfer ()
   }
 }
 
+
 /**
  * Ask the bank the list of transactions for the bank account
  * mentioned in the config section given by the user.
  */
-void
+static void
 execute_history ()
 {
   size_t bin_len = 0;
@@ -290,9 +291,9 @@ execute_history ()
   }
 }
 
+
 /**
- * Gets executed upon shutdown.  Main duty is
- * wire-plugin unloading.
+ * Gets executed upon shutdown.  Main duty is wire-plugin unloading.
  *
  * @param cls closure.
  */
@@ -301,6 +302,7 @@ do_shutdown (void *cls)
 {
   TALER_WIRE_plugin_unload (plugin_handle);
 }
+
 
 /**
  * Main function that will be run.
@@ -357,6 +359,7 @@ run (void *cls,
                                  NULL);
 }
 
+
 /**
  * Main function of taler-wire.  This tool is used to command the
  * execution of wire transfers from the command line.  Its main
@@ -372,18 +375,15 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
-
     GNUNET_GETOPT_option_flag ('H',
                                "history",
                                "Ask to get a list of 10"
                                " transactions.",
                                &history),
-
     GNUNET_GETOPT_option_flag ('t',
                                "transfer",
                                "Execute a wire transfer.",
                                &transfer),
-
     GNUNET_GETOPT_option_string ('w',
                                  "since-when",
                                  "SW",
@@ -395,7 +395,6 @@ main (int argc,
                                  " the 10 youngest transactions"
                                  " are returned.",
                                  &since_when),
-
     GNUNET_GETOPT_option_string ('s',
                                  "section",
                                  "ACCOUNT-SECTION",
@@ -403,13 +402,11 @@ main (int argc,
                                  " credentials to access the"
                                  " bank.  Mandatory.\n",
                                  &account_section),
-
     GNUNET_GETOPT_option_string ('a',
                                  "amount",
                                  "AMOUNT",
                                  "Specify the amount to transfer.",
                                  &amount),
-
     GNUNET_GETOPT_option_string ('d',
                                  "destination",
                                  "PAYTO-URL",
@@ -418,12 +415,13 @@ main (int argc,
                                  &destination_account_url),
     GNUNET_GETOPT_OPTION_END
   };
+  int ret;
 
   GNUNET_assert
     (GNUNET_OK == GNUNET_log_setup ("taler-wire",
                                     "WARNING",
                                     NULL)); /* filename */
-  GNUNET_PROGRAM_run
+  ret = GNUNET_PROGRAM_run
     (argc,
      argv,
      "taler-wire",
@@ -431,6 +429,9 @@ main (int argc,
      options,
      &run,
      NULL);
-
+  if (GNUNET_OK != ret)
+    return ret;
   return global_ret;
 }
+
+/* end of taler-wire.c */
