@@ -312,11 +312,4 @@ struct Transaction *
 TFH_handle_history_range_skip (const struct HistoryArgs *ha,
                                const struct Transaction *pos);
 
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element _gets_ inserted in the result.
- * Same implementation of the "skip" counterpart, as /history-range
- * does not have the notion of count/delta.
- */
-Step TFH_handle_history_range_step;
 #endif

@@ -755,7 +755,6 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
   hrd.end.abs_value_us = end_stamp * 1000LL * 1000LL;
   ha.range = &hrd;
 
-  pos = NULL;
   /* hunt for 'pos' in the Transaction(s) LL.  */
   for (pos = h->transactions_head;
        NULL != pos;
@@ -768,7 +767,7 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
                                      pos,
                                      &ha,
                                      &TFH_handle_history_range_skip,
-                                     TFH_handle_history_range_step,
+                                     &TFH_handle_history_range_skip,
                                      &TFH_handle_history_range_advance);
 }
 

@@ -135,18 +135,11 @@ TFH_handle_history_range_skip (const struct HistoryArgs *ha,
   return pos->next;
 }
 
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element _gets_ inserted in the result.
- * Same implementation of the "skip" counterpart, as /history-range
- * does not have the notion of count/delta.
- */
-Step TFH_handle_history_range_step = &TFH_handle_history_range_skip;
 
 /**
  * Actual history response builder.
  *
- * @param pos first (included) element in the result set.
+ * @param pos first (included) element in the result set, NULL if history is empty
  * @param ha history arguments.
  * @param caller_name which function is building the history.
  * @return MHD_YES / MHD_NO, after having enqueued the response
@@ -168,8 +161,9 @@ TFH_build_history_response (struct MHD_Connection *connection,
   json_t *jresponse;
   int ret;
 
-  while (advance (ha,
-                  pos))
+  while ( (NULL != pos) &&
+          advance (ha,
+                   pos) )
   {
     json_t *trans;
     char *subject;
@@ -423,5 +417,3 @@ TFH_parse_history_common_args (struct MHD_Connection *connection,
 
   return GNUNET_OK;
 }
-
-
