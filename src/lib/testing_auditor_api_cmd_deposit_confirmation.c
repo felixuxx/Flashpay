@@ -238,15 +238,16 @@ deposit_confirmation_run (void *cls,
 							 &contract_terms));
   /* Very unlikely to fail */
   GNUNET_assert (NULL != contract_terms);
-  TALER_JSON_hash (contract_terms,
-		   &h_contract_terms);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_hash (contract_terms,
+                                  &h_contract_terms));
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_wire_details (deposit_cmd,
 						       dcs->coin_index,
 						       &wire_details));
-  TALER_JSON_hash (wire_details,
-		   &h_wire);
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_hash (wire_details,
+                                  &h_wire));
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_coin_priv (deposit_cmd,
 						    dcs->coin_index,

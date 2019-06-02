@@ -362,14 +362,13 @@ kcs (void *cls,
      uint8_t kyc_checked,
      uint64_t merchant_serial_id)
 {
-
   struct TALER_EXCHANGEDB_Session *session = cls;
   struct TALER_Amount amount;
   struct TALER_Amount sum;
 
-
-  TALER_amount_get_zero (CURRENCY,
-                         &amount);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (CURRENCY,
+                                        &amount));
   amount.value = 30;
   FAILIF
     (GNUNET_OK != plugin->insert_kyc_event (NULL,
