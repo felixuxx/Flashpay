@@ -1808,6 +1808,7 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
     /* bump RC by 1 if we released internal_key_state above */
     if (NULL == internal_key_state)
     {
+      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
 		  "Failed to initialize key state\n");
       return NULL;
