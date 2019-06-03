@@ -183,18 +183,22 @@ status_run (void *cls,
          &transfer_subject))
     {
       GNUNET_break (0);
-      TALER_LOG_ERROR
-        ("The reserve has neither a priv nor a subject line..\n");
+      TALER_LOG_ERROR ("The reserve has neither a priv nor a subject line.\n");
       TALER_TESTING_interpreter_fail (is);
       return;
-    
     }
 
-    GNUNET_STRINGS_string_to_data
-      (transfer_subject,
-       strlen (transfer_subject),
-       &reserve_pub.eddsa_pub,
-       sizeof (struct TALER_ReservePublicKeyP));
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (transfer_subject,
+                                       strlen (transfer_subject),
+                                       &reserve_pub.eddsa_pub,
+                                       sizeof (struct TALER_ReservePublicKeyP)))
+    {
+      GNUNET_break (0);
+      TALER_LOG_ERROR ("Transfer subject is not a public key.\n");
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
   }
 
   ss->rsh = TALER_EXCHANGE_reserve_status (is->exchange,
