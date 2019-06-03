@@ -756,12 +756,12 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 
   /* Wait for our master to die or to tell us to die */
   if (MODE_EXCHANGE == mode)
-    getchar ();
+    (void) getchar ();
 
   if ( (GNUNET_YES == linger) && ( (mode == MODE_BOTH || mode == MODE_CLIENT ) ) )
   {
     printf("press ENTER to stop\n");
-    getchar ();
+    (void) getchar ();
   }
 
   if (MODE_CLIENT == mode)
