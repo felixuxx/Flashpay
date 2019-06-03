@@ -227,8 +227,9 @@ TFH_build_history_response (struct MHD_Connection *connection,
 
   while (NULL != history_element)
   {
-    json_array_append_new (history,
-                           history_element->element);
+    GNUNET_assert (0 ==
+                   json_array_append_new (history,
+                                          history_element->element));
     history_element = history_element->next;
     if (NULL != history_element)
       GNUNET_free_non_null (history_element->prev);

@@ -704,8 +704,15 @@ deposit_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TALER_JSON_merchant_wire_signature_hash (wire,
-                                           &au->h_wire);
+  if (GNUNET_OK !=
+      TALER_JSON_merchant_wire_signature_hash (wire,
+                                               &au->h_wire))
+  {
+    GNUNET_break (0);
+    json_decref (au->wire);
+    au->wire = NULL;
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &au->wtid,
                               sizeof (au->wtid));

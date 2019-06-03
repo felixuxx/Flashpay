@@ -1593,6 +1593,11 @@ TALER_EXCHANGE_serialize_data
 
   now = GNUNET_TIME_absolute_get ();
   signkeys = json_array ();
+  if (NULL == signkeys)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   for (unsigned int i=0;i<kd->num_sign_keys;i++)
   {
     const struct TALER_EXCHANGE_SigningPublicKey *sk = &kd->sign_keys[i];
@@ -1601,30 +1606,42 @@ TALER_EXCHANGE_serialize_data
     if (now.abs_value_us > sk->valid_until.abs_value_us)
       continue; /* skip keys that have expired */
     signkey = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-			 "key",
-			 GNUNET_JSON_from_data_auto
-                           (&sk->key),
-			 "master_sig",
-			 GNUNET_JSON_from_data_auto
-                           (&sk->master_sig),
-			 "stamp_start",
-			 GNUNET_JSON_from_time_abs
-                           (sk->valid_from),
-			 "stamp_expire",
-			 GNUNET_JSON_from_time_abs
-                           (sk->valid_until),
-			 "stamp_end",
-			 GNUNET_JSON_from_time_abs
-                           (sk->valid_legal));
+                         "key",
+                         GNUNET_JSON_from_data_auto
+                         (&sk->key),
+                         "master_sig",
+                         GNUNET_JSON_from_data_auto
+                         (&sk->master_sig),
+                         "stamp_start",
+                         GNUNET_JSON_from_time_abs
+                         (sk->valid_from),
+                         "stamp_expire",
+                         GNUNET_JSON_from_time_abs
+                         (sk->valid_until),
+                         "stamp_end",
+                         GNUNET_JSON_from_time_abs
+                         (sk->valid_legal));
     if (NULL == signkey)
     {
       GNUNET_break (0);
       continue;
     }
-    json_array_append_new (signkeys,
-			   signkey);
+    if (0 != json_array_append_new (signkeys,
+                                    signkey))
+    {
+      GNUNET_break (0);
+      json_decref (signkey);
+      json_decref (signkeys);
+      return NULL;
+    }
   }
   denoms = json_array ();
+  if (NULL == denoms)
+  {
+    GNUNET_break (0);
+    json_decref (signkeys);
+    return NULL;
+  }
   for (unsigned int i=0;i<kd->num_denom_keys;i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
@@ -1633,41 +1650,55 @@ TALER_EXCHANGE_serialize_data
     if (now.abs_value_us > dk->expire_deposit.abs_value_us)
       continue; /* skip keys that have expired */
     denom = json_pack ("{s:o, s:o, s:o, s:o, s:o "
-		       ",s:o, s:o, s:o, s:o, s:o "
-		       ",s:o}",
-		       "stamp_expire_deposit",
-		       GNUNET_JSON_from_time_abs (dk->expire_deposit),
-		       "stamp_expire_withdraw",
-		       GNUNET_JSON_from_time_abs (dk->withdraw_valid_until),
-		       "stamp_start",
-		       GNUNET_JSON_from_time_abs (dk->valid_from),
-		       "stamp_expire_legal",
-		       GNUNET_JSON_from_time_abs (dk->expire_legal),
-		       "value",
-		       TALER_JSON_from_amount (&dk->value),
-		       "fee_withdraw",
-		       /* #6 */
-		       TALER_JSON_from_amount (&dk->fee_withdraw),
-		       "fee_deposit",
-		       TALER_JSON_from_amount (&dk->fee_deposit),
-		       "fee_refresh",
-		       TALER_JSON_from_amount (&dk->fee_refresh),
-		       "fee_refund",
-		       TALER_JSON_from_amount (&dk->fee_refund),
-		       "master_sig",
-		       GNUNET_JSON_from_data_auto (&dk->master_sig),
-		       /* #10 */
-		       "denom_pub",
-		       GNUNET_JSON_from_rsa_public_key (dk->key.rsa_public_key));
+                       ",s:o, s:o, s:o, s:o, s:o "
+                       ",s:o}",
+                       "stamp_expire_deposit",
+                       GNUNET_JSON_from_time_abs (dk->expire_deposit),
+                       "stamp_expire_withdraw",
+                       GNUNET_JSON_from_time_abs (dk->withdraw_valid_until),
+                       "stamp_start",
+                       GNUNET_JSON_from_time_abs (dk->valid_from),
+                       "stamp_expire_legal",
+                       GNUNET_JSON_from_time_abs (dk->expire_legal),
+                       "value",
+                       TALER_JSON_from_amount (&dk->value),
+                       "fee_withdraw",
+                       /* #6 */
+                       TALER_JSON_from_amount (&dk->fee_withdraw),
+                       "fee_deposit",
+                       TALER_JSON_from_amount (&dk->fee_deposit),
+                       "fee_refresh",
+                       TALER_JSON_from_amount (&dk->fee_refresh),
+                       "fee_refund",
+                       TALER_JSON_from_amount (&dk->fee_refund),
+                       "master_sig",
+                       GNUNET_JSON_from_data_auto (&dk->master_sig),
+                       /* #10 */
+                       "denom_pub",
+                       GNUNET_JSON_from_rsa_public_key (dk->key.rsa_public_key));
     if (NULL == denom)
     {
       GNUNET_break (0);
       continue;
     }
-    json_array_append_new (denoms,
-			   denom);
+    if (0 == json_array_append_new (denoms,
+                                    denom))
+    {
+      GNUNET_break (0);
+      json_decref (denom);
+      json_decref (denoms);
+      json_decref (signkeys);
+      return NULL;
+    }
   }
   auditors = json_array ();
+  if (NULL == auditors)
+  {
+    GNUNET_break (0);
+    json_decref (denoms);
+    json_decref (signkeys);
+    return NULL;
+  }
   for (unsigned int i=0;i<kd->num_auditors;i++)
   {
     const struct TALER_EXCHANGE_AuditorInformation *ai = &kd->auditors[i];
@@ -1675,6 +1706,14 @@ TALER_EXCHANGE_serialize_data
     json_t *adenoms;
 
     adenoms = json_array ();
+    if (NULL == adenoms)
+    {
+      GNUNET_break (0);
+      json_decref (denoms);
+      json_decref (signkeys);
+      json_decref (auditors);
+      return NULL;
+    }
     for (unsigned int j=0;j<ai->num_denom_keys;j++)
     {
       const struct TALER_EXCHANGE_AuditorDenominationInfo *adi = &ai->denom_keys[j];
@@ -1682,69 +1721,92 @@ TALER_EXCHANGE_serialize_data
       json_t *k;
 
       if (now.abs_value_us > dk->expire_deposit.abs_value_us)
-	continue; /* skip auditor signatures for denomination keys that have expired */
+        continue; /* skip auditor signatures for denomination keys that have expired */
       GNUNET_assert (adi->denom_key_offset < kd->num_denom_keys);
       k = json_pack ("{s:o, s:o}",
-		     "denom_pub_h",
-		     GNUNET_JSON_from_data_auto (&dk->h_key),
-		     "auditor_sig",
-		     GNUNET_JSON_from_data_auto (&adi->auditor_sig));
+                     "denom_pub_h",
+                     GNUNET_JSON_from_data_auto (&dk->h_key),
+                     "auditor_sig",
+                     GNUNET_JSON_from_data_auto (&adi->auditor_sig));
       if (NULL == k)
       {
-	GNUNET_break (0);
-	continue;
+        GNUNET_break (0);
+        json_decref (adenoms);
+        json_decref (denoms);
+        json_decref (signkeys);
+        json_decref (auditors);
+        return NULL;
       }
-      json_array_append_new (adenoms,
-			     k);
+      if (0 != json_array_append_new (adenoms,
+                                      k))
+      {
+        GNUNET_break (0);
+        json_decref (k);
+        json_decref (adenoms);
+        json_decref (denoms);
+        json_decref (signkeys);
+        json_decref (auditors);
+        return NULL;
+      }
     }
 
     a = json_pack ("{s:o, s:s, s:o}",
-		   "auditor_pub",
-		   GNUNET_JSON_from_data_auto (&ai->auditor_pub),
-		   "auditor_url",
-		   ai->auditor_url,
-		   "denomination_keys",
-		   adenoms);
+                   "auditor_pub",
+                   GNUNET_JSON_from_data_auto (&ai->auditor_pub),
+                   "auditor_url",
+                   ai->auditor_url,
+                   "denomination_keys",
+                   adenoms);
     if (NULL == a)
     {
-      GNUNET_break (0);
-      continue;
+      json_decref (adenoms);
+      json_decref (denoms);
+      json_decref (signkeys);
+      json_decref (auditors);
+      return NULL;
     }
-    json_array_append_new (auditors,
-			   a);
+    if (0 != json_array_append_new (auditors,
+                                    a))
+    {
+      json_decref (a);
+      json_decref (denoms);
+      json_decref (signkeys);
+      json_decref (auditors);
+      return NULL;
+    }
   }
   keys = json_pack ("{s:s, s:o, s:o, s:o, s:o"
-		    ",s:o, s:o}",
-		    /* 1 */
-		    "version",
-		    kd->version,
-		    "master_public_key",
-		    GNUNET_JSON_from_data_auto (&kd->master_pub),
-		    "reserve_closing_delay",
-		    GNUNET_JSON_from_time_rel (kd->reserve_closing_delay),
-		    "list_issue_date",
-		    GNUNET_JSON_from_time_abs (kd->list_issue_date),
-		    "signkeys",
-		    signkeys,
-		    /* #6 */
-		    "denoms",
-		    denoms,
-		    "auditors",
-		    auditors);
+                    ",s:o, s:o}",
+                    /* 1 */
+                    "version",
+                    kd->version,
+                    "master_public_key",
+                    GNUNET_JSON_from_data_auto (&kd->master_pub),
+                    "reserve_closing_delay",
+                    GNUNET_JSON_from_time_rel (kd->reserve_closing_delay),
+                    "list_issue_date",
+                    GNUNET_JSON_from_time_abs (kd->list_issue_date),
+                    "signkeys",
+                    signkeys,
+                    /* #6 */
+                    "denoms",
+                    denoms,
+                    "auditors",
+                    auditors);
   if (NULL == keys)
   {
     GNUNET_break (0);
     return NULL;
   }
   return json_pack ("{s:I, s:o, s:s, s:o}",
-		    "version",
-		    (json_int_t) TALER_SERIALIZATION_FORMAT_VERSION,
-		    "expire",
-		    GNUNET_JSON_from_time_abs (exchange->key_data_expiration),
-		    "url",
-		    exchange->url,
-		    "keys",
-		    keys);
+                    "version",
+                    (json_int_t) TALER_SERIALIZATION_FORMAT_VERSION,
+                    "expire",
+                    GNUNET_JSON_from_time_abs (exchange->key_data_expiration),
+                    "url",
+                    exchange->url,
+                    "keys",
+                    keys);
 }
 
 

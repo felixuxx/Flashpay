@@ -366,9 +366,10 @@ refresh_reveal_transaction (void *cls,
           TALER_planchet_setup_refresh (&ts,
                                         j,
                                         &ps);
-          TALER_planchet_prepare (rcd->dk,
-                                  &ps,
-                                  &pd);
+          GNUNET_assert (GNUNET_OK ==
+                         TALER_planchet_prepare (rcd->dk,
+                                                 &ps,
+                                                 &pd));
           rcd->coin_ev = pd.coin_ev;
           rcd->coin_ev_size = pd.coin_ev_size;
         }

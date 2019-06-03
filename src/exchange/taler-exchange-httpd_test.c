@@ -226,11 +226,12 @@ TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-  GNUNET_CRYPTO_kdf (&hc, sizeof (hc),
-		     "salty", strlen ("salty"),
-		     in_ptr,
-		     in_ptr_size,
-		     NULL, 0);
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (&hc, sizeof (hc),
+                                    "salty", strlen ("salty"),
+                                    in_ptr,
+                                    in_ptr_size,
+                                    NULL, 0));
   GNUNET_JSON_parse_free (spec);
   json = GNUNET_JSON_from_data_auto (&hc);
   return TEH_RESPONSE_reply_json_pack (connection,

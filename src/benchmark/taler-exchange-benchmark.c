@@ -223,7 +223,7 @@ pick_exchange_account_cb (void *cls,
                         strlen ("account-")))
   {
     const char **s = cls;
-    
+
     *s = section;
   }
 }
@@ -376,12 +376,14 @@ run (void *cls,
   GNUNET_asprintf (&withdraw_fee_str,
                    "%s:0.1",
                    currency);
-  TALER_string_to_amount (withdraw_fee_str,
-                          &withdraw_fee);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (withdraw_fee_str,
+                                         &withdraw_fee));
   for (unsigned int i = 0; i < howmany_coins; i++)
-    TALER_amount_add (&total_reserve_amount,
-                      &total_reserve_amount,
-                      &withdraw_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_reserve_amount,
+                                     &total_reserve_amount,
+                                     &withdraw_fee));
   for (unsigned int j = 0; j < howmany_reserves; j++)
   {
     char *create_reserve_label;
@@ -690,7 +692,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     GNUNET_OS_process_wait (exchanged);
     GNUNET_OS_process_destroy (exchanged);
     if (NULL != wirewatch)
-    { 
+    {
       GNUNET_OS_process_kill (wirewatch,
                               SIGTERM);
       GNUNET_OS_process_wait (wirewatch);
@@ -968,7 +970,7 @@ main (int argc,
                   _("Malformed payto:// URL `%s' in configuration\n"),
                   exchange_payto_url);
       GNUNET_free (exchange_payto_url);
-      return BAD_CONFIG_FILE;      
+      return BAD_CONFIG_FILE;
     }
     GNUNET_free (exchange_payto_url);
   }
