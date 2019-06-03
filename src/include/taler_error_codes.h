@@ -1394,7 +1394,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAY_REFUND_SIGNATURE_FAILED = 2606,
 
-  
+
   /**
    * The backend does not know the instance that was supposed to support
    * the tip.  Likely to be a configuration error. Returned with an
@@ -1456,13 +1456,13 @@ enum TALER_ErrorCode
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_FAILED_EMPTY = 2708,
 
   /**
-   * The backend got an invalid reserve history 
+   * The backend got an invalid reserve history
    * (fails to start with a deposit) from the exchange.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_INVALID_NO_DEPOSIT = 2709,
 
   /**
-   * The backend got an reserve history 
+   * The backend got an reserve history
    * with a bad currency from the exchange.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_INVALID_CURRENCY = 2710,
@@ -1470,38 +1470,38 @@ enum TALER_ErrorCode
   /**
    * The backend got a reserve with a currency that does not match
    * the backend's currency.
-   */    
+   */
   TALER_EC_TIP_QUERY_RESERVE_CURRENCY_MISSMATCH = 2711,
 
   /**
    * The backend got a reserve history with amounts it cannot
    * process (addition failure in deposits).
-   */    
+   */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_DEPOSIT = 2712,
 
   /**
    * The backend got a reserve history with amounts it cannot
    * process (addition failure in withdraw amounts).
-   */    
+   */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_WITHDRAW = 2713,
 
   /**
    * The backend got a reserve history with amounts it cannot
    * process (addition failure in closing amounts).
-   */    
+   */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_CLOSED = 2714,
 
   /**
    * The backend got a reserve history with inconsistent amounts.
-   */    
+   */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_INCONSISTENT = 2715,
 
   /**
    * The backend encountered a database error querying tipping reserves.
-   */    
+   */
   TALER_EC_TIP_QUERY_DB_ERROR = 2716,
 
-  
+
   /**
    * The backend had trouble accessing the database to persist
    * information about enabling tips.
