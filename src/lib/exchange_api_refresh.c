@@ -246,7 +246,7 @@ free_melt_data (struct MeltData *md)
   }
 
   for (unsigned int i=0;i<TALER_CNC_KAPPA;i++)
-    GNUNET_free (md->fresh_coins[i]);
+    GNUNET_free_non_null (md->fresh_coins[i]);
   /* Finally, clean up a bit...
      (NOTE: compilers might optimize this away, so this is
      not providing any strong assurances that the key material
@@ -705,6 +705,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   GNUNET_CRYPTO_eddsa_key_get_public (&melt_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   /* build up melt data structure */
+  memset (&md, 0, sizeof (md));
   md.num_fresh_coins = fresh_pks_len;
   md.melted_coin.coin_priv = *melt_priv;
   md.melted_coin.melt_amount_with_fee = *melt_amount;
@@ -713,8 +714,8 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   md.melted_coin.expire_deposit
     = melt_pk->expire_deposit;
   GNUNET_assert (GNUNET_OK ==
-		 TALER_amount_get_zero (melt_amount->currency,
-					&total));
+                 TALER_amount_get_zero (melt_amount->currency,
+                                        &total));
   md.melted_coin.pub_key.rsa_public_key
     = GNUNET_CRYPTO_rsa_public_key_dup (melt_pk->key.rsa_public_key);
   md.melted_coin.sig.rsa_signature
@@ -726,13 +727,13 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
     md.fresh_pks[i].rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pks[i].key.rsa_public_key);
     if ( (GNUNET_OK !=
-	  TALER_amount_add (&total,
-			    &total,
-			    &fresh_pks[i].value)) ||
-	 (GNUNET_OK !=
-	  TALER_amount_add (&total,
-			    &total,
-			    &fresh_pks[i].fee_withdraw)) )
+          TALER_amount_add (&total,
+                            &total,
+                            &fresh_pks[i].value)) ||
+         (GNUNET_OK !=
+          TALER_amount_add (&total,
+                            &total,
+                            &fresh_pks[i].fee_withdraw)) )
     {
       GNUNET_break (0);
       free_melt_data (&md);
@@ -742,7 +743,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   /* verify that melt_amount is above total cost */
   if (1 ==
       TALER_amount_cmp (&total,
-			melt_amount) )
+                        melt_amount) )
   {
     /* Eh, this operation is more expensive than the
        @a melt_amount. This is not OK. */
