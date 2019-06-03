@@ -1681,8 +1681,8 @@ TALER_EXCHANGE_serialize_data
       GNUNET_break (0);
       continue;
     }
-    if (0 == json_array_append_new (denoms,
-                                    denom))
+    if (0 != json_array_append_new (denoms,
+                                     denom))
     {
       GNUNET_break (0);
       json_decref (denom);
