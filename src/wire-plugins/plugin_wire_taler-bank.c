@@ -1166,6 +1166,8 @@ taler_bank_get_history_range
    TALER_WIRE_HistoryResultCallback hres_cb,
    void *hres_cb_cls)
 {
+
+  /* FIXME: remove the following lines when addressing #5746*/
   GNUNET_break (0);
   return NULL;
 
