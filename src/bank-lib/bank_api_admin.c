@@ -81,6 +81,7 @@ handle_admin_add_incoming_finished (void *cls,
   const json_t *j = response;
 
   aai->job = NULL;
+  timestamp = GNUNET_TIME_UNIT_FOREVER_ABS;
   switch (response_code)
   {
   case 0:
