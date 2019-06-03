@@ -366,11 +366,13 @@ conv_cancel (enum TALER_BANK_Direction direction)
 
   if (TALER_BANK_DIRECTION_CANCEL ==
       (TALER_BANK_DIRECTION_CANCEL & direction))
-    strcpy (&ret.value[0],
-            "show");
+    GNUNET_snprintf (ret.value,
+                     sizeof (ret.value),
+                     "show");
   else
-    strcpy (&ret.value[0],
-            "omit");
+    GNUNET_snprintf (ret.value,
+                     sizeof (ret.value),
+                     "omit");
   return ret;
 }
 
