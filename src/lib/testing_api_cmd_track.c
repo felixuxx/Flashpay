@@ -243,6 +243,7 @@ deposit_wtid_cb
   TALER_TESTING_interpreter_next (tts->is);
 }
 
+
 /**
  * Run the command.
  *
@@ -340,6 +341,7 @@ track_transaction_run (void *cls,
   GNUNET_assert (NULL != tts->tth);
 }
 
+
 /**
  * Cleanup the state from a "track transaction" CMD, and possibly
  * cancel a operation thereof.
@@ -347,7 +349,7 @@ track_transaction_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 track_transaction_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
@@ -437,6 +439,7 @@ TALER_TESTING_cmd_track_transaction
   return cmd;
 }
 
+
 /**
  * Cleanup the state for a "track transfer" CMD, and possibly
  * cancel a pending operation thereof.
@@ -444,7 +447,7 @@ TALER_TESTING_cmd_track_transaction
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 track_transfer_cleanup (void *cls,
                         const struct TALER_TESTING_Command *cmd)
 {
@@ -461,8 +464,8 @@ track_transfer_cleanup (void *cls,
     tts->tth = NULL;
   }
   GNUNET_free (tts);
-
 }
+
 
 /**
  * Check whether the HTTP response code from a "track transfer"
@@ -505,11 +508,9 @@ track_transfer_cb
   struct TrackTransferState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
-
   struct TALER_Amount expected_amount;
 
   tts->tth = NULL;
-
   if (tts->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -522,13 +523,18 @@ track_transfer_cb
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
-  if ( (NULL == tts->expected_total_amount) ||
-       (NULL == tts->expected_wire_fee) )
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Expected amount and fee not specified, "
-                "likely to segfault...\n");
-
+  if (NULL == tts->expected_total_amount)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  if (NULL == tts->expected_wire_fee)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   switch (http_status)
   {
   case MHD_HTTP_OK:
