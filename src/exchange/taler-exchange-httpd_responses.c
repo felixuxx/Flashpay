@@ -175,16 +175,17 @@ TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
     return MHD_NO;
   }
   TEH_RESPONSE_add_global_headers (resp);
-  (void) MHD_add_response_header (resp,
-                                  MHD_HTTP_HEADER_CONTENT_TYPE,
-                                  "application/json");
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         "application/json"));
   if (MHD_YES == comp)
   {
     /* Need to indicate to client that body is compressed */
     if (MHD_NO ==
-	MHD_add_response_header (resp,
-				 MHD_HTTP_HEADER_CONTENT_ENCODING,
-				 "deflate"))
+        MHD_add_response_header (resp,
+                                 MHD_HTTP_HEADER_CONTENT_ENCODING,
+                                 "deflate"))
     {
       GNUNET_break (0);
       MHD_destroy_response (resp);
