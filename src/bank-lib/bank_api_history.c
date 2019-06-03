@@ -68,23 +68,6 @@ struct TALER_BANK_HistoryHandle
 
 
 /**
- * Represent a URL argument+value pair.
- */
-struct HistoryArgumentURL
-{
-  /**
-   * Name of the URL argument.
-   */
-  char argument[20];
-
-  /**
-   * Value of the URL argument.
-   */
-  char value[20];
-};
-
-
-/**
  * Parse history given in JSON format and invoke the callback on each item.
  *
  * @param hh handle to the account history request
@@ -320,34 +303,29 @@ put_history_job (struct GNUNET_CURL_Context *ctx,
  * Convert fixed value 'direction' into string.
  *
  * @param direction the value to convert.
- * @return string representation of @a direction.  When length
- *         is zero, an error occurred.
+ * @return string representation of @a direction.  NULL on error
  */
-static struct HistoryArgumentURL
+static const char *
 conv_direction (enum TALER_BANK_Direction direction)
 {
-  struct HistoryArgumentURL ret;
-
   if (TALER_BANK_DIRECTION_NONE == direction)
   {
     /* Should just never happen.  */
-    GNUNET_assert (0);
-    return ret;
+    GNUNET_break (0);
+    return NULL;
   }
-
   if (TALER_BANK_DIRECTION_BOTH ==
       (TALER_BANK_DIRECTION_BOTH & direction))
-    strcpy (&ret.value[0],
-            "both");
+    return "both";
   else if (TALER_BANK_DIRECTION_CREDIT ==
-      (TALER_BANK_DIRECTION_CREDIT & direction))
-    strcpy (&ret.value[0],
-            "credit");
+           (TALER_BANK_DIRECTION_CREDIT & direction))
+    return "credit";
   else if (TALER_BANK_DIRECTION_DEBIT ==
-      (TALER_BANK_DIRECTION_BOTH & direction)) /*why use 'both' flag?*/
-    strcpy (&ret.value[0],
-            "debit");
-  return ret;
+           (TALER_BANK_DIRECTION_BOTH & direction)) /*why use 'both' flag?*/
+    return "debit";
+  /* Should just never happen.  */
+  GNUNET_break (0);
+  return NULL;
 }
 
 
@@ -356,25 +334,17 @@ conv_direction (enum TALER_BANK_Direction direction)
  * of the "cancel" argument.
  *
  * @param direction the value to convert.
- * @return string representation of @a direction.  When length
- *         is zero, an error occurred.
+ * @return string representation of @a direction
  */
-static struct HistoryArgumentURL
+static const char *
 conv_cancel (enum TALER_BANK_Direction direction)
 {
-  struct HistoryArgumentURL ret;
-
   if (TALER_BANK_DIRECTION_CANCEL ==
       (TALER_BANK_DIRECTION_CANCEL & direction))
-    GNUNET_snprintf (ret.value,
-                     sizeof (ret.value),
-                     "show");
-  else
-    GNUNET_snprintf (ret.value,
-                     sizeof (ret.value),
-                     "omit");
-  return ret;
+    return "show";
+  return "omit";
 }
+
 
 /**
  * Request the wire transfer history of a bank account,
@@ -421,8 +391,8 @@ TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
                    (unsigned long long) account_number,
                    start_date.abs_value_us / 1000LL / 1000LL,
                    end_date.abs_value_us / 1000LL / 1000LL,
-                   conv_direction (direction).value,
-                   conv_cancel (direction).value,
+                   conv_direction (direction),
+                   conv_cancel (direction),
                    (GNUNET_YES == ascending) ? "ascending" : "descending");
 
   hh = put_history_job (ctx,
@@ -489,16 +459,16 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
                    "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s",
                    (unsigned long long) account_number,
                    (long long) num_results,
-                   conv_direction (direction).value,
-                   conv_cancel (direction).value,
+                   conv_direction (direction),
+                   conv_cancel (direction),
                    (GNUNET_YES == ascending) ? "ascending" : "descending");
   else
     GNUNET_asprintf (&url,
                      "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s&start=%llu",
                      (unsigned long long) account_number,
                      (long long) num_results,
-                     conv_direction (direction).value,
-                     conv_cancel (direction).value,
+                     conv_direction (direction),
+                     conv_cancel (direction),
                      (GNUNET_YES == ascending) ? "ascending" : "descending",
                      start_row);
   hh = put_history_job (ctx,
