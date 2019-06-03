@@ -523,21 +523,23 @@ track_transfer_cb
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  if (NULL == tts->expected_total_amount)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-  if (NULL == tts->expected_wire_fee)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
+
   switch (http_status)
   {
   case MHD_HTTP_OK:
+    if (NULL == tts->expected_total_amount)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (NULL == tts->expected_wire_fee)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+
     if (GNUNET_OK !=
         TALER_string_to_amount (tts->expected_total_amount,
                                 &expected_amount))
