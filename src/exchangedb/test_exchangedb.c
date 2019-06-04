@@ -536,7 +536,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_EXCHANGEDB_RefreshMelt ret_refresh_session;
   struct DenomKeyPair *dkp;
   struct TALER_DenominationPublicKey *new_denom_pubs;
-  struct TALER_DenominationPublicKey *ret_denom_pubs;
   int ret;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
@@ -546,7 +545,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   dkp = NULL;
   new_dkp = NULL;
   new_denom_pubs = NULL;
-  ret_denom_pubs = NULL;
   /* create and test a refresh session */
   refresh_session.noreveal_index = MELT_NOREVEAL_INDEX;
   /* create a denomination (value: 1; fraction: 100) */
@@ -730,12 +728,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   }
   destroy_denom_key_pair (dkp);
   GNUNET_CRYPTO_rsa_signature_free (refresh_session.coin.denom_sig.rsa_signature);
-  for (unsigned int cnt = 0;
-       (NULL != ret_denom_pubs) && (cnt < MELT_NEW_COINS)
-         && (NULL != ret_denom_pubs[cnt].rsa_public_key);
-       cnt++)
-    GNUNET_CRYPTO_rsa_public_key_free (ret_denom_pubs[cnt].rsa_public_key);
-  GNUNET_free_non_null (ret_denom_pubs);
   GNUNET_free_non_null (new_denom_pubs);
   for (unsigned int cnt = 0;
        (NULL != new_dkp) && (cnt < MELT_NEW_COINS) && (NULL != new_dkp[cnt]);
