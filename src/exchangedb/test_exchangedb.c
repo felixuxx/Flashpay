@@ -1995,6 +1995,10 @@ run (void *cls)
 
   result = 10;
   deposit2 = deposit;
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session,
+                         "test-2"));
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->have_deposit (plugin->cls,
@@ -2010,6 +2014,9 @@ run (void *cls)
                                 GNUNET_YES));
   FAILIF (GNUNET_OK !=
 	  test_melting (session));
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+          plugin->commit (plugin->cls,
+                          session));
 
 
   /* test insert_refund! */

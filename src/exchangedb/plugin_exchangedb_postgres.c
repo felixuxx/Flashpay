@@ -739,6 +739,12 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE reserve_pub=$1"
                             " FOR UPDATE;",
                             1),
+    /* Lock withdraw table; NOTE: we may want to eventually shard the
+       deposit table to avoid this lock being the main point of
+       contention limiting transaction performance. */
+    GNUNET_PQ_make_prepare ("lock_withdraw",
+                            "LOCK TABLE reserves_out;",
+                            0),
     /* Used in #postgres_insert_withdraw_info() to store
        the signature of a blinded coin with the blinded coin's
        details before returning it during /reserve/withdraw. We store
@@ -1039,7 +1045,12 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE refund_serial_id>=$1"
                             " ORDER BY refund_serial_id ASC;",
                             1),
-
+    /* Lock deposit table; NOTE: we may want to eventually shard the
+       deposit table to avoid this lock being the main point of
+       contention limiting transaction performance. */
+    GNUNET_PQ_make_prepare ("lock_deposit",
+                            "LOCK TABLE deposits;",
+                            0),
     /* Store information about a /deposit the exchange is to execute.
        Used in #postgres_insert_deposit(). */
     GNUNET_PQ_make_prepare ("insert_deposit",
@@ -2380,6 +2391,9 @@ postgres_get_withdraw_info (void *cls,
                             const struct GNUNET_HashCode *h_blind,
                             struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
+  struct GNUNET_PQ_QueryParam no_params[] = {
+    GNUNET_PQ_query_param_end
+  };
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_blind),
     GNUNET_PQ_query_param_end
@@ -2399,12 +2413,17 @@ postgres_get_withdraw_info (void *cls,
 				 &collectable->withdraw_fee),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                                    "lock_withdraw",
+                                                    no_params)))
+    return qs;
   collectable->h_coin_envelope = *h_blind;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "get_withdraw_info",
-						   params,
-						   rs);
+                                                   "get_withdraw_info",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2876,6 +2895,9 @@ postgres_have_deposit (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_QueryParam no_params[] = {
+    GNUNET_PQ_query_param_end
+  };
   struct TALER_EXCHANGEDB_Deposit deposit2;
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("amount_with_fee",
@@ -2892,6 +2914,10 @@ postgres_have_deposit (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                                    "lock_deposit",
+                                                    no_params)))
+    return qs;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting deposits for coin %s\n",
               TALER_B2S (&deposit->coin.coin_pub));

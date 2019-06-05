@@ -59,7 +59,7 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
   struct TALER_Amount balance;
 
   json_history = TEH_RESPONSE_compile_reserve_history (rh,
-						       &balance);
+                                                       &balance);
   if ((NULL == json_history)
       /* Address the case where the ptr is not null, but
        * it fails "internally" to dump as string (= corrupted).  */
@@ -180,9 +180,9 @@ struct WithdrawContext
  */
 static enum GNUNET_DB_QueryStatus
 withdraw_transaction (void *cls,
-		      struct MHD_Connection *connection,
-		      struct TALER_EXCHANGEDB_Session *session,
-		      int *mhd_ret)
+                      struct MHD_Connection *connection,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      int *mhd_ret)
 {
   struct WithdrawContext *wc = cls;
   struct TALER_EXCHANGEDB_Reserve r;
@@ -197,9 +197,9 @@ withdraw_transaction (void *cls,
   wc->collectable.sig.rsa_signature = NULL;
 #endif
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-				      session,
-				      &wc->wsrd.h_coin_envelope,
-				      &wc->collectable);
+                                      session,
+                                      &wc->wsrd.h_coin_envelope,
+                                      &wc->collectable);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

@@ -215,8 +215,8 @@ deposit_transaction (void *cls,
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
   qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
-				   session,
-				   deposit);
+                                   session,
+                                   deposit);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
