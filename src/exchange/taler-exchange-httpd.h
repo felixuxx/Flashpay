@@ -39,6 +39,11 @@ extern char *TEH_exchange_currency_string;
 extern int TEH_exchange_connection_close;
 
 /**
+ * How long is caching /keys allowed at most?
+ */
+extern struct GNUNET_TIME_Relative max_keys_caching;
+
+/**
  * The exchange's configuration.
  */
 extern struct GNUNET_CONFIGURATION_Handle *cfg;

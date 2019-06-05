@@ -98,6 +98,11 @@ char *TEH_revocation_directory;
 struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
+ * How long is caching /keys allowed at most?
+ */
+struct GNUNET_TIME_Relative max_keys_caching;
+
+/**
  * Master public key (according to the
  * configuration in the exchange directory).
  */
@@ -370,8 +375,8 @@ handle_mhd_request (void *cls,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/eddsa", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_eddsa, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_eddsa, MHD_HTTP_OK },
       { "/test/eddsa", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
@@ -391,13 +396,12 @@ handle_mhd_request (void *cls,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/transfer", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_transfer, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_transfer, MHD_HTTP_OK },
       { "/test/transfer", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 #endif
-
       { NULL, NULL, NULL, NULL, 0, 0 }
     };
   static struct TEH_RequestHandler h404 =
@@ -605,6 +609,18 @@ exchange_serve_process_config ()
 {
   char *TEH_master_public_key_str;
 
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchange",
+                                           "MAX_KEYS_CACHING",
+                                           &max_keys_caching))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "MAX_KEYS_CACHING",
+                               "valid relative time expected");
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchange",

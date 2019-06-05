@@ -1251,29 +1251,29 @@ keys_completed_cb (void *cls,
     /* Old auditors got just copied into new ones.  */
     if (GNUNET_OK !=
         decode_keys_json (j,
-			  GNUNET_YES,
+                          GNUNET_YES,
                           &kd,
-			  &vc))
+                          &vc))
     {
       TALER_LOG_ERROR ("Could not decode /keys response\n");
       response_code = 0;
       for (unsigned int i=0;i<kd.num_auditors;i++)
       {
-	struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
+        struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
 
-	GNUNET_array_grow (anew->denom_keys,
-			   anew->num_denom_keys,
-			   0);
-	GNUNET_free (anew->auditor_url);
+        GNUNET_array_grow (anew->denom_keys,
+                           anew->num_denom_keys,
+                           0);
+        GNUNET_free (anew->auditor_url);
       }
       GNUNET_free (kd.auditors);
       kd.auditors = NULL;
       kd.num_auditors = 0;
       for (unsigned int i=0;i<kd_old.num_denom_keys;i++)
-	GNUNET_CRYPTO_rsa_public_key_free (kd.denom_keys[i].key.rsa_public_key);
+        GNUNET_CRYPTO_rsa_public_key_free (kd.denom_keys[i].key.rsa_public_key);
       GNUNET_array_grow (kd.denom_keys,
-			 kd.denom_keys_size,
-			 0);
+                         kd.denom_keys_size,
+                         0);
       kd.num_denom_keys = 0;
       break;
     }
@@ -1319,7 +1319,7 @@ keys_completed_cb (void *cls,
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
-		     vc);
+                     vc);
   free_key_data (&kd_old);
 }
 
