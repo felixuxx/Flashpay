@@ -514,9 +514,9 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                              denom_pub);
   GNUNET_assert (NULL != dki);
   GNUNET_assert (GNUNET_SYSERR !=
-		 TALER_amount_subtract (&amount_without_fee,
-					amount,
-					&dki->fee_deposit));
+                 TALER_amount_subtract (&amount_without_fee,
+                                        amount,
+                                        &dki->fee_deposit));
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &denom_pub_hash);
   if (GNUNET_OK !=

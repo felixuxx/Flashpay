@@ -700,7 +700,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
   /**
    * Denomination key we are withdrawing.
    */
-  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+  struct TALER_EXCHANGE_DenomPublicKey pk;
 
   /**
    * Closure for @a cb.
@@ -755,7 +755,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_planchet_to_coin (&wsh->pk->key,
+      TALER_planchet_to_coin (&wsh->pk.key,
                               blind_sig,
                               &wsh->ps,
                               &wsh->c_hash,
@@ -770,7 +770,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
   /* signature is valid, return it to the application */
   wsh->cb (wsh->cb_cls,
            MHD_HTTP_OK,
-	   TALER_EC_NONE,
+           TALER_EC_NONE,
            &fc.sig,
            json);
   /* make sure callback isn't called again after return */
@@ -868,8 +868,8 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
   /* Compute how much we expected to charge to the reserve */
   if (GNUNET_OK !=
       TALER_amount_add (&requested_amount,
-                        &wsh->pk->value,
-                        &wsh->pk->fee_withdraw))
+                        &wsh->pk.value,
+                        &wsh->pk.fee_withdraw))
   {
     /* Overflow here? Very strange, our CPU must be fried... */
     GNUNET_break (0);
@@ -1008,7 +1008,8 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wsh->exchange = exchange;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
-  wsh->pk = pk;
+  wsh->pk = *pk;
+  wsh->pk.key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (pk->key.rsa_public_key);
   wsh->reserve_pub = *reserve_pub;
   wsh->c_hash = pd->c_hash;
   GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
@@ -1023,6 +1024,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   if (NULL == withdraw_obj)
   {
     GNUNET_break (0);
+    GNUNET_CRYPTO_rsa_public_key_free (wsh->pk.key.rsa_public_key);
     GNUNET_free (wsh);
     return NULL;
   }
@@ -1039,6 +1041,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
     curl_easy_cleanup (eh);
     json_decref (withdraw_obj);
     GNUNET_free (wsh->url);
+    GNUNET_CRYPTO_rsa_public_key_free (wsh->pk.key.rsa_public_key);
     GNUNET_free (wsh);
     return NULL;
   }
@@ -1202,6 +1205,7 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
   }
   GNUNET_free (sign->url);
   TALER_curl_easy_post_finished (&sign->ctx);
+  GNUNET_CRYPTO_rsa_public_key_free (sign->pk.key.rsa_public_key);
   GNUNET_free (sign);
 }
 

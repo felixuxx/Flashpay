@@ -304,8 +304,8 @@ TEAH_acc_confirmation_cb (void *cls,
  */
 void
 TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
-			  TEAH_AuditorCallback ac,
-			  void *ac_cls)
+                          TEAH_AuditorCallback ac,
+                          void *ac_cls)
 {
   if (NULL == h->auditors_head)
   {
@@ -368,7 +368,7 @@ free_keys_request (struct KeysRequest *kr)
  */
 static int
 parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
-		    int check_sigs,
+                    int check_sigs,
                     json_t *sign_key_obj,
                     const struct TALER_MasterPublicKeyP *master_key)
 {
@@ -529,7 +529,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
  */
 static int
 parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
-		    int check_sigs,
+                    int check_sigs,
                     json_t *auditor_obj,
                     const struct TALER_EXCHANGE_Keys *key_data)
 {
@@ -632,9 +632,9 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 				      &auditor_sig.eddsa_sig,
 				      &auditor->auditor_pub.eddsa_pub))
       {
-	GNUNET_break_op (0);
-	GNUNET_JSON_parse_free (spec);
-	return GNUNET_SYSERR;
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
       }
     }
     auditor->denom_keys[off].denom_key_offset = dk_off;
@@ -792,9 +792,9 @@ TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
  */
 static int
 decode_keys_json (const json_t *resp_obj,
-		  int check_sig,
+                  int check_sig,
                   struct TALER_EXCHANGE_Keys *key_data,
-		  enum TALER_EXCHANGE_VersionCompatibility *vc)
+                  enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
   struct TALER_ExchangeSignatureP sig;
   struct GNUNET_HashContext *hash_context;
@@ -842,10 +842,10 @@ decode_keys_json (const json_t *resp_obj,
       return GNUNET_SYSERR;
     }
     if (3 != sscanf (ver,
-		     "%u:%u:%u",
-		     &current,
-		     &revision,
-		     &age))
+                     "%u:%u:%u",
+                     &current,
+                     &revision,
+                     &age))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -977,11 +977,11 @@ decode_keys_json (const json_t *resp_obj,
       int found = GNUNET_NO;
 
       memset (&ai,
-	      0,
-	      sizeof (ai));
+              0,
+              sizeof (ai));
       EXITIF (GNUNET_SYSERR ==
               parse_json_auditor (&ai,
-				  check_sig,
+                                  check_sig,
                                   auditor_info,
                                   key_data));
       for (unsigned int j=0;j<key_data->num_auditors;j++)
@@ -1164,6 +1164,7 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
                                                      exchange);
   return GNUNET_TIME_UNIT_ZERO_ABS;
 }
+
 
 /**
  * Callback used when downloading the reply to a /keys request
@@ -1505,7 +1506,7 @@ header_cb (char *buffer,
  */
 static void
 deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
-		  const json_t *data)
+                  const json_t *data)
 {
   enum TALER_EXCHANGE_VersionCompatibility vc;
   json_t *keys;
@@ -2016,7 +2017,7 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
-					const struct TALER_ExchangePublicKeyP *pub)
+                                        const struct TALER_ExchangePublicKeyP *pub)
 {
   for (unsigned int i=0;i<keys->num_sign_keys;i++)
   {
