@@ -39,7 +39,7 @@ struct ConversionTable
 {
 
   /**
-   * Wire method (e.g. 'sepa', 'x-taler-bank', ..)
+   * Wire method (e.g. 'iban', 'x-taler-bank', ..)
    */
   const char *method;
 
@@ -86,17 +86,17 @@ const char *
 TALER_WIRE_get_plugin_from_method (const char *method)
 {
   static const struct ConversionTable ct[] = {
-    {"x-taler-bank", "taler_bank"}, 
-    {"sepa", "ebics"},
+    {"x-taler-bank", "taler_bank"},
+    {"iban", "ebics"},
     {NULL, NULL}
   };
-  
+
   for (unsigned int i=0;
        NULL != ct[i].method;
        i++)
   {
     if (0 == strcmp (method,
-                     ct[i].method)) 
+                     ct[i].method))
       return ct[i].plugin_name;
   }
 

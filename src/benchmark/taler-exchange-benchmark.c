@@ -33,6 +33,7 @@
 #include "taler_signatures.h"
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
+#include "taler_wire_lib.h"
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
@@ -68,33 +69,12 @@ enum BenchmarkError {
 #define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
    TALER_TESTING_cmd_fakebank_transfer_retry \
     (TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-     exchange_bank_account.bank_base_url, \
+     exchange_bank_account.details.x_taler_bank.bank_base_url, \
      USER_ACCOUNT_NUMBER, \
-     exchange_bank_account.no, \
+     exchange_bank_account.details.x_taler_bank.no, \
      "dummy_user", \
      "dummy_password", \
      "http://example.com/"))
-
-/**
- * Information about an account extracted from a payto://-URL.
- */
-struct Account
-{
-  /**
-   * Hostname of the bank (possibly including port).
-   */
-  char *hostname;
-
-  /**
-   * Bank account number.
-   */
-  unsigned long long no;
-
-  /**
-   * Base URL of the bank hosting the account above.
-   */
-  char *bank_base_url;
-};
 
 
 /**
@@ -121,7 +101,7 @@ enum BenchmarkMode {
 /**
  * Hold information regarding which bank has the exchange account.
  */
-static struct Account exchange_bank_account;
+static struct TALER_Account exchange_bank_account;
 
 /**
  * Time snapshot taken right before executing the CMDs.
@@ -226,106 +206,6 @@ pick_exchange_account_cb (void *cls,
 
     *s = section;
   }
-}
-
-
-/**
- * Parse payto:// account URL (only account information,
- * wire subject and amount are ignored).
- *
- * @param account_url URL to parse
- * @param account[out] set to information, can be NULL
- * @return #TALER_EC_NONE if @a account_url is well-formed
- */
-static enum TALER_ErrorCode
-parse_payto (const char *account_url,
-             struct Account *account)
-{
-  const char *hostname;
-  const char *a;
-  const char *q;
-  unsigned long long no;
-
-#define PREFIX "payto://x-taler-bank/"
-#define MAX_ACCOUNT_NO (1LLU << 52)
-
-  if (0 != strncasecmp (account_url,
-                        PREFIX,
-                        strlen (PREFIX)))
-    return TALER_EC_PAYTO_WRONG_METHOD;
-  hostname = &account_url[strlen (PREFIX)];
-  if (NULL == (a = strchr (hostname,
-                           (unsigned char) '/')))
-    return TALER_EC_PAYTO_MALFORMED;
-  a++;
-  if (NULL != (q = strchr (a,
-                           (unsigned char) '?')))
-  {
-    char *s;
-
-    s = GNUNET_strndup (a,
-                        q - a);
-    if (1 != sscanf (s,
-                     "%llu",
-                     &no))
-    {
-      GNUNET_free (s);
-      return TALER_EC_PAYTO_MALFORMED;
-    }
-    GNUNET_free (s);
-  }
-  else
-  {
-    if (1 != sscanf (a,
-                     "%llu",
-                     &no))
-      return TALER_EC_PAYTO_MALFORMED;
-  }
-  if (no > MAX_ACCOUNT_NO)
-    return TALER_EC_PAYTO_MALFORMED;
-
-  if (NULL != account)
-  {
-    long long unsigned port;
-    char *p;
-
-    /* the "-1" crops the final slash away.  */
-    account->hostname = GNUNET_strndup (hostname,
-                                        a - hostname - 1);
-    account->no = no;
-    port = 443; /* if non given, equals 443.  */
-    if (NULL != (p = strchr (account->hostname,
-                           (unsigned char) ':')))
-    {
-      p++;
-      if (1 != sscanf (p,
-                       "%llu",
-                       &port))
-      {
-        GNUNET_break (0);
-        TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
-        GNUNET_free (account->hostname);
-        return TALER_EC_PAYTO_MALFORMED;
-      }
-    }
-    if (443 != port)
-    {
-      GNUNET_assert
-        (GNUNET_SYSERR != GNUNET_asprintf
-          (&account->bank_base_url,
-           "http://%s",
-           account->hostname));
-    }
-    else
-    {
-      GNUNET_assert
-        (GNUNET_SYSERR != GNUNET_asprintf
-          (&account->bank_base_url,
-           "https://%s",
-           account->hostname));
-    }
-  }
-  return TALER_EC_NONE;
 }
 
 
@@ -436,7 +316,7 @@ run (void *cls,
           0, /* Index of the one withdrawn coin in the traits.  */
           TALER_TESTING_make_wire_details
           (USER_ACCOUNT_NUMBER,
-           exchange_bank_account.hostname),
+           exchange_bank_account.details.x_taler_bank.hostname),
           order_enc,
           GNUNET_TIME_UNIT_ZERO,
           AMOUNT_1,
@@ -580,7 +460,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                         NULL == loglev ? "INFO" : loglev,
                         logfile);
       GNUNET_SCHEDULER_run (&launch_fakebank,
-                            exchange_bank_account.bank_base_url);
+                            exchange_bank_account.details.x_taler_bank.bank_base_url);
       exit (0);
     }
     if (-1 == fakebank)
@@ -963,11 +843,19 @@ main (int argc,
     }
 
     if (TALER_EC_NONE !=
-        parse_payto (exchange_payto_url,
+        TALER_WIRE_payto_to_account (exchange_payto_url,
                      &exchange_bank_account))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   _("Malformed payto:// URL `%s' in configuration\n"),
+                  exchange_payto_url);
+      GNUNET_free (exchange_payto_url);
+      return BAD_CONFIG_FILE;
+    }
+    if (TALER_PAC_X_TALER_BANK != exchange_bank_account.type)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  _("Malformed payto:// URL `%s' in configuration: x-taler-bank required\n"),
                   exchange_payto_url);
       GNUNET_free (exchange_payto_url);
       return BAD_CONFIG_FILE;

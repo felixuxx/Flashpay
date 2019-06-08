@@ -72,7 +72,7 @@
 #define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED 1029
 
 /**
- * Signature where the Exchange confirms its SEPA details in
+ * Signature where the Exchange confirms its IBAN details in
  * the /wire response.
  */
 #define TALER_SIGNATURE_MASTER_WIRE_DETAILS 1030
@@ -878,7 +878,7 @@ struct TALER_ExchangeKeyValidityPS
 
 /**
  * @brief Information signed by the exchange's master
- * key affirming the SEPA details for the exchange.
+ * key affirming the IBAN details for the exchange.
  */
 struct TALER_MasterWireDetailsPS
 {
@@ -911,7 +911,7 @@ struct TALER_MasterWireFeePS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the wire method (yes, H("test") or H("sepa")), in lower
+   * Hash over the wire method (yes, H("x-taler-bank") or H("iban")), in lower
    * case, including 0-terminator.  Used to uniquely identify which
    * wire method these fees apply to.
    */

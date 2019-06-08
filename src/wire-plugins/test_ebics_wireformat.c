@@ -26,17 +26,17 @@
 /**
  * Valid SEPA data
  */
-static const char *valid_wire_str = "payto://sepa/DE67830654080004822650";
+static const char *valid_wire_str = "payto://iban/DE67830654080004822650";
 
 /**
  * IBAN has wrong country code
  */
-static const char *invalid_wire_str = "payto://sepa/XX67830654080004822650";
+static const char *invalid_wire_str = "payto://iban/XX67830654080004822650";
 
 /**
  * IBAN has wrong checksum
  */
-static const char *invalid_wire_str2 = "payto://sepa/DE67830654080004822651";
+static const char *invalid_wire_str2 = "payto://iban/DE67830654080004822651";
 
 /**
  * Unsupported wireformat type

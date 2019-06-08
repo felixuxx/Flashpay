@@ -42,6 +42,7 @@ libtaler_plugin_wire_taler_bank_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil $(XLIB)
@@ -53,6 +54,7 @@ libtaler_plugin_wire_ebics_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_wire_ebics_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil $(XLIB)
 

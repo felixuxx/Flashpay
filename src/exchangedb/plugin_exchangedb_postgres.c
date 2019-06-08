@@ -5202,7 +5202,7 @@ postgres_insert_reserve_closed (void *cls,
  *
  * @param cls closure
  * @param session database connection
- * @param type type of the wire transfer (i.e. "sepa")
+ * @param type type of the wire transfer (i.e. "iban")
  * @param buf buffer with wire transfer preparation data
  * @param buf_size number of bytes in @a buf
  * @return query status code

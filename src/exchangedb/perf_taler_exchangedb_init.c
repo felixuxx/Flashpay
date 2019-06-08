@@ -273,7 +273,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   deposit->h_wire = h_wire;
   deposit->receiver_wire_account
     = json_pack ("{s:s, s:s}",
-                 "url", "payto://sepa/DE67830654080004822650",
+                 "url", "payto://iban/DE67830654080004822650",
                  "salt", "this-is-a-salt-value");
   deposit->timestamp = timestamp;
   deposit->refund_deadline = refund_deadline;

@@ -22,17 +22,13 @@
 #include "platform.h"
 #include "taler_wire_plugin.h"
 #include "taler_json_lib.h"
+#include "taler_wire_lib.h"
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
 #include <gnunet/gnunet_curl_lib.h>
 
 /* only for HTTP status codes */
 #include <microhttpd.h>
-
-/**
- * Maximum legal 'value' for an account number, based on IEEE double (for JavaScript compatibility).
- */
-#define MAX_ACCOUNT_NO (1LLU << 52)
 
 /**
  * Type of the "cls" argument given to each of the functions in
@@ -189,124 +185,6 @@ taler_bank_amount_round (void *cls,
 
 
 /**
- * Information about an account extracted from a payto://-URL.
- */
-struct Account
-{
-  /**
-   * Hostname of the bank (possibly including port).
-   */
-  char *hostname;
-
-  /**
-   * Bank account number.
-   */
-  unsigned long long no;
-
-  /**
-   * Base URL of the bank hosting the account above.
-   */
-  char *bank_base_url;
-};
-
-
-/**
- * Parse payto:// account URL (only account information,
- * wire subject and amount are ignored).
- *
- * @param account_url URL to parse
- * @param account[out] set to information, can be NULL
- * @return #TALER_EC_NONE if @a account_url is well-formed
- */
-static enum TALER_ErrorCode
-parse_payto (const char *account_url,
-             struct Account *r_account)
-{
-  const char *hostname;
-  const char *account;
-  const char *q;
-  unsigned long long no;
-
-#define PREFIX "payto://x-taler-bank/"
-  if (0 != strncasecmp (account_url,
-                        PREFIX,
-                        strlen (PREFIX)))
-    return TALER_EC_PAYTO_WRONG_METHOD;
-  hostname = &account_url[strlen (PREFIX)];
-  if (NULL == (account = strchr (hostname,
-                                 (unsigned char) '/')))
-    return TALER_EC_PAYTO_MALFORMED;
-  account++;
-  if (NULL != (q = strchr (account,
-                           (unsigned char) '?')))
-  {
-    char *s;
-
-    s = GNUNET_strndup (account,
-                        q - account);
-    if (1 != sscanf (s,
-                     "%llu",
-                     &no))
-    {
-      GNUNET_free (s);
-      return TALER_EC_PAYTO_MALFORMED;
-    }
-    GNUNET_free (s);
-  }
-  else if (1 != sscanf (account,
-                        "%llu",
-                        &no))
-  {
-    return TALER_EC_PAYTO_MALFORMED;
-  }
-  if (no > MAX_ACCOUNT_NO)
-    return TALER_EC_PAYTO_MALFORMED;
-
-  if (NULL != r_account)
-  {
-    long long unsigned port;
-    char *p;
-
-    r_account->hostname = GNUNET_strndup (hostname,
-                                          account - hostname);
-    r_account->no = no;
-    port = 443; /* if non given, equals 443.  */
-    if (NULL != (p = strchr (r_account->hostname,
-                           (unsigned char) ':')))
-    {
-      p++;
-      if (1 != sscanf (p,
-                       "%llu",
-                       &port))
-      {
-        GNUNET_break (0);
-        TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
-        GNUNET_free (r_account->hostname);
-        return TALER_EC_PAYTO_MALFORMED;
-      }
-    }
-    if (443 != port)
-    {
-      GNUNET_assert
-        (GNUNET_SYSERR != GNUNET_asprintf
-          (&r_account->bank_base_url,
-           "http://%s",
-           r_account->hostname));
-    }
-    else
-    {
-      GNUNET_assert
-        (GNUNET_SYSERR != GNUNET_asprintf
-          (&r_account->bank_base_url,
-           "https://%s",
-           r_account->hostname));
-    }
-  }
-  return TALER_EC_NONE;
-}
-
-
-/**
  * Check if the given payto:// URL is correctly formatted.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -318,9 +196,18 @@ taler_bank_wire_validate (void *cls,
                           const char *account_url)
 {
   (void) cls;
+  struct TALER_Account acc;
+  enum TALER_ErrorCode ec;
 
-  return parse_payto (account_url,
-                      NULL);
+  ec = TALER_WIRE_payto_to_account (account_url,
+                                    &acc);
+  if (TALER_EC_NONE == ec)
+  {
+    if (TALER_PAC_X_TALER_BANK != acc.type)
+      ec = TALER_EC_PAYTO_WRONG_METHOD;
+    TALER_WIRE_account_free (&acc);
+  }
+  return ec;
 }
 
 
@@ -462,7 +349,7 @@ do_prepare (void *cls)
 static int
 parse_account_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                    const char *section,
-                   struct Account *account)
+                   struct TALER_Account *account)
 {
   char *account_url;
 
@@ -479,14 +366,24 @@ parse_account_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
   }
 
   if (TALER_EC_NONE !=
-      parse_payto (account_url,
-                   account))
+      TALER_WIRE_payto_to_account (account_url,
+                                   account))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                "URL",
                                "Malformed payto:// URL for x-taler-bank method");
     GNUNET_free (account_url);
+    return GNUNET_SYSERR;
+  }
+  if (TALER_PAC_X_TALER_BANK != account->type)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "URL",
+                               "Malformed payto:// URL for x-taler-bank method");
+    GNUNET_free (account_url);
+    TALER_WIRE_account_free (account);
     return GNUNET_SYSERR;
   }
   GNUNET_free (account_url);
@@ -525,17 +422,25 @@ taler_bank_prepare_wire_transfer (void *cls,
   struct TalerBankClosure *tc = cls;
   struct TALER_WIRE_PrepareHandle *pth;
   char *origin_account_url;
-  struct Account a_in;
-  struct Account a_out;
+  struct TALER_Account a_in;
+  struct TALER_Account a_out;
 
   /* Check that payto:// URLs are valid */
   if (TALER_EC_NONE !=
-      parse_payto (destination_account_url,
-                   &a_out))
+      TALER_WIRE_payto_to_account (destination_account_url,
+                                   &a_out))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "payto://-URL `%s' is invalid!\n",
                 destination_account_url);
+    return NULL;
+  }
+  if (TALER_PAC_X_TALER_BANK != a_out.type)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "payto://-URL `%s' is invalid!\n",
+                destination_account_url);
+    TALER_WIRE_account_free (&a_out);
     return NULL;
   }
   if (GNUNET_OK !=
@@ -547,43 +452,47 @@ taler_bank_prepare_wire_transfer (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                origin_account_section,
                                "URL");
-    GNUNET_free (a_out.hostname);
-    GNUNET_free (a_out.bank_base_url);
+    TALER_WIRE_account_free (&a_out);
     return NULL;
   }
   if (TALER_EC_NONE !=
-      parse_payto (origin_account_url,
-                   &a_in))
+      TALER_WIRE_payto_to_account (origin_account_url,
+                                   &a_in))
     {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                origin_account_section,
                                "URL",
                                "Malformed payto:// URL for x-taler-bank method");
     GNUNET_free (origin_account_url);
-    GNUNET_free (a_out.hostname);
-    GNUNET_free (a_out.bank_base_url);
+    TALER_WIRE_account_free (&a_out);
+    return NULL;
+  }
+  if (TALER_PAC_X_TALER_BANK != a_in.type)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "payto://-URL `%s' is invalid!\n",
+                origin_account_url);
+    GNUNET_free (origin_account_url);
+    TALER_WIRE_account_free (&a_in);
+    TALER_WIRE_account_free (&a_out);
     return NULL;
   }
 
   /* Make sure the bank is the same! */
-  if (0 != strcasecmp (a_in.hostname,
-                       a_out.hostname))
+  if (0 != strcasecmp (a_in.details.x_taler_bank.hostname,
+                       a_out.details.x_taler_bank.hostname))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "x-taler-bank hostname missmatch: `%s' != `%s'\n",
-                a_in.hostname,
-                a_out.hostname);
-    GNUNET_free (a_in.hostname);
-    GNUNET_free (a_in.bank_base_url);
-    GNUNET_free (a_out.hostname);
-    GNUNET_free (a_out.bank_base_url);
+                a_in.details.x_taler_bank.hostname,
+                a_out.details.x_taler_bank.hostname);
+    TALER_WIRE_account_free (&a_in);
+    TALER_WIRE_account_free (&a_out);
     GNUNET_free (origin_account_url);
     return NULL;
   }
-  GNUNET_free (a_in.hostname);
-  GNUNET_free (a_in.bank_base_url);
-  GNUNET_free (a_out.hostname);
-  GNUNET_free (a_out.bank_base_url);
+  TALER_WIRE_account_free (&a_in);
+  TALER_WIRE_account_free (&a_out);
 
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
   if (GNUNET_OK !=
@@ -690,8 +599,8 @@ taler_bank_execute_wire_transfer (void *cls,
   struct TalerBankClosure *tc = cls;
   struct TALER_WIRE_ExecuteHandle *eh;
   struct TALER_Amount amount;
-  struct Account origin_account;
-  struct Account destination_account;
+  struct TALER_Account origin_account;
+  struct TALER_Account destination_account;
   struct BufFormatP bf;
   const char *exchange_base_url;
   const char *origin_account_url;
@@ -770,29 +679,28 @@ taler_bank_execute_wire_transfer (void *cls,
   }
 
   if (TALER_EC_NONE !=
-      parse_payto (origin_account_url,
-                   &origin_account))
+      TALER_WIRE_payto_to_account (origin_account_url,
+                                   &origin_account))
   {
     GNUNET_break (0);
     return NULL;
   }
   if (TALER_EC_NONE !=
-      parse_payto (destination_account_url,
-                   &destination_account))
+      TALER_WIRE_payto_to_account (destination_account_url,
+                                   &destination_account))
   {
-    GNUNET_free_non_null (origin_account.hostname);
-    GNUNET_free_non_null (origin_account.bank_base_url);
+    TALER_WIRE_account_free (&origin_account);
     GNUNET_break (0);
     return NULL;
   }
-  if (0 != strcasecmp (origin_account.hostname,
-                       destination_account.hostname))
+  if ( (TALER_PAC_X_TALER_BANK != origin_account.type) ||
+       (TALER_PAC_X_TALER_BANK != destination_account.type) ||
+       (0 != strcasecmp (origin_account.details.x_taler_bank.hostname,
+                         destination_account.details.x_taler_bank.hostname)) )
   {
     GNUNET_break (0);
-    GNUNET_free_non_null (origin_account.hostname);
-    GNUNET_free_non_null (destination_account.hostname);
-    GNUNET_free_non_null (origin_account.bank_base_url);
-    GNUNET_free_non_null (destination_account.bank_base_url);
+    TALER_WIRE_account_free (&origin_account);
+    TALER_WIRE_account_free (&destination_account);
     return NULL;
   }
 
@@ -802,19 +710,17 @@ taler_bank_execute_wire_transfer (void *cls,
   wire_s = GNUNET_STRINGS_data_to_string_alloc (&bf.wtid,
                                                 sizeof (bf.wtid));
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
-                                            origin_account.bank_base_url,
+                                            origin_account.details.x_taler_bank.bank_base_url,
                                             &auth,
                                             exchange_base_url,
                                             wire_s,
                                             &amount,
-                                            (uint64_t) origin_account.no,
-                                            (uint64_t) destination_account.no,
+                                            (uint64_t) origin_account.details.x_taler_bank.no,
+                                            (uint64_t) destination_account.details.x_taler_bank.no,
                                             &execute_cb,
                                             eh);
-  GNUNET_free_non_null (origin_account.bank_base_url);
-  GNUNET_free_non_null (destination_account.bank_base_url);
-  GNUNET_free_non_null (origin_account.hostname);
-  GNUNET_free_non_null (destination_account.hostname);
+  TALER_WIRE_account_free (&origin_account);
+  TALER_WIRE_account_free (&destination_account);
   GNUNET_free (wire_s);
   if (NULL == eh->aaih)
   {
@@ -1044,7 +950,7 @@ taler_bank_get_history (void *cls,
   struct TALER_WIRE_HistoryHandle *whh;
   const uint64_t *start_off_b64;
   uint64_t start_row;
-  struct Account account;
+  struct TALER_Account account;
 
   if (0 == num_results)
   {
@@ -1111,11 +1017,11 @@ taler_bank_get_history (void *cls,
   whh->hres_cb_cls = hres_cb_cls;
 
   whh->hh = TALER_BANK_history (tc->ctx,
-                                account.bank_base_url,
+                                account.details.x_taler_bank.bank_base_url,
                                 &whh->auth,
-                                (uint64_t) account.no,
+                                (uint64_t) account.details.x_taler_bank.no,
                                 direction,
-               /* Defaults to descending ordering always. */
+                                /* Defaults to descending ordering always. */
                                 GNUNET_NO,
                                 start_row,
                                 num_results,
@@ -1126,12 +1032,10 @@ taler_bank_get_history (void *cls,
     GNUNET_break (0);
     taler_bank_get_history_cancel (NULL,
                                    whh);
-    GNUNET_free (account.hostname);
-    GNUNET_free (account.bank_base_url);
+    TALER_WIRE_account_free (&account);
     return NULL;
   }
-  GNUNET_free (account.hostname);
-  GNUNET_free (account.bank_base_url);
+  TALER_WIRE_account_free (&account);
   GNUNET_assert (NULL != whh);
   return whh;
 }
@@ -1171,7 +1075,7 @@ taler_bank_get_history_range
   GNUNET_break (0);
   return NULL;
 
-  struct Account account;
+  struct TALER_Account account;
   struct TalerBankClosure *tc = cls;
   struct TALER_WIRE_HistoryHandle *whh;
 
@@ -1204,11 +1108,11 @@ taler_bank_get_history_range
 
 
   whh->hh = TALER_BANK_history_range (tc->ctx,
-                                      account.bank_base_url,
+                                      account.details.x_taler_bank.bank_base_url,
                                       &whh->auth,
-                                      account.no,
+                                      account.details.x_taler_bank.no,
                                       direction,
-                            /* Just always descending.  */
+                                      /* Just always descending.  */
                                       GNUNET_NO,
                                       start_date,
                                       end_date,
@@ -1219,13 +1123,10 @@ taler_bank_get_history_range
     GNUNET_break (0);
     taler_bank_get_history_cancel (NULL,
                                    whh);
-    GNUNET_free (account.hostname);
-    GNUNET_free (account.bank_base_url);
+    TALER_WIRE_account_free (&account);
     return NULL;
   }
-
-  GNUNET_free (account.hostname);
-  GNUNET_free (account.bank_base_url);
+  TALER_WIRE_account_free (&account);
   GNUNET_assert (NULL != whh);
 
   return whh;
@@ -1339,7 +1240,7 @@ taler_bank_reject_transfer (void *cls,
   struct TalerBankClosure *tc = cls;
   const uint64_t *rowid_b64 = start_off;
   struct TALER_WIRE_RejectHandle *rh;
-  struct Account account;
+  struct TALER_Account account;
 
   if (sizeof (uint64_t) != start_off_len)
   {
@@ -1367,11 +1268,11 @@ taler_bank_reject_transfer (void *cls,
   rh->rej_cb = rej_cb;
   rh->rej_cb_cls = rej_cb_cls;
   TALER_LOG_INFO ("Rejecting over %s bank URL\n",
-                  account.hostname);
+                  account.details.x_taler_bank.hostname);
   rh->brh = TALER_BANK_reject (tc->ctx,
-                               account.bank_base_url,
+                               account.details.x_taler_bank.bank_base_url,
                                &rh->auth,
-                               (uint64_t) account.no,
+                               (uint64_t) account.details.x_taler_bank.no,
                                GNUNET_ntohll (*rowid_b64),
                                &reject_cb,
                                rh);
@@ -1379,10 +1280,10 @@ taler_bank_reject_transfer (void *cls,
   {
     (void) taler_bank_reject_transfer_cancel (tc,
                                               rh);
-    GNUNET_free (account.hostname);
+    TALER_WIRE_account_free (&account);
     return NULL;
   }
-  GNUNET_free (account.hostname);
+  TALER_WIRE_account_free (&account);
   return rh;
 }
 

@@ -12,6 +12,7 @@ lib_LTLIBRARIES = \
   libtalerwire.la
 
 libtalerwire_la_SOURCES = \
+  payto.c \
   wire.c \
   wire_helper.c
 libtalerwire_la_LIBADD = \

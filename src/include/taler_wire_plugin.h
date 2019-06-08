@@ -172,7 +172,7 @@ struct TALER_WIRE_Plugin
 
   /**
    * Which wire method (payto://METHOD/") is supported by this plugin?
-   * For example, "sepa" or "x-taler-bank".
+   * For example, "iban" or "x-taler-bank".
    */
   const char *method;
 
@@ -180,7 +180,7 @@ struct TALER_WIRE_Plugin
   /**
    * Round amount DOWN to the amount that can be transferred via the wire
    * method.  For example, Taler may support 0.000001 EUR as a unit of
-   * payment, but SEPA only supports 0.01 EUR.  This function would
+   * payment, but IBAN only supports 0.01 EUR.  This function would
    * round 0.125 EUR to 0.12 EUR in this case.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
