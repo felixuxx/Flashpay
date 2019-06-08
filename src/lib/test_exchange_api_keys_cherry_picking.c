@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/test_exchange_api_keys_cherry_picking_new.c
+ * @file exchange-lib/test_exchange_api_keys_cherry_picking.c
  * @brief testcase to test exchange's /keys cherry picking ability
  * @author Marcello Stanisci
  * @author Christian Grothoff
@@ -215,7 +215,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-3",
-       3, 
+       3,
        NDKS_RIGHT_BEFORE_SERIALIZATION,
        TTH_parse_time (JAN2030)),
 

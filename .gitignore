@@ -38,11 +38,8 @@ src/auditor/taler-auditor-dbinit
 src/auditor/taler-auditor-sign
 src/bank-lib/taler-fakebank-run
 src/bank-lib/test_bank_api
-src/bank-lib/test_bank_api_new
 src/bank-lib/test_bank_api_with_fakebank
-src/bank-lib/test_bank_api_with_fakebank_new
 src/bank-lib/test_bank_api_with_fakebank_twisted
-src/lib/test_exchange_api_new
 src/lib/test_exchange_api
 src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
 src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
@@ -105,7 +102,6 @@ doc/manual/manual.vr
 contrib/taler-exchange.tag
 doxygen-doc/
 src/lib/test_exchange_api_keys_cherry_picking
-src/lib/test_exchange_api_keys_cherry_picking_new
 src/auditor/taler-wire-auditor
 contrib/auditor-report.aux
 contrib/auditor-report.log
@@ -113,7 +109,7 @@ contrib/auditor-report.tex
 contrib/auditor-report.pdf
 src/bank-lib/taler-bank-transfer
 src/bank-lib/test_bank_api_twisted
-src/lib/test_exchange_api_new
+src/lib/test_exchange_api
 src/lib/test_auditor_api
 src/lib/test_exchange_api_overlapping_keys_bug
 src/lib/test_exchange_api_home/.local/share/taler/exchange/revocations/

@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange/test_exchange_api_new.c
+ * @file exchange/test_exchange_api.c
  * @brief testcase to test exchange's HTTP API interface
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
@@ -879,7 +879,7 @@ run (void *cls,
   struct TALER_TESTING_Command reserve_open_close
     [(RESERVE_OPEN_CLOSE_ITERATIONS
       * RESERVE_OPEN_CLOSE_CHUNK) + 1];
-  
+
   for (unsigned int i = 0;
        i < RESERVE_OPEN_CLOSE_ITERATIONS;
        i++)

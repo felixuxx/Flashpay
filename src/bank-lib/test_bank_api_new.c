@@ -14,7 +14,7 @@
 
   You should have received a copy of the GNU General Public
   License along with TALER; see the file COPYING.  If not,
-  see <http://www.gnu.org/licenses/> 
+  see <http://www.gnu.org/licenses/>
 */
 
 /**
@@ -73,6 +73,7 @@ struct GNUNET_OS_Process *bankd;
  */
 char *bank_url;
 
+
 /**
  * Main function that will tell the interpreter what commands to
  * run.
@@ -83,12 +84,9 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  
   extern struct TALER_BANK_AuthenticationData AUTHS[];
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
-
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_bank_history ("history-0",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -96,7 +94,6 @@ run (void *cls,
                                     GNUNET_NO,
                                     NULL, /* start */
                                     5),
-
     TALER_TESTING_cmd_bank_history_range_with_dates
       ("history-0-range",
        bank_url,
@@ -117,7 +114,6 @@ run (void *cls,
        AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.password,
        "subject 1",
        "http://exchange.com/"),
-
     /* bank gives to exchange */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-2",
@@ -129,7 +125,6 @@ run (void *cls,
        AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.password,
        "subject 2",
        "http://exchange.com/"),
-
     TALER_TESTING_cmd_bank_history ("history-1c",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -137,7 +132,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
     TALER_TESTING_cmd_bank_history ("history-1d",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -145,7 +139,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
     TALER_TESTING_cmd_bank_history ("history-1dr",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -153,7 +146,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
     TALER_TESTING_cmd_bank_history ("history-2fwd",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -161,7 +153,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     "deposit-1",
                                     5),
-
     /**
      * Just check that the two transactions show up.
      */
@@ -175,7 +166,6 @@ run (void *cls,
                 50),
        ADDSECS (now,
                 5)),
-
     TALER_TESTING_cmd_bank_reject ("reject-1",
                                    bank_url,
                                    "deposit-1"),
@@ -208,16 +198,16 @@ main(int argc,
   if (NULL == (bankd =
       TALER_TESTING_run_bank (CONFIG_FILE, bank_url)))
     return 77;
-  
+
   ret = TALER_TESTING_setup (&run,
                              NULL,
                              CONFIG_FILE,
                              NULL,
                              GNUNET_NO); // means no exchange.
 
-  GNUNET_OS_process_kill (bankd, SIGKILL); 
-  GNUNET_OS_process_wait (bankd); 
-  GNUNET_OS_process_destroy (bankd); 
+  GNUNET_OS_process_kill (bankd, SIGKILL);
+  GNUNET_OS_process_wait (bankd);
+  GNUNET_OS_process_destroy (bankd);
   GNUNET_free (bank_url);
 
   if (GNUNET_OK == ret)

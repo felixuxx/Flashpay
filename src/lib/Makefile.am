@@ -157,9 +157,9 @@ endif
 endif
 
 check_PROGRAMS = \
-  test_exchange_api_keys_cherry_picking_new \
+  test_exchange_api_keys_cherry_picking \
   test_exchange_api_overlapping_keys_bug \
-  test_exchange_api_new \
+  test_exchange_api \
   test_auditor_api_version \
   test_auditor_api
 
@@ -190,9 +190,9 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 TESTS = \
   $(check_PROGRAMS)
 
-test_exchange_api_new_SOURCES = \
-  test_exchange_api_new.c
-test_exchange_api_new_LDADD = \
+test_exchange_api_SOURCES = \
+  test_exchange_api.c
+test_exchange_api_LDADD = \
   libtalertesting.la \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
@@ -217,9 +217,9 @@ test_exchange_api_overlapping_keys_bug_LDADD = \
   -lgnunetutil \
   -ljansson
 
-test_exchange_api_keys_cherry_picking_new_SOURCES = \
-  test_exchange_api_keys_cherry_picking_new.c
-test_exchange_api_keys_cherry_picking_new_LDADD = \
+test_exchange_api_keys_cherry_picking_SOURCES = \
+  test_exchange_api_keys_cherry_picking.c
+test_exchange_api_keys_cherry_picking_LDADD = \
   libtalertesting.la \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
