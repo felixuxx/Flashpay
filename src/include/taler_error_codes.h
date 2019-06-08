@@ -1615,6 +1615,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_CHECK_PAYMENT_FAILED_COMPUTE_PROPOSAL_HASH = 2914,
 
+  /**
+   * Signature "session_sig" failed to verify. This response is
+   * provided with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_CHECK_PAYMENT_SESSION_SIGNATURE_INVALID = 2915,
+
 
   /* *********** Auditor error codes ********* */
 
