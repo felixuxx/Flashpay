@@ -489,8 +489,8 @@ parse_payto_x_taler_bank (const char *account_url,
            "https://%s",
            r_account->details.x_taler_bank.hostname));
     }
+    r_account->type = TALER_PAC_X_TALER_BANK;
   }
-  r_account->type = TALER_PAC_X_TALER_BANK;
   return TALER_EC_NONE;
 }
 
