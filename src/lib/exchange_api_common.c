@@ -42,7 +42,6 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                     struct TALER_Amount *total)
 {
   size_t len;
-  int add;
   struct TALER_Amount rtotal;
 
   if (NULL == history)
@@ -64,6 +63,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                         &rtotal));
   for (size_t off=0;off<len;off++)
   {
+    int add;
     json_t *transaction;
     struct TALER_Amount amount;
     const char *type;

@@ -263,7 +263,23 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (dcs->amount_without_fee,
                                          &amount_without_fee));
+  {
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
+      GNUNET_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
+      GNUNET_JSON_spec_end()
+    };
 
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (contract_terms,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+  }
   dcs->dc = TALER_AUDITOR_deposit_confirmation
     (dcs->auditor,
      &h_wire,

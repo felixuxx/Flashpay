@@ -539,6 +539,29 @@ TALER_amount_normalize (struct TALER_Amount *amount)
 
 
 /**
+ * Convert the fraction of @a amount to a string
+ * in decimals.
+ *
+ * @param amount value to convert
+ * @param tail[out] where to write the reesult
+ */
+static void
+amount_to_tail (const struct TALER_Amount *amount,
+                char tail[TALER_AMOUNT_FRAC_LEN + 1])
+{
+  uint32_t n = amount->fraction;
+  unsigned int i;
+
+  for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
+  {
+    tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
+    n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);
+  }
+  tail[i] = '\0';
+}
+
+
+/**
  * Convert amount to string.
  *
  * @param amount amount to convert to string
@@ -548,9 +571,6 @@ char *
 TALER_amount_to_string (const struct TALER_Amount *amount)
 {
   char *result;
-  unsigned int i;
-  uint32_t n;
-  char tail[TALER_AMOUNT_FRAC_LEN + 1];
   struct TALER_Amount norm;
 
   if (GNUNET_YES != TALER_amount_is_valid (amount))
@@ -558,14 +578,12 @@ TALER_amount_to_string (const struct TALER_Amount *amount)
   norm = *amount;
   GNUNET_break (GNUNET_SYSERR !=
                 TALER_amount_normalize (&norm));
-  if (0 != (n = norm.fraction))
+  if (0 != norm.fraction)
   {
-    for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
-    {
-      tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
-      n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);
-    }
-    tail[i] = '\0';
+    char tail[TALER_AMOUNT_FRAC_LEN + 1];
+
+    amount_to_tail (&norm,
+                    tail);
     GNUNET_asprintf (&result,
                      "%s:%llu.%s",
                      norm.currency,
@@ -594,9 +612,6 @@ const char *
 TALER_amount2s (const struct TALER_Amount *amount)
 {
   static char result[TALER_AMOUNT_FRAC_LEN + TALER_CURRENCY_LEN + 3 + 12];
-  unsigned int i;
-  uint32_t n;
-  char tail[TALER_AMOUNT_FRAC_LEN + 1];
   struct TALER_Amount norm;
 
   if (GNUNET_YES != TALER_amount_is_valid (amount))
@@ -604,14 +619,12 @@ TALER_amount2s (const struct TALER_Amount *amount)
   norm = *amount;
   GNUNET_break (GNUNET_SYSERR !=
                 TALER_amount_normalize (&norm));
-  if (0 != (n = norm.fraction))
+  if (0 != norm.fraction)
   {
-    for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
-    {
-      tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
-      n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);
-    }
-    tail[i] = '\0';
+    char tail[TALER_AMOUNT_FRAC_LEN + 1];
+
+    amount_to_tail (&norm,
+                    tail);
     GNUNET_snprintf (result,
                      sizeof (result),
                      "%s:%llu.%s",

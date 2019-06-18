@@ -873,12 +873,10 @@ refresh_melt_run (void *cls,
 {
   struct RefreshMeltState *rms = cls;
   unsigned int num_fresh_coins;
-  const struct TALER_TESTING_Command *coin_command;
   /* FIXME:  this should be dynamic */
   const char *melt_fresh_amounts[] = {
     "EUR:1", "EUR:1", "EUR:1", "EUR:0.1",
     NULL};
-  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;
 
   rms->is = is;
   rms->noreveal_index = UINT16_MAX;
@@ -895,8 +893,9 @@ refresh_melt_run (void *cls,
     struct TALER_Amount fresh_amount;
     const struct TALER_DenominationSignature *melt_sig;
     const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
-
+    const struct TALER_TESTING_Command *coin_command;
     const struct MeltDetails *md = &rms->melted_coin;
+
     if (NULL == (coin_command
       = TALER_TESTING_interpreter_lookup_command
         (is, md->coin_reference)))
@@ -945,6 +944,8 @@ refresh_melt_run (void *cls,
 
     for (unsigned int i=0;i<num_fresh_coins;i++)
     {
+      const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;
+
       if (GNUNET_OK != TALER_string_to_amount
         (melt_fresh_amounts[i], &fresh_amount))
       {
