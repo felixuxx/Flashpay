@@ -114,9 +114,9 @@ refund_cb (void *cls,
     TALER_TESTING_interpreter_fail (rs->is);
     return;
   }
-
   TALER_TESTING_interpreter_next (rs->is);
 }
+
 
 /**
  * Run the command.
@@ -248,6 +248,7 @@ refund_cleanup (void *cls,
   GNUNET_free (rs);
 }
 
+
 /**
  * Create a "refund" command.
  *
@@ -275,16 +276,18 @@ TALER_TESTING_cmd_refund (const char *label,
   rs->refund_amount = refund_amount;
   rs->refund_fee = refund_fee;
   rs->coin_reference = coin_reference;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = rs,
+      .label = label,
+      .run = &refund_run,
+      .cleanup = &refund_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = rs,
-    .label = label,
-    .run = &refund_run,
-    .cleanup = &refund_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
+
 
 /**
  * Create a "refund" command, allow to specify refund transaction
@@ -313,19 +316,19 @@ TALER_TESTING_cmd_refund_with_id
   struct RefundState *rs;
 
   rs = GNUNET_new (struct RefundState);
-
   rs->expected_response_code = expected_response_code;
   rs->refund_amount = refund_amount;
   rs->refund_fee = refund_fee;
   rs->coin_reference = coin_reference;
   rs->refund_transaction_id = refund_transaction_id;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = rs,
+      .label = label,
+      .run = &refund_run,
+      .cleanup = &refund_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = rs,
-    .label = label,
-    .run = &refund_run,
-    .cleanup = &refund_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

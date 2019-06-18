@@ -330,6 +330,7 @@ fakebank_transfer_run (void *cls,
           return;
         }
         priv = GNUNET_CRYPTO_eddsa_key_create_from_file (keys);
+        GNUNET_free (keys);
         if (NULL == priv)
         {
           GNUNET_log_config_invalid
@@ -337,12 +338,12 @@ fakebank_transfer_run (void *cls,
              section,
              "TIP_RESERVE_PRIV_FILENAME",
              "Failed to read private key");
-          GNUNET_free (keys);
           GNUNET_free (section);
           TALER_TESTING_interpreter_fail (is);
           return;
         }
         fts->reserve_priv.eddsa_priv = *priv;
+        GNUNET_free (section);
         GNUNET_free (priv);
         GNUNET_CONFIGURATION_destroy (cfg);
       }

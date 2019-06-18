@@ -111,5 +111,7 @@ TALER_curl_easy_post (struct TEAH_PostContext *ctx,
 void
 TALER_curl_easy_post_finished (struct TEAH_PostContext *ctx)
 {
+  curl_slist_free_all (ctx->headers);
+  ctx->headers = NULL;
   GNUNET_free_non_null (ctx->json_enc);
 }
