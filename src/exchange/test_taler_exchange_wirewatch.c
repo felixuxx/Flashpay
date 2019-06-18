@@ -815,7 +815,7 @@ main (int argc,
   {
     fprintf (stderr,
              "Required port %u not available, skipping.\n",
-	     8082);
+             (unsigned int) 8082);
     return 77;
   }
   cfg = GNUNET_CONFIGURATION_create ();

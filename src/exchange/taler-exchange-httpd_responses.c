@@ -319,37 +319,15 @@ TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:I, s:s}",
                                        "error", "missing parameter",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "parameter", param_name);
-}
-
-
-/**
- * Send a response indicating permission denied.
- *
- * @param connection the MHD connection to use
- * @param ec error code uniquely identifying the error
- * @param hint hint about why access was denied
- * @return a MHD result code
- */
-int
-TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
-                                      const char *hint)
-{
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:I, s:s}",
-                                       "error", "permission denied",
-				       "code", (json_int_t) ec,
-                                       "hint", hint);
 }
 
 
@@ -363,14 +341,14 @@ TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        "{s:s, s:I, s:s}",
                                        "error", "internal error",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -385,7 +363,7 @@ TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint)
 {
   return TEH_RESPONSE_reply_json_pack (connection,

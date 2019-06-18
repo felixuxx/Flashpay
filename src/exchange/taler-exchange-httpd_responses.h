@@ -152,22 +152,8 @@ TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name);
-
-
-/**
- * Send a response indicating permission denied.
- *
- * @param connection the MHD connection to use
- * @param ec error code uniquely identifying the error
- * @param hint hint about why access was denied
- * @return a MHD result code
- */
-int
-TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
-                                      const char *hint);
 
 
 /**
@@ -180,7 +166,7 @@ TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint);
 
 
@@ -194,7 +180,7 @@ TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint);
 
 
@@ -208,7 +194,8 @@ TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec);
+                                 enum TALER_ErrorCode ec);
+
 
 /**
  * Send a response indicating a failure to talk to the Exchange's
@@ -220,7 +207,7 @@ TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec);
+                                      enum TALER_ErrorCode ec);
 
 
 /**

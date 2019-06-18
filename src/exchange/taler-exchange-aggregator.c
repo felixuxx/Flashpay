@@ -620,19 +620,19 @@ refund_by_coin_cb (void *cls,
 		   const struct TALER_Amount *amount_with_fee,
 		   const struct TALER_Amount *refund_fee)
 {
-  struct AggregationUnit *au = cls;
+  struct AggregationUnit *aux = cls;
 
   /* TODO: potential optimization: include these conditions
      in the SELECT! */
   if (0 != GNUNET_memcmp (merchant_pub,
-                          &au->merchant_pub))
+                          &aux->merchant_pub))
     return GNUNET_OK; /* different merchant */
   if (0 != GNUNET_memcmp (h_contract,
-                          au->h_contract))
+                          aux->h_contract))
     return GNUNET_OK; /* different contract */
   if (GNUNET_OK !=
-      TALER_amount_subtract (&au->total_amount,
-			     &au->total_amount,
+      TALER_amount_subtract (&aux->total_amount,
+			     &aux->total_amount,
 			     amount_with_fee))
   {
     GNUNET_break (0);

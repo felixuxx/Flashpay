@@ -315,7 +315,6 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   struct GNUNET_HashCode c_hash;
   char *coin_ev;
   size_t coin_ev_size;
-  int mhd_ret;
 
   /* check denomination exists and is in payback mode */
   key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
@@ -414,14 +413,17 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   pc.coin_sig = coin_sig;
   pc.coin_bks = coin_bks;
   pc.coin = coin;
-  if (GNUNET_OK !=
-      TEH_DB_run_transaction (connection,
-                              "run payback",
-			      &mhd_ret,
-			      &payback_transaction,
-			      &pc))
-    return mhd_ret;
+  {
+    int mhd_ret;
 
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "run payback",
+                                &mhd_ret,
+                                &payback_transaction,
+                                &pc))
+      return mhd_ret;
+  }
   return reply_payback_success (connection,
 				&coin->coin_pub,
 				&pc.reserve_pub,

@@ -1846,34 +1846,6 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
 
 
 /**
- * Look up the issue for a denom public key.
- *
- * @param key_state state to look in
- * @param denom_pub denomination public key
- * @param use purpose for which the key is being located
- * @return the denomination key issue,
- *         or NULL if denom_pub could not be found
- */
-struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
-                                const struct TALER_DenominationPublicKey *denom_pub,
-				enum TEH_KS_DenominationKeyUse use)
-{
-  struct GNUNET_HashCode hc;
-
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
-                                     &hc);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Looking for denom: '%s..'\n",
-              TALER_B2S (&hc));
-
-  return TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                 &hc,
-                                                 use);
-}
-
-
-/**
  * Look up the issue for a denom public key.  Note that the result
  * is only valid while the @a key_state is not released!
  *

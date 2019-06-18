@@ -57,8 +57,6 @@ reply_refresh_reveal_success (struct MHD_Connection *connection,
 			      unsigned int num_newcoins,
 			      const struct TALER_DenominationSignature *sigs)
 {
-  json_t *root;
-  json_t *obj;
   json_t *list;
   int ret;
 
@@ -67,6 +65,8 @@ reply_refresh_reveal_success (struct MHD_Connection *connection,
        newcoin_index < num_newcoins;
        newcoin_index++)
   {
+    json_t *obj;
+
     obj = json_object ();
     json_object_set_new (obj,
 			 "ev_sig",
@@ -75,14 +75,19 @@ reply_refresh_reveal_success (struct MHD_Connection *connection,
                    json_array_append_new (list,
                                           obj));
   }
-  root = json_object ();
-  json_object_set_new (root,
-                       "ev_sigs",
-                       list);
-  ret = TEH_RESPONSE_reply_json (connection,
-                                 root,
-                                 MHD_HTTP_OK);
-  json_decref (root);
+
+  {
+    json_t *root;
+
+    root = json_object ();
+    json_object_set_new (root,
+                         "ev_sigs",
+                         list);
+    ret = TEH_RESPONSE_reply_json (connection,
+                                   root,
+                                   MHD_HTTP_OK);
+    json_decref (root);
+  }
   return ret;
 }
 
