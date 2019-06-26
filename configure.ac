@@ -55,7 +55,7 @@ AC_PROG_CC
 AC_PROG_CC_C99
 
 
-CFLAGS="-Wall $CFLAGS"
+CFLAGS="-Wall $CFLAGS -Wno-address-of-packed-member"
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h])
