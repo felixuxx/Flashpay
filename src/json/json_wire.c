@@ -113,13 +113,6 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
     GNUNET_JSON_spec_end ()
   };
 
-  if (0 != GNUNET_memcmp (&master_pub_from_wire, master_pub))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "wire signature has an unexpected master public key\n");
-    return GNUNET_SYSERR;
-  }
-
   if (GNUNET_OK !=
       GNUNET_JSON_parse (wire_s,
                          spec,
@@ -128,6 +121,14 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+
+  if (0 != GNUNET_memcmp (&master_pub_from_wire, master_pub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "wire signature has an unexpected master public key\n");
+    return GNUNET_SYSERR;
+  }
+
   return TALER_exchange_wire_signature_check (payto_url,
                                               master_pub,
                                               &master_sig);
