@@ -541,6 +541,12 @@ struct TALER_EXCHANGEDB_LinkDataList
    * Signature over the blinded envelope.
    */
   struct TALER_DenominationSignature ev_sig;
+
+  /**
+   * Signature of the original coin being refreshed over the
+   * link data, of type #TALER_SIGNATURE_WALLET_COIN_LINK
+   */
+  struct TALER_CoinSpendSignatureP orig_coin_link_sig;
 };
 
 
@@ -793,6 +799,12 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
    */
   struct TALER_DenominationPublicKey denom_pub;
 
+  /**
+   * Signature of the original coin being refreshed over the
+   * link data, of type #TALER_SIGNATURE_WALLET_COIN_LINK
+   */
+  struct TALER_CoinSpendSignatureP orig_coin_link_sig;
+  
   /**
    * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
    */
@@ -1634,7 +1646,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Lookup refresh metl commitment data under the given @a rc.
+   * Lookup refresh melt commitment data under the given @a rc.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database handle to use

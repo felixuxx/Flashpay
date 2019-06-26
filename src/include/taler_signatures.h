@@ -130,9 +130,9 @@
 #define TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED 1040
 
 
-/*********************/
-/* Wallet signatures */
-/*********************/
+/**********************/
+/* Auditor signatures */
+/**********************/
 
 /**
  * Signature where the auditor confirms that he is
@@ -209,6 +209,11 @@
  */
 #define TALER_SIGNATURE_WALLET_COIN_PAYBACK 1203
 
+/**
+ * Signature using a coin key authenticating link data.
+ */
+#define TALER_SIGNATURE_WALLET_COIN_LINK 1204
+
 
 /*******************/
 /* Test signatures */
@@ -227,6 +232,41 @@
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Format used for to allow the wallet to authenticate
+ * link data provided by the exchange.
+ */
+struct TALER_LinkDataPS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_WALLET_COIN_LINK.
+   * Used with an EdDSA signature of a `struct TALER_CoinPublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the denomination public key of the new coin.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
+   * Public key of the old coin being refreshed.
+   */
+  struct TALER_CoinSpendPublicKeyP old_coin_pub;
+
+  /**
+   * Transfer public key (for which the private key was not revealed)
+   */
+  struct TALER_TransferPublicKeyP transfer_pub;
+
+  /**
+   * Hash of the blinded new coin.
+   */
+  struct GNUNET_HashCode coin_envelope_hash;
+};
+
 
 /**
  * @brief Format used for to generate the signature on a request to withdraw

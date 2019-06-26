@@ -145,6 +145,12 @@ struct RevealContext
   const struct TALER_RefreshCoinData *rcds;
 
   /**
+   * Signatures over the link data (of type
+   * #TALER_SIGNATURE_WALLET_COIN_LINK)
+   */
+  const struct TALER_CoinSpendSignatureP *link_sigs;
+
+  /**
    * Envelopes with the signatures to be returned.  Initially NULL.
    */
   struct TALER_DenominationSignature *ev_sigs;
@@ -491,6 +497,7 @@ refresh_reveal_persist (void *cls,
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
 
       rrc->denom_pub = rctx->dkis[i]->denom_pub;
+      rrc->orig_coin_link_sig = rctx->link_sigs[i];
       rrc->coin_ev = rctx->rcds[i].coin_ev;
       rrc->coin_ev_size = rctx->rcds[i].coin_ev_size;
       rrc->coin_sig = rctx->ev_sigs[i];
@@ -524,6 +531,7 @@ refresh_reveal_persist (void *cls,
  * @param rctx context for the operation, partially built at this time
  * @param transfer_pub transfer public key
  * @param tp_json private transfer keys in JSON format
+ * @param link_sigs_json link signatures in JSON format
  * @param new_denoms_h_json requests for fresh coins to be created
  * @param coin_evs envelopes of gamma-selected coins to be signed
  * @return MHD result code
@@ -532,12 +540,14 @@ static int
 handle_refresh_reveal_json (struct MHD_Connection *connection,
                             struct RevealContext *rctx,
                             const json_t *tp_json,
+                            const json_t *link_sigs_json,
                             const json_t *new_denoms_h_json,
                             const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   unsigned int num_tprivs = json_array_size (tp_json);
   struct TEH_KS_StateHandle *key_state;
+  struct TALER_EXCHANGEDB_RefreshMelt refresh_melt;
 
   GNUNET_assert (num_tprivs == TALER_CNC_KAPPA - 1);
   if ( (num_fresh_coins >= MAX_FRESH_COINS) ||
@@ -545,7 +555,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
   {
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
+                                           TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
                                            "new_denoms");
 
   }
@@ -556,6 +566,14 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_arg_invalid (connection,
 					   TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISSMATCH,
                                            "new_denoms/coin_evs");
+  }
+  if (json_array_size (new_denoms_h_json) !=
+      json_array_size (link_sigs_json))
+  {
+    GNUNET_break_op (0);
+    return TEH_RESPONSE_reply_arg_invalid (connection,
+                                           TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISSMATCH,
+                                           "new_denoms/link_sigs");
   }
 
   /* Parse transfer private keys array */
@@ -579,7 +597,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
   /* Resolve denomination hashes */
   {
     const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dkis[num_fresh_coins];
+    struct GNUNET_HashCode dki_h[num_fresh_coins];
     struct TALER_RefreshCoinData rcds[num_fresh_coins];
+    struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
     int res;
 
     /* Resolve denomination hashes */
@@ -596,10 +616,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     /* Parse denomination key hashes */
     for (unsigned int i=0;i<num_fresh_coins;i++)
     {
-      struct GNUNET_HashCode dpk_h;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto (NULL,
-                                     &dpk_h),
+                                     &dki_h[i]),
         GNUNET_JSON_spec_end ()
       };
 
@@ -614,7 +633,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
         return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
       }
       dkis[i] = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                        &dpk_h,
+                                                        &dki_h[i],
                                                         TEH_KS_DKU_WITHDRAW);
       if (NULL == dkis[i])
       {
@@ -652,9 +671,85 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       rcd->dk = &dkis[i]->denom_pub;
     }
 
+    /* lookup old_coin_pub in database */
+    {
+      enum GNUNET_DB_QueryStatus qs;
+    
+      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          (qs = TEH_plugin->get_melt (TEH_plugin->cls,
+                                      NULL,
+                                      &rctx->rc,
+                                      &refresh_melt)))
+      {
+        switch (qs)
+        {
+        case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+          res = TEH_RESPONSE_reply_arg_invalid (connection,
+                                                TALER_EC_REFRESH_REVEAL_SESSION_UNKNOWN,
+                                                "rc");
+          break;
+        case GNUNET_DB_STATUS_HARD_ERROR:
+          res = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                      TALER_EC_REFRESH_REVEAL_DB_FETCH_SESSION_ERROR);
+          break;
+        case GNUNET_DB_STATUS_SOFT_ERROR:
+        default:
+          GNUNET_break (0); /* should be impossible */
+          res = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                      TALER_EC_INTERNAL_INVARIANT_FAILURE);
+          break;
+        }
+        goto cleanup;
+      }
+    }
+    /* Parse link signatures array */
+    for (unsigned int i=0;i<num_fresh_coins;i++)
+    {
+      struct GNUNET_JSON_Specification link_spec[] = {
+         GNUNET_JSON_spec_fixed_auto (NULL, &link_sigs[i]),
+         GNUNET_JSON_spec_end ()
+      };
+      int res;
+
+      res = TEH_PARSE_json_array (connection,
+                                  link_sigs_json,
+                                  link_spec,
+                                  i,
+                                  -1);
+      if (GNUNET_OK != res)
+        return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+      /* Check link_sigs[i] signature */
+      {
+        struct TALER_LinkDataPS ldp;
+
+        ldp.purpose.size = htonl (sizeof (ldp));
+        ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
+        ldp.h_denom_pub = dki_h[i];
+        ldp.old_coin_pub = refresh_melt.session.coin.coin_pub; 
+        ldp.transfer_pub = rctx->gamma_tp;
+        GNUNET_CRYPTO_hash (rcds[i].coin_ev,
+                            rcds[i].coin_ev_size,
+                            &ldp.coin_envelope_hash);
+
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
+                                        &ldp.purpose,
+                                        &link_sigs[i].eddsa_signature,
+                                        &refresh_melt.session.coin.coin_pub.eddsa_pub))
+        {
+          GNUNET_break_op (0);
+          res = TEH_RESPONSE_reply_signature_invalid (connection,
+                                                      TALER_EC_REFRESH_REVEAL_LINK_SIGNATURE_INVALID,
+                                                      "link_sig");
+          goto cleanup;
+        }
+      }
+    }
+    
     rctx->num_fresh_coins = num_fresh_coins;
     rctx->rcds = rcds;
     rctx->dkis = dkis;
+    rctx->link_sigs = link_sigs;
 
     /* sign _early_ (optimistic!) to keep out of transaction scope! */
     rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
@@ -749,7 +844,6 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
 }
 
 
-
 /**
  * Handle a "/refresh/reveal" request. This time, the client reveals
  * the private transfer keys except for the cut-and-choose value
@@ -777,12 +871,14 @@ TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
   json_t *root;
   json_t *coin_evs;
   json_t *transfer_privs;
+  json_t *link_sigs;
   json_t *new_denoms_h;
   struct RevealContext rctx;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("rc", &rctx.rc),
     GNUNET_JSON_spec_fixed_auto ("transfer_pub", &rctx.gamma_tp),
     GNUNET_JSON_spec_json ("transfer_privs", &transfer_privs),
+    GNUNET_JSON_spec_json ("link_sigs", &link_sigs),
     GNUNET_JSON_spec_json ("coin_evs", &coin_evs),
     GNUNET_JSON_spec_json ("new_denoms_h", &new_denoms_h),
     GNUNET_JSON_spec_end ()
@@ -819,12 +915,13 @@ TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID,
+                                           TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID,
                                            "transfer_privs");
   }
   res = handle_refresh_reveal_json (connection,
                                     &rctx,
                                     transfer_privs,
+                                    link_sigs,
                                     new_denoms_h,
                                     coin_evs);
   GNUNET_JSON_parse_free (spec);

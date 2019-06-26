@@ -315,6 +315,7 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS refresh_revealed_coins "
                            "(rc BYTEA NOT NULL REFERENCES refresh_commitments (rc) ON DELETE CASCADE"
                            ",newcoin_index INT4 NOT NULL"
+                           ",link_sig BYTEA NOT NULL CHECK(LENGTH(link_sig)=64)"
                            ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
                            ",coin_ev BYTEA NOT NULL"
                            ",ev_sig BYTEA NOT NULL"
@@ -951,18 +952,20 @@ postgres_prepare (PGconn *db_conn)
                             "INSERT INTO refresh_revealed_coins "
                             "(rc "
                             ",newcoin_index "
+                            ",link_sig "
                             ",denom_pub_hash "
                             ",coin_ev"
                             ",ev_sig"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5);",
-                            5),
+                            "($1, $2, $3, $4, $5, $6);",
+                            6),
     /* Obtain information about the coins created in a refresh
        operation, used in #postgres_get_refresh_reveal() */
     GNUNET_PQ_make_prepare ("get_refresh_revealed_coins",
                             "SELECT "
                             " newcoin_index"
                             ",denom.denom_pub"
+                            ",link_sig"
                             ",coin_ev"
                             ",ev_sig"
                             " FROM refresh_revealed_coins"
@@ -1239,6 +1242,7 @@ postgres_prepare (PGconn *db_conn)
                             " tp.transfer_pub"
                             ",denoms.denom_pub"
                             ",rrc.ev_sig"
+                            ",rrc.link_sig"
                             " FROM refresh_commitments"
                             "     JOIN refresh_revealed_coins rrc"
                             "       USING (rc)"
@@ -3641,7 +3645,7 @@ postgres_select_refunds_by_coin (void *cls,
  * Lookup refresh melt commitment data under the given @a rc.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database handle to use
+ * @param session database handle to use, NULL if not run in any transaction
  * @param rc commitment hash to use to locate the operation
  * @param[out] refresh_melt where to store the result
  * @return transaction status
@@ -3652,6 +3656,7 @@ postgres_get_melt (void *cls,
                    const struct TALER_RefreshCommitmentP *rc,
                    struct TALER_EXCHANGEDB_RefreshMelt *refresh_melt)
 {
+  struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (rc),
     GNUNET_PQ_query_param_end
@@ -3675,6 +3680,8 @@ postgres_get_melt (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  if (NULL == session)
+    session = postgres_get_session (pc);
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						 "get_melt",
 						 params,
@@ -3790,6 +3797,7 @@ postgres_insert_refresh_reveal (void *cls,
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (rc),
       GNUNET_PQ_query_param_uint32 (&i),
+      GNUNET_PQ_query_param_auto_from_type (&rrc->orig_coin_link_sig),
       GNUNET_PQ_query_param_auto_from_type (&denom_pub_hash),
       GNUNET_PQ_query_param_fixed_size (rrc->coin_ev,
                                         rrc->coin_ev_size),
@@ -3876,6 +3884,8 @@ add_revealed_coins (void *cls,
                                     &off),
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
 					    &rrc->denom_pub.rsa_public_key),
+      GNUNET_PQ_result_spec_auto_from_type ("link_sig",
+                                            &rrc->orig_coin_link_sig),
       GNUNET_PQ_result_spec_variable_size ("coin_ev",
 					   (void **) &rrc->coin_ev,
 					   &rrc->coin_ev_size),
@@ -3932,7 +3942,7 @@ postgres_get_refresh_reveal (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
-					  &tp),
+                                          &tp),
     GNUNET_PQ_result_spec_variable_size ("transfer_privs",
                                          &tpriv,
                                          &tpriv_size),
@@ -4087,8 +4097,8 @@ free_link_data_list (void *cls,
  */
 static void
 add_ldl (void *cls,
-	 PGresult *result,
-	 unsigned int num_results)
+         PGresult *result,
+         unsigned int num_results)
 {
   struct LinkDataContext *ldctx = cls;
 
@@ -4102,11 +4112,13 @@ add_ldl (void *cls,
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
                                               &transfer_pub),
-	GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
-					     &pos->ev_sig.rsa_signature),
-	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-					      &pos->denom_pub.rsa_public_key),
-	GNUNET_PQ_result_spec_end
+        GNUNET_PQ_result_spec_auto_from_type ("link_sig",
+                                              &pos->orig_coin_link_sig),
+        GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
+                                             &pos->ev_sig.rsa_signature),
+        GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                              &pos->denom_pub.rsa_public_key),
+        GNUNET_PQ_result_spec_end
       };
 
       if (GNUNET_OK !=
@@ -4173,10 +4185,10 @@ postgres_get_link_data (void *cls,
   ldctx.last = NULL;
   ldctx.status = GNUNET_OK;
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "get_link",
-					     params,
-					     &add_ldl,
-					     &ldctx);
+                                             "get_link",
+                                             params,
+                                             &add_ldl,
+                                             &ldctx);
   if (NULL != ldctx.last)
   {
     if (GNUNET_OK == ldctx.status)

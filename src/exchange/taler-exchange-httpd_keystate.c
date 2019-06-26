@@ -39,7 +39,7 @@
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
  */
-#define TALER_PROTOCOL_VERSION "3:0:0"
+#define TALER_PROTOCOL_VERSION "4:0:0"
 
 
 /**

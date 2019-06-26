@@ -1065,7 +1065,7 @@ handle_refresh_melt_finished (void *cls,
     {
       rmh->melt_cb (rmh->melt_cb_cls,
                     response_code,
-		    TALER_JSON_get_error_code (j),
+                    TALER_JSON_get_error_code (j),
                     noreveal_index,
                     (0 == response_code) ? NULL : &exchange_pub,
                     j);
@@ -1534,6 +1534,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   json_t *new_denoms_h;
   json_t *coin_evs;
   json_t *reveal_obj;
+  json_t *link_sigs;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
@@ -1565,6 +1566,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   /* now new_denoms */
   GNUNET_assert (NULL != (new_denoms_h = json_array ()));
   GNUNET_assert (NULL != (coin_evs = json_array ()));
+  GNUNET_assert (NULL != (link_sigs = json_array ()));
   for (unsigned int i=0;i<md->num_fresh_coins;i++)
   {
     struct GNUNET_HashCode denom_hash;
@@ -1591,6 +1593,30 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                    json_array_append_new (coin_evs,
                                           GNUNET_JSON_from_data (pd.coin_ev,
                                                                  pd.coin_ev_size)));
+
+    /* compute link signature */
+    {
+      struct TALER_CoinSpendSignatureP link_sig;
+      struct TALER_LinkDataPS ldp;
+
+      ldp.purpose.size = htonl (sizeof (ldp));
+      ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
+      ldp.h_denom_pub = denom_hash;
+      GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
+                                          &ldp.old_coin_pub.eddsa_pub);
+      ldp.transfer_pub = transfer_pub;
+      GNUNET_CRYPTO_hash (pd.coin_ev,
+                          pd.coin_ev_size,
+                          &ldp.coin_envelope_hash);
+      GNUNET_assert (GNUNET_OK ==
+                     GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
+                                               &ldp.purpose,
+                                               &link_sig.eddsa_signature));
+      GNUNET_assert (0 ==
+                     json_array_append_new (link_sigs,
+                                            GNUNET_JSON_from_data_auto (&link_sig)));
+    }
+    
     GNUNET_free (pd.coin_ev);
   }
 
@@ -1610,13 +1636,15 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   /* build main JSON request */
-  reveal_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
+  reveal_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                           "rc",
                           GNUNET_JSON_from_data_auto (&md->rc),
                           "transfer_pub",
                           GNUNET_JSON_from_data_auto (&transfer_pub),
                           "transfer_privs",
                           transfer_privs,
+                          "link_sigs",
+                          link_sigs,
                           "new_denoms_h",
                           new_denoms_h,
                           "coin_evs",

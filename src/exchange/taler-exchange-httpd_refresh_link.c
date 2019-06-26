@@ -92,6 +92,9 @@ handle_link_data (void *cls,
     json_object_set_new (obj,
                          "ev_sig",
                          GNUNET_JSON_from_rsa_signature (pos->ev_sig.rsa_signature));
+    json_object_set_new (obj,
+                         "link_sig",
+                         GNUNET_JSON_from_data_auto (&pos->orig_coin_link_sig));
     if (0 !=
         json_array_append_new (list,
                                obj))
@@ -204,9 +207,9 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "run link",
-			      &mhd_ret,
-			      &refresh_link_transaction,
-			      &ctx))
+                              &mhd_ret,
+                              &refresh_link_transaction,
+                              &ctx))
   {
     if (NULL != ctx.mlist)
       json_decref (ctx.mlist);

@@ -1,3 +1,8 @@
+Wed 26 Jun 2019 03:31:52 PM CEST
+    Adding link signatures to prevent exchange from tracking
+    users using coins falsely believed to have been recovered via /link,
+    bumping protocol version to 4. -CG
+
 Sat 08 Jun 2019 07:54:33 PM CEST
     Change payto://sepa/ to payto://iban/ as per current spec. -CG
 

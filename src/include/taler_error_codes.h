@@ -617,7 +617,14 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFRESH_REVEAL_FRESH_DENOMINATION_KEY_NOT_FOUND = 1361,
 
+  /**
+   * The signature made with the coin over the link data is invalid.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_REFRESH_REVEAL_LINK_SIGNATURE_INVALID = 1362,
 
+  
   /**
    * The coin specified in the link request is unknown to the exchange.
    * This response is provided with HTTP status code
