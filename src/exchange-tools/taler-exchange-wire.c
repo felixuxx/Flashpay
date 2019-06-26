@@ -132,6 +132,9 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+  char *masters;
+  struct GNUNET_CRYPTO_EddsaPublicKey mpub;
+  struct GNUNET_CRYPTO_EddsaPublicKey mpub_cfg;
 
   if ( (NULL == masterkeyfile) &&
        (GNUNET_OK !=
@@ -160,6 +163,42 @@ run (void *cls,
     return;
   }
   master_priv.eddsa_priv = *eddsa_priv;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange",
+                                             "MASTER_PUBLIC_KEY",
+                                             &masters))
+  {
+    fprintf (stderr,
+             "Master public key option missing in configuration\n");
+    global_ret = 1;
+    return;
+  }
+  GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+                                      &mpub);
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (masters,
+                                     strlen (masters),
+                                     &mpub_cfg,
+                                     sizeof (mpub_cfg)))
+  {
+    fprintf (stderr,
+             "Master public key `%s' in configuration is not a valid key\n",
+             masters);
+    GNUNET_free (masters);
+    global_ret = 1;
+    return;
+  }
+  GNUNET_free (masters);
+  if (0 != GNUNET_memcmp (&mpub,
+                          &mpub_cfg))
+  {
+    fprintf (stderr,
+             "Master public key `%s' in configuration does not match our master private key!\n",
+             masters);
+    global_ret = 1;
+    return;
+  }
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &sign_account_data,
                                   NULL);
