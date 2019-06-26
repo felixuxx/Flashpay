@@ -3299,10 +3299,10 @@ postgres_iterate_matching_deposits (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-get_known_coin (void *cls,
-                struct TALER_EXCHANGEDB_Session *session,
-                const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                struct TALER_CoinPublicInfo *coin_info)
+postgres_get_known_coin (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                         struct TALER_CoinPublicInfo *coin_info)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
@@ -3411,10 +3411,10 @@ postgres_ensure_coin_known (void *cls,
   struct TALER_CoinPublicInfo known_coin;
 
   /* check if the coin is already known */
-  qs = get_known_coin (pc,
-		       session,
-		       &coin->coin_pub,
-		       &known_coin);
+  qs = postgres_get_known_coin (pc,
+                                session,
+                                &coin->coin_pub,
+                                &known_coin);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4303,10 +4303,10 @@ add_coin_deposit (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_DEPOSIT;
     tl->details.deposit = deposit;
-    qs = get_known_coin (chc->db_cls,
-			 chc->session,
-			 chc->coin_pub,
-			 &deposit->coin);
+    qs = postgres_get_known_coin (chc->db_cls,
+                                  chc->session,
+                                  chc->coin_pub,
+                                  &deposit->coin);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4372,10 +4372,10 @@ add_coin_melt (void *cls,
     tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
     tl->details.melt = melt;
     /* FIXME: integrate via JOIN in main select, instead of using separate query */
-    qs = get_known_coin (chc->db_cls,
-			 chc->session,
-			 chc->coin_pub,
-			 &melt->session.coin);
+    qs = postgres_get_known_coin (chc->db_cls,
+                                  chc->session,
+                                  chc->coin_pub,
+                                  &melt->session.coin);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4443,10 +4443,10 @@ add_coin_refund (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_REFUND;
     tl->details.refund = refund;
-    qs = get_known_coin (chc->db_cls,
-			 chc->session,
-			 chc->coin_pub,
-			 &refund->coin);
+    qs = postgres_get_known_coin (chc->db_cls,
+                                  chc->session,
+                                  chc->coin_pub,
+                                  &refund->coin);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -7273,6 +7273,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->count_known_coins = &postgres_count_known_coins;
   plugin->ensure_coin_known = &postgres_ensure_coin_known;
+  plugin->get_known_coin = &postgres_get_known_coin;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
   plugin->test_deposit_done = &postgres_test_deposit_done;
