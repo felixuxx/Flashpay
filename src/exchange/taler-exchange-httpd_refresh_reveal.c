@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Inria & GNUnet e.V.
+  Copyright (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -730,7 +730,6 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
         GNUNET_CRYPTO_hash (rcds[i].coin_ev,
                             rcds[i].coin_ev_size,
                             &ldp.coin_envelope_hash);
-
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
                                         &ldp.purpose,

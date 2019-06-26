@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016 GNUnet e.V.
+  Copyright (C) 2015, 2016, 2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -93,9 +93,11 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 {
   struct GNUNET_CRYPTO_RsaSignature *bsig;
   struct GNUNET_CRYPTO_RsaPublicKey *rpub;
+  struct TALER_CoinSpendSignatureP link_sig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
     GNUNET_JSON_spec_rsa_signature ("ev_sig", &bsig),
+    GNUNET_JSON_spec_fixed_auto ("link_sig", &link_sig),
     GNUNET_JSON_spec_end()
   };
   struct TALER_TransferSecretP secret;
@@ -115,8 +117,8 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                                       &rlh->coin_priv,
                                       &secret);
   TALER_planchet_setup_refresh (&secret,
-                          coin_num,
-                          &fc);
+                                coin_num,
+                                &fc);
 
   /* extract coin and signature */
   *coin_priv = fc.coin_priv;
@@ -124,6 +126,44 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     = GNUNET_CRYPTO_rsa_unblind (bsig,
                                  &fc.blinding_key.bks,
                                  rpub);
+  /* verify link_sig */
+  {
+    struct TALER_LinkDataPS ldp;
+    struct TALER_PlanchetDetail pd;
+
+    ldp.purpose.size = htonl (sizeof (ldp));
+    ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
+    GNUNET_CRYPTO_eddsa_key_get_public (&rlh->coin_priv.eddsa_priv,
+                                        &ldp.old_coin_pub.eddsa_pub);
+    ldp.transfer_pub = *trans_pub;
+    pub->rsa_public_key = rpub;
+    if (GNUNET_OK !=
+        TALER_planchet_prepare (pub,
+                                &fc,
+                                &pd))
+    {
+      GNUNET_break (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    ldp.h_denom_pub = pd.denom_pub_hash;
+    GNUNET_CRYPTO_hash (pd.coin_ev,
+                        pd.coin_ev_size,
+                        &ldp.coin_envelope_hash);
+    GNUNET_free (pd.coin_ev);
+        
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
+                                    &ldp.purpose,
+                                    &link_sig.eddsa_signature,
+                                    &ldp.old_coin_pub.eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+  }
+  
   /* clean up */
   pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
   GNUNET_JSON_parse_free (spec);
@@ -173,7 +213,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     };
 
     if (GNUNET_OK !=
-	GNUNET_JSON_parse (json_array_get (json,
+        GNUNET_JSON_parse (json_array_get (json,
                                            session),
                            spec,
                            NULL, NULL))
@@ -209,55 +249,55 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       json_t *jsona;
       struct TALER_TransferPublicKeyP trans_pub;
       struct GNUNET_JSON_Specification spec[] = {
-	GNUNET_JSON_spec_json ("new_coins",
+        GNUNET_JSON_spec_json ("new_coins",
                                &jsona),
-	GNUNET_JSON_spec_fixed_auto ("transfer_pub",
+        GNUNET_JSON_spec_fixed_auto ("transfer_pub",
                                      &trans_pub),
-	GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end()
       };
 
       if (GNUNET_OK !=
-	  GNUNET_JSON_parse (json_array_get (json,
+          GNUNET_JSON_parse (json_array_get (json,
                                              session),
                              spec,
                              NULL, NULL))
       {
-	GNUNET_break_op (0);
-	return GNUNET_SYSERR;
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
       }
       if (! json_is_array (jsona))
       {
-	GNUNET_break_op (0);
-	GNUNET_JSON_parse_free (spec);
-	return GNUNET_SYSERR;
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
       }
 
       /* decode all coins */
       for (i=0;i<json_array_size (jsona);i++)
       {
         GNUNET_assert (i + off_coin < num_coins);
-	if (GNUNET_OK !=
-	    parse_refresh_link_coin (rlh,
-				     json_array_get (jsona,
-						     i),
+        if (GNUNET_OK !=
+            parse_refresh_link_coin (rlh,
+                                     json_array_get (jsona,
+                                                     i),
                                      i,
-				     &trans_pub,
-				     &coin_privs[i+off_coin],
-				     &sigs[i+off_coin],
-				     &pubs[i+off_coin]))
-	{
-	  GNUNET_break_op (0);
-	  break;
-	}
+                                     &trans_pub,
+                                     &coin_privs[i+off_coin],
+                                     &sigs[i+off_coin],
+                                     &pubs[i+off_coin]))
+        {
+          GNUNET_break_op (0);
+          break;
+        }
       }
       /* check if we really got all, then invoke callback */
       off_coin += i;
       if (i != json_array_size (jsona))
       {
-	GNUNET_break_op (0);
-	ret = GNUNET_SYSERR;
-	GNUNET_JSON_parse_free (spec);
-	break;
+        GNUNET_break_op (0);
+        ret = GNUNET_SYSERR;
+        GNUNET_JSON_parse_free (spec);
+        break;
       }
       GNUNET_JSON_parse_free (spec);
     } /* end of for (session) */
@@ -265,13 +305,13 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     if (off_coin == num_coins)
     {
       rlh->link_cb (rlh->link_cb_cls,
-		    MHD_HTTP_OK,
-		    TALER_EC_NONE,
-		    num_coins,
-		    coin_privs,
-		    sigs,
-		    pubs,
-		    json);
+                    MHD_HTTP_OK,
+                    TALER_EC_NONE,
+                    num_coins,
+                    coin_privs,
+                    sigs,
+                    pubs,
+                    json);
       rlh->link_cb = NULL;
       ret = GNUNET_OK;
     }
@@ -349,11 +389,11 @@ handle_refresh_link_finished (void *cls,
   if (NULL != rlh->link_cb)
     rlh->link_cb (rlh->link_cb_cls,
                   response_code,
-		  TALER_JSON_get_error_code (j),
+                  TALER_JSON_get_error_code (j),
                   0,
-		  NULL,
-		  NULL,
-		  NULL,
+                  NULL,
+                  NULL,
+                  NULL,
                   j);
   TALER_EXCHANGE_refresh_link_cancel (rlh);
 }
