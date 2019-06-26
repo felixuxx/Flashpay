@@ -1907,6 +1907,9 @@ TEH_KS_denomination_key_lookup_by_hash (const struct TEH_KS_StateHandle *key_sta
   map = (TEH_KS_DKU_PAYBACK == use) ? key_state->revoked_map : key_state->denomkey_map;
   dki = GNUNET_CONTAINER_multihashmap_get (map,
 					   denom_pub_hash);
+  if ( (NULL == dki) && (TEH_KS_DKU_ZOMBIE == use))
+    dki = GNUNET_CONTAINER_multihashmap_get (key_state->revoked_map,
+                                             denom_pub_hash);
   if (NULL == dki)
     return NULL;
   now = GNUNET_TIME_absolute_get ();
@@ -1954,6 +1957,16 @@ TEH_KS_denomination_key_lookup_by_hash (const struct TEH_KS_StateHandle *key_sta
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to payback coin has passed\n",
+		  GNUNET_h2s (denom_pub_hash));
+      return NULL;
+    }
+    break;
+  case TEH_KS_DKU_ZOMBIE:
+    if (now.abs_value_us >
+	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_legal).abs_value_us)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		  "Not returning DKI for %s, as legal expiration of coin has passed\n",
 		  GNUNET_h2s (denom_pub_hash));
       return NULL;
     }

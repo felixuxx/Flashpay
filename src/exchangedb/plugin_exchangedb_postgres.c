@@ -3304,6 +3304,7 @@ postgres_get_known_coin (void *cls,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          struct TALER_CoinPublicInfo *coin_info)
 {
+  struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
@@ -3320,6 +3321,8 @@ postgres_get_known_coin (void *cls,
               "Getting known coin data for coin %s\n",
               TALER_B2S (coin_pub));
   coin_info->coin_pub = *coin_pub;
+  if (NULL == session)
+    session = postgres_get_session (pc);
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
 						   "get_known_coin",
 						   params,

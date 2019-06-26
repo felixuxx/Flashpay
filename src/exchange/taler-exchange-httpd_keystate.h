@@ -109,7 +109,14 @@ enum TEH_KS_DenominationKeyUse {
   /**
    * The key is to be used for a /payback operation.
    */
-  TEH_KS_DKU_PAYBACK
+  TEH_KS_DKU_PAYBACK,
+
+  /**
+   * The key is to be used for a /refresh/payback operation,
+   * i.e. it is an old coin that regained value from a 
+   * payback on a new coin derived from the old coin.
+   */
+  TEH_KS_DKU_ZOMBIE
 
 };
 

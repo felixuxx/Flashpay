@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Inria & GNUnet e.V.
+  Copyright (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -173,12 +173,12 @@ refresh_check_melt (struct MHD_Connection *connection,
                                           session,
                                           &rmc->refresh_session.coin.coin_pub,
                                           GNUNET_NO,
-					  &tl);
+                                          &tl);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
+                                                       TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
     return qs;
   }
   if (GNUNET_OK !=
@@ -453,9 +453,64 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                                              "no keys");
     goto cleanup;
   }
+
+  /* Baseline: check if deposits/refreshs are generally
+     simply still allowed for this denomination */
   rmc.dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                     &rmc.refresh_session.coin.denom_pub_hash,
                                                     TEH_KS_DKU_DEPOSIT);
+  /* Consider case that denomination was revoked but
+     this coin was already seen and thus refresh is OK. */
+  if (NULL == rmc.dki)
+  {
+    struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+
+    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                  &rmc.refresh_session.coin.denom_pub_hash,
+                                                  TEH_KS_DKU_PAYBACK);
+    if (NULL != dki)
+    {
+      struct TALER_CoinPublicInfo coin_info;
+      enum GNUNET_DB_QueryStatus qs;
+
+      qs = TEH_plugin->get_known_coin (TEH_plugin->cls,
+                                       NULL,
+                                       &rmc.refresh_session.coin.coin_pub,
+                                       &coin_info);
+      if (0 > qs)
+      {
+        GNUNET_break (0);
+        res = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                    TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
+        goto cleanup;
+      }
+      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+      {
+        /* Coin was known beforehand, so we should allow the refresh */
+        rmc.dki = dki;
+        GNUNET_CRYPTO_rsa_signature_free (coin_info.denom_sig.rsa_signature);
+      }
+    }
+  }
+
+  /* Consider the case that the denomination expired for deposits,
+     but /refresh/payback refilled the balance of the 'zombie' coin
+     and we should thus allow the refresh during the legal period. */
+  if (NULL == rmc.dki)
+  {
+    struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+
+    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                  &rmc.refresh_session.coin.denom_pub_hash,
+                                                  TEH_KS_DKU_ZOMBIE);
+    if (NULL != dki)
+    {
+      /* Test if zombie-condition is actually satisfied for the coin */
+      if (0 /* FIXME: test if zombie-satisfied */)
+        rmc.dki = dki;
+    }
+  }
+
   if (NULL == rmc.dki)
   {
     TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
