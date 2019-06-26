@@ -25,14 +25,26 @@ libtalerjson_la_LIBADD = \
   $(XLIB)
 
 TESTS = \
-  test_json
+  test_json \
+  test_json_wire
 
 check_PROGRAMS= \
-  test_json
+  test_json \
+  test_json_wire
 
 test_json_SOURCES = \
   test_json.c
 test_json_LDADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
+  -lgnunetjson \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  -ljansson
+
+
+test_json_wire_SOURCES = \
+  test_json_wire.c
+test_json_wire_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \
   $(top_builddir)/src/util/libtalerutil.la \

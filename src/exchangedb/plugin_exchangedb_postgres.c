@@ -3384,9 +3384,9 @@ postgres_count_known_coins (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						 "count_known_coins",
-						 params,
-						 rs);
+                                                 "count_known_coins",
+                                                 params,
+                                                 rs);
   if (0 > qs)
     return (long long) qs;
   return (long long) count;
