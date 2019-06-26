@@ -189,16 +189,17 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  GNUNET_free (masters);
   if (0 != GNUNET_memcmp (&mpub,
                           &mpub_cfg))
   {
     fprintf (stderr,
              "Master public key `%s' in configuration does not match our master private key!\n",
              masters);
+    GNUNET_free (masters);
     global_ret = 1;
     return;
   }
+  GNUNET_free (masters);
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &sign_account_data,
                                   NULL);
