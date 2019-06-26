@@ -36,6 +36,7 @@
 #include "taler-exchange-httpd_payback.h"
 #include "taler-exchange-httpd_refresh_link.h"
 #include "taler-exchange-httpd_refresh_melt.h"
+#include "taler-exchange-httpd_refresh_payback.h"
 #include "taler-exchange-httpd_refresh_reveal.h"
 #include "taler-exchange-httpd_track_transfer.h"
 #include "taler-exchange-httpd_track_transaction.h"
@@ -317,6 +318,13 @@ handle_mhd_request (void *cls,
         "Only GET is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
+      { "/refresh/payback", MHD_HTTP_METHOD_POST, "application/json",
+        NULL, 0,
+        &TEH_REFRESH_handler_refresh_payback, MHD_HTTP_OK },
+      { "/refresh/payback", NULL, "text/plain",
+        "Only POST is allowed", 0,
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
       { "/track/transfer", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
         &TEH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
@@ -347,29 +355,29 @@ handle_mhd_request (void *cls,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/base32", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_base32, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_base32, MHD_HTTP_OK },
       { "/test/base32", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/encrypt", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-	&TEH_TEST_handler_test_encrypt, MHD_HTTP_OK },
+        &TEH_TEST_handler_test_encrypt, MHD_HTTP_OK },
       { "/test/encrypt", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/hkdf", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_hkdf, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_hkdf, MHD_HTTP_OK },
       { "/test/hkdf", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/ecdhe", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
       { "/test/ecdhe", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
@@ -382,15 +390,15 @@ handle_mhd_request (void *cls,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/rsa/get", MHD_HTTP_METHOD_GET, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
       { "/test/rsa/get", NULL, "text/plain",
         "Only GET is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/rsa/sign", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TEH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
+        NULL, 0,
+        &TEH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
       { "/test/rsa/sign", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },

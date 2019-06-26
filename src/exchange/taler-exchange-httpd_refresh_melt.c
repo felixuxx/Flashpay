@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Inria & GNUnet e.V.
+  Copyright (C) 2014-2019 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -155,8 +155,8 @@ struct RefreshMeltContext
 static enum GNUNET_DB_QueryStatus
 refresh_check_melt (struct MHD_Connection *connection,
                     struct TALER_EXCHANGEDB_Session *session,
-		    struct RefreshMeltContext *rmc,
-		    int *mhd_ret)
+                    struct RefreshMeltContext *rmc,
+                    int *mhd_ret)
 {
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount coin_value;
@@ -351,10 +351,10 @@ handle_refresh_melt (struct MHD_Connection *connection,
     body.coin_pub = rmc->refresh_session.coin.coin_pub;
 
     if (GNUNET_OK !=
-	GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-				    &body.purpose,
-				    &rmc->refresh_session.coin_sig.eddsa_signature,
-				    &rmc->refresh_session.coin.coin_pub.eddsa_pub))
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
+                                    &body.purpose,
+                                    &rmc->refresh_session.coin_sig.eddsa_signature,
+                                    &rmc->refresh_session.coin.coin_pub.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_signature_invalid (connection,
