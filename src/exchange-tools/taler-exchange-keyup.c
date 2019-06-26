@@ -1160,8 +1160,8 @@ revoke_denomination (const struct GNUNET_HashCode *hc)
   }
   if (GNUNET_OK !=
       TALER_EXCHANGEDB_denomination_key_revoke (basedir,
-						hc,
-						&master_priv))
+                                                hc,
+                                                &master_priv))
   {
     GNUNET_free (basedir);
     GNUNET_break (0);
@@ -1265,6 +1265,48 @@ run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
                                       &master_public_key.eddsa_pub);
 
+  /* Check master public key in configuration matches our
+     master private key */
+  {
+    char *masters;
+    struct TALER_MasterPublicKeyP mpub_cfg;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "MASTER_PUBLIC_KEY",
+                                               &masters))
+    {
+      fprintf (stderr,
+               "Master public key option missing in configuration\n");
+      global_ret = 1;
+      return;
+    }
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (masters,
+                                       strlen (masters),
+                                       &mpub_cfg,
+                                       sizeof (mpub_cfg)))
+    {
+      fprintf (stderr,
+               "Master public key `%s' in configuration is not a valid key\n",
+               masters);
+      GNUNET_free (masters);
+      global_ret = 1;
+      return;
+    }
+    if (0 != GNUNET_memcmp (&master_public_key,
+                            &mpub_cfg))
+    {
+      fprintf (stderr,
+               "Master public key `%s' in configuration does not match our master private key!\n",
+               masters);
+      GNUNET_free (masters);
+      global_ret = 1;
+      return;
+    }
+    GNUNET_free (masters);
+  }
   if (NULL != auditorrequestfile)
   {
     auditor_output_file = FOPEN (auditorrequestfile,
