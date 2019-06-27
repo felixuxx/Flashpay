@@ -308,7 +308,6 @@ run (void *cls,
        "deposit-refund-1"),
 
     TALER_TESTING_cmd_end ()
-
   };
 
   struct TALER_TESTING_Command commands[] = {
