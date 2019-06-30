@@ -76,11 +76,11 @@ run (void *cls,
     return;
   }
   if (gc_db)
-    {
-      if (GNUNET_SYSERR == plugin->gc (plugin->cls))
-        fprintf (stderr,
-                 "Garbage collection failed!\n");
-    }
+  {
+    if (GNUNET_SYSERR == plugin->gc (plugin->cls))
+      fprintf (stderr,
+               "Garbage collection failed!\n");
+  }
   TALER_AUDITORDB_plugin_unload (plugin);
 }
 
@@ -99,13 +99,13 @@ main (int argc,
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('r',
-                                  "reset",
-                                  "reset database (DANGEROUS: all existing data is lost!)",
-                                  &reset_db),
+                               "reset",
+                               "reset database (DANGEROUS: all existing data is lost!)",
+                               &reset_db),
     GNUNET_GETOPT_option_flag ('g',
-                                  "gc",
-                                  "garbage collect database",
-                                  &gc_db),
+                               "gc",
+                               "garbage collect database",
+                               &gc_db),
     GNUNET_GETOPT_OPTION_END
   };
 
@@ -120,9 +120,9 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-auditor-dbinit",
-			  "Initialize Taler auditor database",
-			  options,
-			  &run, NULL))
+                          "Initialize Taler auditor database",
+                          options,
+                          &run, NULL))
     return 1;
   return global_ret;
 }
