@@ -787,8 +787,8 @@ main (int argc,
     TALER_LOG_ERROR ("Unknown mode given: '%s'\n", mode_str);
     return BAD_CONFIG_FILE;
   }
-  if (NULL == cfgfile)
-    cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
+  if (NULL == cfg_filename)
+    cfg_filename = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
