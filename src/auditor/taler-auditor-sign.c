@@ -397,13 +397,13 @@ main (int argc,
 					  dk);
       if (0 > qs)
       {
-	fprintf (stderr,
-		 "Failed to store key in auditor DB (did you add the exchange first?)\n");
-	TALER_AUDITORDB_plugin_unload (adb);
-	GNUNET_free (dks);
-	GNUNET_free (sigs);
-	GNUNET_free (eddsa_priv);
-	return 3;
+        fprintf (stderr,
+                 "Failed to store key in auditor DB (did you add the exchange using taler-auditor-exchange first?)\n");
+        TALER_AUDITORDB_plugin_unload (adb);
+        GNUNET_free (dks);
+        GNUNET_free (sigs);
+        GNUNET_free (eddsa_priv);
+        return 3;
       }
     }
   }
