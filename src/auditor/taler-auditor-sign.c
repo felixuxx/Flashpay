@@ -195,6 +195,8 @@ main (int argc,
                          options,
                          argc, argv) <= 0)
     return 1;
+  if (NULL == cfgfile)
+    cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR ==
       GNUNET_CONFIGURATION_load (cfg,

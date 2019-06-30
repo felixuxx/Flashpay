@@ -479,34 +479,34 @@ postgres_prepare (PGconn *db_conn)
                             0),
     /* used in #postgres_insert_exchange */
     GNUNET_PQ_make_prepare ("auditor_insert_exchange",
-			    "INSERT INTO auditor_exchanges "
-			    "(master_pub"
-			    ",exchange_url"
-			    ") VALUES ($1,$2);",
+                            "INSERT INTO auditor_exchanges "
+                            "(master_pub"
+                            ",exchange_url"
+                            ") VALUES ($1,$2);",
                             2),
     /* used in #postgres_delete_exchange */
     GNUNET_PQ_make_prepare ("auditor_delete_exchange",
-			    "DELETE"
-			    " FROM auditor_exchanges"
-			    " WHERE master_pub=$1;",
+                            "DELETE"
+                            " FROM auditor_exchanges"
+                            " WHERE master_pub=$1;",
                             1),
     /* used in #postgres_list_exchanges */
     GNUNET_PQ_make_prepare ("auditor_list_exchanges",
-			    "SELECT"
-			    " master_pub"
+                            "SELECT"
+                            " master_pub"
                             ",exchange_url"
-			    " FROM auditor_exchanges",
+                            " FROM auditor_exchanges",
                             0),
     /* used in #postgres_insert_exchange_signkey */
     GNUNET_PQ_make_prepare ("auditor_insert_exchange_signkey",
-			    "INSERT INTO auditor_exchange_signkeys "
-			    "(master_pub"
-			    ",ep_start"
-			    ",ep_expire"
-			    ",ep_end"
-			    ",exchange_pub"
+                            "INSERT INTO auditor_exchange_signkeys "
+                            "(master_pub"
+                            ",ep_start"
+                            ",ep_expire"
+                            ",ep_end"
+                            ",exchange_pub"
                             ",master_sig"
-			    ") VALUES ($1,$2,$3,$4,$5,$6);",
+                            ") VALUES ($1,$2,$3,$4,$5,$6);",
                             6),
     /* Used in #postgres_insert_denomination_info() */
     GNUNET_PQ_make_prepare ("auditor_denominations_insert",
@@ -1215,8 +1215,8 @@ postgres_gc (void *cls)
   }
   /* FIXME: this is obviously not going to be this easy... */
   qs = GNUNET_PQ_eval_prepared_non_select (conn,
-					   "gc_auditor",
-					   params_time);
+                                           "gc_auditor",
+                                           params_time);
   if (0 > qs)
   {
     GNUNET_break (0);
@@ -1250,8 +1250,8 @@ postgres_insert_exchange (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_insert_exchange",
-					     params);
+                                             "auditor_insert_exchange",
+                                             params);
 }
 
 

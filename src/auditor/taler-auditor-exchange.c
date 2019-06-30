@@ -74,10 +74,10 @@ main (int argc,
                                        "public key of the exchange (Crockford base32 encoded)",
                                        &master_public_key)),
     GNUNET_GETOPT_option_string ('u',
-				 "exchange-url",
-				 "URL",
-				 "base URL of the exchange",
-				 &exchange_url),
+                                 "exchange-url",
+                                 "URL",
+                                 "base URL of the exchange",
+                                 &exchange_url),
     GNUNET_GETOPT_option_flag ('r',
                                "remove",
                                "remove the exchange's key (default is to add)",
@@ -95,6 +95,8 @@ main (int argc,
                          options,
                          argc, argv) <= 0)
     return 1;
+  if (NULL == cfgfile)
+    cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -166,7 +168,7 @@ main (int argc,
     if (NULL == session)
     {
       fprintf (stderr,
-	       "Failed to initialize database session\n");
+               "Failed to initialize database session\n");
       TALER_AUDITORDB_plugin_unload (adb);
       return 3;
     }
@@ -195,8 +197,7 @@ main (int argc,
     if (0 == qs)
     {
       fprintf (stderr,
-               "Did not update auditor DB: value existed\n",
-               qs);
+               "Did not update auditor DB: value existed\n");
       TALER_AUDITORDB_plugin_unload (adb);
       return 4;
     }
