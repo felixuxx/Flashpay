@@ -57,7 +57,7 @@ static int remove_flag;
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
- * @return 0 ok, 1 on error
+ * @return 0 ok, non-zero on error
  */
 int
 main (int argc,
@@ -134,7 +134,7 @@ main (int argc,
     {
       fprintf (stderr,
 	       "Exchange URL must begin with `http://` or `https://` and end with `/'\n");
-      return 3;
+      return 1;
     }
   }
 
@@ -191,6 +191,14 @@ main (int argc,
                qs);
       TALER_AUDITORDB_plugin_unload (adb);
       return 3;
+    }
+    if (0 == qs)
+    {
+      fprintf (stderr,
+               "Did not update auditor DB: value existed\n",
+               qs);
+      TALER_AUDITORDB_plugin_unload (adb);
+      return 4;
     }
   }
   TALER_AUDITORDB_plugin_unload (adb);
