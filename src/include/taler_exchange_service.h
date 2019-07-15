@@ -1130,7 +1130,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle;
 typedef void
 (*TALER_EXCHANGE_ReserveWithdrawResultCallback) (void *cls,
                                                  unsigned int http_status,
-						 enum TALER_ErrorCode ec,
+                                                 enum TALER_ErrorCode ec,
                                                  const struct TALER_DenominationSignature *sig,
                                                  const json_t *full_response);
 
@@ -1287,8 +1287,8 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
 typedef void
 (*TALER_EXCHANGE_RefreshMeltCallback) (void *cls,
                                        unsigned int http_status,
-				       enum TALER_ErrorCode ec,
-				       uint32_t noreveal_index,
+                                       enum TALER_ErrorCode ec,
+                                       uint32_t noreveal_index,
                                        const struct TALER_ExchangePublicKeyP *sign_key,
                                        const json_t *full_response);
 
@@ -1354,8 +1354,10 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
 typedef void
 (*TALER_EXCHANGE_RefreshRevealCallback) (void *cls,
                                          unsigned int http_status,
-					 enum TALER_ErrorCode ec,
+                                         enum TALER_ErrorCode ec,
                                          unsigned int num_coins,
+                                         /* TODO (#5777): possibly replace
+                                            by a `struct TALER_RefreshPlanchetSecretsP` */
                                          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                          const struct TALER_DenominationSignature *sigs,
                                          const json_t *full_response);

@@ -799,7 +799,7 @@ do_melt_retry (void *cls)
 static void
 melt_cb (void *cls,
          unsigned int http_status,
-	 enum TALER_ErrorCode ec,
+         enum TALER_ErrorCode ec,
          uint32_t noreveal_index,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
@@ -1201,6 +1201,17 @@ refresh_reveal_traits (void *cls,
     traits[(num_coins * 2) + i]
       = TALER_TESTING_make_trait_denom_sig
         (i, &rrs->fresh_coins[i].sig);
+#if 0
+  /* FIXME: need *some* trait for #5777 here, but we don't have
+     the blinding keys at hand, and #5777 asks for the transfer
+     private keys, which according to bugnote 14690 is a bad idea.
+     So what should we do here? */
+  /* blinding key traits */
+  for (unsigned int i=0; i<num_coins; i++)
+    traits[(num_coins * 3) + i]
+      = TALER_TESTING_make_trait_blinding_key (i,
+                                               &rrs->fresh_coins[i].blinding_key),
+#endif
 
   /* number of fresh coins */
   traits[(num_coins * 3)] = TALER_TESTING_make_trait_uint
