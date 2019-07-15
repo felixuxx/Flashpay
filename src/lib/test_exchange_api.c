@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014--2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -958,7 +958,7 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-new",
+  GNUNET_log_setup ("test-exchange-api",
                     "INFO",
                     NULL);
   if (NULL == (fakebank_url
@@ -973,7 +973,7 @@ main (int argc,
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
                                           &auditor_url,
-					  &exchange_url))
+                                          &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);
@@ -998,4 +998,4 @@ main (int argc,
   return 0;
 }
 
-/* end of test_exchange_api_new.c */
+/* end of test_exchange_api.c */
