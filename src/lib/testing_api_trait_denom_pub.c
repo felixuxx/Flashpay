@@ -59,7 +59,6 @@ TALER_TESTING_get_trait_denom_pub
  *
  * @param index index number to associate to the offered denom pub.
  * @param denom_pub denom pub to offer with this trait.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

@@ -1384,7 +1384,9 @@ TALER_TESTING_cmd_refund (const char *label,
  * @param label the command label
  * @param expected_response_code expected HTTP status code
  * @param coin_reference reference to any command which
- *        offers a coin & reserve private key.
+ *        offers a coin and reserve private key.  May specify
+ *        the index of the coin using "$LABEL#$INDEX" syntax.
+ *        Here, $INDEX must be a non-negative number.
  * @param amount denomination to pay back.
  *
  * @return the command.

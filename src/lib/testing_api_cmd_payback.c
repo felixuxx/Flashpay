@@ -124,7 +124,6 @@ payback_cb (void *cls,
             const struct TALER_ReservePublicKeyP *reserve_pub,
             const json_t *full_response)
 {
-
   struct PaybackState *ps = cls;
   struct TALER_TESTING_Interpreter *is = ps->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
@@ -132,6 +131,9 @@ payback_cb (void *cls,
   const struct TALER_ReservePrivateKeyP *reserve_priv;
   struct TALER_ReservePublicKeyP rp;
   struct TALER_Amount expected_amount;
+  char *cref;
+  const char *index;
+  unsigned int idx;
 
   ps->ph = NULL;
   if (ps->expected_response_code != http_status)
@@ -148,8 +150,37 @@ payback_cb (void *cls,
     return;
   }
 
+  /* We allow command referneces of the form "$LABEL#$INDEX" or
+     just "$LABEL", which implies the index is 0. Figure out
+     which one it is. */
+  index = strchr (ps->coin_reference, '#');
+  if (NULL == index)
+  {
+    idx = 0;
+    cref = GNUNET_strdup (ps->coin_reference);
+  }
+  else
+  {
+    cref = GNUNET_strndup (ps->coin_reference,
+                           index - ps->coin_reference);
+    if (1 != sscanf (index,
+                     "%u",
+                     &idx))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Numeric index (not `%s') required after `#' in command reference of command %s in %s:%u\n",
+                  index,
+                  cmd->label,
+                  __FILE__,
+                  __LINE__);
+      TALER_TESTING_interpreter_fail (is);
+      GNUNET_free (cref);
+      return;
+    }
+  }
   reserve_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, ps->coin_reference);
+    (is, cref);
+  GNUNET_free (cref);
 
   if (NULL == reserve_cmd)
   {
@@ -159,7 +190,7 @@ payback_cb (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
-    (reserve_cmd, 0, &reserve_priv))
+    (reserve_cmd, idx, &reserve_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);

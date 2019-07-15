@@ -161,7 +161,7 @@ run (void *cls,
     /* Refund coin to original coin */
     TALER_TESTING_cmd_payback ("payback-1",
                                MHD_HTTP_OK,
-                               "refresh-melt-1",
+                               "refresh-reveal-1",
                                "EUR:5"),
     /**
      * Melt original coin AGAIN
@@ -178,7 +178,7 @@ run (void *cls,
     /* Make refreshed coin invalid */
     TALER_TESTING_cmd_revoke ("revoke-2",
                               MHD_HTTP_OK,
-                              "refresh-melt-2",
+                              "refresh-reveal-2",
                               CONFIG_FILE),
     /* Make also original coin invalid */
     TALER_TESTING_cmd_revoke ("revoke-3",
