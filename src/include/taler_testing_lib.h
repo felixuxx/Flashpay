@@ -1953,7 +1953,7 @@ TALER_TESTING_get_trait_uint
  *
  * FIXME: should be renamed, easily confused with `struct TALER_FreshCoin`!
  */
-struct FreshCoin
+struct TALER_TESTING_FreshCoinData
 {
 
   /**
@@ -1989,7 +1989,7 @@ struct FreshCoin
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_fresh_coins
   (unsigned int index,
-   struct FreshCoin *fresh_coins);
+   struct TALER_TESTING_FreshCoinData *fresh_coins);
 
 
 /**
@@ -2006,7 +2006,7 @@ int
 TALER_TESTING_get_trait_fresh_coins
   (const struct TALER_TESTING_Command *cmd,
    unsigned int index,
-   const struct FreshCoin **fresh_coins);
+   const struct TALER_TESTING_FreshCoinData **fresh_coins);
 
 
 /**

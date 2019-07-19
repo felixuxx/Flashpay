@@ -157,7 +157,7 @@ struct RefreshRevealState
    * data related to one fresh coin, set by the reveal callback
    * as it comes from the exchange.
    */
-  struct FreshCoin *fresh_coins;
+  struct TALER_TESTING_FreshCoinData *fresh_coins;
 
   /**
    * Interpreter state.
@@ -344,10 +344,10 @@ reveal_cb (void *cls,
   {
   case MHD_HTTP_OK:
     rrs->fresh_coins = GNUNET_new_array
-      (num_coins, struct FreshCoin);
+      (num_coins, struct TALER_TESTING_FreshCoinData);
     for (unsigned int i=0; i<num_coins; i++)
     {
-      struct FreshCoin *fc = &rrs->fresh_coins[i];
+      struct TALER_TESTING_FreshCoinData *fc = &rrs->fresh_coins[i];
 
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_denom_pub (melt_cmd,
@@ -598,7 +598,7 @@ link_cb (void *cls,
     found = 0;
 
     /* Will point to the pointer inside the cmd state. */
-    const struct FreshCoin *fc = NULL;
+    const struct TALER_TESTING_FreshCoinData *fc = NULL;
 
     if (GNUNET_OK != TALER_TESTING_get_trait_fresh_coins
       (reveal_cmd, 0, &fc))
@@ -1203,9 +1203,7 @@ refresh_reveal_traits (void *cls,
         (i, &rrs->fresh_coins[i].sig);
 #if 0
   /* FIXME: need *some* trait for #5777 here, but we don't have
-     the blinding keys at hand, and #5777 asks for the transfer
-     private keys, which according to bugnote 14690 is a bad idea.
-     So what should we do here? */
+     the blinding keys at hand. So we need to GET them! */
   /* blinding key traits */
   for (unsigned int i=0; i<num_coins; i++)
     traits[(num_coins * 3) + i]
