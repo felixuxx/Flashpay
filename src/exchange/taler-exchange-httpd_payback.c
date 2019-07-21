@@ -50,7 +50,7 @@ reply_payback_unknown (struct MHD_Connection *connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:I}",
                                        "error", "blinded coin unknown",
-				       "code", (json_int_t) ec);
+                                       "code", (json_int_t) ec);
 }
 
 
@@ -84,8 +84,8 @@ reply_payback_success (struct MHD_Connection *connection,
   pc.reserve_pub = *reserve_pub;
   if (GNUNET_OK !=
       TEH_KS_sign (&pc.purpose,
-		   &pub,
-		   &sig))
+                   &pub,
+                   &sig))
   {
     return TEH_RESPONSE_reply_internal_error (connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
@@ -172,9 +172,9 @@ struct PaybackContext
  */
 static enum GNUNET_DB_QueryStatus
 payback_transaction (void *cls,
-		     struct MHD_Connection *connection,
-		     struct TALER_EXCHANGEDB_Session *session,
-		     int *mhd_ret)
+                     struct MHD_Connection *connection,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     int *mhd_ret)
 {
   struct PaybackContext *pc = cls;
   struct TALER_EXCHANGEDB_TransactionList *tl;
@@ -184,16 +184,16 @@ payback_transaction (void *cls,
   /* Check whether a payback is allowed, and if so, to which
      reserve / account the money should go */
   qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
-					   session,
-					   &pc->h_blind,
-					   &pc->reserve_pub);
+                                           session,
+                                           &pc->h_blind,
+                                           &pc->reserve_pub);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_PAYBACK_DB_FETCH_FAILED);
+                                                       TALER_EC_PAYBACK_DB_FETCH_FAILED);
     }
     return qs;
   }
@@ -201,7 +201,7 @@ payback_transaction (void *cls,
   {
     GNUNET_break_op (0);
     *mhd_ret = reply_payback_unknown (connection,
-				      TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND);
+                                      TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -210,14 +210,14 @@ payback_transaction (void *cls,
                                           session,
                                           &pc->coin->coin_pub,
                                           GNUNET_YES,
-					  &tl);
+                                          &tl);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_PAYBACK_DB_FETCH_FAILED);
+                                                       TALER_EC_PAYBACK_DB_FETCH_FAILED);
     }
     return qs;
   }
@@ -226,14 +226,14 @@ payback_transaction (void *cls,
                                         &spent));
   if (GNUNET_OK !=
       TEH_DB_calculate_transaction_list_totals (tl,
-						&spent,
-						&spent))
+                                                &spent,
+                                                &spent))
   {
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_PAYBACK_HISTORY_DB_ERROR);
+                                                     TALER_EC_PAYBACK_HISTORY_DB_ERROR);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_SYSERR ==
@@ -245,7 +245,7 @@ payback_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE);
+                                                     TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if ( (0 == pc->amount.fraction) &&
@@ -254,8 +254,8 @@ payback_transaction (void *cls,
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-							   TALER_EC_PAYBACK_COIN_BALANCE_ZERO,
-							   tl);
+                                                           TALER_EC_PAYBACK_COIN_BALANCE_ZERO,
+                                                           tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -267,21 +267,41 @@ payback_transaction (void *cls,
 
   /* add coin to list of wire transfers for payback */
   qs = TEH_plugin->insert_payback_request (TEH_plugin->cls,
-					   session,
-					   &pc->reserve_pub,
-					   pc->coin,
-					   pc->coin_sig,
-					   pc->coin_bks,
-					   &pc->amount,
-					   &pc->h_blind,
-					   pc->now);
+                                           session,
+                                           &pc->reserve_pub,
+                                           pc->coin,
+                                           pc->coin_sig,
+                                           pc->coin_bks,
+                                           &pc->amount,
+                                           &pc->h_blind,
+                                           pc->now);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       TALER_LOG_WARNING ("Failed to store /payback information in database\n");
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_PAYBACK_DB_PUT_FAILED);
+                                                       TALER_EC_PAYBACK_DB_PUT_FAILED);
+    }
+    return qs;
+  }
+  /* increment reserve balance */
+  qs = TEH_plugin->increment_reserve_balance (TEH_plugin->cls,
+                                              session,
+                                              &pc->reserve_pub,
+                                              pc->coin,
+                                              pc->coin_sig,
+                                              pc->coin_bks,
+                                              &pc->amount,
+                                              &pc->h_blind,
+                                              pc->now);
+  if (0 > qs)
+  {
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      TALER_LOG_WARNING ("Failed to store /payback information in database\n");
+      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                       TALER_EC_PAYBACK_DB_PUT_FAILED);
     }
     return qs;
   }
@@ -333,7 +353,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     TEH_KS_release (key_state);
     TALER_LOG_WARNING ("Denomination key in /payback request not in payback mode\n");
     return TEH_RESPONSE_reply_arg_unknown (connection,
-					   TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN,
+                                           TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&pc.value,
@@ -347,7 +367,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Invalid coin passed for /payback\n");
     TEH_KS_release (key_state);
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
+                                                 TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
                                                  "denom_sig");
   }
 
@@ -367,7 +387,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Invalid signature on /payback request\n");
     TEH_KS_release (key_state);
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_PAYBACK_SIGNATURE_INVALID,
+                                                 TALER_EC_PAYBACK_SIGNATURE_INVALID,
                                                  "coin_sig");
   }
 
