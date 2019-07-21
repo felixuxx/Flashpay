@@ -1183,7 +1183,7 @@ refresh_reveal_traits (void *cls,
 {
   struct RefreshRevealState *rrs = cls;
   unsigned int num_coins = rrs->num_fresh_coins;
-#define NUM_TRAITS ((num_coins * 3) + 3)
+#define NUM_TRAITS ((num_coins * 4) + 3)
   struct TALER_TESTING_Trait traits[NUM_TRAITS];
 
   /* Making coin privs traits */
@@ -1202,26 +1202,22 @@ refresh_reveal_traits (void *cls,
     traits[(num_coins * 2) + i]
       = TALER_TESTING_make_trait_denom_sig
         (i, &rrs->fresh_coins[i].sig);
-#if 0
-  /* FIXME: need *some* trait for #5777 here, but we don't have
-     the blinding keys at hand. So we need to GET them! */
   /* blinding key traits */
   for (unsigned int i=0; i<num_coins; i++)
     traits[(num_coins * 3) + i]
       = TALER_TESTING_make_trait_blinding_key (i,
                                                &rrs->fresh_coins[i].blinding_key),
-#endif
 
   /* number of fresh coins */
-  traits[(num_coins * 3)] = TALER_TESTING_make_trait_uint
+  traits[(num_coins * 4)] = TALER_TESTING_make_trait_uint
     (0, &rrs->num_fresh_coins);
 
   /* whole array of fresh coins */
-  traits[(num_coins * 3) + 1]
+  traits[(num_coins * 4) + 1]
     = TALER_TESTING_make_trait_fresh_coins (0, rrs->fresh_coins),
 
   /* end of traits */
-  traits[(num_coins * 3) + 2] = TALER_TESTING_trait_end ();
+  traits[(num_coins * 4) + 2] = TALER_TESTING_trait_end ();
 
   return TALER_TESTING_get_trait (traits,
                                   ret,
