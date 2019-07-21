@@ -289,7 +289,7 @@ reveal_cb (void *cls,
            unsigned int http_status,
            enum TALER_ErrorCode ec,
            unsigned int num_coins,
-           const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+           const struct TALER_PlanchetSecretsP *coin_privs,
            const struct TALER_DenominationSignature *sigs,
            const json_t *full_response)
 {
@@ -358,7 +358,8 @@ reveal_cb (void *cls,
         TALER_TESTING_interpreter_fail (rrs->is);
         return;
       }
-      fc->coin_priv = coin_privs[i];
+      fc->coin_priv = coin_privs[i].coin_priv;
+      fc->blinding_key = coin_privs[i].blinding_key;
       fc->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup
         (sigs[i].rsa_signature);
     }

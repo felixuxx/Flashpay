@@ -1318,14 +1318,12 @@ struct TALER_EXCHANGE_RefreshRevealHandle
  *
  * @param rrh operation handle
  * @param json reply from the exchange
- * @param[out] coin_privs array of length `num_fresh_coins`, initialized to contain private keys
  * @param[out] sigs array of length `num_fresh_coins`, initialized to cointain RSA signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
 refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
                    const json_t *json,
-                   struct TALER_CoinSpendPrivateKeyP *coin_privs,
                    struct TALER_DenominationSignature *sigs)
 {
   json_t *jsona;
@@ -1405,7 +1403,6 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
       return GNUNET_SYSERR;
     }
     GNUNET_CRYPTO_rsa_signature_free (blind_sig);
-    coin_privs[i] = coin.coin_priv;
     sigs[i] = coin.sig;
   }
   GNUNET_JSON_parse_free (outer_spec);
@@ -1436,14 +1433,12 @@ handle_refresh_reveal_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      struct TALER_CoinSpendPrivateKeyP coin_privs[rrh->md->num_fresh_coins];
       struct TALER_DenominationSignature sigs[rrh->md->num_fresh_coins];
       int ret;
 
       memset (sigs, 0, sizeof (sigs));
       ret = refresh_reveal_ok (rrh,
                                j,
-                               coin_privs,
                                sigs);
       if (GNUNET_OK != ret)
       {
@@ -1453,9 +1448,9 @@ handle_refresh_reveal_finished (void *cls,
       {
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         MHD_HTTP_OK,
-			TALER_EC_NONE,
+                        TALER_EC_NONE,
                         rrh->md->num_fresh_coins,
-                        coin_privs,
+                        rrh->md->fresh_coins[rrh->noreveal_index],
                         sigs,
                         j);
         rrh->reveal_cb = NULL;
@@ -1490,10 +1485,10 @@ handle_refresh_reveal_finished (void *cls,
   if (NULL != rrh->reveal_cb)
     rrh->reveal_cb (rrh->reveal_cb_cls,
                     response_code,
-		    TALER_JSON_get_error_code (j),
-		    0,
-		    NULL,
-		    NULL,
+                    TALER_JSON_get_error_code (j),
+                    0,
+                    NULL,
+                    NULL,
                     j);
   TALER_EXCHANGE_refresh_reveal_cancel (rrh);
 }
@@ -1616,7 +1611,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                      json_array_append_new (link_sigs,
                                             GNUNET_JSON_from_data_auto (&link_sig)));
     }
-    
+
     GNUNET_free (pd.coin_ev);
   }
 

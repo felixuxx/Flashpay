@@ -435,27 +435,6 @@ struct TALER_PlanchetSecretsP
 };
 
 
-/**
- * Header for serializations of coin-specific information about the fresh
- * coins we generate from refresh.  These are the secrets that arise during
- * planchet generation, which is the first stage of creating a new coin from
- * refresh.
- */
-struct TALER_RefreshPlanchetSecretsP
-{
-
-  /**
-   * Private key of the coin.
-   */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * XXX. See #5777~0014690 - need a solution for this first!
-   */
-  struct TALER_TransferPrivateKeyP transfer_priv;
-
-};
-
 GNUNET_NETWORK_STRUCT_END
 
 

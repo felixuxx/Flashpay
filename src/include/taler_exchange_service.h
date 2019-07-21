@@ -1356,9 +1356,7 @@ typedef void
                                          unsigned int http_status,
                                          enum TALER_ErrorCode ec,
                                          unsigned int num_coins,
-                                         /* TODO (#5777): possibly replace
-                                            by a `struct TALER_RefreshPlanchetSecretsP` */
-                                         const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+                                         const struct TALER_PlanchetSecretsP *coin_privs,
                                          const struct TALER_DenominationSignature *sigs,
                                          const json_t *full_response);
 
