@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange/test_exchange_api_twister.c
  * @brief testcase to test exchange's HTTP API interface
@@ -24,7 +23,6 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
@@ -114,6 +112,7 @@ purge_process (struct GNUNET_OS_Process *process)
   GNUNET_OS_process_destroy (process);
 }
 
+
 int
 main (int argc,
       char * const *argv)
@@ -134,23 +133,34 @@ main (int argc,
   if (NULL == (bankd = TALER_TESTING_run_bank
       (CONFIG_FILE,
        bank_url)))
+  {
+    GNUNET_free (bank_url);
     return 77;
+  }
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
       (CONFIG_FILE)))
+  {
+    purge_process (bankd);
+    GNUNET_free (bank_url);
     return 77;
-  
-  if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
-    return 77;
+  }
 
+  if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
+  {
+    GNUNET_free (twister_url);
+    purge_process (bankd);
+    GNUNET_free (bank_url);
+    return 77;
+  }
   ret = TALER_TESTING_setup (&run,
                              NULL,
                              CONFIG_FILE,
                              NULL,
                              GNUNET_NO);
   purge_process (twisterd);
-  purge_process (bankd);
   GNUNET_free (twister_url);
+  purge_process (bankd);
   GNUNET_free (bank_url);
 
   if (GNUNET_OK == ret)

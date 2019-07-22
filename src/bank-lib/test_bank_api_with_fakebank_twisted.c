@@ -16,14 +16,12 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange/test_bank_api_with_fakebank_twisted.c
  * @author Marcello Stanisci
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
@@ -77,7 +75,7 @@ run (void *cls,
 {
 
   struct TALER_TESTING_Command commands[] = {
-    
+
     /**
      * Can't use the "wait service" CMD here because the
      * fakebank runs inside the same process of the test.
@@ -136,11 +134,16 @@ main (int argc,
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
       (CONFIG_FILE)))
+  {
+    GNUNET_free (fakebank_url);
     return 77;
-
+  }
   if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
+  {
+    GNUNET_free (twister_url);
+    GNUNET_free (fakebank_url);
     return 77;
-
+  }
   ret = TALER_TESTING_setup (&run,
                              NULL,
                              CONFIG_FILE,
