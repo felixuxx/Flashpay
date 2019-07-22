@@ -632,6 +632,50 @@ TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_Transact
         }
       }
       break;
+    case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+      {
+        struct TALER_EXCHANGEDB_PaybackRefresh *pr = pos->details.old_coin_payback;
+        struct TALER_PaybackRefreshConfirmationPS pc;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+        pc.purpose.size = htonl (sizeof (pc));
+        pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
+        TALER_amount_hton (&pc.payback_amount,
+                           &pr->value);
+        pc.coin_pub = pr->coin.coin_pub;
+        pc.old_coin_pub = pr->old_coin_pub;
+        if (GNUNET_OK !=
+            TEH_KS_sign (&pc.purpose,
+                         &epub,
+                         &esig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        /* NOTE: we could also provide coin_pub's coin_sig, denomination key hash and
+           the denomination key's RSA signature over coin_pub, but as the
+           wallet should really already have this information (and cannot
+           check or do anything with it anyway if it doesn't), it seems
+           strictly unnecessary. */
+        if (0 !=
+            json_array_append_new (history,
+                                   json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                                              "type", "OLD-COIN-PAYBACK",
+                                              "amount", TALER_JSON_from_amount (&pr->value),
+                                              "exchange_sig", GNUNET_JSON_from_data_auto (&esig),
+                                              "exchange_pub", GNUNET_JSON_from_data_auto (&epub),
+                                              "coin_pub", GNUNET_JSON_from_data_auto (&pr->coin.coin_pub),
+                                              "timestamp", GNUNET_JSON_from_time_abs (pr->timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
     case TALER_EXCHANGEDB_TT_PAYBACK:
       {
         const struct TALER_EXCHANGEDB_Payback *payback = pos->details.payback;
@@ -671,6 +715,50 @@ TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_Transact
         }
       }
       break;
+    case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+      {
+        struct TALER_EXCHANGEDB_PaybackRefresh *pr = pos->details.payback_refresh;
+        struct TALER_PaybackRefreshConfirmationPS pc;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+        pc.purpose.size = htonl (sizeof (pc));
+        pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
+        TALER_amount_hton (&pc.payback_amount,
+                           &pr->value);
+        pc.coin_pub = pr->coin.coin_pub;
+        pc.old_coin_pub = pr->old_coin_pub;
+        if (GNUNET_OK !=
+            TEH_KS_sign (&pc.purpose,
+                         &epub,
+                         &esig))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        /* NOTE: we could also provide coin_pub's coin_sig, denomination key
+           hash and the denomination key's RSA signature over coin_pub, but as
+           the wallet should really already have this information (and cannot
+           check or do anything with it anyway if it doesn't), it seems
+           strictly unnecessary. */
+        if (0 !=
+            json_array_append_new (history,
+                                   json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                                              "type", "PAYBACK-REFRESH",
+                                              "amount", TALER_JSON_from_amount (&pr->value),
+                                              "exchange_sig", GNUNET_JSON_from_data_auto (&esig),
+                                              "exchange_pub", GNUNET_JSON_from_data_auto (&epub),
+                                              "old_coin_pub", GNUNET_JSON_from_data_auto (&pr->old_coin_pub),
+                                              "timestamp", GNUNET_JSON_from_time_abs (pr->timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
     default:
       GNUNET_assert (0);
     }

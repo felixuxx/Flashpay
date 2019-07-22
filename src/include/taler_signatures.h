@@ -129,6 +129,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED 1040
 
+/**
+ * Signature where the Exchange confirms a payback-refresh operation.
+ */
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH 1041
+
 
 /**********************/
 /* Auditor signatures */
@@ -1229,7 +1234,7 @@ struct TALER_PaybackRequestPS
 /**
  * Response by which the exchange affirms that it will
  * refund a coin as part of the emergency /payback
- * protocol.  The refund will go back to the bank
+ * protocol.  The payback will go back to the bank
  * account that created the reserve.
  */
 struct TALER_PaybackConfirmationPS
@@ -1262,6 +1267,44 @@ struct TALER_PaybackConfirmationPS
    * Public key of the reserve that will receive the payback.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
+};
+
+
+/**
+ * Response by which the exchange affirms that it will refund a refreshed coin
+ * as part of the emergency /payback protocol.  The payback will go back to the
+ * old coin's balance.
+ */
+struct TALER_PaybackRefreshConfirmationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the exchange receive the payback request?
+   * Indirectly determines when the wire transfer is (likely)
+   * to happen.
+   */
+  struct GNUNET_TIME_AbsoluteNBO timestamp;
+
+  /**
+   * How much of the coin's value will the exchange transfer?
+   * (Needed in case the coin was partially spent.)
+   */
+  struct TALER_AmountNBO payback_amount;
+
+  /**
+   * Public key of the refreshed coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Public key of the old coin that will receive the payback.
+   */
+  struct TALER_CoinSpendPublicKeyP old_coin_pub;
 };
 
 

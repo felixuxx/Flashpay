@@ -285,26 +285,6 @@ payback_transaction (void *cls,
     }
     return qs;
   }
-  /* increment reserve balance */
-  qs = TEH_plugin->increment_reserve_balance (TEH_plugin->cls,
-                                              session,
-                                              &pc->reserve_pub,
-                                              pc->coin,
-                                              pc->coin_sig,
-                                              pc->coin_bks,
-                                              &pc->amount,
-                                              &pc->h_blind,
-                                              pc->now);
-  if (0 > qs)
-  {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      TALER_LOG_WARNING ("Failed to store /payback information in database\n");
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_PAYBACK_DB_PUT_FAILED);
-    }
-    return qs;
-  }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 

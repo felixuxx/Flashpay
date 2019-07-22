@@ -100,6 +100,8 @@ common_free_coin_transaction_list (void *cls,
       GNUNET_free (list->details.melt);
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+      if (NULL != list->details.payback_refresh->coin.denom_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (list->details.payback_refresh->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.old_coin_payback);
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
@@ -113,6 +115,8 @@ common_free_coin_transaction_list (void *cls,
       GNUNET_free (list->details.payback);
       break;
     case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+      if (NULL != list->details.payback_refresh->coin.denom_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (list->details.payback_refresh->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.payback_refresh);
       break;
     }

@@ -168,8 +168,8 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
 // FIXME: maybe move to another module, i.e. exchangedb???
 int
 TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
-					  const struct TALER_Amount *off,
-					  struct TALER_Amount *ret)
+                                          const struct TALER_Amount *off,
+                                          struct TALER_Amount *ret)
 {
   struct TALER_Amount spent = *off;
   struct TALER_Amount refunded;
@@ -222,12 +222,34 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
         return GNUNET_SYSERR;
       }
       break;
+    case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+      /* refunded += pos->value */
+      if (GNUNET_OK !=
+          TALER_amount_add (&refunded,
+                            &refunded,
+                            &pos->details.old_coin_payback->value))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
     case TALER_EXCHANGEDB_TT_PAYBACK:
       /* spent += pos->value */
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
                             &pos->details.payback->value))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
+    case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+      /* spent += pos->value */
+      if (GNUNET_OK !=
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.payback_refresh->value))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
