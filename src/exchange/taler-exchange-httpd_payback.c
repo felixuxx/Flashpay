@@ -44,13 +44,61 @@
  */
 static int
 reply_payback_unknown (struct MHD_Connection *connection,
-		       enum TALER_ErrorCode ec)
+                       enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:I}",
                                        "error", "blinded coin unknown",
                                        "code", (json_int_t) ec);
+}
+
+
+/**
+ * A wallet asked for /payback, return the successful response.
+ *
+ * @param connection connection to the client
+ * @param coin_pub coin for which we are processing the payback request
+ * @param old_coin_pub public key of the old coin that will receive the payback
+ * @param amount the amount we will wire back
+ * @param timestamp when did the exchange receive the /payback request
+ * @return MHD result code
+ */
+static int
+reply_payback_refresh_success (struct MHD_Connection *connection,
+                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                               const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+                               const struct TALER_Amount *amount,
+                               struct GNUNET_TIME_Absolute timestamp)
+{
+  struct TALER_PaybackRefreshConfirmationPS pc;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+
+  pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+  pc.purpose.size = htonl (sizeof (struct TALER_PaybackRefreshConfirmationPS));
+  pc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  TALER_amount_hton (&pc.payback_amount,
+                     amount);
+  pc.coin_pub = *coin_pub;
+  pc.old_coin_pub = *old_coin_pub;
+  if (GNUNET_OK !=
+      TEH_KS_sign (&pc.purpose,
+                   &pub,
+                   &sig))
+  {
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                              "no keys");
+  }
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o, s:o, s:o, s:o}",
+                                       "old_coin_pub", GNUNET_JSON_from_data_auto (old_coin_pub),
+                                       "timestamp", GNUNET_JSON_from_time_abs (timestamp),
+                                       "amount", TALER_JSON_from_amount (amount),
+                                       "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
+                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -66,10 +114,10 @@ reply_payback_unknown (struct MHD_Connection *connection,
  */
 static int
 reply_payback_success (struct MHD_Connection *connection,
-		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-		       const struct TALER_ReservePublicKeyP *reserve_pub,
-		       const struct TALER_Amount *amount,
-		       struct GNUNET_TIME_Absolute timestamp)
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       const struct TALER_ReservePublicKeyP *reserve_pub,
+                       const struct TALER_Amount *amount,
+                       struct GNUNET_TIME_Absolute timestamp)
 {
   struct TALER_PaybackConfirmationPS pc;
   struct TALER_ExchangePublicKeyP pub;
@@ -132,11 +180,20 @@ struct PaybackContext
    */
   const struct TALER_CoinSpendSignatureP *coin_sig;
 
-  /**
-   * Set by #payback_transaction() to the reserve that will
-   * receive the payback.
-   */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  union
+  {
+    /**
+     * Set by #payback_transaction() to the reserve that will
+     * receive the payback, if #refreshed is #GNUNET_NO.
+     */
+    struct TALER_ReservePublicKeyP reserve_pub;
+
+    /**
+     * Set by #payback_transaction() to the old coin that will
+     * receive the payback, if #refreshed is #GNUNET_YES.
+     */
+    struct TALER_CoinSpendPublicKeyP old_coin_pub;
+  } target;
 
   /**
    * Set by #payback_transaction() to the amount that will be paid back
@@ -148,6 +205,11 @@ struct PaybackContext
    * was accepted.
    */
   struct GNUNET_TIME_Absolute now;
+
+  /**
+   * #GNUNET_YES if the client claims the coin originated from a refresh.
+   */
+  int refreshed;
 
 };
 
@@ -183,19 +245,42 @@ payback_transaction (void *cls,
 
   /* Check whether a payback is allowed, and if so, to which
      reserve / account the money should go */
-  qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
-                                           session,
-                                           &pc->h_blind,
-                                           &pc->reserve_pub);
-  if (0 > qs)
+  if (pc->refreshed)
   {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    GNUNET_assert (0); // FIXME: not implemented in DB!
+#if 0
+    qs = TEH_plugin->get_old_coin_by_h_blind (TEH_plugin->cls,
+                                              session,
+                                              &pc->h_blind,
+                                              &pc->target.old_coin_pub);
+#endif
+    if (0 > qs)
     {
-      GNUNET_break (0);
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_PAYBACK_DB_FETCH_FAILED);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                         TALER_EC_PAYBACK_DB_FETCH_FAILED);
+      }
+      return qs;
     }
-    return qs;
+  }
+  else
+  {
+    qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
+                                             session,
+                                             &pc->h_blind,
+                                             &pc->target.reserve_pub);
+    if (0 > qs)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
+                                                         TALER_EC_PAYBACK_DB_FETCH_FAILED);
+      }
+      return qs;
+    }
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
@@ -266,15 +351,29 @@ payback_transaction (void *cls,
   (void) GNUNET_TIME_round_abs (&pc->now);
 
   /* add coin to list of wire transfers for payback */
-  qs = TEH_plugin->insert_payback_request (TEH_plugin->cls,
-                                           session,
-                                           &pc->reserve_pub,
-                                           pc->coin,
-                                           pc->coin_sig,
-                                           pc->coin_bks,
-                                           &pc->amount,
-                                           &pc->h_blind,
-                                           pc->now);
+  if (pc->refreshed)
+  {
+    qs = TEH_plugin->insert_payback_refresh_request (TEH_plugin->cls,
+                                                     session,
+                                                     pc->coin,
+                                                     pc->coin_sig,
+                                                     pc->coin_bks,
+                                                     &pc->amount,
+                                                     &pc->h_blind,
+                                                     pc->now);
+  }
+  else
+  {
+    qs = TEH_plugin->insert_payback_request (TEH_plugin->cls,
+                                             session,
+                                             &pc->target.reserve_pub,
+                                             pc->coin,
+                                             pc->coin_sig,
+                                             pc->coin_bks,
+                                             &pc->amount,
+                                             &pc->h_blind,
+                                             pc->now);
+  }
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -300,13 +399,15 @@ payback_transaction (void *cls,
  * @param coin information about the coin
  * @param coin_bks blinding data of the coin (to be checked)
  * @param coin_sig signature of the coin
+ * @param refreshed #GNUNET_YES if the coin was refreshed
  * @return MHD result code
  */
 static int
 verify_and_execute_payback (struct MHD_Connection *connection,
                             const struct TALER_CoinPublicInfo *coin,
                             const struct TALER_DenominationBlindingKeyP *coin_bks,
-                            const struct TALER_CoinSpendSignatureP *coin_sig)
+                            const struct TALER_CoinSpendSignatureP *coin_sig,
+                            int refreshed)
 {
   struct PaybackContext pc;
   struct TEH_KS_StateHandle *key_state;
@@ -413,6 +514,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   pc.coin_sig = coin_sig;
   pc.coin_bks = coin_bks;
   pc.coin = coin;
+  pc.refreshed = refreshed;
   {
     int mhd_ret;
 
@@ -424,11 +526,17 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                                 &pc))
       return mhd_ret;
   }
-  return reply_payback_success (connection,
-				&coin->coin_pub,
-				&pc.reserve_pub,
-				&pc.amount,
-				pc.now);
+  return (refreshed)
+    ? reply_payback_refresh_success (connection,
+                                     &coin->coin_pub,
+                                     &pc.target.old_coin_pub,
+                                     &pc.amount,
+                                     pc.now)
+    : reply_payback_success (connection,
+                             &coin->coin_pub,
+                             &pc.target.reserve_pub,
+                             &pc.amount,
+                             pc.now);
 }
 
 
@@ -458,6 +566,7 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
   struct TALER_CoinPublicInfo coin;
   struct TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
+  int refreshed = GNUNET_NO;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &coin.denom_pub_hash),
@@ -469,6 +578,9 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
+    GNUNET_JSON_spec_mark_optional
+    (GNUNET_JSON_spec_boolean ("refreshed",
+                               &refreshed)),
     GNUNET_JSON_spec_end ()
   };
 
@@ -492,7 +604,8 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
   res = verify_and_execute_payback (connection,
                                     &coin,
                                     &coin_bks,
-                                    &coin_sig);
+                                    &coin_sig,
+                                    refreshed);
   GNUNET_JSON_parse_free (spec);
   return res;
 }
