@@ -39,7 +39,7 @@
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
  */
-#define TALER_PROTOCOL_VERSION "4:0:0"
+#define TALER_PROTOCOL_VERSION "5:0:1"
 
 
 /**
@@ -105,7 +105,7 @@ struct DenominationKeyEntry
   struct GNUNET_HashCode denom_key_hash;
 
 #ifdef OPTIMIZE_5777_AUDITOR_BY_COUNT_REALTIME_DETECTION
-  
+
   /**
    * Mutex that must be held before threads may access or update
    * @e known_coin_counter or @e known_coin_counter_db.
@@ -117,7 +117,7 @@ struct DenominationKeyEntry
    * @e issued_coin_counter or @e issued_coin_counter_db.
    */
   pthread_mutex_t issued_coin_counter_mutex;
-  
+
   /**
    * How many coins of this denomination have been redeemed so far (according
    * to only this process)?
@@ -141,9 +141,9 @@ struct DenominationKeyEntry
    * last time we synchronized the value with our database)?
    */
   uint64_t issued_coin_counter_db;
-  
+
 #endif
-  
+
 };
 
 
