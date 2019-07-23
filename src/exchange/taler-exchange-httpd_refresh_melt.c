@@ -48,11 +48,11 @@
  */
 static int
 reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-				       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-				       struct TALER_Amount coin_value,
-				       struct TALER_EXCHANGEDB_TransactionList *tl,
-				       const struct TALER_Amount *requested,
-				       const struct TALER_Amount *residual)
+                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                       struct TALER_Amount coin_value,
+                                       struct TALER_EXCHANGEDB_TransactionList *tl,
+                                       const struct TALER_Amount *requested,
+                                       const struct TALER_Amount *residual)
 {
   json_t *history;
 
@@ -64,9 +64,9 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
                                        "error",
-				       "insufficient funds",
-				       "code",
-				       (json_int_t) TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
+                                       "insufficient funds",
+                                       "code",
+                                       (json_int_t) TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
                                        "coin_pub",
                                        GNUNET_JSON_from_data_auto (coin_pub),
                                        "original_value",
@@ -90,8 +90,8 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
  */
 static int
 reply_refresh_melt_success (struct MHD_Connection *connection,
-			    const struct TALER_RefreshCommitmentP *rc,
-			    uint32_t noreveal_index)
+                            const struct TALER_RefreshCommitmentP *rc,
+                            uint32_t noreveal_index)
 {
   struct TALER_RefreshMeltConfirmationPS body;
   struct TALER_ExchangePublicKeyP pub;
@@ -139,6 +139,13 @@ struct RefreshMeltContext
    */
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
 
+  /**
+   * Set to #GNUNET_YES if this @a dki was revoked and the operation
+   * is thus only allowed for zombie coins where the transaction
+   * history includes a #TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK.
+   */
+  int zombie_required;
+
 };
 
 
@@ -168,11 +175,12 @@ refresh_check_melt (struct MHD_Connection *connection,
   /* Start with cost of this melt transaction */
   spent = rmc->refresh_session.amount_with_fee;
 
-  /* add historic transaction costs of this coin */
+  /* add historic transaction costs of this coin, including paybacks as
+     we might be a zombie coin */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &rmc->refresh_session.coin.coin_pub,
-                                          GNUNET_NO,
+                                          GNUNET_YES,
                                           &tl);
   if (0 > qs)
   {
@@ -181,16 +189,40 @@ refresh_check_melt (struct MHD_Connection *connection,
                                                        TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
     return qs;
   }
+  if (rmc->zombie_required)
+  {
+    for (struct TALER_EXCHANGEDB_TransactionList *tp = tl;
+         NULL != tp;
+         tp = tp->next)
+    {
+      if (TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK == tp->type)
+      {
+        rmc->zombie_required = GNUNET_NO; /* was satisfied! */
+        break;
+      }
+    }
+    if (rmc->zombie_required)
+    {
+      /* zombie status not satisfied */
+      GNUNET_break (0);
+      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                              tl);
+      *mhd_ret = TEH_RESPONSE_reply_external_error (connection,
+                                                    TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE,
+                                                    "denomination expired");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
   if (GNUNET_OK !=
       TEH_DB_calculate_transaction_list_totals (tl,
-						&spent,
-						&spent))
+                                                &spent,
+                                                &spent))
   {
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_REFRESH_MELT_COIN_HISTORY_COMPUTATION_FAILED);
+                                                     TALER_EC_REFRESH_MELT_COIN_HISTORY_COMPUTATION_FAILED);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -206,11 +238,11 @@ refresh_check_melt (struct MHD_Connection *connection,
                                           &spent,
                                           &rmc->refresh_session.amount_with_fee));
     *mhd_ret = reply_refresh_melt_insufficient_funds (connection,
-						      &rmc->refresh_session.coin.coin_pub,
-						      coin_value,
-						      tl,
-						      &rmc->refresh_session.amount_with_fee,
-						      &coin_residual);
+                                                      &rmc->refresh_session.coin.coin_pub,
+                                                      coin_value,
+                                                      tl,
+                                                      &rmc->refresh_session.amount_with_fee,
+                                                      &coin_residual);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -245,9 +277,9 @@ refresh_check_melt (struct MHD_Connection *connection,
  */
 static enum GNUNET_DB_QueryStatus
 refresh_melt_transaction (void *cls,
-			  struct MHD_Connection *connection,
-			  struct TALER_EXCHANGEDB_Session *session,
-			  int *mhd_ret)
+                          struct MHD_Connection *connection,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          int *mhd_ret)
 {
   struct RefreshMeltContext *rmc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -262,8 +294,8 @@ refresh_melt_transaction (void *cls,
   {
     TALER_LOG_DEBUG ("Found already-melted coin\n");
     *mhd_ret = reply_refresh_melt_success (connection,
-					   &rmc->refresh_session.rc,
-					   noreveal_index);
+                                           &rmc->refresh_session.rc,
+                                           noreveal_index);
     /* Note: we return "hard error" to ensure the wrapper
        does not retry the transaction, and to also not generate
        a "fresh" response (as we would on "success") */
@@ -273,22 +305,22 @@ refresh_melt_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
+                                                       TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
     return qs;
   }
 
   /* check coin has enough funds remaining on it to cover melt cost */
   qs = refresh_check_melt (connection,
-			   session,
-			   rmc,
-			   mhd_ret);
+                           session,
+                           rmc,
+                           mhd_ret);
   if (0 > qs)
     return qs;
 
   /* pick challenge and persist it */
   rmc->refresh_session.noreveal_index
     = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
-				TALER_CNC_KAPPA);
+                                TALER_CNC_KAPPA);
 
   if (0 >=
       (qs = TEH_plugin->insert_melt (TEH_plugin->cls,
@@ -298,7 +330,7 @@ refresh_melt_transaction (void *cls,
     if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
     {
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_REFRESH_MELT_DB_STORE_SESSION_ERROR);
+                                                       TALER_EC_REFRESH_MELT_DB_STORE_SESSION_ERROR);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     return qs;
@@ -327,9 +359,9 @@ handle_refresh_melt (struct MHD_Connection *connection,
     struct TALER_Amount fee_refresh;
 
     TALER_amount_ntoh (&fee_refresh,
-		       &rmc->dki->issue.properties.fee_refresh);
+                       &rmc->dki->issue.properties.fee_refresh);
     if (TALER_amount_cmp (&fee_refresh,
-			  &rmc->refresh_session.amount_with_fee) > 0)
+                          &rmc->refresh_session.amount_with_fee) > 0)
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_external_error (connection,
@@ -358,8 +390,8 @@ handle_refresh_melt (struct MHD_Connection *connection,
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_signature_invalid (connection,
-						   TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID,
-						   "confirm_sig");
+                                                   TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID,
+                                                   "confirm_sig");
     }
   }
 
@@ -505,9 +537,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                                                   TEH_KS_DKU_ZOMBIE);
     if (NULL != dki)
     {
-      /* Test if zombie-condition is actually satisfied for the coin */
-      if (0 /* FIXME: test if zombie-satisfied */)
-        rmc.dki = dki;
+      rmc.dki = dki;
+      rmc.zombie_required = GNUNET_YES;
     }
   }
 

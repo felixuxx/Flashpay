@@ -393,7 +393,7 @@ TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
-				 enum TALER_ErrorCode ec)
+                                 enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,

@@ -523,6 +523,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1308,
 
+  /**
+   * The denomination of the given coin has past its expiration date and it is
+   * also not a valid zombie (that is, was not refreshed with the fresh coin
+   * being subjected to payback).
+   */
+  TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE = 1309,
 
   /**
    * The provided transfer keys do not match up with the
@@ -624,7 +630,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFRESH_REVEAL_LINK_SIGNATURE_INVALID = 1362,
 
-  
+
   /**
    * The coin specified in the link request is unknown to the exchange.
    * This response is provided with HTTP status code

@@ -107,6 +107,51 @@ struct PaybackState
 
 };
 
+
+/**
+ * Parser reference to a coin.
+ *
+ * @param coin_reference of format $LABEL['#' $INDEX]?
+ * @param cref[out] where we return a copy of $LABEL
+ * @param idx[out] where we set $INDEX
+ * @return #GNUNET_SYSERR if $INDEX is present but not numeric
+ */
+static int
+parse_coin_reference (const char *coin_reference,
+                      char **cref,
+                      unsigned int *idx)
+{
+  const char *index;
+
+  /* We allow command references of the form "$LABEL#$INDEX" or
+     just "$LABEL", which implies the index is 0. Figure out
+     which one it is. */
+  index = strchr (coin_reference, '#');
+  if (NULL == index)
+  {
+    *idx = 0;
+    *cref = GNUNET_strdup (coin_reference);
+    return GNUNET_OK;
+  }
+  *cref = GNUNET_strndup (coin_reference,
+                          index - coin_reference);
+  if (1 != sscanf (index + 1,
+                   "%u",
+                   idx))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Numeric index (not `%s') required after `#' in command reference of command in %s:%u\n",
+                index,
+                __FILE__,
+                __LINE__);
+    GNUNET_free (*cref);
+    *cref = NULL;
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /**
  * Check the result of the payback request: checks whether
  * the HTTP response code is good, and that the coin that
@@ -137,7 +182,6 @@ payback_cb (void *cls,
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct TALER_TESTING_Command *reserve_cmd;
   char *cref;
-  const char *index;
   unsigned int idx;
 
   ps->ph = NULL;
@@ -155,34 +199,15 @@ payback_cb (void *cls,
     return;
   }
 
-  /* We allow command references of the form "$LABEL#$INDEX" or
-     just "$LABEL", which implies the index is 0. Figure out
-     which one it is. */
-  index = strchr (ps->coin_reference, '#');
-  if (NULL == index)
+  if (GNUNET_OK !=
+      parse_coin_reference (ps->coin_reference,
+                            &cref,
+                            &idx))
   {
-    idx = 0;
-    cref = GNUNET_strdup (ps->coin_reference);
+    TALER_TESTING_interpreter_fail (is);
+    return;
   }
-  else
-  {
-    cref = GNUNET_strndup (ps->coin_reference,
-                           index - ps->coin_reference);
-    if (1 != sscanf (index,
-                     "%u",
-                     &idx))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Numeric index (not `%s') required after `#' in command reference of command %s in %s:%u\n",
-                  index,
-                  cmd->label,
-                  __FILE__,
-                  __LINE__);
-      TALER_TESTING_interpreter_fail (is);
-      GNUNET_free (cref);
-      return;
-    }
-  }
+
   reserve_cmd = TALER_TESTING_interpreter_lookup_command
     (is, cref);
   GNUNET_free (cref);
@@ -309,10 +334,22 @@ payback_run (void *cls,
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
   struct TALER_PlanchetSecretsP planchet;
+  char *cref;
+  unsigned int idx;
 
   ps->is = is;
+  if (GNUNET_OK !=
+      parse_coin_reference (ps->coin_reference,
+                            &cref,
+                            &idx))
+  {
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, ps->coin_reference);
+    (is, cref);
+  GNUNET_free (cref);
 
   if (NULL == coin_cmd)
   {
@@ -322,7 +359,7 @@ payback_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-    (coin_cmd, 0, &coin_priv))
+    (coin_cmd, idx, &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -330,7 +367,7 @@ payback_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_blinding_key
-    (coin_cmd, 0, &blinding_key))
+    (coin_cmd, idx, &blinding_key))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -340,7 +377,7 @@ payback_run (void *cls,
   planchet.blinding_key = *blinding_key;
 
   if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
-    (coin_cmd, 0, &denom_pub))
+    (coin_cmd, idx, &denom_pub))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -348,7 +385,7 @@ payback_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_denom_sig
-     (coin_cmd, 0, &coin_sig))
+     (coin_cmd, idx, &coin_sig))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);

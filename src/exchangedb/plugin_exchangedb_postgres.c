@@ -322,11 +322,10 @@ postgres_create_tables (void *cls)
                            ",h_coin_ev BYTEA NOT NULL CHECK(LENGTH(h_coin_ev)=64)"
                            ",ev_sig BYTEA NOT NULL"
                            ",PRIMARY KEY (rc, newcoin_index)"
+                           ",UNIQUE (h_coin_ev)"
                            ");"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_revealed_coins_coin_pub_index ON "
                                 "refresh_revealed_coins (denom_pub_hash);"),
-    GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_revealed_coins_h_coin_ev_index ON "
-                                "refresh_revealed_coins (h_coin_ev);"),
 
     /* Table with the transfer keys of a refresh operation; includes
        the rc for which this is the link information, the
@@ -1661,23 +1660,24 @@ postgres_prepare (PGconn *db_conn)
        affecting old coins of refreshed coins */
     GNUNET_PQ_make_prepare ("payback_by_old_coin",
                             "SELECT"
-                            " pr.coin_pub"
-                            ",pr.coin_sig"
-                            ",pr.coin_blind"
-                            ",pr.amount_val"
-                            ",pr.amount_frac"
-                            ",pr.amount_curr"
-                            ",pr.timestamp"
+                            " coin_pub"
+                            ",coin_sig"
+                            ",coin_blind"
+                            ",amount_val"
+                            ",amount_frac"
+                            ",amount_curr"
+                            ",timestamp"
                             ",coins.denom_pub_hash"
                             ",coins.denom_sig"
-                            " FROM refresh_commitments"
-                            "    JOIN refresh_revealed_coins rrc"
-                            "      USING (rc)"
-                            "    JOIN payback_refresh pr"
-                            "      ON (rrc.coin_ev = pr.h_blind_ev)"
+                            " FROM payback_refresh"
                             "    JOIN known_coins coins"
-                            "      ON (coins.coin_pub = pr.coin_pub)"
-                            " WHERE old_coin_pub=$1"
+                            "      USING (coin_pub)"
+                            " WHERE h_blind_ev IN"
+                            "   (SELECT rrc.h_coin_ev"
+                            "    FROM refresh_commitments"
+                            "       JOIN refresh_revealed_coins rrc"
+                            "           USING (rc)"
+                            "    WHERE old_coin_pub=$1)"
                             " FOR UPDATE;",
                             1),
     /* Used in #postgres_get_reserve_history() */
@@ -4821,9 +4821,6 @@ postgres_get_coin_transactions (void *cls,
     /** #TALER_EXCHANGEDB_TT_REFUND */
     { "get_refunds_by_coin",
       &add_coin_refund },
-    /** #TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK */
-    { "payback_by_old_coin",
-      &add_old_coin_payback },
     { NULL, NULL }
   };
   static const struct Work work_wp[] = {

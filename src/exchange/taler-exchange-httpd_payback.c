@@ -289,7 +289,7 @@ payback_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* Calculate remaining balance. */
+  /* Calculate remaining balance, including paybacks already applied. */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &pc->coin->coin_pub,
