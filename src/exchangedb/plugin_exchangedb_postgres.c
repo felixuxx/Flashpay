@@ -1761,6 +1761,17 @@ postgres_prepare (PGconn *db_conn)
                             " LIMIT 1"
                             " FOR UPDATE;",
                             1),
+    /* Used in #postgres_get_old_coin_by_h_blind() */
+    GNUNET_PQ_make_prepare ("old_coin_by_h_blind",
+                            "SELECT"
+                            " rcom.old_coin_pub"
+                            " FROM refresh_revealed_coins"
+                            "   JOIN refresh_commitments rcom"
+                            "      USING (rc)"
+                            " WHERE coin_ev=$1"
+                            " LIMIT 1"
+                            " FOR UPDATE;",
+                            1),
     /* used in #postgres_commit */
     GNUNET_PQ_make_prepare ("do_commit",
                             "COMMIT",
@@ -7156,9 +7167,42 @@ postgres_get_reserve_by_h_blind (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "reserve_by_h_blind",
-						   params,
-						   rs);
+                                                   "reserve_by_h_blind",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Obtain information about which old coin a coin was refreshed
+ * given the hash of the blinded (fresh) coin.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_blind_ev hash of the blinded coin
+ * @param[out] reserve_pub set to information about the reserve (on success only)
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_old_coin_by_h_blind (void *cls,
+                                  struct TALER_EXCHANGEDB_Session *session,
+                                  const struct GNUNET_HashCode *h_blind_ev,
+                                  struct TALER_CoinSpendPublicKeyP *old_coin_pub)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
+                                          old_coin_pub),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "old_coin_by_h_blind",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -7764,6 +7808,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_payback_refresh_request;
   plugin->get_reserve_by_h_blind
     = &postgres_get_reserve_by_h_blind;
+  plugin->get_old_coin_by_h_blind
+    = &postgres_get_old_coin_by_h_blind;
   plugin->insert_denomination_revocation
     = &postgres_insert_denomination_revocation;
   plugin->get_denomination_revocation

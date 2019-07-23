@@ -247,13 +247,10 @@ payback_transaction (void *cls,
      reserve / account the money should go */
   if (pc->refreshed)
   {
-    GNUNET_assert (0); // FIXME #5777: not implemented in DB!
-#if 0
     qs = TEH_plugin->get_old_coin_by_h_blind (TEH_plugin->cls,
                                               session,
                                               &pc->h_blind,
                                               &pc->target.old_coin_pub);
-#endif
     if (0 > qs)
     {
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)

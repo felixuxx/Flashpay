@@ -2430,6 +2430,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain information about which old coin a coin was refreshed
+   * given the hash of the blinded (fresh) coin.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param h_blind_ev hash of the blinded coin
+   * @param[out] old_coin_pub set to information about the old coin (on success only)
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_old_coin_by_h_blind)(void *cls,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             const struct GNUNET_HashCode *h_blind_ev,
+                             struct TALER_CoinSpendPublicKeyP *old_coin_pub);
+
+
+  /**
    * Store information that a denomination key was revoked
    * in the database.
    *
