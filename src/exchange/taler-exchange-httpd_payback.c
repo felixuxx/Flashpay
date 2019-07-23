@@ -281,7 +281,9 @@ payback_transaction (void *cls,
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Payback requested for unknown envelope %s\n",
+                GNUNET_h2s (&pc->h_blind));
     *mhd_ret = reply_payback_unknown (connection,
                                       TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND);
     return GNUNET_DB_STATUS_HARD_ERROR;

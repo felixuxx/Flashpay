@@ -266,7 +266,7 @@ postgres_create_tables (void *cls)
        (as they really must be unique). */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves_out"
                             "(reserve_out_serial_id BIGSERIAL UNIQUE"
-                            ",h_blind_ev BYTEA PRIMARY KEY"
+                            ",h_blind_ev BYTEA PRIMARY KEY CHECK (LENGTH(h_blind_ev)=64)"
                             ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash)" /* do NOT CASCADE on DELETE, we may keep the denomination key alive! */
                             ",denom_sig BYTEA NOT NULL"
                             ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
@@ -319,11 +319,14 @@ postgres_create_tables (void *cls)
                            ",link_sig BYTEA NOT NULL CHECK(LENGTH(link_sig)=64)"
                            ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
                            ",coin_ev BYTEA UNIQUE NOT NULL"
+                           ",h_coin_ev BYTEA NOT NULL CHECK(LENGTH(h_coin_ev)=64)"
                            ",ev_sig BYTEA NOT NULL"
                            ",PRIMARY KEY (rc, newcoin_index)"
                            ");"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_revealed_coins_coin_pub_index ON "
                                 "refresh_revealed_coins (denom_pub_hash);"),
+    GNUNET_PQ_make_try_execute ("CREATE INDEX refresh_revealed_coins_h_coin_ev_index ON "
+                                "refresh_revealed_coins (h_coin_ev);"),
 
     /* Table with the transfer keys of a refresh operation; includes
        the rc for which this is the link information, the
@@ -460,7 +463,7 @@ postgres_create_tables (void *cls)
                            ",amount_frac INT4 NOT NULL"
                            ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                            ",timestamp INT8 NOT NULL"
-                           ",h_blind_ev BYTEA NOT NULL REFERENCES refresh_revealed_coins (coin_ev) ON DELETE CASCADE"
+                           ",h_blind_ev BYTEA NOT NULL REFERENCES refresh_revealed_coins (h_coin_ev) ON DELETE CASCADE"
                            ");"),
     GNUNET_PQ_make_try_execute("CREATE INDEX payback_refresh_by_coin_index "
                                "ON payback_refresh(coin_pub);"),
@@ -977,10 +980,11 @@ postgres_prepare (PGconn *db_conn)
                             ",link_sig "
                             ",denom_pub_hash "
                             ",coin_ev"
+                            ",h_coin_ev"
                             ",ev_sig"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
+                            "($1, $2, $3, $4, $5, $6, $7);",
+                            7),
     /* Obtain information about the coins created in a refresh
        operation, used in #postgres_get_refresh_reveal() */
     GNUNET_PQ_make_prepare ("get_refresh_revealed_coins",
@@ -1768,7 +1772,7 @@ postgres_prepare (PGconn *db_conn)
                             " FROM refresh_revealed_coins"
                             "   JOIN refresh_commitments rcom"
                             "      USING (rc)"
-                            " WHERE coin_ev=$1"
+                            " WHERE h_coin_ev=$1"
                             " LIMIT 1"
                             " FOR UPDATE;",
                             1),
@@ -3921,6 +3925,7 @@ postgres_insert_refresh_reveal (void *cls,
   {
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
     struct GNUNET_HashCode denom_pub_hash;
+    struct GNUNET_HashCode h_coin_ev;
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (rc),
       GNUNET_PQ_query_param_uint32 (&i),
@@ -3928,6 +3933,7 @@ postgres_insert_refresh_reveal (void *cls,
       GNUNET_PQ_query_param_auto_from_type (&denom_pub_hash),
       GNUNET_PQ_query_param_fixed_size (rrc->coin_ev,
                                         rrc->coin_ev_size),
+      GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
       GNUNET_PQ_query_param_rsa_signature (rrc->coin_sig.rsa_signature),
       GNUNET_PQ_query_param_end
     };
@@ -3935,7 +3941,9 @@ postgres_insert_refresh_reveal (void *cls,
 
     GNUNET_CRYPTO_rsa_public_key_hash (rrc->denom_pub.rsa_public_key,
                                        &denom_pub_hash);
-
+    GNUNET_CRYPTO_hash (rrc->coin_ev,
+                        rrc->coin_ev_size,
+                        &h_coin_ev);
     qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_refresh_revealed_coin",
                                              params);
