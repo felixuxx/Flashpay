@@ -257,7 +257,7 @@ payback_cb (void *cls,
       const struct TALER_ReservePrivateKeyP *reserve_priv;
       struct TALER_ReservePublicKeyP rp;
 
-      if (NULL == reserve_priv)
+      if (NULL == reserve_pub)
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
