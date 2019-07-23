@@ -449,8 +449,8 @@ deposit_traits (void *cls,
 
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
-					 ds->coin_index,
-					 &coin_spent_priv))
+                                         ds->coin_index,
+                                         &coin_spent_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
@@ -461,26 +461,26 @@ deposit_traits (void *cls,
     /* First two traits are only available if
        ds->traits is #GNUNET_YES */
     TALER_TESTING_make_trait_exchange_pub (0,
-					   &ds->exchange_pub),
+                                           &ds->exchange_pub),
     TALER_TESTING_make_trait_exchange_sig (0,
-					   &ds->exchange_sig),
+                                           &ds->exchange_sig),
     /* These traits are always available */
     TALER_TESTING_make_trait_coin_priv (0,
-					coin_spent_priv),
+                                        coin_spent_priv),
     TALER_TESTING_make_trait_wire_details (0,
-					   ds->wire_details),
+                                           ds->wire_details),
     TALER_TESTING_make_trait_contract_terms (0,
-					     ds->contract_terms),
+                                             ds->contract_terms),
     TALER_TESTING_make_trait_peer_key (0,
-				       &ds->merchant_priv.eddsa_priv),
+                                       &ds->merchant_priv.eddsa_priv),
     TALER_TESTING_make_trait_amount (0,
                                      ds->amount),
     TALER_TESTING_trait_end ()
   };
 
   return TALER_TESTING_get_trait ((ds->traits_ready)
-				  ? traits
-				  : &traits[2],
+                                  ? traits
+                                  : &traits[2],
                                   ret,
                                   trait,
                                   index);

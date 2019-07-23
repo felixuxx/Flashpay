@@ -98,6 +98,13 @@ struct PaybackState
    * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_PaybackHandle *ph;
+
+  /**
+   * NULL if coin was not refreshed, otherwise reference
+   * to the melt operation underlying @a coin_reference.
+   */
+  const char *melt_reference;
+
 };
 
 /**
@@ -111,8 +118,8 @@ struct PaybackState
  * @param amount amount the exchange will wire back for this coin.
  * @param timestamp what time did the exchange receive the
  *        /payback request
- * @param reserve_pub public key of the reserve affected by the
- *        payback.
+ * @param reserve_pub public key of the reserve receiving the payback, NULL if refreshed or on error
+ * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
  * @param full_response raw response from the exchange.
  */
 static void
@@ -122,15 +129,13 @@ payback_cb (void *cls,
             const struct TALER_Amount *amount,
             struct GNUNET_TIME_Absolute timestamp,
             const struct TALER_ReservePublicKeyP *reserve_pub,
+            const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
             const json_t *full_response)
 {
   struct PaybackState *ps = cls;
   struct TALER_TESTING_Interpreter *is = ps->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct TALER_TESTING_Command *reserve_cmd;
-  const struct TALER_ReservePrivateKeyP *reserve_priv;
-  struct TALER_ReservePublicKeyP rp;
-  struct TALER_Amount expected_amount;
   char *cref;
   const char *index;
   unsigned int idx;
@@ -150,7 +155,7 @@ payback_cb (void *cls,
     return;
   }
 
-  /* We allow command referneces of the form "$LABEL#$INDEX" or
+  /* We allow command references of the form "$LABEL#$INDEX" or
      just "$LABEL", which implies the index is 0. Figure out
      which one it is. */
   index = strchr (ps->coin_reference, '#');
@@ -189,41 +194,90 @@ payback_cb (void *cls,
     return;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
-    (reserve_cmd, idx, &reserve_priv))
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-
-  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                      &rp.eddsa_pub);
-
   switch (http_status)
   {
   case MHD_HTTP_OK:
-    if (GNUNET_OK != TALER_string_to_amount
-      (ps->amount, &expected_amount))
+    /* first, check amount */
     {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
+      struct TALER_Amount expected_amount;
+
+      if (GNUNET_OK !=
+          TALER_string_to_amount (ps->amount, &expected_amount))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      if (0 != TALER_amount_cmp (amount, &expected_amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Total amount missmatch to command %s\n",
+                    cmd->label);
+        json_dumpf (full_response, stderr, 0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
     }
-    if (0 != TALER_amount_cmp (amount, &expected_amount))
+    /* now, check old_coin_pub or reserve_pub, respectively */
+    if (NULL != ps->melt_reference)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Total amount missmatch to command %s\n",
-                  cmd->label);
-      json_dumpf (full_response, stderr, 0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
+      const struct TALER_TESTING_Command *melt_cmd;
+      const struct TALER_CoinSpendPrivateKeyP *dirty_priv;
+      struct TALER_CoinSpendPublicKeyP oc;
+
+      melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                           ps->melt_reference);
+      if (NULL == melt_cmd)
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_coin_priv (melt_cmd,
+                                             0,
+                                             &dirty_priv))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      GNUNET_CRYPTO_eddsa_key_get_public (&dirty_priv->eddsa_priv,
+                                          &oc.eddsa_pub);
+      if (0 != GNUNET_memcmp (&oc,
+                              old_coin_pub))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
     }
-    if (0 != GNUNET_memcmp (reserve_pub, &rp))
+    else
     {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
+      const struct TALER_ReservePrivateKeyP *reserve_priv;
+      struct TALER_ReservePublicKeyP rp;
+
+      if (NULL == reserve_priv)
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
+          (reserve_cmd, idx, &reserve_priv))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                          &rp.eddsa_pub);
+      if (0 != GNUNET_memcmp (reserve_pub, &rp))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
     }
     break;
   default:
@@ -309,6 +363,7 @@ payback_run (void *cls,
                                    denom_pub,
                                    coin_sig,
                                    &planchet,
+                                   NULL != ps->melt_reference,
                                    payback_cb,
                                    ps);
   GNUNET_assert (NULL != ps->ph);
@@ -465,14 +520,15 @@ revoke_run (void *cls,
  * @param coin_reference reference to any command which
  *        offers a coin & reserve private key.
  * @param amount denomination to pay back.
- *
+ * @param melt_reference NULL if coin was not refreshed
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_payback (const char *label,
                            unsigned int expected_response_code,
                            const char *coin_reference,
-                           const char *amount)
+                           const char *amount,
+                           const char *melt_reference)
 {
   struct PaybackState *ps;
 
@@ -480,15 +536,17 @@ TALER_TESTING_cmd_payback (const char *label,
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
   ps->amount = amount;
+  ps->melt_reference = melt_reference;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ps,
+      .label = label,
+      .run = &payback_run,
+      .cleanup = &payback_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ps,
-    .label = label,
-    .run = &payback_run,
-    .cleanup = &payback_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -516,14 +574,15 @@ TALER_TESTING_cmd_revoke (const char *label,
   rs->expected_response_code = expected_response_code;
   rs->coin_reference = coin_reference;
   rs->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = rs,
+      .label = label,
+      .run = &revoke_run,
+      .cleanup = &revoke_cleanup,
+      .traits = &revoke_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = rs,
-    .label = label,
-    .run = &revoke_run,
-    .cleanup = &revoke_cleanup,
-    .traits = &revoke_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

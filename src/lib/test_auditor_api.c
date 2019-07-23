@@ -474,7 +474,8 @@ run (void *cls,
     TALER_TESTING_cmd_payback ("payback-1",
                                MHD_HTTP_OK,
                                "payback-withdraw-coin-1",
-                               "EUR:5"),
+                               "EUR:5",
+                               NULL),
     /**
      * Re-withdraw from this reserve
      */
@@ -536,7 +537,8 @@ run (void *cls,
     TALER_TESTING_cmd_payback ("payback-2",
                                MHD_HTTP_OK,
                                "payback-withdraw-coin-2a",
-                               "EUR:0.5"),
+                               "EUR:0.5",
+                               NULL),
     TALER_TESTING_cmd_end ()
   };
 

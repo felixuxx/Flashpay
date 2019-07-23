@@ -162,7 +162,8 @@ run (void *cls,
     TALER_TESTING_cmd_payback ("payback-1",
                                MHD_HTTP_OK,
                                "refresh-reveal-1",
-                               "EUR:5"),
+                               "EUR:5",
+                               "refresh-melt-1"),
     /**
      * Melt original coin AGAIN
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
@@ -189,12 +190,14 @@ run (void *cls,
     TALER_TESTING_cmd_payback ("payback-2",
                                MHD_HTTP_OK,
                                "refresh-melt-2",
-                               "EUR:5"),
+                               "EUR:5",
+                               "refresh-melt-2"),
     /* Refund original coin to reserve */
     TALER_TESTING_cmd_payback ("payback-3",
                                MHD_HTTP_OK,
                                "withdraw-coin-1",
-                               "EUR:5"),
+                               "EUR:5",
+                               NULL),
     /* Check the money is back with the reserve */
     TALER_TESTING_cmd_status ("payback-reserve-status-1",
                               "create-reserve-1",

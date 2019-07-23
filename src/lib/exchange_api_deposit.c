@@ -172,7 +172,7 @@ auditor_cb (void *cls,
 static int
 verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
                              const json_t *json,
-			     struct TALER_ExchangeSignatureP *exchange_sig,
+                             struct TALER_ExchangeSignatureP *exchange_sig,
                              struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   const struct TALER_EXCHANGE_Keys *key_state;

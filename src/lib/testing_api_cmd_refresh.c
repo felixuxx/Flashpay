@@ -88,6 +88,11 @@ struct RefreshMeltState
   struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
 
   /**
+   * Private key of the dirty coin being melted.
+   */
+  const struct TALER_CoinSpendPrivateKeyP *melt_priv;
+
+  /**
    * Task scheduled to try later.
    */
   struct GNUNET_SCHEDULER_Task *retry_task;
@@ -889,7 +894,6 @@ refresh_melt_run (void *cls,
     (num_fresh_coins,
      struct TALER_EXCHANGE_DenomPublicKey);
   {
-    const struct TALER_CoinSpendPrivateKeyP *melt_priv;
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
     const struct TALER_DenominationSignature *melt_sig;
@@ -907,7 +911,7 @@ refresh_melt_run (void *cls,
     }
 
     if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-      (coin_command, 0, &melt_priv))
+      (coin_command, 0, &rms->melt_priv))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -969,7 +973,7 @@ refresh_melt_run (void *cls,
       rms->fresh_pks[i] = *fresh_pk;
     }
     rms->refresh_data = TALER_EXCHANGE_refresh_prepare
-      (melt_priv, &melt_amount, melt_sig, melt_denom_pub,
+      (rms->melt_priv, &melt_amount, melt_sig, melt_denom_pub,
        GNUNET_YES, num_fresh_coins, rms->fresh_pks,
        &rms->refresh_data_length);
 
@@ -1053,6 +1057,7 @@ refresh_melt_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_denom_pub (index, &rms->fresh_pks[index]),
+      TALER_TESTING_make_trait_coin_priv (0, rms->melt_priv),
       TALER_TESTING_trait_end ()
     };
 

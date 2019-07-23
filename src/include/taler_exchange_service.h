@@ -1651,7 +1651,8 @@ struct TALER_EXCHANGE_PaybackHandle;
  * @param amount amount the exchange will wire back for this coin,
  *        on error the total balance remaining, or NULL
  * @param timestamp what time did the exchange receive the /payback request
- * @param reserve_pub public key of the reserve receiving the payback
+ * @param reserve_pub public key of the reserve receiving the payback, NULL if refreshed or on error
+ * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
@@ -1661,6 +1662,7 @@ typedef void
                                          const struct TALER_Amount *amount,
                                          struct GNUNET_TIME_Absolute timestamp,
                                          const struct TALER_ReservePublicKeyP *reserve_pub,
+                                         const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
                                          const json_t *full_response);
 
 
@@ -1673,6 +1675,7 @@ typedef void
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param ps secret internals of the original planchet
+ * @param was_refreshed #GNUNET_YES if the coin in @a ps was refreshed
  * @param payback_cb the callback to call when the final result for this request is available
  * @param payback_cb_cls closure for @a payback_cb
  * @return NULL
@@ -1684,6 +1687,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_EXCHANGE_DenomPublicKey *pk,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_PlanchetSecretsP *ps,
+                        int was_refreshed,
                         TALER_EXCHANGE_PaybackResultCallback payback_cb,
                         void *payback_cb_cls);
 

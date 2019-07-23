@@ -1388,14 +1388,15 @@ TALER_TESTING_cmd_refund (const char *label,
  *        the index of the coin using "$LABEL#$INDEX" syntax.
  *        Here, $INDEX must be a non-negative number.
  * @param amount denomination to pay back.
- *
+ * @param NULL if coin was not refreshed, otherwise label of the melt operation
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_payback (const char *label,
                            unsigned int expected_response_code,
                            const char *coin_reference,
-                           const char *amount);
+                           const char *amount,
+                           const char *melt_reference);
 
 
 /**
@@ -1406,7 +1407,6 @@ TALER_TESTING_cmd_payback (const char *label,
  * @param coin_reference reference to a CMD that will offer the
  *        denomination to revoke.
  * @param config_filename configuration file name.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
