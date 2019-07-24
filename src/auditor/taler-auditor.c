@@ -1524,9 +1524,9 @@ verify_reserve_balance (void *cls,
                   TALER_B2S (&rs->reserve_pub),
                   TALER_amount2s (&balance));
       qs = adb->del_reserve_info (adb->cls,
-				  asession,
-				  &rs->reserve_pub,
-				  &master_pub);
+                                  asession,
+                                  &rs->reserve_pub,
+                                  &master_pub);
       if (0 >= qs)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1553,20 +1553,20 @@ verify_reserve_balance (void *cls,
 
   if (rs->had_ri)
     qs = adb->update_reserve_info (adb->cls,
-				   asession,
-				   &rs->reserve_pub,
-				   &master_pub,
-				   &balance,
-				   &rs->a_withdraw_fee_balance,
-				   rs->a_expiration_date);
+                                   asession,
+                                   &rs->reserve_pub,
+                                   &master_pub,
+                                   &balance,
+                                   &rs->a_withdraw_fee_balance,
+                                   rs->a_expiration_date);
   else
     qs = adb->insert_reserve_info (adb->cls,
-				   asession,
-				   &rs->reserve_pub,
-				   &master_pub,
-				   &balance,
-				   &rs->a_withdraw_fee_balance,
-				   rs->a_expiration_date);
+                                   asession,
+                                   &rs->reserve_pub,
+                                   &master_pub,
+                                   &balance,
+                                   &rs->a_withdraw_fee_balance,
+                                   rs->a_expiration_date);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1624,10 +1624,10 @@ analyze_reserves (void *cls)
   }
   rc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qsx = adb->get_reserve_summary (adb->cls,
-				  asession,
-				  &master_pub,
-				  &total_escrow_balance,
-				  &total_withdraw_fee_income);
+                                  asession,
+                                  &master_pub,
+                                  &total_escrow_balance,
+                                  &total_withdraw_fee_income);
   if (qsx < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -1636,33 +1636,33 @@ analyze_reserves (void *cls)
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
   rc.revoked = GNUNET_CONTAINER_multihashmap_create (4,
-						     GNUNET_NO);
+                                                     GNUNET_NO);
 
   qs = edb->select_reserves_in_above_serial_id (edb->cls,
-						esession,
-						ppr.last_reserve_in_serial_id,
-						&handle_reserve_in,
-						&rc);
+                                                esession,
+                                                ppr.last_reserve_in_serial_id,
+                                                &handle_reserve_in,
+                                                &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
   qs = edb->select_reserves_out_above_serial_id (edb->cls,
-						 esession,
-						 ppr.last_reserve_out_serial_id,
-						 &handle_reserve_out,
-						 &rc);
+                                                 esession,
+                                                 ppr.last_reserve_out_serial_id,
+                                                 &handle_reserve_out,
+                                                 &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
   qs = edb->select_payback_above_serial_id (edb->cls,
-					    esession,
-					    ppr.last_reserve_payback_serial_id,
-					    &handle_payback_by_reserve,
-					    &rc);
+                                            esession,
+                                            ppr.last_reserve_payback_serial_id,
+                                            &handle_payback_by_reserve,
+                                            &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
