@@ -3907,6 +3907,65 @@ refund_cb (void *cls,
 
 
 /**
+ * Function called about paybacks the exchange has to perform.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the payback operation
+ * @param timestamp when did we receive the payback request
+ * @param amount how much should be added back to the reserve
+ * @param reserve_pub public key of the reserve
+ * @param coin public information about the coin
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_blind blinding factor used to blind the coin
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+payback_cb (void *cls,
+            uint64_t rowid,
+            struct GNUNET_TIME_Absolute timestamp,
+            const struct TALER_Amount *amount,
+            const struct TALER_ReservePublicKeyP *reserve_pub,
+            const struct TALER_CoinPublicInfo *coin,
+            const struct TALER_DenominationPublicKey *denom_pub,
+            const struct TALER_CoinSpendSignatureP *coin_sig,
+                                    const struct TALER_DenominationBlindingKeyP *coin_blind)
+{
+  GNUNET_assert (0); // #5777: NOT implemented! (updated losses from payback/denomination)
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called about paybacks on refreshed coins the exchange has to
+ * perform.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the payback operation
+ * @param timestamp when did we receive the payback request
+ * @param amount how much should be added back to the reserve
+ * @param old_coin_pub original coin that was refreshed to create @a coin
+ * @param coin public information about the coin
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_blind blinding factor used to blind the coin
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+payback_refresh_cb (void *cls,
+                    uint64_t rowid,
+                    struct GNUNET_TIME_Absolute timestamp,
+                    const struct TALER_Amount *amount,
+                    const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+                    const struct TALER_CoinPublicInfo *coin,
+                    const struct TALER_DenominationPublicKey *denom_pub,
+                    const struct TALER_CoinSpendSignatureP *coin_sig,
+                    const struct TALER_DenominationBlindingKeyP *coin_blind)
+{
+  GNUNET_assert (0); // #5777: NOT implemented! (updated denom gains from payback)
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Analyze the exchange's processing of coins.
  *
  * @param cls closure
@@ -3939,17 +3998,18 @@ analyze_coins (void *cls)
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _("Resuming coin audit at %llu/%llu/%llu/%llu\n"),
+                _("Resuming coin audit at %llu/%llu/%llu/%llu/%llu\n"),
                 (unsigned long long) ppc.last_deposit_serial_id,
                 (unsigned long long) ppc.last_melt_serial_id,
                 (unsigned long long) ppc.last_refund_serial_id,
-                (unsigned long long) ppc.last_withdraw_serial_id);
+                (unsigned long long) ppc.last_withdraw_serial_id,
+                (unsigned long long) ppc.last_payback_refresh_serial_id);
   }
 
   /* setup 'cc' */
   cc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   cc.denom_summaries = GNUNET_CONTAINER_multihashmap_create (256,
-							     GNUNET_NO);
+                                                             GNUNET_NO);
   qsx = adb->get_balance_summary (adb->cls,
                                   asession,
                                   &master_pub,
@@ -4003,10 +4063,32 @@ analyze_coins (void *cls)
   /* process deposits */
   if (0 >
       (qs = edb->select_deposits_above_serial_id (edb->cls,
-						  esession,
-						  ppc.last_deposit_serial_id,
-						  &deposit_cb,
-						  &cc)))
+                                                  esession,
+                                                  ppc.last_deposit_serial_id,
+                                                  &deposit_cb,
+                                                  &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+
+  /* process paybacks */
+  if (0 >
+      (qs = edb->select_payback_above_serial_id (edb->cls,
+                                                 esession,
+                                                 ppc.last_payback_serial_id,
+                                                 &payback_cb,
+                                                 &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 >
+      (qs = edb->select_payback_refresh_above_serial_id (edb->cls,
+                                                         esession,
+                                                         ppc.last_payback_refresh_serial_id,
+                                                         &payback_refresh_cb,
+                                                         &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;

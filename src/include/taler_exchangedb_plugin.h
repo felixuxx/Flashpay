@@ -1138,7 +1138,6 @@ typedef int
                                     const struct TALER_DenominationBlindingKeyP *coin_blind);
 
 
-
 /**
  * Function called about paybacks on refreshed coins the exchange has to
  * perform.
@@ -1163,8 +1162,6 @@ typedef int
                                            const struct TALER_DenominationPublicKey *denom_pub,
                                            const struct TALER_CoinSpendSignatureP *coin_sig,
                                            const struct TALER_DenominationBlindingKeyP *coin_blind);
-
-
 
 
 /**

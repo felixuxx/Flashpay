@@ -262,15 +262,17 @@ postgres_create_tables (void *cls)
 			    ",last_deposit_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_melt_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_refund_serial_id INT8 NOT NULL DEFAULT 0"
+			    ",last_payback_serial_id INT8 NOT NULL DEFAULT 0"
+			    ",last_payback_refresh_serial_id INT8 NOT NULL DEFAULT 0"
 			    ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
 			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",account_name TEXT NOT NULL"
+                ",account_name TEXT NOT NULL"
 			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
 			    ",last_timestamp INT8 NOT NULL"
-                            ",wire_in_off BYTEA"
-                            ",wire_out_off BYTEA"
+                ",wire_in_off BYTEA"
+                ",wire_out_off BYTEA"
 			    ")"),
     /* Table with all of the customer reserves and their respective
        balances that the auditor is aware of.
@@ -323,7 +325,7 @@ postgres_create_tables (void *cls)
 			    ",denom_balance_val INT8 NOT NULL"
 			    ",denom_balance_frac INT4 NOT NULL"
 			    ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-                            ",num_issued INT8 NOT NULL"
+                ",num_issued INT8 NOT NULL"
 			    ",denom_risk_val INT8 NOT NULL"
 			    ",denom_risk_frac INT4 NOT NULL"
 			    ",denom_risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -400,21 +402,21 @@ postgres_create_tables (void *cls)
        we must check that the exchange reported these properly. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS deposit_confirmations "
 			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",serial_id BIGSERIAL UNIQUE"
+                ",serial_id BIGSERIAL UNIQUE"
 			    ",h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)"
-                            ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
+                ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
 			    ",timestamp INT8 NOT NULL"
 			    ",refund_deadline INT8 NOT NULL"
 			    ",amount_without_fee_val INT8 NOT NULL"
 			    ",amount_without_fee_frac INT4 NOT NULL"
 			    ",amount_without_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-                            ",coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)"
-                            ",merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)"
-                            ",exchange_sig BYTEA CHECK (LENGTH(exchange_sig)=64)"
-                            ",exchange_pub BYTEA CHECK (LENGTH(exchange_pub)=32)"
-                            ",master_sig BYTEA CHECK (LENGTH(master_sig)=64)"
-                            ",PRIMARY KEY (h_contract_terms, h_wire, coin_pub, "
-                            "  merchant_pub, exchange_sig, exchange_pub, master_sig)"
+                ",coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)"
+                ",merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)"
+                ",exchange_sig BYTEA CHECK (LENGTH(exchange_sig)=64)"
+                ",exchange_pub BYTEA CHECK (LENGTH(exchange_pub)=32)"
+                ",master_sig BYTEA CHECK (LENGTH(master_sig)=64)"
+                ",PRIMARY KEY (h_contract_terms, h_wire, coin_pub, "
+                "  merchant_pub, exchange_sig, exchange_pub, master_sig)"
 			    ")"),
     /* Table with historic business ledger; basically, when the exchange
        operator decides to use operating costs for anything but wire
@@ -581,7 +583,7 @@ postgres_prepare (PGconn *db_conn)
     /* Used in #postgres_get_deposit_confirmations() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
 			    "SELECT"
-                            " serial_id"
+                " serial_id"
 			    ",h_contract_terms"
 			    ",h_wire"
 			    ",timestamp"
@@ -594,9 +596,9 @@ postgres_prepare (PGconn *db_conn)
 			    ",exchange_sig"
 			    ",exchange_pub"
 			    ",master_sig" /* master_sig could be normalized... */
-                            " FROM deposit_confirmations"
-                            " WHERE master_pub=$1"
-                            " AND serial_id>$2",
+                " FROM deposit_confirmations"
+                " WHERE master_pub=$1"
+                " AND serial_id>$2",
 			    2),
     /* Used in #postgres_update_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_reserve",
@@ -674,8 +676,10 @@ postgres_prepare (PGconn *db_conn)
 			    ",last_deposit_serial_id=$2"
 			    ",last_melt_serial_id=$3"
 			    ",last_refund_serial_id=$4"
-			    " WHERE master_pub=$5",
-			    4),
+			    ",last_payback_serial_id=$5"
+			    ",last_payback_refresh_serial_id=$6"
+			    " WHERE master_pub=$7",
+			    7),
     /* Used in #postgres_get_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_coin",
 			    "SELECT"
@@ -683,6 +687,8 @@ postgres_prepare (PGconn *db_conn)
 			    ",last_deposit_serial_id"
 			    ",last_melt_serial_id"
 			    ",last_refund_serial_id"
+			    ",last_payback_serial_id"
+			    ",last_payback_refresh_serial_id"
 			    " FROM auditor_progress_coin"
 			    " WHERE master_pub=$1;",
 			    1),
@@ -694,18 +700,20 @@ postgres_prepare (PGconn *db_conn)
 			    ",last_deposit_serial_id"
 			    ",last_melt_serial_id"
 			    ",last_refund_serial_id"
-			    ") VALUES ($1,$2,$3,$4,$5);",
-			    5),
+			    ",last_payback_serial_id"
+			    ",last_payback_refresh_serial_id"
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+			    7),
     /* Used in #postgres_insert_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
 			    "INSERT INTO wire_auditor_progress "
 			    "(master_pub"
-                            ",account_name"
+                 ",account_name"
 			    ",last_wire_reserve_in_serial_id"
 			    ",last_wire_wire_out_serial_id"
-                            ",last_timestamp"
-                            ",wire_in_off"
-                            ",wire_out_off"
+                ",last_timestamp"
+                ",wire_in_off"
+                ",wire_out_off"
 			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
 			    7),
     /* Used in #postgres_update_wire_auditor_progress() */
@@ -713,9 +721,9 @@ postgres_prepare (PGconn *db_conn)
 			    "UPDATE wire_auditor_progress SET "
 			    " last_wire_reserve_in_serial_id=$1"
 			    ",last_wire_wire_out_serial_id=$2"
-                            ",last_timestamp=$3"
-                            ",wire_in_off=$4"
-                            ",wire_out_off=$5"
+                ",last_timestamp=$3"
+                ",wire_in_off=$4"
+                ",wire_out_off=$5"
 			    " WHERE master_pub=$6 AND account_name=$7",
 			    7),
     /* Used in #postgres_get_wire_auditor_progress() */
@@ -723,9 +731,9 @@ postgres_prepare (PGconn *db_conn)
 			    "SELECT"
 			    " last_wire_reserve_in_serial_id"
 			    ",last_wire_wire_out_serial_id"
-                            ",last_timestamp"
-                            ",wire_in_off"
-                            ",wire_out_off"
+                ",last_timestamp"
+                ",wire_in_off"
+                ",wire_out_off"
 			    " FROM wire_auditor_progress"
 			    " WHERE master_pub=$1 AND account_name=$2;",
 			    2),
@@ -843,7 +851,7 @@ postgres_prepare (PGconn *db_conn)
 			    ",denom_balance_val"
 			    ",denom_balance_frac"
 			    ",denom_balance_curr"
-                            ",num_issued"
+                ",num_issued"
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
@@ -855,7 +863,7 @@ postgres_prepare (PGconn *db_conn)
 			    " denom_balance_val=$1"
 			    ",denom_balance_frac=$2"
 			    ",denom_balance_curr=$3"
-                            ",num_issued=$4"
+                ",num_issued=$4"
 			    ",denom_risk_val=$5"
 			    ",denom_risk_frac=$6"
 			    ",denom_risk_curr=$7"
@@ -867,7 +875,7 @@ postgres_prepare (PGconn *db_conn)
 			    " denom_balance_val"
 			    ",denom_balance_frac"
 			    ",denom_balance_curr"
-                            ",num_issued"
+                ",num_issued"
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
@@ -2053,12 +2061,14 @@ postgres_insert_auditor_progress_coin (void *cls,
     GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_refund_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_refresh_serial_id),
     GNUNET_PQ_query_param_end
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_insert_coin",
-					     params);
+                                             "auditor_progress_insert_coin",
+                                             params);
 }
 
 
@@ -2083,13 +2093,15 @@ postgres_update_auditor_progress_coin (void *cls,
     GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_refund_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_refresh_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_update_coin",
-					     params);
+                                             "auditor_progress_update_coin",
+                                             params);
 }
 
 
@@ -2121,13 +2133,17 @@ postgres_get_auditor_progress_coin (void *cls,
                                   &ppc->last_melt_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id",
                                   &ppc->last_refund_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_payback_serial_id",
+                                  &ppc->last_payback_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_payback_refresh_serial_id",
+                                  &ppc->last_payback_refresh_serial_id),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_progress_select_coin",
-						   params,
-						   rs);
+                                                   "auditor_progress_select_coin",
+                                                   params,
+                                                   rs);
 }
 
 

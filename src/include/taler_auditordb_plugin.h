@@ -230,6 +230,16 @@ struct TALER_AUDITORDB_ProgressPointCoin
    */
   uint64_t last_refund_serial_id;
 
+  /**
+   * Serial ID of the last payback operation the auditor processed.
+   */
+  uint64_t last_payback_serial_id;
+
+  /**
+   * Serial ID of the last payback-of-refresh operation the auditor processed.
+   */
+  uint64_t last_payback_refresh_serial_id;
+
 };
 
 
