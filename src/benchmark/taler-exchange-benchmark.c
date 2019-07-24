@@ -339,9 +339,9 @@ run (void *cls,
           TALER_TESTING_cmd_refresh_melt_with_retry
           (TALER_TESTING_cmd_refresh_melt
            (melt_label,
-            AMOUNT_4,
             withdraw_label,
-            MHD_HTTP_OK));
+            MHD_HTTP_OK,
+            NULL));
         unit[3] =
           TALER_TESTING_cmd_refresh_reveal_with_retry
           (TALER_TESTING_cmd_refresh_reveal
