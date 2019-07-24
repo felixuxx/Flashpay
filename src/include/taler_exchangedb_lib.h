@@ -191,8 +191,8 @@ typedef int
  */
 typedef int
 (*TALER_EXCHANGEDB_RevocationIterator)(void *cls,
-				       const struct GNUNET_HashCode *denom_hash,
-				       const struct TALER_MasterSignatureP *revocation_master_sig);
+                                       const struct GNUNET_HashCode *denom_hash,
+                                       const struct TALER_MasterSignatureP *revocation_master_sig);
 
 
 /**

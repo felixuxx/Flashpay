@@ -127,9 +127,16 @@ struct TALER_EXCHANGEDB_Reserve
   struct TALER_Amount balance;
 
   /**
-   * The expiration date of this reserve
+   * The expiration date of this reserve; funds will be wired back
+   * at this time.
    */
   struct GNUNET_TIME_Absolute expiry;
+
+  /**
+   * The legal expiration date of this reserve; we will forget about
+   * it at this time.
+   */
+  struct GNUNET_TIME_Absolute gc;
 };
 
 
@@ -2011,10 +2018,10 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_expired_reserves)(void *cls,
-			  struct TALER_EXCHANGEDB_Session *session,
-			  struct GNUNET_TIME_Absolute now,
-			  TALER_EXCHANGEDB_ReserveExpiredCallback rec,
-			  void *rec_cls);
+                          struct TALER_EXCHANGEDB_Session *session,
+                          struct GNUNET_TIME_Absolute now,
+                          TALER_EXCHANGEDB_ReserveExpiredCallback rec,
+                          void *rec_cls);
 
 
   /**
@@ -2032,13 +2039,13 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*insert_reserve_closed)(void *cls,
-			   struct TALER_EXCHANGEDB_Session *session,
-			   const struct TALER_ReservePublicKeyP *reserve_pub,
-			   struct GNUNET_TIME_Absolute execution_date,
-			   const char *receiver_account,
-			   const struct TALER_WireTransferIdentifierRawP *wtid,
-			   const struct TALER_Amount *amount_with_fee,
-			   const struct TALER_Amount *closing_fee);
+                           struct TALER_EXCHANGEDB_Session *session,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           struct GNUNET_TIME_Absolute execution_date,
+                           const char *receiver_account,
+                           const struct TALER_WireTransferIdentifierRawP *wtid,
+                           const struct TALER_Amount *amount_with_fee,
+                           const struct TALER_Amount *closing_fee);
 
 
   /**

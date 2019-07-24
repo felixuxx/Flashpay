@@ -97,6 +97,12 @@ struct PostgresClosure
    * After how long should idle reserves be closed?
    */
   struct GNUNET_TIME_Relative idle_reserve_expiration_time;
+
+  /**
+   * After how long should reserves that have seen withdraw operations
+   * be garbage collected?
+   */
+  struct GNUNET_TIME_Relative legal_reserve_expiration_time;
 };
 
 
@@ -210,6 +216,7 @@ postgres_create_tables (void *cls)
                             ",current_balance_frac INT4 NOT NULL"
                             ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
                             ",expiration_date INT8 NOT NULL"
+                            ",gc_date INT8 NOT NULL"
                             ");"),
     /* index on reserves table (TODO: useless due to primary key!?) */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_reserve_pub_index ON "
@@ -217,6 +224,9 @@ postgres_create_tables (void *cls)
     /* index for get_expired_reserves */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_expiration_index"
                                 " ON reserves (expiration_date,current_balance_val,current_balance_frac);"),
+    /* index for reserve GC operations */
+    GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_gc_index"
+                                " ON reserves (gc_date);"),
     /* reserves_in table collects the transactions which transfer funds
        into the reserve.  The rows of this table correspond to each
        incoming transaction. */
@@ -649,6 +659,7 @@ postgres_prepare (PGconn *db_conn)
                             ",current_balance_frac"
                             ",current_balance_curr"
                             ",expiration_date"
+                            ",gc_date"
                             " FROM reserves"
                             " WHERE reserve_pub=$1"
                             " LIMIT 1"
@@ -663,9 +674,10 @@ postgres_prepare (PGconn *db_conn)
                             ",current_balance_frac"
                             ",current_balance_curr"
                             ",expiration_date"
+                            ",gc_date"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
+                            "($1, $2, $3, $4, $5, $6, $7);",
+                            7),
     /* Used in #postgres_insert_reserve_closed() */
     GNUNET_PQ_make_prepare ("reserves_close_insert",
                             "INSERT INTO reserves_close "
@@ -686,13 +698,14 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_make_prepare ("reserve_update",
                             "UPDATE reserves"
                             " SET"
-                            " expiration_date=$1 "
-                            ",current_balance_val=$2"
-                            ",current_balance_frac=$3"
-                            ",current_balance_curr=$4"
+                            " expiration_date=$1"
+                            ",gc_date=$2"
+                            ",current_balance_val=$3"
+                            ",current_balance_frac=$4"
+                            ",current_balance_curr=$5"
                             " WHERE"
-                            " reserve_pub=$5;",
-                            5),
+                            " reserve_pub=$6;",
+                            6),
     /* Used in #postgres_reserves_in_insert() to store transaction details */
     GNUNET_PQ_make_prepare ("reserves_in_add_transaction",
                             "INSERT INTO reserves_in "
@@ -1788,7 +1801,7 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_make_prepare ("gc_reserves",
                             "DELETE"
                             " FROM reserves"
-                            " WHERE expiration_date < $1"
+                            " WHERE gc_date < $1"
                             "   AND current_balance_val = 0"
                             "   AND current_balance_frac = 0;",
                             1),
@@ -2277,6 +2290,7 @@ postgres_reserve_get (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
     TALER_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
+    TALER_PQ_result_spec_absolute_time("gc_date", &reserve->gc),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2303,6 +2317,7 @@ reserves_update (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&reserve->expiry),
+    TALER_PQ_query_param_absolute_time (&reserve->gc),
     TALER_PQ_query_param_amount (&reserve->balance),
     GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
     GNUNET_PQ_query_param_end
@@ -2382,6 +2397,7 @@ postgres_reserves_in_insert (void *cls,
                                                       GNUNET_NO));
   expiry = GNUNET_TIME_absolute_add (execution_time,
                                      pg->idle_reserve_expiration_time);
+  (void) GNUNET_TIME_round_abs (&expiry);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == reserve_exists)
   {
     /* New reserve, create balance for the first time; we do this
@@ -2394,14 +2410,15 @@ postgres_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_string (sender_account_details),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_absolute_time (&expiry),
+      TALER_PQ_query_param_absolute_time (&expiry),
       GNUNET_PQ_query_param_end
     };
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "reserve_create",
-					     params);
+                                             "reserve_create",
+                                             params);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -2410,7 +2427,7 @@ postgres_reserves_in_insert (void *cls,
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       /* Maybe DB did not detect serializiability error already,
-	 but clearly there must be one. Still odd. */
+         but clearly there must be one. Still odd. */
       GNUNET_break (0);
       return GNUNET_DB_STATUS_SOFT_ERROR;
     }
@@ -2430,8 +2447,8 @@ postgres_reserves_in_insert (void *cls,
     };
 
     qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "reserves_in_add_transaction",
-					     params);
+                                             "reserves_in_add_transaction",
+                                             params);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -2461,6 +2478,10 @@ postgres_reserves_in_insert (void *cls,
     }
     updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                                        reserve.expiry);
+    (void) GNUNET_TIME_round_abs (&updated_reserve.expiry);
+    updated_reserve.gc = GNUNET_TIME_absolute_max (updated_reserve.expiry,
+                                                   reserve.gc);
+    (void) GNUNET_TIME_round_abs (&updated_reserve.gc);
     return reserves_update (cls,
                             session,
                             &updated_reserve);
@@ -2605,8 +2626,8 @@ postgres_insert_withdraw_info (void *cls,
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       (qs = postgres_reserve_get (cls,
-				  session,
-				  &reserve)))
+                                  session,
+                                  &reserve)))
   {
     /* Should have been checked before we got here... */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2627,13 +2648,11 @@ postgres_insert_withdraw_info (void *cls,
                 TALER_B2S (&collectable->reserve_pub));
     return GNUNET_DB_STATUS_SOFT_ERROR;
   }
-  /* FIXME: idle_reserve_expiration_time is not a good value here,
-     we should base this on the LEGAL expiration time of coins
-     as we need reserve data for payback! */
   expiry = GNUNET_TIME_absolute_add (now,
-                                     pg->idle_reserve_expiration_time);
-  reserve.expiry = GNUNET_TIME_absolute_max (expiry,
-                                             reserve.expiry);
+                                     pg->legal_reserve_expiration_time);
+  reserve.gc = GNUNET_TIME_absolute_max (expiry,
+                                         reserve.gc);
+  (void) GNUNET_TIME_round_abs (&reserve.gc);
   qs = reserves_update (cls,
                         session,
                         &reserve);
@@ -5437,8 +5456,8 @@ postgres_insert_reserve_closed (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-					   "reserves_close_insert",
-					   params);
+                                           "reserves_close_insert",
+                                           params);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     return qs;
 
@@ -5456,8 +5475,8 @@ postgres_insert_reserve_closed (void *cls,
     return qs;
   }
   ret = TALER_amount_subtract (&reserve.balance,
-			       &reserve.balance,
-			       amount_with_fee);
+                               &reserve.balance,
+                               amount_with_fee);
   if (GNUNET_SYSERR == ret)
   {
     /* The reserve history was checked to make sure there is enough of a balance
@@ -5692,8 +5711,8 @@ postgres_gc (void *cls)
      be enough _and_ they are tiny so it does not
      matter to make this tight */
   long_ago = GNUNET_TIME_absolute_subtract (now,
-					    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS,
-									   10));
+                                            GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS,
+                                                                           10));
   /* FIXME: use GNUNET_PQ_connect_with_cfg instead? */
   conn = GNUNET_PQ_connect (pc->connection_cfg_str);
   if (NULL == conn)
@@ -5703,14 +5722,14 @@ postgres_gc (void *cls)
   {
     if (
 	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-						  "gc_reserves",
-						  params_time)) ||
+                                              "gc_reserves",
+                                              params_time)) ||
 	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-						  "gc_prewire",
-						  params_none)) ||
+                                              "gc_prewire",
+                                              params_none)) ||
 	 (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-						  "gc_wire_fee",
-						  params_ancient_time))
+                                              "gc_wire_fee",
+                                              params_ancient_time))
 	)
       ret = GNUNET_SYSERR;
     /* This one may fail due to foreign key constraints from
@@ -7082,9 +7101,15 @@ postgres_insert_payback_request (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   expiry = GNUNET_TIME_absolute_add (timestamp,
+                                     pg->legal_reserve_expiration_time);
+  reserve.gc = GNUNET_TIME_absolute_max (expiry,
+                                         reserve.gc);
+  (void) GNUNET_TIME_round_abs (&reserve.gc);
+  expiry = GNUNET_TIME_absolute_add (timestamp,
                                      pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
+  (void) GNUNET_TIME_round_abs (&reserve.expiry);
   qs = reserves_update (cls,
                         session,
                         &reserve);
@@ -7725,15 +7750,20 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     }
   }
 
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "exchangedb",
-                                           "IDLE_RESERVE_EXPIRATION_TIME",
-                                           &pg->idle_reserve_expiration_time))
+  if ( (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_time (cfg,
+                                             "exchangedb",
+                                             "IDLE_RESERVE_EXPIRATION_TIME",
+                                             &pg->idle_reserve_expiration_time)) ||
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_time (cfg,
+                                             "exchangedb",
+                                             "LEGAL_RESERVE_EXPIRATION_TIME",
+                                             &pg->legal_reserve_expiration_time)) )
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
-                               "IDLE_RESERVE_EXPIRATION_TIME");
+                               "LEGAL/IDLE_RESERVE_EXPIRATION_TIME");
     GNUNET_free (pg);
     return NULL;
   }
