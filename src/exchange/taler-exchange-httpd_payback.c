@@ -305,6 +305,7 @@ payback_transaction (void *cls,
     }
     return qs;
   }
+
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (pc->value.currency,
                                         &spent));

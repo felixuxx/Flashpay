@@ -286,7 +286,7 @@ withdraw_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret = reply_reserve_withdraw_insufficient_funds (connection,
-							  rh);
+                                                          rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -319,8 +319,8 @@ withdraw_transaction (void *cls,
   wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   wc->collectable.reserve_sig = wc->signature;
   qs = TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
-					 session,
-					 &wc->collectable);
+                                         session,
+                                         &wc->collectable);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

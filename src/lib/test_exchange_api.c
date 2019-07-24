@@ -309,8 +309,10 @@ run (void *cls,
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt_double
-      ("refresh-melt-1", "EUR:4",
-       "refresh-withdraw-coin-1", MHD_HTTP_OK),
+      ("refresh-melt-1",
+       "refresh-withdraw-coin-1",
+       MHD_HTTP_OK,
+       NULL),
     /**
      * Complete (successful) melt operation, and
      * withdraw the coins
@@ -360,8 +362,10 @@ run (void *cls,
     /* Test running a failing melt operation (same operation
      * again must fail) */
     TALER_TESTING_cmd_refresh_melt
-      ("refresh-melt-failing", "EUR:4",
-       "refresh-withdraw-coin-1", MHD_HTTP_FORBIDDEN),
+      ("refresh-melt-failing",
+       "refresh-withdraw-coin-1",
+       MHD_HTTP_FORBIDDEN,
+       NULL),
 
     /* FIXME: also test with coin that was already melted
      * (signature differs from coin that was deposited...) */

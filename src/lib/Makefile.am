@@ -192,8 +192,8 @@ TESTS = \
   $(check_PROGRAMS)
 
 # expected to fail for now: test incomplete, feature not implemented!
-XFAIL_TESTS = \
-  test_exchange_api_revocation
+#XFAIL_TESTS = \
+#  test_exchange_api_revocation
 
 test_exchange_api_SOURCES = \
   test_exchange_api.c

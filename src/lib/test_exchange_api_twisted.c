@@ -187,9 +187,9 @@ run (void *cls,
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt",
-       "EUR:4",
        "refresh-withdraw-coin",
-       MHD_HTTP_OK),
+       MHD_HTTP_OK,
+       NULL),
 
     /* Trigger 409 Conflict.  */
     TALER_TESTING_cmd_flip_upload

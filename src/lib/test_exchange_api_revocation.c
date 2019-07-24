@@ -142,11 +142,13 @@ run (void *cls,
                      \"value\":\"EUR:1\"}]}",
        GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
     /**
-     * Melt the rest of the coin's value
-     * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_refresh_melt_double
-      ("refresh-melt-1", "EUR:4",
-       "withdraw-coin-1", MHD_HTTP_OK),
+     * Melt SOME of the rest of the coin's value
+     * (EUR:3.17 = 3x EUR:1.03 + 7x EUR:0.13) */
+    TALER_TESTING_cmd_refresh_melt
+      ("refresh-melt-1",
+       "withdraw-coin-1",
+       MHD_HTTP_OK,
+       NULL),
     /**
      * Complete (successful) melt operation, and withdraw the coins
      */
@@ -174,45 +176,49 @@ run (void *cls,
                                "refresh-reveal-1#2",
                                "EUR:1",
                                "refresh-melt-1"),
-    /* Melt original coin AGAIN (FIXME: this command
-       is simply WRONG as it neither matches
-       the EUR:3 that were paid back NOR is melt_double
-       precisely right here!) -- it always tries to MELT EUR:4, which is too much! */
-    TALER_TESTING_cmd_refresh_melt_double
-      ("refresh-melt-2", "EUR:3",
-       "withdraw-coin-1", MHD_HTTP_OK),
+    /* Now we have EUR:3.83 EUR back after 3x EUR:1 in paybacks */
+    /* Melt original coin AGAIN, but only create one 0.1 EUR coin;
+       This costs EUR:0.03 in refresh and EUR:01 in withdraw fees,
+       leaving EUR:3.69. */
+    TALER_TESTING_cmd_refresh_melt
+      ("refresh-melt-2",
+       "withdraw-coin-1",
+       MHD_HTTP_OK,
+       "EUR:0.1",
+       NULL),
     /**
      * Complete (successful) melt operation, and withdraw the coins
      */
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-2",
        "refresh-melt-2", MHD_HTTP_OK),
-    /* Make refreshed coin invalid */
+    /* Revokes refreshed EUR:0.1 coin  */
     TALER_TESTING_cmd_revoke ("revoke-2",
                               MHD_HTTP_OK,
                               "refresh-reveal-2",
                               CONFIG_FILE),
-    /* Make also original coin invalid */
+    /* Revoke also original coin denomination */
     TALER_TESTING_cmd_revoke ("revoke-3",
                               MHD_HTTP_OK,
                               "withdraw-coin-1",
                               CONFIG_FILE),
-    /* Refund coin to original coin */
+    /* Refund coin EUR:0.1 to original coin, creating zombie! */
     TALER_TESTING_cmd_payback ("payback-2",
                                MHD_HTTP_OK,
-                               "refresh-melt-2",
-                               "EUR:1",
+                               "refresh-reveal-2",
+                               "EUR:0.1",
                                "refresh-melt-2"),
-    /* Refund original coin to reserve */
+    /* Due to payback, original coin is now at EUR:3.79 */
+    /* Refund original (now zombie) coin to reserve */
     TALER_TESTING_cmd_payback ("payback-3",
                                MHD_HTTP_OK,
                                "withdraw-coin-1",
-                               "EUR:1",
+                               "EUR:3.79",
                                NULL),
     /* Check the money is back with the reserve */
     TALER_TESTING_cmd_status ("payback-reserve-status-1",
                               "create-reserve-1",
-                              "EUR:1.0",
+                              "EUR:3.79",
                               MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };

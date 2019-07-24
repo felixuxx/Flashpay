@@ -556,7 +556,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
                                            TALER_EC_REFRESH_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
-                                           "new_denoms");
+                                           "new_denoms_h");
 
   }
   if (json_array_size (new_denoms_h_json) !=
@@ -640,7 +640,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
         TEH_KS_release (key_state);
         return TEH_RESPONSE_reply_arg_invalid (connection,
                                                TALER_EC_REFRESH_REVEAL_FRESH_DENOMINATION_KEY_NOT_FOUND,
-                                               "new_denoms");
+                                               "new_denoms_h");
       }
       GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
     }
@@ -674,7 +674,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     /* lookup old_coin_pub in database */
     {
       enum GNUNET_DB_QueryStatus qs;
-    
+
       if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           (qs = TEH_plugin->get_melt (TEH_plugin->cls,
                                       NULL,
@@ -725,7 +725,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
         ldp.purpose.size = htonl (sizeof (ldp));
         ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
         ldp.h_denom_pub = dki_h[i];
-        ldp.old_coin_pub = refresh_melt.session.coin.coin_pub; 
+        ldp.old_coin_pub = refresh_melt.session.coin.coin_pub;
         ldp.transfer_pub = rctx->gamma_tp;
         GNUNET_CRYPTO_hash (rcds[i].coin_ev,
                             rcds[i].coin_ev_size,
@@ -744,7 +744,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
         }
       }
     }
-    
+
     rctx->num_fresh_coins = num_fresh_coins;
     rctx->rcds = rcds;
     rctx->dkis = dkis;

@@ -511,6 +511,7 @@ TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
 const char *
 TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange);
 
+
 /**
  * Obtain the denomination key details from the exchange.
  *

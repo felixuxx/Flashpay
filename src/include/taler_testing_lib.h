@@ -131,6 +131,7 @@ TALER_TESTING_cert_cb
    const struct TALER_EXCHANGE_Keys *keys,
    enum TALER_EXCHANGE_VersionCompatibility compat);
 
+
 /**
  * Wait for the exchange to have started. Waits for at
  * most 10s, after that returns 77 to indicate an error.
@@ -1108,19 +1109,18 @@ TALER_TESTING_cmd_deposit_with_retry
  * Create a "refresh melt" command.
  *
  * @param label command label.
- * @param amount amount to be melted.
  * @param coin_reference reference to a command
  *        that will provide a coin to refresh.
  * @param expected_response_code expected HTTP code.
- *
+ * @param ... NULL-terminated list of amounts to be melted
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt
   (const char *label,
-   const char *amount,
    const char *coin_reference,
-   unsigned int expected_response_code);
+   unsigned int expected_response_code,
+   ...);
 
 
 /**
@@ -1129,19 +1129,18 @@ TALER_TESTING_cmd_refresh_melt
  * request, see #5312.
  *
  * @param label command label
- * @param amount FIXME not used.
  * @param coin_reference reference to a command that will provide
  *        a coin to refresh
  * @param expected_response_code expected HTTP code
- *
+ * @param ... NULL-terminated list of amounts to be melted
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt_double
   (const char *label,
-   const char *amount,
    const char *coin_reference,
-   unsigned int expected_response_code);
+   unsigned int expected_response_code,
+   ...);
 
 
 /**

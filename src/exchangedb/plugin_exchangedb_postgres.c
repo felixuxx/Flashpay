@@ -2593,8 +2593,8 @@ postgres_insert_withdraw_info (void *cls,
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-					   "insert_withdraw_info",
-					   params);
+                                           "insert_withdraw_info",
+                                           params);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2627,6 +2627,9 @@ postgres_insert_withdraw_info (void *cls,
                 TALER_B2S (&collectable->reserve_pub));
     return GNUNET_DB_STATUS_SOFT_ERROR;
   }
+  /* FIXME: idle_reserve_expiration_time is not a good value here,
+     we should base this on the LEGAL expiration time of coins
+     as we need reserve data for payback! */
   expiry = GNUNET_TIME_absolute_add (now,
                                      pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
@@ -7721,11 +7724,12 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
       return NULL;
     }
   }
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
-					   "exchangedb",
-					   "IDLE_RESERVE_EXPIRATION_TIME",
-					   &pg->idle_reserve_expiration_time))
+                                           "exchangedb",
+                                           "IDLE_RESERVE_EXPIRATION_TIME",
+                                           &pg->idle_reserve_expiration_time))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",

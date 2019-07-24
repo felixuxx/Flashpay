@@ -1518,11 +1518,11 @@ handle_refresh_reveal_finished (void *cls,
  */
 struct TALER_EXCHANGE_RefreshRevealHandle *
 TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
-			       size_t refresh_data_length,
-			       const char *refresh_data,
-			       uint32_t noreveal_index,
-			       TALER_EXCHANGE_RefreshRevealCallback reveal_cb,
-			       void *reveal_cb_cls)
+                               size_t refresh_data_length,
+                               const char *refresh_data,
+                               uint32_t noreveal_index,
+                               TALER_EXCHANGE_RefreshRevealCallback reveal_cb,
+                               void *reveal_cb_cls)
 {
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
   json_t *transfer_privs;
@@ -1535,21 +1535,25 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   struct MeltData *md;
   struct TALER_TransferPublicKeyP transfer_pub;
 
-  GNUNET_assert (GNUNET_YES ==
-		 TEAH_handle_is_ready (exchange));
-  md = deserialize_melt_data (refresh_data,
-                              refresh_data_length);
-  if (NULL == md)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   if (noreveal_index >= TALER_CNC_KAPPA)
   {
     /* We check this here, as it would be really bad to below just
        disclose all the transfer keys. Note that this error should
        have been caught way earlier when the exchange replied, but maybe
        we had some internal corruption that changed the value... */
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (GNUNET_YES !=
+      TEAH_handle_is_ready (exchange))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  md = deserialize_melt_data (refresh_data,
+                              refresh_data_length);
+  if (NULL == md)
+  {
     GNUNET_break (0);
     return NULL;
   }
