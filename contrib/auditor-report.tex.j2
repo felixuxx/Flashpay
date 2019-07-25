@@ -55,6 +55,10 @@ be {\bf {{ data.total_escrow_balance }}}.
 The active operational risk stands at
 {\bf {{ data.total_active_risk }}}.
 
+\noindent
+Loss (actualized risk from paybacks) is
+{\bf {{ data.total_payback_loss }}}.
+
 
 \section{Income}
 
@@ -199,6 +203,8 @@ all of the outstanding coins from ordinary users.  Thus, the {\bf risk
 exposure} is the amount of coins in circulation for a particular
 denominatin and the maximum loss for the exchange from this type of
 compromise.
+
+% FIXME: expand to include actual losses (materizlied risk)!
 
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies detected.}

@@ -371,6 +371,8 @@ run (void *cls)
   struct TALER_Amount refund_fee_balance2;
   struct TALER_Amount rbalance;
   struct TALER_Amount rbalance2;
+  struct TALER_Amount loss;
+  struct TALER_Amount loss2;
   uint64_t nissued;
 
   GNUNET_assert (GNUNET_OK ==
@@ -388,6 +390,9 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":13.57986",
                                          &rbalance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.6",
+                                         &loss));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_balance (plugin->cls,
@@ -395,6 +400,7 @@ run (void *cls)
                                                &denom_pub_hash,
                                                &denom_balance,
                                                &rbalance,
+                                               &loss,
                                                42));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -411,6 +417,7 @@ run (void *cls)
                                                &denom_pub_hash,
                                                &denom_balance,
                                                &rbalance,
+                                               &loss,
                                                62));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_balance\n");
@@ -421,6 +428,7 @@ run (void *cls)
                                             &denom_pub_hash,
                                             &denom_balance2,
                                             &rbalance2,
+                                            &loss2,
                                             &nissued));
 
   FAILIF (0 != GNUNET_memcmp (&denom_balance2, &denom_balance));
@@ -439,7 +447,8 @@ run (void *cls)
                                           &melt_fee_balance,
                                           &deposit_fee_balance,
                                           &denom_balance,
-                                          &rbalance));
+                                          &rbalance,
+                                          &loss));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_balance_summary\n");
@@ -452,7 +461,8 @@ run (void *cls)
                                           &deposit_fee_balance,
                                           &melt_fee_balance,
                                           &refund_fee_balance,
-                                          &rbalance));
+                                          &rbalance,
+                                          &loss));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_balance_summary\n");
@@ -462,6 +472,7 @@ run (void *cls)
   ZR_BLK (&melt_fee_balance2);
   ZR_BLK (&refund_fee_balance2);
   ZR_BLK (&rbalance2);
+  ZR_BLK (&loss2);
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_balance_summary (plugin->cls,
@@ -471,7 +482,8 @@ run (void *cls)
                                             &deposit_fee_balance2,
                                             &melt_fee_balance2,
                                             &refund_fee_balance2,
-                                            &rbalance2));
+                                            &rbalance2,
+                                            &loss2));
 
   FAILIF ( (0 != GNUNET_memcmp (&denom_balance2,
                                 &denom_balance) ) ||
@@ -483,6 +495,8 @@ run (void *cls)
                             &refund_fee_balance)) );
   FAILIF (0 != GNUNET_memcmp (&rbalance2,
                               &rbalance));
+  FAILIF (0 != GNUNET_memcmp (&loss2,
+                              &loss));
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -494,7 +508,8 @@ run (void *cls)
                                                  &master_pub,
                                                  &denom_pub_hash,
                                                  past,
-                                                 &rbalance));
+                                                 &rbalance,
+                                                 &loss));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_denom_revenue (plugin->cls,
@@ -502,7 +517,8 @@ run (void *cls)
                                                  &master_pub,
                                                  &rnd_hash,
                                                  now,
-                                                 &rbalance));
+                                                 &rbalance,
+                                                 &loss));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_historic_denom_revenue\n");
@@ -511,7 +527,8 @@ run (void *cls)
   select_historic_denom_revenue_result (void *cls,
                                         const struct GNUNET_HashCode *denom_pub_hash2,
                                         struct GNUNET_TIME_Absolute revenue_timestamp2,
-                                        const struct TALER_Amount *revenue_balance2)
+                                        const struct TALER_Amount *revenue_balance2,
+                                        const struct TALER_Amount *loss2)
   {
     static int n = 0;
 
@@ -524,7 +541,8 @@ run (void *cls)
             && 0 != GNUNET_memcmp (&revenue_timestamp2, &now))
         || (0 != GNUNET_memcmp (denom_pub_hash2, &denom_pub_hash)
             && 0 != GNUNET_memcmp (denom_pub_hash2, &rnd_hash))
-        || 0 != GNUNET_memcmp (revenue_balance2, &rbalance))
+        || 0 != GNUNET_memcmp (revenue_balance2, &rbalance)
+        || 0 != GNUNET_memcmp (loss2, &loss))
     {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_historic_denom_revenue_result: result does not match\n");
@@ -540,63 +558,6 @@ run (void *cls)
                                                  &master_pub,
                                                  &select_historic_denom_revenue_result,
                                                  NULL));
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: insert_historic_losses\n");
-
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_historic_losses (plugin->cls,
-                                          session,
-                                          &master_pub,
-                                          &denom_pub_hash,
-                                          past,
-                                          &rbalance));
-
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_historic_losses (plugin->cls,
-                                          session,
-                                          &master_pub,
-                                          &rnd_hash,
-                                          past,
-                                          &rbalance));
-
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: select_historic_losses\n");
-
-  int
-  select_historic_losses_result (void *cls,
-                                 const struct GNUNET_HashCode *denom_pub_hash2,
-                                 struct GNUNET_TIME_Absolute loss_timestamp2,
-                                 const struct TALER_Amount *loss_balance2)
-  {
-    static int n = 0;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "select_historic_losses_result: row %u\n", n);
-
-    if (2 <= n++
-        || cls != NULL
-        || (0 != GNUNET_memcmp (&loss_timestamp2, &past)
-            && 0 != GNUNET_memcmp (&loss_timestamp2, &now))
-        || (0 != GNUNET_memcmp (denom_pub_hash2, &denom_pub_hash)
-            && 0 != GNUNET_memcmp (denom_pub_hash2, &rnd_hash))
-        || 0 != GNUNET_memcmp (loss_balance2, &rbalance))
-    {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "select_historic_denom_revenue_result: result does not match\n");
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
-    }
-    return GNUNET_OK;
-  }
-
-  FAILIF (0 >=
-          plugin->select_historic_losses (plugin->cls,
-                                          session,
-                                          &master_pub,
-                                          select_historic_losses_result,
-                                          NULL));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_historic_reserve_revenue\n");
@@ -744,20 +705,18 @@ drop:
   {
     plugin->rollback (plugin->cls,
                       session);
-
-
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Test: auditor_delete_exchange\n");
-    FAILIF (GNUNET_OK !=
-            plugin->start (plugin->cls,
-                           session));
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->delete_exchange (plugin->cls,
-                                     session,
-                                     &master_pub));
-    FAILIF (0 >
-            plugin->commit (plugin->cls,
-                            session));
+    GNUNET_break (GNUNET_OK ==
+                  plugin->start (plugin->cls,
+                                 session));
+    GNUNET_break (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+                  plugin->delete_exchange (plugin->cls,
+                                           session,
+                                           &master_pub));
+    GNUNET_break (0 <=
+                  plugin->commit (plugin->cls,
+                                  session));
   }
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls,

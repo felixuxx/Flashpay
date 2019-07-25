@@ -24,7 +24,16 @@
  * - Similarly, we do not check that the outgoing wire transfers match those
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
+ *
  * KNOWN BUGS:
+ * - TT_PAYBACK cases should be checked in check_transaction_history (and
+ *   maybe other places?)
+ * - we also seem to nowhere check the denomination signatures over the coins
+ *   (While as the exchange could easily falsify those, we should
+ *    probably check as otherwise insider *without* RSA private key
+ *    access could still create false paybacks to drain exchange funds!)
+ * - we don't check that for payback operations the denomination was actually
+ *   revoked (FIXME exists!)
  * - error handling if denomination keys are used that are not known to the
  *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
  *   violation back at the user. Great UX.
@@ -264,6 +273,11 @@ static struct TALER_Amount total_escrow_balance;
  * Active risk exposure.
  */
 static struct TALER_Amount total_risk;
+
+/**
+ * Actualized risk (= loss) from paybacks.
+ */
+static struct TALER_Amount total_payback_loss;
 
 /**
  * Total withdraw fees earned.
@@ -1276,13 +1290,13 @@ handle_payback_by_reserve (void *cls,
  */
 static int
 handle_reserve_closed (void *cls,
-		       uint64_t rowid,
-		       struct GNUNET_TIME_Absolute execution_date,
-		       const struct TALER_Amount *amount_with_fee,
-		       const struct TALER_Amount *closing_fee,
-		       const struct TALER_ReservePublicKeyP *reserve_pub,
-		       const char *receiver_account,
-		       const struct TALER_WireTransferIdentifierRawP *transfer_details)
+                       uint64_t rowid,
+                       struct GNUNET_TIME_Absolute execution_date,
+                       const struct TALER_Amount *amount_with_fee,
+                       const struct TALER_Amount *closing_fee,
+                       const struct TALER_ReservePublicKeyP *reserve_pub,
+                       const char *receiver_account,
+                       const struct TALER_WireTransferIdentifierRawP *transfer_details)
 {
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
@@ -2256,7 +2270,7 @@ wire_transfer_information_cb (void *cls,
                                    esession,
                                    coin_pub,
                                    GNUNET_YES,
-				   &tl);
+                                   &tl);
   if ( (qs < 0) ||
        (NULL == tl) )
   {
@@ -2835,6 +2849,11 @@ struct DenominationSummary
   struct TALER_Amount denom_risk;
 
   /**
+   * Total value of coins subjected to payback with this denomination key.
+   */
+  struct TALER_Amount denom_payback;
+
+  /**
    * How many coins (not their amount!) of this denomination
    * did the exchange issue overall?
    */
@@ -2896,6 +2915,7 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
                                       denom_hash,
                                       &ds->denom_balance,
                                       &ds->denom_risk,
+                                      &ds->denom_payback,
                                       &ds->num_issued);
   if (0 > qs)
   {
@@ -2917,6 +2937,9 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &ds->denom_risk));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->denom_payback));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting balance for denomination `%s' is %s\n",
               GNUNET_h2s (denom_hash),
@@ -3029,11 +3052,12 @@ sync_denomination (void *cls,
                   TALER_amount2s (&ds->denom_balance));
       if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           (qs = adb->insert_historic_denom_revenue (adb->cls,
-						    asession,
-						    &master_pub,
-						    denom_hash,
-						    expire_deposit,
-						    &ds->denom_balance)))
+                                                    asession,
+                                                    &master_pub,
+                                                    denom_hash,
+                                                    expire_deposit,
+                                                    &ds->denom_balance,
+                                                    &ds->denom_payback)))
       {
         /* Failed to store profits? Bad database */
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -3075,6 +3099,7 @@ sync_denomination (void *cls,
                                                denom_hash,
                                                &ds->denom_balance,
                                                &ds->denom_risk,
+                                               &ds->denom_payback,
                                                ds->num_issued);
       else
         qs = adb->insert_denomination_balance (adb->cls,
@@ -3082,6 +3107,7 @@ sync_denomination (void *cls,
                                                denom_hash,
                                                &ds->denom_balance,
                                                &ds->denom_risk,
+                                               &ds->denom_payback,
                                                ds->num_issued);
     }
   }
@@ -3146,6 +3172,8 @@ withdraw_cb (void *cls,
                               &dh);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
+    /* The key not existing should be prevented by foreign key constraints,
+       so must be a transient DB error. */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
     return GNUNET_SYSERR;
@@ -3907,9 +3935,84 @@ refund_cb (void *cls,
 
 
 /**
+ * Check that the payback operation was properly initiated by a coin
+ * and update the denomination's losses accordingly.
+ *
+ * @param cls a `struct CoinContext *`
+ * @param rowid row identifier used to uniquely identify the payback operation
+ * @param amount how much should be added back to the reserve
+ * @param coin public information about the coin
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_blind blinding factor used to blind the coin
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+check_payback (struct CoinContext *cc,
+               uint64_t rowid,
+               const struct TALER_Amount *amount,
+               const struct TALER_CoinPublicInfo *coin,
+               const struct TALER_DenominationPublicKey *denom_pub,
+               const struct TALER_CoinSpendSignatureP *coin_sig,
+               const struct TALER_DenominationBlindingKeyP *coin_blind)
+{
+  struct TALER_PaybackRequestPS pr;
+  struct DenominationSummary *ds;
+  enum GNUNET_DB_QueryStatus qs;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+
+  qs = get_denomination_info (denom_pub,
+                              &dki,
+                              &pr.h_denom_pub);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  {
+    /* The key not existing should be prevented by foreign key constraints,
+       so must be a transient DB error. */
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cc->qs = qs;
+    return GNUNET_SYSERR;
+  }
+  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
+  pr.purpose.size = htonl (sizeof (pr));
+  pr.coin_pub = coin->coin_pub;
+  pr.coin_blind = *coin_blind;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
+                                  &pr.purpose,
+                                  &coin_sig->eddsa_signature,
+                                  &coin->coin_pub.eddsa_pub))
+  {
+    report (report_bad_sig_losses,
+            json_pack ("{s:s, s:I, s:o, s:o}",
+                       "operation", "payback",
+                       "row", (json_int_t) rowid,
+                       "loss", TALER_JSON_from_amount (amount),
+                       "coin_pub", GNUNET_JSON_from_data_auto (&coin->coin_pub)));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_sig_loss,
+                                    &total_bad_sig_loss,
+                                    amount));
+    return GNUNET_OK;
+  }
+  ds = get_denomination_summary (cc,
+                                 dki,
+                                 &dki->properties.denom_hash);
+  /* FIXME: should check that denomination was actually revoked! */
+  GNUNET_break (GNUNET_OK ==
+                TALER_amount_add (&ds->denom_payback,
+                                  &ds->denom_payback,
+                                  amount));
+  GNUNET_break (GNUNET_OK ==
+                TALER_amount_add (&total_payback_loss,
+                                  &total_payback_loss,
+                                  amount));
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called about paybacks the exchange has to perform.
  *
- * @param cls closure
+ * @param cls a `struct CoinContext *`
  * @param rowid row identifier used to uniquely identify the payback operation
  * @param timestamp when did we receive the payback request
  * @param amount how much should be added back to the reserve
@@ -3928,10 +4031,17 @@ payback_cb (void *cls,
             const struct TALER_CoinPublicInfo *coin,
             const struct TALER_DenominationPublicKey *denom_pub,
             const struct TALER_CoinSpendSignatureP *coin_sig,
-                                    const struct TALER_DenominationBlindingKeyP *coin_blind)
+            const struct TALER_DenominationBlindingKeyP *coin_blind)
 {
-  GNUNET_assert (0); // #5777: NOT implemented! (updated losses from payback/denomination)
-  return GNUNET_SYSERR;
+  struct CoinContext *cc = cls;
+
+  return check_payback (cc,
+                        rowid,
+                        amount,
+                        coin,
+                        denom_pub,
+                        coin_sig,
+                        coin_blind);
 }
 
 
@@ -3939,7 +4049,7 @@ payback_cb (void *cls,
  * Function called about paybacks on refreshed coins the exchange has to
  * perform.
  *
- * @param cls closure
+ * @param cls a `struct CoinContext *`
  * @param rowid row identifier used to uniquely identify the payback operation
  * @param timestamp when did we receive the payback request
  * @param amount how much should be added back to the reserve
@@ -3960,8 +4070,15 @@ payback_refresh_cb (void *cls,
                     const struct TALER_CoinSpendSignatureP *coin_sig,
                     const struct TALER_DenominationBlindingKeyP *coin_blind)
 {
-  GNUNET_assert (0); // #5777: NOT implemented! (updated denom gains from payback)
-  return GNUNET_SYSERR;
+  struct CoinContext *cc = cls;
+
+  return check_payback (cc,
+                        rowid,
+                        amount,
+                        coin,
+                        denom_pub,
+                        coin_sig,
+                        coin_blind);
 }
 
 
@@ -4017,7 +4134,8 @@ analyze_coins (void *cls)
                                   &total_deposit_fee_income,
                                   &total_melt_fee_income,
                                   &total_refund_fee_income,
-                                  &total_risk);
+                                  &total_risk,
+                                  &total_payback_loss);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -4113,7 +4231,8 @@ analyze_coins (void *cls)
                                       &total_deposit_fee_income,
                                       &total_melt_fee_income,
                                       &total_refund_fee_income,
-                                      &total_risk);
+                                      &total_risk,
+                                      &total_payback_loss);
   else
     qs = adb->insert_balance_summary (adb->cls,
                                       asession,
@@ -4122,7 +4241,8 @@ analyze_coins (void *cls)
                                       &total_deposit_fee_income,
                                       &total_melt_fee_income,
                                       &total_refund_fee_income,
-                                      &total_risk);
+                                      &total_risk,
+                                      &total_payback_loss);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4147,11 +4267,12 @@ analyze_coins (void *cls)
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              _("Concluded coin audit step at %llu/%llu/%llu/%llu\n"),
+              _("Concluded coin audit step at %llu/%llu/%llu/%llu/%llu\n"),
               (unsigned long long) ppc.last_deposit_serial_id,
               (unsigned long long) ppc.last_melt_serial_id,
               (unsigned long long) ppc.last_refund_serial_id,
-              (unsigned long long) ppc.last_withdraw_serial_id);
+              (unsigned long long) ppc.last_withdraw_serial_id,
+              (unsigned long long) ppc.last_payback_refresh_serial_id);
   return qs;
 }
 
@@ -4651,6 +4772,9 @@ run (void *cls,
                                         &total_risk));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
+                                        &total_payback_loss));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
                                         &total_withdraw_fee_income));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
@@ -4753,7 +4877,7 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:I,"
-                      " s:o }",
+                      " s:o, s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
                       "reserve_balance_insufficient_inconsistencies",
@@ -4791,7 +4915,7 @@ run (void *cls,
                       /* block */
                       "total_balance_reserve_not_closed",
                       TALER_JSON_from_amount (&total_balance_reserve_not_closed),
-		      "wire_out_inconsistencies",
+                      "wire_out_inconsistencies",
                       report_wire_out_inconsistencies,
                       "total_wire_out_delta_plus",
                       TALER_JSON_from_amount (&total_wire_out_delta_plus),
@@ -4834,7 +4958,10 @@ run (void *cls,
                       (json_int_t) number_missed_deposit_confirmations,
                       /* block */
                       "missing_deposit_confirmation_total",
-                      TALER_JSON_from_amount (&total_missed_deposit_confirmations));
+                      TALER_JSON_from_amount (&total_missed_deposit_confirmations),
+                      "total_payback_loss",
+                      TALER_JSON_from_amount (&total_payback_loss)
+                      );
   GNUNET_break (NULL != report);
   json_dumpf (report,
 	      stdout,

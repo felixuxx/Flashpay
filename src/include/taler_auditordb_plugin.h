@@ -68,6 +68,7 @@ typedef int
  * @param revenue_balance what was the total profit made from
  *                        deposit fees, melting fees, refresh fees
  *                        and coins that were never returned?
+ * @param loss_balance what was the total loss
  * @return sets the return value of select_denomination_info(),
  *         #GNUNET_OK to continue,
  *         #GNUNET_NO to stop processing further rows
@@ -77,27 +78,8 @@ typedef int
 (*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(void *cls,
                                                            const struct GNUNET_HashCode *denom_pub_hash,
                                                            struct GNUNET_TIME_Absolute revenue_timestamp,
-                                                           const struct TALER_Amount *revenue_balance);
-
-
-/**
- * Function called with the results of select_historic_losses()
- *
- * @param cls closure
- * @param denom_pub_hash hash of the denomination key
- * @param loss_timestamp when did this profit get realized
- * @param loss_balance what was the total loss
- *
- * @return sets the return value of select_denomination_info(),
- *         #GNUNET_OK to continue,
- *         #GNUNET_NO to stop processing further rows
- *         #GNUNET_SYSERR or other values on error.
- */
-typedef int
-(*TALER_AUDITORDB_HistoricLossesDataCallback)(void *cls,
-                                              const struct GNUNET_HashCode *denom_pub_hash,
-                                              struct GNUNET_TIME_Absolute loss_timestamp,
-                                              const struct TALER_Amount *loss_balance);
+                                                           const struct TALER_Amount *revenue_balance,
+                                                           const struct TALER_Amount *loss_balance);
 
 
 /**
@@ -1086,6 +1068,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_risk value of coins issued with this denomination key
+   * @param denom_payback value of coins paid back if this denomination key was revoked
    * @param num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
@@ -1095,6 +1078,7 @@ struct TALER_AUDITORDB_Plugin
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *denom_risk,
+                                 const struct TALER_Amount *payback_loss,
                                  uint64_t num_issued);
 
 
@@ -1107,6 +1091,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_risk value of coins issued with this denomination key
+   * @param denom_payback value of coins paid back if this denomination key was revoked
    * @param num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
@@ -1116,6 +1101,7 @@ struct TALER_AUDITORDB_Plugin
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *denom_risk,
+                                 const struct TALER_Amount *payback_loss,
                                  uint64_t num_issued);
 
 
@@ -1127,6 +1113,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_pub_hash hash of the denomination public key
    * @param[out] denom_balance value of coins outstanding with this denomination key
    * @param[out] denom_risk value of coins issued with this denomination key
+   * @param[out] denom_payback value of coins paid back if this denomination key was revoked
    * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
@@ -1136,6 +1123,7 @@ struct TALER_AUDITORDB_Plugin
                               const struct GNUNET_HashCode *denom_pub_hash,
                               struct TALER_Amount *denom_balance,
                               struct TALER_Amount *denom_risk,
+                              struct TALER_Amount *payback_loss,
                               uint64_t *num_issued);
 
 
@@ -1165,6 +1153,7 @@ struct TALER_AUDITORDB_Plugin
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
+   * @param payback_loss actual losses from payback (actualized @a risk)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1175,7 +1164,8 @@ struct TALER_AUDITORDB_Plugin
                             const struct TALER_Amount *deposit_fee_balance,
                             const struct TALER_Amount *melt_fee_balance,
                             const struct TALER_Amount *refund_fee_balance,
-                            const struct TALER_Amount *risk);
+                            const struct TALER_Amount *risk,
+                            const struct TALER_Amount *payback_loss);
 
 
   /**
@@ -1190,6 +1180,7 @@ struct TALER_AUDITORDB_Plugin
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
+   * @param payback_loss actual losses from payback (actualized @a risk)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1200,7 +1191,8 @@ struct TALER_AUDITORDB_Plugin
                             const struct TALER_Amount *deposit_fee_balance,
                             const struct TALER_Amount *melt_fee_balance,
                             const struct TALER_Amount *refund_fee_balance,
-                            const struct TALER_Amount *risk);
+                            const struct TALER_Amount *risk,
+                            const struct TALER_Amount *payback_loss);
 
 
   /**
@@ -1214,6 +1206,7 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] melt_fee_balance total melt fees collected for this DK
    * @param[out] refund_fee_balance total refund fees collected for this DK
    * @param[out] risk maximum risk exposure of the exchange
+   * @param[out] payback_loss actual losses from payback (actualized @a risk)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1224,7 +1217,8 @@ struct TALER_AUDITORDB_Plugin
                          struct TALER_Amount *deposit_fee_balance,
                          struct TALER_Amount *melt_fee_balance,
                          struct TALER_Amount *refund_fee_balance,
-                         struct TALER_Amount *risk);
+                         struct TALER_Amount *risk,
+                         struct TALER_Amount *payback_loss);
 
 
   /**
@@ -1239,6 +1233,7 @@ struct TALER_AUDITORDB_Plugin
    * @param revenue_balance what was the total profit made from
    *                        deposit fees, melting fees, refresh fees
    *                        and coins that were never returned?
+   * @param payback_loss_balance total losses from paybacks of revoked denominations
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1247,7 +1242,8 @@ struct TALER_AUDITORDB_Plugin
                                    const struct TALER_MasterPublicKeyP *master_pub,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct GNUNET_TIME_Absolute revenue_timestamp,
-                                   const struct TALER_Amount *revenue_balance);
+                                   const struct TALER_Amount *revenue_balance,
+                                   const struct TALER_Amount *payback_loss_balance);
 
 
   /**
@@ -1267,48 +1263,6 @@ struct TALER_AUDITORDB_Plugin
                                    const struct TALER_MasterPublicKeyP *master_pub,
                                    TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
                                    void *cb_cls);
-
-
-  /**
-   * Insert information about an exchange's historic
-   * losses (from compromised denomination keys).
-   *
-   * Note yet used, need to implement exchange's bankrupcy
-   * protocol (and tables!) first.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param master_pub master key of the exchange
-   * @param denom_pub_hash hash of the denomination key
-   * @param loss_timestamp when did this profit get realized
-   * @param loss_balance what was the total loss
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_historic_losses)(void *cls,
-                            struct TALER_AUDITORDB_Session *session,
-                            const struct TALER_MasterPublicKeyP *master_pub,
-                            const struct GNUNET_HashCode *denom_pub_hash,
-                            struct GNUNET_TIME_Absolute loss_timestamp,
-                            const struct TALER_Amount *loss_balance);
-
-  /**
-   * Obtain all of the historic denomination key losses
-   * of the given @a master_pub.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param master_pub master key of the exchange
-   * @param cb function to call with the results
-   * @param cb_cls closure for @a cb
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*select_historic_losses)(void *cls,
-                            struct TALER_AUDITORDB_Session *session,
-                            const struct TALER_MasterPublicKeyP *master_pub,
-                            TALER_AUDITORDB_HistoricLossesDataCallback cb,
-                            void *cb_cls);
 
 
   /**

@@ -142,7 +142,6 @@ postgres_drop_tables (void *cls,
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_predicted_result;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_ledger;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_losses;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_denomination_revenue;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_balance_summary;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_denomination_pending;"),
@@ -329,6 +328,9 @@ postgres_create_tables (void *cls)
 			    ",denom_risk_val INT8 NOT NULL"
 			    ",denom_risk_frac INT4 NOT NULL"
 			    ",denom_risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+			    ",payback_loss_val INT8 NOT NULL"
+			    ",payback_loss_frac INT4 NOT NULL"
+			    ",payback_loss_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
     /* Table with the sum of the outstanding coins from
        "auditor_denomination_pending" (denom_pubs must belong to the
@@ -353,6 +355,9 @@ postgres_create_tables (void *cls)
 			    ",risk_val INT8 NOT NULL"
 			    ",risk_frac INT4 NOT NULL"
 			    ",risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+			    ",loss_val INT8 NOT NULL"
+			    ",loss_frac INT4 NOT NULL"
+			    ",loss_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 			    ")"),
     /* Table with historic profits; basically, when a denom_pub has
        expired and everything associated with it is garbage collected,
@@ -370,16 +375,6 @@ postgres_create_tables (void *cls)
 			    ",revenue_balance_val INT8 NOT NULL"
 			    ",revenue_balance_frac INT4 NOT NULL"
 			    ",revenue_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
-    /* Table with historic losses; basically, when we need to
-       invalidate a denom_pub because the denom_priv was
-       compromised, we incur a loss. These losses are totaled
-       up here. (NOTE: the 'bankrupcy' protocol is not yet
-       implemented, so right now this table is not used.)  */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_losses"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
-			    ",loss_timestamp INT8 NOT NULL"
 			    ",loss_balance_val INT8 NOT NULL"
 			    ",loss_balance_frac INT4 NOT NULL"
 			    ",loss_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -440,8 +435,8 @@ postgres_create_tables (void *cls)
 			    ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX history_ledger_by_master_pub_and_time "
 				"ON auditor_historic_ledger(master_pub,timestamp)"),
-    /* Table with the sum of the ledger, auditor_historic_revenue,
-       auditor_historic_losses and the auditor_reserve_balance.  This is the
+    /* Table with the sum of the ledger, auditor_historic_revenue and
+       the auditor_reserve_balance.  This is the
        final amount that the exchange should have in its bank account
        right now. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_predicted_result"
@@ -855,8 +850,11 @@ postgres_prepare (PGconn *db_conn)
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
-			    8),
+                ",payback_loss_val"
+			    ",payback_loss_frac"
+			    ",payback_loss_curr"
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
+			    11),
     /* Used in #postgres_update_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_update",
 			    "UPDATE auditor_denomination_pending SET"
@@ -867,8 +865,11 @@ postgres_prepare (PGconn *db_conn)
 			    ",denom_risk_val=$5"
 			    ",denom_risk_frac=$6"
 			    ",denom_risk_curr=$7"
-			    " WHERE denom_pub_hash=$8",
-			    8),
+                ",payback_loss_val=$8"
+			    ",payback_loss_frac=$9"
+			    ",payback_loss_curr=$10"
+			    " WHERE denom_pub_hash=$11",
+			    11),
     /* Used in #postgres_get_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_select",
 			    "SELECT"
@@ -879,6 +880,9 @@ postgres_prepare (PGconn *db_conn)
 			    ",denom_risk_val"
 			    ",denom_risk_frac"
 			    ",denom_risk_curr"
+			    ",payback_loss_val"
+			    ",payback_loss_frac"
+			    ",payback_loss_curr"
 			    " FROM auditor_denomination_pending"
 			    " WHERE denom_pub_hash=$1",
 			    1),
@@ -899,10 +903,14 @@ postgres_prepare (PGconn *db_conn)
 			    ",refund_fee_balance_frac"
 			    ",refund_fee_balance_curr"
 			    ",risk_val"
-			    ",risk_frac"
+                ",risk_frac"
 			    ",risk_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);",
-			    16),
+			    ",loss_val"
+			    ",loss_frac"
+			    ",loss_curr"
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
+                "          $11,$12,$13,$14,$15,$16,$17,$18,$19);",
+			    19),
     /* Used in #postgres_update_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_update",
 			    "UPDATE auditor_balance_summary SET"
@@ -921,8 +929,11 @@ postgres_prepare (PGconn *db_conn)
 			    ",risk_val=$13"
 			    ",risk_frac=$14"
 			    ",risk_curr=$15"
-			    " WHERE master_pub=$16;",
-			    16),
+			    ",loss_val=$16"
+			    ",loss_frac=$17"
+			    ",loss_curr=$18"
+			    " WHERE master_pub=$19;",
+			    19),
     /* Used in #postgres_get_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_select",
 			    "SELECT"
@@ -941,6 +952,9 @@ postgres_prepare (PGconn *db_conn)
 			    ",risk_val"
 			    ",risk_frac"
 			    ",risk_curr"
+			    ",loss_val"
+			    ",loss_frac"
+			    ",loss_curr"
 			    " FROM auditor_balance_summary"
 			    " WHERE master_pub=$1;",
 			    1),
@@ -953,8 +967,11 @@ postgres_prepare (PGconn *db_conn)
 			    ",revenue_balance_val"
 			    ",revenue_balance_frac"
 			    ",revenue_balance_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6);",
-			    6),
+			    ",loss_balance_val"
+			    ",loss_balance_frac"
+			    ",loss_balance_curr"
+			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+                9),
     /* Used in #postgres_select_historic_denom_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_select",
 			    "SELECT"
@@ -963,29 +980,10 @@ postgres_prepare (PGconn *db_conn)
 			    ",revenue_balance_val"
 			    ",revenue_balance_frac"
 			    ",revenue_balance_curr"
+			    ",loss_balance_val"
+			    ",loss_balance_frac"
+			    ",loss_balance_curr"
 			    " FROM auditor_historic_denomination_revenue"
-			    " WHERE master_pub=$1;",
-			    1),
-    /* Used in #postgres_insert_historic_losses() */
-    GNUNET_PQ_make_prepare ("auditor_historic_losses_insert",
-			    "INSERT INTO auditor_historic_losses"
-			    "(master_pub"
-			    ",denom_pub_hash"
-			    ",loss_timestamp"
-			    ",loss_balance_val"
-			    ",loss_balance_frac"
-			    ",loss_balance_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6);",
-			    6),
-    /* Used in #postgres_select_historic_losses() */
-    GNUNET_PQ_make_prepare ("auditor_historic_losses_select",
-			    "SELECT"
-			    " denom_pub_hash"
-			    ",loss_timestamp"
-			    ",loss_balance_val"
-			    ",loss_balance_frac"
-			    ",loss_balance_curr"
-			    " FROM auditor_historic_losses"
 			    " WHERE master_pub=$1;",
 			    1),
     /* Used in #postgres_insert_historic_reserve_revenue() */
@@ -2640,6 +2638,7 @@ postgres_get_wire_fee_summary (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_risk value of coins issued with this denomination key
+ * @param payback_loss losses from payback (if this denomination was revoked)
  * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
@@ -2649,6 +2648,7 @@ postgres_insert_denomination_balance (void *cls,
                                       const struct GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *denom_risk,
+                                      const struct TALER_Amount *payback_loss,
                                       uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2656,6 +2656,7 @@ postgres_insert_denomination_balance (void *cls,
     TALER_PQ_query_param_amount (denom_balance),
     GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
+    TALER_PQ_query_param_amount (payback_loss),
     GNUNET_PQ_query_param_end
   };
 
@@ -2674,6 +2675,7 @@ postgres_insert_denomination_balance (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_risk value of coins issued with this denomination key
+ * @param payback_loss losses from payback (if this denomination was revoked)
  * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
@@ -2683,12 +2685,14 @@ postgres_update_denomination_balance (void *cls,
                                       const struct GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *denom_risk,
+                                      const struct TALER_Amount *payback_loss,
                                       uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
     GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
+    TALER_PQ_query_param_amount (payback_loss),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
@@ -2707,6 +2711,7 @@ postgres_update_denomination_balance (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
  * @param[out] denom_risk value of coins issued with this denomination key
+ * @param[out] payback_loss losses from payback (if this denomination was revoked)
  * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
@@ -2716,6 +2721,7 @@ postgres_get_denomination_balance (void *cls,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct TALER_Amount *denom_balance,
                                    struct TALER_Amount *denom_risk,
+                                   struct TALER_Amount *payback_loss,
                                    uint64_t *num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2725,6 +2731,7 @@ postgres_get_denomination_balance (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
     TALER_PQ_result_spec_amount ("denom_risk", denom_risk),
+    TALER_PQ_result_spec_amount ("payback_loss", payback_loss),
     GNUNET_PQ_result_spec_uint64 ("num_issued", num_issued),
     GNUNET_PQ_result_spec_end
   };
@@ -2748,6 +2755,7 @@ postgres_get_denomination_balance (void *cls,
  * @param melt_fee_balance total melt fees collected for this DK
  * @param refund_fee_balance total refund fees collected for this DK
  * @param risk maximum risk exposure of the exchange
+ * @param loss materialized @a risk from payback
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2758,7 +2766,8 @@ postgres_insert_balance_summary (void *cls,
                                  const struct TALER_Amount *deposit_fee_balance,
                                  const struct TALER_Amount *melt_fee_balance,
                                  const struct TALER_Amount *refund_fee_balance,
-                                 const struct TALER_Amount *risk)
+                                 const struct TALER_Amount *risk,
+                                 const struct TALER_Amount *loss)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2767,6 +2776,7 @@ postgres_insert_balance_summary (void *cls,
     TALER_PQ_query_param_amount (melt_fee_balance),
     TALER_PQ_query_param_amount (refund_fee_balance),
     TALER_PQ_query_param_amount (risk),
+    TALER_PQ_query_param_amount (loss),
     GNUNET_PQ_query_param_end
   };
 
@@ -2800,6 +2810,7 @@ postgres_insert_balance_summary (void *cls,
  * @param melt_fee_balance total melt fees collected for this DK
  * @param refund_fee_balance total refund fees collected for this DK
  * @param risk maximum risk exposure of the exchange
+ * @param loss materialized @a risk from payback
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2810,7 +2821,8 @@ postgres_update_balance_summary (void *cls,
                                  const struct TALER_Amount *deposit_fee_balance,
                                  const struct TALER_Amount *melt_fee_balance,
                                  const struct TALER_Amount *refund_fee_balance,
-                                 const struct TALER_Amount *risk)
+                                 const struct TALER_Amount *risk,
+                                 const struct TALER_Amount *loss)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
@@ -2818,6 +2830,7 @@ postgres_update_balance_summary (void *cls,
     TALER_PQ_query_param_amount (melt_fee_balance),
     TALER_PQ_query_param_amount (refund_fee_balance),
     TALER_PQ_query_param_amount (risk),
+    TALER_PQ_query_param_amount (loss),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2839,6 +2852,7 @@ postgres_update_balance_summary (void *cls,
  * @param[out] melt_fee_balance total melt fees collected for this DK
  * @param[out] refund_fee_balance total refund fees collected for this DK
  * @param[out] risk maximum risk exposure of the exchange
+ * @param[out] loss losses from payback (on revoked denominations)
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2849,7 +2863,8 @@ postgres_get_balance_summary (void *cls,
                               struct TALER_Amount *deposit_fee_balance,
                               struct TALER_Amount *melt_fee_balance,
                               struct TALER_Amount *refund_fee_balance,
-                              struct TALER_Amount *risk)
+                              struct TALER_Amount *risk,
+                              struct TALER_Amount *loss)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2861,13 +2876,14 @@ postgres_get_balance_summary (void *cls,
     TALER_PQ_result_spec_amount ("melt_fee_balance", melt_fee_balance),
     TALER_PQ_result_spec_amount ("refund_fee_balance", refund_fee_balance),
     TALER_PQ_result_spec_amount ("risk", risk),
+    TALER_PQ_result_spec_amount ("loss", loss),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_balance_summary_select",
-						   params,
-						   rs);
+                                                   "auditor_balance_summary_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2891,13 +2907,15 @@ postgres_insert_historic_denom_revenue (void *cls,
                                         const struct TALER_MasterPublicKeyP *master_pub,
                                         const struct GNUNET_HashCode *denom_pub_hash,
                                         struct GNUNET_TIME_Absolute revenue_timestamp,
-                                        const struct TALER_Amount *revenue_balance)
+                                        const struct TALER_Amount *revenue_balance,
+                                        const struct TALER_Amount *loss_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_absolute_time (&revenue_timestamp),
     TALER_PQ_query_param_amount (revenue_balance),
+    TALER_PQ_query_param_amount (loss_balance),
     GNUNET_PQ_query_param_end
   };
 
@@ -2950,10 +2968,12 @@ historic_denom_revenue_cb (void *cls,
     struct GNUNET_HashCode denom_pub_hash;
     struct GNUNET_TIME_Absolute revenue_timestamp;
     struct TALER_Amount revenue_balance;
+    struct TALER_Amount loss;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
       TALER_PQ_result_spec_absolute_time ("revenue_timestamp", &revenue_timestamp),
       TALER_PQ_result_spec_amount ("revenue_balance", &revenue_balance),
+      TALER_PQ_result_spec_amount ("loss_balance", &loss),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2970,9 +2990,10 @@ historic_denom_revenue_cb (void *cls,
     hrc->qs = i + 1;
     if (GNUNET_OK !=
 	hrc->cb (hrc->cb_cls,
-		 &denom_pub_hash,
-		 revenue_timestamp,
-		 &revenue_balance))
+             &denom_pub_hash,
+             revenue_timestamp,
+             &revenue_balance,
+             &loss))
       break;
   }
 }
@@ -3018,152 +3039,6 @@ postgres_select_historic_denom_revenue (void *cls,
 
 
 /**
- * Insert information about an exchange's historic
- * losses (from compromised denomination keys).
- *
- * Note yet used, need to implement exchange's bankrupcy
- * protocol (and tables!) first.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
- * @param master_pub master key of the exchange
- * @param denom_pub_hash hash of the denomination key
- * @param loss_timestamp when did this profit get realized
- * @param loss_balance what was the total loss
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_historic_losses (void *cls,
-                                 struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
-                                 const struct GNUNET_HashCode *denom_pub_hash,
-                                 struct GNUNET_TIME_Absolute loss_timestamp,
-                                 const struct TALER_Amount *loss_balance)
-{
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
-    TALER_PQ_query_param_absolute_time (&loss_timestamp),
-    TALER_PQ_query_param_amount (loss_balance),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_historic_losses_insert",
-					     params);
-}
-
-
-/**
- * Closure for #losses_cb.
- */
-struct LossContext
-{
-  /**
-   * Function to call for each result.
-   */
-  TALER_AUDITORDB_HistoricLossesDataCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Status code to return.
-   */
-  enum GNUNET_DB_QueryStatus qs;
-};
-
-
-/**
- * Helper function for #postgres_select_historic_denom_revenue().
- * To be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct HistoricRevenueContext *`
- * @param result the postgres result
- * @param num_result the number of results in @a result
- */
-static void
-losses_cb (void *cls,
-	   PGresult *result,
-	   unsigned int num_results)
-{
-  struct LossContext *lctx = cls;
-
-  for (unsigned int i = 0; i < num_results; i++)
-  {
-    struct GNUNET_HashCode denom_pub_hash;
-    struct GNUNET_TIME_Absolute loss_timestamp;
-    struct TALER_Amount loss_balance;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
-      TALER_PQ_result_spec_absolute_time ("loss_timestamp", &loss_timestamp),
-      TALER_PQ_result_spec_amount ("loss_balance", &loss_balance),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-				  rs,
-				  i))
-    {
-      GNUNET_break (0);
-      lctx->qs = GNUNET_DB_STATUS_HARD_ERROR;
-      return;
-    }
-    lctx->qs = i + 1;
-    if (GNUNET_OK !=
-	lctx->cb (lctx->cb_cls,
-		  &denom_pub_hash,
-		  loss_timestamp,
-		  &loss_balance))
-      break;
-  }
-}
-
-
-/**
- * Obtain all of the historic denomination key losses
- * of the given @a master_pub.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
- * @param master_pub master key of the exchange
- * @param cb function to call with the results
- * @param cb_cls closure for @a cb
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_historic_losses (void *cls,
-                                 struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
-                                 TALER_AUDITORDB_HistoricLossesDataCallback cb,
-                                 void *cb_cls)
-{
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_end
-  };
-  struct LossContext lctx = {
-    .cb = cb,
-    .cb_cls = cb_cls
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "auditor_historic_losses_select",
-					     params,
-					     &losses_cb,
-					     &lctx);
-  if (qs <= 0)
-    return qs;
-  return lctx.qs;
-}
-
-
-/**
  * Insert information about an exchange's historic revenue from reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -3191,8 +3066,8 @@ postgres_insert_historic_reserve_revenue (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_historic_reserve_summary_insert",
-					     params);
+                                             "auditor_historic_reserve_summary_insert",
+                                             params);
 }
 
 
@@ -3229,8 +3104,8 @@ struct HistoricReserveRevenueContext
  */
 static void
 historic_reserve_revenue_cb (void *cls,
-			     PGresult *result,
-			     unsigned int num_results)
+                             PGresult *result,
+                             unsigned int num_results)
 {
   struct HistoricReserveRevenueContext *hrc = cls;
 
@@ -3294,10 +3169,10 @@ postgres_select_historic_reserve_revenue (void *cls,
   };
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "auditor_historic_reserve_summary_select",
-					     params,
-					     &historic_reserve_revenue_cb,
-					     &hrc);
+                                             "auditor_historic_reserve_summary_select",
+                                             params,
+                                             &historic_reserve_revenue_cb,
+                                             &hrc);
   if (0 >= qs)
     return qs;
   return hrc.qs;
@@ -3494,9 +3369,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
 
   plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
   plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;
-
-  plugin->select_historic_losses = &postgres_select_historic_losses;
-  plugin->insert_historic_losses = &postgres_insert_historic_losses;
 
   plugin->select_historic_reserve_revenue = &postgres_select_historic_reserve_revenue;
   plugin->insert_historic_reserve_revenue = &postgres_insert_historic_reserve_revenue;
