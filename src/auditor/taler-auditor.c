@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017, 2018 Taler Systems SA
+  Copyright (C) 2016, 2017, 2018, 2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -26,8 +26,6 @@
  *
  *
  * KNOWN BUGS:
- * - TT_PAYBACK cases should be checked in check_transaction_history (and
- *   maybe other places?)
  * - we also seem to nowhere check the denomination signatures over the coins
  *   (While as the exchange could easily falsify those, we should
  *    probably check as otherwise insider *without* RSA private key
@@ -2127,8 +2125,30 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
         return GNUNET_SYSERR;
       }
       break;
+    case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+      amount_with_fee = &tl->details.old_coin_payback->value;
+      if (GNUNET_OK !=
+          TALER_amount_add (&refunds,
+                            &refunds,
+                            amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
     case TALER_EXCHANGEDB_TT_PAYBACK:
       amount_with_fee = &tl->details.payback->value;
+      if (GNUNET_OK !=
+          TALER_amount_add (&expenditures,
+                            &expenditures,
+                            amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
+    case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+      amount_with_fee = &tl->details.payback_refresh->value;
       if (GNUNET_OK !=
           TALER_amount_add (&expenditures,
                             &expenditures,
@@ -2152,7 +2172,8 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                      deposit_fee));
   }
 
-  /* Calculate total balance change, i.e. expenditures minus refunds */
+  /* Calculate total balance change, i.e. expenditures (payback, deposit, refresh)
+     minus refunds (refunds, payback-to-old) */
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&spent,
                              &expenditures,
@@ -2294,8 +2315,14 @@ wire_transfer_information_cb (void *cls,
   case TALER_EXCHANGEDB_TT_REFUND:
     coin = &tl->details.refund->coin;
     break;
+  case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+    coin = &tl->details.payback_refresh->coin;
+    break;
   case TALER_EXCHANGEDB_TT_PAYBACK:
     coin = &tl->details.payback->coin;
+    break;
+  case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+    coin = &tl->details.payback_refresh->coin;
     break;
   }
   GNUNET_assert (NULL != coin); /* hard check that switch worked */
