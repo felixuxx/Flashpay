@@ -30,8 +30,6 @@
  *   (While as the exchange could easily falsify those, we should
  *    probably check as otherwise insider *without* RSA private key
  *    access could still create false paybacks to drain exchange funds!)
- * - we don't check that for payback operations the denomination was actually
- *   revoked (FIXME exists!)
  * - error handling if denomination keys are used that are not known to the
  *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
  *   violation back at the user. Great UX.
@@ -581,7 +579,7 @@ static struct GNUNET_CONTAINER_MultiHashMap *denominations;
  */
 static enum GNUNET_DB_QueryStatus
 get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
-                       const struct TALER_EXCHANGEDB_DenominationKeyInformationP **dki)
+                               const struct TALER_EXCHANGEDB_DenominationKeyInformationP **dki)
 {
   struct TALER_EXCHANGEDB_DenominationKeyInformationP *dkip;
   enum GNUNET_DB_QueryStatus qs;
@@ -964,8 +962,8 @@ handle_reserve_out (void *cls,
 
   /* lookup denomination pub data (make sure denom_pub is valid, establish fees) */
   qs = get_denomination_info (denom_pub,
-			      &dki,
-			      &wsrd.h_denomination_pub);
+                              &dki,
+                              &wsrd.h_denomination_pub);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2897,6 +2895,11 @@ struct DenominationSummary
    * #sync_denomination().
    */
   int in_db;
+
+  /**
+   * #GNUNET_YES if this denomination was revoked.
+   */
+  int was_revoked;
 };
 
 
@@ -2936,6 +2939,8 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
                    struct DenominationSummary *ds)
 {
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_MasterSignatureP msig;
+  uint64_t rowid;
 
   qs = adb->get_denomination_balance (adb->cls,
                                       asession,
@@ -2957,6 +2962,39 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
                 GNUNET_h2s (denom_hash),
                 TALER_amount2s (&ds->denom_balance));
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  }
+  qs = edb->get_denomination_revocation (edb->cls,
+                                         esession,
+                                         denom_hash,
+                                         &msig,
+                                         &rowid);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 < qs)
+  {
+    /* check revocation signature */
+    struct TALER_MasterDenominationKeyRevocationPS rm;
+
+    rm.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
+    rm.purpose.size = htonl (sizeof (rm));
+    rm.h_denom_pub = *denom_hash;
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
+                                    &rm.purpose,
+                                    &msig.eddsa_signature,
+                                    &master_pub.eddsa_pub))
+    {
+      report_row_inconsistency ("denomination revocation table",
+                                rowid,
+                                "revocation signature invalid");
+    }
+    else
+    {
+      ds->was_revoked = GNUNET_YES;
+    }
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
@@ -3351,8 +3389,8 @@ refresh_session_cb (void *cls,
   ppc.last_melt_serial_id = rowid + 1;
 
   qs = get_denomination_info (denom_pub,
-			      &dki,
-			      NULL);
+                              &dki,
+                              NULL);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -3686,8 +3724,8 @@ deposit_cb (void *cls,
   ppc.last_deposit_serial_id = rowid + 1;
 
   qs = get_denomination_info (denom_pub,
-			      &dki,
-			      NULL);
+                              &dki,
+                              NULL);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4023,7 +4061,16 @@ check_payback (struct CoinContext *cc,
   ds = get_denomination_summary (cc,
                                  dki,
                                  &dki->properties.denom_hash);
-  /* FIXME: should check that denomination was actually revoked! */
+  if (GNUNET_NO == ds->was_revoked)
+  {
+    /* Woopsie, we allowed payback on non-revoked denomination!? */
+    report (report_bad_sig_losses,
+            json_pack ("{s:s, s:I, s:o, s:o}",
+                       "operation", "payback (denomination not revoked)",
+                       "row", (json_int_t) rowid,
+                       "loss", TALER_JSON_from_amount (amount),
+                       "coin_pub", GNUNET_JSON_from_data_auto (&coin->coin_pub)));
+  }
   GNUNET_break (GNUNET_OK ==
                 TALER_amount_add (&ds->denom_payback,
                                   &ds->denom_payback,
