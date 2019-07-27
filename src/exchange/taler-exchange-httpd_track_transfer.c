@@ -253,6 +253,7 @@ handle_transaction_data (void *cls,
                          const json_t *wire,
                          struct GNUNET_TIME_Absolute exec_time,
                          const struct GNUNET_HashCode *h_contract_terms,
+                         const struct TALER_DenominationPublicKey *denom_pub,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          const struct TALER_Amount *deposit_value,
                          const struct TALER_Amount *deposit_fee)
@@ -262,6 +263,7 @@ handle_transaction_data (void *cls,
   struct TEH_TrackTransferDetail *wdd;
   char *wire_method;
 
+  (void) denom_pub;
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
   if (NULL == (wire_method = TALER_JSON_wire_to_method (wire)))

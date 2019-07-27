@@ -1055,6 +1055,7 @@ typedef void
  * @param account_details which account did the transfer go to?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
+ * @param denom_pub denomination of @a coin_pub
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total (with fee)
  * @param coin_fee applicable fee for this coin
@@ -1067,6 +1068,7 @@ typedef void
                                              const json_t *account_details,
                                              struct GNUNET_TIME_Absolute exec_time,
                                              const struct GNUNET_HashCode *h_contract_terms,
+                                             const struct TALER_DenominationPublicKey *denom_pub,
                                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                              const struct TALER_Amount *coin_value,
                                              const struct TALER_Amount *coin_fee);

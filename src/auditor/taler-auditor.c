@@ -30,6 +30,7 @@
  *   (While as the exchange could easily falsify those, we should
  *    probably check as otherwise insider *without* RSA private key
  *    access could still create false paybacks to drain exchange funds!)
+ *   => See FIXME42 for last place (likely) missing!
  * - error handling if denomination keys are used that are not known to the
  *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
  *   violation back at the user. Great UX.
@@ -1081,7 +1082,9 @@ handle_reserve_out (void *cls,
  * @param timestamp when did we receive the payback request
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
- * @param coin public information about the coin
+ * @param coin public information about the coin, denomination signature is
+ *        already verified in #check_payback()
+ * @param denom_pub public key of the denomionation of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -1112,22 +1115,6 @@ handle_payback_by_reserve (void *cls,
   ppr.last_reserve_payback_serial_id = rowid + 1;
   // FIXME: should probably check that denom_pub hashes to this hash code!
   pr.h_denom_pub = coin->denom_pub_hash;
-
-  if (GNUNET_OK !=
-      TALER_test_coin_valid (coin,
-                             denom_pub))
-  {
-    report (report_bad_sig_losses,
-            json_pack ("{s:s, s:I, s:o, s:o}",
-                       "operation", "payback-verify",
-                       "row", (json_int_t) rowid,
-                       "loss", TALER_JSON_from_amount (amount),
-                       "key_pub", GNUNET_JSON_from_data_auto (&pr.h_denom_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount));
-  }
   pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
   pr.purpose.size = htonl (sizeof (pr));
   pr.coin_pub = coin->coin_pub;
@@ -1944,12 +1931,12 @@ struct WireCheckContext
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           const struct GNUNET_HashCode *h_contract_terms,
-                           const struct TALER_MerchantPublicKeyP *merchant_pub,
-                           const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
-                           const struct TALER_EXCHANGEDB_TransactionList *tl_head,
-                           struct TALER_Amount *merchant_gain)
+check_transaction_history_for_deposit (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                       const struct GNUNET_HashCode *h_contract_terms,
+                                       const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                       const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                                       const struct TALER_EXCHANGEDB_TransactionList *tl_head,
+                                       struct TALER_Amount *merchant_gain)
 {
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
@@ -2237,6 +2224,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param account_details where did we transfer the funds?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
+ * @param denom_pub denomination of @a coin_pub
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total (with fee)
  * @param deposit_fee applicable deposit fee for this coin, actual
@@ -2250,6 +2238,7 @@ wire_transfer_information_cb (void *cls,
                               const json_t *account_details,
                               struct GNUNET_TIME_Absolute exec_time,
                               const struct GNUNET_HashCode *h_contract_terms,
+                              const struct TALER_DenominationPublicKey *denom_pub,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct TALER_Amount *coin_value,
                               const struct TALER_Amount *deposit_fee)
@@ -2337,16 +2326,47 @@ wire_transfer_information_cb (void *cls,
                               "could not find denomination key for coin claimed in aggregation");
     return;
   }
+  if (GNUNET_OK !=
+      TALER_test_coin_valid (coin,
+                             denom_pub))
+  {
+    report (report_bad_sig_losses,
+            json_pack ("{s:s, s:I, s:o, s:o}",
+                       "operation", "wire",
+                       "row", (json_int_t) rowid,
+                       "loss", TALER_JSON_from_amount (coin_value),
+                       "key_pub", GNUNET_JSON_from_data_auto (&dki->properties.denom_hash)));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_sig_loss,
+                                    &total_bad_sig_loss,
+                                    coin_value));
+
+    edb->free_coin_transaction_list (edb->cls,
+                                     tl);
+    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    report_row_inconsistency ("deposit",
+                              rowid,
+                              "coin denomination signature invalid");
+    return;
+  }
 
   GNUNET_assert (NULL != dki); /* mostly to help static analysis */
   /* Check transaction history to see if it supports aggregate
      valuation */
-  check_transaction_history (coin_pub,
-                             h_contract_terms,
-                             merchant_pub,
-                             dki,
-                             tl,
-                             &computed_value);
+  if (GNUNET_OK !=
+      check_transaction_history_for_deposit (coin_pub,
+                                             h_contract_terms,
+                                             merchant_pub,
+                                             dki,
+                                             tl,
+                                             &computed_value))
+  {
+    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    report_row_inconsistency ("coin history",
+                              rowid,
+                              "failed to verify coin history (for deposit)");
+    return;
+  }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&coin_value_without_fee,
                              coin_value,
@@ -3397,6 +3417,9 @@ refresh_session_cb (void *cls,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
+  // FIXME42: should verify that the
+  // coin was properly signed via TALER_test_coin_valid() here!
+  // (but would need more information from DB to do so!)
 
   /* verify melt signature */
   rmc.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
@@ -4007,6 +4030,7 @@ refund_cb (void *cls,
  * @param rowid row identifier used to uniquely identify the payback operation
  * @param amount how much should be added back to the reserve
  * @param coin public information about the coin
+ * @param denom_pub public key of the denomionation of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -4025,6 +4049,21 @@ check_payback (struct CoinContext *cc,
   enum GNUNET_DB_QueryStatus qs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
 
+  if (GNUNET_OK !=
+      TALER_test_coin_valid (coin,
+                             denom_pub))
+  {
+    report (report_bad_sig_losses,
+            json_pack ("{s:s, s:I, s:o, s:o}",
+                       "operation", "payback",
+                       "row", (json_int_t) rowid,
+                       "loss", TALER_JSON_from_amount (amount),
+                       "key_pub", GNUNET_JSON_from_data_auto (&pr.h_denom_pub)));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_sig_loss,
+                                    &total_bad_sig_loss,
+                                    amount));
+  }
   qs = get_denomination_info (denom_pub,
                               &dki,
                               &pr.h_denom_pub);
@@ -4677,8 +4716,8 @@ setup_sessions_and_run ()
  */
 static void
 test_master_present (void *cls,
-		     const struct TALER_MasterPublicKeyP *mpub,
-		     const char *exchange_url)
+                     const struct TALER_MasterPublicKeyP *mpub,
+                     const char *exchange_url)
 {
   int *found = cls;
 

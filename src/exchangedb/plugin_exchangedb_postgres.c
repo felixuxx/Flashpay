@@ -1307,6 +1307,7 @@ postgres_prepare (PGconn *db_conn)
                             ",denom.fee_deposit_val"
                             ",denom.fee_deposit_frac"
                             ",denom.fee_deposit_curr"
+                            ",denom.denom_pub"
                             " FROM aggregation_tracking"
                             "    JOIN deposits"
                             "      USING (deposit_serial_id)"
@@ -4957,12 +4958,14 @@ handle_wt_result (void *cls,
     struct GNUNET_TIME_Absolute exec_time;
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
+    struct TALER_DenominationPublicKey denom_pub;
     json_t *wire;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id", &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms", &h_contract_terms),
       TALER_PQ_result_spec_json ("wire", &wire),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
       TALER_PQ_result_spec_absolute_time ("execution_date", &exec_time),
@@ -4981,15 +4984,16 @@ handle_wt_result (void *cls,
       return;
     }
     ctx->cb (ctx->cb_cls,
-	     rowid,
-	     &merchant_pub,
-	     &h_wire,
+             rowid,
+             &merchant_pub,
+             &h_wire,
              wire,
-	     exec_time,
-	     &h_contract_terms,
-	     &coin_pub,
-	     &amount_with_fee,
-	     &deposit_fee);
+             exec_time,
+             &h_contract_terms,
+             &denom_pub,
+             &coin_pub,
+             &amount_with_fee,
+             &deposit_fee);
     GNUNET_PQ_cleanup_result (rs);
   }
 }
@@ -5025,10 +5029,10 @@ postgres_lookup_wire_transfer (void *cls,
   ctx.status = GNUNET_OK;
   /* check if the melt record exists and get it */
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "lookup_transactions",
-					     params,
-					     &handle_wt_result,
-					     &ctx);
+                                             "lookup_transactions",
+                                             params,
+                                             &handle_wt_result,
+                                             &ctx);
   if (GNUNET_OK != ctx.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
