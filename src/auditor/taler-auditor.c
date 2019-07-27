@@ -24,6 +24,14 @@
  * - Similarly, we do not check that the outgoing wire transfers match those
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
+ * TODO:
+ * - reorganize: different passes are combined in one tool and one
+ *   file here, we should split this up!
+ * - likely should do an iteration over known_coins instead of checking
+ *   those signatures again and again
+ * - might want to bite the bullet and do asynchronous signature
+ *   verification to improve parallelism / speed -- we'll need to scale
+ *   this eventually anyway!
  *
  * KNOWN BUGS:
  * - we also seem to nowhere check the denomination signatures over the coins
