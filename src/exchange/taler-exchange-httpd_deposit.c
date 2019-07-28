@@ -80,8 +80,8 @@ reply_deposit_success (struct MHD_Connection *connection,
   dc.merchant = *merchant;
   if (GNUNET_OK !=
       TEH_KS_sign (&dc.purpose,
-		   &pub,
-		   &sig))
+                   &pub,
+                   &sig))
   {
     return TEH_RESPONSE_reply_internal_error (connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,

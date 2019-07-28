@@ -600,10 +600,10 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
               dh->url);
   ctx = TEAH_handle_to_context (exchange);
   dh->job = GNUNET_CURL_job_add2 (ctx,
-			          eh,
-				  dh->ctx.headers,
-				  &handle_deposit_finished,
-				  dh);
+                                  eh,
+                                  dh->ctx.headers,
+                                  &handle_deposit_finished,
+                                  dh);
   return dh;
 }
 

@@ -37,8 +37,8 @@
  */
 int
 TALER_EXCHANGE_verify_coin_history (const char *currency,
-				    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-				    json_t *history,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    json_t *history,
                                     struct TALER_Amount *total)
 {
   size_t len;
@@ -241,8 +241,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                      &exchange_pub),
         GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                      &pc.reserve_pub),
-	GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-					    &pc.timestamp),
+        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
+                                            &pc.timestamp),
         GNUNET_JSON_spec_end()
       };
 
@@ -335,7 +335,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *keys,
-					      const struct TALER_ExchangePublicKeyP *exchange_pub)
+                                              const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   for (unsigned int i=0;i<keys->num_sign_keys;i++)
   {

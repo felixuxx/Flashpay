@@ -80,7 +80,7 @@ TAH_PARSE_post_json (struct MHD_Connection *connection,
   case GNUNET_JSON_PR_OUT_OF_MEMORY:
     return (MHD_NO ==
             TAH_RESPONSE_reply_internal_error (connection,
-					       TALER_EC_PARSER_OUT_OF_MEMORY,
+                                               TALER_EC_PARSER_OUT_OF_MEMORY,
                                                "out of memory"))
       ? GNUNET_SYSERR : GNUNET_NO;
   case GNUNET_JSON_PR_CONTINUE:

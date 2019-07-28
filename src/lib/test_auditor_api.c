@@ -555,47 +555,38 @@ run (void *cls,
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-2",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-3",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-4",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-5",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-6",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-7",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-8",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-9",
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-10",
                                        "massive-reserve",
                                        "EUR:1",
@@ -710,6 +701,12 @@ run (void *cls,
        GNUNET_TIME_UNIT_ZERO,
        "EUR:1",
        MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit_confirmation ("deposit-confirmation",
+                                            is->auditor,
+                                            "massive-deposit-10",
+                                            0,
+                                            "EUR:0.99",
+                                            MHD_HTTP_OK),
     CMD_RUN_AUDITOR("massive-auditor"),
 
     TALER_TESTING_cmd_end ()
@@ -752,7 +749,6 @@ int
 main (int argc,
       char * const *argv)
 {
-
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
@@ -770,8 +766,8 @@ main (int argc,
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-					  &auditor_url,
-					  &exchange_url))
+                                          &auditor_url,
+                                          &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

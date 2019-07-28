@@ -189,7 +189,6 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
       TALER_LOG_DEBUG ("... amount_without_fee was %s\n",
                        TALER_amount2s (amount_without_fee));
     }
-
     return GNUNET_SYSERR;
   }
   sv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
@@ -268,8 +267,8 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                                     struct GNUNET_TIME_Absolute ep_expire,
                                     struct GNUNET_TIME_Absolute ep_end,
                                     const struct TALER_MasterSignatureP *master_sig,
-				    TALER_AUDITOR_DepositConfirmationResultCallback cb,
-				    void *cb_cls)
+                                    TALER_AUDITOR_DepositConfirmationResultCallback cb,
+                                    void *cb_cls)
 {
   struct TALER_AUDITOR_DepositConfirmationHandle *dh;
   struct GNUNET_CURL_Context *ctx;
@@ -282,7 +281,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   (void) GNUNET_TIME_round_abs (&ep_expire);
   (void) GNUNET_TIME_round_abs (&ep_end);
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (auditor));
+                 MAH_handle_is_ready (auditor));
   if (GNUNET_OK !=
       verify_signatures (h_wire,
                          h_contract_terms,
@@ -305,26 +304,26 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
 
   deposit_confirmation_obj
     = json_pack ("{s:o, s:o," /* H_wire, h_contract_terms */
-		 " s:o, s:o," /* timestamp, refund_deadline */
-		 " s:o, s:o," /* amount_without_fees, coin_pub */
-		 " s:o, s:o," /* merchant_pub, exchange_sig */
-		 " s:o, s:o," /* master_pub, ep_start */
-		 " s:o, s:o," /* ep_expire, ep_end */
+                 " s:o, s:o," /* timestamp, refund_deadline */
+                 " s:o, s:o," /* amount_without_fees, coin_pub */
+                 " s:o, s:o," /* merchant_pub, exchange_sig */
+                 " s:o, s:o," /* master_pub, ep_start */
+                 " s:o, s:o," /* ep_expire, ep_end */
                  " s:o, s:o}", /* master_sig, exchange_pub */
-		 "h_wire", GNUNET_JSON_from_data_auto (h_wire),
-		 "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
-		 "timestamp", GNUNET_JSON_from_time_abs (timestamp),
-		 "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
-		 "amount_without_fee", TALER_JSON_from_amount (amount_without_fee),
-		 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-		 "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
-		 "exchange_sig", GNUNET_JSON_from_data_auto (exchange_sig),
-		 "master_pub", GNUNET_JSON_from_data_auto (master_pub),
-		 "ep_start", GNUNET_JSON_from_time_abs (ep_start),
-		 "ep_expire", GNUNET_JSON_from_time_abs (ep_expire),
-		 "ep_end", GNUNET_JSON_from_time_abs (ep_end),
-		 "master_sig", GNUNET_JSON_from_data_auto (master_sig),
-		 "exchange_pub", GNUNET_JSON_from_data_auto (exchange_pub));
+                 "h_wire", GNUNET_JSON_from_data_auto (h_wire),
+                 "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
+                 "timestamp", GNUNET_JSON_from_time_abs (timestamp),
+                 "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
+                 "amount_without_fee", TALER_JSON_from_amount (amount_without_fee),
+                 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
+                 "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
+                 "exchange_sig", GNUNET_JSON_from_data_auto (exchange_sig),
+                 "master_pub", GNUNET_JSON_from_data_auto (master_pub),
+                 "ep_start", GNUNET_JSON_from_time_abs (ep_start),
+                 "ep_expire", GNUNET_JSON_from_time_abs (ep_expire),
+                 "ep_end", GNUNET_JSON_from_time_abs (ep_end),
+                 "master_sig", GNUNET_JSON_from_data_auto (master_sig),
+                 "exchange_pub", GNUNET_JSON_from_data_auto (exchange_pub));
 
   if (NULL == deposit_confirmation_obj)
   {
@@ -360,11 +359,11 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
               "URL for deposit-confirmation: `%s'\n",
               dh->url);
   ctx = MAH_handle_to_context (auditor);
-  dh->job = GNUNET_CURL_job_add (ctx,
-				 eh,
-				 GNUNET_YES,
-				 &handle_deposit_confirmation_finished,
-				 dh);
+  dh->job = GNUNET_CURL_job_add2 (ctx,
+                                  eh,
+                                  dh->ctx.headers,
+                                  &handle_deposit_confirmation_finished,
+                                  dh);
   return dh;
 }
 

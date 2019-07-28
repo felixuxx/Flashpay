@@ -385,9 +385,10 @@ int
 MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Checking if auditor %p is now ready: %s\n",
+              "Checking if auditor %p (%s) is now ready: %s\n",
               h,
-	      (MHD_VERSION == h->state) ? "yes" : "no");
+              h->url,
+              (MHD_VERSION == h->state) ? "yes" : "no");
   return (MHS_VERSION == h->state) ? GNUNET_YES : GNUNET_NO;
 }
 
@@ -453,15 +454,12 @@ MAH_path_to_url2 (const char *base_url,
  */
 struct TALER_AUDITOR_Handle *
 TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
-		       const char *url,
-		       TALER_AUDITOR_VersionCallback version_cb,
-		       void *version_cb_cls)
+                       const char *url,
+                       TALER_AUDITOR_VersionCallback version_cb,
+                       void *version_cb_cls)
 {
   struct TALER_AUDITOR_Handle *auditor;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Connecting to auditor at URL `%s'.\n",
-              url);
   /* Disable 100 continue processing */
   GNUNET_break (GNUNET_OK ==
                 GNUNET_CURL_append_header (ctx,
@@ -472,7 +470,11 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
   auditor->version_cb = version_cb;
   auditor->version_cb_cls = version_cb_cls;
   auditor->retry_task = GNUNET_SCHEDULER_add_now (&request_version,
-						  auditor);
+                                                  auditor);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Connecting to auditor at URL `%s' (%p).\n",
+              url,
+              auditor);
   return auditor;
 }
 
@@ -520,6 +522,10 @@ request_version (void *cls)
 void
 TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Disconnecting from auditor at URL `%s' (%p).\n",
+              auditor->url,
+              auditor);
   if (NULL != auditor->vr)
   {
     GNUNET_CURL_job_cancel (auditor->vr->job);

@@ -101,8 +101,8 @@ struct DepositConfirmationState
  */
 static void
 deposit_confirmation_run (void *cls,
-			  const struct TALER_TESTING_Command *cmd,
-			  struct TALER_TESTING_Interpreter *is);
+                          const struct TALER_TESTING_Command *cmd,
+                          struct TALER_TESTING_Interpreter *is);
 
 
 /**
@@ -133,9 +133,9 @@ do_retry (void *cls)
  */
 static void
 deposit_confirmation_cb (void *cls,
-			 unsigned int http_status,
-			 enum TALER_ErrorCode ec,
-			 const json_t *obj)
+                         unsigned int http_status,
+                         enum TALER_ErrorCode ec,
+                         const json_t *obj)
 {
   struct DepositConfirmationState *dcs = cls;
 
@@ -152,14 +152,14 @@ deposit_confirmation_cb (void *cls,
                     "Retrying deposit confirmation failed with %u/%d\n",
                     http_status,
                     (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  dcs->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  dcs->backoff = EXCHANGE_LIB_BACKOFF (dcs->backoff);
-	dcs->retry_task = GNUNET_SCHEDULER_add_delayed (dcs->backoff,
-							&do_retry,
-							dcs);
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          dcs->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          dcs->backoff = EXCHANGE_LIB_BACKOFF (dcs->backoff);
+        dcs->retry_task = GNUNET_SCHEDULER_add_delayed (dcs->backoff,
+                                                        &do_retry,
+                                                        dcs);
         return;
       }
     }
@@ -186,8 +186,8 @@ deposit_confirmation_cb (void *cls,
  */
 static void
 deposit_confirmation_run (void *cls,
-			  const struct TALER_TESTING_Command *cmd,
-			  struct TALER_TESTING_Interpreter *is)
+                          const struct TALER_TESTING_Command *cmd,
+                          struct TALER_TESTING_Interpreter *is)
 {
   struct DepositConfirmationState *dcs = cls;
   const struct TALER_TESTING_Command *deposit_cmd;
@@ -211,7 +211,7 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (NULL != dcs->deposit_reference);
   deposit_cmd
     = TALER_TESTING_interpreter_lookup_command (is,
-						dcs->deposit_reference);
+                                                dcs->deposit_reference);
   if (NULL == deposit_cmd)
   {
     GNUNET_break (0);
@@ -221,41 +221,41 @@ deposit_confirmation_run (void *cls,
 
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_exchange_pub (deposit_cmd,
-						       dcs->coin_index,
-						       &exchange_pub));
+                                               dcs->coin_index,
+                                               &exchange_pub));
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_exchange_sig (deposit_cmd,
-						       dcs->coin_index,
-						       &exchange_sig));
+                                               dcs->coin_index,
+                                               &exchange_sig));
   keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
   GNUNET_assert (NULL != keys);
   spk = TALER_EXCHANGE_get_exchange_signing_key_info (keys,
-						      exchange_pub);
+                                                      exchange_pub);
 
   GNUNET_assert (GNUNET_OK ==
 		 TALER_TESTING_get_trait_contract_terms (deposit_cmd,
-							 dcs->coin_index,
-							 &contract_terms));
+                                                 dcs->coin_index,
+                                                 &contract_terms));
   /* Very unlikely to fail */
   GNUNET_assert (NULL != contract_terms);
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_hash (contract_terms,
                                   &h_contract_terms));
   GNUNET_assert (GNUNET_OK ==
-		 TALER_TESTING_get_trait_wire_details (deposit_cmd,
-						       dcs->coin_index,
-						       &wire_details));
+                 TALER_TESTING_get_trait_wire_details (deposit_cmd,
+                                                       dcs->coin_index,
+                                                       &wire_details));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (wire_details,
-                                  &h_wire));
+                 TALER_JSON_merchant_wire_signature_hash (wire_details,
+                                                          &h_wire));
   GNUNET_assert (GNUNET_OK ==
-		 TALER_TESTING_get_trait_coin_priv (deposit_cmd,
-						    dcs->coin_index,
-						    &coin_priv));
+                 TALER_TESTING_get_trait_coin_priv (deposit_cmd,
+                                                    dcs->coin_index,
+                                                    &coin_priv));
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
-		 TALER_TESTING_get_trait_peer_key (deposit_cmd,
+                 TALER_TESTING_get_trait_peer_key (deposit_cmd,
                                                    dcs->coin_index,
                                                    &merchant_priv));
   GNUNET_CRYPTO_eddsa_key_get_public (merchant_priv,
@@ -263,10 +263,10 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (dcs->amount_without_fee,
                                          &amount_without_fee));
+  /* timestamp is mandatory */
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
-      GNUNET_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
       GNUNET_JSON_spec_end()
     };
 
@@ -278,6 +278,21 @@ deposit_confirmation_run (void *cls,
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (is);
       return;
+    }
+  }
+  /* refund deadline is optional, defaults to zero */
+  {
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
+      GNUNET_JSON_spec_end()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (contract_terms,
+                           spec,
+                           NULL, NULL))
+    {
+      refund_deadline = timestamp;
     }
   }
   dcs->dc = TALER_AUDITOR_deposit_confirmation
@@ -318,7 +333,7 @@ deposit_confirmation_run (void *cls,
  */
 static void
 deposit_confirmation_cleanup (void *cls,
-			      const struct TALER_TESTING_Command *cmd)
+                              const struct TALER_TESTING_Command *cmd)
 {
   struct DepositConfirmationState *dcs = cls;
 
@@ -352,9 +367,9 @@ deposit_confirmation_cleanup (void *cls,
  */
 static int
 deposit_confirmation_traits (void *cls,
-			     const void **ret,
-			     const char *trait,
-			     unsigned int index)
+                             const void **ret,
+                             const char *trait,
+                             unsigned int index)
 {
   /* Must define this function because some callbacks
    * look for certain traits on _all_ the commands. */

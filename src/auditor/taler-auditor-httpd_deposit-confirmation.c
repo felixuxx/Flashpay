@@ -153,7 +153,7 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
     return TAH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                                 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                                  "master_sig");
   }
 
@@ -161,9 +161,9 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TAH_DB_run_transaction (connection,
                               "persist exchange signing key",
-			      &mhd_ret,
-			      &store_exchange_signing_key_transaction,
-			      (void *) es))
+                              &mhd_ret,
+                              &store_exchange_signing_key_transaction,
+                              (void *) es))
     return mhd_ret;
 
   /* check deposit confirmation signature */
@@ -185,7 +185,7 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit-confirmation request\n");
     return TAH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                                 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                                  "exchange_sig");
   }
 
@@ -193,9 +193,9 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TAH_DB_run_transaction (connection,
                               "store deposit confirmation",
-			      &mhd_ret,
-			      &deposit_confirmation_transaction,
-			      (void *) dc))
+                              &mhd_ret,
+                              &deposit_confirmation_transaction,
+                              (void *) dc))
     return mhd_ret;
   return reply_deposit_confirmation_success (connection);
 }

@@ -31,8 +31,7 @@
 
 
 /**
- * Add the @a body as POST data to the easy handle in
- * @a ctx.
+ * Add the @a body as POST data to the easy handle in @a ctx.
  *
  * @param ctx[in,out] a request context (updated)
  * @param eh easy handle to use
@@ -41,8 +40,8 @@
  */
 int
 TALER_curl_easy_post (struct TEAH_PostContext *ctx,
-                     CURL *eh,
-                     const json_t *body)
+                      CURL *eh,
+                      const json_t *body)
 {
   char *str;
   size_t slen;
