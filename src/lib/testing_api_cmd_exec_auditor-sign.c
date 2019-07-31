@@ -30,7 +30,6 @@
 #include "taler_testing_lib.h"
 
 
-
 /**
  * State for a "auditor sign" CMD.
  */
@@ -104,7 +103,7 @@ auditor_sign_run (void *cls,
      test_home_dir,
      (unsigned long long) now.abs_value_us);
   GNUNET_free (test_home_dir);
-  
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
@@ -155,7 +154,7 @@ auditor_sign_run (void *cls,
  */
 static void
 auditor_sign_cleanup (void *cls,
-                    const struct TALER_TESTING_Command *cmd)
+                      const struct TALER_TESTING_Command *cmd)
 {
   struct AuditorSignState *ass = cls;
 
@@ -217,16 +216,17 @@ TALER_TESTING_cmd_exec_auditor_sign (const char *label,
   ass = GNUNET_new (struct AuditorSignState);
   ass->config_filename = config_filename;
 
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ass,
+      .label = label,
+      .run = &auditor_sign_run,
+      .cleanup = &auditor_sign_cleanup,
+      .traits = &auditor_sign_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ass,
-    .label = label,
-    .run = &auditor_sign_run,
-    .cleanup = &auditor_sign_cleanup,
-    .traits = &auditor_sign_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 /* end of testing_api_cmd_exec_auditor-sign.c */

@@ -417,7 +417,8 @@ handle_mhd_request (void *cls,
   struct GNUNET_AsyncScopeSave old_scope;
   const char *correlation_id = NULL;
 
-  if (NULL == ecls) {
+  if (NULL == ecls)
+  {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Handling new request\n");
     /* We're in a new async scope! */
     ecls = *con_cls = GNUNET_new (struct ExchangeHttpRequestClosure);
@@ -435,9 +436,7 @@ handle_mhd_request (void *cls,
   }
 
   inner_cls = &ecls->opaque_post_parsing_context;
-
   GNUNET_async_scope_enter (&ecls->async_scope_id, &old_scope);
-
   if (NULL != correlation_id)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling request (%s) for URL '%s', correlation_id=%s\n",
@@ -462,6 +461,8 @@ handle_mhd_request (void *cls,
            (0 == strcasecmp (method,
                              rh->method)) ) )
     {
+      /* FIXME: consider caching 'rh' in '**connection_cls' to
+         avoid repeated lookup! */
       ret = rh->handler (rh,
                          connection,
                          inner_cls,
@@ -477,7 +478,6 @@ handle_mhd_request (void *cls,
                                          upload_data,
                                          upload_data_size);
   GNUNET_async_scope_restore (&old_scope);
-
   return ret;
 }
 

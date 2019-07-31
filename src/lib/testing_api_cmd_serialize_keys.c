@@ -76,6 +76,7 @@ struct ConnectWithStateState
   struct TALER_TESTING_Interpreter *is;
 };
 
+
 /**
  * Run the command.
  *
@@ -109,7 +110,7 @@ serialize_keys_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 serialize_keys_cleanup (void *cls,
                         const struct TALER_TESTING_Command *cmd)
 {
@@ -117,9 +118,8 @@ serialize_keys_cleanup (void *cls,
 
   if (NULL != sks->keys)
   {
-    json_decref (sks->keys);   
+    json_decref (sks->keys);
   }
-
   GNUNET_free ((char *) sks->exchange_url);
   GNUNET_free (sks);
 }
@@ -142,9 +142,7 @@ serialize_keys_traits (void *cls,
                        unsigned int index)
 {
   struct SerializeKeysState *sks = cls;
-
   struct TALER_TESTING_Trait traits[] = {
-
     TALER_TESTING_make_trait_exchange_keys (0, sks->keys),
     TALER_TESTING_make_trait_url (0, sks->exchange_url),
     TALER_TESTING_trait_end ()
@@ -230,7 +228,7 @@ connect_with_state_run (void *cls,
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
-void
+static void
 connect_with_state_cleanup
   (void *cls,
    const struct TALER_TESTING_Command *cmd)
@@ -239,6 +237,7 @@ connect_with_state_cleanup
 
   GNUNET_free (cwss);
 }
+
 
 /**
  * Make a serialize-keys CMD.  It will ask for
@@ -259,11 +258,12 @@ TALER_TESTING_cmd_serialize_keys (const char *label)
     .label = label,
     .run = serialize_keys_run,
     .cleanup = serialize_keys_cleanup,
-    .traits = serialize_keys_traits  
+    .traits = serialize_keys_traits
   };
 
   return cmd;
 }
+
 
 /**
  * Make a connect-with-state CMD.  This command
@@ -288,7 +288,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
   struct TALER_TESTING_Command cmd = {
     .cls = cwss,
     .label = label,
-    .run = connect_with_state_run, 
+    .run = connect_with_state_run,
     .cleanup = connect_with_state_cleanup
   };
 

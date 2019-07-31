@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -18,8 +18,9 @@
 */
 
 /**
- * @file exchange-lib/test_exchange_api_keys_cherry_picking_new.c
- * @brief testcase to test exchange's /keys cherry picking ability
+ * @file exchange-lib/test_exchange_api_overlapping_keys_bug.c
+ * @brief testcase to test exchange's /keys cherry picking ability and
+ *          other /keys related operations
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
@@ -34,16 +35,6 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-
-/**
- * XXX:
- *
- * This test case aims at reproducing one bug that appears
- * when some /keys are redownloaded (although already owned
- * by the client).  In particular, the bug makes signature
- * verifications to fail (often times, auditor signatures
- * have proven to be faulty).
- */
 
 /**
  * Configuration file we use.  One (big) configuration is used
@@ -84,13 +75,10 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_check_keys ("first-download",
                                   1,
                                   1),
-
     /* Causes GET /keys?last_denom_issue=0 */
     TALER_TESTING_cmd_check_keys_with_last_denom ("second-download",
                                                   3,
@@ -100,7 +88,7 @@ run (void *cls,
   };
 
   TALER_TESTING_run (is,
-		     commands);
+                     commands);
 }
 
 
@@ -111,7 +99,7 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-cherry-picking-new",
+  GNUNET_log_setup ("test-exchange-api-overlapping-keys-bug",
                     "DEBUG", NULL);
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it
@@ -119,7 +107,7 @@ main (int argc,
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
                                           &auditor_url,
-					  &exchange_url))
+                                          &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);
@@ -144,4 +132,4 @@ main (int argc,
   return 0;
 }
 
-/* end of test_exchange_api_keys_cherry_picking_new.c */
+/* end of test_exchange_api_overlapping_keys_bug.c */

@@ -110,7 +110,7 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
   key_state = TALER_EXCHANGE_get_keys (rh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
-				       exchange_pub))
+                                       exchange_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

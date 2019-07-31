@@ -357,7 +357,7 @@ enum TALER_EXCHANGE_VersionCompatibility
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (void *cls,
                                          const struct TALER_EXCHANGE_Keys *keys,
-					 enum TALER_EXCHANGE_VersionCompatibility compat);
+                                         enum TALER_EXCHANGE_VersionCompatibility compat);
 
 
 /**
@@ -442,6 +442,7 @@ TALER_EXCHANGE_set_now (struct TALER_EXCHANGE_Handle *exchange,
 void
 TALER_EXCHANGE_unset_now (struct TALER_EXCHANGE_Handle *exchange);
 
+
 /**
  * Let the user set the last valid denomination time manually.
  *
@@ -499,7 +500,7 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
-					const struct TALER_ExchangePublicKeyP *pub);
+                                        const struct TALER_ExchangePublicKeyP *pub);
 
 
 /**
@@ -547,7 +548,7 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *keys,
-					      const struct TALER_ExchangePublicKeyP *exchange_pub);
+                                              const struct TALER_ExchangePublicKeyP *exchange_pub);
 
 
 /* *********************  /wire *********************** */

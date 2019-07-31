@@ -1044,8 +1044,8 @@ reload_auditor_iter (void *cls,
                   &dke->dki->issue.properties,
                   sizeof (struct TALER_DenominationKeyValidityPS)))
       {
-	/* if the hash is the same, the properties should also match! */
-	GNUNET_break (0);
+        /* if the hash is the same, the properties should also match! */
+        GNUNET_break (0);
         continue;
       }
       as = GNUNET_malloc (sizeof (struct AuditorSignature) +
@@ -2252,14 +2252,14 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
     unsigned long long cherrypickn;
 
     if (1 !=
-	sscanf (have_cherrypick,
-		"%llu",
-		&cherrypickn))
+        sscanf (have_cherrypick,
+                "%llu",
+                &cherrypickn))
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_arg_invalid (connection,
-					     TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-					     "last_issue_date");
+                                             TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+                                             "last_issue_date");
     }
     last_issue_date.abs_value_us = (uint64_t) cherrypickn * 1000000LLU;
   }
@@ -2276,14 +2276,14 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
     unsigned long long fakenown;
 
     if (1 !=
-	sscanf (have_fakenow,
-		"%llu",
-		&fakenown))
+        sscanf (have_fakenow,
+                "%llu",
+                &fakenown))
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_arg_invalid (connection,
-					     TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-					     "now");
+                                             TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+                                             "now");
     }
     now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
   }

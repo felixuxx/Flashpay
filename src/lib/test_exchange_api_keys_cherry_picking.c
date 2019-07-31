@@ -16,14 +16,12 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/test_exchange_api_keys_cherry_picking.c
  * @brief testcase to test exchange's /keys cherry picking ability
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
@@ -95,6 +93,7 @@ static char *exchange_url;
  */
 static char *auditor_url;
 
+
 /**
  * Wrapper around the time parser.
  *
@@ -118,16 +117,15 @@ TTH_parse_time (const char *str)
  * run.
  *
  * @param cls closure
+ * @param is[in,out] interpreter state
  */
 static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command keys_serialization[] = {
-
     TALER_TESTING_cmd_serialize_keys
       ("serialize-keys"),
-
     TALER_TESTING_cmd_connect_with_state
       ("reconnect-with-state",
        "serialize-keys"),
@@ -152,13 +150,10 @@ run (void *cls,
        "x-taler-bank",
        NULL,
        MHD_HTTP_OK),
-
     TALER_TESTING_cmd_end (),
-
   };
 
   struct TALER_TESTING_Command ordinary_cherry_pick[] = {
-
     /**
      * 1 DK with 80s withdraw duration, lookahead_sign is 60s
      * => expect 1 DK.
@@ -176,7 +171,6 @@ run (void *cls,
       ("keyup-1",
        CONFIG_FILE,
        TTH_parse_time (JAN2030)),
-
      /**
      * Should return 1 new key, + the original one.  NOTE: the
      * original DK will never be 'cancelled' as for the current
@@ -187,7 +181,6 @@ run (void *cls,
        2, /* generation */
        2,
        TTH_parse_time (JAN2030)),
-
     TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-3",
        CONFIG_FILE_EXTENDED_2,
@@ -200,7 +193,7 @@ run (void *cls,
     /**
      * Expected number of DK:
      *
-     * 3500 (the lookaeahd_sign time frame, in seconds)
+     * 3500 (the lookahead_sign time frame, in seconds)
      * - 69 (how many seconds are covered by the latest DK)
      * ----
      * 3431
@@ -231,7 +224,7 @@ run (void *cls,
   };
 
   TALER_TESTING_run (is,
-		     commands);
+                     commands);
 }
 
 
@@ -242,7 +235,7 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-cherry-picking-new",
+  GNUNET_log_setup ("test-exchange-api-cherry-picking",
                     "DEBUG",
                     NULL);
   TALER_TESTING_cleanup_files (CONFIG_FILE);
@@ -251,7 +244,7 @@ main (int argc,
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
                                           &auditor_url,
-					  &exchange_url))
+                                          &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);
@@ -276,4 +269,4 @@ main (int argc,
   return 0;
 }
 
-/* end of test_exchange_api_keys_cherry_picking_new.c */
+/* end of test_exchange_api_keys_cherry_picking.c */
