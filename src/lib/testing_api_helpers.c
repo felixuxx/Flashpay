@@ -986,9 +986,17 @@ TALER_TESTING_make_wire_details (unsigned long long account_no,
 {
   char *payto;
   json_t *ret;
+  int ends_slash;
+
+  if (0 < strlen (bank_url))
+    ends_slash = '/' == bank_url[strlen(bank_url)-1];
+  else
+    ends_slash = 0;
 
   GNUNET_asprintf (&payto,
-                   "payto://x-taler-bank/%s/%llu",
+                   (ends_slash)
+                   ? "payto://x-taler-bank/%s%llu"
+                   : "payto://x-taler-bank/%s/%llu",
                    bank_url,
                    account_no);
   ret = json_pack ("{s:s, s:s}",
