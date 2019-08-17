@@ -42,29 +42,25 @@
  */
 static int
 qconv_amount_nbo (void *cls,
-		  const void *data,
-		  size_t data_len,
-		  void *param_values[],
-		  int param_lengths[],
-		  int param_formats[],
-		  unsigned int param_length,
-		  void *scratch[],
-		  unsigned int scratch_length)
+                  const void *data,
+                  size_t data_len,
+                  void *param_values[],
+                  int param_lengths[],
+                  int param_formats[],
+                  unsigned int param_length,
+                  void *scratch[],
+                  unsigned int scratch_length)
 {
   const struct TALER_AmountNBO *amount = data;
   unsigned int off = 0;
 
-  GNUNET_assert (3 == param_length);
+  GNUNET_assert (2 == param_length);
   param_values[off] = (void *) &amount->value;
   param_lengths[off] = sizeof (amount->value);
   param_formats[off] = 1;
   off++;
   param_values[off] = (void *) &amount->fraction;
   param_lengths[off] = sizeof (amount->fraction);
-  param_formats[off] = 1;
-  off++;
-  param_values[off] = (void *) amount->currency;
-  param_lengths[off] = strlen (amount->currency);
   param_formats[off] = 1;
   return 0;
 }
@@ -83,7 +79,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_amount_nbo, NULL, x, sizeof (*x), 3 };
+    { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
   return res;
 }
 
@@ -104,14 +100,14 @@ TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
  */
 static int
 qconv_amount (void *cls,
-	      const void *data,
-	      size_t data_len,
-	      void *param_values[],
-	      int param_lengths[],
-	      int param_formats[],
-	      unsigned int param_length,
-	      void *scratch[],
-	      unsigned int scratch_length)
+              const void *data,
+              size_t data_len,
+              void *param_values[],
+              int param_lengths[],
+              int param_formats[],
+              unsigned int param_length,
+              void *scratch[],
+              unsigned int scratch_length)
 {
   const struct TALER_Amount *amount_hbo = data;
   struct TALER_AmountNBO *amount;
@@ -119,16 +115,16 @@ qconv_amount (void *cls,
   amount = GNUNET_new (struct TALER_AmountNBO);
   scratch[0] = amount;
   TALER_amount_hton (amount,
-		     amount_hbo);
+                     amount_hbo);
   qconv_amount_nbo (cls,
-		    amount,
-		    sizeof (struct TALER_AmountNBO),
-		    param_values,
-		    param_lengths,
-		    param_formats,
-		    param_length,
-		    &scratch[1],
-		    scratch_length - 1);
+                    amount,
+                    sizeof (struct TALER_AmountNBO),
+                    param_values,
+                    param_lengths,
+                    param_formats,
+                    param_length,
+                    &scratch[1],
+                    scratch_length - 1);
   return 1;
 }
 
@@ -146,7 +142,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount (const struct TALER_Amount *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_amount, NULL, x, sizeof (*x), 3 };
+    { &qconv_amount, NULL, x, sizeof (*x), 2 };
   return res;
 }
 
@@ -167,14 +163,14 @@ TALER_PQ_query_param_amount (const struct TALER_Amount *x)
  */
 static int
 qconv_json (void *cls,
-	    const void *data,
-	    size_t data_len,
-	    void *param_values[],
-	    int param_lengths[],
-	    int param_formats[],
-	    unsigned int param_length,
-	    void *scratch[],
-	    unsigned int scratch_length)
+            const void *data,
+            size_t data_len,
+            void *param_values[],
+            int param_lengths[],
+            int param_formats[],
+            unsigned int param_length,
+            void *scratch[],
+            unsigned int scratch_length)
 {
   const json_t *json = data;
   char *str;

@@ -60,7 +60,7 @@ sign_account_data (void *cls,
   char *json_out;
   FILE *out;
   int ret;
-
+ 
   if (GNUNET_NO == ai->credit_enabled)
     return;
   if (NULL == ai->wire_response_filename)
@@ -71,6 +71,7 @@ sign_account_data (void *cls,
     global_ret = 1;
     return;
   }
+  
   wire = TALER_JSON_exchange_wire_signature_make (ai->payto_url,
                                                   &master_priv);
   GNUNET_assert (NULL != wire);
@@ -199,6 +200,9 @@ run (void *cls,
     global_ret = 1;
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Signing /wire response with private key matching public key `%s'\n",
+              masters);
   GNUNET_free (masters);
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &sign_account_data,

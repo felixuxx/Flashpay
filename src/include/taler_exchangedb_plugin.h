@@ -794,29 +794,6 @@ typedef int
 
 
 /**
- * Callback used to process data of a merchant under KYC monitoring.
- *
- * @param cls closure
- * @param payto_url payto URL of this particular
- *        merchant (bank account)
- * @param general_id general identificator valid
- *        at the KYC-caring institution
- * @param kyc_checked status of KYC check:
- *        if GNUNET_OK, the merchant was checked at least once,
- *        never otherwise.
- * @param merchant_serial_id serial ID identifying
- *        this merchant (bank account) into the database system;
- *        it helps making more efficient queries than the payto
- *        URL.
- */
-typedef void
-(*TALER_EXCHANGEDB_KycStatusCallback)(void *cls,
-                                      const char *payto_url,
-                                      const char *general_id,
-                                      uint8_t kyc_checked,
-                                      uint64_t merchant_serial_id);
-
-/**
  * Function called with details about coins that were melted,
  * with the goal of auditing the refresh's execution.
  *
@@ -917,19 +894,6 @@ typedef void
                                     const struct TALER_TransferPrivateKeyP *tprivs,
                                     const struct TALER_TransferPublicKeyP *tp);
 
-
-/**
- * Callback for handling a KYC timestamped event associated with
- * a certain customer (= merchant).
- *
- * @param cls closure
- * @param url "payto" URL associated with the customer
- * @param timeout last time when the KYC was issued to the customer.
- */
-typedef void
-(*TALER_EXCHANGEDB_KycCallback)(void *cls,
-                                const char *url,
-                                struct GNUNET_TIME_Absolute timeout);
 
 /**
  * Function called with details about coins that were refunding,
@@ -2509,126 +2473,6 @@ struct TALER_EXCHANGEDB_Plugin
                                   TALER_EXCHANGEDB_WireMissingCallback cb,
                                   void *cb_cls);
 
-  /**
-   * Insert a merchant into the KYC monitor table, namely it
-   * associates a flag to the merchant that indicates whether
-   * a KYC check has been done or not on this merchant.
-   *
-   * @param cls closure
-   * @param session db session
-   * @param general_id identificator at the KYC-aware institution,
-   *        can be NULL if this is in-line wiht the rules.
-   * @param payto_url payto:// URL indentifying the merchant
-   *        bank account.
-   * @return database transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_kyc_merchant)(void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
-                         const char *general_id,
-                         const char *payto_url);
-
-  /**
-   * Mark a merchant as KYC-checked.
-   *
-   * @param cls closure
-   * @param session db session
-   * @param payto_url payto:// URL indentifying the merchant
-   *        to check.  Note, different banks may have different
-   *        policies to check their customers.
-   * @return database transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*mark_kyc_merchant)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
-                       const char *payto_url);
-
-
-  /**
-   * Mark a merchant as NOT KYC-checked.
-   *
-   * @param cls closure
-   * @param session db session
-   * @param payto_url payto:// URL indentifying the merchant
-   *        to unmark.  Note, different banks may have different
-   *        policies to check their customers.
-   * @return database transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*unmark_kyc_merchant)(void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
-                         const char *payto_url);
-
-
-  /**
-   * Retrieve KYC-check status related to a particular merchant.
-   *
-   * @param cls closure
-   * @param session db session
-   * @param payto_url URL identifying a merchant bank account,
-   *        whose KYC is going to be retrieved.
-   * @param ksc callback to process all the row's columns.  As
-   *        expectable, it will only be called _if_ a row is found.
-   * @param ksc_cls closure for above callback.
-   * @return transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*get_kyc_status)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
-                    const char *payto_url,
-                    TALER_EXCHANGEDB_KycStatusCallback ksc,
-                    void *ksc_cls);
-
-  /**
-   * Record timestamp where a particular merchant performed
-   * a wire transfer.
-   *
-   * @param cls closure.
-   * @param session db session.
-   * @param merchant_serial_id serial id of the merchant who
-   *        performed the wire transfer.
-   * @param amount amount of the wire transfer being monitored.
-   * @return database transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_kyc_event)(void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
-                      uint64_t merchant_serial_id,
-                      struct TALER_Amount *amount);
-
-
-  /**
-   * Calculate sum of money flow related to a particular merchant,
-   * used for KYC monitoring.
-   *
-   * @param cls closure
-   * @param session DB session
-   * @param merchant_serial_id serial id identifying the merchant
-   *        into the KYC monitoring system.
-   * @param amount[out] will store the amount of money received
-   *        by this merchant.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*get_kyc_events)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
-                    uint64_t merchant_serial_id,
-                    struct TALER_Amount *amount);
-
-  /**
-   * Delete wire transfer records related to a particular merchant.
-   * This method would be called by the logic once that merchant
-   * gets successfully KYC checked.
-   *
-   * @param cls closure
-   * @param session DB session
-   * @param merchant_serial_id serial id of the merchant whose
-   *        KYC records have to be deleted.
-   * @return DB transaction status.
-   */
-  enum GNUNET_DB_QueryStatus
-  (*clean_kyc_events)(void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
-                      uint64_t merchant_serial_id);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

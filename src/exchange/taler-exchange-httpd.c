@@ -684,6 +684,9 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
   GNUNET_free (TEH_master_public_key_str);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Launching exchange with public key `%s'...\n",
+              GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
 
   if ( (GNUNET_OK !=
         TEH_VALIDATION_init (cfg)) ||

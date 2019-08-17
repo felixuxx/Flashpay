@@ -40,15 +40,14 @@
  */
 static int
 extract_amount_nbo_helper (PGresult *result,
-			   int row,
-			   const char *val_name,
-			   const char *frac_name,
-			   const char *curr_name,
-			   struct TALER_AmountNBO *r_amount_nbo)
+                           int row,
+                           const char *currency,
+                           const char *val_name,
+                           const char *frac_name,
+                           struct TALER_AmountNBO *r_amount_nbo)
 {
   int val_num;
   int frac_num;
-  int curr_num;
   int len;
 
   /* These checks are simply to check that clients obey by our naming
@@ -59,9 +58,6 @@ extract_amount_nbo_helper (PGresult *result,
   GNUNET_assert (NULL !=
                  strstr (frac_name,
                          "_frac"));
-  GNUNET_assert (NULL !=
-                 strstr (curr_name,
-                         "_curr"));
   /* Set return value to invalid in case we don't finish */
   memset (r_amount_nbo,
           0,
@@ -70,27 +66,18 @@ extract_amount_nbo_helper (PGresult *result,
                        val_name);
   frac_num = PQfnumber (result,
                         frac_name);
-  curr_num = PQfnumber (result,
-                        curr_name);
   if (val_num < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Field `%s' does not exist in result\n",
-		val_name);
+                "Field `%s' does not exist in result\n",
+                val_name);
     return GNUNET_SYSERR;
   }
   if (frac_num < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Field `%s' does not exist in result\n",
-		frac_name);
-    return GNUNET_SYSERR;
-  }
-  if (curr_num < 0)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Field `%s' does not exist in result\n",
-		curr_name);
+                "Field `%s' does not exist in result\n",
+                frac_name);
     return GNUNET_SYSERR;
   }
   if ( (PQgetisnull (result,
@@ -98,10 +85,7 @@ extract_amount_nbo_helper (PGresult *result,
                      val_num)) ||
        (PQgetisnull (result,
                      row,
-                     frac_num)) ||
-       (PQgetisnull (result,
-                     row,
-                     curr_num)) )
+                     frac_num)) )
   {
     GNUNET_break (0);
     return GNUNET_NO;
@@ -115,13 +99,9 @@ extract_amount_nbo_helper (PGresult *result,
                                                      row,
                                                      frac_num);
   len = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
-                    PQgetlength (result,
-                                 row,
-                                 curr_num));
+                    strlen (currency));
   memcpy (r_amount_nbo->currency,
-          PQgetvalue (result,
-                      row,
-                      curr_num),
+          currency,
           len);
   return GNUNET_OK;
 }
@@ -130,7 +110,7 @@ extract_amount_nbo_helper (PGresult *result,
 /**
  * Extract data from a Postgres database @a result at row @a row.
  *
- * @param cls closure
+ * @param cls closure, a `const char *` giving the currency
  * @param result where to extract data from
  * @param row row to extract data from
  * @param fname name (or prefix) of the fields to extract from
@@ -143,35 +123,31 @@ extract_amount_nbo_helper (PGresult *result,
  */
 static int
 extract_amount_nbo (void *cls,
-		    PGresult *result,
-		    int row,
-		    const char *fname,
-		    size_t *dst_size,
-		    void *dst)
+                    PGresult *result,
+                    int row,
+                    const char *fname,
+                    size_t *dst_size,
+                    void *dst)
 {
+  const char *currency = cls;
   char *val_name;
   char *frac_name;
-  char *curr_name;
   int ret;
 
   GNUNET_asprintf (&val_name,
-		   "%s_val",
-		   fname);
+                   "%s_val",
+                   fname);
   GNUNET_asprintf (&frac_name,
-		   "%s_frac",
-		   fname);
-  GNUNET_asprintf (&curr_name,
-		   "%s_curr",
-		   fname);
+                   "%s_frac",
+                   fname);
   ret = extract_amount_nbo_helper (result,
-				   row,
-				   val_name,
-				   frac_name,
-				   curr_name,
-				   dst);
+                                   row,
+                                   currency,
+                                   val_name,
+                                   frac_name,
+                                   dst);
   GNUNET_free (val_name);
   GNUNET_free (frac_name);
-  GNUNET_free (curr_name);
   return ret;
 }
 
@@ -185,12 +161,17 @@ extract_amount_nbo (void *cls,
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount_nbo (const char *name,
-				 struct TALER_AmountNBO *amount)
+                                 const char *currency,
+                                 struct TALER_AmountNBO *amount)
 {
-  struct GNUNET_PQ_ResultSpec res =
-    { &extract_amount_nbo, NULL, NULL,
-      (void *) amount, sizeof (*amount),
-      name, NULL };
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_amount_nbo,
+    .cls = (void *) currency,
+    .dst = (void *) amount,
+    .dst_size = sizeof (*amount),
+    .fname = name
+  };
+  
   return res;
 }
 
@@ -198,7 +179,7 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
 /**
  * Extract data from a Postgres database @a result at row @a row.
  *
- * @param cls closure
+ * @param cls closure, a `const char *` giving the currency
  * @param result where to extract data from
  * @param row row to extract data from
  * @param fname name (or prefix) of the fields to extract from
@@ -211,39 +192,35 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
  */
 static int
 extract_amount (void *cls,
-		PGresult *result,
-		int row,
-		const char *fname,
-		size_t *dst_size,
-		void *dst)
+                PGresult *result,
+                int row,
+                const char *fname,
+                size_t *dst_size,
+                void *dst)
 {
+  const char *currency = cls;
   struct TALER_Amount *r_amount = dst;
   char *val_name;
   char *frac_name;
-  char *curr_name;
   struct TALER_AmountNBO amount_nbo;
   int ret;
 
   GNUNET_asprintf (&val_name,
-		   "%s_val",
-		   fname);
+                   "%s_val",
+                   fname);
   GNUNET_asprintf (&frac_name,
-		   "%s_frac",
-		   fname);
-  GNUNET_asprintf (&curr_name,
-		   "%s_curr",
-		   fname);
+                   "%s_frac",
+                   fname);
   ret = extract_amount_nbo_helper (result,
-				   row,
-				   val_name,
-				   frac_name,
-				   curr_name,
-				   &amount_nbo);
+                                   row,
+                                   currency,
+                                   val_name,
+                                   frac_name,
+                                   &amount_nbo);
   TALER_amount_ntoh (r_amount,
                      &amount_nbo);
   GNUNET_free (val_name);
   GNUNET_free (frac_name);
-  GNUNET_free (curr_name);
   return ret;
 }
 
@@ -252,17 +229,23 @@ extract_amount (void *cls,
  * Currency amount expected.
  *
  * @param name name of the field in the table
+ * @param currency the currency the amount is in
  * @param[out] amount where to store the result
  * @return array entry for the result specification to use
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount (const char *name,
-			     struct TALER_Amount *amount)
+                             const char *currency,
+                             struct TALER_Amount *amount)
 {
-  struct GNUNET_PQ_ResultSpec res =
-    { &extract_amount, NULL, NULL,
-      (void *) amount, sizeof (*amount),
-      name, NULL };
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_amount,
+    .cls = (void *) currency,
+    .dst = (void *) amount,
+    .dst_size = sizeof (*amount),
+    .fname = name
+  };
+  
   return res;
 }
 
@@ -283,11 +266,11 @@ TALER_PQ_result_spec_amount (const char *name,
  */
 static int
 extract_json (void *cls,
-	      PGresult *result,
-	      int row,
-	      const char *fname,
-	      size_t *dst_size,
-	      void *dst)
+              PGresult *result,
+              int row,
+              const char *fname,
+              size_t *dst_size,
+              void *dst)
 {
   json_t **j_dst = dst;
   const char *res;
@@ -296,33 +279,33 @@ extract_json (void *cls,
   size_t slen;
 
   fnum = PQfnumber (result,
-		    fname);
+                    fname);
   if (fnum < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Field `%s' does not exist in result\n",
-		fname);
+                "Field `%s' does not exist in result\n",
+                fname);
     return GNUNET_SYSERR;
   }
   if (PQgetisnull (result,
-		   row,
-		   fnum))
+                   row,
+                   fnum))
     return GNUNET_NO;
   slen = PQgetlength (result,
-		      row,
-		      fnum);
+                      row,
+                      fnum);
   res = (const char *) PQgetvalue (result,
-				   row,
-				   fnum);
+                                   row,
+                                   fnum);
   *j_dst = json_loadb (res,
-		       slen,
-		       JSON_REJECT_DUPLICATES,
-		       &json_error);
+                       slen,
+                       JSON_REJECT_DUPLICATES,
+                       &json_error);
   if (NULL == *j_dst)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to parse JSON result for field `%s': %s (%s)\n",
-		fname,
+                "Failed to parse JSON result for field `%s': %s (%s)\n",
+                fname,
                 json_error.text,
                 json_error.source);
     return GNUNET_SYSERR;
@@ -340,7 +323,7 @@ extract_json (void *cls,
  */
 static void
 clean_json (void *cls,
-	    void *rd)
+            void *rd)
 {
   json_t **dst = rd;
 
@@ -363,13 +346,15 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_json (const char *name,
                            json_t **jp)
 {
-  struct GNUNET_PQ_ResultSpec res =
-    { &extract_json, &clean_json, NULL,
-      (void *) jp, 0,
-      name, NULL };
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_json,
+    .cleaner = &clean_json,
+    .dst = (void *) jp,
+    .fname  = name
+  };
+  
   return res;
 }
-
 
 
 /**
@@ -399,7 +384,7 @@ extract_round_time (void *cls,
   int fnum;
 
   fnum = PQfnumber (result,
-		    fname);
+                    fname);
   if (fnum < 0)
   {
     GNUNET_break (0);
@@ -443,10 +428,13 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_absolute_time (const char *name,
                                     struct GNUNET_TIME_Absolute *at)
 {
-  struct GNUNET_PQ_ResultSpec res =
-    { &extract_round_time, NULL, NULL,
-      (void *) at, sizeof (struct GNUNET_TIME_Absolute),
-      name, NULL };
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_round_time,
+    .dst = (void *) at,
+    .dst_size = sizeof (struct GNUNET_TIME_Absolute),
+    .fname = name
+  };
+
   return res;
 }
 
@@ -478,15 +466,15 @@ extract_round_time_nbo (void *cls,
   int fnum;
 
   fnum = PQfnumber (result,
-		    fname);
+                    fname);
   if (fnum < 0)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
   if (PQgetisnull (result,
-		   row,
-		   fnum))
+                   row,
+                   fnum))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -522,10 +510,13 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_absolute_time_nbo (const char *name,
                                         struct GNUNET_TIME_AbsoluteNBO *at)
 {
-  struct GNUNET_PQ_ResultSpec res =
-    { &extract_round_time_nbo, NULL, NULL,
-      (void *) at, sizeof (struct GNUNET_TIME_AbsoluteNBO),
-      name, NULL };
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_round_time_nbo, 
+    .dst = (void *) at,
+    .dst_size = sizeof (struct GNUNET_TIME_AbsoluteNBO),
+    .fname = name
+  };
+
   return res;
 }
 

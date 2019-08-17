@@ -39,7 +39,7 @@
  */
 const char *
 TALER_b2s (const void *buf,
-	   size_t buf_size)
+           size_t buf_size)
 {
   static char ret[9];
   struct GNUNET_HashCode hc;
@@ -49,7 +49,7 @@ TALER_b2s (const void *buf,
 		      buf_size,
 		      &hc);
   tmp = GNUNET_STRINGS_data_to_string_alloc (&hc,
-					     sizeof (hc));
+                                             sizeof (hc));
   memcpy (ret,
 	  tmp,
 	  8);

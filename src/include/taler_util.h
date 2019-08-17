@@ -87,7 +87,8 @@ TALER_gcrypt_init (void);
  */
 const char *
 TALER_b2s (const void *buf,
-	   size_t buf_size);
+           size_t buf_size);
+
 
 /**
  * Convert a fixed-sized object to a string using

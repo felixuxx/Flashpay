@@ -55,7 +55,7 @@ static int result;
 
 
 /**
- * Currency we use.
+ * Currency we use.  Must match test-exchange-db-*.conf.
  */
 #define CURRENCY "EUR"
 
@@ -342,61 +342,6 @@ never_called_cb (void *cls,
   GNUNET_assert (0); /* should never be called! */
 }
 
-
-/**
- * Callback used to process data of a merchant under KYC monitoring.
- *
- * @param cls closure
- * @param payto_url payto URL of this particular merchant (bank account)
- * @param general_id general identificator valid at the KYC-caring institution
- * @param kyc_checked status of KYC check: if GNUNET_OK, the merchant was
- *        checked at least once, never otherwise.
- * @param merchant_serial_id serial ID identifying this merchant (bank
- *        account) into the database system; it helps making more efficient
- *        queries instead of the payto URL.
- */
-static void
-kcs (void *cls,
-     const char *payto_url,
-     const char *general_id,
-     uint8_t kyc_checked,
-     uint64_t merchant_serial_id)
-{
-  struct TALER_EXCHANGEDB_Session *session = cls;
-  struct TALER_Amount amount;
-  struct TALER_Amount sum;
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (CURRENCY,
-                                        &amount));
-  amount.value = 30;
-  FAILIF
-    (GNUNET_OK != plugin->insert_kyc_event (NULL,
-                                            session,
-                                            merchant_serial_id,
-                                            &amount));
-  amount.value = 20;
-  amount.fraction = 70;
-  FAILIF
-    (GNUNET_OK != plugin->insert_kyc_event (NULL,
-                                            session,
-                                            merchant_serial_id,
-                                            &amount));
-  FAILIF
-    (0 >= plugin->get_kyc_events (NULL,
-                                  session,
-                                  merchant_serial_id,
-                                  &sum));
-
-  FAILIF ((50 != sum.value) || (70 != sum.fraction));
-
-  FAILIF (2 != plugin->clean_kyc_events (NULL,
-                                         session,
-                                         merchant_serial_id));
-
-  drop:
-    return;
-}
 
 /**
  * Function called with information about a refresh order.
@@ -2225,26 +2170,6 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           test_wire_fees (session));
 
-  FAILIF (GNUNET_OK !=
-          plugin->insert_kyc_merchant (NULL,
-                                       session,
-                                       "dummy", // NULL segfaults.
-                                       "payto://mock"));
-  FAILIF (GNUNET_OK !=
-          plugin->mark_kyc_merchant (NULL,
-                                     session,
-                                     "payto://mock"));
-  FAILIF (GNUNET_OK !=
-          plugin->get_kyc_status (NULL,
-                                  session,
-                                  "payto://mock",
-                                  &kcs,
-                                  session));
-
-  FAILIF (GNUNET_OK !=
-          plugin->unmark_kyc_merchant (NULL,
-                                       session,
-                                       "payto://mock"));
   plugin->preflight (plugin->cls,
                      session);
 

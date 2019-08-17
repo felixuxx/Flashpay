@@ -94,24 +94,28 @@ TALER_PQ_query_param_absolute_time_nbo (const struct GNUNET_TIME_AbsoluteNBO *x)
  * Currency amount expected.
  *
  * @param name name of the field in the table
+ * @param currency expected currency for the @a amount
  * @param[out] amount where to store the result
  * @return array entry for the result specification to use
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount_nbo (const char *name,
-				 struct TALER_AmountNBO *amount);
+                                 const char *currency,
+                                 struct TALER_AmountNBO *amount);
 
 
 /**
  * Currency amount expected.
  *
  * @param name name of the field in the table
+ * @param currency expected currency for the @a amount
  * @param[out] amount where to store the result
  * @return array entry for the result specification to use
  */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount (const char *name,
-			     struct TALER_Amount *amount);
+                             const char *currency,
+                             struct TALER_Amount *amount);
 
 
 /**

@@ -173,8 +173,9 @@ load_account (void *cls,
                                                   &TEH_master_public_key))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid signature in `%s'\n",
-                  ai->wire_response_filename);
+                  "Invalid signature in `%s' for public key `%s'\n",
+                  ai->wire_response_filename,
+                  GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
       json_decref (wire_s);
       *ret = GNUNET_SYSERR;
       return;

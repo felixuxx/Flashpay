@@ -31,6 +31,25 @@
 
 
 /**
+ * Wrapper macro to add the currency from the plugin's state
+ * when fetching amounts from the database.
+ *
+ * @param field name of the database field to fetch amount from
+ * @param amountp[out] pointer to amount to set
+ */
+#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount(field,pg->currency,amountp)
+
+/**
+ * Wrapper macro to add the currency from the plugin's state
+ * when fetching amounts from the database.  NBO variant.
+ *
+ * @param field name of the database field to fetch amount from
+ * @param amountp[out] pointer to amount to set
+ */
+#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field,amountp) TALER_PQ_result_spec_amount_nbo(field,pg->currency,amountp)
+
+
+/**
  * Handle for a database session (per-thread, for transactions).
  */
 struct TALER_AUDITORDB_Session
@@ -60,6 +79,11 @@ struct PostgresClosure
    * the configuration.
    */
   char *connection_cfg_str;
+
+  /**
+   * Which currency should we assume all amounts to be in?
+   */
+  char *currency;
 };
 
 
@@ -196,43 +220,38 @@ postgres_create_tables (void *cls)
   struct GNUNET_PQ_ExecuteStatement es[] = {
     /* Table with list of exchanges we are auditing */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_exchanges"
-			    "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
-			    ",exchange_url VARCHAR NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+                            ",exchange_url VARCHAR NOT NULL"
+                            ")"),
     /* Table with list of signing keys of exchanges we are auditing */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",ep_start INT8 NOT NULL"
-			    ",ep_expire INT8 NOT NULL"
-			    ",ep_end INT8 NOT NULL"
-			    ",exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)"
-			    ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",ep_start INT8 NOT NULL"
+                            ",ep_expire INT8 NOT NULL"
+                            ",ep_end INT8 NOT NULL"
+                            ",exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)"
+                            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
 			    ")"),
     /* Table with all of the denomination keys that the auditor
        is aware of. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denominations"
-			    "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
-			    ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",valid_from INT8 NOT NULL"
-			    ",expire_withdraw INT8 NOT NULL"
-			    ",expire_deposit INT8 NOT NULL"
-			    ",expire_legal INT8 NOT NULL"
-			    ",coin_val INT8 NOT NULL" /* value of this denom */
-			    ",coin_frac INT4 NOT NULL" /* fractional value of this denom */
-			    ",coin_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL" /* assuming same currency for fees */
-			    ",fee_withdraw_val INT8 NOT NULL"
-			    ",fee_withdraw_frac INT4 NOT NULL"
-			    ",fee_withdraw_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",fee_deposit_val INT8 NOT NULL"
-			    ",fee_deposit_frac INT4 NOT NULL"
-			    ",fee_deposit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",fee_refresh_val INT8 NOT NULL"
-			    ",fee_refresh_frac INT4 NOT NULL"
-			    ",fee_refresh_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",fee_refund_val INT8 NOT NULL"
-			    ",fee_refund_frac INT4 NOT NULL"
-			    ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+                            ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",valid_from INT8 NOT NULL"
+                            ",expire_withdraw INT8 NOT NULL"
+                            ",expire_deposit INT8 NOT NULL"
+                            ",expire_legal INT8 NOT NULL"
+                            ",coin_val INT8 NOT NULL" /* value of this denom */
+                            ",coin_frac INT4 NOT NULL" /* fractional value of this denom */
+                            ",fee_withdraw_val INT8 NOT NULL"
+                            ",fee_withdraw_frac INT4 NOT NULL"
+                            ",fee_deposit_val INT8 NOT NULL"
+                            ",fee_deposit_frac INT4 NOT NULL"
+                            ",fee_refresh_val INT8 NOT NULL"
+                            ",fee_refresh_frac INT4 NOT NULL"
+                            ",fee_refund_val INT8 NOT NULL"
+                            ",fee_refund_frac INT4 NOT NULL"
+                            ")"),
     /* Table indicating up to which transactions the auditor has
        processed the exchange database.  Used for SELECTing the
        statements to process.  The indices below include the last
@@ -241,38 +260,38 @@ postgres_create_tables (void *cls)
        strictly larger (and process in monotonically increasing
        order). */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_reserve"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0"
+                            ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_aggregation"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+                            ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0"
+                            ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_coin"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",last_withdraw_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_deposit_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_melt_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_refund_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_payback_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_payback_refresh_serial_id INT8 NOT NULL DEFAULT 0"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",last_withdraw_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_deposit_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_melt_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_refund_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_payback_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_payback_refresh_serial_id INT8 NOT NULL DEFAULT 0"
+                            ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                ",account_name TEXT NOT NULL"
-			    ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
-			    ",last_timestamp INT8 NOT NULL"
-                ",wire_in_off BYTEA"
-                ",wire_out_off BYTEA"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",account_name TEXT NOT NULL"
+                            ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+                            ",last_timestamp INT8 NOT NULL"
+                            ",wire_in_off BYTEA"
+                            ",wire_out_off BYTEA"
+                            ")"),
     /* Table with all of the customer reserves and their respective
        balances that the auditor is aware of.
        "last_reserve_out_serial_id" marks the last withdrawal from
@@ -280,38 +299,33 @@ postgres_create_tables (void *cls)
        and "last_reserve_in_serial_id" is the last "reserve_in"
        operation about this reserve that the auditor is aware of. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_reserves"
-			    "(reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)"
-			    ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",reserve_balance_val INT8 NOT NULL"
-			    ",reserve_balance_frac INT4 NOT NULL"
-			    ",reserve_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",withdraw_fee_balance_val INT8 NOT NULL"
-			    ",withdraw_fee_balance_frac INT4 NOT NULL"
-			    ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",expiration_date INT8 NOT NULL"
-			    ",auditor_reserves_rowid BIGSERIAL UNIQUE"
-			    ")"),
+                            "(reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)"
+                            ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",reserve_balance_val INT8 NOT NULL"
+                            ",reserve_balance_frac INT4 NOT NULL"
+                            ",withdraw_fee_balance_val INT8 NOT NULL"
+                            ",withdraw_fee_balance_frac INT4 NOT NULL"
+                            ",expiration_date INT8 NOT NULL"
+                            ",auditor_reserves_rowid BIGSERIAL UNIQUE"
+                            ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_reserves_by_reserve_pub "
-				"ON auditor_reserves(reserve_pub)"),
+                                "ON auditor_reserves(reserve_pub)"),
     /* Table with the sum of the balances of all customer reserves
        (by exchange's master public key) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_reserve_balance"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",reserve_balance_val INT8 NOT NULL"
-			    ",reserve_balance_frac INT4 NOT NULL"
-			    ",reserve_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",withdraw_fee_balance_val INT8 NOT NULL"
-			    ",withdraw_fee_balance_frac INT4 NOT NULL"
-			    ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",reserve_balance_val INT8 NOT NULL"
+                            ",reserve_balance_frac INT4 NOT NULL"
+                            ",withdraw_fee_balance_val INT8 NOT NULL"
+                            ",withdraw_fee_balance_frac INT4 NOT NULL"
+                            ")"),
     /* Table with the sum of the balances of all wire fees
        (by exchange's master public key) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_wire_fee_balance"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",wire_fee_balance_val INT8 NOT NULL"
-			    ",wire_fee_balance_frac INT4 NOT NULL"
-			    ",wire_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",wire_fee_balance_val INT8 NOT NULL"
+                            ",wire_fee_balance_frac INT4 NOT NULL"
+                            ")"),
     /* Table with all of the outstanding denomination coins that the
        exchange is aware of and what the respective balances are
        (outstanding as well as issued overall which implies the
@@ -319,19 +333,16 @@ postgres_create_tables (void *cls)
        issued (withdraw, refresh-reveal) and the number of coins seen
        at the exchange (refresh-commit, deposit), not just the amounts. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denomination_pending"
-			    "(denom_pub_hash BYTEA PRIMARY KEY"
-			    " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
-			    ",denom_balance_val INT8 NOT NULL"
-			    ",denom_balance_frac INT4 NOT NULL"
-			    ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-                ",num_issued INT8 NOT NULL"
-			    ",denom_risk_val INT8 NOT NULL"
-			    ",denom_risk_frac INT4 NOT NULL"
-			    ",denom_risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",payback_loss_val INT8 NOT NULL"
-			    ",payback_loss_frac INT4 NOT NULL"
-			    ",payback_loss_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(denom_pub_hash BYTEA PRIMARY KEY"
+                            " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
+                            ",denom_balance_val INT8 NOT NULL"
+                            ",denom_balance_frac INT4 NOT NULL"
+                            ",num_issued INT8 NOT NULL"
+                            ",denom_risk_val INT8 NOT NULL"
+                            ",denom_risk_frac INT4 NOT NULL"
+                            ",payback_loss_val INT8 NOT NULL"
+                            ",payback_loss_frac INT4 NOT NULL"
+                            ")"),
     /* Table with the sum of the outstanding coins from
        "auditor_denomination_pending" (denom_pubs must belong to the
        respective's exchange's master public key); it represents the
@@ -339,26 +350,20 @@ postgres_create_tables (void *cls)
        unexpected historic_loss-style events where denomination keys are
        compromised) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_balance_summary"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",denom_balance_val INT8 NOT NULL"
-			    ",denom_balance_frac INT4 NOT NULL"
-			    ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",deposit_fee_balance_val INT8 NOT NULL"
-			    ",deposit_fee_balance_frac INT4 NOT NULL"
-			    ",deposit_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",melt_fee_balance_val INT8 NOT NULL"
-			    ",melt_fee_balance_frac INT4 NOT NULL"
-			    ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",refund_fee_balance_val INT8 NOT NULL"
-			    ",refund_fee_balance_frac INT4 NOT NULL"
-			    ",refund_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",risk_val INT8 NOT NULL"
-			    ",risk_frac INT4 NOT NULL"
-			    ",risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",loss_val INT8 NOT NULL"
-			    ",loss_frac INT4 NOT NULL"
-			    ",loss_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",denom_balance_val INT8 NOT NULL"
+                            ",denom_balance_frac INT4 NOT NULL"
+                            ",deposit_fee_balance_val INT8 NOT NULL"
+                            ",deposit_fee_balance_frac INT4 NOT NULL"
+                            ",melt_fee_balance_val INT8 NOT NULL"
+                            ",melt_fee_balance_frac INT4 NOT NULL"
+                            ",refund_fee_balance_val INT8 NOT NULL"
+                            ",refund_fee_balance_frac INT4 NOT NULL"
+                            ",risk_val INT8 NOT NULL"
+                            ",risk_frac INT4 NOT NULL"
+                            ",loss_val INT8 NOT NULL"
+                            ",loss_frac INT4 NOT NULL"
+                            ")"),
     /* Table with historic profits; basically, when a denom_pub has
        expired and everything associated with it is garbage collected,
        the final profits end up in here; note that the "denom_pub" here
@@ -369,50 +374,46 @@ postgres_create_tables (void *cls)
        individually; the delta to the revenue_balance is from coins that
        were withdrawn but never deposited prior to expiration. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
-			    ",revenue_timestamp INT8 NOT NULL"
-			    ",revenue_balance_val INT8 NOT NULL"
-			    ",revenue_balance_frac INT4 NOT NULL"
-			    ",revenue_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ",loss_balance_val INT8 NOT NULL"
-			    ",loss_balance_frac INT4 NOT NULL"
-			    ",loss_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+                            ",revenue_timestamp INT8 NOT NULL"
+                            ",revenue_balance_val INT8 NOT NULL"
+                            ",revenue_balance_frac INT4 NOT NULL"
+                            ",loss_balance_val INT8 NOT NULL"
+                            ",loss_balance_frac INT4 NOT NULL"
+                            ")"),
     /* Table with historic profits from reserves; we eventually
        GC "auditor_historic_reserve_revenue", and then store the totals
        in here (by time intervals). */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",start_date INT8 NOT NULL"
-			    ",end_date INT8 NOT NULL"
-			    ",reserve_profits_val INT8 NOT NULL"
-			    ",reserve_profits_frac INT4 NOT NULL"
-			    ",reserve_profits_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",start_date INT8 NOT NULL"
+                            ",end_date INT8 NOT NULL"
+                            ",reserve_profits_val INT8 NOT NULL"
+                            ",reserve_profits_frac INT4 NOT NULL"
+                            ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date "
-				"ON auditor_historic_reserve_summary(master_pub,start_date)"),
+                                "ON auditor_historic_reserve_summary(master_pub,start_date)"),
 
     /* Table with deposit confirmation sent to us by merchants;
        we must check that the exchange reported these properly. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS deposit_confirmations "
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                ",serial_id BIGSERIAL UNIQUE"
-			    ",h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)"
-                ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
-			    ",timestamp INT8 NOT NULL"
-			    ",refund_deadline INT8 NOT NULL"
-			    ",amount_without_fee_val INT8 NOT NULL"
-			    ",amount_without_fee_frac INT4 NOT NULL"
-			    ",amount_without_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-                ",coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)"
-                ",merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)"
-                ",exchange_sig BYTEA CHECK (LENGTH(exchange_sig)=64)"
-                ",exchange_pub BYTEA CHECK (LENGTH(exchange_pub)=32)"
-                ",master_sig BYTEA CHECK (LENGTH(master_sig)=64)"
-                ",PRIMARY KEY (h_contract_terms, h_wire, coin_pub, "
-                "  merchant_pub, exchange_sig, exchange_pub, master_sig)"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",serial_id BIGSERIAL UNIQUE"
+                            ",h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)"
+                            ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
+                            ",timestamp INT8 NOT NULL"
+                            ",refund_deadline INT8 NOT NULL"
+                            ",amount_without_fee_val INT8 NOT NULL"
+                            ",amount_without_fee_frac INT4 NOT NULL"
+                            ",coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)"
+                            ",merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)"
+                            ",exchange_sig BYTEA CHECK (LENGTH(exchange_sig)=64)"
+                            ",exchange_pub BYTEA CHECK (LENGTH(exchange_pub)=32)"
+                            ",master_sig BYTEA CHECK (LENGTH(master_sig)=64)"
+                            ",PRIMARY KEY (h_contract_terms, h_wire, coin_pub, "
+                            "  merchant_pub, exchange_sig, exchange_pub, master_sig)"
+                            ")"),
     /* Table with historic business ledger; basically, when the exchange
        operator decides to use operating costs for anything but wire
        transfers to merchants, it goes in here.  This happens when the
@@ -426,25 +427,23 @@ postgres_create_tables (void *cls)
        (So this table for now just exists as a reminder of what we'll
        need in the long term.) */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_ledger"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",purpose VARCHAR NOT NULL"
-			    ",timestamp INT8 NOT NULL"
-			    ",balance_val INT8 NOT NULL"
-			    ",balance_frac INT4 NOT NULL"
-			    ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",purpose VARCHAR NOT NULL"
+                            ",timestamp INT8 NOT NULL"
+                            ",balance_val INT8 NOT NULL"
+                            ",balance_frac INT4 NOT NULL"
+                            ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX history_ledger_by_master_pub_and_time "
-				"ON auditor_historic_ledger(master_pub,timestamp)"),
+                                "ON auditor_historic_ledger(master_pub,timestamp)"),
     /* Table with the sum of the ledger, auditor_historic_revenue and
        the auditor_reserve_balance.  This is the
        final amount that the exchange should have in its bank account
        right now. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_predicted_result"
-			    "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-			    ",balance_val INT8 NOT NULL"
-			    ",balance_frac INT4 NOT NULL"
-			    ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-			    ")"),
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",balance_val INT8 NOT NULL"
+                            ",balance_frac INT4 NOT NULL"
+                            ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
@@ -507,533 +506,470 @@ postgres_prepare (PGconn *db_conn)
                             6),
     /* Used in #postgres_insert_denomination_info() */
     GNUNET_PQ_make_prepare ("auditor_denominations_insert",
-			    "INSERT INTO auditor_denominations "
-			    "(denom_pub_hash"
-			    ",master_pub"
-			    ",valid_from"
-			    ",expire_withdraw"
-			    ",expire_deposit"
-			    ",expire_legal"
-			    ",coin_val"
-			    ",coin_frac"
-			    ",coin_curr"
-			    ",fee_withdraw_val"
-			    ",fee_withdraw_frac"
-			    ",fee_withdraw_curr"
-			    ",fee_deposit_val"
-			    ",fee_deposit_frac"
-			    ",fee_deposit_curr"
-			    ",fee_refresh_val"
-			    ",fee_refresh_frac"
-			    ",fee_refresh_curr"
-			    ",fee_refund_val"
-			    ",fee_refund_frac"
-			    ",fee_refund_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);",
-			    21),
+                            "INSERT INTO auditor_denominations "
+                            "(denom_pub_hash"
+                            ",master_pub"
+                            ",valid_from"
+                            ",expire_withdraw"
+                            ",expire_deposit"
+                            ",expire_legal"
+                            ",coin_val"
+                            ",coin_frac"
+                            ",fee_withdraw_val"
+                            ",fee_withdraw_frac"
+                            ",fee_deposit_val"
+                            ",fee_deposit_frac"
+                            ",fee_refresh_val"
+                            ",fee_refresh_frac"
+                            ",fee_refund_val"
+                            ",fee_refund_frac"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);",
+                            16),
     /* Used in #postgres_insert_denomination_info() */
     GNUNET_PQ_make_prepare ("auditor_denominations_select",
-			    "SELECT"
-			    " denom_pub_hash"
-			    ",valid_from"
-			    ",expire_withdraw"
-			    ",expire_deposit"
-			    ",expire_legal"
-			    ",coin_val"
-			    ",coin_frac"
-			    ",coin_curr"
-			    ",fee_withdraw_val"
-			    ",fee_withdraw_frac"
-			    ",fee_withdraw_curr"
-			    ",fee_deposit_val"
-			    ",fee_deposit_frac"
-			    ",fee_deposit_curr"
-			    ",fee_refresh_val"
-			    ",fee_refresh_frac"
-			    ",fee_refresh_curr"
-			    ",fee_refund_val"
-			    ",fee_refund_frac"
-			    ",fee_refund_curr"
-			    " FROM auditor_denominations"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " denom_pub_hash"
+                            ",valid_from"
+                            ",expire_withdraw"
+                            ",expire_deposit"
+                            ",expire_legal"
+                            ",coin_val"
+                            ",coin_frac"
+                            ",fee_withdraw_val"
+                            ",fee_withdraw_frac"
+                            ",fee_deposit_val"
+                            ",fee_deposit_frac"
+                            ",fee_refresh_val"
+                            ",fee_refresh_frac"
+                            ",fee_refund_val"
+                            ",fee_refund_frac"
+                            " FROM auditor_denominations"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_insert",
-			    "INSERT INTO deposit_confirmations "
-			    "(master_pub"
-			    ",h_contract_terms"
-			    ",h_wire"
-			    ",timestamp"
-			    ",refund_deadline"
-			    ",amount_without_fee_val"
-			    ",amount_without_fee_frac"
-			    ",amount_without_fee_curr"
-			    ",coin_pub"
-			    ",merchant_pub"
-			    ",exchange_sig"
-			    ",exchange_pub"
-			    ",master_sig" /* master_sig could be normalized... */
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
-			    13),
+                            "INSERT INTO deposit_confirmations "
+                            "(master_pub"
+                            ",h_contract_terms"
+                            ",h_wire"
+                            ",timestamp"
+                            ",refund_deadline"
+                            ",amount_without_fee_val"
+                            ",amount_without_fee_frac"
+                            ",coin_pub"
+                            ",merchant_pub"
+                            ",exchange_sig"
+                            ",exchange_pub"
+                            ",master_sig" /* master_sig could be normalized... */
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);",
+                            12),
     /* Used in #postgres_get_deposit_confirmations() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
-			    "SELECT"
-                " serial_id"
-			    ",h_contract_terms"
-			    ",h_wire"
-			    ",timestamp"
-			    ",refund_deadline"
-			    ",amount_without_fee_val"
-			    ",amount_without_fee_frac"
-			    ",amount_without_fee_curr"
-			    ",coin_pub"
-			    ",merchant_pub"
-			    ",exchange_sig"
-			    ",exchange_pub"
-			    ",master_sig" /* master_sig could be normalized... */
-                " FROM deposit_confirmations"
-                " WHERE master_pub=$1"
-                " AND serial_id>$2",
-			    2),
+                            "SELECT"
+                            " serial_id"
+                            ",h_contract_terms"
+                            ",h_wire"
+                            ",timestamp"
+                            ",refund_deadline"
+                            ",amount_without_fee_val"
+                            ",amount_without_fee_frac"
+                            ",coin_pub"
+                            ",merchant_pub"
+                            ",exchange_sig"
+                            ",exchange_pub"
+                            ",master_sig" /* master_sig could be normalized... */
+                            " FROM deposit_confirmations"
+                            " WHERE master_pub=$1"
+                            " AND serial_id>$2",
+                            2),
     /* Used in #postgres_update_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_reserve",
-			    "UPDATE auditor_progress_reserve SET "
-			    " last_reserve_in_serial_id=$1"
-			    ",last_reserve_out_serial_id=$2"
-			    ",last_reserve_payback_serial_id=$3"
-			    ",last_reserve_close_serial_id=$4"
-			    " WHERE master_pub=$5",
-			    5),
+                            "UPDATE auditor_progress_reserve SET "
+                            " last_reserve_in_serial_id=$1"
+                            ",last_reserve_out_serial_id=$2"
+                            ",last_reserve_payback_serial_id=$3"
+                            ",last_reserve_close_serial_id=$4"
+                            " WHERE master_pub=$5",
+                            5),
     /* Used in #postgres_get_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_reserve",
-			    "SELECT"
-			    " last_reserve_in_serial_id"
-			    ",last_reserve_out_serial_id"
-			    ",last_reserve_payback_serial_id"
-			    ",last_reserve_close_serial_id"
-			    " FROM auditor_progress_reserve"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " last_reserve_in_serial_id"
+                            ",last_reserve_out_serial_id"
+                            ",last_reserve_payback_serial_id"
+                            ",last_reserve_close_serial_id"
+                            " FROM auditor_progress_reserve"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_reserve",
-			    "INSERT INTO auditor_progress_reserve "
-			    "(master_pub"
-			    ",last_reserve_in_serial_id"
-			    ",last_reserve_out_serial_id"
-			    ",last_reserve_payback_serial_id"
-			    ",last_reserve_close_serial_id"
-			    ") VALUES ($1,$2,$3,$4,$5);",
-			    5),
+                            "INSERT INTO auditor_progress_reserve "
+                            "(master_pub"
+                            ",last_reserve_in_serial_id"
+                            ",last_reserve_out_serial_id"
+                            ",last_reserve_payback_serial_id"
+                            ",last_reserve_close_serial_id"
+                            ") VALUES ($1,$2,$3,$4,$5);",
+                            5),
     /* Used in #postgres_update_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_aggregation",
-			    "UPDATE auditor_progress_aggregation SET "
-			    " last_wire_out_serial_id=$1"
-			    " WHERE master_pub=$2",
-			    2),
+                            "UPDATE auditor_progress_aggregation SET "
+                            " last_wire_out_serial_id=$1"
+                            " WHERE master_pub=$2",
+                            2),
     /* Used in #postgres_get_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_aggregation",
-			    "SELECT"
-			    " last_wire_out_serial_id"
-			    " FROM auditor_progress_aggregation"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " last_wire_out_serial_id"
+                            " FROM auditor_progress_aggregation"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_aggregation",
-			    "INSERT INTO auditor_progress_aggregation "
-			    "(master_pub"
-			    ",last_wire_out_serial_id"
-			    ") VALUES ($1,$2);",
-			    2),
+                            "INSERT INTO auditor_progress_aggregation "
+                            "(master_pub"
+                            ",last_wire_out_serial_id"
+                            ") VALUES ($1,$2);",
+                            2),
     /* Used in #postgres_update_auditor_progress_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_deposit_confirmation",
-			    "UPDATE auditor_progress_deposit_confirmation SET "
-			    " last_deposit_confirmation_serial_id=$1"
-			    " WHERE master_pub=$2",
-			    2),
+                            "UPDATE auditor_progress_deposit_confirmation SET "
+                            " last_deposit_confirmation_serial_id=$1"
+                            " WHERE master_pub=$2",
+                            2),
     /* Used in #postgres_get_auditor_progress_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_deposit_confirmation",
-			    "SELECT"
-			    " last_deposit_confirmation_serial_id"
-			    " FROM auditor_progress_deposit_confirmation"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " last_deposit_confirmation_serial_id"
+                            " FROM auditor_progress_deposit_confirmation"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_auditor_progress_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_deposit_confirmation",
-			    "INSERT INTO auditor_progress_deposit_confirmation "
-			    "(master_pub"
-			    ",last_deposit_confirmation_serial_id"
-			    ") VALUES ($1,$2);",
-			    2),
+                            "INSERT INTO auditor_progress_deposit_confirmation "
+                            "(master_pub"
+                            ",last_deposit_confirmation_serial_id"
+                            ") VALUES ($1,$2);",
+                            2),
     /* Used in #postgres_update_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_coin",
-			    "UPDATE auditor_progress_coin SET "
-			    " last_withdraw_serial_id=$1"
-			    ",last_deposit_serial_id=$2"
-			    ",last_melt_serial_id=$3"
-			    ",last_refund_serial_id=$4"
-			    ",last_payback_serial_id=$5"
-			    ",last_payback_refresh_serial_id=$6"
-			    " WHERE master_pub=$7",
-			    7),
+                            "UPDATE auditor_progress_coin SET "
+                            " last_withdraw_serial_id=$1"
+                            ",last_deposit_serial_id=$2"
+                            ",last_melt_serial_id=$3"
+                            ",last_refund_serial_id=$4"
+                            ",last_payback_serial_id=$5"
+                            ",last_payback_refresh_serial_id=$6"
+                            " WHERE master_pub=$7",
+                            7),
     /* Used in #postgres_get_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_coin",
-			    "SELECT"
-			    " last_withdraw_serial_id"
-			    ",last_deposit_serial_id"
-			    ",last_melt_serial_id"
-			    ",last_refund_serial_id"
-			    ",last_payback_serial_id"
-			    ",last_payback_refresh_serial_id"
-			    " FROM auditor_progress_coin"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " last_withdraw_serial_id"
+                            ",last_deposit_serial_id"
+                            ",last_melt_serial_id"
+                            ",last_refund_serial_id"
+                            ",last_payback_serial_id"
+                            ",last_payback_refresh_serial_id"
+                            " FROM auditor_progress_coin"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_auditor_progress() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_coin",
-			    "INSERT INTO auditor_progress_coin "
-			    "(master_pub"
-			    ",last_withdraw_serial_id"
-			    ",last_deposit_serial_id"
-			    ",last_melt_serial_id"
-			    ",last_refund_serial_id"
-			    ",last_payback_serial_id"
-			    ",last_payback_refresh_serial_id"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
-			    7),
+                            "INSERT INTO auditor_progress_coin "
+                            "(master_pub"
+                            ",last_withdraw_serial_id"
+                            ",last_deposit_serial_id"
+                            ",last_melt_serial_id"
+                            ",last_refund_serial_id"
+                            ",last_payback_serial_id"
+                            ",last_payback_refresh_serial_id"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+                            7),
     /* Used in #postgres_insert_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
-			    "INSERT INTO wire_auditor_progress "
-			    "(master_pub"
-                 ",account_name"
-			    ",last_wire_reserve_in_serial_id"
-			    ",last_wire_wire_out_serial_id"
-                ",last_timestamp"
-                ",wire_in_off"
-                ",wire_out_off"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
-			    7),
+                            "INSERT INTO wire_auditor_progress "
+                            "(master_pub"
+                            ",account_name"
+                            ",last_wire_reserve_in_serial_id"
+                            ",last_wire_wire_out_serial_id"
+                            ",last_timestamp"
+                            ",wire_in_off"
+                            ",wire_out_off"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+                            7),
     /* Used in #postgres_update_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
-			    "UPDATE wire_auditor_progress SET "
-			    " last_wire_reserve_in_serial_id=$1"
-			    ",last_wire_wire_out_serial_id=$2"
-                ",last_timestamp=$3"
-                ",wire_in_off=$4"
-                ",wire_out_off=$5"
-			    " WHERE master_pub=$6 AND account_name=$7",
-			    7),
+                            "UPDATE wire_auditor_progress SET "
+                            " last_wire_reserve_in_serial_id=$1"
+                            ",last_wire_wire_out_serial_id=$2"
+                            ",last_timestamp=$3"
+                            ",wire_in_off=$4"
+                            ",wire_out_off=$5"
+                            " WHERE master_pub=$6 AND account_name=$7",
+                            7),
     /* Used in #postgres_get_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
-			    "SELECT"
-			    " last_wire_reserve_in_serial_id"
-			    ",last_wire_wire_out_serial_id"
-                ",last_timestamp"
-                ",wire_in_off"
-                ",wire_out_off"
-			    " FROM wire_auditor_progress"
-			    " WHERE master_pub=$1 AND account_name=$2;",
-			    2),
+                            "SELECT"
+                            " last_wire_reserve_in_serial_id"
+                            ",last_wire_wire_out_serial_id"
+                            ",last_timestamp"
+                            ",wire_in_off"
+                            ",wire_out_off"
+                            " FROM wire_auditor_progress"
+                            " WHERE master_pub=$1 AND account_name=$2;",
+                            2),
     /* Used in #postgres_insert_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_insert",
-			    "INSERT INTO auditor_reserves "
-			    "(reserve_pub"
-			    ",master_pub"
-			    ",reserve_balance_val"
-			    ",reserve_balance_frac"
-			    ",reserve_balance_curr"
-			    ",withdraw_fee_balance_val"
-			    ",withdraw_fee_balance_frac"
-			    ",withdraw_fee_balance_curr"
-			    ",expiration_date"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-			    9),
+                            "INSERT INTO auditor_reserves "
+                            "(reserve_pub"
+                            ",master_pub"
+                            ",reserve_balance_val"
+                            ",reserve_balance_frac"
+                            ",withdraw_fee_balance_val"
+                            ",withdraw_fee_balance_frac"
+                            ",expiration_date"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+                            7),
     /* Used in #postgres_update_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_update",
-			    "UPDATE auditor_reserves SET"
-			    " reserve_balance_val=$1"
-			    ",reserve_balance_frac=$2"
-			    ",reserve_balance_curr=$3"
-			    ",withdraw_fee_balance_val=$4"
-			    ",withdraw_fee_balance_frac=$5"
-			    ",withdraw_fee_balance_curr=$6"
-			    ",expiration_date=$7"
-			    " WHERE reserve_pub=$8 AND master_pub=$9;",
-			    9),
+                            "UPDATE auditor_reserves SET"
+                            " reserve_balance_val=$1"
+                            ",reserve_balance_frac=$2"
+                            ",withdraw_fee_balance_val=$3"
+                            ",withdraw_fee_balance_frac=$4"
+                            ",expiration_date=$5"
+                            " WHERE reserve_pub=$6 AND master_pub=$7;",
+                            7),
     /* Used in #postgres_get_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_select",
-			    "SELECT"
-			    " reserve_balance_val"
-			    ",reserve_balance_frac"
-			    ",reserve_balance_curr"
-			    ",withdraw_fee_balance_val"
-			    ",withdraw_fee_balance_frac"
-			    ",withdraw_fee_balance_curr"
-			    ",expiration_date"
-			    ",auditor_reserves_rowid"
-			    " FROM auditor_reserves"
-			    " WHERE reserve_pub=$1 AND master_pub=$2;",
-			    2),
+                            "SELECT"
+                            " reserve_balance_val"
+                            ",reserve_balance_frac"
+                            ",withdraw_fee_balance_val"
+                            ",withdraw_fee_balance_frac"
+                            ",expiration_date"
+                            ",auditor_reserves_rowid"
+                            " FROM auditor_reserves"
+                            " WHERE reserve_pub=$1 AND master_pub=$2;",
+                            2),
     /* Used in #postgres_del_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_delete",
-			    "DELETE"
-			    " FROM auditor_reserves"
-			    " WHERE reserve_pub=$1 AND master_pub=$2;",
-			    2),
+                            "DELETE"
+                            " FROM auditor_reserves"
+                            " WHERE reserve_pub=$1 AND master_pub=$2;",
+                            2),
     /* Used in #postgres_insert_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_insert",
-			    "INSERT INTO auditor_reserve_balance"
-			    "(master_pub"
-			    ",reserve_balance_val"
-			    ",reserve_balance_frac"
-			    ",reserve_balance_curr"
-			    ",withdraw_fee_balance_val"
-			    ",withdraw_fee_balance_frac"
-			    ",withdraw_fee_balance_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7)",
-			    7),
+                            "INSERT INTO auditor_reserve_balance"
+                            "(master_pub"
+                            ",reserve_balance_val"
+                            ",reserve_balance_frac"
+                            ",withdraw_fee_balance_val"
+                            ",withdraw_fee_balance_frac"
+                            ") VALUES ($1,$2,$3,$4,$5)",
+                            5),
     /* Used in #postgres_update_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_update",
-			    "UPDATE auditor_reserve_balance SET"
-			    " reserve_balance_val=$1"
-			    ",reserve_balance_frac=$2"
-			    ",reserve_balance_curr=$3"
-			    ",withdraw_fee_balance_val=$4"
-			    ",withdraw_fee_balance_frac=$5"
-			    ",withdraw_fee_balance_curr=$6"
-			    " WHERE master_pub=$7;",
-			    7),
+                            "UPDATE auditor_reserve_balance SET"
+                            " reserve_balance_val=$1"
+                            ",reserve_balance_frac=$2"
+                            ",withdraw_fee_balance_val=$3"
+                            ",withdraw_fee_balance_frac=$4"
+                            " WHERE master_pub=$5;",
+                            5),
     /* Used in #postgres_get_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_select",
-			    "SELECT"
-			    " reserve_balance_val"
-			    ",reserve_balance_frac"
-			    ",reserve_balance_curr"
-			    ",withdraw_fee_balance_val"
-			    ",withdraw_fee_balance_frac"
-			    ",withdraw_fee_balance_curr"
-			    " FROM auditor_reserve_balance"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " reserve_balance_val"
+                            ",reserve_balance_frac"
+                            ",withdraw_fee_balance_val"
+                            ",withdraw_fee_balance_frac"
+                            " FROM auditor_reserve_balance"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_wire_fee_summary() */
     GNUNET_PQ_make_prepare ("auditor_wire_fee_balance_insert",
-			    "INSERT INTO auditor_wire_fee_balance"
-			    "(master_pub"
-			    ",wire_fee_balance_val"
-			    ",wire_fee_balance_frac"
-			    ",wire_fee_balance_curr"
-			    ") VALUES ($1,$2,$3,$4)",
-			    4),
+                            "INSERT INTO auditor_wire_fee_balance"
+                            "(master_pub"
+                            ",wire_fee_balance_val"
+                            ",wire_fee_balance_frac"
+                            ") VALUES ($1,$2,$3)",
+                            3),
     /* Used in #postgres_update_wire_fee_summary() */
     GNUNET_PQ_make_prepare ("auditor_wire_fee_balance_update",
-			    "UPDATE auditor_wire_fee_balance SET"
-			    " wire_fee_balance_val=$1"
-			    ",wire_fee_balance_frac=$2"
-			    ",wire_fee_balance_curr=$3"
-			    " WHERE master_pub=$4;",
-			    4),
+                            "UPDATE auditor_wire_fee_balance SET"
+                            " wire_fee_balance_val=$1"
+                            ",wire_fee_balance_frac=$2"
+                            " WHERE master_pub=$3;",
+                            3),
     /* Used in #postgres_get_wire_fee_summary() */
     GNUNET_PQ_make_prepare ("auditor_wire_fee_balance_select",
-			    "SELECT"
-			    " wire_fee_balance_val"
-			    ",wire_fee_balance_frac"
-			    ",wire_fee_balance_curr"
-			    " FROM auditor_wire_fee_balance"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " wire_fee_balance_val"
+                            ",wire_fee_balance_frac"
+                            " FROM auditor_wire_fee_balance"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_insert",
-			    "INSERT INTO auditor_denomination_pending "
-			    "(denom_pub_hash"
-			    ",denom_balance_val"
-			    ",denom_balance_frac"
-			    ",denom_balance_curr"
-                ",num_issued"
-			    ",denom_risk_val"
-			    ",denom_risk_frac"
-			    ",denom_risk_curr"
-                ",payback_loss_val"
-			    ",payback_loss_frac"
-			    ",payback_loss_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
-			    11),
+                            "INSERT INTO auditor_denomination_pending "
+                            "(denom_pub_hash"
+                            ",denom_balance_val"
+                            ",denom_balance_frac"
+                            ",num_issued"
+                            ",denom_risk_val"
+                            ",denom_risk_frac"
+                            ",payback_loss_val"
+                            ",payback_loss_frac"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
+                            8),
     /* Used in #postgres_update_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_update",
-			    "UPDATE auditor_denomination_pending SET"
-			    " denom_balance_val=$1"
-			    ",denom_balance_frac=$2"
-			    ",denom_balance_curr=$3"
-                ",num_issued=$4"
-			    ",denom_risk_val=$5"
-			    ",denom_risk_frac=$6"
-			    ",denom_risk_curr=$7"
-                ",payback_loss_val=$8"
-			    ",payback_loss_frac=$9"
-			    ",payback_loss_curr=$10"
-			    " WHERE denom_pub_hash=$11",
-			    11),
+                            "UPDATE auditor_denomination_pending SET"
+                            " denom_balance_val=$1"
+                            ",denom_balance_frac=$2"
+                            ",num_issued=$3"
+                            ",denom_risk_val=$4"
+                            ",denom_risk_frac=$5"
+                            ",payback_loss_val=$6"
+                            ",payback_loss_frac=$7"
+                            " WHERE denom_pub_hash=$8",
+                            8),
     /* Used in #postgres_get_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_select",
-			    "SELECT"
-			    " denom_balance_val"
-			    ",denom_balance_frac"
-			    ",denom_balance_curr"
-                ",num_issued"
-			    ",denom_risk_val"
-			    ",denom_risk_frac"
-			    ",denom_risk_curr"
-			    ",payback_loss_val"
-			    ",payback_loss_frac"
-			    ",payback_loss_curr"
-			    " FROM auditor_denomination_pending"
-			    " WHERE denom_pub_hash=$1",
-			    1),
+                            "SELECT"
+                            " denom_balance_val"
+                            ",denom_balance_frac"
+                            ",num_issued"
+                            ",denom_risk_val"
+                            ",denom_risk_frac"
+                            ",payback_loss_val"
+                            ",payback_loss_frac"
+                            " FROM auditor_denomination_pending"
+                            " WHERE denom_pub_hash=$1",
+                            1),
     /* Used in #postgres_insert_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_insert",
-			    "INSERT INTO auditor_balance_summary "
-			    "(master_pub"
-			    ",denom_balance_val"
-			    ",denom_balance_frac"
-			    ",denom_balance_curr"
-			    ",deposit_fee_balance_val"
-			    ",deposit_fee_balance_frac"
-			    ",deposit_fee_balance_curr"
-			    ",melt_fee_balance_val"
-			    ",melt_fee_balance_frac"
-			    ",melt_fee_balance_curr"
-			    ",refund_fee_balance_val"
-			    ",refund_fee_balance_frac"
-			    ",refund_fee_balance_curr"
-			    ",risk_val"
-                ",risk_frac"
-			    ",risk_curr"
-			    ",loss_val"
-			    ",loss_frac"
-			    ",loss_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
-                "          $11,$12,$13,$14,$15,$16,$17,$18,$19);",
-			    19),
+                            "INSERT INTO auditor_balance_summary "
+                            "(master_pub"
+                            ",denom_balance_val"
+                            ",denom_balance_frac"
+                            ",deposit_fee_balance_val"
+                            ",deposit_fee_balance_frac"
+                            ",melt_fee_balance_val"
+                            ",melt_fee_balance_frac"
+                            ",refund_fee_balance_val"
+                            ",refund_fee_balance_frac"
+                            ",risk_val"
+                            ",risk_frac"
+                            ",loss_val"
+                            ",loss_frac"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
+                            "          $11,$12,$13);",
+                            13),
     /* Used in #postgres_update_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_update",
-			    "UPDATE auditor_balance_summary SET"
-			    " denom_balance_val=$1"
-			    ",denom_balance_frac=$2"
-			    ",denom_balance_curr=$3"
-			    ",deposit_fee_balance_val=$4"
-			    ",deposit_fee_balance_frac=$5"
-			    ",deposit_fee_balance_curr=$6"
-			    ",melt_fee_balance_val=$7"
-			    ",melt_fee_balance_frac=$8"
-			    ",melt_fee_balance_curr=$9"
-			    ",refund_fee_balance_val=$10"
-			    ",refund_fee_balance_frac=$11"
-			    ",refund_fee_balance_curr=$12"
-			    ",risk_val=$13"
-			    ",risk_frac=$14"
-			    ",risk_curr=$15"
-			    ",loss_val=$16"
-			    ",loss_frac=$17"
-			    ",loss_curr=$18"
-			    " WHERE master_pub=$19;",
-			    19),
+                            "UPDATE auditor_balance_summary SET"
+                            " denom_balance_val=$1"
+                            ",denom_balance_frac=$2"
+                            ",deposit_fee_balance_val=$3"
+                            ",deposit_fee_balance_frac=$4"
+                            ",melt_fee_balance_val=$5"
+                            ",melt_fee_balance_frac=$6"
+                            ",refund_fee_balance_val=$7"
+                            ",refund_fee_balance_frac=$8"
+                            ",risk_val=$9"
+                            ",risk_frac=$10"
+                            ",loss_val=$11"
+                            ",loss_frac=$12"
+                            " WHERE master_pub=$13;",
+                            13),
     /* Used in #postgres_get_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_select",
-			    "SELECT"
-			    " denom_balance_val"
-			    ",denom_balance_frac"
-			    ",denom_balance_curr"
-			    ",deposit_fee_balance_val"
-			    ",deposit_fee_balance_frac"
-			    ",deposit_fee_balance_curr"
-			    ",melt_fee_balance_val"
-			    ",melt_fee_balance_frac"
-			    ",melt_fee_balance_curr"
-			    ",refund_fee_balance_val"
-			    ",refund_fee_balance_frac"
-			    ",refund_fee_balance_curr"
-			    ",risk_val"
-			    ",risk_frac"
-			    ",risk_curr"
-			    ",loss_val"
-			    ",loss_frac"
-			    ",loss_curr"
-			    " FROM auditor_balance_summary"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " denom_balance_val"
+                            ",denom_balance_frac"
+                            ",deposit_fee_balance_val"
+                            ",deposit_fee_balance_frac"
+                            ",melt_fee_balance_val"
+                            ",melt_fee_balance_frac"
+                            ",refund_fee_balance_val"
+                            ",refund_fee_balance_frac"
+                            ",risk_val"
+                            ",risk_frac"
+                            ",loss_val"
+                            ",loss_frac"
+                            " FROM auditor_balance_summary"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_historic_denom_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_insert",
-			    "INSERT INTO auditor_historic_denomination_revenue"
-			    "(master_pub"
-			    ",denom_pub_hash"
-			    ",revenue_timestamp"
-			    ",revenue_balance_val"
-			    ",revenue_balance_frac"
-			    ",revenue_balance_curr"
-			    ",loss_balance_val"
-			    ",loss_balance_frac"
-			    ",loss_balance_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-                9),
+                            "INSERT INTO auditor_historic_denomination_revenue"
+                            "(master_pub"
+                            ",denom_pub_hash"
+                            ",revenue_timestamp"
+                            ",revenue_balance_val"
+                            ",revenue_balance_frac"
+                            ",loss_balance_val"
+                            ",loss_balance_frac"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+                            7),
     /* Used in #postgres_select_historic_denom_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_select",
-			    "SELECT"
-			    " denom_pub_hash"
-			    ",revenue_timestamp"
-			    ",revenue_balance_val"
-			    ",revenue_balance_frac"
-			    ",revenue_balance_curr"
-			    ",loss_balance_val"
-			    ",loss_balance_frac"
-			    ",loss_balance_curr"
-			    " FROM auditor_historic_denomination_revenue"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " denom_pub_hash"
+                            ",revenue_timestamp"
+                            ",revenue_balance_val"
+                            ",revenue_balance_frac"
+                            ",loss_balance_val"
+                            ",loss_balance_frac"
+                            " FROM auditor_historic_denomination_revenue"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_historic_reserve_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_reserve_summary_insert",
-			    "INSERT INTO auditor_historic_reserve_summary"
-			    "(master_pub"
-			    ",start_date"
-			    ",end_date"
-			    ",reserve_profits_val"
-			    ",reserve_profits_frac"
-			    ",reserve_profits_curr"
-			    ") VALUES ($1,$2,$3,$4,$5,$6);",
-			    6),
+                            "INSERT INTO auditor_historic_reserve_summary"
+                            "(master_pub"
+                            ",start_date"
+                            ",end_date"
+                            ",reserve_profits_val"
+                            ",reserve_profits_frac"
+                            ") VALUES ($1,$2,$3,$4,$5);",
+                            5),
     /* Used in #postgres_select_historic_reserve_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_reserve_summary_select",
-			    "SELECT"
-			    " start_date"
-			    ",end_date"
-			    ",reserve_profits_val"
-			    ",reserve_profits_frac"
-			    ",reserve_profits_curr"
-			    " FROM auditor_historic_reserve_summary"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " start_date"
+                            ",end_date"
+                            ",reserve_profits_val"
+                            ",reserve_profits_frac"
+                            " FROM auditor_historic_reserve_summary"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_predicted_result() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_insert",
-			    "INSERT INTO auditor_predicted_result"
-			    "(master_pub"
-			    ",balance_val"
-			    ",balance_frac"
-			    ",balance_curr"
-			    ") VALUES ($1,$2,$3,$4);",
-			    4),
+                            "INSERT INTO auditor_predicted_result"
+                            "(master_pub"
+                            ",balance_val"
+                            ",balance_frac"
+                            ") VALUES ($1,$2,$3);",
+                            3),
     /* Used in #postgres_update_predicted_result() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_update",
-			    "UPDATE auditor_predicted_result SET"
-			    " balance_val=$1"
-			    ",balance_frac=$2"
-			    ",balance_curr=$3"
-			    " WHERE master_pub=$4;",
-			    4),
+                            "UPDATE auditor_predicted_result SET"
+                            " balance_val=$1"
+                            ",balance_frac=$2"
+                            " WHERE master_pub=$3;",
+                            3),
     /* Used in #postgres_get_predicted_balance() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_select",
-			    "SELECT"
-			    " balance_val"
-			    ",balance_frac"
-			    ",balance_curr"
-			    " FROM auditor_predicted_result"
-			    " WHERE master_pub=$1;",
-			    1),
+                            "SELECT"
+                            " balance_val"
+                            ",balance_frac"
+                            " FROM auditor_predicted_result"
+                            " WHERE master_pub=$1;",
+                            1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -1282,8 +1218,8 @@ postgres_delete_exchange (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_delete_exchange",
-					     params);
+                                             "auditor_delete_exchange",
+                                             params);
 }
 
 
@@ -1338,8 +1274,8 @@ exchange_info_cb (void *cls,
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
-				  rs,
-				  i))
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       eic->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -1379,10 +1315,10 @@ postgres_list_exchanges (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "auditor_list_exchanges",
-					     params,
-					     &exchange_info_cb,
-					     &eic);
+                                             "auditor_list_exchanges",
+                                             params,
+                                             &exchange_info_cb,
+                                             &eic);
   if (qs > 0)
     return eic.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -1414,8 +1350,8 @@ postgres_insert_exchange_signkey (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_insert_exchange_signkey",
-					     params);
+                                             "auditor_insert_exchange_signkey",
+                                             params);
 }
 
 
@@ -1448,8 +1384,8 @@ postgres_insert_deposit_confirmation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_deposit_confirmation_insert",
-					     params);
+                                             "auditor_deposit_confirmation_insert",
+                                             params);
 }
 
 
@@ -1475,6 +1411,11 @@ struct DepositConfirmationContext
   void *cb_cls;
 
   /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
    * Query status to return.
    */
   enum GNUNET_DB_QueryStatus qs;
@@ -1496,7 +1437,8 @@ deposit_confirmation_cb (void *cls,
                          unsigned int num_results)
 {
   struct DepositConfirmationContext *dcc = cls;
-
+  struct PostgresClosure *pg = dcc->pg;
+  
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
@@ -1514,7 +1456,7 @@ deposit_confirmation_cb (void *cls,
                                            &dc.timestamp),
       GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
                                            &dc.refund_deadline),
-      TALER_PQ_result_spec_amount ("amount_without_fee",
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_without_fee",
                                    &dc.amount_without_fee),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &dc.coin_pub),
@@ -1566,6 +1508,7 @@ postgres_get_deposit_confirmations (void *cls,
                                     TALER_AUDITORDB_DepositConfirmationCallback cb,
                                     void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_public_key),
     GNUNET_PQ_query_param_uint64 (&start_id),
@@ -1574,7 +1517,8 @@ postgres_get_deposit_confirmations (void *cls,
   struct DepositConfirmationContext dcc = {
     .master_pub = master_public_key,
     .cb = cb,
-    .cb_cls = cb_cls
+    .cb_cls = cb_cls,
+    .pg = pg
   };
   enum GNUNET_DB_QueryStatus qs;
 
@@ -1662,6 +1606,11 @@ struct DenominationInfoContext
   void *cb_cls;
 
   /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+  
+  /**
    * Query status to return.
    */
   enum GNUNET_DB_QueryStatus qs;
@@ -1679,10 +1628,11 @@ struct DenominationInfoContext
  */
 static void
 denomination_info_cb (void *cls,
-		      PGresult *result,
-		      unsigned int num_results)
+                      PGresult *result,
+                      unsigned int num_results)
 {
   struct DenominationInfoContext *dic = cls;
+  struct PostgresClosure *pg = dic->pg;
 
   for (unsigned int i = 0; i < num_results; i++)
   {
@@ -1695,11 +1645,11 @@ denomination_info_cb (void *cls,
       TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw", &issue.expire_withdraw),
       TALER_PQ_result_spec_absolute_time_nbo ("expire_deposit", &issue.expire_deposit),
       TALER_PQ_result_spec_absolute_time_nbo ("expire_legal", &issue.expire_legal),
-      TALER_PQ_result_spec_amount_nbo ("coin", &issue.value),
-      TALER_PQ_result_spec_amount_nbo ("fee_withdraw", &issue.fee_withdraw),
-      TALER_PQ_result_spec_amount_nbo ("fee_deposit", &issue.fee_deposit),
-      TALER_PQ_result_spec_amount_nbo ("fee_refresh", &issue.fee_refresh),
-      TALER_PQ_result_spec_amount_nbo ("fee_refund", &issue.fee_refund),
+      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("coin", &issue.value),
+      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_withdraw", &issue.fee_withdraw),
+      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_deposit", &issue.fee_deposit),
+      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refresh", &issue.fee_refresh),
+      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund", &issue.fee_refund),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1738,6 +1688,7 @@ postgres_select_denomination_info (void *cls,
                                    TALER_AUDITORDB_DenominationInfoDataCallback cb,
                                    void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1745,7 +1696,8 @@ postgres_select_denomination_info (void *cls,
   struct DenominationInfoContext dic = {
     .master_pub = master_pub,
     .cb = cb,
-    .cb_cls = cb_cls
+    .cb_cls = cb_cls,
+    .pg = pg
   };
   enum GNUNET_DB_QueryStatus qs;
 
@@ -1787,8 +1739,8 @@ postgres_insert_auditor_progress_reserve (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_insert_reserve",
-					     params);
+                                             "auditor_progress_insert_reserve",
+                                             params);
 }
 
 
@@ -1818,8 +1770,8 @@ postgres_update_auditor_progress_reserve (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_update_reserve",
-					     params);
+                                             "auditor_progress_update_reserve",
+                                             params);
 }
 
 
@@ -1855,9 +1807,9 @@ postgres_get_auditor_progress_reserve (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_progress_select_reserve",
-						   params,
-						   rs);
+                                                   "auditor_progress_select_reserve",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -1884,8 +1836,8 @@ postgres_insert_auditor_progress_aggregation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_insert_aggregation",
-					     params);
+                                             "auditor_progress_insert_aggregation",
+                                             params);
 }
 
 
@@ -1912,8 +1864,8 @@ postgres_update_auditor_progress_aggregation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_update_aggregation",
-					     params);
+                                             "auditor_progress_update_aggregation",
+                                             params);
 }
 
 
@@ -1943,9 +1895,9 @@ postgres_get_auditor_progress_aggregation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_progress_select_aggregation",
-						   params,
-						   rs);
+                                                   "auditor_progress_select_aggregation",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -1972,8 +1924,8 @@ postgres_insert_auditor_progress_deposit_confirmation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_insert_deposit_confirmation",
-					     params);
+                                             "auditor_progress_insert_deposit_confirmation",
+                                             params);
 }
 
 
@@ -2000,8 +1952,8 @@ postgres_update_auditor_progress_deposit_confirmation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_progress_update_deposit_confirmation",
-					     params);
+                                             "auditor_progress_update_deposit_confirmation",
+                                             params);
 }
 
 
@@ -2031,9 +1983,9 @@ postgres_get_auditor_progress_deposit_confirmation (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_progress_select_deposit_confirmation",
-						   params,
-						   rs);
+                                                   "auditor_progress_select_deposit_confirmation",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2180,8 +2132,8 @@ postgres_insert_wire_auditor_progress (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "wire_auditor_progress_insert",
-					     params);
+                                             "wire_auditor_progress_insert",
+                                             params);
 }
 
 
@@ -2220,8 +2172,8 @@ postgres_update_wire_auditor_progress (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "wire_auditor_progress_update",
-					     params);
+                                             "wire_auditor_progress_update",
+                                             params);
 }
 
 
@@ -2319,8 +2271,8 @@ postgres_insert_reserve_info (void *cls,
                                             withdraw_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_reserves_insert",
-					     params);
+                                             "auditor_reserves_insert",
+                                             params);
 }
 
 
@@ -2361,8 +2313,8 @@ postgres_update_reserve_info (void *cls,
                                             withdraw_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_reserves_update",
-					     params);
+                                             "auditor_reserves_update",
+                                             params);
 }
 
 
@@ -2388,8 +2340,8 @@ postgres_del_reserve_info (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_reserves_delete",
-					     params);
+                                             "auditor_reserves_delete",
+                                             params);
 }
 
 
@@ -2417,23 +2369,24 @@ postgres_get_reserve_info (void *cls,
                            struct TALER_Amount *withdraw_fee_balance,
                            struct GNUNET_TIME_Absolute *expiration_date)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount ("reserve_balance", reserve_balance),
-    TALER_PQ_result_spec_amount ("withdraw_fee_balance", withdraw_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance", reserve_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
     TALER_PQ_result_spec_absolute_time ("expiration_date", expiration_date),
     GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid", rowid),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_reserves_select",
-						   params,
-						   rs);
+                                                   "auditor_reserves_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2468,8 +2421,8 @@ postgres_insert_reserve_summary (void *cls,
                                             withdraw_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_reserve_balance_insert",
-					     params);
+                                             "auditor_reserve_balance_insert",
+                                             params);
 }
 
 
@@ -2500,8 +2453,8 @@ postgres_update_reserve_summary (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_reserve_balance_update",
-					     params);
+                                             "auditor_reserve_balance_update",
+                                             params);
 }
 
 
@@ -2523,21 +2476,22 @@ postgres_get_reserve_summary (void *cls,
                               struct TALER_Amount *reserve_balance,
                               struct TALER_Amount *withdraw_fee_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount ("reserve_balance", reserve_balance),
-    TALER_PQ_result_spec_amount ("withdraw_fee_balance", withdraw_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance", reserve_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
 
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_reserve_balance_select",
-						   params,
-						   rs);
+                                                   "auditor_reserve_balance_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2564,8 +2518,8 @@ postgres_insert_wire_fee_summary (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_wire_fee_balance_insert",
-					     params);
+                                             "auditor_wire_fee_balance_insert",
+                                             params);
 }
 
 
@@ -2592,8 +2546,8 @@ postgres_update_wire_fee_summary (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_wire_fee_balance_update",
-					     params);
+                                             "auditor_wire_fee_balance_update",
+                                             params);
 }
 
 
@@ -2612,20 +2566,21 @@ postgres_get_wire_fee_summary (void *cls,
                                const struct TALER_MasterPublicKeyP *master_pub,
                                struct TALER_Amount *wire_fee_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount ("wire_fee_balance", wire_fee_balance),
-
+    TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee_balance",
+                                 wire_fee_balance),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_wire_fee_balance_select",
-						   params,
-						   rs);
+                                                   "auditor_wire_fee_balance_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2661,8 +2616,8 @@ postgres_insert_denomination_balance (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_denomination_pending_insert",
-					     params);
+                                             "auditor_denomination_pending_insert",
+                                             params);
 }
 
 
@@ -2698,8 +2653,8 @@ postgres_update_denomination_balance (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_denomination_pending_update",
-					     params);
+                                             "auditor_denomination_pending_update",
+                                             params);
 }
 
 
@@ -2724,22 +2679,23 @@ postgres_get_denomination_balance (void *cls,
                                    struct TALER_Amount *payback_loss,
                                    uint64_t *num_issued)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
-    TALER_PQ_result_spec_amount ("denom_risk", denom_risk),
-    TALER_PQ_result_spec_amount ("payback_loss", payback_loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance", denom_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk", denom_risk),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("payback_loss", payback_loss),
     GNUNET_PQ_result_spec_uint64 ("num_issued", num_issued),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_denomination_pending_select",
-						   params,
-						   rs);
+                                                   "auditor_denomination_pending_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -2793,8 +2749,8 @@ postgres_insert_balance_summary (void *cls,
                                             refund_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_balance_summary_insert",
-					     params);
+                                             "auditor_balance_summary_insert",
+                                             params);
 }
 
 
@@ -2836,8 +2792,8 @@ postgres_update_balance_summary (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_balance_summary_update",
-					     params);
+                                             "auditor_balance_summary_update",
+                                             params);
 }
 
 
@@ -2866,17 +2822,18 @@ postgres_get_balance_summary (void *cls,
                               struct TALER_Amount *risk,
                               struct TALER_Amount *loss)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
-    TALER_PQ_result_spec_amount ("deposit_fee_balance", deposit_fee_balance),
-    TALER_PQ_result_spec_amount ("melt_fee_balance", melt_fee_balance),
-    TALER_PQ_result_spec_amount ("refund_fee_balance", refund_fee_balance),
-    TALER_PQ_result_spec_amount ("risk", risk),
-    TALER_PQ_result_spec_amount ("loss", loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance", denom_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee_balance", deposit_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("melt_fee_balance", melt_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("refund_fee_balance", refund_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("risk", risk),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("loss", loss),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2941,6 +2898,11 @@ struct HistoricDenomRevenueContext
   void *cb_cls;
 
   /**
+   * Plugin context.
+   */ 
+  struct PostgresClosure *pg;
+
+  /**
    * Number of results processed.
    */
   enum GNUNET_DB_QueryStatus qs;
@@ -2958,11 +2920,12 @@ struct HistoricDenomRevenueContext
  */
 static void
 historic_denom_revenue_cb (void *cls,
-			   PGresult *result,
-			   unsigned int num_results)
+                           PGresult *result,
+                           unsigned int num_results)
 {
   struct HistoricDenomRevenueContext *hrc = cls;
-
+  struct PostgresClosure *pg = hrc->pg;
+  
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct GNUNET_HashCode denom_pub_hash;
@@ -2972,15 +2935,15 @@ historic_denom_revenue_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
       TALER_PQ_result_spec_absolute_time ("revenue_timestamp", &revenue_timestamp),
-      TALER_PQ_result_spec_amount ("revenue_balance", &revenue_balance),
-      TALER_PQ_result_spec_amount ("loss_balance", &loss),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("revenue_balance", &revenue_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("loss_balance", &loss),
       GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
-				  rs,
-				  i))
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       hrc->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -2989,11 +2952,11 @@ historic_denom_revenue_cb (void *cls,
 
     hrc->qs = i + 1;
     if (GNUNET_OK !=
-	hrc->cb (hrc->cb_cls,
-             &denom_pub_hash,
-             revenue_timestamp,
-             &revenue_balance,
-             &loss))
+        hrc->cb (hrc->cb_cls,
+                 &denom_pub_hash,
+                 revenue_timestamp,
+                 &revenue_balance,
+                 &loss))
       break;
   }
 }
@@ -3017,21 +2980,23 @@ postgres_select_historic_denom_revenue (void *cls,
                                         TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
                                         void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct HistoricDenomRevenueContext hrc = {
     .cb = cb,
-    .cb_cls = cb_cls
+    .cb_cls = cb_cls,
+    .pg = pg
   };
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "auditor_historic_denomination_revenue_select",
-					     params,
-					     &historic_denom_revenue_cb,
-					     &hrc);
+                                             "auditor_historic_denomination_revenue_select",
+                                             params,
+                                             &historic_denom_revenue_cb,
+                                             &hrc);
   if (qs <= 0)
     return qs;
   return hrc.qs;
@@ -3087,6 +3052,11 @@ struct HistoricReserveRevenueContext
   void *cb_cls;
 
   /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
    * Number of results processed.
    */
   enum GNUNET_DB_QueryStatus qs;
@@ -3108,7 +3078,8 @@ historic_reserve_revenue_cb (void *cls,
                              unsigned int num_results)
 {
   struct HistoricReserveRevenueContext *hrc = cls;
-
+  struct PostgresClosure *pg = hrc->pg;
+  
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct GNUNET_TIME_Absolute start_date;
@@ -3117,7 +3088,7 @@ historic_reserve_revenue_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_absolute_time ("start_date", &start_date),
       TALER_PQ_result_spec_absolute_time ("end_date", &end_date),
-      TALER_PQ_result_spec_amount ("reserve_profits", &reserve_profits),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_profits", &reserve_profits),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3132,10 +3103,10 @@ historic_reserve_revenue_cb (void *cls,
     }
     hrc->qs = i + 1;
     if (GNUNET_OK !=
-	hrc->cb (hrc->cb_cls,
-		 start_date,
-		 end_date,
-		 &reserve_profits))
+        hrc->cb (hrc->cb_cls,
+                 start_date,
+                 end_date,
+                 &reserve_profits))
       break;
   }
 }
@@ -3158,6 +3129,7 @@ postgres_select_historic_reserve_revenue (void *cls,
                                           TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
                                           void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -3165,7 +3137,8 @@ postgres_select_historic_reserve_revenue (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct HistoricReserveRevenueContext hrc = {
     .cb = cb,
-    .cb_cls = cb_cls
+    .cb_cls = cb_cls,
+    .pg = pg
   };
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
@@ -3202,8 +3175,8 @@ postgres_insert_predicted_result (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_predicted_result_insert",
-					     params);
+                                             "auditor_predicted_result_insert",
+                                             params);
 }
 
 
@@ -3230,8 +3203,8 @@ postgres_update_predicted_result (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_predicted_result_update",
-					     params);
+                                             "auditor_predicted_result_update",
+                                             params);
 }
 
 
@@ -3250,20 +3223,21 @@ postgres_get_predicted_balance (void *cls,
                                 const struct TALER_MasterPublicKeyP *master_pub,
                                 struct TALER_Amount *balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount ("balance", balance),
-
+    TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                 balance),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-						   "auditor_predicted_result_select",
-						   params,
-						   rs);
+                                                   "auditor_predicted_result_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -3308,6 +3282,19 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
       GNUNET_free (pg);
       return NULL;
     }
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "taler",
+                                             "CURRENCY",
+                                             &pg->currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
+    GNUNET_free (pg->connection_cfg_str);
+    GNUNET_free (pg);
+    return NULL;
   }
   plugin = GNUNET_new (struct TALER_AUDITORDB_Plugin);
   plugin->cls = pg;
@@ -3394,6 +3381,7 @@ libtaler_plugin_auditordb_postgres_done (void *cls)
   struct PostgresClosure *pg = plugin->cls;
 
   GNUNET_free (pg->connection_cfg_str);
+  GNUNET_free (pg->currency);
   GNUNET_free (pg);
   GNUNET_free (plugin);
   return NULL;

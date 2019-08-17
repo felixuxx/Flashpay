@@ -50,23 +50,18 @@ postgres_prepare (PGconn *db_conn)
            "INSERT INTO test_pq ("
            " hamount_val"
            ",hamount_frac"
-           ",hamount_curr"
            ",namount_val"
            ",namount_frac"
-           ",namount_curr"
            ",json"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6,"
-            "$7);",
-           7, NULL);
+           "($1, $2, $3, $4, $5);",
+           5, NULL);
   PREPARE ("test_select",
            "SELECT"
            " hamount_val"
            ",hamount_frac"
-           ",hamount_curr"
            ",namount_val"
            ",namount_frac"
-           ",namount_curr"
            ",json"
            " FROM test_pq;",
            0, NULL);
@@ -113,8 +108,8 @@ run_queries (PGconn *conn)
     };
 
     result = GNUNET_PQ_exec_prepared (conn,
-				      "test_insert",
-				      params_insert);
+                                      "test_insert",
+                                      params_insert);
     if (PGRES_COMMAND_OK != PQresultStatus (result))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -131,10 +126,10 @@ run_queries (PGconn *conn)
     };
 
     result = GNUNET_PQ_exec_prepared (conn,
-				      "test_select",
-				      params_select);
+                                      "test_select",
+                                      params_select);
     if (1 !=
-	PQntuples (result))
+        PQntuples (result))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -144,8 +139,8 @@ run_queries (PGconn *conn)
 
   {
     struct GNUNET_PQ_ResultSpec results_select[] = {
-      TALER_PQ_result_spec_amount ("hamount", &hamount2),
-      TALER_PQ_result_spec_amount_nbo ("namount", &namount2),
+      TALER_PQ_result_spec_amount ("hamount", "EUR", &hamount2),
+      TALER_PQ_result_spec_amount_nbo ("namount", "EUR", &namount2),
       TALER_PQ_result_spec_json ("json", &json2),
       GNUNET_PQ_result_spec_end
     };
@@ -163,8 +158,9 @@ run_queries (PGconn *conn)
 		       &namount2);
     GNUNET_break (0 ==
 		  TALER_amount_cmp (&hamount,
-				    &hamount2));
-    GNUNET_break (42 == json_integer_value (json_object_get (json2, "foo")));
+                            &hamount2));
+    GNUNET_break (42 ==
+                  json_integer_value (json_object_get (json2, "foo")));
     GNUNET_PQ_cleanup_result (results_select);
     PQclear (result);
   }
@@ -185,8 +181,8 @@ main(int argc,
   int ret;
 
   GNUNET_log_setup ("test-pq",
-		    "WARNING",
-		    NULL);
+                    "WARNING",
+                    NULL);
   conn = PQconnectdb ("postgres:///talercheck");
   if (CONNECTION_OK != PQstatus (conn))
   {
@@ -202,17 +198,15 @@ main(int argc,
 		   "CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
 		   " hamount_val INT8 NOT NULL"
 		   ",hamount_frac INT4 NOT NULL"
-		   ",hamount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 		   ",namount_val INT8 NOT NULL"
 		   ",namount_frac INT4 NOT NULL"
-		   ",namount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 		   ",json VARCHAR NOT NULL"
 		   ")");
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     fprintf (stderr,
-	     "Failed to create table: %s\n",
-	     PQerrorMessage (conn));
+             "Failed to create table: %s\n",
+             PQerrorMessage (conn));
     PQclear (result);
     PQfinish (conn);
     return 1;
@@ -227,12 +221,12 @@ main(int argc,
   }
   ret = run_queries (conn);
   result = PQexec (conn,
-		   "DROP TABLE test_pq");
+                   "DROP TABLE test_pq");
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     fprintf (stderr,
-	     "Failed to create table: %s\n",
-	     PQerrorMessage (conn));
+             "Failed to create table: %s\n",
+             PQerrorMessage (conn));
     PQclear (result);
     PQfinish (conn);
     return 1;

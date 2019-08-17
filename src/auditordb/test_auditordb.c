@@ -54,7 +54,7 @@ static int result = -1;
 
 
 /**
- * Currency we use.
+ * Currency we use, must match CURRENCY in "test-auditor-db-postgres.conf".
  */
 #define CURRENCY "EUR"
 

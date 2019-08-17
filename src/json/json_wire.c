@@ -150,7 +150,6 @@ TALER_JSON_exchange_wire_signature_make (const char *payto_url,
 
   GNUNET_CRYPTO_eddsa_key_get_public (&master_priv->eddsa_priv,
                                       &master_pub.eddsa_pub);
-
   TALER_exchange_wire_signature_make (payto_url,
                                       master_priv,
                                       &master_sig);
