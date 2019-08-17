@@ -1579,8 +1579,8 @@ postgres_insert_denomination_info (void *cls,
                  TALER_amount_cmp_currency_nbo (&issue->value,
                                                &issue->fee_refund));
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_denominations_insert",
-					     params);
+                                             "auditor_denominations_insert",
+                                             params);
 }
 
 

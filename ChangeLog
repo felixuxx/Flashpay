@@ -1,3 +1,7 @@
+Sat 17 Aug 2019 10:03:38 PM CEST
+    Remove "currency" field from exchange database, as we only
+    support one currency per exchange anyway. -CG
+
 Wed 26 Jun 2019 03:31:52 PM CEST
     Adding link signatures to prevent exchange from tracking
     users using coins falsely believed to have been recovered via /link,
