@@ -587,6 +587,30 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *d2;
   int res;
 
+  {
+    const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dkip;
+    struct TALER_DenominationKeyValidityPS denom_key_issue;
+
+    dkip = &dki->issue;
+    denom_key_issue = dkip->properties;
+    denom_key_issue.purpose.purpose
+      = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+    denom_key_issue.purpose.size
+      = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
+    denom_key_issue.master = TEH_master_public_key;
+    if (GNUNET_SYSERR ==
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
+                                    &denom_key_issue.purpose,
+                                    &dkip->signature.eddsa_signature,
+                                    &TEH_master_public_key.eddsa_pub))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid signature on denomination key `%s'\n",
+                  GNUNET_h2s (&dkip->properties.denom_hash));
+      return GNUNET_SYSERR;
+    }
+  }
+  
   d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation);
   d2->issue = dki->issue;
   if (NULL != dki->denom_priv.rsa_private_key)
@@ -687,9 +711,9 @@ add_revocations_transaction (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     return qs; /* already exists == success */
   return TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
-						     session,
-						     &arc->dki->issue.properties.denom_hash,
-						     arc->revocation_master_sig);
+                                                     session,
+                                                     &arc->dki->issue.properties.denom_hash,
+                                                     arc->revocation_master_sig);
 }
 
 
@@ -704,26 +728,26 @@ add_revocations_transaction (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 add_denomination_transaction (void *cls,
-			      struct MHD_Connection *connection,
-			      struct TALER_EXCHANGEDB_Session *session,
-			      int *mhd_ret)
+                              struct MHD_Connection *connection,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              int *mhd_ret)
 {
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue_exists;
 
   qs = TEH_plugin->get_denomination_info (TEH_plugin->cls,
-					  session,
-					  &dki->issue.properties.denom_hash,
-					  &issue_exists);
+                                          session,
+                                          &dki->issue.properties.denom_hash,
+                                          &issue_exists);
   if (0 > qs)
     return qs;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     return qs;
   return TEH_plugin->insert_denomination_info (TEH_plugin->cls,
-					       session,
-					       &dki->denom_pub,
-					       &dki->issue);
+                                               session,
+                                               &dki->denom_pub,
+                                               &dki->issue);
 }
 
 
@@ -751,7 +775,7 @@ reload_keys_denom_iter (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Loading denomination key `%s' (%s)\n",
               alias,
-	      GNUNET_h2s (&dki->issue.properties.denom_hash));
+              GNUNET_h2s (&dki->issue.properties.denom_hash));
   expire_deposit = GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit);
   if (expire_deposit.abs_value_us < rfc->now.abs_value_us)
   {
@@ -777,7 +801,7 @@ reload_keys_denom_iter (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping future denomination key `%s' (%s), validity starts at %s\n",
                 alias,
-		GNUNET_h2s (&dki->issue.properties.denom_hash),
+                GNUNET_h2s (&dki->issue.properties.denom_hash),
                 GNUNET_STRINGS_absolute_time_to_string (start));
     return GNUNET_OK;
   }
@@ -785,21 +809,21 @@ reload_keys_denom_iter (void *cls,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (NULL,
                               "add denomination key",
-			      NULL,
-			      &add_denomination_transaction,
-			      (void *) dki))
+                              NULL,
+                              &add_denomination_transaction,
+                              (void *) dki))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Could not persist denomination key %s in DB. Committing suicide via SIGTERM.\n",
-		GNUNET_h2s (&dki->issue.properties.denom_hash));
+                "Could not persist denomination key %s in DB. Committing suicide via SIGTERM.\n",
+                GNUNET_h2s (&dki->issue.properties.denom_hash));
     handle_signal (SIGTERM);
     return GNUNET_SYSERR;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-	      "Adding denomination key `%s' (%s) to active set\n",
-	      alias,
-	      GNUNET_h2s (&dki->issue.properties.denom_hash));
+              "Adding denomination key `%s' (%s) to active set\n",
+              alias,
+              GNUNET_h2s (&dki->issue.properties.denom_hash));
   if (GNUNET_NO /* entry already exists */ ==
       store_in_map (key_state->denomkey_map,
                     dki))
