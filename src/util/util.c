@@ -431,10 +431,33 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
   const char *prefix;
   va_list args;
   char *result;
-
+  
+  
   if (NULL != forwarded_proto)
+  {
     proto = forwarded_proto;
+  }
+  else
+  {
+    /* likely not reverse proxy, figure out if we are 
+       http by asking MHD */
+    const union MHD_ConnectionInfo *ci;
 
+    ci = MHD_get_connection_info (connection,
+                                  MHD_CONNECTION_INFO_DAEMON);
+    if (NULL != ci)
+    {
+      const union MHD_DaemonInfo *di;
+
+      di = MHD_get_daemon_info (ci->daemon,
+                                MHD_DAEMON_INFO_FLAGS);
+      if (NULL != di)
+      {
+        if (0 == (di->flags & MHD_USE_TLS))
+          proto = "http";
+      }
+    }
+  }
   host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "Host");
   forwarded_host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "X-Forwarded-Host");
 
