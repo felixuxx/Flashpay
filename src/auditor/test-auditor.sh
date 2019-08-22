@@ -10,11 +10,15 @@ DB=taler-auditor-test
 dropdb $DB 2> /dev/null || true
 createdb -T template0 $DB || exit 77
 jq -h > /dev/null || exit 77
+# Import pre-generated database, -q(ietly) using single (-1) transaction
 psql $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
 MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
 
+# Run the auditor!
 taler-auditor -c test-auditor.conf -m $MASTER_PUB > test-audit.json
 
+# TODO:
+# launch bank and run wire-auditor eventually as well!
 
 fail=0
 # if an emergency was detected, that is a bug and we should fail
