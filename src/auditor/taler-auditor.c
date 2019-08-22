@@ -4846,14 +4846,14 @@ run (void *cls,
     return;
   }
   (void) adb->list_exchanges (adb->cls,
-			      as,
-			      &test_master_present,
-			      &found);
+                              as,
+                              &test_master_present,
+                              &found);
   if (GNUNET_NO == found)
   {
     fprintf (stderr,
              "Exchange's master public key `%s' not known to auditor DB. Did you forget to run `taler-auditor-exchange`?\n",
-	     TALER_B2S (&master_pub));
+             GNUNET_p2s (&master_pub.eddsa_pub));
     global_ret = 1;
     TALER_AUDITORDB_plugin_unload (adb);
     TALER_EXCHANGEDB_plugin_unload (edb);

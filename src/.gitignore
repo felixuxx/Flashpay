@@ -6,4 +6,3 @@
 *.log
 *.trs
 */__pycache__
-test-*

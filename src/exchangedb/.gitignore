@@ -1,0 +1,6 @@
+test-exchangedb-auditors
+test-exchangedb-denomkeys
+test-exchangedb-fees
+test-exchangedb-postgres
+test-exchangedb-signkeys
+test-perf-taler-exchangedb
