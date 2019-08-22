@@ -80,6 +80,8 @@ kill `jobs -p`
 echo "Dumping database"
 pg_dump $TARGET_DB > auditor-basedb.sql
 
+echo $MASTER_PUB > auditor-basedb.mpub
+
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
