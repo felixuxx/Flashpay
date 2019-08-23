@@ -23,7 +23,7 @@ taler-auditor -c test-auditor.conf -m $MASTER_PUB > test-audit.json
 fail=0
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
-jq -e .emergencies < test-audit.json > /dev/null && (echo Failed; fail=1) || echo OK
+jq -e .emergencies[0] < test-audit.json > /dev/null && (echo Failed; fail=1) || echo OK
 
 # TODO: Add more checks to ensure test-audit.json matches expectations
 
