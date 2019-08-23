@@ -6,6 +6,8 @@
 #
 # Requires 'jq' tool and Postgres superuser rights!
 set -eu
+
+echo "Database setup"
 DB=taler-auditor-test
 dropdb $DB 2> /dev/null || true
 createdb -T template0 $DB || exit 77
@@ -14,12 +16,26 @@ jq -h > /dev/null || exit 77
 psql $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
 MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
 
+# Launch bank
+echo "Launching bank"
+taler-bank-manage -c test-auditor.conf serve-http 2>/dev/null >/dev/null &
+sleep 10
+
 # Run the auditor!
+echo "Running audit(s)"
 taler-auditor -c test-auditor.conf -m $MASTER_PUB > test-audit.json
+taler-wire-auditor -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json
 
-# TODO:
-# launch bank and run wire-auditor eventually as well!
+echo "Shutting down services"
+kill `jobs -p`
 
+
+echo "TeXing"
+../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex
+pdflatex test-report.tex >/dev/null
+pdflatex test-report.tex >/dev/null
+
+echo "Checking output"
 fail=0
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
@@ -27,6 +43,8 @@ jq -e .emergencies[0] < test-audit.json > /dev/null && (echo Failed; fail=1) || 
 
 # TODO: Add more checks to ensure test-audit.json matches expectations
 
+
+echo "Cleanup"
 dropdb $DB
 
 exit $fail
