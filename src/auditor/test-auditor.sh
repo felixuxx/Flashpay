@@ -32,6 +32,10 @@ taler-bank-manage -c test-auditor.conf serve-http 2>/dev/null >/dev/null &
 # Run the auditor!
 echo "Running audit(s)"
 taler-auditor -c test-auditor.conf -m $MASTER_PUB > test-audit.json
+
+# TODO:
+# - need to configure exchange's bank accounts in test-auditor.conf,
+#   otherwise the auditor cannot find them!
 taler-wire-auditor -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json
 
 echo "Shutting down services"
@@ -51,6 +55,7 @@ echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && (echo Failed; fail=1) || echo OK
 
 # TODO: Add more checks to ensure test-audit.json matches expectations
+echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql $DB
 
 
 echo "Cleanup"

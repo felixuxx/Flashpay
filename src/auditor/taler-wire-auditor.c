@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2018 Taler Systems SA
+  Copyright (C) 2017-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -330,15 +330,15 @@ struct ReserveOutInfo
  */
 static int
 free_rii (void *cls,
-	  const struct GNUNET_HashCode *key,
-	  void *value)
+          const struct GNUNET_HashCode *key,
+          void *value)
 {
   struct ReserveInInfo *rii = value;
 
   GNUNET_assert (GNUNET_YES ==
-		 GNUNET_CONTAINER_multihashmap_remove (in_map,
-						       key,
-						       rii));
+                 GNUNET_CONTAINER_multihashmap_remove (in_map,
+                                                       key,
+                                                       rii));
   GNUNET_free (rii->details.account_url);
   GNUNET_free_non_null (rii->details.wtid_s); /* field not used (yet) */
   GNUNET_free (rii);
@@ -356,15 +356,15 @@ free_rii (void *cls,
  */
 static int
 free_roi (void *cls,
-	  const struct GNUNET_HashCode *key,
-	  void *value)
+          const struct GNUNET_HashCode *key,
+          void *value)
 {
   struct ReserveOutInfo *roi = value;
 
   GNUNET_assert (GNUNET_YES ==
-		 GNUNET_CONTAINER_multihashmap_remove (out_map,
-						       key,
-						       roi));
+                 GNUNET_CONTAINER_multihashmap_remove (out_map,
+                                                       key,
+                                                       roi));
   GNUNET_free (roi->details.account_url);
   GNUNET_free_non_null (roi->details.wtid_s); /* field not used (yet) */
   GNUNET_free (roi);
@@ -391,13 +391,13 @@ do_shutdown (void *cls)
                         " s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o }",
                         /* blocks of 5 */
-			"wire_out_amount_inconsistencies",
+                        "wire_out_amount_inconsistencies",
                         report_wire_out_inconsistencies,
                         "total_wire_out_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_out_plus),
                         "total_wire_out_delta_minus",
                         TALER_JSON_from_amount (&total_bad_amount_out_minus),
-			"reserve_in_amount_inconsistencies",
+                        "reserve_in_amount_inconsistencies",
                         report_reserve_in_inconsistencies,
                         "total_wire_in_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_in_plus),
@@ -408,9 +408,9 @@ do_shutdown (void *cls)
                         report_missattribution_in_inconsistencies,
                         "total_missattribution_in",
                         TALER_JSON_from_amount (&total_missattribution_in),
-			"row_inconsistencies",
+                        "row_inconsistencies",
                         report_row_inconsistencies,
-			"row_minor_inconsistencies",
+                        "row_minor_inconsistencies",
                         report_row_minor_inconsistencies,
                         /* block */
                         "total_wire_format_amount",
@@ -423,8 +423,8 @@ do_shutdown (void *cls)
                         report_lags);
     GNUNET_break (NULL != report);
     json_dumpf (report,
-		stdout,
-		JSON_INDENT (2));
+                stdout,
+                JSON_INDENT (2));
     json_decref (report);
     report_wire_out_inconsistencies = NULL;
     report_reserve_in_inconsistencies = NULL;
@@ -443,16 +443,16 @@ do_shutdown (void *cls)
   if (NULL != in_map)
   {
     GNUNET_CONTAINER_multihashmap_iterate (in_map,
-					   &free_rii,
-					   NULL);
+                                           &free_rii,
+                                           NULL);
     GNUNET_CONTAINER_multihashmap_destroy (in_map);
     in_map = NULL;
   }
   if (NULL != out_map)
   {
     GNUNET_CONTAINER_multihashmap_iterate (out_map,
-					   &free_roi,
-					   NULL);
+                                           &free_roi,
+                                           NULL);
     GNUNET_CONTAINER_multihashmap_destroy (out_map);
     out_map = NULL;
   }
@@ -499,12 +499,12 @@ do_shutdown (void *cls)
  */
 static void
 report (json_t *array,
-	json_t *object)
+        json_t *object)
 {
   GNUNET_assert (NULL != object);
   GNUNET_assert (0 ==
-		 json_array_append_new (array,
-					object));
+                 json_array_append_new (array,
+                                        object));
 }
 
 
@@ -524,10 +524,10 @@ commit (enum GNUNET_DB_QueryStatus qs)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		  "Serialization issue, not recording progress\n");
+                  "Serialization issue, not recording progress\n");
     else
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		  "Hard error, not recording progress\n");
+                  "Hard error, not recording progress\n");
     adb->rollback (adb->cls,
                    asession);
     edb->rollback (edb->cls,
@@ -556,7 +556,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		"Failed to update auditor DB, not recording progress\n");
+                "Failed to update auditor DB, not recording progress\n");
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
@@ -568,7 +568,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     qs = edb->commit (edb->cls,
-                       esession);
+                      esession);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -580,10 +580,10 @@ commit (enum GNUNET_DB_QueryStatus qs)
     else
     {
       qs = adb->commit (adb->cls,
-			asession);
+                        asession);
       if (0 > qs)
       {
-	GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Auditor DB commit failed!\n");
       }
@@ -628,11 +628,16 @@ wire_out_cb (void *cls,
   struct GNUNET_HashCode key;
   struct ReserveOutInfo *roi;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Exchange wire OUT at %s of %s with WTID %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (date),
+              TALER_amount2s (amount),
+              TALER_B2S (wtid));
   GNUNET_CRYPTO_hash (wtid,
-		      sizeof (struct TALER_WireTransferIdentifierRawP),
-		      &key);
+                      sizeof (struct TALER_WireTransferIdentifierRawP),
+                      &key);
   roi = GNUNET_CONTAINER_multihashmap_get (in_map,
-					   &key);
+                                           &key);
   if (NULL == roi)
   {
     /* Wire transfer was not made (yet) at all (but would have been
@@ -693,7 +698,7 @@ wire_out_cb (void *cls,
     GNUNET_free (payto_url);
   }
   if (0 != TALER_amount_cmp (&roi->details.amount,
-			     amount))
+                             amount))
   {
     report (report_wire_out_inconsistencies,
             json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
@@ -745,13 +750,13 @@ wire_out_cb (void *cls,
   }
 cleanup:
   GNUNET_assert (GNUNET_OK ==
-		 GNUNET_CONTAINER_multihashmap_remove (out_map,
-						       &key,
-						       roi));
+                 GNUNET_CONTAINER_multihashmap_remove (out_map,
+                                                       &key,
+                                                       roi));
   GNUNET_assert (GNUNET_OK ==
-		 free_roi (NULL,
-			   &key,
-			   roi));
+                 free_roi (NULL,
+                           &key,
+                           roi));
   return GNUNET_OK;
 }
 
@@ -767,8 +772,8 @@ cleanup:
  */
 static int
 complain_out_not_found (void *cls,
-			const struct GNUNET_HashCode *key,
-			void *value)
+                        const struct GNUNET_HashCode *key,
+                        void *value)
 {
   struct ReserveOutInfo *roi = value;
 
@@ -861,6 +866,8 @@ check_exchange_wire_out ()
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute next_timestamp;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzing exchange's wire OUT table\n");
   qs = edb->select_wire_out_above_serial_id_by_account (edb->cls,
                                                         esession,
                                                         wp_section_name,
@@ -891,6 +898,8 @@ check_exchange_wire_out ()
      without immediately raising undue concern */
   next_timestamp = GNUNET_TIME_absolute_subtract (next_timestamp,
                                                   GRACE_PERIOD);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzing exchange's unfinished deposits\n");
   qs = edb->select_deposits_missing_wire (edb->cls,
                                           esession,
                                           pp.last_timestamp,
@@ -927,13 +936,14 @@ check_exchange_wire_out ()
 static int
 history_debit_cb (void *cls,
                   enum TALER_ErrorCode ec,
-		  enum TALER_BANK_Direction dir,
-		  const void *row_off,
-		  size_t row_off_size,
-		  const struct TALER_WIRE_TransferDetails *details)
+                  enum TALER_BANK_Direction dir,
+                  const void *row_off,
+                  size_t row_off_size,
+                  const struct TALER_WIRE_TransferDetails *details)
 {
   struct ReserveOutInfo *roi;
   struct GNUNET_HashCode rowh;
+
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
@@ -950,6 +960,11 @@ history_debit_cb (void *cls,
     check_exchange_wire_out ();
     return GNUNET_OK;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzing bank DEBIT at %s of %s with WTID %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (details->execution_date),
+              TALER_amount2s (&details->amount),
+              TALER_B2S (&details->wtid));
   if (NULL != details->wtid_s)
   {
     char *diagnostic;
@@ -1019,9 +1034,11 @@ history_debit_cb (void *cls,
 static void
 process_debits ()
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking bank DEBIT records\n");
   GNUNET_assert (NULL == hh);
   out_map = GNUNET_CONTAINER_multihashmap_create (1024,
-						  GNUNET_YES);
+                                                  GNUNET_YES);
   hh = wp->get_history (wp->cls,
                         wp_section_name,
                         TALER_BANK_DIRECTION_DEBIT,
@@ -1061,17 +1078,21 @@ process_debits ()
  */
 static int
 reserve_in_cb (void *cls,
-	       uint64_t rowid,
-	       const struct TALER_ReservePublicKeyP *reserve_pub,
-	       const struct TALER_Amount *credit,
-	       const char *sender_url,
-	       const void *wire_reference,
-	       size_t wire_reference_size,
-	       struct GNUNET_TIME_Absolute execution_date)
-
+               uint64_t rowid,
+               const struct TALER_ReservePublicKeyP *reserve_pub,
+               const struct TALER_Amount *credit,
+               const char *sender_url,
+               const void *wire_reference,
+               size_t wire_reference_size,
+               struct GNUNET_TIME_Absolute execution_date)
 {
   struct ReserveInInfo *rii;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzing exchange wire IN at %s of %s with reserve_pub %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (execution_date),
+              TALER_amount2s (credit),
+              TALER_B2S (reserve_pub));
   rii = GNUNET_new (struct ReserveInInfo);
   GNUNET_CRYPTO_hash (wire_reference,
 		      wire_reference_size,
@@ -1089,9 +1110,9 @@ reserve_in_cb (void *cls,
   rii->rowid = rowid;
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (in_map,
-					 &rii->row_off_hash,
-					 rii,
-					 GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+                                         &rii->row_off_hash,
+                                         rii,
+                                         GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
     report (report_row_inconsistencies,
             json_pack ("{s:s, s:I, s:o, s:s}",
@@ -1119,8 +1140,8 @@ reserve_in_cb (void *cls,
  */
 static int
 complain_in_not_found (void *cls,
-		       const struct GNUNET_HashCode *key,
-		       void *value)
+                       const struct GNUNET_HashCode *key,
+                       void *value)
 {
   struct ReserveInInfo *rii = value;
 
@@ -1199,16 +1220,21 @@ history_credit_cb (void *cls,
     conclude_credit_history ();
     return GNUNET_OK;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzing bank CREDIT at %s of %s with WTID %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (details->execution_date),
+              TALER_amount2s (&details->amount),
+              TALER_B2S (&details->wtid));
   GNUNET_CRYPTO_hash (row_off,
-		      row_off_size,
-		      &key);
+                      row_off_size,
+                      &key);
   rii = GNUNET_CONTAINER_multihashmap_get (in_map,
-					   &key);
+                                           &key);
   if (NULL == rii)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		"Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
-		GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
+                "Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
+                GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
     hh = NULL;
     conclude_credit_history ();
     return GNUNET_SYSERR; /* not an error, just end of processing */
@@ -1229,8 +1255,8 @@ history_credit_cb (void *cls,
     return GNUNET_SYSERR;
   }
   memcpy (in_wire_off,
-	  row_off,
-	  row_off_size);
+          row_off,
+          row_off_size);
 
   /* compare records with expected data */
   if (row_off_size != rii->row_off_size)
@@ -1275,7 +1301,7 @@ history_credit_cb (void *cls,
     goto cleanup;
   }
   if (0 != TALER_amount_cmp (&rii->details.amount,
-			     &details->amount))
+                             &details->amount))
   {
     report (report_reserve_in_inconsistencies,
             json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
@@ -1340,13 +1366,13 @@ history_credit_cb (void *cls,
   }
  cleanup:
   GNUNET_assert (GNUNET_OK ==
-		 GNUNET_CONTAINER_multihashmap_remove (in_map,
-						       &key,
-						       rii));
+                 GNUNET_CONTAINER_multihashmap_remove (in_map,
+                                                       &key,
+                                                       rii));
   GNUNET_assert (GNUNET_OK ==
-		 free_rii (NULL,
-			   &key,
-			   rii));
+                 free_rii (NULL,
+                           &key,
+                           rii));
   return GNUNET_OK;
 }
 
@@ -1368,9 +1394,16 @@ process_next_account (void *cls)
   int ret;
 
   (void) cls;
+  // FIXME: this logic is broken at a high level,
+  // as it iterates over the exchange's incoming
+  // transactions once PER bank account, so for
+  // multiple bank accounts this cannot work!
   if (NULL == (wa = wa_head))
   {
-    commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Finished with all accounts, shutting down\n");
+    if (NULL != wp)
+      commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -1437,8 +1470,10 @@ process_next_account (void *cls)
                 (unsigned long long) pp.last_wire_out_serial_id);
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzing exchange's wire IN table\n");
   in_map = GNUNET_CONTAINER_multihashmap_create (1024,
-						 GNUNET_YES);
+                                                 GNUNET_YES);
   qs = edb->select_reserves_in_above_serial_id_by_account (edb->cls,
                                                            esession,
                                                            wp_section_name,
@@ -1459,6 +1494,8 @@ process_next_account (void *cls)
     process_debits ();
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking bank CREDIT records\n");
   hh = wp->get_history (wp->cls,
                         wp_section_name,
                         TALER_BANK_DIRECTION_CREDIT,
@@ -1679,6 +1716,7 @@ run (void *cls,
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &process_account_cb,
                                   NULL);
+  process_next_account (NULL);
 }
 
 
