@@ -140,8 +140,6 @@ postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS kyc_events CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS kyc_merchants CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS prewire CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS payback CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS payback_refresh CASCADE;"),
@@ -497,34 +495,6 @@ postgres_create_tables (void *cls)
                            ",buf BYTEA NOT NULL"
                            ");"),
 
-
-    /**
-     * The 'general_id' column represents _some_ identificator
-     * from the institution that cares about the merchant KYC status.
-     * If the institution is a bank, then this values might be
-     * _any_ alphanumeric code that uniquely identifies that merchant
-     * at that bank.  Could also be NULL, if that bank's policy
-     * admits so.
-     */
-    GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS kyc_merchants "
-                           "(merchant_serial_id BIGSERIAL PRIMARY KEY"
-                           ",kyc_checked BOOLEAN NOT NULL DEFAULT FALSE"
-                           ",payto_url VARCHAR UNIQUE NOT NULL"
-                           ",general_id VARCHAR NOT NULL"
-                           ");"),
-
-    GNUNET_PQ_make_try_execute ("CREATE INDEX kyc_merchants_payto_url ON "
-                                "kyc_merchants (payto_url);"),
-
-    GNUNET_PQ_make_execute("CREATE TABLE IF NOT EXISTS kyc_events "
-                           "(merchant_serial_id BIGSERIAL NOT NULL REFERENCES kyc_merchants (merchant_serial_id) ON DELETE CASCADE"
-                           ",amount_val INT8 NOT NULL"
-                           ",amount_frac INT4 NOT NULL"
-                           ",timestamp INT8 NOT NULL"
-                           ");"),
-
-    GNUNET_PQ_make_try_execute ("CREATE INDEX kyc_events_timestamp ON "
-                                "kyc_events (timestamp);"),
 
     /* Index for wire_prepare_data_get and gc_prewire statement */
     GNUNET_PQ_make_try_execute("CREATE INDEX prepare_iteration_index "
@@ -1367,67 +1337,6 @@ postgres_prepare (PGconn *db_conn)
                             " ORDER BY prewire_uuid ASC"
                             " LIMIT 1;",
                             0),
-
-    GNUNET_PQ_make_prepare ("clean_kyc_events",
-                            "DELETE"
-                            " FROM kyc_events"
-                            " WHERE merchant_serial_id=$1",
-                            1),
-
-    /* Assume a merchant _unchecked_ if their events
-     * are stored into the table queried below.  */
-    GNUNET_PQ_make_prepare ("get_kyc_events",
-                            "SELECT"
-                            " merchant_serial_id"
-                            ",amount_val"
-                            ",amount_frac"
-                            " FROM kyc_events"
-                            " WHERE merchant_serial_id=$1",
-                            1),
-
-    GNUNET_PQ_make_prepare ("get_kyc_status",
-                            "SELECT"
-                            " general_id"
-                            ",kyc_checked"
-                            ",merchant_serial_id"
-                            " FROM kyc_merchants"
-                            " WHERE payto_url=$1",
-                            1),
-
-    GNUNET_PQ_make_prepare ("insert_kyc_merchant",
-                            "INSERT INTO kyc_merchants "
-                            "(payto_url"
-                            ",general_id"
-                            ",kyc_checked) VALUES "
-                            "($1, $2, FALSE)",
-                            2),
-
-
-    /* NOTE: NOT used yet, just _potentially_ needed.  */
-    GNUNET_PQ_make_prepare ("unmark_kyc_merchant",
-                            "UPDATE kyc_merchants"
-                            " SET"
-                            " kyc_checked=FALSE"
-                            " WHERE"
-                            " payto_url=$1",
-                            1),
-
-    GNUNET_PQ_make_prepare ("mark_kyc_merchant",
-                            "UPDATE kyc_merchants"
-                            " SET"
-                            " kyc_checked=TRUE"
-                            " WHERE"
-                            " payto_url=$1",
-                            1),
-
-    GNUNET_PQ_make_prepare ("insert_kyc_event",
-                            "INSERT INTO kyc_events "
-                            "(merchant_serial_id"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp)"
-                            " VALUES ($1, $2, $3, $4)",
-                            4),
 
     /* Used in #postgres_select_deposits_missing_wire */
     GNUNET_PQ_make_prepare ("deposits_get_overdue",
