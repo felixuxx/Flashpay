@@ -38,6 +38,8 @@ MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
 MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
+BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
+BANK_URL=http://localhost:${BANK_PORT}/
 AUDITOR_URL=http://localhost:8888/
 
 # patch configuration
@@ -46,6 +48,7 @@ taler-config -c $CONF -s EXCHANGE-DEFAULT -o MASTER_KEY -V $MASTER_PUB
 taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
 
 # setup exchange
 echo "Setting up exchange"
@@ -59,19 +62,18 @@ taler-auditor-dbinit -c $CONF
 taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
 taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a.dat -o a2e.dat -m $MASTER_PUB
 
-# Check we have network
-echo "Testing network"
-ping -c1 bank.test.taler.net
-
 # Launch services
 echo "Launching services"
+taler-bank-manage -c $CONF serve-http &
 taler-exchange-httpd -c $CONF &
 taler-merchant-httpd -c $CONF &
 taler-exchange-wirewatch -c $CONF &
 
+sleep 10
+
 # run wallet CLI
 echo "Running wallet"
-taler-wallet-cli integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL
+taler-wallet-cli integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL -b $BANK_URL
 
 echo "Shutting down services"
 kill `jobs -p`
