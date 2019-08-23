@@ -7,11 +7,19 @@
 # Requires 'jq' tool and Postgres superuser rights!
 set -eu
 
+# test required commands exist
+echo "Testing for jq"
+jq -h > /dev/null || exit 77
+echo "Testing for taler-bank-manage"
+taler-bank-manage -h >/dev/null || exit 77
+echo "Testing for pdflatex"
+which pdflatex > /dev/null || exit 77
+
 echo "Database setup"
 DB=taler-auditor-test
 dropdb $DB 2> /dev/null || true
 createdb -T template0 $DB || exit 77
-jq -h > /dev/null || exit 77
+
 # Import pre-generated database, -q(ietly) using single (-1) transaction
 psql $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
 MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
@@ -32,6 +40,7 @@ kill `jobs -p`
 
 echo "TeXing"
 ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex
+
 pdflatex test-report.tex >/dev/null
 pdflatex test-report.tex >/dev/null
 

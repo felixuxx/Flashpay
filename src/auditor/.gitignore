@@ -1,2 +1,10 @@
 taler-auditor-httpd
+taler-auditor
+taler-wire-auditor
 taler-auditor-exchange
+test-audit.json
+test-report.aux
+test-report.pdf
+test-report.tex
+test-wire-audit.json
+texput.aux
