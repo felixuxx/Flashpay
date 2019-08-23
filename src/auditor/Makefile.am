@@ -98,7 +98,11 @@ taler_auditor_exchange_LDADD = \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
   -lgnunetutil $(XLIB)
 
+check_SCRIPTS = \
+  test-auditor.sh
 
+TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \
-  auditor.conf
+  auditor.conf \
+  $(check_SCRIPTS)

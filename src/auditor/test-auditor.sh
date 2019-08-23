@@ -27,7 +27,7 @@ MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
 # Launch bank
 echo "Launching bank"
 taler-bank-manage -c test-auditor.conf serve-http 2>/dev/null >/dev/null &
-sleep 10
+
 
 # Run the auditor!
 echo "Running audit(s)"
