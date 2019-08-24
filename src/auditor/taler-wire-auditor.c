@@ -697,6 +697,7 @@ check_for_required_transfers ()
   pp.last_timestamp = next_timestamp;
   /* conclude with success */
   commit (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT);
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -1461,10 +1462,6 @@ history_credit_cb (void *cls,
   }
  cleanup:
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multihashmap_remove (in_map,
-                                                       &key,
-                                                       rii));
-  GNUNET_assert (GNUNET_OK ==
                  free_rii (NULL,
                            &key,
                            rii));
@@ -1650,6 +1647,9 @@ process_account_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Found exchange account `%s'\n",
+              ai->section_name);
   wa = GNUNET_new (struct WireAccount);
   wa->wire_plugin = wp;
   wa->section_name = GNUNET_strdup (ai->section_name);
