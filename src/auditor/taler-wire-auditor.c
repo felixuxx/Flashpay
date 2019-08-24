@@ -1093,6 +1093,10 @@ process_debits (void *cls)
   struct WireAccount *wa = cls;
   struct TALER_WIRE_Plugin *wp;
 
+    /* skip accounts where DEBIT is not enabled */
+  while ( (NULL != wa) &&
+          (GNUNET_NO == wa->debit_enabled) )
+    wa = wa->next;
   if (NULL == wa)
   {
     /* end of iteration, now check wire_out to see
@@ -1484,7 +1488,11 @@ process_credits (void *cls)
   struct WireAccount *wa = cls;
   struct TALER_WIRE_Plugin *wp;
   enum GNUNET_DB_QueryStatus qs;
- 
+
+  /* skip accounts where CREDIT is not enabled */
+  while ( (NULL != wa) &&
+          (GNUNET_NO == wa->credit_enabled) )
+    wa = wa->next;
   if (NULL == wa)
   {
     /* done with all accounts, conclude check */
@@ -1636,6 +1644,9 @@ process_account_cb (void *cls,
   struct WireAccount *wa;
   struct TALER_WIRE_Plugin *wp;
 
+  if ( (GNUNET_NO == ai->debit_enabled) &&
+       (GNUNET_NO == ai->credit_enabled) )
+    return; /* not an active exchange account */
   wp = TALER_WIRE_plugin_load (cfg,
                                ai->plugin_name);
   if (NULL == wp)
