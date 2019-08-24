@@ -674,6 +674,7 @@ check_for_required_transfers ()
   enum GNUNET_DB_QueryStatus qs;
   
   next_timestamp = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&next_timestamp);
   /* Subtract #GRACE_PERIOD, so we can be a bit behind in processing
      without immediately raising undue concern */
   next_timestamp = GNUNET_TIME_absolute_subtract (next_timestamp,
