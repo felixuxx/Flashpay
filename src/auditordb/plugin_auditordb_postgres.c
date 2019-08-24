@@ -177,6 +177,7 @@ postgres_drop_tables (void *cls,
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
+    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_account_progress;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
@@ -283,14 +284,17 @@ postgres_create_tables (void *cls)
                             ",last_payback_serial_id INT8 NOT NULL DEFAULT 0"
                             ",last_payback_refresh_serial_id INT8 NOT NULL DEFAULT 0"
                             ")"),
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_account_progress"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",account_name TEXT NOT NULL"
                             ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
                             ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",last_timestamp INT8 NOT NULL"
                             ",wire_in_off BYTEA"
                             ",wire_out_off BYTEA"
+                            ")"),
+   GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
+                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+                            ",last_timestamp INT8 NOT NULL"
                             ")"),
     /* Table with all of the customer reserves and their respective
        balances that the auditor is aware of.
@@ -686,39 +690,56 @@ postgres_prepare (PGconn *db_conn)
                             ",last_payback_refresh_serial_id"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
                             7),
-    /* Used in #postgres_insert_wire_auditor_progress() */
-    GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
-                            "INSERT INTO wire_auditor_progress "
+    /* Used in #postgres_insert_wire_auditor_account_progress() */
+    GNUNET_PQ_make_prepare ("wire_auditor_account_progress_insert",
+                            "INSERT INTO wire_auditor_account_progress "
                             "(master_pub"
                             ",account_name"
                             ",last_wire_reserve_in_serial_id"
                             ",last_wire_wire_out_serial_id"
-                            ",last_timestamp"
                             ",wire_in_off"
                             ",wire_out_off"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
-                            7),
-    /* Used in #postgres_update_wire_auditor_progress() */
-    GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
-                            "UPDATE wire_auditor_progress SET "
+                            ") VALUES ($1,$2,$3,$4,$5,$6);",
+                            6),
+    /* Used in #postgres_update_wire_auditor_account_progress() */
+    GNUNET_PQ_make_prepare ("wire_auditor_account_progress_update",
+                            "UPDATE wire_auditor_account_progress SET "
                             " last_wire_reserve_in_serial_id=$1"
                             ",last_wire_wire_out_serial_id=$2"
-                            ",last_timestamp=$3"
-                            ",wire_in_off=$4"
-                            ",wire_out_off=$5"
-                            " WHERE master_pub=$6 AND account_name=$7",
-                            7),
-    /* Used in #postgres_get_wire_auditor_progress() */
-    GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
+                            ",wire_in_off=$3"
+                            ",wire_out_off=$4"
+                            " WHERE master_pub=$5 AND account_name=$6",
+                            6),
+    /* Used in #postgres_get_wire_auditor_account_progress() */
+    GNUNET_PQ_make_prepare ("wire_auditor_account_progress_select",
                             "SELECT"
                             " last_wire_reserve_in_serial_id"
                             ",last_wire_wire_out_serial_id"
-                            ",last_timestamp"
                             ",wire_in_off"
                             ",wire_out_off"
-                            " FROM wire_auditor_progress"
+                            " FROM wire_auditor_account_progress"
                             " WHERE master_pub=$1 AND account_name=$2;",
                             2),
+    /* Used in #postgres_insert_wire_auditor_progress() */
+    GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
+                            "INSERT INTO wire_auditor_progress "
+                            "(master_pub"
+                            ",last_timestamp"
+                            ") VALUES ($1,$2);",
+                            2),
+    /* Used in #postgres_update_wire_auditor_progress() */
+    GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
+                            "UPDATE wire_auditor_progress SET "
+                            " last_timestamp=$1"
+                            " WHERE master_pub=$2",
+                            2),
+    /* Used in #postgres_get_wire_auditor_progress() */
+    GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
+                            "SELECT"
+                            " last_timestamp"
+                            " FROM wire_auditor_progress"
+                            " WHERE master_pub=$1;",
+                            1),
     /* Used in #postgres_insert_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_insert",
                             "INSERT INTO auditor_reserves "
@@ -2105,6 +2126,139 @@ postgres_get_auditor_progress_coin (void *cls,
  * @param session connection to use
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_wire_auditor_account_progress (void *cls,
+                                               struct TALER_AUDITORDB_Session *session,
+                                               const struct TALER_MasterPublicKeyP *master_pub,
+                                               const char *account_name,
+                                               const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                               const void *in_wire_off,
+                                               const void *out_wire_off,
+                                               size_t wire_off_size)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_string (account_name),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
+    GNUNET_PQ_query_param_fixed_size (in_wire_off,
+                                      wire_off_size),
+    GNUNET_PQ_query_param_fixed_size (out_wire_off,
+                                      wire_off_size),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "wire_auditor_account_progress_insert",
+                                             params);
+}
+
+
+/**
+ * Update information about the progress of the auditor.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param account_name name of the wire account we are auditing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_wire_auditor_account_progress (void *cls,
+                                               struct TALER_AUDITORDB_Session *session,
+                                               const struct TALER_MasterPublicKeyP *master_pub,
+                                               const char *account_name,
+                                               const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                               const void *in_wire_off,
+                                               const void *out_wire_off,
+                                               size_t wire_off_size)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
+    GNUNET_PQ_query_param_fixed_size (in_wire_off,
+                                      wire_off_size),
+    GNUNET_PQ_query_param_fixed_size (out_wire_off,
+                                      wire_off_size),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_string (account_name),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "wire_auditor_account_progress_update",
+                                             params);
+}
+
+
+/**
+ * Get information about the progress of the auditor.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param account_name name of the wire account we are auditing
+ * @param[out] pp where is the auditor in processing
+ * @param[out] in_wire_off how far are we in the incoming wire transaction history
+ * @param[out] out_wire_off how far are we in the outgoing wire transaction history
+ * @param[out] wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_wire_auditor_account_progress (void *cls,
+                                            struct TALER_AUDITORDB_Session *session,
+                                            const struct TALER_MasterPublicKeyP *master_pub,
+                                            const char *account_name,
+                                            struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                            void **in_wire_off,
+                                            void **out_wire_off,
+                                            size_t *wire_off_size)
+{
+  size_t xsize;
+  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_string (account_name),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("last_wire_reserve_in_serial_id",
+                                  &pp->last_reserve_in_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_wire_wire_out_serial_id",
+                                  &pp->last_wire_out_serial_id),
+    GNUNET_PQ_result_spec_variable_size ("wire_in_off",
+                                         in_wire_off,
+                                         wire_off_size),
+    GNUNET_PQ_result_spec_variable_size ("wire_out_off",
+                                         out_wire_off,
+                                         &xsize),
+    GNUNET_PQ_result_spec_end
+  };
+
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                 "wire_auditor_account_progress_select",
+                                                 params,
+                                                 rs);
+  if (qs <= 0)
+  {
+    *wire_off_size = 0;
+    xsize = 0;
+  }
+  GNUNET_assert (xsize == *wire_off_size);
+  return qs;
+}
+
+
+/**
+ * Insert information about the auditor's progress with an exchange's
+ * data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
  * @param pp where is the auditor in processing
  * @return transaction status code
  */
@@ -2112,22 +2266,11 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
                                        const struct TALER_MasterPublicKeyP *master_pub,
-                                       const char *account_name,
-                                       const struct TALER_AUDITORDB_WireProgressPoint *pp,
-                                       const void *in_wire_off,
-                                       const void *out_wire_off,
-                                       size_t wire_off_size)
+                                       const struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_string (account_name),
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
-    GNUNET_PQ_query_param_fixed_size (in_wire_off,
-                                      wire_off_size),
-    GNUNET_PQ_query_param_fixed_size (out_wire_off,
-                                      wire_off_size),
     GNUNET_PQ_query_param_end
   };
 
@@ -2144,7 +2287,6 @@ postgres_insert_wire_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
- * @param account_name name of the wire account we are auditing
  * @param pp where is the auditor in processing
  * @return transaction status code
  */
@@ -2152,22 +2294,11 @@ static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
                                        const struct TALER_MasterPublicKeyP *master_pub,
-                                       const char *account_name,
-                                       const struct TALER_AUDITORDB_WireProgressPoint *pp,
-                                       const void *in_wire_off,
-                                       const void *out_wire_off,
-                                       size_t wire_off_size)
+                                       const struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
-    GNUNET_PQ_query_param_fixed_size (in_wire_off,
-                                      wire_off_size),
-    GNUNET_PQ_query_param_fixed_size (out_wire_off,
-                                      wire_off_size),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
   };
 
@@ -2183,7 +2314,6 @@ postgres_update_wire_auditor_progress (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
  * @param master_pub master key of the exchange
- * @param account_name name of the wire account we are auditing
  * @param[out] pp set to where the auditor is in processing
  * @return transaction status code
  */
@@ -2191,46 +2321,22 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_progress (void *cls,
                                     struct TALER_AUDITORDB_Session *session,
                                     const struct TALER_MasterPublicKeyP *master_pub,
-                                    const char *account_name,
-                                    struct TALER_AUDITORDB_WireProgressPoint *pp,
-                                    void **in_wire_off,
-                                    void **out_wire_off,
-                                    size_t *wire_off_size)
+                                    struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
-  size_t xsize;
-  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("last_wire_reserve_in_serial_id",
-                                  &pp->last_reserve_in_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_wire_wire_out_serial_id",
-                                  &pp->last_wire_out_serial_id),
     TALER_PQ_result_spec_absolute_time ("last_timestamp",
                                          &pp->last_timestamp),
-    GNUNET_PQ_result_spec_variable_size ("wire_in_off",
-                                         in_wire_off,
-                                         wire_off_size),
-    GNUNET_PQ_result_spec_variable_size ("wire_out_off",
-                                         out_wire_off,
-                                         &xsize),
     GNUNET_PQ_result_spec_end
   };
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-                                                 "wire_auditor_progress_select",
-                                                 params,
-                                                 rs);
-  if (qs <= 0)
-  {
-    *wire_off_size = 0;
-    xsize = 0;
-  }
-  GNUNET_assert (xsize == *wire_off_size);
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "wire_auditor_progress_select",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -3329,6 +3435,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_auditor_progress_coin = &postgres_update_auditor_progress_coin;
   plugin->insert_auditor_progress_coin = &postgres_insert_auditor_progress_coin;
 
+  plugin->get_wire_auditor_account_progress = &postgres_get_wire_auditor_account_progress;
+  plugin->update_wire_auditor_account_progress = &postgres_update_wire_auditor_account_progress;
+  plugin->insert_wire_auditor_account_progress = &postgres_insert_wire_auditor_account_progress;
   plugin->get_wire_auditor_progress = &postgres_get_wire_auditor_progress;
   plugin->update_wire_auditor_progress = &postgres_update_wire_auditor_progress;
   plugin->insert_wire_auditor_progress = &postgres_insert_wire_auditor_progress;

@@ -108,6 +108,21 @@ typedef int
  */
 struct TALER_AUDITORDB_WireProgressPoint
 {
+
+  /**
+   * Time until which we have confirmed that all wire transactions
+   * that the exchange should do, have indeed been done.
+   */
+  struct GNUNET_TIME_Absolute last_timestamp;
+};
+
+
+/**
+ * Structure for remembering the wire auditor's progress over the
+ * various tables and (auditor) transactions per wire account.
+ */
+struct TALER_AUDITORDB_WireAccountProgressPoint
+{
   /**
    * serial ID of the last reserve_in transfer the wire auditor processed
    */
@@ -118,11 +133,6 @@ struct TALER_AUDITORDB_WireProgressPoint
    */
   uint64_t last_wire_out_serial_id;
 
-  /**
-   * Time until which we have confirmed that all wire transactions
-   * that the exchange should do, have indeed been done.
-   */
-  struct GNUNET_TIME_Absolute last_timestamp;
 };
 
 
@@ -801,14 +811,14 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_wire_auditor_progress)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
-                                  const char *account_name,
-                                  const struct TALER_AUDITORDB_WireProgressPoint *pp,
-                                  const void *in_wire_off,
-                                  const void *out_wire_off,
-                                  size_t wire_off_size);
+  (*insert_wire_auditor_account_progress)(void *cls,
+                                          struct TALER_AUDITORDB_Session *session,
+                                          const struct TALER_MasterPublicKeyP *master_pub,
+                                          const char *account_name,
+                                          const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                          const void *in_wire_off,
+                                          const void *out_wire_off,
+                                          size_t wire_off_size);
 
 
   /**
@@ -826,15 +836,74 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
+  (*update_wire_auditor_account_progress)(void *cls,
+                                          struct TALER_AUDITORDB_Session *session,
+                                          const struct TALER_MasterPublicKeyP *master_pub,
+                                          const char *account_name,
+                                          const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                          const void *in_wire_off,
+                                          const void *out_wire_off,
+                                          size_t wire_off_size);
+  
+
+  /**
+   * Get information about the progress of the wire auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param account_name name of the wire account we are auditing
+   * @param[out] pp where is the auditor in processing
+   * @param[out] in_wire_off how far are we in the incoming wire transaction history
+   * @param[out] out_wire_off how far are we in the outgoing wire transaction history
+   * @param[out] wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_wire_auditor_account_progress)(void *cls,
+                                       struct TALER_AUDITORDB_Session *session,
+                                       const struct TALER_MasterPublicKeyP *master_pub,
+                                       const char *account_name,
+                                       struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                       void **in_wire_off,
+                                       void **out_wire_off,
+                                       size_t *wire_off_size);
+
+
+  /**
+   * Insert information about the wire auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param account_name name of the wire account we are auditing
+   * @param pp where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_wire_auditor_progress)(void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_AUDITORDB_WireProgressPoint *pp);
+
+
+  /**
+   * Update information about the progress of the wire auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param account_name name of the wire account we are auditing
+   * @param pp where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
   (*update_wire_auditor_progress)(void *cls,
                                   struct TALER_AUDITORDB_Session *session,
                                   const struct TALER_MasterPublicKeyP *master_pub,
-                                  const char *account_name,
-                                  const struct TALER_AUDITORDB_WireProgressPoint *pp,
-                                  const void *in_wire_off,
-                                  const void *out_wire_off,
-                                  size_t wire_off_size);
-
+                                  const struct TALER_AUDITORDB_WireProgressPoint *pp);
 
 
   /**
@@ -845,20 +914,13 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param account_name name of the wire account we are auditing
    * @param[out] pp set to where the auditor is in processing
-   * @param[out] in_wire_off how far are we in the incoming wire transaction history
-   * @param[out] out_wire_off how far are we in the outgoing wire transaction history
-   * @param[out] wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_wire_auditor_progress)(void *cls,
                                struct TALER_AUDITORDB_Session *session,
                                const struct TALER_MasterPublicKeyP *master_pub,
-                               const char *account_name,
-                               struct TALER_AUDITORDB_WireProgressPoint *pp,
-                               void **in_wire_off,
-                               void **out_wire_off,
-                               size_t *wire_off_size);
+                               struct TALER_AUDITORDB_WireProgressPoint *pp);
 
 
   /**
