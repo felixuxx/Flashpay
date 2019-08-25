@@ -1095,7 +1095,7 @@ process_debits (void *cls)
 
     /* skip accounts where DEBIT is not enabled */
   while ( (NULL != wa) &&
-          (GNUNET_NO == wa->debit_enabled) )
+          (GNUNET_NO == wa->watch_debit) )
     wa = wa->next;
   if (NULL == wa)
   {
@@ -1491,7 +1491,7 @@ process_credits (void *cls)
 
   /* skip accounts where CREDIT is not enabled */
   while ( (NULL != wa) &&
-          (GNUNET_NO == wa->credit_enabled) )
+          (GNUNET_NO == wa->watch_credit) )
     wa = wa->next;
   if (NULL == wa)
   {
