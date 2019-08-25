@@ -111,11 +111,11 @@ enum TALER_ErrorCode
    */
   TALER_EC_DB_COMMIT_FAILED_ON_RETRY = 1004,
 
-    /**
-   * The exchange had insufficient memory to parse the request. This
-   * response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_SERVER_ERROR.
-   */
+  /**
+ * The exchange had insufficient memory to parse the request. This
+ * response is provided with HTTP status code
+ * MHD_HTTP_INTERNAL_SERVER_ERROR.
+ */
   TALER_EC_PARSER_OUT_OF_MEMORY = 1005,
 
   /**
@@ -1400,7 +1400,7 @@ enum TALER_ErrorCode
    * storing of coins or other related db operations, like starting/committing
    * the db transaction or marking a contract as paid.
    */
-   TALER_EC_PAY_DB_STORE_PAYMENTS_ERROR = 2605,
+  TALER_EC_PAY_DB_STORE_PAYMENTS_ERROR = 2605,
 
   /**
    * The backend failed to sign the refund request.

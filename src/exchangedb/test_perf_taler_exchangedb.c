@@ -52,7 +52,7 @@ test_allocate ()
   dki = PERF_TALER_EXCHANGEDB_denomination_init ();
   reserve = PERF_TALER_EXCHANGEDB_reserve_init ();
   coin = PERF_TALER_EXCHANGEDB_coin_init (dki,
-                                      reserve);
+                                          reserve);
   deposit = PERF_TALER_EXCHANGEDB_deposit_init (coin);
 
   dki_copy = PERF_TALER_EXCHANGEDB_denomination_copy (dki);
@@ -76,99 +76,100 @@ test_allocate ()
  * and logs the results using Gauger
  */
 int
-main (int argc, char ** argv)
+main (int argc, char **argv)
 {
   int ret = 0;
-  struct PERF_TALER_EXCHANGEDB_Cmd init[] =
-  {
+  struct PERF_TALER_EXCHANGEDB_Cmd init[] = {
     PERF_TALER_EXCHANGEDB_INIT_CMD_END ("init")
   };
-  struct PERF_TALER_EXCHANGEDB_Cmd benchmark[] =
-  {
+  struct PERF_TALER_EXCHANGEDB_Cmd benchmark[] = {
     // Denomination used to create coins
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
 
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("01 - denomination loop",
-                                     NB_DENOMINATION_INIT),
+                                         NB_DENOMINATION_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION ("01 - start transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_DENOMINATION ("01 - denomination"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DENOMINATION ("01 - insert",
-                                                    "01 - denomination"),
-    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION ("01 - commit transaction"),
+                                                        "01 - denomination"),
+    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (
+      "01 - commit transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("01 - save denomination",
-                                           "01 - denomination loop",
-                                           "01 - denomination",
-                                           NB_DENOMINATION_SAVE),
+                                               "01 - denomination loop",
+                                               "01 - denomination",
+                                               NB_DENOMINATION_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("01 - denomination loop end",
-                                         "01 - denomination loop"),
+                                             "01 - denomination loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("01 - init denomination complete"),
     // End of initialization
     // Reserve initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("02 - init reserve loop",
-                                     NB_RESERVE_INIT),
+                                         NB_RESERVE_INIT),
 
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_RESERVE ("02 - reserve"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_RESERVE ("02 - insert",
-                                               "02 - reserve"),
+                                                   "02 - reserve"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("02 - save reserve",
-                                           "02 - init reserve loop",
-                                           "02 - reserve",
-                                           NB_RESERVE_SAVE),
+                                               "02 - init reserve loop",
+                                               "02 - reserve",
+                                               NB_RESERVE_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("02 - init reserve end loop",
-                                         "02 - init reserve loop"),
+                                             "02 - init reserve loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("02 - reserve init complete"),
     // End reserve init
     // Withdrawal initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("03 - init withdraw loop",
-                                     NB_WITHDRAW_INIT),
+                                         NB_WITHDRAW_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION ("03 - start transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("03 - denomination load",
-                                           "03 - init withdraw loop",
-                                           "01 - save denomination"),
+                                               "03 - init withdraw loop",
+                                               "01 - save denomination"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("03 - reserve load",
-                                           "03 - init withdraw loop",
-                                           "02 - save reserve"),
+                                               "03 - init withdraw loop",
+                                               "02 - save reserve"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_WITHDRAW ("03 - withdraw",
-                                                "03 - denomination load",
-                                                "03 - reserve load"),
+                                                    "03 - denomination load",
+                                                    "03 - reserve load"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_WITHDRAW ("03 - insert withdraw",
-                                                "03 - withdraw"),
-    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION ("03 - commit transaction"),
+                                                    "03 - withdraw"),
+    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (
+      "03 - commit transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("03 - coin array",
-                                           "03 - init withdraw loop",
-                                           "03 - withdraw",
-                                           NB_WITHDRAW_SAVE),
+                                               "03 - init withdraw loop",
+                                               "03 - withdraw",
+                                               NB_WITHDRAW_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("03 - withdraw init end loop",
-                                         "03 - init withdraw loop"),
+                                             "03 - init withdraw loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("03 - withdraw init complete"),
-    //End of withdrawal initialization
-    //Deposit initialization
+    // End of withdrawal initialization
+    // Deposit initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_GET_TIME ("04 - time start"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("04 - deposit init loop",
-                                     NB_DEPOSIT_INIT),
+                                         NB_DEPOSIT_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION ("04 - start transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("04 - coin load",
-                                           "04 - deposit init loop",
-                                           "03 - coin array"),
+                                               "04 - deposit init loop",
+                                               "03 - coin array"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_DEPOSIT ("04 - deposit",
-                                               "04 - coin load"),
+                                                   "04 - coin load"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DEPOSIT ("04 - insert deposit",
-                                               "04 - deposit"),
-    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION ("04 - commit transaction"),
+                                                   "04 - deposit"),
+    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (
+      "04 - commit transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("04 - deposit array",
-                                           "04 - deposit init loop",
-                                           "04 - deposit",
-                                           NB_DEPOSIT_SAVE),
+                                               "04 - deposit init loop",
+                                               "04 - deposit",
+                                               NB_DEPOSIT_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("04 - deposit init loop end",
-                                         "04 - deposit init loop"),
+                                             "04 - deposit init loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_GET_TIME ("04 - time stop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_GAUGER ("04 - gauger",
-                                       "04 - time start",
-                                       "04 - time stop",
-                                       "TEST",
-                                       "time to insert a deposit",
-                                       "deposit/sec",
-                                       NB_DEPOSIT_SAVE),
+                                           "04 - time start",
+                                           "04 - time stop",
+                                           "TEST",
+                                           "time to insert a deposit",
+                                           "deposit/sec",
+                                           NB_DEPOSIT_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("04 - deposit init complete"),
     // End of deposit initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_END ("end"),

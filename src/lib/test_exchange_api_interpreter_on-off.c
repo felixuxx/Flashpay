@@ -40,7 +40,7 @@
  *
  * This test helps in finding a way to use/modify the "normal"
  * cert_cb to handle reconnections from serialized states as well.
- * 
+ *
  * 1st step: simply turn the interpreter off and on again.
  * 2nd step: turn the interpreter off and give a serial state
  *           to reconnect.
@@ -80,13 +80,13 @@ run (void *cls,
   };
 
   TALER_TESTING_run (is,
-		     commands);
+                     commands);
 }
 
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -99,7 +99,7 @@ main (int argc,
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
                                           &auditor_url,
-					  &exchange_url))
+                                          &exchange_url))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

@@ -53,7 +53,7 @@ struct BankCheckState
    * Expected debit bank account.
    */
   uint64_t debit_account;
- 
+
   /**
    * Expected credit bank account.
    */
@@ -133,7 +133,7 @@ check_bank_transfer_run (void *cls,
                     bcs->deposit_reference,
                     bcs->deposit_reference);
     deposit_cmd = TALER_TESTING_interpreter_lookup_command
-      (is, bcs->deposit_reference);
+                    (is, bcs->deposit_reference);
 
     if (NULL == deposit_cmd)
       TALER_TESTING_FAIL (is);
@@ -181,10 +181,10 @@ check_bank_transfer_run (void *cls,
 static void
 check_bank_transfer_cleanup
   (void *cls,
-   const struct TALER_TESTING_Command *cmd)
+  const struct TALER_TESTING_Command *cmd)
 {
   struct BankCheckState *bcs = cls;
- 
+
   GNUNET_free_non_null (bcs->subject);
   GNUNET_free (bcs);
 }
@@ -204,14 +204,14 @@ check_bank_transfer_traits (void *cls,
                             const char *trait,
                             unsigned int index)
 {
-  struct BankCheckState *bcs = cls; 
+  struct BankCheckState *bcs = cls;
   struct TALER_WireTransferIdentifierRawP *wtid_ptr;
 
   if (GNUNET_OK != GNUNET_STRINGS_string_to_data
-      (bcs->subject,
-       strlen (bcs->subject),
-       &bcs->wtid,
-       sizeof (struct TALER_WireTransferIdentifierRawP)))
+        (bcs->subject,
+        strlen (bcs->subject),
+        &bcs->wtid,
+        sizeof (struct TALER_WireTransferIdentifierRawP)))
     wtid_ptr = NULL;
   else
     wtid_ptr = &bcs->wtid;
@@ -227,7 +227,7 @@ check_bank_transfer_traits (void *cls,
                                   ret,
                                   trait,
                                   index);
-}                           
+}
 
 
 
@@ -247,10 +247,10 @@ check_bank_transfer_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer
   (const char *label,
-   const char *exchange_base_url,
-   const char *amount,
-   uint64_t debit_account,
-   uint64_t credit_account)
+  const char *exchange_base_url,
+  const char *amount,
+  uint64_t debit_account,
+  uint64_t credit_account)
 {
   struct BankCheckState *bcs;
 
@@ -282,7 +282,7 @@ TALER_TESTING_cmd_check_bank_transfer
 static void
 check_bank_empty_cleanup
   (void *cls,
-   const struct TALER_TESTING_Command *cmd)
+  const struct TALER_TESTING_Command *cmd)
 {
   return;
 }
@@ -304,7 +304,7 @@ check_bank_empty_run (void *cls,
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
-    return;  
+    return;
   }
   TALER_TESTING_interpreter_next (is);
 }
@@ -321,7 +321,7 @@ check_bank_empty_traits (void *cls,
                          unsigned int index)
 {
   return GNUNET_SYSERR;
-}                         
+}
 
 
 /**
@@ -342,7 +342,7 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
     .cleanup = &check_bank_empty_cleanup,
     .traits = &check_bank_empty_traits
   };
-  
+
   return cmd;
 }
 
@@ -361,7 +361,7 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer_with_ref
   (const char *label,
-   const char *deposit_reference)
+  const char *deposit_reference)
 {
 
   struct BankCheckState *bcs;

@@ -86,14 +86,14 @@ print_dk (const struct TALER_DenominationKeyValidityPS *dk)
            "Value: %s\n",
            s = TALER_amount_to_string (&a));
   GNUNET_free (s);
-    TALER_amount_ntoh (&a,
-                       &dk->fee_withdraw);
+  TALER_amount_ntoh (&a,
+                     &dk->fee_withdraw);
   fprintf (stdout,
            "Withdraw fee: %s\n",
            s = TALER_amount_to_string (&a));
   GNUNET_free (s);
-    TALER_amount_ntoh (&a,
-                       &dk->fee_deposit);
+  TALER_amount_ntoh (&a,
+                     &dk->fee_deposit);
   fprintf (stdout,
            "Deposit fee: %s\n",
            s = TALER_amount_to_string (&a));
@@ -113,16 +113,20 @@ print_dk (const struct TALER_DenominationKeyValidityPS *dk)
 
   fprintf (stdout,
            "Validity start time: %s\n",
-           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->start)));
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (
+                                                     dk->start)));
   fprintf (stdout,
            "Withdraw end time: %s\n",
-           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_withdraw)));
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (
+                                                     dk->expire_withdraw)));
   fprintf (stdout,
            "Deposit end time: %s\n",
-           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_deposit)));
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (
+                                                     dk->expire_deposit)));
   fprintf (stdout,
            "Legal dispute end time: %s\n",
-           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_legal)));
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (
+                                                     dk->expire_legal)));
 
   fprintf (stdout,
            "\n");
@@ -153,22 +157,22 @@ main (int argc,
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
     GNUNET_GETOPT_option_help ("Sign denomination keys of an exchange"),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_base32_auto ('m',
-                                       "exchange-key",
-                                       "KEY",
-                                       "public key of the exchange (Crockford base32 encoded)",
-                                       &master_public_key)),
+      (GNUNET_GETOPT_option_base32_auto ('m',
+                                         "exchange-key",
+                                         "KEY",
+                                         "public key of the exchange (Crockford base32 encoded)",
+                                         &master_public_key)),
     GNUNET_GETOPT_option_string ('u',
                                  "auditor-url",
                                  "URL",
                                  "URL of the auditor (informative link for the user)",
                                  &auditor_url),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_filename ('r',
-                                    "exchange-request",
-                                    "FILENAME",
-                                    "set of keys the exchange requested the auditor to sign",
-                                    &exchange_request_file)),
+      (GNUNET_GETOPT_option_filename ('r',
+                                      "exchange-request",
+                                      "FILENAME",
+                                      "set of keys the exchange requested the auditor to sign",
+                                      &exchange_request_file)),
     GNUNET_GETOPT_option_filename ('o',
                                    "output",
                                    "FILENAME",
@@ -203,7 +207,7 @@ main (int argc,
                                  cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
+                _ ("Malformed configuration file `%s', exit ...\n"),
                 cfgfile);
     GNUNET_free_non_null (cfgfile);
     return 1;
@@ -325,7 +329,7 @@ main (int argc,
     return 1;
   }
   GNUNET_DISK_file_close (fh);
-  for (unsigned int i=0;i<dks_len;i++)
+  for (unsigned int i = 0; i<dks_len; i++)
   {
     struct TALER_DenominationKeyValidityPS *dk = &dks[i];
 
@@ -383,20 +387,20 @@ main (int argc,
     if (NULL == session)
     {
       fprintf (stderr,
-	       "Failed to initialize database session\n");
+               "Failed to initialize database session\n");
       TALER_AUDITORDB_plugin_unload (adb);
       GNUNET_free (dks);
       GNUNET_free (sigs);
       GNUNET_free (eddsa_priv);
       return 3;
     }
-    for (unsigned int i=0;i<dks_len;i++)
+    for (unsigned int i = 0; i<dks_len; i++)
     {
       const struct TALER_DenominationKeyValidityPS *dk = &dks[i];
 
       qs = adb->insert_denomination_info (adb->cls,
-					  session,
-					  dk);
+                                          session,
+                                          dk);
       if (0 > qs)
       {
         fprintf (stderr,

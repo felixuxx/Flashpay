@@ -44,7 +44,7 @@ struct TALER_BANK_AuthenticationData AUTHS[] = {
   /* User credentials */
   {.method = TALER_BANK_AUTH_BASIC,
    .details.basic.username = USER_USERNAME,
-   .details.basic.password = USER_PASSWORD } 
+   .details.basic.password = USER_PASSWORD }
 };
 
 /**
@@ -115,14 +115,14 @@ TALER_TESTING_run_bank (const char *config_filename,
     serve_arg = "serve-uwsgi";
 
   bank_proc = GNUNET_OS_start_process
-    (GNUNET_NO,
-     GNUNET_OS_INHERIT_STD_ALL,
-     NULL, NULL, NULL,
-     "taler-bank-manage",
-     "taler-bank-manage",
-     "-c", config_filename,
-     "--with-db", database,
-     serve_arg, NULL);
+                (GNUNET_NO,
+                GNUNET_OS_INHERIT_STD_ALL,
+                NULL, NULL, NULL,
+                "taler-bank-manage",
+                "taler-bank-manage",
+                "-c", config_filename,
+                "--with-db", database,
+                serve_arg, NULL);
   if (NULL == bank_proc)
     BANK_FAIL ();
 
@@ -136,22 +136,22 @@ TALER_TESTING_run_bank (const char *config_filename,
            "Waiting for `taler-bank-manage' to be ready");
   iter = 0;
   do
+  {
+    if (10 == iter)
     {
-      if (10 == iter)
-      {
-	fprintf (
-          stderr,
-	  "Failed to launch `taler-bank-manage' (or `wget')\n");
-	GNUNET_OS_process_kill (bank_proc,
-				SIGTERM);
-	GNUNET_OS_process_wait (bank_proc);
-	GNUNET_OS_process_destroy (bank_proc);
-	BANK_FAIL ();
-      }
-      fprintf (stderr, ".");
-      sleep (1);
-      iter++;
+      fprintf (
+        stderr,
+        "Failed to launch `taler-bank-manage' (or `wget')\n");
+      GNUNET_OS_process_kill (bank_proc,
+                              SIGTERM);
+      GNUNET_OS_process_wait (bank_proc);
+      GNUNET_OS_process_destroy (bank_proc);
+      BANK_FAIL ();
     }
+    fprintf (stderr, ".");
+    sleep (1);
+    iter++;
+  }
   while (0 != system (wget_cmd));
   fprintf (stderr, "\n");
 
@@ -183,11 +183,11 @@ TALER_TESTING_prepare_bank (const char *config_filename)
   cfg = GNUNET_CONFIGURATION_create ();
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
-      (cfg, config_filename))
+        (cfg, config_filename))
     BANK_FAIL ();
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string
-    (cfg, "bank", "DATABASE", &database))
+        (cfg, "bank", "DATABASE", &database))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "bank",
@@ -197,7 +197,7 @@ TALER_TESTING_prepare_bank (const char *config_filename)
   }
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_number
-    (cfg, "bank", "HTTP_PORT", &port))
+        (cfg, "bank", "HTTP_PORT", &port))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "bank",
@@ -208,27 +208,27 @@ TALER_TESTING_prepare_bank (const char *config_filename)
   GNUNET_CONFIGURATION_destroy (cfg);
 
   if (GNUNET_OK != GNUNET_NETWORK_test_port_free
-    (IPPROTO_TCP, (uint16_t) port))
+        (IPPROTO_TCP, (uint16_t) port))
   {
     fprintf (stderr,
              "Required port %llu not available, skipping.\n",
-	     port);
+             port);
     BANK_FAIL ();
   }
 
   /* DB preparation */
   if (NULL ==
-     (dbreset_proc = GNUNET_OS_start_process (
-       GNUNET_NO,
-       GNUNET_OS_INHERIT_STD_ALL,
-       NULL, NULL, NULL,
-       "taler-bank-manage",
-       "taler-bank-manage",
-       "-c", "bank.conf",
-       "--with-db", database,
-       "django",
-       "flush",
-       "--no-input", NULL)))
+      (dbreset_proc = GNUNET_OS_start_process (
+         GNUNET_NO,
+         GNUNET_OS_INHERIT_STD_ALL,
+         NULL, NULL, NULL,
+         "taler-bank-manage",
+         "taler-bank-manage",
+         "-c", "bank.conf",
+         "--with-db", database,
+         "django",
+         "flush",
+         "--no-input", NULL)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to flush the bank db.\n");

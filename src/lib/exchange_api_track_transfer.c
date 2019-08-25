@@ -80,7 +80,8 @@ struct TALER_EXCHANGE_TrackTransferHandle
  *         #GNUNET_SYSERR if the response was bogus
  */
 static int
-check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh,
+check_track_transfer_response_ok (struct
+                                  TALER_EXCHANGE_TrackTransferHandle *wdh,
                                   const json_t *json)
 {
   json_t *details_j;
@@ -102,7 +103,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     GNUNET_JSON_spec_json ("deposits", &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -129,16 +130,17 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     struct TALER_WireDepositDataPS wdp;
 
     hash_context = GNUNET_CRYPTO_hash_context_start ();
-    for (i=0;i<num_details;i++)
+    for (i = 0; i<num_details; i++)
     {
       struct TALER_TrackTransferDetails *detail = &details[i];
       struct json_t *detail_j = json_array_get (details_j, i);
       struct GNUNET_JSON_Specification spec_detail[] = {
-        GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &detail->h_contract_terms),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &detail->h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
         TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
         TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -175,7 +177,8 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       }
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &dd,
-                                       sizeof (struct TALER_WireDepositDetailP));
+                                       sizeof (struct
+                                               TALER_WireDepositDetailP));
     }
     /* Check signature */
     wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
@@ -189,7 +192,8 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     GNUNET_CRYPTO_hash_context_finish (hash_context,
                                        &wdp.h_details);
     if (GNUNET_OK !=
-        TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
+        TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (
+                                           wdh->exchange),
                                          &exchange_pub))
     {
       GNUNET_break_op (0);
@@ -197,10 +201,10 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify
-      (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
-       &wdp.purpose,
-       &exchange_sig.eddsa_signature,
-       &exchange_pub.eddsa_pub))
+          (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
+          &wdp.purpose,
+          &exchange_sig.eddsa_signature,
+          &exchange_pub.eddsa_pub))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
@@ -226,7 +230,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     }
     wdh->cb (wdh->cb_cls,
              MHD_HTTP_OK,
-	     TALER_EC_NONE,
+             TALER_EC_NONE,
              &exchange_pub,
              json,
              &h_wire,
@@ -299,7 +303,7 @@ handle_track_transfer_finished (void *cls,
   }
   wdh->cb (wdh->cb_cls,
            response_code,
-	   TALER_JSON_get_error_code (j),
+           TALER_JSON_get_error_code (j),
            NULL,
            j,
            NULL,
@@ -323,7 +327,8 @@ handle_track_transfer_finished (void *cls,
  */
 struct TALER_EXCHANGE_TrackTransferHandle *
 TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
-                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               const struct
+                               TALER_WireTransferIdentifierRawP *wtid,
                                TALER_EXCHANGE_TrackTransferCallback cb,
                                void *cb_cls)
 {
@@ -346,22 +351,23 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   wdh->cb_cls = cb_cls;
 
   buf = GNUNET_STRINGS_data_to_string_alloc (wtid,
-                                             sizeof (struct TALER_WireTransferIdentifierRawP));
+                                             sizeof (struct
+                                                     TALER_WireTransferIdentifierRawP));
   GNUNET_asprintf (&path,
                    "/track/transfer?wtid=%s",
                    buf);
   wdh->url = TEAH_path_to_url (wdh->exchange,
-                              path);
+                               path);
   GNUNET_free (buf);
   GNUNET_free (path);
 
   eh = TEL_curl_easy_get (wdh->url);
   ctx = TEAH_handle_to_context (exchange);
   wdh->job = GNUNET_CURL_job_add (ctx,
-                          eh,
-                          GNUNET_YES,
-                          &handle_track_transfer_finished,
-                          wdh);
+                                  eh,
+                                  GNUNET_YES,
+                                  &handle_track_transfer_finished,
+                                  wdh);
   return wdh;
 }
 
@@ -373,7 +379,8 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
  * @param wdh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_track_transfer_cancel (struct TALER_EXCHANGE_TrackTransferHandle *wdh)
+TALER_EXCHANGE_track_transfer_cancel (struct
+                                      TALER_EXCHANGE_TrackTransferHandle *wdh)
 {
   if (NULL != wdh->job)
   {

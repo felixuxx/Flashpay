@@ -30,7 +30,7 @@
 /**
  * Maximum POST request size (for /admin/add/incoming)
  */
-#define REQUEST_BUFFER_MAX (4*1024)
+#define REQUEST_BUFFER_MAX (4 * 1024)
 
 
 /**
@@ -318,7 +318,7 @@ create_bank_error (struct MHD_Connection *connection,
                     "ec",
                     (json_int_t) ec);
   json_str = json_dumps (json,
-                         JSON_INDENT(2));
+                         JSON_INDENT (2));
   json_decref (json);
   if (NULL == json_str)
   {
@@ -471,7 +471,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                       "timestamp", "/Date(0)/"); /*dummy tmp */
 
     json_str = json_dumps (json,
-                           JSON_INDENT(2));
+                           JSON_INDENT (2));
     json_decref (json);
     if (NULL == json_str)
     {
@@ -574,10 +574,10 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
 
   if (GNUNET_OK != found)
     return create_bank_error
-      (connection,
-       MHD_HTTP_NOT_FOUND,
-       TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND,
-       "transaction unknown");
+             (connection,
+             MHD_HTTP_NOT_FOUND,
+             TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND,
+             "transaction unknown");
   /* finally build regular response */
   resp = MHD_create_response_from_buffer (0,
                                           NULL,
@@ -608,9 +608,9 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
 #define HELLOMSG "Hello, Fakebank!"
 
   resp = MHD_create_response_from_buffer
-    (strlen (HELLOMSG),
-     HELLOMSG,
-     MHD_RESPMEM_MUST_COPY);
+           (strlen (HELLOMSG),
+           HELLOMSG,
+           MHD_RESPMEM_MUST_COPY);
 
   ret = MHD_queue_response (connection,
                             MHD_HTTP_OK,
@@ -654,11 +654,11 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                                        MHD_GET_ARGUMENT_KIND,
                                        "delta");
   if ( ((NULL != start) && (1 != sscanf (start,
-                                        "%llu",
-                                        &hri.start))) ||
-    (NULL == delta) || (1 != sscanf (delta,
-                                     "%lld",
-                                     &hri.count)) )
+                                         "%llu",
+                                         &hri.start))) ||
+       (NULL == delta) || (1 != sscanf (delta,
+                                        "%lld",
+                                        &hri.count)) )
   {
     GNUNET_break (0);
     return MHD_NO;
@@ -667,7 +667,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
 
   if (NULL == start)
     pos = 0 > hri.count ?
-      h->transactions_tail : h->transactions_head;
+          h->transactions_tail : h->transactions_head;
 
   else if (NULL != h->transactions_head)
   {
@@ -728,7 +728,7 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
   struct Transaction *pos;
 
   if (GNUNET_OK != TFH_parse_history_common_args (connection,
-                                              &ha))
+                                                  &ha))
   {
     GNUNET_break (0);
     return MHD_NO;
@@ -743,9 +743,9 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
   if ( (NULL == start) || (1 != sscanf (start,
                                         "%llu",
                                         &start_stamp)) ||
-    (NULL == end) || (1 != sscanf (end,
-                                   "%lld",
-                                   &end_stamp)) )
+       (NULL == end) || (1 != sscanf (end,
+                                      "%lld",
+                                      &end_stamp)) )
   {
     GNUNET_break (0);
     return MHD_NO;
@@ -875,7 +875,7 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   struct GNUNET_TIME_Relative tv;
 
   haveto = MHD_get_timeout (h->mhd_bank,
-			    &timeout);
+                            &timeout);
   if (MHD_YES == haveto)
     tv.rel_value_us = (uint64_t) timeout * 1000LL;
   else
@@ -884,9 +884,9 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
     GNUNET_SCHEDULER_cancel (h->mhd_task);
   h->mhd_task =
     GNUNET_SCHEDULER_add_read_net (tv,
-				   h->mhd_rfd,
-				   &run_mhd,
-				   h);
+                                   h->mhd_rfd,
+                                   &run_mhd,
+                                   h);
 }
 #else
 /**
@@ -981,17 +981,18 @@ TALER_FAKEBANK_start (uint16_t port)
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
 #if EPOLL_SUPPORT
-				  | MHD_USE_EPOLL_INTERNAL_THREAD
+                                  | MHD_USE_EPOLL_INTERNAL_THREAD
 #else
                                   | MHD_USE_INTERNAL_POLLING_THREAD
 #endif
-				  | MHD_USE_DUAL_STACK,
+                                  | MHD_USE_DUAL_STACK,
                                   port,
                                   NULL, NULL,
                                   &handle_mhd_request, h,
                                   MHD_OPTION_NOTIFY_COMPLETED,
                                   &handle_mhd_completion_callback, h,
-                                  MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
+                                  MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned
+                                                                   int) 1024,
                                   MHD_OPTION_END);
   if (NULL == h->mhd_bank)
   {
@@ -1000,7 +1001,7 @@ TALER_FAKEBANK_start (uint16_t port)
   }
 #if EPOLL_SUPPORT
   h->mhd_fd = MHD_get_daemon_info (h->mhd_bank,
-				   MHD_DAEMON_INFO_EPOLL_FD)->epoll_fd;
+                                   MHD_DAEMON_INFO_EPOLL_FD)->epoll_fd;
   h->mhd_rfd = GNUNET_NETWORK_socket_box_native (h->mhd_fd);
 #endif
   schedule_httpd (h);

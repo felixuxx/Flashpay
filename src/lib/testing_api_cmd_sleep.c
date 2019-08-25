@@ -183,13 +183,13 @@ wait_service_run (void *cls,
     if (10 == iter++)
     {
       TALER_LOG_ERROR ("Could not reach the proxied service\n");
-      TALER_TESTING_interpreter_fail (is); 
+      TALER_TESTING_interpreter_fail (is);
       GNUNET_free (wget_cmd);
-      return; 
+      return;
     }
   }
   while (0 != system (wget_cmd));
-  
+
   GNUNET_free (wget_cmd);
   TALER_TESTING_interpreter_next (is);
 }
@@ -214,7 +214,7 @@ TALER_TESTING_cmd_wait_service (const char *label,
     .traits = wait_service_traits,
     .cls = (void *) url
   };
-  
+
   return cmd;
 }
 

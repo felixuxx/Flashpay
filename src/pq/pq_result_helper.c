@@ -171,7 +171,7 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
     .dst_size = sizeof (*amount),
     .fname = name
   };
-  
+
   return res;
 }
 
@@ -245,7 +245,7 @@ TALER_PQ_result_spec_amount (const char *name,
     .dst_size = sizeof (*amount),
     .fname = name
   };
-  
+
   return res;
 }
 
@@ -352,7 +352,7 @@ TALER_PQ_result_spec_json (const char *name,
     .dst = (void *) jp,
     .fname  = name
   };
-  
+
   return res;
 }
 
@@ -391,8 +391,8 @@ extract_round_time (void *cls,
     return GNUNET_SYSERR;
   }
   if (PQgetisnull (result,
-		   row,
-		   fnum))
+                   row,
+                   fnum))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -511,7 +511,7 @@ TALER_PQ_result_spec_absolute_time_nbo (const char *name,
                                         struct GNUNET_TIME_AbsoluteNBO *at)
 {
   struct GNUNET_PQ_ResultSpec res = {
-    .conv = &extract_round_time_nbo, 
+    .conv = &extract_round_time_nbo,
     .dst = (void *) at,
     .dst_size = sizeof (struct GNUNET_TIME_AbsoluteNBO),
     .fname = name

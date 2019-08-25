@@ -65,7 +65,7 @@ TALER_WIRE_payto_get_method (const char *payto_url)
                     PAYTO,
                     strlen (PAYTO)))
     return NULL;
-  start = &payto_url[strlen(PAYTO)];
+  start = &payto_url[strlen (PAYTO)];
   end = strchr (start,
                 (unsigned char) '/');
   if (NULL == end)
@@ -91,7 +91,7 @@ TALER_WIRE_get_plugin_from_method (const char *method)
     {NULL, NULL}
   };
 
-  for (unsigned int i=0;
+  for (unsigned int i = 0;
        NULL != ct[i].method;
        i++)
   {

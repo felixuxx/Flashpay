@@ -194,8 +194,8 @@ TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
   }
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (rh->json_enc =
-                          json_dumps (reject_obj,
-                                      JSON_COMPACT)));
+                            json_dumps (reject_obj,
+                                        JSON_COMPACT)));
   json_decref (reject_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,

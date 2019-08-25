@@ -49,10 +49,14 @@ main (int argc,
   cf (TALER_urlencode ("foo bar "), "foo%20bar%20");
   cf (TALER_urlencode ("% % "), "%25%20%25%20");
 
-  cf (TALER_url_join ("https://taler.net/", "foo", NULL), "https://taler.net/foo");
-  cf (TALER_url_join ("https://taler.net", "foo", NULL), "https://taler.net/foo");
-  cf (TALER_url_join ("https://taler.net/", "/foo", NULL), "https://taler.net/foo");
-  cf (TALER_url_join ("https://taler.net/", "/foo/", NULL), "https://taler.net/foo/");
+  cf (TALER_url_join ("https://taler.net/", "foo", NULL),
+      "https://taler.net/foo");
+  cf (TALER_url_join ("https://taler.net", "foo", NULL),
+      "https://taler.net/foo");
+  cf (TALER_url_join ("https://taler.net/", "/foo", NULL),
+      "https://taler.net/foo");
+  cf (TALER_url_join ("https://taler.net/", "/foo/", NULL),
+      "https://taler.net/foo/");
 
   cf (TALER_url_join ("https://taler.net/", "foo", "x", "42", NULL),
       "https://taler.net/foo?x=42");

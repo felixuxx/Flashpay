@@ -47,12 +47,12 @@ test_high_level ()
   coin_priv.eddsa_priv = *pk;
   GNUNET_free (pk);
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
-				      &coin_pub.eddsa_pub);
+                                      &coin_pub.eddsa_pub);
   pk2 = GNUNET_CRYPTO_ecdhe_key_create ();
   trans_priv.ecdhe_priv = *pk2;
   GNUNET_free (pk2);
   GNUNET_CRYPTO_ecdhe_key_get_public (&trans_priv.ecdhe_priv,
-				      &trans_pub.ecdhe_pub);
+                                      &trans_pub.ecdhe_pub);
   TALER_link_derive_transfer_secret (&coin_priv,
                                      &trans_priv,
                                      &secret);
@@ -98,7 +98,8 @@ test_planchets ()
   struct TALER_FreshCoin coin;
 
   dk_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  dk_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (dk_priv.rsa_private_key);
+  dk_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
+    dk_priv.rsa_private_key);
   TALER_planchet_setup_random (&ps);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
@@ -123,8 +124,8 @@ test_planchets ()
 
 
 int
-main(int argc,
-     const char *const argv[])
+main (int argc,
+      const char *const argv[])
 {
   if (0 != test_high_level ())
     return 1;

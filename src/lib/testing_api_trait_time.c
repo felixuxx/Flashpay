@@ -43,8 +43,8 @@
 int
 TALER_TESTING_get_trait_absolute_time
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct GNUNET_TIME_Absolute **time)
+  unsigned int index,
+  const struct GNUNET_TIME_Absolute **time)
 {
   return cmd->traits (cmd->cls,
                       (const void **) time,
@@ -62,7 +62,7 @@ TALER_TESTING_get_trait_absolute_time
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_absolute_time
   (unsigned int index,
-   const struct GNUNET_TIME_Absolute *time)
+  const struct GNUNET_TIME_Absolute *time)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

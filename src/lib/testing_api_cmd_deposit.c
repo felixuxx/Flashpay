@@ -191,21 +191,21 @@ deposit_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying deposit failed with %u/%d\n",
                     http_status,
                     (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  ds->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  ds->backoff = EXCHANGE_LIB_BACKOFF (ds->backoff);
-	ds->retry_task
-	  = GNUNET_SCHEDULER_add_delayed (ds->backoff,
-					  &do_retry,
-					  ds);
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          ds->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          ds->backoff = EXCHANGE_LIB_BACKOFF (ds->backoff);
+        ds->retry_task
+          = GNUNET_SCHEDULER_add_delayed (ds->backoff,
+                                          &do_retry,
+                                          ds);
         return;
       }
     }
@@ -260,8 +260,8 @@ deposit_run (void *cls,
 
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (is,
-     ds->coin_reference);
+               (is,
+               ds->coin_reference);
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
@@ -274,26 +274,26 @@ deposit_run (void *cls,
   GNUNET_assert (NULL != coin_cmd);
 
   GNUNET_assert (GNUNET_OK
-    == TALER_TESTING_get_trait_coin_priv (coin_cmd,
-                                          ds->coin_index,
-                                          &coin_priv));
+                 == TALER_TESTING_get_trait_coin_priv (coin_cmd,
+                                                       ds->coin_index,
+                                                       &coin_priv));
 
   GNUNET_assert (GNUNET_OK
-    == TALER_TESTING_get_trait_denom_pub (coin_cmd,
-                                          ds->coin_index,
-                                          &denom_pub));
+                 == TALER_TESTING_get_trait_denom_pub (coin_cmd,
+                                                       ds->coin_index,
+                                                       &denom_pub));
 
   GNUNET_assert (GNUNET_OK
-    == TALER_TESTING_get_trait_denom_sig (coin_cmd,
-                                          ds->coin_index,
-                                          &denom_pub_sig));
+                 == TALER_TESTING_get_trait_denom_sig (coin_cmd,
+                                                       ds->coin_index,
+                                                       &denom_pub_sig));
   if (GNUNET_OK !=
       TALER_string_to_amount (ds->amount,
                               &amount))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to parse amount `%s' at '%u/%s'\n",
-                 ds->amount, is->ip, this_cmd->label);
+                ds->amount, is->ip, this_cmd->label);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
@@ -315,17 +315,17 @@ deposit_run (void *cls,
 
     refund_deadline = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline);
     wire_deadline = GNUNET_TIME_relative_to_absolute
-    (GNUNET_TIME_relative_multiply (refund_deadline, 2));
+                      (GNUNET_TIME_relative_multiply (refund_deadline, 2));
   }
   else
   {
     ds->refund_deadline = ds->timestamp;
     wire_deadline = GNUNET_TIME_relative_to_absolute
-      (GNUNET_TIME_UNIT_ZERO);
+                      (GNUNET_TIME_UNIT_ZERO);
   }
   GNUNET_CRYPTO_eddsa_key_get_public
     (&ds->merchant_priv.eddsa_priv,
-     &merchant_pub.eddsa_pub);
+    &merchant_pub.eddsa_pub);
 
   (void) GNUNET_TIME_round_abs (&wire_deadline);
 
@@ -334,42 +334,42 @@ deposit_run (void *cls,
 
     memset (&dr, 0, sizeof (dr));
     dr.purpose.size = htonl
-      (sizeof (struct TALER_DepositRequestPS));
+                        (sizeof (struct TALER_DepositRequestPS));
     dr.purpose.purpose = htonl
-      (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
+                           (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
     dr.h_contract_terms = h_contract_terms;
     GNUNET_assert
       (GNUNET_OK ==
-       TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
-                                                &dr.h_wire));
+      TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
+                                               &dr.h_wire));
     dr.timestamp = GNUNET_TIME_absolute_hton (ds->timestamp);
     dr.refund_deadline = GNUNET_TIME_absolute_hton
-      (ds->refund_deadline);
+                           (ds->refund_deadline);
     TALER_amount_hton (&dr.amount_with_fee, &amount);
     TALER_amount_hton
       (&dr.deposit_fee, &denom_pub->fee_deposit);
     dr.merchant = merchant_pub;
     dr.coin_pub = coin_pub;
     GNUNET_assert (GNUNET_OK == GNUNET_CRYPTO_eddsa_sign
-      (&coin_priv->eddsa_priv,
-       &dr.purpose,
-       &coin_sig.eddsa_signature));
+                     (&coin_priv->eddsa_priv,
+                     &dr.purpose,
+                     &coin_sig.eddsa_signature));
   }
   ds->dh = TALER_EXCHANGE_deposit
-    (is->exchange,
-     &amount,
-     wire_deadline,
-     ds->wire_details,
-     &h_contract_terms,
-     &coin_pub,
-     denom_pub_sig,
-     &denom_pub->key,
-     ds->timestamp,
-     &merchant_pub,
-     ds->refund_deadline,
-     &coin_sig,
-     &deposit_cb,
-     ds);
+             (is->exchange,
+             &amount,
+             wire_deadline,
+             ds->wire_details,
+             &h_contract_terms,
+             &coin_pub,
+             denom_pub_sig,
+             &denom_pub->key,
+             ds->timestamp,
+             &merchant_pub,
+             ds->refund_deadline,
+             &coin_sig,
+             &deposit_cb,
+             ds);
 
   if (NULL == ds->dh)
   {
@@ -436,8 +436,8 @@ deposit_traits (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
 
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (ds->is,
-     ds->coin_reference);
+               (ds->is,
+               ds->coin_reference);
 
   if (NULL == coin_cmd)
   {
@@ -510,13 +510,13 @@ deposit_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit
   (const char *label,
-   const char *coin_reference,
-   unsigned int coin_index,
-   json_t *wire_details,
-   const char *contract_terms,
-   struct GNUNET_TIME_Relative refund_deadline,
-   const char *amount,
-   unsigned int expected_response_code)
+  const char *coin_reference,
+  unsigned int coin_index,
+  json_t *wire_details,
+  const char *contract_terms,
+  struct GNUNET_TIME_Relative refund_deadline,
+  const char *amount,
+  unsigned int expected_response_code)
 {
   struct DepositState *ds;
 
@@ -531,9 +531,9 @@ TALER_TESTING_cmd_deposit
   {
     GNUNET_log
       (GNUNET_ERROR_TYPE_ERROR,
-       "Failed to parse contract terms `%s' for CMD `%s'\n",
-       contract_terms,
-       label);
+      "Failed to parse contract terms `%s' for CMD `%s'\n",
+      contract_terms,
+      label);
     GNUNET_assert (0);
   }
   ds->timestamp = GNUNET_TIME_absolute_get ();

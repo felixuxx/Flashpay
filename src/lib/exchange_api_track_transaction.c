@@ -88,7 +88,8 @@ struct TALER_EXCHANGE_TrackTransactionHandle
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_TrackTransactionHandle *dwh,
+verify_deposit_wtid_signature_ok (const struct
+                                  TALER_EXCHANGE_TrackTransactionHandle *dwh,
                                   const json_t *json,
                                   struct TALER_ExchangePublicKeyP *exchange_pub)
 {
@@ -97,7 +98,7 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_TrackTransactionHa
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -162,7 +163,7 @@ handle_deposit_wtid_finished (void *cls,
         GNUNET_JSON_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
         GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
         TALER_JSON_spec_amount ("coin_contribution", &coin_contribution_s),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -198,7 +199,7 @@ handle_deposit_wtid_finished (void *cls,
       /* Transaction known, but not executed yet */
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -240,7 +241,7 @@ handle_deposit_wtid_finished (void *cls,
   }
   dwh->cb (dwh->cb_cls,
            response_code,
-	   TALER_JSON_get_error_code (j),
+           TALER_JSON_get_error_code (j),
            ep,
            j,
            wtid,
@@ -265,12 +266,15 @@ handle_deposit_wtid_finished (void *cls,
  */
 struct TALER_EXCHANGE_TrackTransactionHandle *
 TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_MerchantPrivateKeyP *merchant_priv,
-                             const struct GNUNET_HashCode *h_wire,
-                             const struct GNUNET_HashCode *h_contract_terms,
-                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                             TALER_EXCHANGE_TrackTransactionCallback cb,
-                             void *cb_cls)
+                                  const struct
+                                  TALER_MerchantPrivateKeyP *merchant_priv,
+                                  const struct GNUNET_HashCode *h_wire,
+                                  const struct
+                                  GNUNET_HashCode *h_contract_terms,
+                                  const struct
+                                  TALER_CoinSpendPublicKeyP *coin_pub,
+                                  TALER_EXCHANGE_TrackTransactionCallback cb,
+                                  void *cb_cls)
 {
   struct TALER_DepositTrackPS dtp;
   struct TALER_MerchantSignatureP merchant_sig;
@@ -301,10 +305,14 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                                 " s:o," /* coin_pub */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */
                                 "H_wire", GNUNET_JSON_from_data_auto (h_wire),
-                                "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
-                                "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-                                "merchant_pub", GNUNET_JSON_from_data_auto (&dtp.merchant),
-                                "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig));
+                                "h_contract_terms", GNUNET_JSON_from_data_auto (
+                                  h_contract_terms),
+                                "coin_pub", GNUNET_JSON_from_data_auto (
+                                  coin_pub),
+                                "merchant_pub", GNUNET_JSON_from_data_auto (
+                                  &dtp.merchant),
+                                "merchant_sig", GNUNET_JSON_from_data_auto (
+                                  &merchant_sig));
   if (NULL == deposit_wtid_obj)
   {
     GNUNET_break (0);
@@ -325,8 +333,8 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   eh = TEL_curl_easy_get (dwh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&dwh->ctx,
-                           eh,
-                           deposit_wtid_obj))
+                            eh,
+                            deposit_wtid_obj))
   {
     GNUNET_break (0);
     curl_easy_cleanup (eh);
@@ -353,7 +361,9 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
  * @param dwh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionHandle *dwh)
+TALER_EXCHANGE_track_transaction_cancel (struct
+                                         TALER_EXCHANGE_TrackTransactionHandle *
+                                         dwh)
 {
   if (NULL != dwh->job)
   {

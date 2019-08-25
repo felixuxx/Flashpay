@@ -56,13 +56,13 @@
  */
 static int
 reply_deposit_success (struct MHD_Connection *connection,
-		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-		       const struct GNUNET_HashCode *h_wire,
-		       const struct GNUNET_HashCode *h_contract_terms,
-		       struct GNUNET_TIME_Absolute timestamp,
-		       struct GNUNET_TIME_Absolute refund_deadline,
-		       const struct TALER_MerchantPublicKeyP *merchant,
-		       const struct TALER_Amount *amount_without_fee)
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       const struct GNUNET_HashCode *h_wire,
+                       const struct GNUNET_HashCode *h_contract_terms,
+                       struct GNUNET_TIME_Absolute timestamp,
+                       struct GNUNET_TIME_Absolute refund_deadline,
+                       const struct TALER_MerchantPublicKeyP *merchant,
+                       const struct TALER_Amount *amount_without_fee)
 {
   struct TALER_DepositConfirmationPS dc;
   struct TALER_ExchangePublicKeyP pub;
@@ -92,7 +92,8 @@ reply_deposit_success (struct MHD_Connection *connection,
                                        "{s:s, s:o, s:o}",
                                        "status", "DEPOSIT_OK",
                                        "sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "pub", GNUNET_JSON_from_data_auto (&pub));
+                                       "pub", GNUNET_JSON_from_data_auto (
+                                         &pub));
 }
 
 
@@ -197,7 +198,7 @@ deposit_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
+                                                     TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* Check that cost of all transactions is smaller than
@@ -206,10 +207,10 @@ deposit_transaction (void *cls,
                             &dc->value))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-		"Deposited coin has insufficient funds left!\n");
+                "Deposited coin has insufficient funds left!\n");
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-							   TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
-							   tl);
+                                                           TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+                                                           tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -223,7 +224,7 @@ deposit_transaction (void *cls,
   {
     TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_DEPOSIT_STORE_DB_ERROR);
+                                                     TALER_EC_DEPOSIT_STORE_DB_ERROR);
   }
   return qs;
 }
@@ -291,7 +292,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   {
     TEH_KS_release (mks);
     return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
+                                                 TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
   }
   TALER_amount_ntoh (&dc.value,
                      &dki->issue.properties.value);
@@ -341,20 +342,20 @@ check_timestamp_current (struct GNUNET_TIME_Absolute ts)
   if (r.rel_value_us > tolerance.rel_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-		"Deposit timestamp too old: %llu vs %llu > %llu\n",
-		(unsigned long long) ts.abs_value_us,
-		(unsigned long long) GNUNET_TIME_absolute_get().abs_value_us,
-		(unsigned long long) tolerance.rel_value_us);
+                "Deposit timestamp too old: %llu vs %llu > %llu\n",
+                (unsigned long long) ts.abs_value_us,
+                (unsigned long long) GNUNET_TIME_absolute_get ().abs_value_us,
+                (unsigned long long) tolerance.rel_value_us);
     return GNUNET_SYSERR;
   }
   r = GNUNET_TIME_absolute_get_remaining (ts);
   if (r.rel_value_us > tolerance.rel_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-		"Deposit timestamp too new: %llu vs %llu < - %llu\n",
-		(unsigned long long) ts.abs_value_us,
-		(unsigned long long) GNUNET_TIME_absolute_get().abs_value_us,
-		(unsigned long long) tolerance.rel_value_us);
+                "Deposit timestamp too new: %llu vs %llu < - %llu\n",
+                (unsigned long long) ts.abs_value_us,
+                (unsigned long long) GNUNET_TIME_absolute_get ().abs_value_us,
+                (unsigned long long) tolerance.rel_value_us);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -394,7 +395,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),
     TALER_JSON_spec_amount ("contribution", &deposit.amount_with_fee),
-    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash", &deposit.coin.denom_pub_hash),
+    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                 &deposit.coin.denom_pub_hash),
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &deposit.merchant_pub),
@@ -402,8 +404,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("H_wire", &deposit.h_wire),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",  &deposit.csig),
     GNUNET_JSON_spec_absolute_time ("timestamp", &deposit.timestamp),
-    GNUNET_JSON_spec_absolute_time ("refund_deadline", &deposit.refund_deadline),
-    GNUNET_JSON_spec_absolute_time ("wire_transfer_deadline", &deposit.wire_deadline),
+    GNUNET_JSON_spec_absolute_time ("refund_deadline",
+                                    &deposit.refund_deadline),
+    GNUNET_JSON_spec_absolute_time ("wire_transfer_deadline",
+                                    &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
 
@@ -435,7 +439,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
+                                           TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                            "refund_deadline");
   }
 
@@ -456,17 +460,18 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_DEPOSIT_INVALID_TIMESTAMP,
+                                           TALER_EC_DEPOSIT_INVALID_TIMESTAMP,
                                            "timestamp");
   }
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire,
                                                &my_h_wire))
   {
-    TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
+    TALER_LOG_WARNING (
+      "Failed to parse JSON wire format specification for /deposit request\n");
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
+                                           TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
                                            "wire");
   }
   if (0 != GNUNET_memcmp (&deposit.h_wire,
@@ -475,7 +480,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     /* Client hashed contract differently than we did, reject */
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
+                                           TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
                                            "H_wire");
   }
 
@@ -499,7 +504,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_unknown (connection,
-					   TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN,
+                                           TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
@@ -513,7 +518,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TEH_KS_release (key_state);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
+                                                 TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
                                                  "ub_sig");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
@@ -526,7 +531,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_external_error (connection,
-					      TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
+                                              TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
                                               "deposited amount smaller than depositing fee");
   }
 

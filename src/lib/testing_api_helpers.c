@@ -41,8 +41,8 @@ TALER_TESTING_cleanup_files (const char *config_name)
 {
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse_and_run (config_name,
-					  &TALER_TESTING_cleanup_files_cfg,
-					  NULL))
+                                          &TALER_TESTING_cleanup_files_cfg,
+                                          NULL))
     exit (77);
 }
 
@@ -56,19 +56,19 @@ TALER_TESTING_cleanup_files (const char *config_name)
  */
 int
 TALER_TESTING_cleanup_files_cfg (void *cls,
-				 const struct GNUNET_CONFIGURATION_Handle *cfg)
+                                 const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   char *dir;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-					       "exchange",
-					       "keydir",
-					       &dir))
+                                               "exchange",
+                                               "keydir",
+                                               &dir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-			       "exchange",
-			       "keydir");
+                               "exchange",
+                               "keydir");
     return GNUNET_SYSERR;
   }
   if (GNUNET_YES ==
@@ -91,7 +91,7 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
  */
 int
 TALER_TESTING_run_keyup (const char *config_filename,
-			 const char *output_filename)
+                         const char *output_filename)
 {
   struct GNUNET_OS_Process *proc;
 
@@ -106,7 +106,7 @@ TALER_TESTING_run_keyup (const char *config_filename,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+                "Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_wait (proc);
@@ -127,10 +127,10 @@ TALER_TESTING_run_keyup (const char *config_filename,
  */
 int
 TALER_TESTING_run_auditor_sign (const char *config_filename,
-				const char *exchange_master_pub,
-				const char *auditor_base_url,
-				const char *signdata_in,
-				const char *signdata_out)
+                                const char *exchange_master_pub,
+                                const char *auditor_base_url,
+                                const char *signdata_in,
+                                const char *signdata_out)
 {
   struct GNUNET_OS_Process *proc;
 
@@ -148,7 +148,7 @@ TALER_TESTING_run_auditor_sign (const char *config_filename,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-sign`, is your PATH correct?\n");
+                "Failed to run `taler-auditor-sign`, is your PATH correct?\n");
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_wait (proc);
@@ -195,7 +195,7 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-exchange`, is your PATH correct?\n");
+                "Failed to run `taler-auditor-exchange`, is your PATH correct?\n");
     return GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_OK ==
@@ -207,7 +207,7 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
        (GNUNET_OS_PROCESS_EXITED != type) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"taler-auditor-exchange terminated with error (%d/%d)\n",
+                "taler-auditor-exchange terminated with error (%d/%d)\n",
                 (int) type,
                 (int) code);
     return GNUNET_SYSERR;
@@ -240,7 +240,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
+                "Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
     return GNUNET_NO;
   }
   if (GNUNET_SYSERR ==
@@ -257,7 +257,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to setup (exchange) database, exit code %d\n",
+                "Failed to setup (exchange) database, exit code %d\n",
                 (int) code);
     return GNUNET_NO;
   }
@@ -265,7 +265,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Unexpected error (%d/%d) running `taler-exchange-dbinit'!\n",
+                "Unexpected error (%d/%d) running `taler-exchange-dbinit'!\n",
                 (int) type,
                 (int) code);
     return GNUNET_SYSERR;
@@ -298,7 +298,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-dbinit`, is your PATH correct?\n");
+                "Failed to run `taler-auditor-dbinit`, is your PATH correct?\n");
     return GNUNET_NO;
   }
   if (GNUNET_SYSERR ==
@@ -315,7 +315,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to setup (auditor) database, exit code %d\n",
+                "Failed to setup (auditor) database, exit code %d\n",
                 (int) code);
     return GNUNET_NO;
   }
@@ -323,7 +323,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
        (0 != code) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Unexpected error (%d/%d) running `taler-auditor-dbinit'!\n",
+                "Unexpected error (%d/%d) running `taler-auditor-dbinit'!\n",
                 (int) type,
                 (int) code);
     return GNUNET_SYSERR;
@@ -373,7 +373,7 @@ struct SignInfo
  */
 static int
 sign_keys_for_exchange (void *cls,
-			const struct GNUNET_CONFIGURATION_Handle *cfg)
+                        const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct SignInfo *si = cls;
   char *test_home_dir;
@@ -460,10 +460,10 @@ sign_keys_for_exchange (void *cls,
 
   if (GNUNET_OK !=
       TALER_TESTING_run_auditor_sign (si->config_filename,
-				      exchange_master_pub,
-				      si->auditor_base_url,
-				      si->auditor_sign_input_filename,
-				      signed_keys_out))
+                                      exchange_master_pub,
+                                      si->auditor_base_url,
+                                      si->auditor_sign_input_filename,
+                                      signed_keys_out))
   {
     GNUNET_free (si->exchange_base_url);
     GNUNET_free (si->auditor_base_url);
@@ -495,8 +495,8 @@ sign_keys_for_exchange (void *cls,
  */
 int
 TALER_TESTING_prepare_exchange (const char *config_filename,
-				char **auditor_base_url,
-				char **exchange_base_url)
+                                char **auditor_base_url,
+                                char **exchange_base_url)
 {
   struct SignInfo si = {
     .config_filename = config_filename,
@@ -507,7 +507,7 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 
   if (GNUNET_OK !=
       TALER_TESTING_run_keyup (config_filename,
-			       si.auditor_sign_input_filename))
+                               si.auditor_sign_input_filename))
     return GNUNET_NO;
   if (GNUNET_OK !=
       TALER_TESTING_exchange_db_reset (config_filename))
@@ -517,8 +517,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
     return GNUNET_NO;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse_and_run (config_filename,
-					  &sign_keys_for_exchange,
-					  &si))
+                                          &sign_keys_for_exchange,
+                                          &si))
     return GNUNET_NO;
   *exchange_base_url = si.exchange_base_url;
   *auditor_base_url = si.auditor_base_url;
@@ -542,7 +542,7 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   char *str;
 
   now = GNUNET_TIME_absolute_get ();
-  for (unsigned int i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
@@ -555,7 +555,7 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   /* do 2nd pass to check if expiration times are to blame for
    * failure */
   str = TALER_amount_to_string (amount);
-  for (unsigned int i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
@@ -566,13 +566,13 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
     {
       GNUNET_log
         (GNUNET_ERROR_TYPE_WARNING,
-         "Have denomination key for `%s', but with wrong"
-         " expiration range %llu vs [%llu,%llu)\n",
-         str,
-         (unsigned long long) now.abs_value_us,
-         (unsigned long long) pk->valid_from.abs_value_us,
-         (unsigned long long)
-           pk->withdraw_valid_until.abs_value_us);
+        "Have denomination key for `%s', but with wrong"
+        " expiration range %llu vs [%llu,%llu)\n",
+        str,
+        (unsigned long long) now.abs_value_us,
+        (unsigned long long) pk->valid_from.abs_value_us,
+        (unsigned long long)
+        pk->withdraw_valid_until.abs_value_us);
       GNUNET_free (str);
       return NULL;
     }
@@ -609,18 +609,18 @@ TALER_TESTING_wait_exchange_ready (const char *base_url)
            wget_cmd);
   iter = 0;
   do
+  {
+    if (10 == iter)
     {
-      if (10 == iter)
-      {
-	fprintf (stderr,
-		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");
-        GNUNET_free (wget_cmd);
-	return 77;
-      }
-      fprintf (stderr, ".\n");
-      sleep (1);
-      iter++;
+      fprintf (stderr,
+               "Failed to launch `taler-exchange-httpd' (or `wget')\n");
+      GNUNET_free (wget_cmd);
+      return 77;
     }
+    fprintf (stderr, ".\n");
+    sleep (1);
+    iter++;
+  }
   while (0 != system (wget_cmd));
   GNUNET_free (wget_cmd);
   return 0;
@@ -650,18 +650,18 @@ TALER_TESTING_wait_auditor_ready (const char *base_url)
            "Waiting for `taler-auditor-httpd' to be ready\n");
   iter = 0;
   do
+  {
+    if (10 == iter)
     {
-      if (10 == iter)
-      {
-	fprintf (stderr,
-		 "Failed to launch `taler-auditor-httpd' (or `wget')\n");
-        GNUNET_free (wget_cmd);
-	return 77;
-      }
-      fprintf (stderr, ".\n");
-      sleep (1);
-      iter++;
+      fprintf (stderr,
+               "Failed to launch `taler-auditor-httpd' (or `wget')\n");
+      GNUNET_free (wget_cmd);
+      return 77;
     }
+    fprintf (stderr, ".\n");
+    sleep (1);
+    iter++;
+  }
   while (0 != system (wget_cmd));
   GNUNET_free (wget_cmd);
   return 0;
@@ -695,7 +695,8 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
 
   if (GNUNET_OK !=
       (result = GNUNET_CONFIGURATION_parse_and_run (config_filename,
-                                                    &TALER_TESTING_setup_with_exchange_cfg,
+                                                    &
+                                                    TALER_TESTING_setup_with_exchange_cfg,
                                                     &setup_ctx)))
     return result;
   return GNUNET_OK;
@@ -713,7 +714,8 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
  */
 int
 TALER_TESTING_setup_with_exchange_cfg (void *cls,
-                                       const struct GNUNET_CONFIGURATION_Handle *cfg)
+                                       const struct
+                                       GNUNET_CONFIGURATION_Handle *cfg)
 {
   const struct TALER_TESTING_SetupContext *setup_ctx = cls;
   struct GNUNET_OS_Process *exchanged;
@@ -751,7 +753,7 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
 
     if (GNUNET_OK !=
         GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-  				     (uint16_t) port))
+                                       (uint16_t) port))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Required port %llu not available, skipping.\n",
@@ -816,7 +818,9 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
  */
 int
 TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
-                                                   const struct GNUNET_CONFIGURATION_Handle *cfg)
+                                                   const struct
+                                                   GNUNET_CONFIGURATION_Handle *
+                                                   cfg)
 {
   const struct TALER_TESTING_SetupContext *setup_ctx = cls;
   struct GNUNET_OS_Process *auditord;
@@ -854,7 +858,7 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
 
     if (GNUNET_OK !=
         GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-  				     (uint16_t) port))
+                                       (uint16_t) port))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Required port %llu not available, skipping.\n",
@@ -937,7 +941,8 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
   };
 
   return GNUNET_CONFIGURATION_parse_and_run (config_file,
-                                             &TALER_TESTING_setup_with_auditor_and_exchange_cfg,
+                                             &
+                                             TALER_TESTING_setup_with_auditor_and_exchange_cfg,
                                              &setup_ctx);
 }
 
@@ -959,7 +964,7 @@ TALER_TESTING_url_port_free (const char *url)
     pnum = strtol (port + 1, NULL, 10);
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     pnum))
+                                     pnum))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Port %u not available.\n",
@@ -989,7 +994,7 @@ TALER_TESTING_make_wire_details (unsigned long long account_no,
   int ends_slash;
 
   if (0 < strlen (bank_url))
-    ends_slash = '/' == bank_url[strlen(bank_url)-1];
+    ends_slash = '/' == bank_url[strlen (bank_url) - 1];
   else
     ends_slash = 0;
 
@@ -1001,7 +1006,8 @@ TALER_TESTING_make_wire_details (unsigned long long account_no,
                    account_no);
   ret = json_pack ("{s:s, s:s}",
                    "url", payto,
-                   "salt", "test-salt (must be constant for aggregation tests)");
+                   "salt",
+                   "test-salt (must be constant for aggregation tests)");
   GNUNET_free (payto);
   return ret;
 }
@@ -1049,9 +1055,9 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   {
     GNUNET_log_config_invalid
       (GNUNET_ERROR_TYPE_WARNING,
-       config_section,
-       "URL",
-       "expected `x-taler-bank' payto://-URL");
+      config_section,
+      "URL",
+      "expected `x-taler-bank' payto://-URL");
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (payto_url);
     return NULL;

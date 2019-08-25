@@ -198,27 +198,24 @@ struct HistoryArgs
  * @param pos current position.
  * @return GNUNET_YES if the iteration shuold go on.
  */
-typedef int (*CheckAdvance)
-  (const struct HistoryArgs *ha,
-   const struct Transaction *pos);
+typedef int (*CheckAdvance)(const struct HistoryArgs *ha,
+                            const struct Transaction *pos);
 
 /**
  * Type for a function that steps over the next element
  * in the list of all transactions, after the current @a pos
  * _got_ included in the result.
  */
-typedef struct Transaction * (*Step)
-  (const struct HistoryArgs *ha,
-   const struct Transaction *pos);
+typedef struct Transaction * (*Step)(const struct HistoryArgs *ha,
+                                     const struct Transaction *pos);
 
 /*
  * Type for a function that steps over the next element
  * in the list of all transactions, after the current @a pos
  * did _not_ get included in the result.
  */
-typedef struct Transaction * (*Skip)
-  (const struct HistoryArgs *ha,
-   const struct Transaction *pos);
+typedef struct Transaction * (*Skip)(const struct HistoryArgs *ha,
+                                     const struct Transaction *pos);
 
 /**
  * Actual history response builder.

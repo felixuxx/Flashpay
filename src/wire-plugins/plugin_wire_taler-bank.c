@@ -300,7 +300,8 @@ do_prepare (void *cls)
   TALER_amount_hton (&bf.amount,
                      &pth->amount);
   {
-    char buf[sizeof (struct BufFormatP) + len_o + len_i + len_b + len_au + len_ap];
+    char buf[sizeof (struct BufFormatP) + len_o + len_i + len_b + len_au
+             + len_ap];
 
     memcpy (buf,
             &bf,
@@ -415,7 +416,8 @@ taler_bank_prepare_wire_transfer (void *cls,
                                   const char *destination_account_url,
                                   const struct TALER_Amount *amount,
                                   const char *exchange_base_url,
-                                  const struct TALER_WireTransferIdentifierRawP *wtid,
+                                  const struct
+                                  TALER_WireTransferIdentifierRawP *wtid,
                                   TALER_WIRE_PrepareTransactionCallback ptc,
                                   void *ptc_cls)
 {
@@ -458,7 +460,7 @@ taler_bank_prepare_wire_transfer (void *cls,
   if (TALER_EC_NONE !=
       TALER_WIRE_payto_to_account (origin_account_url,
                                    &a_in))
-    {
+  {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                origin_account_section,
                                "URL",
@@ -710,13 +712,16 @@ taler_bank_execute_wire_transfer (void *cls,
   wire_s = GNUNET_STRINGS_data_to_string_alloc (&bf.wtid,
                                                 sizeof (bf.wtid));
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
-                                            origin_account.details.x_taler_bank.bank_base_url,
+                                            origin_account.details.x_taler_bank.
+                                            bank_base_url,
                                             &auth,
                                             exchange_base_url,
                                             wire_s,
                                             &amount,
-                                            (uint64_t) origin_account.details.x_taler_bank.no,
-                                            (uint64_t) destination_account.details.x_taler_bank.no,
+                                            (uint64_t) origin_account.details.
+                                            x_taler_bank.no,
+                                            (uint64_t) destination_account.
+                                            details.x_taler_bank.no,
                                             &execute_cb,
                                             eh);
   TALER_WIRE_account_free (&origin_account);
@@ -830,7 +835,8 @@ bhist_cb (void *cls,
   uint64_t bserial_id = GNUNET_htonll (serial_id);
   struct TALER_WIRE_TransferDetails wd;
 
-  switch (http_status) {
+  switch (http_status)
+  {
   case MHD_HTTP_OK:
     {
       char *subject;
@@ -1063,12 +1069,12 @@ taler_bank_get_history (void *cls,
 static struct TALER_WIRE_HistoryHandle *
 taler_bank_get_history_range
   (void *cls,
-   const char *account_section,
-   enum TALER_BANK_Direction direction,
-   struct GNUNET_TIME_Absolute start_date,
-   struct GNUNET_TIME_Absolute end_date,
-   TALER_WIRE_HistoryResultCallback hres_cb,
-   void *hres_cb_cls)
+  const char *account_section,
+  enum TALER_BANK_Direction direction,
+  struct GNUNET_TIME_Absolute start_date,
+  struct GNUNET_TIME_Absolute end_date,
+  TALER_WIRE_HistoryResultCallback hres_cb,
+  void *hres_cb_cls)
 {
 
   /* FIXME: remove the following lines when addressing #5746*/
@@ -1331,9 +1337,11 @@ libtaler_plugin_wire_taler_bank_init (void *cls)
   plugin->amount_round = &taler_bank_amount_round;
   plugin->wire_validate = &taler_bank_wire_validate;
   plugin->prepare_wire_transfer = &taler_bank_prepare_wire_transfer;
-  plugin->prepare_wire_transfer_cancel = &taler_bank_prepare_wire_transfer_cancel;
+  plugin->prepare_wire_transfer_cancel =
+    &taler_bank_prepare_wire_transfer_cancel;
   plugin->execute_wire_transfer = &taler_bank_execute_wire_transfer;
-  plugin->execute_wire_transfer_cancel = &taler_bank_execute_wire_transfer_cancel;
+  plugin->execute_wire_transfer_cancel =
+    &taler_bank_execute_wire_transfer_cancel;
   plugin->get_history = &taler_bank_get_history;
   plugin->get_history_range = &taler_bank_get_history_range;
   plugin->get_history_cancel = &taler_bank_get_history_cancel;

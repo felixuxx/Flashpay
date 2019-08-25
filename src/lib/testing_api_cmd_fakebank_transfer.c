@@ -209,23 +209,23 @@ add_incoming_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log
           (GNUNET_ERROR_TYPE_INFO,
-           "Retrying fakebank transfer failed with %u/%d\n",
-           http_status,
-           (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  fts->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
-	fts->retry_task = GNUNET_SCHEDULER_add_delayed
-          (fts->backoff,
-           &do_retry,
-           fts);
-	return;
+          "Retrying fakebank transfer failed with %u/%d\n",
+          http_status,
+          (int) ec);
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          fts->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
+        fts->retry_task = GNUNET_SCHEDULER_add_delayed
+                            (fts->backoff,
+                            &do_retry,
+                            fts);
+        return;
       }
     }
     GNUNET_break (0);
@@ -273,7 +273,7 @@ fakebank_transfer_run (void *cls,
       const struct TALER_ReservePrivateKeyP *reserve_priv;
 
       ref = TALER_TESTING_interpreter_lookup_command
-        (is, fts->reserve_reference);
+              (is, fts->reserve_reference);
       if (NULL == ref)
       {
         GNUNET_break (0);
@@ -317,9 +317,9 @@ fakebank_transfer_run (void *cls,
         if (GNUNET_OK !=
             GNUNET_CONFIGURATION_get_value_filename
               (cfg,
-               section,
-               "TIP_RESERVE_PRIV_FILENAME",
-               &keys))
+              section,
+              "TIP_RESERVE_PRIV_FILENAME",
+              &keys))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                       "Configuration fails to specify reserve"
@@ -335,9 +335,9 @@ fakebank_transfer_run (void *cls,
         {
           GNUNET_log_config_invalid
             (GNUNET_ERROR_TYPE_ERROR,
-             section,
-             "TIP_RESERVE_PRIV_FILENAME",
-             "Failed to read private key");
+            section,
+            "TIP_RESERVE_PRIV_FILENAME",
+            "Failed to read private key");
           GNUNET_free (section);
           TALER_TESTING_interpreter_fail (is);
           return;
@@ -349,19 +349,19 @@ fakebank_transfer_run (void *cls,
       }
       else
       {
-      /* No referenced reserve, no instance to take priv
-       * from, no explicit subject given: create new key! */
-      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+        /* No referenced reserve, no instance to take priv
+         * from, no explicit subject given: create new key! */
+        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
 
-      priv = GNUNET_CRYPTO_eddsa_key_create ();
-      fts->reserve_priv.eddsa_priv = *priv;
-      GNUNET_free (priv);
+        priv = GNUNET_CRYPTO_eddsa_key_create ();
+        fts->reserve_priv.eddsa_priv = *priv;
+        GNUNET_free (priv);
       }
     }
     GNUNET_CRYPTO_eddsa_key_get_public
       (&fts->reserve_priv.eddsa_priv, &reserve_pub.eddsa_pub);
     subject = GNUNET_STRINGS_data_to_string_alloc
-      (&reserve_pub, sizeof (reserve_pub));
+                (&reserve_pub, sizeof (reserve_pub));
   }
 
   auth.method = TALER_BANK_AUTH_BASIC;
@@ -369,16 +369,16 @@ fakebank_transfer_run (void *cls,
   auth.details.basic.password = (char *) fts->auth_password;
   fts->is = is;
   fts->aih = TALER_BANK_admin_add_incoming
-    (TALER_TESTING_interpreter_get_context (is),
-     fts->bank_url,
-     &auth,
-     fts->exchange_url,
-     subject,
-     &fts->amount,
-     fts->debit_account_no,
-     fts->credit_account_no,
-     &add_incoming_cb,
-     fts);
+               (TALER_TESTING_interpreter_get_context (is),
+               fts->bank_url,
+               &auth,
+               fts->exchange_url,
+               subject,
+               &fts->amount,
+               fts->debit_account_no,
+               fts->credit_account_no,
+               &add_incoming_cb,
+               fts);
   GNUNET_free (subject);
   if (NULL == fts->aih)
   {
@@ -456,9 +456,9 @@ fakebank_transfer_traits (void *cls,
   /* A reserve priv must exist if no subject was given.  */
   else
     traits[MANDATORY - 1] = TALER_TESTING_make_trait_reserve_priv
-      (0, &fts->reserve_priv),
+                              (0, &fts->reserve_priv),
 
-  traits[MANDATORY] = TALER_TESTING_trait_end ();
+    traits[MANDATORY] = TALER_TESTING_trait_end ();
 
   return TALER_TESTING_get_trait (traits,
                                   ret,
@@ -491,13 +491,13 @@ fakebank_transfer_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer
   (const char *label,
-   const char *amount,
-   const char *bank_url,
-   uint64_t debit_account_no,
-   uint64_t credit_account_no,
-   const char *auth_username,
-   const char *auth_password,
-   const char *exchange_url)
+  const char *amount,
+  const char *bank_url,
+  uint64_t debit_account_no,
+  uint64_t credit_account_no,
+  const char *auth_username,
+  const char *auth_password,
+  const char *exchange_url)
 {
   struct FakebankTransferState *fts;
 
@@ -556,14 +556,14 @@ TALER_TESTING_cmd_fakebank_transfer
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_subject
   (const char *label,
-   const char *amount,
-   const char *bank_url,
-   uint64_t debit_account_no,
-   uint64_t credit_account_no,
-   const char *auth_username,
-   const char *auth_password,
-   const char *subject,
-   const char *exchange_url)
+  const char *amount,
+  const char *bank_url,
+  uint64_t debit_account_no,
+  uint64_t credit_account_no,
+  const char *auth_username,
+  const char *auth_password,
+  const char *subject,
+  const char *exchange_url)
 {
   struct FakebankTransferState *fts;
 
@@ -629,14 +629,14 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref
   (const char *label,
-   const char *amount,
-   const char *bank_url,
-   uint64_t debit_account_no,
-   uint64_t credit_account_no,
-   const char *auth_username,
-   const char *auth_password,
-   const char *ref,
-   const char *exchange_url)
+  const char *amount,
+  const char *bank_url,
+  uint64_t debit_account_no,
+  uint64_t credit_account_no,
+  const char *auth_username,
+  const char *auth_password,
+  const char *ref,
+  const char *exchange_url)
 {
   struct FakebankTransferState *fts;
 
@@ -703,15 +703,15 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_instance
   (const char *label,
-   const char *amount,
-   const char *bank_url,
-   uint64_t debit_account_no,
-   uint64_t credit_account_no,
-   const char *auth_username,
-   const char *auth_password,
-   const char *instance,
-   const char *exchange_url,
-   const char *config_filename)
+  const char *amount,
+  const char *bank_url,
+  uint64_t debit_account_no,
+  uint64_t credit_account_no,
+  const char *auth_username,
+  const char *auth_password,
+  const char *instance,
+  const char *exchange_url,
+  const char *config_filename)
 {
   struct FakebankTransferState *fts;
 

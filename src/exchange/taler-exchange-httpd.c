@@ -194,7 +194,7 @@ is_valid_correlation_id (const char *correlation_id)
   if (strlen (correlation_id) >= 64)
     return GNUNET_NO;
   for (int i = 0; i < strlen (correlation_id); i++)
-    if (!(isalnum (correlation_id[i]) || correlation_id[i] == '-'))
+    if (! (isalnum (correlation_id[i]) || (correlation_id[i] == '-')))
       return GNUNET_NO;
   return GNUNET_YES;
 }
@@ -223,193 +223,191 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-  static struct TEH_RequestHandler handlers[] =
-    {
-      /* Landing page, tell humans to go away. */
-      { "/", MHD_HTTP_METHOD_GET, "text/plain",
-        "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n", 0,
-        &TEH_MHD_handler_static_response, MHD_HTTP_OK },
-      /* /robots.txt: disallow everything */
-      { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
-        "User-agent: *\nDisallow: /\n", 0,
-        &TEH_MHD_handler_static_response, MHD_HTTP_OK },
-      /* AGPL licensing page, redirect to source. As per the AGPL-license,
-         every deployment is required to offer the user a download of the
-         source. We make this easy by including a redirect to the source
-         here. */
-      { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
-        NULL, 0,
-        &TEH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
+  static struct TEH_RequestHandler handlers[] = {
+    /* Landing page, tell humans to go away. */
+    { "/", MHD_HTTP_METHOD_GET, "text/plain",
+      "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n", 0,
+      &TEH_MHD_handler_static_response, MHD_HTTP_OK },
+    /* /robots.txt: disallow everything */
+    { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
+      "User-agent: *\nDisallow: /\n", 0,
+      &TEH_MHD_handler_static_response, MHD_HTTP_OK },
+    /* AGPL licensing page, redirect to source. As per the AGPL-license,
+       every deployment is required to offer the user a download of the
+       source. We make this easy by including a redirect to the source
+       here. */
+    { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
+      NULL, 0,
+      &TEH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
 
-      /* Return key material and fundamental properties for this exchange */
-      { "/keys", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TEH_KS_handler_keys, MHD_HTTP_OK },
-      { "/keys", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Return key material and fundamental properties for this exchange */
+    { "/keys", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TEH_KS_handler_keys, MHD_HTTP_OK },
+    { "/keys", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      /* Requests for wiring information */
-      { "/wire", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TEH_WIRE_handler_wire, MHD_HTTP_OK },
-      { "/wire", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Requests for wiring information */
+    { "/wire", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TEH_WIRE_handler_wire, MHD_HTTP_OK },
+    { "/wire", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      /* Withdrawing coins / interaction with reserves */
-      { "/reserve/status", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TEH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
-      { "/reserve/status", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Withdrawing coins / interaction with reserves */
+    { "/reserve/status", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TEH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
+    { "/reserve/status", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/reserve/withdraw", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
-      { "/reserve/withdraw", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/reserve/withdraw", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
+    { "/reserve/withdraw", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      /* Depositing coins */
-      { "/deposit", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
-      { "/deposit", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Depositing coins */
+    { "/deposit", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
+    { "/deposit", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      /* Refunding coins */
-      { "/refund", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_REFUND_handler_refund, MHD_HTTP_OK },
-      { "/refund", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Refunding coins */
+    { "/refund", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_REFUND_handler_refund, MHD_HTTP_OK },
+    { "/refund", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      /* Dealing with change */
-      { "/refresh/melt", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
-      { "/refresh/melt", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Dealing with change */
+    { "/refresh/melt", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
+    { "/refresh/melt", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
-      { "/refresh/reveal", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
+    { "/refresh/reveal", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
-      { "/refresh/reveal", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
+    { "/refresh/reveal", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/refresh/link", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TEH_REFRESH_handler_refresh_link, MHD_HTTP_OK },
-      { "/refresh/link", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/refresh/link", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TEH_REFRESH_handler_refresh_link, MHD_HTTP_OK },
+    { "/refresh/link", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/track/transfer", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TEH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
-      { "/track/transfer", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-      { "/track/transaction", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TRACKING_handler_track_transaction, MHD_HTTP_OK },
-      { "/track/transaction", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/track/transfer", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TEH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
+    { "/track/transfer", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/track/transaction", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TRACKING_handler_track_transaction, MHD_HTTP_OK },
+    { "/track/transaction", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/payback", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_PAYBACK_handler_payback, MHD_HTTP_OK },
-      { "/refresh/link", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/payback", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_PAYBACK_handler_payback, MHD_HTTP_OK },
+    { "/refresh/link", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
 #if HAVE_DEVELOPER
-      /* Client crypto-interoperability test functions */
-      { "/test", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test, MHD_HTTP_OK },
-      { "/test", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    /* Client crypto-interoperability test functions */
+    { "/test", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test, MHD_HTTP_OK },
+    { "/test", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/base32", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_base32, MHD_HTTP_OK },
-      { "/test/base32", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/base32", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_base32, MHD_HTTP_OK },
+    { "/test/base32", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/encrypt", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_encrypt, MHD_HTTP_OK },
-      { "/test/encrypt", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/encrypt", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_encrypt, MHD_HTTP_OK },
+    { "/test/encrypt", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/hkdf", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_hkdf, MHD_HTTP_OK },
-      { "/test/hkdf", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/hkdf", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_hkdf, MHD_HTTP_OK },
+    { "/test/hkdf", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/ecdhe", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
-      { "/test/ecdhe", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/ecdhe", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
+    { "/test/ecdhe", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/eddsa", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_eddsa, MHD_HTTP_OK },
-      { "/test/eddsa", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/eddsa", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_eddsa, MHD_HTTP_OK },
+    { "/test/eddsa", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/rsa/get", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
-      { "/test/rsa/get", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/rsa/get", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
+    { "/test/rsa/get", NULL, "text/plain",
+      "Only GET is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/rsa/sign", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
-      { "/test/rsa/sign", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/rsa/sign", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
+    { "/test/rsa/sign", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/transfer", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TEH_TEST_handler_test_transfer, MHD_HTTP_OK },
-      { "/test/transfer", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+    { "/test/transfer", MHD_HTTP_METHOD_POST, "application/json",
+      NULL, 0,
+      &TEH_TEST_handler_test_transfer, MHD_HTTP_OK },
+    { "/test/transfer", NULL, "text/plain",
+      "Only POST is allowed", 0,
+      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 #endif
-      { NULL, NULL, NULL, NULL, 0, 0 }
-    };
-  static struct TEH_RequestHandler h404 =
-    {
-      "", NULL, "text/html",
-      "<html><title>404: not found</title></html>", 0,
-      &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
-    };
+    { NULL, NULL, NULL, NULL, 0, 0 }
+  };
+  static struct TEH_RequestHandler h404 = {
+    "", NULL, "text/html",
+    "<html><title>404: not found</title></html>", 0,
+    &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
+  };
   struct TEH_RequestHandler *rh;
   struct ExchangeHttpRequestClosure *ecls = *con_cls;
   int ret;
@@ -430,8 +428,9 @@ handle_mhd_request (void *cls,
     if ((NULL != correlation_id) &&
         (GNUNET_YES != is_valid_correlation_id (correlation_id)))
     {
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "illegal incoming correlation ID\n");
-        correlation_id = NULL;
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "illegal incoming correlation ID\n");
+      correlation_id = NULL;
     }
   }
 
@@ -452,7 +451,7 @@ handle_mhd_request (void *cls,
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
-  for (unsigned int i=0;NULL != handlers[i].url;i++)
+  for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
     rh = &handlers[i];
     if ( (0 == strcasecmp (url,
@@ -675,8 +674,10 @@ exchange_serve_process_config ()
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_public_key_from_string (TEH_master_public_key_str,
-                                                  strlen (TEH_master_public_key_str),
-                                                  &TEH_master_public_key.eddsa_pub))
+                                                  strlen (
+                                                    TEH_master_public_key_str),
+                                                  &TEH_master_public_key.
+                                                  eddsa_pub))
   {
     fprintf (stderr,
              "Invalid master public key given in exchange configuration.");
@@ -764,7 +765,7 @@ run_fake_client ()
                    sizeof (ports),
                    "%u",
                    serve_port);
-  if (0 == (cld = fork()))
+  if (0 == (cld = fork ()))
   {
     GNUNET_break (0 == close (0));
     GNUNET_break (0 == dup2 (fd, 0));
@@ -824,7 +825,7 @@ connection_done (void *cls,
   if (NULL == input_filename)
     return;
   /* We signal ourselves to terminate. */
-  if (0 != kill (getpid(),
+  if (0 != kill (getpid (),
                  SIGTERM))
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                          "kill");
@@ -992,21 +993,24 @@ write_stats ()
                    (unsigned long long) pid);
 
   fh = GNUNET_DISK_file_open (s,
-                              (GNUNET_DISK_OPEN_WRITE |
-                               GNUNET_DISK_OPEN_TRUNCATE |
-                               GNUNET_DISK_OPEN_CREATE),
-                              (GNUNET_DISK_PERM_USER_READ |
-                               GNUNET_DISK_PERM_USER_WRITE));
+                              (GNUNET_DISK_OPEN_WRITE
+                               | GNUNET_DISK_OPEN_TRUNCATE
+                               | GNUNET_DISK_OPEN_CREATE),
+                              (GNUNET_DISK_PERM_USER_READ
+                               | GNUNET_DISK_PERM_USER_WRITE));
   GNUNET_assert (NULL != fh);
   GNUNET_free (s);
 
   /* Collect stats, summed up for all threads */
-  GNUNET_assert (0 == getrusage(RUSAGE_SELF, &usage));
+  GNUNET_assert (0 == getrusage (RUSAGE_SELF, &usage));
 
   GNUNET_asprintf (&s, "time_exchange sys %llu user %llu\n", \
-                   (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000 + usage.ru_stime.tv_usec),
-                   (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000 + usage.ru_utime.tv_usec));
-  GNUNET_assert (GNUNET_SYSERR != GNUNET_DISK_file_write_blocking (fh, s, strlen (s)));
+                   (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000
+                                         + usage.ru_stime.tv_usec),
+                   (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000
+                                         + usage.ru_utime.tv_usec));
+  GNUNET_assert (GNUNET_SYSERR != GNUNET_DISK_file_write_blocking (fh, s,
+                                                                   strlen (s)));
   GNUNET_free (s);
 
   GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_close (fh));
@@ -1038,19 +1042,20 @@ main (int argc,
                                "init-db",
                                "create database tables and indicies if necessary",
                                &init_db),
-   GNUNET_GETOPT_option_uint ('t',
-                              "timeout",
-                              "SECONDS",
-                              "after how long do connections timeout by default (in seconds)",
-                              &connection_timeout),
+    GNUNET_GETOPT_option_uint ('t',
+                               "timeout",
+                               "SECONDS",
+                               "after how long do connections timeout by default (in seconds)",
+                               &connection_timeout),
 #if HAVE_DEVELOPER
-   GNUNET_GETOPT_option_filename ('f',
-                                  "file-input",
-                                  "FILENAME",
-                                  "run in test-mode using FILENAME as the HTTP request to process",
-                                  &input_filename),
+    GNUNET_GETOPT_option_filename ('f',
+                                   "file-input",
+                                   "FILENAME",
+                                   "run in test-mode using FILENAME as the HTTP request to process",
+                                   &input_filename),
 #endif
-    GNUNET_GETOPT_option_help ("HTTP server providing a RESTful API to access a Taler exchange"),
+    GNUNET_GETOPT_option_help (
+      "HTTP server providing a RESTful API to access a Taler exchange"),
     GNUNET_GETOPT_option_loglevel (&loglev),
     GNUNET_GETOPT_option_logfile (&logfile),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
@@ -1077,7 +1082,7 @@ main (int argc,
       GNUNET_CONFIGURATION_load (cfg, cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
+                _ ("Malformed configuration file `%s', exit ...\n"),
                 cfgfile);
     GNUNET_free_non_null (cfgfile);
     return 1;
@@ -1092,9 +1097,9 @@ main (int argc,
   listen_fds = getenv ("LISTEN_FDS");
   if ( (NULL != listen_pid) &&
        (NULL != listen_fds) &&
-       (getpid() == strtol (listen_pid,
-                            NULL,
-                            10)) &&
+       (getpid () == strtol (listen_pid,
+                             NULL,
+                             10)) &&
        (1 == strtoul (listen_fds,
                       NULL,
                       10)) )
@@ -1131,7 +1136,10 @@ main (int argc,
   }
 
   mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG | MHD_USE_DUAL_STACK | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_TCP_FASTOPEN,
+    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
+                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                        | MHD_USE_INTERNAL_POLLING_THREAD
+                        | MHD_USE_TCP_FASTOPEN,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
                         &handle_mhd_request, NULL,
@@ -1139,7 +1147,8 @@ main (int argc,
                         MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
                         MHD_OPTION_LISTEN_SOCKET, fh,
                         MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                        MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                        MHD_OPTION_NOTIFY_COMPLETED,
+                        &handle_mhd_completion_callback, NULL,
                         MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER
                         MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
@@ -1225,7 +1234,8 @@ main (int argc,
          close it here */
       GNUNET_break (0 == close (sock));
       while (0 != MHD_get_daemon_info (mhd,
-                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections)
+                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->
+             num_connections)
         sleep (1);
       /* Now we're really done, practice clean shutdown */
       MHD_stop_daemon (mhd);

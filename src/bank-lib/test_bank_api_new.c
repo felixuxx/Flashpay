@@ -49,8 +49,8 @@
 #define ADDSECS(base, secs) \
   GNUNET_TIME_absolute_add \
     (base, \
-     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
-                                    secs))
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                   secs))
 /**
  * Subtract seconds.
  *
@@ -61,8 +61,8 @@
 #define SUBSECS(base, secs) \
   GNUNET_TIME_absolute_subtract \
     (base, \
-     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
-                                    secs))
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                   secs))
 /**
  * Bank process.
  */
@@ -96,35 +96,35 @@ run (void *cls,
                                     5),
     TALER_TESTING_cmd_bank_history_range_with_dates
       ("history-0-range",
-       bank_url,
-       EXCHANGE_ACCOUNT_NUMBER,
-       TALER_BANK_DIRECTION_BOTH,
-       GNUNET_NO,
-       SUBSECS (now,
-                5),
-       ADDSECS (now,
-                5)),
+      bank_url,
+      EXCHANGE_ACCOUNT_NUMBER,
+      TALER_BANK_DIRECTION_BOTH,
+      GNUNET_NO,
+      SUBSECS (now,
+               5),
+      ADDSECS (now,
+               5)),
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-1",
-       "KUDOS:5.01",
-       bank_url,
-       BANK_ACCOUNT_NUMBER,
-       EXCHANGE_ACCOUNT_NUMBER,
-       AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.username,
-       AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.password,
-       "subject 1",
-       "http://exchange.com/"),
+      "KUDOS:5.01",
+      bank_url,
+      BANK_ACCOUNT_NUMBER,
+      EXCHANGE_ACCOUNT_NUMBER,
+      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.username,
+      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.password,
+      "subject 1",
+      "http://exchange.com/"),
     /* bank gives to exchange */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("deposit-2",
-       "KUDOS:5.01",
-       bank_url,
-       BANK_ACCOUNT_NUMBER,
-       EXCHANGE_ACCOUNT_NUMBER,
-       AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.username,
-       AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.password,
-       "subject 2",
-       "http://exchange.com/"),
+      "KUDOS:5.01",
+      bank_url,
+      BANK_ACCOUNT_NUMBER,
+      EXCHANGE_ACCOUNT_NUMBER,
+      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.username,
+      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.password,
+      "subject 2",
+      "http://exchange.com/"),
     TALER_TESTING_cmd_bank_history ("history-1c",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -158,14 +158,14 @@ run (void *cls,
      */
     TALER_TESTING_cmd_bank_history_range_with_dates
       ("history-2-range",
-       bank_url,
-       EXCHANGE_ACCOUNT_NUMBER,
-       TALER_BANK_DIRECTION_BOTH,
-       GNUNET_NO,
-       SUBSECS (now,
-                50),
-       ADDSECS (now,
-                5)),
+      bank_url,
+      EXCHANGE_ACCOUNT_NUMBER,
+      TALER_BANK_DIRECTION_BOTH,
+      GNUNET_NO,
+      SUBSECS (now,
+               50),
+      ADDSECS (now,
+               5)),
     TALER_TESTING_cmd_bank_reject ("reject-1",
                                    bank_url,
                                    "deposit-1"),
@@ -182,8 +182,8 @@ run (void *cls,
 
 /* Pacifies "make check" */
 int
-main(int argc,
-     char * const *argv)
+main (int argc,
+      char *const *argv)
 {
   unsigned int ret;
   /* These environment variables get in the way... */
@@ -192,11 +192,11 @@ main(int argc,
   GNUNET_log_setup ("test-bank-api-new", "DEBUG", NULL);
 
   if (NULL ==
-    (bank_url = TALER_TESTING_prepare_bank (CONFIG_FILE)))
+      (bank_url = TALER_TESTING_prepare_bank (CONFIG_FILE)))
     return 77;
 
   if (NULL == (bankd =
-      TALER_TESTING_run_bank (CONFIG_FILE, bank_url)))
+                 TALER_TESTING_run_bank (CONFIG_FILE, bank_url)))
     return 77;
 
   ret = TALER_TESTING_setup (&run,

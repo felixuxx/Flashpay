@@ -115,7 +115,7 @@ purge_process (struct GNUNET_OS_Process *process)
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   unsigned int ret;
 
@@ -128,12 +128,12 @@ main (int argc,
                     NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
-               (CONFIG_FILE,
-                "account-1")))
+                                (CONFIG_FILE,
+                                "account-1")))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
-      (CONFIG_FILE)))
+                               (CONFIG_FILE)))
   {
     GNUNET_free (fakebank_url);
     return 77;

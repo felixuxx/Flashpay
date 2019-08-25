@@ -105,7 +105,8 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
   }
   TEH_plugin->preflight (TEH_plugin->cls,
                          session);
-  for (unsigned int retries = 0;retries < MAX_TRANSACTION_COMMIT_RETRIES; retries++)
+  for (unsigned int retries = 0; retries < MAX_TRANSACTION_COMMIT_RETRIES;
+       retries++)
   {
     enum GNUNET_DB_QueryStatus qs;
 
@@ -131,7 +132,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     if (0 <= qs)
       qs = TEH_plugin->commit (TEH_plugin->cls,
-			       session);
+                               session);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       if (NULL != mhd_ret)
@@ -150,7 +151,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                    MAX_TRANSACTION_COMMIT_RETRIES);
   if (NULL != mhd_ret)
     *mhd_ret = TEH_RESPONSE_reply_commit_error (connection,
-						TALER_EC_DB_COMMIT_FAILED_ON_RETRY);
+                                                TALER_EC_DB_COMMIT_FAILED_ON_RETRY);
   return GNUNET_SYSERR;
 }
 
@@ -167,7 +168,8 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
  */
 // FIXME: maybe move to another module, i.e. exchangedb???
 int
-TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
+TEH_DB_calculate_transaction_list_totals (struct
+                                          TALER_EXCHANGEDB_TransactionList *tl,
                                           const struct TALER_Amount *off,
                                           struct TALER_Amount *ret)
 {
@@ -177,7 +179,8 @@ TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionLis
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (spent.currency,
                                         &refunded));
-  for (struct TALER_EXCHANGEDB_TransactionList *pos = tl; NULL != pos; pos = pos->next)
+  for (struct TALER_EXCHANGEDB_TransactionList *pos = tl; NULL != pos; pos =
+         pos->next)
   {
     switch (pos->type)
     {

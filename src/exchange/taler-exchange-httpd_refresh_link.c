@@ -88,10 +88,12 @@ handle_link_data (void *cls,
       goto fail;
     json_object_set_new (obj,
                          "denom_pub",
-                         GNUNET_JSON_from_rsa_public_key (pos->denom_pub.rsa_public_key));
+                         GNUNET_JSON_from_rsa_public_key (
+                           pos->denom_pub.rsa_public_key));
     json_object_set_new (obj,
                          "ev_sig",
-                         GNUNET_JSON_from_rsa_signature (pos->ev_sig.rsa_signature));
+                         GNUNET_JSON_from_rsa_signature (
+                           pos->ev_sig.rsa_signature));
     json_object_set_new (obj,
                          "link_sig",
                          GNUNET_JSON_from_data_auto (&pos->orig_coin_link_sig));
@@ -113,7 +115,7 @@ handle_link_data (void *cls,
                              root))
     goto fail;
   return;
- fail:
+  fail:
   ctx->ec = TALER_EC_JSON_ALLOCATION_FAILURE;
   json_decref (ctx->mlist);
   ctx->mlist = NULL;
@@ -140,9 +142,9 @@ handle_link_data (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 refresh_link_transaction (void *cls,
-			  struct MHD_Connection *connection,
-			  struct TALER_EXCHANGEDB_Session *session,
-			  int *mhd_ret)
+                          struct MHD_Connection *connection,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          int *mhd_ret)
 {
   struct HTD_Context *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -162,8 +164,8 @@ refresh_link_transaction (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
-					       TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
-					       "coin_pub");
+                                               TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
+                                               "coin_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -193,12 +195,13 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
   struct HTD_Context ctx;
 
   memset (&ctx,
-	  0,
-	  sizeof (ctx));
+          0,
+          sizeof (ctx));
   res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "coin_pub",
                                         &ctx.coin_pub,
-                                        sizeof (struct TALER_CoinSpendPublicKeyP));
+                                        sizeof (struct
+                                                TALER_CoinSpendPublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if (GNUNET_OK != res)

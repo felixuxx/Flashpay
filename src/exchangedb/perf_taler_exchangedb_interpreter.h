@@ -53,11 +53,11 @@
  * @param _label The label of the command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_END(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_END, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_END, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
+  }
 
 
 /**
@@ -67,11 +67,11 @@
  *  will be logged each time the command runs
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_DEBUG, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_DEBUG, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
+  }
 
 /**
  * The begining of a loop
@@ -80,14 +80,14 @@
  * @param _iter the number of iterations of the loop
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP(_label, _iter) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_LOOP , \
-  .label = _label , \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE , \
-  .details.loop = { \
-    .max_iterations = _iter , \
-    .curr_iteration = 0 } \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_LOOP, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.loop = { \
+      .max_iterations = _iter, \
+      .curr_iteration = 0 } \
+  }
 
 /**
  * Marks the end of the loop @_label_loop
@@ -96,12 +96,12 @@
  * @param _label_loop the label of the loop closed by this command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP(_label, _label_loop) \
-{\
-  .command = PERF_TALER_EXCHANGEDB_CMD_END_LOOP , \
-  .label = _label , \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE , \
-  .details.end_loop.label_loop = _label_loop \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_END_LOOP, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.end_loop.label_loop = _label_loop \
+  }
 
 /**
  * Saves the time of execution to use for logging with Gauger
@@ -109,11 +109,11 @@
  * @param _label the label of the command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_TIME(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_TIME, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_TIME \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_TIME, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_TIME \
+  }
 
 /**
  * Commits the duration between @a _label_start and @a _label_stop
@@ -126,20 +126,22 @@
  * @param _unit the unit of the data measured, typicly something/sec
  * @param _divide number of measurments in the interval
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _category, _description, _unit, _divide) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GAUGER, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.gauger = { \
-    .label_start = _label_start, \
-    .label_stop = _label_stop, \
-    .category = _category, \
-    .description = _description, \
-    .unit = _unit, \
-    .divide = _divide, \
-  } \
-}
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, \
+                                              _category, _description, _unit, \
+                                              _divide) \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GAUGER, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.gauger = { \
+      .label_start = _label_start, \
+      .label_stop = _label_stop, \
+      .category = _category, \
+      .description = _description, \
+      .unit = _unit, \
+      .divide = _divide, \
+    } \
+  }
 
 /**
  * Initiate a database transaction
@@ -147,11 +149,11 @@
  * @param _label the label of the command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+  }
 
 /**
  * Commits a database transaction
@@ -159,11 +161,11 @@
  * @param _label the label of the command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+  }
 
 /**
  * Abort the current transaction
@@ -171,9 +173,9 @@
  * @param _label the label of the command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_ABORT_TRANSACTION(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION, \
-  .label = _label,
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION, \
+    .label = _label,
 
 /**
  * Saves randomly selected items from @a _label_save
@@ -184,17 +186,18 @@
  * @param _label_save the label of the command which outout is saved by this command
  * @param _nb_saved the total number of items to be saved
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.save_array = { \
-    .label_loop = _label_loop, \
-    .label_save = _label_save, \
-    .nb_saved = _nb_saved, \
-  } \
-}
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, \
+                                                  _label_save, _nb_saved) \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.save_array = { \
+      .label_loop = _label_loop, \
+      .label_save = _label_save, \
+      .nb_saved = _nb_saved, \
+    } \
+  }
 
 /**
  * Loads data from a #PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY to allow other
@@ -204,16 +207,17 @@
  * @param _label_loop the label of the loop to iterate over
  * @param _label_save the label of the #PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY providing data
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY(_label, _label_loop, _label_save) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.load_array = { \
-    .label_loop = _label_loop, \
-    .label_save = _label_save \
-  } \
-}
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY(_label, _label_loop, \
+                                                  _label_save) \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.load_array = { \
+      .label_loop = _label_loop, \
+      .label_save = _label_save \
+    } \
+  }
 
 /**
  * Create a denomination key to use
@@ -223,11 +227,11 @@
  * @param _label the label of this command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_DENOMINATION(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_DENOMINATION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_DENOMINATION_INFO, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_DENOMINATION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_DENOMINATION_INFO, \
+  }
 
 /**
  * Inserts informations about a denomination key in the database
@@ -236,12 +240,12 @@
  * @param _label_denom the label of the denomination to insert
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DENOMINATION(_label, _label_denom) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.insert_denomination.label_denom = _label_denom, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.insert_denomination.label_denom = _label_denom, \
+  }
 
 /**
  * Polls the database about informations regarding a specific denomination key
@@ -250,12 +254,12 @@
  * @param _label_denom the label of the command providing information about the denomination key
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_DENOMINATION(_label, _label_denom) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.get_denomination.label_denom = _label_denom \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.get_denomination.label_denom = _label_denom \
+  }
 
 /**
  * Create a reserve to be used later
@@ -264,11 +268,11 @@
  * @param _label the label of the command
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_RESERVE(_label) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_RESERVE, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_RESERVE \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_RESERVE, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_RESERVE \
+  }
 
 /**
  * Insert a new reserve in the database containing 1000 Euros
@@ -277,12 +281,12 @@
  * @param _label_reserve the label of the reserve to insert
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_RESERVE(_label, _label_reserve) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_RESERVE, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.insert_reserve.label_reserve = _label_reserve \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_RESERVE, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.insert_reserve.label_reserve = _label_reserve \
+  }
 
 /**
  * Polls the database for a secific reserve's details
@@ -291,12 +295,12 @@
  * @param _label_reserve the reserve to poll
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_RESERVE(_label, _label_reserve) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.get_reserve.label_reserve = _label_reserve \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.get_reserve.label_reserve = _label_reserve \
+  }
 
 /**
  * Polls the database for the history of a reserve
@@ -304,13 +308,14 @@
  * @param _label the label of the command
  * @param _label_reserve the reserve to examine
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_RESERVE_HISTORY(_label, _label_reserve) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE_HISTORY, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.get_reserve_history.label_reserve = _label_reserve \
-}
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_RESERVE_HISTORY(_label, \
+                                                           _label_reserve) \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE_HISTORY, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.get_reserve_history.label_reserve = _label_reserve \
+  }
 
 /**
  * Creates a coin to be used later
@@ -319,16 +324,17 @@
  * @param _label_dki denomination key used to sign the coin
  * @param _label_reserve reserve used to emmit the coin
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_WITHDRAW(_label, _label_dki, _label_reserve) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_COIN, \
-  .details.create_withdraw = {\
-    .label_dki = _label_dki, \
-    .label_reserve = _label_reserve, \
-  } \
-}
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_WITHDRAW(_label, _label_dki, \
+                                                       _label_reserve) \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_COIN, \
+    .details.create_withdraw = { \
+      .label_dki = _label_dki, \
+      .label_reserve = _label_reserve, \
+    } \
+  }
 
 /**
  * Inserts information about a withdrawal into the database
@@ -339,12 +345,12 @@
  * @param _label_coin the coin to insert
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_WITHDRAW(_label, _label_coin) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.insert_withdraw.label_coin = _label_coin\
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.insert_withdraw.label_coin = _label_coin \
+  }
 
 
 /**
@@ -354,12 +360,12 @@
  * @param _label_coin the coin to check
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_WITHDRAW(_label, _label_coin) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.get_withdraw.label_coin = _label_coin, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.get_withdraw.label_coin = _label_coin, \
+  }
 
 
 /**
@@ -371,16 +377,17 @@
  * @param _label_dki the denomination of the created coin
  * @param _label_reserve the reserve used to provide currency
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_WITHDRAW_SIGN(_label, _label_dki, _label_reserve) \
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_WITHDRAW_SIGN(_label, _label_dki, \
+                                                     _label_reserve) \
   PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_WITHDRAW (_label "withdraw", \
-                                              _label_dki, \
-                                              _label_reserve), \
-  PERF_TALER_EXCHANGEDB_INIT_CMD_GET_DENOMINATION(_label "withdraw info", \
-                                              _label_dki), \
-  PERF_TALER_EXCHANGEDB_INIT_CMD_GET_RESERVE_HISTORY(_label "reserve_history", \
-                                                 _label_reserve), \
-  PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_WITHDRAW(_label "insert withdraw", \
-                                             _label "withdraw")
+                                                  _label_dki, \
+                                                  _label_reserve), \
+  PERF_TALER_EXCHANGEDB_INIT_CMD_GET_DENOMINATION (_label "withdraw info", \
+                                                   _label_dki), \
+  PERF_TALER_EXCHANGEDB_INIT_CMD_GET_RESERVE_HISTORY (_label "reserve_history", \
+                                                      _label_reserve), \
+  PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_WITHDRAW (_label "insert withdraw", \
+                                                  _label "withdraw")
 
 /**
  * Create a deposit for use later
@@ -390,12 +397,12 @@
  * @param _label_coin the coin used to pay
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_DEPOSIT(_label, _label_coin) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_DEPOSIT, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_DEPOSIT, \
-  .details.create_deposit.label_coin = _label_coin, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_DEPOSIT, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_DEPOSIT, \
+    .details.create_deposit.label_coin = _label_coin, \
+  }
 
 /**
  * Insert a deposit into the database
@@ -404,12 +411,12 @@
  * @param _label_deposit the deposit inseerted
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_deposit) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT,\
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.insert_deposit.label_deposit = _label_deposit, \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.insert_deposit.label_deposit = _label_deposit, \
+  }
 
 /**
  * Check if a deposit is in the database
@@ -418,12 +425,12 @@
  * @param _label_deposit the deposit to use
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.get_deposit.label_deposit = _label_deposit \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.get_deposit.label_deposit = _label_deposit \
+  }
 
 /**
  * Access the transaction history of a coin
@@ -432,12 +439,12 @@
  * @param _label_coin the coin which history is checked
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_COIN_TRANSACTION(_label, _label_coin) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_COIN_TRANSACTION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
-  .details.get_coin_transaction.label_coin = _label_coin \
-}
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_COIN_TRANSACTION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE, \
+    .details.get_coin_transaction.label_coin = _label_coin \
+  }
 
 /**
  * The /deposit api call
@@ -447,11 +454,11 @@
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_DEPOSIT(_label, _label_coin) \
   PERF_TALER_EXCHANGEDB_INIT_CMD_GET_COIN_TRANSACTION (_label "coin history", \
-                                                   _label_coin), \
+                                                       _label_coin), \
   PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_DEPOSIT (_label "deposit", \
-                                             _label_coin), \
+                                                 _label_coin), \
   PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DEPOSIT (_label "insert", \
-                                             _label "deposit")
+                                                 _label "deposit")
 
 /**
  * Insert informations about a refresh session
@@ -459,13 +466,14 @@
  *
  * @param _label the label of the command
  */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_REFRESH_SESSION(_label, _label_coin)  \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION, \
-  .label = _label, \
-  .details.create_refresh_session.label_coin = _label_coin, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_REFRESH_HASH \
-}
+#define PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_REFRESH_SESSION(_label, \
+                                                              _label_coin)  \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION, \
+    .label = _label, \
+    .details.create_refresh_session.label_coin = _label_coin, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_REFRESH_HASH \
+  }
 
 /**
  * Get informations about a refresh session
@@ -474,12 +482,12 @@
  * @param _label_hash the label of the hash to search
  */
 #define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_REFRESH_SESSION(_label, \
-                                                       _label_hash) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION, \
-  .label = _label, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
-}
+                                                           _label_hash) \
+  { \
+    .command = PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION, \
+    .label = _label, \
+    .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
+  }
 
 
 /**
@@ -995,9 +1003,9 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
     unsigned int index_deposit;
   } get_deposit;
 
- /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION command
-   */
+  /**
+    * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION command
+    */
   struct PERF_TALER_EXCHANGEDB_CMD_createRefreshSessionDetails
   {
     /**
@@ -1007,9 +1015,9 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
     unsigned int index_coin;
   } create_refresh_session;
 
-   /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION command
-   */
+  /**
+  * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION command
+  */
   struct PERF_TALER_EXCHANGEDB_CMD_getRefreshSessionDetails
   {
     /**
@@ -1024,17 +1032,17 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
    */
   struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshRevealDetails
   {
-   /**
-    * The refresh session hash
-    */
-   const char *label_hash;
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
     unsigned int index_hash;
 
-   /**
-    * The new coin denomination
-    */
-   const char *label_denom;
-   unsigned int index_denom;
+    /**
+     * The new coin denomination
+     */
+    const char *label_denom;
+    unsigned int index_denom;
   } insert_refresh_reveal;
 
   /**
@@ -1119,8 +1127,8 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
  * @param cmd the commands to run
  */
 int
-PERF_TALER_EXCHANGEDB_interpret(struct TALER_EXCHANGEDB_Plugin *db_plugin,
-                                struct PERF_TALER_EXCHANGEDB_Cmd cmd[]);
+PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
+                                 struct PERF_TALER_EXCHANGEDB_Cmd cmd[]);
 
 
 /**

@@ -69,7 +69,7 @@ TALER_string_to_amount (const char *str,
 
   invalidate (denom);
   /* skip leading whitespace */
-  while (isspace( (unsigned char) str[0]))
+  while (isspace ( (unsigned char) str[0]))
     str++;
   if ('\0' == str[0])
   {
@@ -164,7 +164,7 @@ TALER_string_to_amount (const char *str,
   }
   return GNUNET_OK;
 
- fail:
+  fail:
   /* set currency to 'invalid' to prevent accidental use */
   memset (denom->currency,
           0,
@@ -208,7 +208,7 @@ TALER_amount_hton (struct TALER_AmountNBO *res,
                    const struct TALER_Amount *d)
 {
   GNUNET_assert (GNUNET_YES ==
-		 TALER_amount_is_valid (d));
+                 TALER_amount_is_valid (d));
   res->value = GNUNET_htonll (d->value);
   res->fraction = htonl (d->fraction);
   memcpy (res->currency,
@@ -233,7 +233,7 @@ TALER_amount_ntoh (struct TALER_Amount *res,
           dn->currency,
           TALER_CURRENCY_LEN);
   GNUNET_assert (GNUNET_YES ==
-		 TALER_amount_is_valid (res));
+                 TALER_amount_is_valid (res));
 }
 
 
@@ -308,7 +308,7 @@ TALER_amount_cmp_currency (const struct TALER_Amount *a1,
        (GNUNET_NO == TALER_amount_is_valid (a2)) )
     return GNUNET_SYSERR;
   if (0 == strcasecmp (a1->currency,
-		       a2->currency))
+                       a2->currency))
     return GNUNET_YES;
   return GNUNET_NO;
 }
@@ -331,7 +331,7 @@ TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
        (GNUNET_NO == test_valid_nbo (a2)) )
     return GNUNET_SYSERR;
   if (0 == strcasecmp (a1->currency,
-		       a2->currency))
+                       a2->currency))
     return GNUNET_YES;
   return GNUNET_NO;
 }
@@ -362,9 +362,9 @@ TALER_amount_cmp (const struct TALER_Amount *a1,
   n1 = *a1;
   n2 = *a2;
   GNUNET_assert (GNUNET_SYSERR !=
-		 TALER_amount_normalize (&n1));
+                 TALER_amount_normalize (&n1));
   GNUNET_assert (GNUNET_SYSERR !=
-		 TALER_amount_normalize (&n2));
+                 TALER_amount_normalize (&n2));
   if (n1.value == n2.value)
   {
     if (n1.fraction < n2.fraction)

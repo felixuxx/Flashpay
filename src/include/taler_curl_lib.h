@@ -61,8 +61,8 @@ struct TEAH_PostContext
  */
 int
 TALER_curl_easy_post (struct TEAH_PostContext *ctx,
-                     CURL *eh,
-                     const json_t *body);
+                      CURL *eh,
+                      const json_t *body);
 
 
 /**

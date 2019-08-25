@@ -88,7 +88,7 @@ static char *auditor_url;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-   TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -98,9 +98,11 @@ static char *auditor_url;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-   TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-     fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
-     USER_LOGIN_NAME, USER_LOGIN_PASS, exchange_url)
+  TALER_TESTING_cmd_fakebank_transfer (label, amount, \
+                                       fakebank_url, USER_ACCOUNT_NO, \
+                                       EXCHANGE_ACCOUNT_NO, \
+                                       USER_LOGIN_NAME, USER_LOGIN_PASS, \
+                                       exchange_url)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -135,26 +137,26 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-partial",
-       "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\
+      "withdraw-coin-1", 0,
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
+      GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
     /**
      * Melt SOME of the rest of the coin's value
      * (EUR:3.17 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt-1",
-       "withdraw-coin-1",
-       MHD_HTTP_OK,
-       NULL),
+      "withdraw-coin-1",
+      MHD_HTTP_OK,
+      NULL),
     /**
      * Complete (successful) melt operation, and withdraw the coins
      */
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-1",
-       "refresh-melt-1", MHD_HTTP_OK),
+      "refresh-melt-1", MHD_HTTP_OK),
     /* Make refreshed coin invalid */
     TALER_TESTING_cmd_revoke ("revoke-1",
                               MHD_HTTP_OK,
@@ -182,16 +184,16 @@ run (void *cls,
        leaving EUR:3.69. */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt-2",
-       "withdraw-coin-1",
-       MHD_HTTP_OK,
-       "EUR:0.1",
-       NULL),
+      "withdraw-coin-1",
+      MHD_HTTP_OK,
+      "EUR:0.1",
+      NULL),
     /**
      * Complete (successful) melt operation, and withdraw the coins
      */
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-2",
-       "refresh-melt-2", MHD_HTTP_OK),
+      "refresh-melt-2", MHD_HTTP_OK),
     /* Revokes refreshed EUR:0.1 coin  */
     TALER_TESTING_cmd_revoke ("revoke-2",
                               MHD_HTTP_OK,
@@ -231,7 +233,7 @@ run (void *cls,
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -240,10 +242,10 @@ main (int argc,
                     "INFO",
                     NULL);
   if (NULL == (fakebank_url
-       /* Check fakebank port is available and config cares
-        * about bank url. */
-               = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                                 "account-2")))
+               /* Check fakebank port is available and config cares
+                * about bank url. */
+                 = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                                   "account-2")))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it

@@ -96,7 +96,7 @@ serialize_keys_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
 
   sks->exchange_url = GNUNET_strdup
-    (TALER_EXCHANGE_get_base_url (is->exchange));
+                        (TALER_EXCHANGE_get_base_url (is->exchange));
   TALER_EXCHANGE_disconnect (is->exchange);
   is->exchange = NULL;
   is->working = GNUNET_NO;
@@ -182,7 +182,7 @@ connect_with_state_run (void *cls,
 
   cwss->is = is;
   state_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, cwss->state_reference);
+                (is, cwss->state_reference);
 
   /* Command providing serialized keys not found.  */
   if (NULL == state_cmd)
@@ -195,27 +195,27 @@ connect_with_state_run (void *cls,
   GNUNET_assert
     (GNUNET_OK == TALER_TESTING_get_trait_exchange_keys
       (state_cmd,
-       0,
-       &serialized_keys));
+      0,
+      &serialized_keys));
 
   TALER_LOG_DEBUG ("Serialized key-state: %s\n",
                    json_dumps (serialized_keys,
                                JSON_INDENT (1)));
 
   GNUNET_assert
-  (GNUNET_OK == TALER_TESTING_get_trait_url
-    (state_cmd,
-     0,
-     &exchange_url));
+    (GNUNET_OK == TALER_TESTING_get_trait_url
+      (state_cmd,
+      0,
+      &exchange_url));
 
   is->exchange = TALER_EXCHANGE_connect
-    (is->ctx,
-     exchange_url,
-     TALER_TESTING_cert_cb,
-     cwss,
-     TALER_EXCHANGE_OPTION_DATA,
-     serialized_keys,
-     TALER_EXCHANGE_OPTION_END);
+                   (is->ctx,
+                   exchange_url,
+                   TALER_TESTING_cert_cb,
+                   cwss,
+                   TALER_EXCHANGE_OPTION_DATA,
+                   serialized_keys,
+                   TALER_EXCHANGE_OPTION_END);
 
   cwss->consumed = GNUNET_YES;
 }
@@ -231,7 +231,7 @@ connect_with_state_run (void *cls,
 static void
 connect_with_state_cleanup
   (void *cls,
-   const struct TALER_TESTING_Command *cmd)
+  const struct TALER_TESTING_Command *cmd)
 {
   struct ConnectWithStateState *cwss = cls;
 

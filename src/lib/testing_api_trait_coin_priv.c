@@ -44,8 +44,8 @@
 int
 TALER_TESTING_get_trait_coin_priv
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_CoinSpendPrivateKeyP **coin_priv)
+  unsigned int index,
+  const struct TALER_CoinSpendPrivateKeyP **coin_priv)
 {
   return cmd->traits (cmd->cls,
                       (const void **) coin_priv,
@@ -64,7 +64,7 @@ TALER_TESTING_get_trait_coin_priv
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_coin_priv
   (unsigned int index,
-   const struct TALER_CoinSpendPrivateKeyP *coin_priv)
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

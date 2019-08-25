@@ -53,10 +53,10 @@ static struct GNUNET_CRYPTO_RsaPrivateKey *rsa_pk;
  */
 int
 TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
-			      struct MHD_Connection *connection,
-			      void **connection_cls,
-			      const char *upload_data,
-			      size_t *upload_data_size)
+                              struct MHD_Connection *connection,
+                              void **connection_cls,
+                              const char *upload_data,
+                              size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -78,20 +78,20 @@ TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   GNUNET_CRYPTO_hash (in_ptr,
-		      in_ptr_size,
-		      &hc);
+                      in_ptr_size,
+                      &hc);
   GNUNET_JSON_parse_free (spec);
   json_decref (json);
   return TEH_RESPONSE_reply_json_pack (connection,
-				       MHD_HTTP_OK,
-				       "{s:o}",
-				       "output",
-				       GNUNET_JSON_from_data_auto (&hc));
+                                       MHD_HTTP_OK,
+                                       "{s:o}",
+                                       "output",
+                                       GNUNET_JSON_from_data_auto (&hc));
 }
 
 
@@ -114,10 +114,10 @@ TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
  */
 int
 TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
-			       struct MHD_Connection *connection,
-			       void **connection_cls,
-			       const char *upload_data,
-			       size_t *upload_data_size)
+                               struct MHD_Connection *connection,
+                               void **connection_cls,
+                               const char *upload_data,
+                               size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -143,37 +143,39 @@ TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   GNUNET_assert (GNUNET_YES ==
-		 GNUNET_CRYPTO_kdf (&skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
-				    "skey", strlen ("skey"),
-				    &key, sizeof (key),
-				    NULL, 0));
+                 GNUNET_CRYPTO_kdf (&skey, sizeof (struct
+                                                   GNUNET_CRYPTO_SymmetricSessionKey),
+                                    "skey", strlen ("skey"),
+                                    &key, sizeof (key),
+                                    NULL, 0));
   GNUNET_assert (GNUNET_YES ==
-		 GNUNET_CRYPTO_kdf (&iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
-				    "iv", strlen ("iv"),
-				    &key, sizeof (key),
-				    NULL, 0));
+                 GNUNET_CRYPTO_kdf (&iv, sizeof (struct
+                                                 GNUNET_CRYPTO_SymmetricInitializationVector),
+                                    "iv", strlen ("iv"),
+                                    &key, sizeof (key),
+                                    NULL, 0));
   out = GNUNET_malloc (in_ptr_size);
   GNUNET_break (in_ptr_size ==
-		GNUNET_CRYPTO_symmetric_encrypt (in_ptr,
-						 in_ptr_size,
-						 &skey,
-						 &iv,
-						 out));
+                GNUNET_CRYPTO_symmetric_encrypt (in_ptr,
+                                                 in_ptr_size,
+                                                 &skey,
+                                                 &iv,
+                                                 out));
   json = GNUNET_JSON_from_data (out,
                                 in_ptr_size);
   GNUNET_free (out);
   GNUNET_JSON_parse_free (spec);
   return TEH_RESPONSE_reply_json_pack (connection,
-				       MHD_HTTP_OK,
-				       "{s:o}",
-				       "output",
-				       json);
+                                       MHD_HTTP_OK,
+                                       "{s:o}",
+                                       "output",
+                                       json);
 }
 
 
@@ -196,10 +198,10 @@ TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
  */
 int
 TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
-			    struct MHD_Connection *connection,
-			    void **connection_cls,
-			    const char *upload_data,
-			    size_t *upload_data_size)
+                            struct MHD_Connection *connection,
+                            void **connection_cls,
+                            const char *upload_data,
+                            size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -221,8 +223,8 @@ TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -235,10 +237,10 @@ TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
   GNUNET_JSON_parse_free (spec);
   json = GNUNET_JSON_from_data_auto (&hc);
   return TEH_RESPONSE_reply_json_pack (connection,
-				       MHD_HTTP_OK,
-				       "{s:o}",
-				       "output",
-				       json);
+                                       MHD_HTTP_OK,
+                                       "{s:o}",
+                                       "output",
+                                       json);
 }
 
 
@@ -258,10 +260,10 @@ TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
-			     struct MHD_Connection *connection,
-			     void **connection_cls,
-			     const char *upload_data,
-			     size_t *upload_data_size)
+                             struct MHD_Connection *connection,
+                             void **connection_cls,
+                             const char *upload_data,
+                             size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -284,27 +286,27 @@ TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecc_ecdh (&priv,
-			      &pub,
-			      &hc))
+                              &pub,
+                              &hc))
   {
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TEST_ECDH_ERROR,
-					      "Failed to perform ECDH");
+                                              TALER_EC_TEST_ECDH_ERROR,
+                                              "Failed to perform ECDH");
   }
   GNUNET_JSON_parse_free (spec);
   return TEH_RESPONSE_reply_json_pack (connection,
-				       MHD_HTTP_OK,
-				       "{s:o}",
-				       "ecdh_hash",
-				       GNUNET_JSON_from_data_auto (&hc));
+                                       MHD_HTTP_OK,
+                                       "{s:o}",
+                                       "ecdh_hash",
+                                       GNUNET_JSON_from_data_auto (&hc));
 }
 
 
@@ -325,10 +327,10 @@ TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
-			     struct MHD_Connection *connection,
-			     void **connection_cls,
-			     const char *upload_data,
-			     size_t *upload_data_size)
+                             struct MHD_Connection *connection,
+                             void **connection_cls,
+                             const char *upload_data,
+                             size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -352,8 +354,8 @@ TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -361,38 +363,38 @@ TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
   purpose.purpose = htonl (TALER_SIGNATURE_CLIENT_TEST_EDDSA);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_CLIENT_TEST_EDDSA,
-				  &purpose,
-				  &sig,
-				  &pub))
+                                  &purpose,
+                                  &sig,
+                                  &pub))
   {
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_TEST_EDDSA_INVALID,
-						 "eddsa_sig");
+                                                 TALER_EC_TEST_EDDSA_INVALID,
+                                                 "eddsa_sig");
   }
   GNUNET_JSON_parse_free (spec);
   pk = GNUNET_CRYPTO_eddsa_key_create ();
   purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_TEST_EDDSA);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_sign (pk,
-				&purpose,
-				&sig))
+                                &purpose,
+                                &sig))
   {
     GNUNET_free (pk);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TEST_EDDSA_ERROR,
-					      "Failed to EdDSA-sign");
+                                              TALER_EC_TEST_EDDSA_ERROR,
+                                              "Failed to EdDSA-sign");
   }
   GNUNET_CRYPTO_eddsa_key_get_public (pk,
-				      &pub);
+                                      &pub);
   GNUNET_free (pk);
   return TEH_RESPONSE_reply_json_pack (connection,
-				       MHD_HTTP_OK,
-				       "{s:o, s:o}",
-				       "eddsa_pub",
-				       GNUNET_JSON_from_data_auto (&pub),
-				       "eddsa_sig",
-				       GNUNET_JSON_from_data_auto (&sig));
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o}",
+                                       "eddsa_pub",
+                                       GNUNET_JSON_from_data_auto (&pub),
+                                       "eddsa_sig",
+                                       GNUNET_JSON_from_data_auto (&sig));
 }
 
 
@@ -423,22 +425,22 @@ TEH_TEST_handler_test_rsa_get (struct TEH_RequestHandler *rh,
   {
     GNUNET_break (0);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TEST_RSA_GEN_ERROR,
-					      "Failed to create RSA key");
+                                              TALER_EC_TEST_RSA_GEN_ERROR,
+                                              "Failed to create RSA key");
   }
   pub = GNUNET_CRYPTO_rsa_private_key_get_public (rsa_pk);
   if (NULL == pub)
   {
     GNUNET_break (0);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TEST_RSA_PUB_ERROR,
-					      "Failed to get public RSA key");
+                                              TALER_EC_TEST_RSA_PUB_ERROR,
+                                              "Failed to get public RSA key");
   }
   res = TEH_RESPONSE_reply_json_pack (connection,
-				      MHD_HTTP_OK,
-				      "{s:o}",
-				      "rsa_pub",
-				      GNUNET_JSON_from_rsa_public_key (pub));
+                                      MHD_HTTP_OK,
+                                      "{s:o}",
+                                      "rsa_pub",
+                                      GNUNET_JSON_from_rsa_public_key (pub));
   GNUNET_CRYPTO_rsa_public_key_free (pub);
   return res;
 }
@@ -483,8 +485,8 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -495,26 +497,26 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TEST_RSA_GEN_ERROR,
-					      "Failed to create RSA key");
+                                              TALER_EC_TEST_RSA_GEN_ERROR,
+                                              "Failed to create RSA key");
   }
   sig = GNUNET_CRYPTO_rsa_sign_blinded (rsa_pk,
-					in_ptr,
-					in_ptr_size);
+                                        in_ptr,
+                                        in_ptr_size);
   if (NULL == sig)
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_TEST_RSA_SIGN_ERROR,
-					      "Failed to RSA-sign");
+                                              TALER_EC_TEST_RSA_SIGN_ERROR,
+                                              "Failed to RSA-sign");
   }
   GNUNET_JSON_parse_free (spec);
   res = TEH_RESPONSE_reply_json_pack (connection,
-				      MHD_HTTP_OK,
-				      "{s:o}",
-				      "rsa_blind_sig",
-				      GNUNET_JSON_from_rsa_signature (sig));
+                                      MHD_HTTP_OK,
+                                      "{s:o}",
+                                      "rsa_blind_sig",
+                                      GNUNET_JSON_from_rsa_signature (sig));
   GNUNET_CRYPTO_rsa_signature_free (sig);
   return res;
 }
@@ -536,10 +538,10 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
-				struct MHD_Connection *connection,
-				void **connection_cls,
-				const char *upload_data,
-				size_t *upload_data_size)
+                                struct MHD_Connection *connection,
+                                void **connection_cls,
+                                const char *upload_data,
+                                size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -562,8 +564,8 @@ TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   res = TEH_PARSE_json_data (connection,
-			     json,
-			     spec);
+                             json,
+                             spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -571,10 +573,10 @@ TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
                                      &coin_pub,
                                      &secret);
   return TEH_RESPONSE_reply_json_pack (connection,
-				       MHD_HTTP_OK,
-				       "{s:o}",
-				       "secret",
-				       GNUNET_JSON_from_data_auto (&secret));
+                                       MHD_HTTP_OK,
+                                       "{s:o}",
+                                       "secret",
+                                       GNUNET_JSON_from_data_auto (&secret));
 }
 
 
@@ -590,10 +592,10 @@ TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test (struct TEH_RequestHandler *rh,
-		       struct MHD_Connection *connection,
-		       void **connection_cls,
-		       const char *upload_data,
-		       size_t *upload_data_size)
+                       struct MHD_Connection *connection,
+                       void **connection_cls,
+                       const char *upload_data,
+                       size_t *upload_data_size)
 {
   json_t *json;
   int res;

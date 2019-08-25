@@ -50,8 +50,8 @@
  * @param code what was the curl error code
  */
 #define CURL_STRERROR(type, function, code)      \
- GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
-             function, __FILE__, __LINE__, curl_easy_strerror (code));
+  GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
+              function, __FILE__, __LINE__, curl_easy_strerror (code));
 
 /**
  * Stages of initialization for the `struct TALER_AUDITOR_Handle`
@@ -212,10 +212,10 @@ decode_version_json (const json_t *resp_obj,
   const char *ver;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("version",
-			     &ver),
+                             &ver),
     GNUNET_JSON_spec_fixed_auto ("auditor_public_key",
-				 &vi->auditor_pub),
-    GNUNET_JSON_spec_end()
+                                 &vi->auditor_pub),
+    GNUNET_JSON_spec_end ()
   };
 
   if (JSON_OBJECT != json_typeof (resp_obj))
@@ -226,17 +226,17 @@ decode_version_json (const json_t *resp_obj,
   /* check the version */
   if (GNUNET_OK !=
       GNUNET_JSON_parse (resp_obj,
-			 spec,
-			 NULL, NULL))
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
   if (3 != sscanf (ver,
-		   "%u:%u:%u",
-		   &current,
-		   &revision,
-		   &age))
+                   "%u:%u:%u",
+                   &current,
+                   &revision,
+                   &age))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -277,8 +277,8 @@ request_version (void *cls);
  */
 static void
 version_completed_cb (void *cls,
-		      long response_code,
-		      const void *gresp_obj)
+                      long response_code,
+                      const void *gresp_obj)
 {
   const json_t *resp_obj = gresp_obj;
   struct VersionRequest *vr = cls;
@@ -331,17 +331,17 @@ version_completed_cb (void *cls,
   if (MHD_HTTP_OK != response_code)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"/version failed for auditor %p: %u!\n",
-		auditor,
-		(unsigned int) response_code);
+                "/version failed for auditor %p: %u!\n",
+                auditor,
+                (unsigned int) response_code);
     auditor->vr = NULL;
     free_version_request (vr);
     auditor->state = MHS_FAILED;
     free_version_info (&auditor->vi);
     /* notify application that we failed */
     auditor->version_cb (auditor->version_cb_cls,
-			 NULL,
-			 vc);
+                         NULL,
+                         vc);
     return;
   }
 
@@ -496,7 +496,7 @@ request_version (void *cls)
   vr = GNUNET_new (struct VersionRequest);
   vr->auditor = auditor;
   vr->url = MAH_path_to_url (auditor,
-			     "/version");
+                             "/version");
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting auditor version with URL `%s'.\n",
               vr->url);

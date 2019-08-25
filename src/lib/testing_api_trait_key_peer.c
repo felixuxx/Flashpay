@@ -45,8 +45,8 @@
 int
 TALER_TESTING_get_trait_peer_key
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct GNUNET_CRYPTO_EddsaPrivateKey **priv)
+  unsigned int index,
+  const struct GNUNET_CRYPTO_EddsaPrivateKey **priv)
 {
   return cmd->traits (cmd->cls,
                       (const void **) priv,
@@ -66,7 +66,7 @@ TALER_TESTING_get_trait_peer_key
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key
   (unsigned int index,
-   const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
+  const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -91,8 +91,8 @@ TALER_TESTING_make_trait_peer_key
 int
 TALER_TESTING_get_trait_peer_key_pub
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct GNUNET_CRYPTO_EddsaPublicKey **pub)
+  unsigned int index,
+  const struct GNUNET_CRYPTO_EddsaPublicKey **pub)
 {
   return cmd->traits (cmd->cls,
                       (const void **) pub,
@@ -113,7 +113,7 @@ TALER_TESTING_get_trait_peer_key_pub
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key_pub
   (unsigned int index,
-   struct GNUNET_CRYPTO_EddsaPublicKey *pub)
+  struct GNUNET_CRYPTO_EddsaPublicKey *pub)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

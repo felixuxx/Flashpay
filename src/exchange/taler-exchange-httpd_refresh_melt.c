@@ -48,9 +48,11 @@
  */
 static int
 reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                       const struct
+                                       TALER_CoinSpendPublicKeyP *coin_pub,
                                        struct TALER_Amount coin_value,
-                                       struct TALER_EXCHANGEDB_TransactionList *tl,
+                                       struct TALER_EXCHANGEDB_TransactionList *
+                                       tl,
                                        const struct TALER_Amount *requested,
                                        const struct TALER_Amount *residual)
 {
@@ -59,14 +61,15 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
   history = TEH_RESPONSE_compile_transaction_history (tl);
   if (NULL == history)
     return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
+                                                 TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
                                        "error",
                                        "insufficient funds",
                                        "code",
-                                       (json_int_t) TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
+                                       (json_int_t)
+                                       TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
                                        "coin_pub",
                                        GNUNET_JSON_from_data_auto (coin_pub),
                                        "original_value",
@@ -104,8 +107,8 @@ reply_refresh_melt_success (struct MHD_Connection *connection,
   body.noreveal_index = htonl (noreveal_index);
   if (GNUNET_OK !=
       TEH_KS_sign (&body.purpose,
-		   &pub,
-		   &sig))
+                   &pub,
+                   &sig))
   {
     return TEH_RESPONSE_reply_internal_error (connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
@@ -118,7 +121,8 @@ reply_refresh_melt_success (struct MHD_Connection *connection,
                                        "{s:i, s:o, s:o}",
                                        "noreveal_index", (int) noreveal_index,
                                        "exchange_sig", sig_json,
-                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+                                       "exchange_pub",
+                                       GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -238,10 +242,12 @@ refresh_check_melt (struct MHD_Connection *connection,
                                           &spent,
                                           &rmc->refresh_session.amount_with_fee));
     *mhd_ret = reply_refresh_melt_insufficient_funds (connection,
-                                                      &rmc->refresh_session.coin.coin_pub,
+                                                      &rmc->refresh_session.coin
+                                                      .coin_pub,
                                                       coin_value,
                                                       tl,
-                                                      &rmc->refresh_session.amount_with_fee,
+                                                      &rmc->refresh_session.
+                                                      amount_with_fee,
                                                       &coin_residual);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
@@ -365,8 +371,8 @@ handle_refresh_melt (struct MHD_Connection *connection,
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_external_error (connection,
-						TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION,
-						"melt amount smaller than melting fee");
+                                                TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION,
+                                                "melt amount smaller than melting fee");
     }
   }
 
@@ -374,19 +380,22 @@ handle_refresh_melt (struct MHD_Connection *connection,
   {
     struct TALER_RefreshMeltCoinAffirmationPS body;
 
-    body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
+    body.purpose.size = htonl (sizeof (struct
+                                       TALER_RefreshMeltCoinAffirmationPS));
     body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
     body.rc = rmc->refresh_session.rc;
     TALER_amount_hton (&body.amount_with_fee,
-		       &rmc->refresh_session.amount_with_fee);
+                       &rmc->refresh_session.amount_with_fee);
     body.melt_fee = rmc->dki->issue.properties.fee_refresh;
     body.coin_pub = rmc->refresh_session.coin.coin_pub;
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                     &body.purpose,
-                                    &rmc->refresh_session.coin_sig.eddsa_signature,
-                                    &rmc->refresh_session.coin.coin_pub.eddsa_pub))
+                                    &rmc->refresh_session.coin_sig.
+                                    eddsa_signature,
+                                    &rmc->refresh_session.coin.coin_pub.
+                                    eddsa_pub))
     {
       GNUNET_break_op (0);
       return TEH_RESPONSE_reply_signature_invalid (connection,
@@ -489,7 +498,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   /* Baseline: check if deposits/refreshs are generally
      simply still allowed for this denomination */
   rmc.dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                    &rmc.refresh_session.coin.denom_pub_hash,
+                                                    &rmc.refresh_session.coin.
+                                                    denom_pub_hash,
                                                     TEH_KS_DKU_DEPOSIT);
   /* Consider case that denomination was revoked but
      this coin was already seen and thus refresh is OK. */
@@ -498,7 +508,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
 
     dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                  &rmc.refresh_session.coin.denom_pub_hash,
+                                                  &rmc.refresh_session.coin.
+                                                  denom_pub_hash,
                                                   TEH_KS_DKU_PAYBACK);
     if (NULL != dki)
     {
@@ -533,7 +544,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
 
     dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                  &rmc.refresh_session.coin.denom_pub_hash,
+                                                  &rmc.refresh_session.coin.
+                                                  denom_pub_hash,
                                                   TEH_KS_DKU_ZOMBIE);
     if (NULL != dki)
     {
@@ -585,7 +597,7 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                              &rmc);
 
 
- cleanup:
+  cleanup:
   if (NULL != key_state)
   {
     TEH_KS_release (key_state);
@@ -593,7 +605,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   }
   if (NULL != rmc.refresh_session.coin.denom_sig.rsa_signature)
   {
-    GNUNET_CRYPTO_rsa_signature_free (rmc.refresh_session.coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_signature_free (
+      rmc.refresh_session.coin.denom_sig.rsa_signature);
     rmc.refresh_session.coin.denom_sig.rsa_signature = NULL;
   }
   GNUNET_JSON_parse_free (spec);

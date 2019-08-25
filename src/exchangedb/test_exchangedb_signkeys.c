@@ -73,7 +73,8 @@ main (int argc,
                     NULL);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &ski,
-                              sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
+                              sizeof (struct
+                                      TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
   now = GNUNET_TIME_absolute_get ();
   EXITIF (NULL == (tmpfile = GNUNET_DISK_mkdtemp ("test_exchangedb_ski")));
   EXITIF (GNUNET_OK !=
@@ -85,7 +86,7 @@ main (int argc,
                                                  &ski_iter,
                                                  &ski));
   ret = 0;
- EXITIF_exit:
+  EXITIF_exit:
   if (NULL != tmpfile)
   {
     (void) GNUNET_DISK_directory_remove (tmpfile);

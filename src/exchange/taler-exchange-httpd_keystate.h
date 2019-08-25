@@ -69,7 +69,7 @@ TEH_KS_release_ (const char *location,
  *        client via the "now" URL parameter of "/keys".
  * @return the key state
  */
-#define TEH_KS_acquire(now) TEH_KS_acquire_(now, __FUNCTION__)
+#define TEH_KS_acquire(now) TEH_KS_acquire_ (now, __FUNCTION__)
 
 
 /**
@@ -93,7 +93,8 @@ TEH_KS_free (void);
  * periods for a key differ, the caller must specify which
  * use is relevant for the current operation.
  */
-enum TEH_KS_DenominationKeyUse {
+enum TEH_KS_DenominationKeyUse
+{
 
   /**
    * The key is to be used for a /reserve/withdraw or /refresh (exchange)
@@ -113,7 +114,7 @@ enum TEH_KS_DenominationKeyUse {
 
   /**
    * The key is to be used for a /refresh/payback operation,
-   * i.e. it is an old coin that regained value from a 
+   * i.e. it is an old coin that regained value from a
    * payback on a new coin derived from the old coin.
    */
   TEH_KS_DKU_ZOMBIE
@@ -132,8 +133,10 @@ enum TEH_KS_DenominationKeyUse {
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-TEH_KS_denomination_key_lookup_by_hash (const struct TEH_KS_StateHandle *key_state,
-                                        const struct GNUNET_HashCode *denom_pub_hash,
+TEH_KS_denomination_key_lookup_by_hash (const struct
+                                        TEH_KS_StateHandle *key_state,
+                                        const struct
+                                        GNUNET_HashCode *denom_pub_hash,
                                         enum TEH_KS_DenominationKeyUse use);
 
 

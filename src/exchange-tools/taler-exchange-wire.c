@@ -60,7 +60,7 @@ sign_account_data (void *cls,
   char *json_out;
   FILE *out;
   int ret;
- 
+
   if (GNUNET_NO == ai->credit_enabled)
     return;
   if (NULL == ai->wire_response_filename)
@@ -71,12 +71,12 @@ sign_account_data (void *cls,
     global_ret = 1;
     return;
   }
-  
+
   wire = TALER_JSON_exchange_wire_signature_make (ai->payto_url,
                                                   &master_priv);
   GNUNET_assert (NULL != wire);
   json_out = json_dumps (wire,
-                         JSON_INDENT(2));
+                         JSON_INDENT (2));
   json_decref (wire);
   GNUNET_assert (NULL != json_out);
   if (GNUNET_OK !=
@@ -242,10 +242,10 @@ main (int argc,
                                    NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
-			  "taler-exchange-wire",
-			  "Setup /wire response",
-			  options,
-			  &run, NULL))
+                          "taler-exchange-wire",
+                          "Setup /wire response",
+                          options,
+                          &run, NULL))
     return 1;
   return global_ret;
 }

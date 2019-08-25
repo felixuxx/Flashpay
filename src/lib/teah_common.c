@@ -78,17 +78,17 @@ TALER_curl_easy_post (struct TEAH_PostContext *ctx,
     ctx->json_enc = (char *) cbuf;
   }
   GNUNET_assert
-  (NULL != (ctx->headers = curl_slist_append
-    (ctx->headers,
-     "Content-Encoding: deflate")));
+    (NULL != (ctx->headers = curl_slist_append
+                               (ctx->headers,
+                               "Content-Encoding: deflate")));
 #else
   ctx->json_enc = str;
 #endif
 
   GNUNET_assert
-  (NULL != (ctx->headers = curl_slist_append
-    (ctx->headers,
-     "Content-Type: application/json")));
+    (NULL != (ctx->headers = curl_slist_append
+                               (ctx->headers,
+                               "Content-Type: application/json")));
 
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,

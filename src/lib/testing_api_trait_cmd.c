@@ -46,8 +46,8 @@
 int
 TALER_TESTING_get_trait_cmd
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   struct TALER_TESTING_Command **_cmd)
+  unsigned int index,
+  struct TALER_TESTING_Command **_cmd)
 {
   return cmd->traits (cmd->cls,
                       (const void **) _cmd,
@@ -69,7 +69,7 @@ TALER_TESTING_get_trait_cmd
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_cmd
   (unsigned int index,
-   const struct TALER_TESTING_Command *cmd)
+  const struct TALER_TESTING_Command *cmd)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

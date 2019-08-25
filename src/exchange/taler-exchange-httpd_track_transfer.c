@@ -84,12 +84,13 @@ struct TEH_TrackTransferDetail
  */
 static int
 reply_track_transfer_details (struct MHD_Connection *connection,
-			      const struct TALER_Amount *total,
-			      const struct TALER_MerchantPublicKeyP *merchant_pub,
-			      const struct GNUNET_HashCode *h_wire,
-			      const struct TALER_Amount *wire_fee,
-			      struct GNUNET_TIME_Absolute exec_time,
-			      const struct TEH_TrackTransferDetail *wdd_head)
+                              const struct TALER_Amount *total,
+                              const struct
+                              TALER_MerchantPublicKeyP *merchant_pub,
+                              const struct GNUNET_HashCode *h_wire,
+                              const struct TALER_Amount *wire_fee,
+                              struct GNUNET_TIME_Absolute exec_time,
+                              const struct TEH_TrackTransferDetail *wdd_head)
 {
   const struct TEH_TrackTransferDetail *wdd_pos;
   json_t *deposits;
@@ -117,10 +118,19 @@ reply_track_transfer_details (struct MHD_Connection *connection,
     GNUNET_assert (0 ==
                    json_array_append_new (deposits,
                                           json_pack ("{s:o, s:o, s:o, s:o}",
-                                                     "h_contract_terms", GNUNET_JSON_from_data_auto (&wdd_pos->h_contract_terms),
-                                                     "coin_pub", GNUNET_JSON_from_data_auto (&wdd_pos->coin_pub),
-                                                     "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
-                                                     "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee))));
+                                                     "h_contract_terms",
+                                                     GNUNET_JSON_from_data_auto (
+                                                       &wdd_pos->
+                                                       h_contract_terms),
+                                                     "coin_pub",
+                                                     GNUNET_JSON_from_data_auto (
+                                                       &wdd_pos->coin_pub),
+                                                     "deposit_value",
+                                                     TALER_JSON_from_amount (
+                                                       &wdd_pos->deposit_value),
+                                                     "deposit_fee",
+                                                     TALER_JSON_from_amount (
+                                                       &wdd_pos->deposit_fee))));
   }
   wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
   wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
@@ -134,8 +144,8 @@ reply_track_transfer_details (struct MHD_Connection *connection,
                                      &wdp.h_details);
   if (GNUNET_OK !=
       TEH_KS_sign (&wdp.purpose,
-		   &pub,
-		   &sig))
+                   &pub,
+                   &sig))
   {
     json_decref (deposits);
     return TEH_RESPONSE_reply_internal_error (connection,
@@ -147,13 +157,20 @@ reply_track_transfer_details (struct MHD_Connection *connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                                        "total", TALER_JSON_from_amount (total),
-                                       "wire_fee", TALER_JSON_from_amount (wire_fee),
-                                       "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
-                                       "H_wire", GNUNET_JSON_from_data_auto (h_wire),
-                                       "execution_time", GNUNET_JSON_from_time_abs (exec_time),
+                                       "wire_fee", TALER_JSON_from_amount (
+                                         wire_fee),
+                                       "merchant_pub",
+                                       GNUNET_JSON_from_data_auto (
+                                         merchant_pub),
+                                       "H_wire", GNUNET_JSON_from_data_auto (
+                                         h_wire),
+                                       "execution_time",
+                                       GNUNET_JSON_from_time_abs (exec_time),
                                        "deposits", deposits,
-                                       "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+                                       "exchange_sig",
+                                       GNUNET_JSON_from_data_auto (&sig),
+                                       "exchange_pub",
+                                       GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -353,9 +370,9 @@ handle_transaction_data (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 track_transfer_transaction (void *cls,
-			    struct MHD_Connection *connection,
-			    struct TALER_EXCHANGEDB_Session *session,
-			    int *mhd_ret)
+                            struct MHD_Connection *connection,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            int *mhd_ret)
 {
   struct WtidTransactionContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -369,17 +386,17 @@ track_transfer_transaction (void *cls,
   ctx->wdd_tail = NULL;
   ctx->wire_method = NULL;
   qs = TEH_plugin->lookup_wire_transfer (TEH_plugin->cls,
-					 session,
-					 &ctx->wtid,
-					 &handle_transaction_data,
-					 ctx);
+                                         session,
+                                         &ctx->wtid,
+                                         &handle_transaction_data,
+                                         ctx);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED);
+                                                       TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED);
     }
     return qs;
   }
@@ -387,33 +404,33 @@ track_transfer_transaction (void *cls,
   {
     GNUNET_break (0);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT);
+                                                     TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_NO == ctx->is_valid)
   {
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
-					       TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
-					       "wtid");
+                                               TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
+                                               "wtid");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
-				 session,
-				 ctx->wire_method,
-				 ctx->exec_time,
-				 &wire_fee_start_date,
-				 &wire_fee_end_date,
-				 &ctx->wire_fee,
-				 &closing_fee,
-				 &wire_fee_master_sig);
+                                 session,
+                                 ctx->wire_method,
+                                 ctx->exec_time,
+                                 &wire_fee_start_date,
+                                 &wire_fee_end_date,
+                                 &ctx->wire_fee,
+                                 &closing_fee,
+                                 &wire_fee_master_sig);
   if (0 >= qs)
   {
     if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
-	 (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS) )
+         (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS) )
     {
       GNUNET_break (0);
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND);
+                                                       TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND);
     }
     return qs;
   }
@@ -424,7 +441,7 @@ track_transfer_transaction (void *cls,
   {
     GNUNET_break (0);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT);
+                                                     TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
@@ -477,7 +494,8 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
   res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "wtid",
                                         &ctx.wtid,
-                                        sizeof (struct TALER_WireTransferIdentifierRawP));
+                                        sizeof (struct
+                                                TALER_WireTransferIdentifierRawP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
@@ -485,20 +503,20 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "run track transfer",
-			      &mhd_ret,
-			      &track_transfer_transaction,
-			      &ctx))
+                              &mhd_ret,
+                              &track_transfer_transaction,
+                              &ctx))
   {
     free_ctx (&ctx);
     return mhd_ret;
   }
   mhd_ret = reply_track_transfer_details (connection,
-					  &ctx.total,
-					  &ctx.merchant_pub,
-					  &ctx.h_wire,
-					  &ctx.wire_fee,
-					  ctx.exec_time,
-					  ctx.wdd_head);
+                                          &ctx.total,
+                                          &ctx.merchant_pub,
+                                          &ctx.h_wire,
+                                          &ctx.wire_fee,
+                                          ctx.exec_time,
+                                          ctx.wdd_head);
   free_ctx (&ctx);
   return mhd_ret;
 }

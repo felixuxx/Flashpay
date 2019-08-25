@@ -108,8 +108,8 @@ struct MainWrapperContext
 static void
 auditor_version_cb
   (void *cls,
-   const struct TALER_AUDITOR_VersionInformation *vi,
-   enum TALER_AUDITOR_VersionCompatibility compat)
+  const struct TALER_AUDITOR_VersionInformation *vi,
+  enum TALER_AUDITOR_VersionCompatibility compat)
 {
   struct TALER_TESTING_Interpreter *is = cls;
 
@@ -141,7 +141,7 @@ auditor_main_wrapper (void *cls,
                                              "auditor",
                                              "BASE_URL",
                                              &auditor_base_url))
-    {
+  {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "auditor",
                                "BASE_URL");

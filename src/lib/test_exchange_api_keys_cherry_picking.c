@@ -65,8 +65,8 @@
 #define ADDSECS(base, secs) \
   GNUNET_TIME_absolute_add \
     (base, \
-     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
-                                    secs))
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                   secs))
 
 /**
  * Subtract seconds.
@@ -78,8 +78,8 @@
 #define SUBSECS(base, secs) \
   GNUNET_TIME_absolute_subtract \
     (base, \
-     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
-                                    secs))
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
+                                   secs))
 #define JAN1971 "1971-01-01"
 #define JAN2030 "2030-01-01"
 
@@ -128,28 +128,28 @@ run (void *cls,
       ("serialize-keys"),
     TALER_TESTING_cmd_connect_with_state
       ("reconnect-with-state",
-       "serialize-keys"),
+      "serialize-keys"),
     /**
      * Make sure we have the same keys situation as
      * it was before the serialization.
      */
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-after-deserialization",
-       4,
-       NDKS_RIGHT_BEFORE_SERIALIZATION,
-       /**
-        * Pretend 5 seconds passed.
-        */
-       ADDSECS (TTH_parse_time (JAN2030),
-                5)),
+      4,
+      NDKS_RIGHT_BEFORE_SERIALIZATION,
+      /**
+       * Pretend 5 seconds passed.
+       */
+      ADDSECS (TTH_parse_time (JAN2030),
+               5)),
     /**
      * Use one of the deserialized keys.
      */
     TALER_TESTING_cmd_wire
       ("verify-/wire-with-serialized-keys",
-       "x-taler-bank",
-       NULL,
-       MHD_HTTP_OK),
+      "x-taler-bank",
+      NULL,
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_end (),
   };
 
@@ -169,26 +169,26 @@ run (void *cls,
      */
     TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-1",
-       CONFIG_FILE,
-       TTH_parse_time (JAN2030)),
-     /**
-     * Should return 1 new key, + the original one.  NOTE: the
-     * original DK will never be 'cancelled' as for the current
-     * libtalerexchange logic, so it must always be counted.
-     */
+      CONFIG_FILE,
+      TTH_parse_time (JAN2030)),
+    /**
+    * Should return 1 new key, + the original one.  NOTE: the
+    * original DK will never be 'cancelled' as for the current
+    * libtalerexchange logic, so it must always be counted.
+    */
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-2",
-       2, /* generation */
-       2,
-       TTH_parse_time (JAN2030)),
+      2,  /* generation */
+      2,
+      TTH_parse_time (JAN2030)),
     TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-3",
-       CONFIG_FILE_EXTENDED_2,
-       /* Taking care of not using a 'now' that equals the
-        * last DK timestamp, otherwise it would get silently
-        * overridden.  */
-       ADDSECS (TTH_parse_time (JAN2030),
-                10)),
+      CONFIG_FILE_EXTENDED_2,
+      /* Taking care of not using a 'now' that equals the
+       * last DK timestamp, otherwise it would get silently
+       * overridden.  */
+      ADDSECS (TTH_parse_time (JAN2030),
+               10)),
 
     /**
      * Expected number of DK:
@@ -208,9 +208,9 @@ run (void *cls,
 
     TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-3",
-       3,
-       NDKS_RIGHT_BEFORE_SERIALIZATION,
-       TTH_parse_time (JAN2030)),
+      3,
+      NDKS_RIGHT_BEFORE_SERIALIZATION,
+      TTH_parse_time (JAN2030)),
 
     TALER_TESTING_cmd_end ()
   };
@@ -230,7 +230,7 @@ run (void *cls,
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");

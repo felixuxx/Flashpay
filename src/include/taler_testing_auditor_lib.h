@@ -87,13 +87,12 @@ TALER_TESTING_cmd_exec_wire_auditor (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation
-  (const char *label,
-   struct TALER_AUDITOR_Handle *auditor,
-   const char *deposit_reference,
-   unsigned int coin_index,
-   const char *amount_without_fee,
-   unsigned int expected_response_code);
+TALER_TESTING_cmd_deposit_confirmation (const char *label,
+                                        struct TALER_AUDITOR_Handle *auditor,
+                                        const char *deposit_reference,
+                                        unsigned int coin_index,
+                                        const char *amount_without_fee,
+                                        unsigned int expected_response_code);
 
 
 /**
@@ -104,7 +103,8 @@ TALER_TESTING_cmd_deposit_confirmation
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command cmd);
+TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command
+                                                   cmd);
 
 
 /**
@@ -116,10 +116,9 @@ TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command 
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_exchanges
-  (const char *label,
-   struct TALER_AUDITOR_Handle *auditor,
-   unsigned int expected_response_code);
+TALER_TESTING_cmd_exchanges (const char *label,
+                             struct TALER_AUDITOR_Handle *auditor,
+                             unsigned int expected_response_code);
 
 
 /**
@@ -134,10 +133,9 @@ TALER_TESTING_cmd_exchanges
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_exchanges_with_url
-  (const char *label,
-   unsigned int expected_response_code,
-   const char *exchange_url);
+TALER_TESTING_cmd_exchanges_with_url (const char *label,
+                                      unsigned int expected_response_code,
+                                      const char *exchange_url);
 
 /**
  * Modify an exchanges command to enable retries when we get

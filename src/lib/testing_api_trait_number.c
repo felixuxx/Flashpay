@@ -43,8 +43,8 @@
 int
 TALER_TESTING_get_trait_uint
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const unsigned int **n)
+  unsigned int index,
+  const unsigned int **n)
 {
   return cmd->traits (cmd->cls,
                       (const void **) n,
@@ -63,7 +63,7 @@ TALER_TESTING_get_trait_uint
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_uint
   (unsigned int index,
-   const unsigned int *n)
+  const unsigned int *n)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -85,8 +85,8 @@ TALER_TESTING_make_trait_uint
 int
 TALER_TESTING_get_trait_uint64
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const uint64_t **n)
+  unsigned int index,
+  const uint64_t **n)
 {
   return cmd->traits (cmd->cls,
                       (const void **) n,
@@ -103,7 +103,7 @@ TALER_TESTING_get_trait_uint64
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_uint64
   (unsigned int index,
-   const uint64_t *n)
+  const uint64_t *n)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

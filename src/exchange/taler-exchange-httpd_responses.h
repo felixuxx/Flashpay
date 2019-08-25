@@ -54,7 +54,7 @@ TEH_RESPONSE_add_global_headers (struct MHD_Response *response);
  */
 int
 TEH_RESPONSE_body_compress (void **buf,
-			    size_t *buf_size);
+                            size_t *buf_size);
 
 
 /**
@@ -108,7 +108,7 @@ TEH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
+                                      enum TALER_ErrorCode ec,
                                       const char *param_name);
 
 
@@ -122,7 +122,7 @@ TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -138,7 +138,7 @@ TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -239,8 +239,9 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
  * @return json representation of the @a rh, NULL on error
  */
 json_t *
-TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
-				      struct TALER_Amount *balance);
+TEH_RESPONSE_compile_reserve_history (const struct
+                                      TALER_EXCHANGEDB_ReserveHistory *rh,
+                                      struct TALER_Amount *balance);
 
 
 /**
@@ -257,7 +258,8 @@ TEH_RESPONSE_compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHisto
 int
 TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
                                             enum TALER_ErrorCode ec,
-                                            const struct TALER_EXCHANGEDB_TransactionList *tl);
+                                            const struct
+                                            TALER_EXCHANGEDB_TransactionList *tl);
 
 
 /**
@@ -271,7 +273,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
-					enum TALER_ErrorCode ec);
+                                        enum TALER_ErrorCode ec);
 
 
 /**
@@ -281,7 +283,8 @@ TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
  * @return json representation of the @a rh
  */
 json_t *
-TEH_RESPONSE_compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl);
+TEH_RESPONSE_compile_transaction_history (const struct
+                                          TALER_EXCHANGEDB_TransactionList *tl);
 
 
 #endif

@@ -55,8 +55,10 @@ TALER_exchange_wire_signature_hash (const char *payto_url,
  */
 int
 TALER_exchange_wire_signature_check (const char *payto_url,
-                                     const struct TALER_MasterPublicKeyP *master_pub,
-                                     const struct TALER_MasterSignatureP *master_sig)
+                                     const struct
+                                     TALER_MasterPublicKeyP *master_pub,
+                                     const struct
+                                     TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
 
@@ -80,7 +82,8 @@ TALER_exchange_wire_signature_check (const char *payto_url,
  */
 void
 TALER_exchange_wire_signature_make (const char *payto_url,
-                                    const struct TALER_MasterPrivateKeyP *master_priv,
+                                    const struct
+                                    TALER_MasterPrivateKeyP *master_priv,
                                     struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
@@ -134,8 +137,10 @@ TALER_merchant_wire_signature_hash (const char *payto_url,
 int
 TALER_merchant_wire_signature_check (const char *payto_url,
                                      const char *salt,
-                                     const struct TALER_MerchantPublicKeyP *merch_pub,
-                                     const struct TALER_MerchantSignatureP *merch_sig)
+                                     const struct
+                                     TALER_MerchantPublicKeyP *merch_pub,
+                                     const struct
+                                     TALER_MerchantSignatureP *merch_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
 
@@ -162,7 +167,8 @@ TALER_merchant_wire_signature_check (const char *payto_url,
 void
 TALER_merchant_wire_signature_make (const char *payto_url,
                                     const char *salt,
-                                    const struct TALER_MerchantPrivateKeyP *merch_priv,
+                                    const struct
+                                    TALER_MerchantPrivateKeyP *merch_priv,
                                     struct TALER_MerchantSignatureP *merch_sig)
 {
   struct TALER_MasterWireDetailsPS wd;

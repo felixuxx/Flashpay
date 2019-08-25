@@ -79,7 +79,9 @@ PERF_TALER_EXCHANGEDB_denomination_init (void);
  * @return a copy of @a deposit; NULL if error
  */
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-PERF_TALER_EXCHANGEDB_denomination_copy (const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_EXCHANGEDB_denomination_copy (const struct
+                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         *dki);
 
 
 /**
@@ -87,7 +89,9 @@ PERF_TALER_EXCHANGEDB_denomination_copy (const struct TALER_EXCHANGEDB_Denominat
  * @param dki pointer to the struct to free
  */
 int
-PERF_TALER_EXCHANGEDB_denomination_free (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_EXCHANGEDB_denomination_free (struct
+                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         *dki);
 
 
 /**
@@ -104,7 +108,8 @@ PERF_TALER_EXCHANGEDB_reserve_init (void);
  * @return a copy of @a reserve; NULL if error
  */
 struct PERF_TALER_EXCHANGEDB_Reserve *
-PERF_TALER_EXCHANGEDB_reserve_copy (const struct PERF_TALER_EXCHANGEDB_Reserve *reserve);
+PERF_TALER_EXCHANGEDB_reserve_copy (const struct
+                                    PERF_TALER_EXCHANGEDB_Reserve *reserve);
 
 
 /**
@@ -112,7 +117,8 @@ PERF_TALER_EXCHANGEDB_reserve_copy (const struct PERF_TALER_EXCHANGEDB_Reserve *
  * @param reserve pointer to the structure to be freed
  */
 int
-PERF_TALER_EXCHANGEDB_reserve_free (struct PERF_TALER_EXCHANGEDB_Reserve *reserve);
+PERF_TALER_EXCHANGEDB_reserve_free (struct
+                                    PERF_TALER_EXCHANGEDB_Reserve *reserve);
 
 
 /**
@@ -120,7 +126,8 @@ PERF_TALER_EXCHANGEDB_reserve_free (struct PERF_TALER_EXCHANGEDB_Reserve *reserv
  * @param dki the denomination key used to sign the key
  */
 struct TALER_EXCHANGEDB_Deposit *
-PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coin);
+PERF_TALER_EXCHANGEDB_deposit_init (const struct
+                                    PERF_TALER_EXCHANGEDB_Coin *coin);
 
 
 /**
@@ -129,7 +136,8 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
  * @return a copy of @a deposit; NULL if error
  */
 struct TALER_EXCHANGEDB_Deposit *
-PERF_TALER_EXCHANGEDB_deposit_copy (const struct TALER_EXCHANGEDB_Deposit *deposit);
+PERF_TALER_EXCHANGEDB_deposit_copy (const struct
+                                    TALER_EXCHANGEDB_Deposit *deposit);
 
 
 /**
@@ -147,8 +155,11 @@ PERF_TALER_EXCHANGEDB_deposit_free (struct TALER_EXCHANGEDB_Deposit *deposit);
  * @return a randomly generated CollectableBlindcoin
  */
 struct PERF_TALER_EXCHANGEDB_Coin *
-PERF_TALER_EXCHANGEDB_coin_init (const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-				 const struct PERF_TALER_EXCHANGEDB_Reserve *reserve);
+PERF_TALER_EXCHANGEDB_coin_init (const struct
+                                 TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                 *dki,
+                                 const struct
+                                 PERF_TALER_EXCHANGEDB_Reserve *reserve);
 
 
 /**
@@ -187,7 +198,8 @@ PERF_TALER_EXCHANGEDB_refresh_melt_init (struct TALER_RefreshCommitmentP *rc,
  * @return an copy of @ melt
  */
 struct TALER_EXCHANGEDB_RefreshMelt *
-PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMelt *melt);
+PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct
+                                         TALER_EXCHANGEDB_RefreshMelt *melt);
 
 
 /**
@@ -197,6 +209,7 @@ PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMe
  * @return #GNUNET_OK if the operation was successful, #GNUNET_SYSERROR
  */
 int
-PERF_TALER_EXCHANGEDB_refresh_melt_free (struct TALER_EXCHANGEDB_RefreshMelt *melt);
+PERF_TALER_EXCHANGEDB_refresh_melt_free (struct
+                                         TALER_EXCHANGEDB_RefreshMelt *melt);
 
 #endif

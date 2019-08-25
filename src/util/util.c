@@ -46,13 +46,13 @@ TALER_b2s (const void *buf,
   char *tmp;
 
   GNUNET_CRYPTO_hash (buf,
-		      buf_size,
-		      &hc);
+                      buf_size,
+                      &hc);
   tmp = GNUNET_STRINGS_data_to_string_alloc (&hc,
                                              sizeof (hc));
   memcpy (ret,
-	  tmp,
-	  8);
+          tmp,
+          8);
   GNUNET_free (tmp);
   ret[8] = '\0';
   return ret;
@@ -120,7 +120,7 @@ set_amount (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
                               amount))
   {
     FPRINTF (stderr,
-             _("Failed to parse amount in option `%s'\n"),
+             _ ("Failed to parse amount in option `%s'\n"),
              option);
     return GNUNET_SYSERR;
   }
@@ -168,25 +168,26 @@ TALER_getopt_get_amount (char shortName,
  *         #GNUNET_NO otherwise
  */
 static bool
-is_reserved(char c)
+is_reserved (char c)
 {
-  switch (c) {
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-    case 'a': case 'b': case 'c': case 'd': case 'e':
-    case 'f': case 'g': case 'h': case 'i': case 'j':
-    case 'k': case 'l': case 'm': case 'n': case 'o':
-    case 'p': case 'q': case 'r': case 's': case 't':
-    case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
-    case 'A': case 'B': case 'C': case 'D': case 'E':
-    case 'F': case 'G': case 'H': case 'I': case 'J':
-    case 'K': case 'L': case 'M': case 'N': case 'O':
-    case 'P': case 'Q': case 'R': case 'S': case 'T':
-    case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
-    case '-': case '.': case '_': case '~':
-      return GNUNET_NO;
-    default:
-      break;
+  switch (c)
+  {
+  case '0': case '1': case '2': case '3': case '4':
+  case '5': case '6': case '7': case '8': case '9':
+  case 'a': case 'b': case 'c': case 'd': case 'e':
+  case 'f': case 'g': case 'h': case 'i': case 'j':
+  case 'k': case 'l': case 'm': case 'n': case 'o':
+  case 'p': case 'q': case 'r': case 's': case 't':
+  case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+  case 'A': case 'B': case 'C': case 'D': case 'E':
+  case 'F': case 'G': case 'H': case 'I': case 'J':
+  case 'K': case 'L': case 'M': case 'N': case 'O':
+  case 'P': case 'Q': case 'R': case 'S': case 'T':
+  case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+  case '-': case '.': case '_': case '~':
+    return GNUNET_NO;
+  default:
+    break;
   }
   return GNUNET_YES;
 }
@@ -215,7 +216,7 @@ TALER_urlencode (const char *s)
   {
     if (GNUNET_YES == is_reserved (s[i]))
     {
-      snprintf(&out[t], 4, "%%%02X", s[i]);
+      snprintf (&out[t], 4, "%%%02X", s[i]);
       t += 2;
       continue;
     }
@@ -305,7 +306,8 @@ TALER_url_join (const char *base_url,
 
   va_start (args, path);
 
-  while (1) {
+  while (1)
+  {
     char *key;
     char *value;
     key = va_arg (args, char *);
@@ -360,7 +362,8 @@ url_absolute_raw_va (const char *proto,
 
   grow_string_path (&res, path, &n);
 
-  while (1) {
+  while (1)
+  {
     char *key;
     char *value;
     key = va_arg (args, char *);
@@ -425,21 +428,23 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
 {
   /* By default we assume we're running under HTTPS */
   const char *proto = "https";
-  const char *forwarded_proto = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "X-Forwarded-Proto");
+  const char *forwarded_proto = MHD_lookup_connection_value (connection,
+                                                             MHD_HEADER_KIND,
+                                                             "X-Forwarded-Proto");
   const char *host;
   const char *forwarded_host;
   const char *prefix;
   va_list args;
   char *result;
-  
-  
+
+
   if (NULL != forwarded_proto)
   {
     proto = forwarded_proto;
   }
   else
   {
-    /* likely not reverse proxy, figure out if we are 
+    /* likely not reverse proxy, figure out if we are
        http by asking MHD */
     const union MHD_ConnectionInfo *ci;
 
@@ -459,9 +464,11 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
     }
   }
   host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "Host");
-  forwarded_host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "X-Forwarded-Host");
+  forwarded_host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND,
+                                                "X-Forwarded-Host");
 
-  prefix = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "X-Forwarded-Prefix");
+  prefix = MHD_lookup_connection_value (connection, MHD_HEADER_KIND,
+                                        "X-Forwarded-Prefix");
   if (NULL == prefix)
     prefix = "";
 

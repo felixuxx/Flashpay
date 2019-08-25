@@ -70,8 +70,8 @@ struct TEAH_AuditorInteractionEntry
  */
 typedef struct TEAH_AuditorInteractionEntry *
 (*TEAH_AuditorCallback)(void *cls,
-			struct TALER_AUDITOR_Handle *ah,
-			const struct TALER_AuditorPublicKeyP *auditor_pub);
+                        struct TALER_AUDITOR_Handle *ah,
+                        const struct TALER_AuditorPublicKeyP *auditor_pub);
 
 
 /**
@@ -101,8 +101,8 @@ TEAH_acc_confirmation_cb (void *cls,
  */
 void
 TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
-			  TEAH_AuditorCallback ac,
-			  void *ac_cls);
+                          TEAH_AuditorCallback ac,
+                          void *ac_cls);
 
 
 /**
@@ -134,7 +134,7 @@ TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
  */
 char *
 TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
-                 const char *path);
+                  const char *path);
 
 
 /**
@@ -146,7 +146,7 @@ TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  */
 char *
 TEAH_path_to_url2 (const char *base_url,
-                  const char *path);
+                   const char *path);
 
 
 /* end of exchange_api_handle.h */

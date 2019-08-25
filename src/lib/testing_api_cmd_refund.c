@@ -92,7 +92,7 @@ struct RefundState
 static void
 refund_cb (void *cls,
            unsigned int http_status,
-	   enum TALER_ErrorCode ec,
+           enum TALER_ErrorCode ec,
            const struct TALER_ExchangePublicKeyP *exchange_pub,
            const json_t *obj)
 {
@@ -169,7 +169,7 @@ refund_run (void *cls,
   }
 
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, rs->coin_reference);
+               (is, rs->coin_reference);
 
   if (NULL == coin_cmd)
   {
@@ -179,7 +179,7 @@ refund_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_contract_terms
-    (coin_cmd, 0, &contract_terms))
+        (coin_cmd, 0, &contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -192,7 +192,7 @@ refund_run (void *cls,
 
   /* Hunting for a coin .. */
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-    (coin_cmd, 0, &coin_priv))
+        (coin_cmd, 0, &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -202,7 +202,7 @@ refund_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin.eddsa_pub);
   if (GNUNET_OK != TALER_TESTING_get_trait_peer_key
-    (coin_cmd, 0, &merchant_priv))
+        (coin_cmd, 0, &merchant_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -210,14 +210,14 @@ refund_run (void *cls,
   }
 
   rs->rh = TALER_EXCHANGE_refund
-    (rs->exchange,
-     &refund_amount,
-     &refund_fee,
-     &h_contract_terms,
-     &coin,
-     rs->refund_transaction_id,
-     (const struct TALER_MerchantPrivateKeyP *) merchant_priv,
-     &refund_cb, rs);
+             (rs->exchange,
+             &refund_amount,
+             &refund_fee,
+             &h_contract_terms,
+             &coin,
+             rs->refund_transaction_id,
+             (const struct TALER_MerchantPrivateKeyP *) merchant_priv,
+             &refund_cb, rs);
 
   GNUNET_assert (NULL != rs->rh);
 }
@@ -307,11 +307,11 @@ TALER_TESTING_cmd_refund (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund_with_id
   (const char *label,
-   unsigned int expected_response_code,
-   const char *refund_amount,
-   const char *refund_fee,
-   const char *coin_reference,
-   uint64_t refund_transaction_id)
+  unsigned int expected_response_code,
+  const char *refund_amount,
+  const char *refund_fee,
+  const char *coin_reference,
+  uint64_t refund_transaction_id)
 {
   struct RefundState *rs;
 

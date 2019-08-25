@@ -29,7 +29,8 @@
 /**
  * Definitions for a test with a plugin.
  */
-struct TestBlock {
+struct TestBlock
+{
 
   /**
    * Name of the plugin to test.
@@ -156,35 +157,35 @@ main (int argc,
                  GNUNET_CONFIGURATION_load (cfg,
                                             "test_wire_plugin.conf"));
   ret = GNUNET_OK;
-  for (unsigned int i=0;NULL != (test = &tests[i])->plugin_name;i++)
+  for (unsigned int i = 0; NULL != (test = &tests[i])->plugin_name; i++)
   {
     GNUNET_CONFIGURATION_set_value_string (cfg,
-					   "taler",
-					   "CURRENCY",
-					   test->currency);
+                                           "taler",
+                                           "CURRENCY",
+                                           test->currency);
     plugin = TALER_WIRE_plugin_load (cfg,
                                      test->plugin_name);
     if (NULL == plugin)
     {
       TALER_LOG_ERROR ("Could not load plugin `%s'\n",
                        test->plugin_name);
-      return 77; 
+      return 77;
     }
-    
+
     ret = run_test (test, plugin);
     TALER_WIRE_plugin_unload (plugin);
     if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		  "%s FAILED\n",
-		  test->plugin_name);
+                  "%s FAILED\n",
+                  test->plugin_name);
       break;
     }
     else
     {
       GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-		  "%s PASS\n",
-		  test->plugin_name);
+                  "%s PASS\n",
+                  test->plugin_name);
     }
   }
   GNUNET_CONFIGURATION_destroy (cfg);

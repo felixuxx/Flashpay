@@ -67,7 +67,8 @@ reply_payback_unknown (struct MHD_Connection *connection,
 static int
 reply_payback_refresh_success (struct MHD_Connection *connection,
                                const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                               const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+                               const struct
+                               TALER_CoinSpendPublicKeyP *old_coin_pub,
                                const struct TALER_Amount *amount,
                                struct GNUNET_TIME_Absolute timestamp)
 {
@@ -94,11 +95,17 @@ reply_payback_refresh_success (struct MHD_Connection *connection,
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o}",
-                                       "old_coin_pub", GNUNET_JSON_from_data_auto (old_coin_pub),
-                                       "timestamp", GNUNET_JSON_from_time_abs (timestamp),
-                                       "amount", TALER_JSON_from_amount (amount),
-                                       "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+                                       "old_coin_pub",
+                                       GNUNET_JSON_from_data_auto (
+                                         old_coin_pub),
+                                       "timestamp", GNUNET_JSON_from_time_abs (
+                                         timestamp),
+                                       "amount", TALER_JSON_from_amount (
+                                         amount),
+                                       "exchange_sig",
+                                       GNUNET_JSON_from_data_auto (&sig),
+                                       "exchange_pub",
+                                       GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -142,11 +149,16 @@ reply_payback_success (struct MHD_Connection *connection,
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o}",
-                                       "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
-                                       "timestamp", GNUNET_JSON_from_time_abs (timestamp),
-                                       "amount", TALER_JSON_from_amount (amount),
-                                       "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+                                       "reserve_pub",
+                                       GNUNET_JSON_from_data_auto (reserve_pub),
+                                       "timestamp", GNUNET_JSON_from_time_abs (
+                                         timestamp),
+                                       "amount", TALER_JSON_from_amount (
+                                         amount),
+                                       "exchange_sig",
+                                       GNUNET_JSON_from_data_auto (&sig),
+                                       "exchange_pub",
+                                       GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -405,7 +417,8 @@ payback_transaction (void *cls,
 static int
 verify_and_execute_payback (struct MHD_Connection *connection,
                             const struct TALER_CoinPublicInfo *coin,
-                            const struct TALER_DenominationBlindingKeyP *coin_bks,
+                            const struct
+                            TALER_DenominationBlindingKeyP *coin_bks,
                             const struct TALER_CoinSpendSignatureP *coin_sig,
                             int refreshed)
 {
@@ -432,7 +445,8 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   if (NULL == dki)
   {
     TEH_KS_release (key_state);
-    TALER_LOG_WARNING ("Denomination key in /payback request not in payback mode\n");
+    TALER_LOG_WARNING (
+      "Denomination key in /payback request not in payback mode\n");
     return TEH_RESPONSE_reply_arg_unknown (connection,
                                            TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN,
                                            "denom_pub");
@@ -527,16 +541,16 @@ verify_and_execute_payback (struct MHD_Connection *connection,
       return mhd_ret;
   }
   return (refreshed)
-    ? reply_payback_refresh_success (connection,
-                                     &coin->coin_pub,
-                                     &pc.target.old_coin_pub,
-                                     &pc.amount,
-                                     pc.now)
-    : reply_payback_success (connection,
-                             &coin->coin_pub,
-                             &pc.target.reserve_pub,
-                             &pc.amount,
-                             pc.now);
+         ? reply_payback_refresh_success (connection,
+                                          &coin->coin_pub,
+                                          &pc.target.old_coin_pub,
+                                          &pc.amount,
+                                          pc.now)
+         : reply_payback_success (connection,
+                                  &coin->coin_pub,
+                                  &pc.target.reserve_pub,
+                                  &pc.amount,
+                                  pc.now);
 }
 
 
@@ -579,8 +593,8 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
     GNUNET_JSON_spec_mark_optional
-    (GNUNET_JSON_spec_boolean ("refreshed",
-                               &refreshed)),
+      (GNUNET_JSON_spec_boolean ("refreshed",
+                                 &refreshed)),
     GNUNET_JSON_spec_end ()
   };
 

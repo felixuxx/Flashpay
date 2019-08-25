@@ -79,152 +79,151 @@ struct CountryTableEntry
 /**
  * List of country codes.
  */
-static const struct CountryTableEntry country_table[] =
-  {
-    { "AE", "U.A.E." },
-    { "AF", "Afghanistan" },
-    { "AL", "Albania" },
-    { "AM", "Armenia" },
-    { "AN", "Netherlands Antilles" },
-    { "AR", "Argentina" },
-    { "AT", "Austria" },
-    { "AU", "Australia" },
-    { "AZ", "Azerbaijan" },
-    { "BA", "Bosnia and Herzegovina" },
-    { "BD", "Bangladesh" },
-    { "BE", "Belgium" },
-    { "BG", "Bulgaria" },
-    { "BH", "Bahrain" },
-    { "BN", "Brunei Darussalam" },
-    { "BO", "Bolivia" },
-    { "BR", "Brazil" },
-    { "BT", "Bhutan" },
-    { "BY", "Belarus" },
-    { "BZ", "Belize" },
-    { "CA", "Canada" },
-    { "CG", "Congo" },
-    { "CH", "Switzerland" },
-    { "CI", "Cote d'Ivoire" },
-    { "CL", "Chile" },
-    { "CM", "Cameroon" },
-    { "CN", "People's Republic of China" },
-    { "CO", "Colombia" },
-    { "CR", "Costa Rica" },
-    { "CS", "Serbia and Montenegro" },
-    { "CZ", "Czech Republic" },
-    { "DE", "Germany" },
-    { "DK", "Denmark" },
-    { "DO", "Dominican Republic" },
-    { "DZ", "Algeria" },
-    { "EC", "Ecuador" },
-    { "EE", "Estonia" },
-    { "EG", "Egypt" },
-    { "ER", "Eritrea" },
-    { "ES", "Spain" },
-    { "ET", "Ethiopia" },
-    { "FI", "Finland" },
-    { "FO", "Faroe Islands" },
-    { "FR", "France" },
-    { "GB", "United Kingdom" },
-    { "GD", "Caribbean" },
-    { "GE", "Georgia" },
-    { "GL", "Greenland" },
-    { "GR", "Greece" },
-    { "GT", "Guatemala" },
-    { "HK", "Hong Kong" },
-    { "HK", "Hong Kong S.A.R." },
-    { "HN", "Honduras" },
-    { "HR", "Croatia" },
-    { "HT", "Haiti" },
-    { "HU", "Hungary" },
-    { "ID", "Indonesia" },
-    { "IE", "Ireland" },
-    { "IL", "Israel" },
-    { "IN", "India" },
-    { "IQ", "Iraq" },
-    { "IR", "Iran" },
-    { "IS", "Iceland" },
-    { "IT", "Italy" },
-    { "JM", "Jamaica" },
-    { "JO", "Jordan" },
-    { "JP", "Japan" },
-    { "KE", "Kenya" },
-    { "KG", "Kyrgyzstan" },
-    { "KH", "Cambodia" },
-    { "KR", "South Korea" },
-    { "KW", "Kuwait" },
-    { "KZ", "Kazakhstan" },
-    { "LA", "Laos" },
-    { "LB", "Lebanon" },
-    { "LI", "Liechtenstein" },
-    { "LK", "Sri Lanka" },
-    { "LT", "Lithuania" },
-    { "LU", "Luxembourg" },
-    { "LV", "Latvia" },
-    { "LY", "Libya" },
-    { "MA", "Morocco" },
-    { "MC", "Principality of Monaco" },
-    { "MD", "Moldava" },
-    { "MD", "Moldova" },
-    { "ME", "Montenegro" },
-    { "MK", "Former Yugoslav Republic of Macedonia" },
-    { "ML", "Mali" },
-    { "MM", "Myanmar" },
-    { "MN", "Mongolia" },
-    { "MO", "Macau S.A.R." },
-    { "MT", "Malta" },
-    { "MV", "Maldives" },
-    { "MX", "Mexico" },
-    { "MY", "Malaysia" },
-    { "NG", "Nigeria" },
-    { "NI", "Nicaragua" },
-    { "NL", "Netherlands" },
-    { "NO", "Norway" },
-    { "NP", "Nepal" },
-    { "NZ", "New Zealand" },
-    { "OM", "Oman" },
-    { "PA", "Panama" },
-    { "PE", "Peru" },
-    { "PH", "Philippines" },
-    { "PK", "Islamic Republic of Pakistan" },
-    { "PL", "Poland" },
-    { "PR", "Puerto Rico" },
-    { "PT", "Portugal" },
-    { "PY", "Paraguay" },
-    { "QA", "Qatar" },
-    { "RE", "Reunion" },
-    { "RO", "Romania" },
-    { "RS", "Serbia" },
-    { "RU", "Russia" },
-    { "RW", "Rwanda" },
-    { "SA", "Saudi Arabia" },
-    { "SE", "Sweden" },
-    { "SG", "Singapore" },
-    { "SI", "Slovenia" },
-    { "SK", "Slovak" },
-    { "SN", "Senegal" },
-    { "SO", "Somalia" },
-    { "SR", "Suriname" },
-    { "SV", "El Salvador" },
-    { "SY", "Syria" },
-    { "TH", "Thailand" },
-    { "TJ", "Tajikistan" },
-    { "TM", "Turkmenistan" },
-    { "TN", "Tunisia" },
-    { "TR", "Turkey" },
-    { "TT", "Trinidad and Tobago" },
-    { "TW", "Taiwan" },
-    { "TZ", "Tanzania" },
-    { "UA", "Ukraine" },
-    { "US", "United States" },
-    { "UY", "Uruguay" },
-    { "VA", "Vatican" },
-    { "VE", "Venezuela" },
-    { "VN", "Viet Nam" },
-    { "YE", "Yemen" },
-    { "ZA", "South Africa" },
-    { "ZW", "Zimbabwe" }
-  };
+static const struct CountryTableEntry country_table[] = {
+  { "AE", "U.A.E." },
+  { "AF", "Afghanistan" },
+  { "AL", "Albania" },
+  { "AM", "Armenia" },
+  { "AN", "Netherlands Antilles" },
+  { "AR", "Argentina" },
+  { "AT", "Austria" },
+  { "AU", "Australia" },
+  { "AZ", "Azerbaijan" },
+  { "BA", "Bosnia and Herzegovina" },
+  { "BD", "Bangladesh" },
+  { "BE", "Belgium" },
+  { "BG", "Bulgaria" },
+  { "BH", "Bahrain" },
+  { "BN", "Brunei Darussalam" },
+  { "BO", "Bolivia" },
+  { "BR", "Brazil" },
+  { "BT", "Bhutan" },
+  { "BY", "Belarus" },
+  { "BZ", "Belize" },
+  { "CA", "Canada" },
+  { "CG", "Congo" },
+  { "CH", "Switzerland" },
+  { "CI", "Cote d'Ivoire" },
+  { "CL", "Chile" },
+  { "CM", "Cameroon" },
+  { "CN", "People's Republic of China" },
+  { "CO", "Colombia" },
+  { "CR", "Costa Rica" },
+  { "CS", "Serbia and Montenegro" },
+  { "CZ", "Czech Republic" },
+  { "DE", "Germany" },
+  { "DK", "Denmark" },
+  { "DO", "Dominican Republic" },
+  { "DZ", "Algeria" },
+  { "EC", "Ecuador" },
+  { "EE", "Estonia" },
+  { "EG", "Egypt" },
+  { "ER", "Eritrea" },
+  { "ES", "Spain" },
+  { "ET", "Ethiopia" },
+  { "FI", "Finland" },
+  { "FO", "Faroe Islands" },
+  { "FR", "France" },
+  { "GB", "United Kingdom" },
+  { "GD", "Caribbean" },
+  { "GE", "Georgia" },
+  { "GL", "Greenland" },
+  { "GR", "Greece" },
+  { "GT", "Guatemala" },
+  { "HK", "Hong Kong" },
+  { "HK", "Hong Kong S.A.R." },
+  { "HN", "Honduras" },
+  { "HR", "Croatia" },
+  { "HT", "Haiti" },
+  { "HU", "Hungary" },
+  { "ID", "Indonesia" },
+  { "IE", "Ireland" },
+  { "IL", "Israel" },
+  { "IN", "India" },
+  { "IQ", "Iraq" },
+  { "IR", "Iran" },
+  { "IS", "Iceland" },
+  { "IT", "Italy" },
+  { "JM", "Jamaica" },
+  { "JO", "Jordan" },
+  { "JP", "Japan" },
+  { "KE", "Kenya" },
+  { "KG", "Kyrgyzstan" },
+  { "KH", "Cambodia" },
+  { "KR", "South Korea" },
+  { "KW", "Kuwait" },
+  { "KZ", "Kazakhstan" },
+  { "LA", "Laos" },
+  { "LB", "Lebanon" },
+  { "LI", "Liechtenstein" },
+  { "LK", "Sri Lanka" },
+  { "LT", "Lithuania" },
+  { "LU", "Luxembourg" },
+  { "LV", "Latvia" },
+  { "LY", "Libya" },
+  { "MA", "Morocco" },
+  { "MC", "Principality of Monaco" },
+  { "MD", "Moldava" },
+  { "MD", "Moldova" },
+  { "ME", "Montenegro" },
+  { "MK", "Former Yugoslav Republic of Macedonia" },
+  { "ML", "Mali" },
+  { "MM", "Myanmar" },
+  { "MN", "Mongolia" },
+  { "MO", "Macau S.A.R." },
+  { "MT", "Malta" },
+  { "MV", "Maldives" },
+  { "MX", "Mexico" },
+  { "MY", "Malaysia" },
+  { "NG", "Nigeria" },
+  { "NI", "Nicaragua" },
+  { "NL", "Netherlands" },
+  { "NO", "Norway" },
+  { "NP", "Nepal" },
+  { "NZ", "New Zealand" },
+  { "OM", "Oman" },
+  { "PA", "Panama" },
+  { "PE", "Peru" },
+  { "PH", "Philippines" },
+  { "PK", "Islamic Republic of Pakistan" },
+  { "PL", "Poland" },
+  { "PR", "Puerto Rico" },
+  { "PT", "Portugal" },
+  { "PY", "Paraguay" },
+  { "QA", "Qatar" },
+  { "RE", "Reunion" },
+  { "RO", "Romania" },
+  { "RS", "Serbia" },
+  { "RU", "Russia" },
+  { "RW", "Rwanda" },
+  { "SA", "Saudi Arabia" },
+  { "SE", "Sweden" },
+  { "SG", "Singapore" },
+  { "SI", "Slovenia" },
+  { "SK", "Slovak" },
+  { "SN", "Senegal" },
+  { "SO", "Somalia" },
+  { "SR", "Suriname" },
+  { "SV", "El Salvador" },
+  { "SY", "Syria" },
+  { "TH", "Thailand" },
+  { "TJ", "Tajikistan" },
+  { "TM", "Turkmenistan" },
+  { "TN", "Tunisia" },
+  { "TR", "Turkey" },
+  { "TT", "Trinidad and Tobago" },
+  { "TW", "Taiwan" },
+  { "TZ", "Tanzania" },
+  { "UA", "Ukraine" },
+  { "US", "United States" },
+  { "UY", "Uruguay" },
+  { "VA", "Vatican" },
+  { "VE", "Venezuela" },
+  { "VN", "Viet Nam" },
+  { "YE", "Yemen" },
+  { "ZA", "South Africa" },
+  { "ZW", "Zimbabwe" }
+};
 
 
 /**
@@ -296,14 +295,14 @@ validate_iban (const char *iban)
     return GNUNET_NO;
   }
   nbuf = GNUNET_malloc ((len * 2) + 1);
-  for (i=0, j=0; i < len; i++)
+  for (i = 0, j = 0; i < len; i++)
   {
     if (isalpha ((unsigned char) ibancpy[i]))
     {
-      if (2 != snprintf(&nbuf[j],
-                        3,
-                        "%2u",
-                        (ibancpy[i] - 'A' + 10)))
+      if (2 != snprintf (&nbuf[j],
+                         3,
+                         "%2u",
+                         (ibancpy[i] - 'A' + 10)))
       {
         GNUNET_free (nbuf);
         return GNUNET_NO;
@@ -314,11 +313,11 @@ validate_iban (const char *iban)
     nbuf[j] = ibancpy[i];
     j++;
   }
-  for (j=0;'\0' != nbuf[j];j++)
-    GNUNET_assert (isdigit( (unsigned char) nbuf[j]));
+  for (j = 0; '\0' != nbuf[j]; j++)
+    GNUNET_assert (isdigit ( (unsigned char) nbuf[j]));
   GNUNET_assert (sizeof(dividend) >= 8);
   remainder = 0;
-  for (unsigned int i=0; i<j; i+=16)
+  for (unsigned int i = 0; i<j; i += 16)
   {
     if (1 !=
         (ret = sscanf (&nbuf[i],
@@ -459,7 +458,7 @@ parse_payto_x_taler_bank (const char *account_url,
     r_account->details.x_taler_bank.no = no;
     port = 443; /* if non given, equals 443.  */
     if (NULL != (p = strchr (r_account->details.x_taler_bank.hostname,
-                           (unsigned char) ':')))
+                             (unsigned char) ':')))
     {
       p++;
       if (1 != sscanf (p,
@@ -478,16 +477,16 @@ parse_payto_x_taler_bank (const char *account_url,
       GNUNET_assert
         (GNUNET_SYSERR != GNUNET_asprintf
           (&r_account->details.x_taler_bank.bank_base_url,
-           "http://%s",
-           r_account->details.x_taler_bank.hostname));
+          "http://%s",
+          r_account->details.x_taler_bank.hostname));
     }
     else
     {
       GNUNET_assert
         (GNUNET_SYSERR != GNUNET_asprintf
           (&r_account->details.x_taler_bank.bank_base_url,
-           "https://%s",
-           r_account->details.x_taler_bank.hostname));
+          "https://%s",
+          r_account->details.x_taler_bank.hostname));
     }
     r_account->type = TALER_PAC_X_TALER_BANK;
   }
@@ -496,8 +495,8 @@ parse_payto_x_taler_bank (const char *account_url,
 
 
 typedef enum TALER_ErrorCode
-(*Parser) (const char *account_url,
-           struct TALER_Account *r_account);
+(*Parser)(const char *account_url,
+          struct TALER_Account *r_account);
 
 /**
  * Parse @a payto_url and store the result in @a acc
@@ -516,7 +515,7 @@ TALER_WIRE_payto_to_account (const char *payto_url,
     NULL
   };
 
-  for (unsigned int i=0;NULL != parsers[i];i++)
+  for (unsigned int i = 0; NULL != parsers[i]; i++)
   {
     enum TALER_ErrorCode ec = parsers[i](payto_url,
                                          acc);

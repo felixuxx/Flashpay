@@ -53,7 +53,7 @@ TAH_RESPONSE_add_global_headers (struct MHD_Response *response);
  */
 int
 TAH_RESPONSE_body_compress (void **buf,
-			    size_t *buf_size);
+                            size_t *buf_size);
 
 
 /**
@@ -107,7 +107,7 @@ TAH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
+                                      enum TALER_ErrorCode ec,
                                       const char *param_name);
 
 
@@ -121,7 +121,7 @@ TAH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -137,7 +137,7 @@ TAH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -151,7 +151,7 @@ TAH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -165,7 +165,7 @@ TAH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
+                                      enum TALER_ErrorCode ec,
                                       const char *hint);
 
 
@@ -179,7 +179,7 @@ TAH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint);
 
 
@@ -193,7 +193,7 @@ TAH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint);
 
 
@@ -207,7 +207,7 @@ TAH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec);
+                                 enum TALER_ErrorCode ec);
 
 /**
  * Send a response indicating a failure to talk to the Auditor's
@@ -219,7 +219,7 @@ TAH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec);
+                                      enum TALER_ErrorCode ec);
 
 
 /**

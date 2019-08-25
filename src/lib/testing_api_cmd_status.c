@@ -76,12 +76,12 @@ struct StatusState
 static void
 reserve_status_cb
   (void *cls,
-   unsigned int http_status,
-   enum TALER_ErrorCode ec,
-   const json_t *json,
-   const struct TALER_Amount *balance,
-   unsigned int history_length,
-   const struct TALER_EXCHANGE_ReserveHistory *history)
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  const json_t *json,
+  const struct TALER_Amount *balance,
+  unsigned int history_length,
+  const struct TALER_EXCHANGE_ReserveHistory *history)
 {
   struct StatusState *ss = cls;
   struct TALER_Amount eb;
@@ -99,7 +99,7 @@ reserve_status_cb
   }
 
   GNUNET_assert (GNUNET_OK == TALER_string_to_amount
-    (ss->expected_balance, &eb));
+                   (ss->expected_balance, &eb));
 
   if (0 != TALER_amount_cmp (&eb, balance))
   {
@@ -154,7 +154,7 @@ status_run (void *cls,
 
   create_reserve
     = TALER_TESTING_interpreter_lookup_command
-      (is, ss->reserve_reference);
+        (is, ss->reserve_reference);
 
   if (NULL == create_reserve)
   {
@@ -166,9 +166,9 @@ status_run (void *cls,
   /* NOTE: the following line might generate a ERROR log
    * statements, but it can be ignored.  */
   if (GNUNET_OK == TALER_TESTING_get_trait_reserve_priv
-      (create_reserve,
-       0,
-       &reserve_priv))
+        (create_reserve,
+        0,
+        &reserve_priv))
   {
     GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                         &reserve_pub.eddsa_pub);
@@ -178,9 +178,9 @@ status_run (void *cls,
     const char *transfer_subject;
 
     if (GNUNET_OK != TALER_TESTING_get_trait_transfer_subject
-        (create_reserve,
-         0,
-         &transfer_subject))
+          (create_reserve,
+          0,
+          &transfer_subject))
     {
       GNUNET_break (0);
       TALER_LOG_ERROR ("The reserve has neither a priv nor a subject line.\n");

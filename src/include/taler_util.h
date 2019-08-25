@@ -51,9 +51,9 @@
 #define TALER_assert_as(EXP, reason)                           \
   do {                                                          \
     if (EXP) break;                                             \
-    TALER_LOG_ERROR("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
-    abort();                                                    \
-  } while(0)
+    TALER_LOG_ERROR ("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
+    abort ();                                                    \
+  } while (0)
 
 
 /**
@@ -61,11 +61,17 @@
  * a failure of the command 'cmd' with the message given
  * by gcry_strerror(rc).
  */
-#define TALER_LOG_GCRY_ERROR(cmd, rc) do { TALER_LOG_ERROR("`%s' failed at %s:%d with error: %s\n", cmd, __FILE__, __LINE__, gcry_strerror(rc)); } while(0)
+#define TALER_LOG_GCRY_ERROR(cmd, rc) do { TALER_LOG_ERROR ( \
+                                             "`%s' failed at %s:%d with error: %s\n", \
+                                             cmd, __FILE__, __LINE__, \
+                                             gcry_strerror (rc)); } while (0)
 
 
 #define TALER_gcry_ok(cmd) \
-  do {int rc; rc = cmd; if (!rc) break; TALER_LOG_ERROR("A Gcrypt call failed at %s:%d with error: %s\n", __FILE__, __LINE__, gcry_strerror(rc)); abort(); } while (0)
+  do {int rc; rc = cmd; if (! rc) break; \
+      TALER_LOG_ERROR ("A Gcrypt call failed at %s:%d with error: %s\n", \
+                       __FILE__, \
+                       __LINE__, gcry_strerror (rc)); abort (); } while (0)
 
 
 /**

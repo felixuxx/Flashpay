@@ -110,7 +110,7 @@ TFH_handle_history_range_advance (const struct HistoryArgs *ha,
   const struct HistoryRangeDates *hrd = ha->range;
 
   if ( (NULL != pos) &&
-      (pos->date.abs_value_us <= hrd->end.abs_value_us) )
+       (pos->date.abs_value_us <= hrd->end.abs_value_us) )
     return GNUNET_YES;
 
   return GNUNET_NO;
@@ -196,16 +196,16 @@ TFH_build_history_response (struct MHD_Connection *connection,
       ? (pos->rejected ? "cancel-" : "-")
       : (pos->rejected ? "cancel+" : "+");
     trans = json_pack
-      ("{s:I, s:o, s:o, s:s, s:I, s:s}",
-       "row_id", (json_int_t) pos->row_id,
-       "date", GNUNET_JSON_from_time_abs (pos->date),
-       "amount", TALER_JSON_from_amount (&pos->amount),
-       "sign", sign,
-       "counterpart", (json_int_t)
-         ( (ha->account_number == pos->debit_account)
-            ? pos->credit_account
-            : pos->debit_account),
-       "wt_subject", subject);
+              ("{s:I, s:o, s:o, s:s, s:I, s:s}",
+              "row_id", (json_int_t) pos->row_id,
+              "date", GNUNET_JSON_from_time_abs (pos->date),
+              "amount", TALER_JSON_from_amount (&pos->amount),
+              "sign", sign,
+              "counterpart", (json_int_t)
+              ( (ha->account_number == pos->debit_account)
+                ? pos->credit_account
+                : pos->debit_account),
+              "wt_subject", subject);
     GNUNET_assert (NULL != trans);
     GNUNET_free (subject);
 
@@ -244,9 +244,9 @@ TFH_build_history_response (struct MHD_Connection *connection,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning empty transaction history\n");
     resp = MHD_create_response_from_buffer
-      (0,
-       "",
-       MHD_RESPMEM_PERSISTENT);
+             (0,
+             "",
+             MHD_RESPMEM_PERSISTENT);
     ret = MHD_queue_response (connection,
                               MHD_HTTP_NO_CONTENT,
                               resp);
@@ -270,7 +270,7 @@ TFH_build_history_response (struct MHD_Connection *connection,
     size_t json_len;
 
     json_str = json_dumps (jresponse,
-                           JSON_INDENT(2));
+                           JSON_INDENT (2));
     json_decref (jresponse);
     if (NULL == json_str)
     {
@@ -339,9 +339,9 @@ TFH_parse_history_common_args (struct MHD_Connection *connection,
                                           MHD_GET_ARGUMENT_KIND,
                                           "ordering");
   account_number = MHD_lookup_connection_value
-    (connection,
-     MHD_GET_ARGUMENT_KIND,
-     "account_number");
+                     (connection,
+                     MHD_GET_ARGUMENT_KIND,
+                     "account_number");
 
   /* Fail if one of the above failed.  */
   if ( (NULL == direction) ||
@@ -356,11 +356,11 @@ TFH_parse_history_common_args (struct MHD_Connection *connection,
                            "CREDIT")) &&
          (0 != strcasecmp (direction,
                            "DEBIT")) ) ||
-         (1 != sscanf (account_number,
-                       "%llu",
-                       &ha->account_number)) ||
-         ( (NULL == auth) || (0 != strcasecmp (auth,
-                                               "basic")) ) )
+       (1 != sscanf (account_number,
+                     "%llu",
+                     &ha->account_number)) ||
+       ( (NULL == auth) || (0 != strcasecmp (auth,
+                                             "basic")) ) )
   {
     /* Invalid request, given that this is fakebank we impolitely
      * just kill the connection instead of returning a nice error.
@@ -396,8 +396,9 @@ TFH_parse_history_common_args (struct MHD_Connection *connection,
                        "OMIT"))
   {
     /* nothing */
-  } else if (0 == strcasecmp (cancelled,
-                              "SHOW"))
+  }
+  else if (0 == strcasecmp (cancelled,
+                            "SHOW"))
   {
     ha->direction |= TALER_BANK_DIRECTION_CANCEL;
   }
@@ -410,8 +411,8 @@ TFH_parse_history_common_args (struct MHD_Connection *connection,
   }
 
   if ((NULL != ordering)
-      && 0 == strcmp ("ascending",
-                      ordering))
+      && (0 == strcmp ("ascending",
+                       ordering)))
     ha->ascending = GNUNET_YES;
   else
     ha->ascending = GNUNET_NO;

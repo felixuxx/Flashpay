@@ -38,17 +38,17 @@
  */
 static int
 reply_reserve_status_success (struct MHD_Connection *connection,
-			      const struct TALER_EXCHANGEDB_ReserveHistory *rh)
+                              const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
   struct TALER_Amount balance;
 
   json_history = TEH_RESPONSE_compile_reserve_history (rh,
-						       &balance);
+                                                       &balance);
   if (NULL == json_history)
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_RESERVE_STATUS_DB_ERROR,
+                                              TALER_EC_RESERVE_STATUS_DB_ERROR,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
   return TEH_RESPONSE_reply_json_pack (connection,
@@ -96,16 +96,16 @@ struct ReserveStatusContext
  */
 static enum GNUNET_DB_QueryStatus
 reserve_status_transaction (void *cls,
-			    struct MHD_Connection *connection,
-			    struct TALER_EXCHANGEDB_Session *session,
-			    int *mhd_ret)
+                            struct MHD_Connection *connection,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            int *mhd_ret)
 {
   struct ReserveStatusContext *rsc = cls;
 
   return TEH_plugin->get_reserve_history (TEH_plugin->cls,
-					  session,
-					  &rsc->reserve_pub,
-					  &rsc->rh);
+                                          session,
+                                          &rsc->reserve_pub,
+                                          &rsc->rh);
 }
 
 
@@ -136,7 +136,8 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
   res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "reserve_pub",
                                         &rsc.reserve_pub,
-                                        sizeof (struct TALER_ReservePublicKeyP));
+                                        sizeof (struct
+                                                TALER_ReservePublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
@@ -145,9 +146,9 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "get reserve status",
-			      &mhd_ret,
-			      &reserve_status_transaction,
-			      &rsc))
+                              &mhd_ret,
+                              &reserve_status_transaction,
+                              &rsc))
     return mhd_ret;
 
   /* generate proper response */
@@ -157,9 +158,11 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
                                          "{s:s, s:s, s:I}",
                                          "error", "Reserve not found",
                                          "parameter", "withdraw_pub",
-                                         "code", (json_int_t) TALER_EC_RESERVE_STATUS_UNKNOWN);
+                                         "code",
+                                         (json_int_t)
+                                         TALER_EC_RESERVE_STATUS_UNKNOWN);
   mhd_ret = reply_reserve_status_success (connection,
-					  rsc.rh);
+                                          rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rsc.rh);
   return mhd_ret;

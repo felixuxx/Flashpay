@@ -110,31 +110,31 @@ data_copy (const struct PERF_TALER_EXCHANGEDB_Data *data,
   copy->type = data->type;
   switch (data->type)
   {
-    case PERF_TALER_EXCHANGEDB_TIME:
-      copy->data.time = GNUNET_new (struct GNUNET_TIME_Absolute);
-      *copy->data.time = *data->data.time;
-      return;
-    case PERF_TALER_EXCHANGEDB_DEPOSIT:
-      copy->data.deposit
-        = PERF_TALER_EXCHANGEDB_deposit_copy (data->data.deposit);
-      return;
-    case PERF_TALER_EXCHANGEDB_COIN:
-      copy->data.coin
-        = PERF_TALER_EXCHANGEDB_coin_copy (data->data.coin);
-      return;
-    case PERF_TALER_EXCHANGEDB_RESERVE:
-      copy->data.reserve
-        = PERF_TALER_EXCHANGEDB_reserve_copy (data->data.reserve);
-      return;
-    case PERF_TALER_EXCHANGEDB_DENOMINATION_INFO:
-      copy->data.dki
-        = PERF_TALER_EXCHANGEDB_denomination_copy (data->data.dki);
-      return;
-    case PERF_TALER_EXCHANGEDB_REFRESH_HASH:
-      copy->data.rc = data->data.rc;
-      break;
-    case PERF_TALER_EXCHANGEDB_NONE:
-      break;
+  case PERF_TALER_EXCHANGEDB_TIME:
+    copy->data.time = GNUNET_new (struct GNUNET_TIME_Absolute);
+    *copy->data.time = *data->data.time;
+    return;
+  case PERF_TALER_EXCHANGEDB_DEPOSIT:
+    copy->data.deposit
+      = PERF_TALER_EXCHANGEDB_deposit_copy (data->data.deposit);
+    return;
+  case PERF_TALER_EXCHANGEDB_COIN:
+    copy->data.coin
+      = PERF_TALER_EXCHANGEDB_coin_copy (data->data.coin);
+    return;
+  case PERF_TALER_EXCHANGEDB_RESERVE:
+    copy->data.reserve
+      = PERF_TALER_EXCHANGEDB_reserve_copy (data->data.reserve);
+    return;
+  case PERF_TALER_EXCHANGEDB_DENOMINATION_INFO:
+    copy->data.dki
+      = PERF_TALER_EXCHANGEDB_denomination_copy (data->data.dki);
+    return;
+  case PERF_TALER_EXCHANGEDB_REFRESH_HASH:
+    copy->data.rc = data->data.rc;
+    break;
+  case PERF_TALER_EXCHANGEDB_NONE:
+    break;
   }
 }
 
@@ -151,7 +151,7 @@ cmd_find (const struct PERF_TALER_EXCHANGEDB_Cmd *cmd,
 {
   unsigned int i;
 
-  for (i=0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
+  for (i = 0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
     if (0 == strcmp (cmd[i].label, search))
       return i;
   return GNUNET_SYSERR;
@@ -171,260 +171,368 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
 {
   unsigned int i;
 
-  for (i=0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
+  for (i = 0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
   {
     switch (cmd[i].command)
     {
-      case PERF_TALER_EXCHANGEDB_CMD_END_LOOP:
-        {
-          int ret;
+    case PERF_TALER_EXCHANGEDB_CMD_END_LOOP:
+      {
+        int ret;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.end_loop.label_loop);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+        ret = cmd_find (cmd,
                         cmd[i].details.end_loop.label_loop);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_CMD_LOOP != cmd[ret].command)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s at %s\n",
-                        i,
-                        cmd[i].details.end_loop.label_loop,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.end_loop.index_loop = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.save_array.label_save);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s at %s\n",
-                        i,
-                        cmd[i].details.save_array.label_save,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_NONE == cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s at %s\n",
-                        i,
-                        cmd[i].details.save_array.label_save,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.save_array.index_save = ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.save_array.label_loop);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s at %s\n",
-                        i,
-                        cmd[i].details.save_array.label_loop,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_CMD_LOOP != cmd[ret].command)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s at %s\n",
-                        i,
-                        cmd[i].details.save_array.label_loop,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.save_array.index_loop = ret;
-
-          GNUNET_assert (NULL == cmd[i].details.save_array.data_saved);
-          cmd[i].details.save_array.data_saved =
-            GNUNET_new_array (cmd[i].details.save_array.nb_saved,
-                              struct PERF_TALER_EXCHANGEDB_Data);
-          cmd[i].details.save_array.type_saved =
-            cmd[cmd[i].details.save_array.index_save].exposed.type;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.end_loop.label_loop);
+          return GNUNET_SYSERR;
         }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY:
+        if (PERF_TALER_EXCHANGEDB_CMD_LOOP != cmd[ret].command)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s at %s\n",
+                      i,
+                      cmd[i].details.end_loop.label_loop,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.end_loop.index_loop = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.load_array.label_save);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s at %s\n",
-                        i,
-                        cmd[i].details.load_array.label_save,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY != cmd[ret].command)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s at %s\n",
-                        i,
-                        cmd[i].details.load_array.label_save,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.load_array.index_save = ret;
+    case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
+      {
+        int ret;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.load_array.label_loop);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+        ret = cmd_find (cmd,
+                        cmd[i].details.save_array.label_save);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s at %s\n",
+                      i,
+                      cmd[i].details.save_array.label_save,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_NONE == cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s at %s\n",
+                      i,
+                      cmd[i].details.save_array.label_save,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.save_array.index_save = ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.save_array.label_loop);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s at %s\n",
+                      i,
+                      cmd[i].details.save_array.label_loop,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_CMD_LOOP != cmd[ret].command)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s at %s\n",
+                      i,
+                      cmd[i].details.save_array.label_loop,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.save_array.index_loop = ret;
+
+        GNUNET_assert (NULL == cmd[i].details.save_array.data_saved);
+        cmd[i].details.save_array.data_saved =
+          GNUNET_new_array (cmd[i].details.save_array.nb_saved,
+                            struct PERF_TALER_EXCHANGEDB_Data);
+        cmd[i].details.save_array.type_saved =
+          cmd[cmd[i].details.save_array.index_save].exposed.type;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.load_array.label_save);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s at %s\n",
+                      i,
+                      cmd[i].details.load_array.label_save,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY != cmd[ret].command)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s at %s\n",
+                      i,
+                      cmd[i].details.load_array.label_save,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.load_array.index_save = ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.load_array.label_loop);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_CMD_LOOP != cmd[ret].command)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.load_array.label_loop);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.load_array.index_loop = ret;
-
-          cmd[i].details.load_array.permutation =
-            GNUNET_CRYPTO_random_permute (
-              GNUNET_CRYPTO_QUALITY_WEAK,
-              cmd[cmd[i].details.load_array.index_save].details.save_array.nb_saved);
-          GNUNET_assert (NULL != cmd[i].details.load_array.permutation);
-
-          cmd[i].exposed.type = cmd[cmd[i].details.load_array.index_save].details.save_array.type_saved;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_LOAD_RANDOM:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.load_array.label_loop);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_CMD_LOOP != cmd[ret].command)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.load_array.label_loop);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.load_array.index_loop = ret;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.load_random.label_save);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+        cmd[i].details.load_array.permutation =
+          GNUNET_CRYPTO_random_permute (
+            GNUNET_CRYPTO_QUALITY_WEAK,
+            cmd[cmd[i].details.load_array.index_save].details.save_array.
+            nb_saved);
+        GNUNET_assert (NULL != cmd[i].details.load_array.permutation);
+
+        cmd[i].exposed.type =
+          cmd[cmd[i].details.load_array.index_save].details.save_array.
+          type_saved;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_LOAD_RANDOM:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.load_random.label_save);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY != cmd[ret].command)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.load_random.label_save);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.load_random.index_save = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GAUGER:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.load_random.label_save);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY != cmd[ret].command)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.load_random.label_save);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.load_random.index_save = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.gauger.label_start);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_GAUGER:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.gauger.label_start);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_TIME != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.gauger.label_start);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.gauger.index_start = ret;
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.gauger.label_start);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_TIME != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.gauger.label_start);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.gauger.index_start = ret;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.gauger.label_stop);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+        ret = cmd_find (cmd,
                         cmd[i].details.gauger.label_stop);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_TIME != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.gauger.label_stop);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.gauger.index_stop = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.gauger.label_stop);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_TIME != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.gauger.label_stop);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.gauger.index_stop = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.insert_denomination.label_denom);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.insert_denomination.label_denom);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.insert_denomination.label_denom);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.insert_denomination.index_denom = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.insert_denomination.label_denom);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.insert_denomination.label_denom);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.insert_denomination.index_denom = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_denomination.label_denom);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.get_denomination.label_denom);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_denomination.label_denom);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_denomination.label_denom);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_denomination.index_denom = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_RESERVE:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.insert_reserve.label_reserve);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.insert_reserve.label_reserve);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.insert_reserve.label_reserve);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.insert_reserve.index_reserve = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.get_reserve.label_reserve);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_reserve.label_reserve);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_reserve.label_reserve);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_reserve.index_reserve = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE_HISTORY:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.get_reserve_history.label_reserve);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_reserve_history.label_reserve);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_reserve_history.label_reserve);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_reserve_history.index_reserve = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.create_withdraw.label_dki);
+        {
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.create_withdraw.label_dki);
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
@@ -432,25 +540,20 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
-                        cmd[i].details.get_denomination.label_denom);
+                        cmd[i].details.create_withdraw.label_dki);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_denomination.index_denom = ret;
         }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_RESERVE:
+        cmd[i].details.create_withdraw.index_dki = ret;
+        ret = cmd_find (cmd,
+                        cmd[i].details.create_withdraw.label_reserve);
         {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.insert_reserve.label_reserve);
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Undefined reference to %s\n",
                         i,
-                        cmd[i].details.insert_reserve.label_reserve);
+                        cmd[i].details.create_withdraw.label_reserve);
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
@@ -458,431 +561,331 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
-                        cmd[i].details.insert_reserve.label_reserve);
+                        cmd[i].details.create_withdraw.label_reserve);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.insert_reserve.index_reserve = ret;
         }
-        break;
+        cmd[i].details.create_withdraw.index_reserve = ret;
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE:
-        {
-          int ret;
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW:
+      {
+        int ret;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_reserve.label_reserve);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
-                        cmd[i].details.get_reserve.label_reserve);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_reserve.label_reserve);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_reserve.index_reserve = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE_HISTORY:
-        {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_reserve_history.label_reserve);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
-                        cmd[i].details.get_reserve_history.label_reserve);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_reserve_history.label_reserve);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_reserve_history.index_reserve = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW:
-        {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.create_withdraw.label_dki);
-          {
-            if (GNUNET_SYSERR == ret)
-            {
-              GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                          "%d:Undefined reference to %s\n",
-                          i,
-                          cmd[i].details.create_withdraw.label_dki);
-              return GNUNET_SYSERR;
-            }
-            if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
-            {
-              GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                          "%d:Wrong type reference to %s\n",
-                          i,
-                          cmd[i].details.create_withdraw.label_dki);
-              return GNUNET_SYSERR;
-            }
-          }
-          cmd[i].details.create_withdraw.index_dki = ret;
-          ret = cmd_find (cmd,
-                          cmd[i].details.create_withdraw.label_reserve);
-          {
-            if (GNUNET_SYSERR == ret)
-            {
-              GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                          "%d:Undefined reference to %s\n",
-                          i,
-                          cmd[i].details.create_withdraw.label_reserve);
-              return GNUNET_SYSERR;
-            }
-            if (PERF_TALER_EXCHANGEDB_RESERVE != cmd[ret].exposed.type)
-            {
-              GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                          "%d:Wrong type reference to %s\n",
-                          i,
-                          cmd[i].details.create_withdraw.label_reserve);
-              return GNUNET_SYSERR;
-            }
-          }
-          cmd[i].details.create_withdraw.index_reserve = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW:
-        {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.insert_withdraw.label_coin);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+        ret = cmd_find (cmd,
                         cmd[i].details.insert_withdraw.label_coin);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.insert_withdraw.label_coin);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.insert_withdraw.index_coin = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.insert_withdraw.label_coin);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.insert_withdraw.label_coin);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.insert_withdraw.index_coin = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_withdraw.label_coin);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.get_withdraw.label_coin);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_withdraw.label_coin);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_withdraw.index_coin = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_COIN_TRANSACTION:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_coin_transaction.label_coin);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_withdraw.label_coin);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_withdraw.label_coin);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_withdraw.index_coin = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_COIN_TRANSACTION:
+      {
+        int ret;
+        ret = cmd_find (cmd,
                         cmd[i].details.get_coin_transaction.label_coin);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_coin_transaction.label_coin);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_coin_transaction.index_coin = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_DEPOSIT:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_coin_transaction.label_coin);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_coin_transaction.label_coin);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_coin_transaction.index_coin = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.create_deposit.label_coin);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_DEPOSIT:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.create_deposit.label_coin);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.create_deposit.label_coin);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.create_deposit.index_coin = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.create_deposit.label_coin);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.create_deposit.label_coin);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.create_deposit.index_coin = ret;
+      }
+      break;
 
-          ret = cmd_find( cmd,
-                          cmd[i].details.insert_deposit.label_deposit);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.insert_deposit.label_deposit);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_DEPOSIT != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.insert_deposit.label_deposit);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.insert_deposit.index_deposit = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.insert_deposit.label_deposit);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_DEPOSIT != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.insert_deposit.label_deposit);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.insert_deposit.index_deposit = ret;
+      }
+      break;
 
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_deposit.label_deposit);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+    case PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
                         cmd[i].details.get_deposit.label_deposit);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_DEPOSIT != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_deposit.label_deposit);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_deposit.index_deposit = ret;
-        }
-        break;
-
-       case PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.create_refresh_session.label_coin);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s at %s\n",
-                        i,
-                        cmd[i].details.create_refresh_session.label_coin,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s at %s\n",
-                        i,
-                        cmd[i].details.create_refresh_session.label_coin,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.create_refresh_session.index_coin = ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_deposit.label_deposit);
+          return GNUNET_SYSERR;
         }
-        break;
-
-       case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION:
+        if (PERF_TALER_EXCHANGEDB_DEPOSIT != cmd[ret].exposed.type)
         {
-          int ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_refresh_session.label_hash);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s at %s\n",
-                        i,
-                        cmd[i].details.get_refresh_session.label_hash,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s at %s\n",
-                        i,
-                        cmd[i].details.get_refresh_session.label_hash,
-                        cmd[i].label);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_refresh_session.index_hash = ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_deposit.label_deposit);
+          return GNUNET_SYSERR;
         }
-        break;
+        cmd[i].details.get_deposit.index_deposit = ret;
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_REVEAL:
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.create_refresh_session.label_coin);
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
-          ret = cmd_find (cmd,
-                          cmd[i].details.insert_refresh_reveal.label_hash);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s at %s\n",
+                      i,
+                      cmd[i].details.create_refresh_session.label_coin,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s at %s\n",
+                      i,
+                      cmd[i].details.create_refresh_session.label_coin,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.create_refresh_session.index_coin = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION:
+      {
+        int ret;
+
+        ret = cmd_find (cmd,
+                        cmd[i].details.get_refresh_session.label_hash);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s at %s\n",
+                      i,
+                      cmd[i].details.get_refresh_session.label_hash,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s at %s\n",
+                      i,
+                      cmd[i].details.get_refresh_session.label_hash,
+                      cmd[i].label);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_refresh_session.index_hash = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_REVEAL:
+      {
+        int ret;
+        ret = cmd_find (cmd,
                         cmd[i].details.insert_refresh_reveal.label_hash);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.insert_refresh_reveal.label_hash);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.insert_refresh_reveal.index_hash = ret;
-
-          ret = cmd_find (cmd,
-                          cmd[i].details.insert_refresh_reveal.label_denom);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
-                        cmd[i].details.insert_refresh_reveal.label_denom);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.insert_refresh_reveal.label_denom);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.insert_refresh_reveal.index_denom = ret;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_REVEAL:
+        if (GNUNET_SYSERR == ret)
         {
-          int ret;
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_refresh_reveal.label_hash);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
-                        cmd[i].details.get_refresh_reveal.label_hash);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_refresh_reveal.label_hash);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_refresh_reveal.index_hash = ret;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.insert_refresh_reveal.label_hash);
+          return GNUNET_SYSERR;
         }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA:
-       {
-          int ret;
-          ret = cmd_find (cmd,
-                          cmd[i].details.get_link_data_list.label_hash);
-          if (GNUNET_SYSERR == ret)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s\n",
-                        i,
-                        cmd[i].details.get_link_data_list.label_hash);
-            return GNUNET_SYSERR;
-          }
-          if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s\n",
-                        i,
-                        cmd[i].details.get_link_data_list.label_hash);
-            return GNUNET_SYSERR;
-          }
-          cmd[i].details.get_link_data_list.index_hash = ret;
+        if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.insert_refresh_reveal.label_hash);
+          return GNUNET_SYSERR;
         }
-        break;
+        cmd[i].details.insert_refresh_reveal.index_hash = ret;
 
-      case PERF_TALER_EXCHANGEDB_CMD_END:
-      case PERF_TALER_EXCHANGEDB_CMD_DEBUG:
-      case PERF_TALER_EXCHANGEDB_CMD_LOOP:
-      case PERF_TALER_EXCHANGEDB_CMD_NEW_SESSION:
-      case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
-      case PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION:
-      case PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION:
-      case PERF_TALER_EXCHANGEDB_CMD_GET_TIME:
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_DENOMINATION:
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_RESERVE:
-        break;
+        ret = cmd_find (cmd,
+                        cmd[i].details.insert_refresh_reveal.label_denom);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.insert_refresh_reveal.label_denom);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.insert_refresh_reveal.label_denom);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.insert_refresh_reveal.index_denom = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_REVEAL:
+      {
+        int ret;
+        ret = cmd_find (cmd,
+                        cmd[i].details.get_refresh_reveal.label_hash);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_refresh_reveal.label_hash);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_refresh_reveal.label_hash);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_refresh_reveal.index_hash = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA:
+      {
+        int ret;
+        ret = cmd_find (cmd,
+                        cmd[i].details.get_link_data_list.label_hash);
+        if (GNUNET_SYSERR == ret)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Undefined reference to %s\n",
+                      i,
+                      cmd[i].details.get_link_data_list.label_hash);
+          return GNUNET_SYSERR;
+        }
+        if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "%d:Wrong type reference to %s\n",
+                      i,
+                      cmd[i].details.get_link_data_list.label_hash);
+          return GNUNET_SYSERR;
+        }
+        cmd[i].details.get_link_data_list.index_hash = ret;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_END:
+    case PERF_TALER_EXCHANGEDB_CMD_DEBUG:
+    case PERF_TALER_EXCHANGEDB_CMD_LOOP:
+    case PERF_TALER_EXCHANGEDB_CMD_NEW_SESSION:
+    case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
+    case PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION:
+    case PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION:
+    case PERF_TALER_EXCHANGEDB_CMD_GET_TIME:
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_DENOMINATION:
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_RESERVE:
+      break;
     }
   }
   return GNUNET_OK;
@@ -897,30 +900,30 @@ cmd_clean (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
 {
   unsigned int i;
 
-  for (i=0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
+  for (i = 0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
   {
     switch (cmd[i].command)
     {
-      case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
+    case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
+      {
+        unsigned int j;
+
+        for (j = 0; j < cmd[i].details.save_array.nb_saved; j++)
         {
-          unsigned int j;
-
-          for (j = 0; j < cmd[i].details.save_array.nb_saved; j++)
-          {
-            data_free (&cmd[i].details.save_array.data_saved[j]);
-          }
-          GNUNET_free (cmd[i].details.save_array.data_saved);
-          cmd[i].details.save_array.data_saved = NULL;
+          data_free (&cmd[i].details.save_array.data_saved[j]);
         }
-        break;
+        GNUNET_free (cmd[i].details.save_array.data_saved);
+        cmd[i].details.save_array.data_saved = NULL;
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY:
-        GNUNET_free (cmd[i].details.load_array.permutation);
-        cmd[i].details.load_array.permutation = NULL;
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY:
+      GNUNET_free (cmd[i].details.load_array.permutation);
+      cmd[i].details.load_array.permutation = NULL;
+      break;
 
-      default:
-        break;
+    default:
+      break;
     }
     data_free (&cmd[i].exposed);
   }
@@ -986,27 +989,28 @@ interpret_save_array (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
   }
   /* The probability distribution of the saved items will be a little biased
      against the few last items but it should not be a big problem. */
-  selection_chance = loop_ref->details.loop.max_iterations /
-    cmd->details.save_array.nb_saved;
+  selection_chance = loop_ref->details.loop.max_iterations
+                     / cmd->details.save_array.nb_saved;
   /*
    * If the remaining space is equal to the remaining number of
    * iterations, the item is automaticly saved.
    *
    * Else it is saved only if the random numbre generated is 0
    */
-  if ( (0 < (cmd->details.save_array.nb_saved -
-             cmd->details.save_array.index) ) &&
-       ( ((loop_ref->details.loop.max_iterations -
-           loop_ref->details.loop.curr_iteration) ==
-          (cmd->details.save_array.nb_saved -
-           cmd->details.save_array.index)) ||
+  if ( (0 < (cmd->details.save_array.nb_saved
+             - cmd->details.save_array.index) ) &&
+       ( ((loop_ref->details.loop.max_iterations
+           - loop_ref->details.loop.curr_iteration) ==
+          (cmd->details.save_array.nb_saved
+           - cmd->details.save_array.index)) ||
          (0 == GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                          selection_chance)) ) )
   {
     struct PERF_TALER_EXCHANGEDB_Data *save_location;
     struct PERF_TALER_EXCHANGEDB_Data *item_saved;
 
-    save_location = &cmd->details.save_array.data_saved[cmd->details.save_array.index];
+    save_location =
+      &cmd->details.save_array.data_saved[cmd->details.save_array.index];
     item_saved = &save_ref->exposed;
     data_copy (item_saved, save_location);
     cmd->details.save_array.index++;
@@ -1039,13 +1043,14 @@ interpret_load_array (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
      * the number is run several times in the permutation array */
     quotient = loop_iter / state->cmd[save_index].details.save_array.nb_saved;
     loop_iter = loop_iter % state->cmd[save_index].details.save_array.nb_saved;
-    for (i=0; i<=quotient; i++)
+    for (i = 0; i<=quotient; i++)
       loop_iter = cmd->details.load_array.permutation[loop_iter];
   }
   /* Extracting the data from the loop_indexth indice in save_index
    * array.
    */
-  loaded_data = &state->cmd[save_index].details.save_array.data_saved[loop_iter];
+  loaded_data =
+    &state->cmd[save_index].details.save_array.data_saved[loop_iter];
   data_copy (loaded_data,
              &cmd->exposed);
 }
@@ -1065,7 +1070,8 @@ interprete_load_random (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
 
   save_index = cmd->details.load_random.index_save;
   index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    state->cmd[save_index].details.save_array.nb_saved);
+                                    state->cmd[save_index].details.save_array.
+                                    nb_saved);
   data_copy (&state->cmd[save_index].details.save_array.data_saved[index],
              &cmd->exposed);
 }
@@ -1102,428 +1108,449 @@ refresh_reveal_cb (void *cls,
 static int
 interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
 {
-  for (state->i=0; PERF_TALER_EXCHANGEDB_CMD_END != state->cmd[state->i].command; state->i++)
+  for (state->i = 0; PERF_TALER_EXCHANGEDB_CMD_END !=
+       state->cmd[state->i].command; state->i++)
   {
     switch (state->cmd[state->i].command)
     {
-      case PERF_TALER_EXCHANGEDB_CMD_END:
-        return GNUNET_YES;
+    case PERF_TALER_EXCHANGEDB_CMD_END:
+      return GNUNET_YES;
 
-      case PERF_TALER_EXCHANGEDB_CMD_DEBUG:
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "%s\n",
-                    state->cmd[state->i].label);
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_DEBUG:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "%s\n",
+                  state->cmd[state->i].label);
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_LOOP:
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_LOOP:
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_END_LOOP:
-        interpret_end_loop (state);
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_END_LOOP:
+      interpret_end_loop (state);
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_TIME:
-        state->cmd[state->i].exposed.data.time =
-          GNUNET_new (struct GNUNET_TIME_Absolute);
-        *state->cmd[state->i].exposed.data.time =
-          GNUNET_TIME_absolute_get ();
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_TIME:
+      state->cmd[state->i].exposed.data.time =
+        GNUNET_new (struct GNUNET_TIME_Absolute);
+      *state->cmd[state->i].exposed.data.time =
+        GNUNET_TIME_absolute_get ();
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GAUGER:
-        {
-          unsigned int start_index;
-          unsigned int stop_index;
-          float ips;
-          struct GNUNET_TIME_Absolute start;
-          struct GNUNET_TIME_Absolute stop;
-          struct GNUNET_TIME_Relative elapsed;
+    case PERF_TALER_EXCHANGEDB_CMD_GAUGER:
+      {
+        unsigned int start_index;
+        unsigned int stop_index;
+        float ips;
+        struct GNUNET_TIME_Absolute start;
+        struct GNUNET_TIME_Absolute stop;
+        struct GNUNET_TIME_Relative elapsed;
 
-          start_index = state->cmd[state->i].details.gauger.index_start;
-          stop_index = state->cmd[state->i].details.gauger.index_stop;
-          start = *state->cmd[start_index].exposed.data.time;
-          stop = *state->cmd[stop_index].exposed.data.time;
-          elapsed = GNUNET_TIME_absolute_get_difference (start,
-                                                         stop);
-          ips = (1.0 * state->cmd[state->i].details.gauger.divide) / (elapsed.rel_value_us/1000000.0);
-          GAUGER (state->cmd[state->i].details.gauger.category,
-                  state->cmd[state->i].details.gauger.description,
-                  ips,
-                  state->cmd[state->i].details.gauger.unit);
-        }
-        break;
+        start_index = state->cmd[state->i].details.gauger.index_start;
+        stop_index = state->cmd[state->i].details.gauger.index_stop;
+        start = *state->cmd[start_index].exposed.data.time;
+        stop = *state->cmd[stop_index].exposed.data.time;
+        elapsed = GNUNET_TIME_absolute_get_difference (start,
+                                                       stop);
+        ips = (1.0 * state->cmd[state->i].details.gauger.divide)
+              / (elapsed.rel_value_us / 1000000.0);
+        GAUGER (state->cmd[state->i].details.gauger.category,
+                state->cmd[state->i].details.gauger.description,
+                ips,
+                state->cmd[state->i].details.gauger.unit);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_NEW_SESSION:
-        state->session = state->plugin->get_session (state->plugin->cls);
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_NEW_SESSION:
+      state->session = state->plugin->get_session (state->plugin->cls);
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
-        GNUNET_break (GNUNET_OK ==
-                      state->plugin->start (state->plugin->cls,
+    case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
+      GNUNET_break (GNUNET_OK ==
+                    state->plugin->start (state->plugin->cls,
+                                          state->session,
+                                          "perf-interpreter"));
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION:
+      GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS ==
+                    state->plugin->commit (state->plugin->cls,
+                                           state->session));
+      break;
+    case PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION:
+      state->plugin->rollback (state->plugin->cls,
+                               state->session);
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
+      interpret_save_array (state);
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY:
+      interpret_load_array (state);
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_LOAD_RANDOM:
+      interprete_load_random (state);
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_DEPOSIT:
+      {
+        int coin_index;
+        struct TALER_EXCHANGEDB_Deposit *deposit;
+
+        coin_index = state->cmd[state->i].details.create_deposit.index_coin;
+        deposit = PERF_TALER_EXCHANGEDB_deposit_init (
+          state->cmd[coin_index].exposed.data.coin);
+        GNUNET_assert (NULL != deposit);
+        state->cmd[state->i].exposed.data.deposit = deposit;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT:
+      {
+        int deposit_index;
+        enum GNUNET_DB_QueryStatus qs;
+        struct TALER_EXCHANGEDB_Deposit *deposit;
+
+        deposit_index =
+          state->cmd[state->i].details.insert_deposit.index_deposit;
+        deposit = state->cmd[deposit_index].exposed.data.deposit;
+        qs = state->plugin->ensure_coin_known (state->plugin->cls,
+                                               state->session,
+                                               &deposit->coin);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+        qs = state->plugin->insert_deposit (state->plugin->cls,
                                             state->session,
-                                            "perf-interpreter"));
-        break;
+                                            deposit);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+        state->cmd[state->i].exposed.data.deposit
+          = PERF_TALER_EXCHANGEDB_deposit_copy (deposit);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_COMMIT_TRANSACTION:
-        GNUNET_break (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS ==
-                      state->plugin->commit (state->plugin->cls,
-                                             state->session));
-        break;
-      case PERF_TALER_EXCHANGEDB_CMD_ABORT_TRANSACTION:
-        state->plugin->rollback (state->plugin->cls,
-                                 state->session);
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT:
+      {
+        unsigned int source_index;
+        enum GNUNET_DB_QueryStatus ret;
+        struct PERF_TALER_EXCHANGEDB_Data *data;
 
-      case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
-        interpret_save_array (state);
-        break;
+        source_index = state->cmd[state->i].details.get_deposit.index_deposit;
+        data = &state->cmd[source_index].exposed;
+        ret = state->plugin->have_deposit (state->plugin->cls,
+                                           state->session,
+                                           data->data.deposit,
+                                           GNUNET_YES);
+        GNUNET_assert (0 >= ret);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_LOAD_ARRAY:
-        interpret_load_array (state);
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_RESERVE:
+      {
+        struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
 
-      case PERF_TALER_EXCHANGEDB_CMD_LOAD_RANDOM:
-        interprete_load_random (state);
-        break;
+        reserve = PERF_TALER_EXCHANGEDB_reserve_init ();
+        state->cmd[state->i].exposed.data.reserve = reserve;
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_DEPOSIT:
-        {
-          int coin_index;
-          struct TALER_EXCHANGEDB_Deposit *deposit;
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_RESERVE:
+      {
+        unsigned int reserve_index;
+        int ret;
+        struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
+        char *sndr;
+        uint32_t uid;
+        struct GNUNET_TIME_Absolute now;
 
-          coin_index = state->cmd[state->i].details.create_deposit.index_coin;
-          deposit = PERF_TALER_EXCHANGEDB_deposit_init (state->cmd[coin_index].exposed.data.coin);
-          GNUNET_assert (NULL != deposit);
-          state->cmd[state->i].exposed.data.deposit = deposit;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_DEPOSIT:
-        {
-          int deposit_index;
-          enum GNUNET_DB_QueryStatus qs;
-          struct TALER_EXCHANGEDB_Deposit *deposit;
-
-          deposit_index = state->cmd[state->i].details.insert_deposit.index_deposit;
-          deposit = state->cmd[deposit_index].exposed.data.deposit;
-          qs = state->plugin->ensure_coin_known (state->plugin->cls,
+        reserve_index =
+          state->cmd[state->i].details.insert_reserve.index_reserve;
+        reserve = state->cmd[reserve_index].exposed.data.reserve;
+        GNUNET_asprintf (&sndr,
+                         "payto://x-taler-test/localhost:8080/%u",
+                         (unsigned int) GNUNET_CRYPTO_random_u32 (
+                           GNUNET_CRYPTO_QUALITY_WEAK,
+                           UINT32_MAX));
+        uid = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                        UINT32_MAX);
+        now = GNUNET_TIME_absolute_get ();
+        (void) GNUNET_TIME_round_abs (&now);
+        ret = state->plugin->reserves_in_insert (state->plugin->cls,
                                                  state->session,
-                                                 &deposit->coin);
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
-          qs = state->plugin->insert_deposit (state->plugin->cls,
-                                              state->session,
-                                              deposit);
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
-          state->cmd[state->i].exposed.data.deposit
-            = PERF_TALER_EXCHANGEDB_deposit_copy (deposit);
-        }
-        break;
+                                                 &reserve->reserve.pub,
+                                                 &reserve->reserve.balance,
+                                                 now,
+                                                 sndr,
+                                                 "account-1",
+                                                 &uid,
+                                                 sizeof (uid));
+        GNUNET_assert (GNUNET_SYSERR != ret);
+        GNUNET_free (sndr);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_DEPOSIT:
-        {
-          unsigned int source_index;
-          enum GNUNET_DB_QueryStatus ret;
-          struct PERF_TALER_EXCHANGEDB_Data *data;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE:
+      {
+        unsigned int reserve_index;
+        int ret;
+        struct PERF_TALER_EXCHANGEDB_Data *data;
 
-          source_index = state->cmd[state->i].details.get_deposit.index_deposit;
-          data = &state->cmd[source_index].exposed;
-          ret = state->plugin->have_deposit (state->plugin->cls,
-                                             state->session,
-                                             data->data.deposit,
-                                             GNUNET_YES);
-          GNUNET_assert (0 >= ret);
-        }
-        break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_RESERVE:
-        {
-          struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
+        reserve_index = state->cmd[state->i].details.get_reserve.index_reserve;
+        data = &state->cmd[reserve_index].exposed;
+        ret = state->plugin->reserve_get (state->plugin->cls,
+                                          state->session,
+                                          &data->data.reserve->reserve);
+        GNUNET_assert (GNUNET_OK == ret);
+      }
+      break;
 
-          reserve = PERF_TALER_EXCHANGEDB_reserve_init ();
-          state->cmd[state->i].exposed.data.reserve = reserve;
-        }
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE_HISTORY:
+      {
+        unsigned int reserve_index;
+        struct TALER_EXCHANGEDB_ReserveHistory *history;
+        struct PERF_TALER_EXCHANGEDB_Data *data;
+        enum GNUNET_DB_QueryStatus qs;
 
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_RESERVE:
-        {
-          unsigned int reserve_index;
-          int ret;
-          struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
-          char *sndr;
-          uint32_t uid;
-          struct GNUNET_TIME_Absolute now;
+        reserve_index =
+          state->cmd[state->i].details.get_reserve_history.index_reserve;
+        data = &state->cmd[reserve_index].exposed;
+        qs = state->plugin->get_reserve_history (state->plugin->cls,
+                                                 state->session,
+                                                 &data->data.reserve->reserve.
+                                                 pub,
+                                                 &history);
+        GNUNET_assert (0 >= qs);
+        GNUNET_assert (NULL != history);
+        state->plugin->free_reserve_history (state->plugin->cls,
+                                             history);
+      }
+      break;
 
-          reserve_index = state->cmd[state->i].details.insert_reserve.index_reserve;
-          reserve = state->cmd[reserve_index].exposed.data.reserve;
-          GNUNET_asprintf (&sndr,
-                           "payto://x-taler-test/localhost:8080/%u",
-                           (unsigned int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                                                    UINT32_MAX));
-          uid = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                          UINT32_MAX);
-          now = GNUNET_TIME_absolute_get ();
-          (void) GNUNET_TIME_round_abs (&now);
-          ret = state->plugin->reserves_in_insert (state->plugin->cls,
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_DENOMINATION:
+      {
+        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki =
+          PERF_TALER_EXCHANGEDB_denomination_init ();
+        GNUNET_assert (NULL != dki);
+        state->cmd[state->i].exposed.data.dki = dki;
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION:
+      {
+        unsigned int denom_index;
+        enum GNUNET_DB_QueryStatus ret;
+        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+
+        denom_index =
+          state->cmd[state->i].details.insert_denomination.index_denom;
+        dki = state->cmd[denom_index].exposed.data.dki;
+        ret = state->plugin->insert_denomination_info (state->plugin->cls,
+                                                       state->session,
+                                                       &dki->denom_pub,
+                                                       &dki->issue);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == ret);
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION:
+      {
+        unsigned int denom_index;
+        enum GNUNET_DB_QueryStatus qs;
+        struct PERF_TALER_EXCHANGEDB_Data *data;
+        struct GNUNET_HashCode hc;
+
+        denom_index = state->cmd[state->i].details.get_denomination.index_denom;
+        data = &state->cmd[denom_index].exposed;
+        GNUNET_CRYPTO_rsa_public_key_hash (
+          data->data.dki->denom_pub.rsa_public_key,
+          &hc);
+        qs = state->plugin->get_denomination_info (state->plugin->cls,
                                                    state->session,
-                                                   &reserve->reserve.pub,
-                                                   &reserve->reserve.balance,
-                                                   now,
-                                                   sndr,
-                                                   "account-1",
-                                                   &uid,
-                                                   sizeof (uid));
-          GNUNET_assert (GNUNET_SYSERR != ret);
-          GNUNET_free (sndr);
-        }
-        break;
+                                                   &hc,
+                                                   &data->data.dki->issue);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE:
-        {
-          unsigned int reserve_index;
-          int ret;
-          struct PERF_TALER_EXCHANGEDB_Data *data;
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW:
+      {
+        unsigned int dki_index;
+        unsigned int reserve_index;
+        struct PERF_TALER_EXCHANGEDB_Coin *coin;
 
+        dki_index     = state->cmd[state->i].details.create_withdraw.index_dki;
+        reserve_index =
+          state->cmd[state->i].details.create_withdraw.index_reserve;
+        coin = PERF_TALER_EXCHANGEDB_coin_init (
+          state->cmd[dki_index].exposed.data.dki,
+          state->cmd[reserve_index].
+          exposed.data.reserve);
+        GNUNET_assert (NULL != coin);
+        state->cmd[state->i].exposed.data.coin = coin;
+      }
+      break;
 
-          reserve_index = state->cmd[state->i].details.get_reserve.index_reserve;
-          data = &state->cmd[reserve_index].exposed;
-          ret = state->plugin->reserve_get (state->plugin->cls,
-                                            state->session,
-                                            &data->data.reserve->reserve);
-          GNUNET_assert (GNUNET_OK == ret);
-        }
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW:
+      {
+        unsigned int coin_index;
+        enum GNUNET_DB_QueryStatus qs;
+        struct PERF_TALER_EXCHANGEDB_Coin *coin;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_RESERVE_HISTORY:
-        {
-          unsigned int reserve_index;
-          struct TALER_EXCHANGEDB_ReserveHistory *history;
-          struct PERF_TALER_EXCHANGEDB_Data *data;
-	  enum GNUNET_DB_QueryStatus qs;
+        coin_index = state->cmd[state->i].details.insert_withdraw.index_coin;
+        coin = state->cmd[coin_index].exposed.data.coin;
+        qs = state->plugin->insert_withdraw_info (state->plugin->cls,
+                                                  state->session,
+                                                  &coin->blind);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+      }
+      break;
 
-          reserve_index = state->cmd[state->i].details.get_reserve_history.index_reserve;
-          data = &state->cmd[reserve_index].exposed;
-          qs = state->plugin->get_reserve_history (state->plugin->cls,
-						   state->session,
-						   &data->data.reserve->reserve.pub,
-						   &history);
-	  GNUNET_assert (0 >= qs);
-          GNUNET_assert (NULL != history);
-          state->plugin->free_reserve_history (state->plugin->cls,
-                                               history);
-        }
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW:
+      {
+        unsigned int source_index;
+        enum GNUNET_DB_QueryStatus qs;
+        struct PERF_TALER_EXCHANGEDB_Data *data;
 
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_DENOMINATION:
-        {
-          struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki =
-            PERF_TALER_EXCHANGEDB_denomination_init ();
-          GNUNET_assert (NULL != dki);
-          state->cmd[state->i].exposed.data.dki = dki;
-        }
-        break;
+        source_index =
+          state->cmd[state->i].details.get_denomination.index_denom;
+        data = &state->cmd[source_index].exposed;
+        qs = state->plugin->get_withdraw_info (state->plugin->cls,
+                                               state->session,
+                                               &data->data.coin->blind.
+                                               h_coin_envelope,
+                                               &data->data.coin->blind);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_DENOMINATION:
-        {
-          unsigned int denom_index;
-          enum GNUNET_DB_QueryStatus ret;
-          struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki ;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_COIN_TRANSACTION:
+      {
+        unsigned int coin_index;
+        struct PERF_TALER_EXCHANGEDB_Coin *coin;
+        struct TALER_EXCHANGEDB_TransactionList *transactions;
+        enum GNUNET_DB_QueryStatus qs;
 
-          denom_index = state->cmd[state->i].details.insert_denomination.index_denom;
-          dki = state->cmd[denom_index].exposed.data.dki;
-          ret = state->plugin->insert_denomination_info (state->plugin->cls,
+        coin_index =
+          state->cmd[state->i].details.get_coin_transaction.index_coin;
+        coin = state->cmd[coin_index].exposed.data.coin;
+        qs = state->plugin->get_coin_transactions (state->plugin->cls,
+                                                   state->session,
+                                                   &coin->public_info.coin_pub,
+                                                   GNUNET_YES,
+                                                   &transactions);
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+        GNUNET_assert (transactions != NULL);
+        state->plugin->free_coin_transaction_list (state->plugin->cls,
+                                                   transactions);
+      }
+      break;
+
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION:
+      {
+        struct TALER_EXCHANGEDB_RefreshSession refresh_session;
+        unsigned int coin_index;
+        struct PERF_TALER_EXCHANGEDB_Coin *coin;
+
+        coin_index =
+          state->cmd[state->i].details.create_refresh_session.index_coin;
+        coin = state->cmd[coin_index].exposed.data.coin;
+
+        refresh_session.coin = coin->public_info;
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &refresh_session.coin_sig,
+                                    sizeof (refresh_session.coin_sig));
+        GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                          &refresh_session.rc.session_hash);
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_string_to_amount (CURRENCY ":1.1",
+                                               &refresh_session.amount_with_fee));
+        refresh_session.noreveal_index = 1;
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+                       state->plugin->ensure_coin_known (state->plugin->cls,
                                                          state->session,
-                                                         &dki->denom_pub,
-                                                         &dki->issue);
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == ret);
-        }
-        break;
+                                                         &refresh_session.coin));
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+                       state->plugin->insert_melt (state->plugin->cls,
+                                                   state->session,
+                                                   &refresh_session));
+        state->cmd[state->i].exposed.data.rc = refresh_session.rc;
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION:
-        {
-          unsigned int denom_index;
-          enum GNUNET_DB_QueryStatus qs;
-          struct PERF_TALER_EXCHANGEDB_Data *data;
-          struct GNUNET_HashCode hc;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION:
+      {
+        unsigned int hash_index;
+        const struct TALER_RefreshCommitmentP *rc;
+        struct TALER_EXCHANGEDB_RefreshMelt refresh;
 
-          denom_index = state->cmd[state->i].details.get_denomination.index_denom;
-          data = &state->cmd[denom_index].exposed;
-          GNUNET_CRYPTO_rsa_public_key_hash (data->data.dki->denom_pub.rsa_public_key,
-                                             &hc);
-          qs = state->plugin->get_denomination_info (state->plugin->cls,
-						     state->session,
-                                                     &hc,
-						     &data->data.dki->issue);
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
-        }
-        break;
+        hash_index =
+          state->cmd[state->i].details.get_refresh_session.index_hash;
+        rc = &state->cmd[hash_index].exposed.data.rc;
+        state->plugin->get_melt (state->plugin->cls,
+                                 state->session,
+                                 rc,
+                                 &refresh);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW:
-        {
-          unsigned int dki_index;
-          unsigned int reserve_index;
-          struct PERF_TALER_EXCHANGEDB_Coin *coin;
+    case PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_REVEAL:
+      {
+        unsigned int hash_index;
+        unsigned int denom_index;
+        const struct TALER_RefreshCommitmentP *rc;
+        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *denom;
+        struct TALER_TransferPublicKeyP tpub;
+        struct TALER_TransferPrivateKeyP tprivs[2];
+        struct TALER_EXCHANGEDB_RefreshRevealedCoin rrc;
 
-          dki_index     = state->cmd[state->i].details.create_withdraw.index_dki;
-          reserve_index = state->cmd[state->i].details.create_withdraw.index_reserve;
-          coin = PERF_TALER_EXCHANGEDB_coin_init (state->cmd[dki_index].exposed.data.dki,
-                                                  state->cmd[reserve_index].exposed.data.reserve);
-          GNUNET_assert (NULL != coin);
-          state->cmd[state->i].exposed.data.coin = coin;
-        }
-        break;
+        hash_index =
+          state->cmd[state->i].details.insert_refresh_reveal.index_hash;
+        denom_index =
+          state->cmd[state->i].details.insert_refresh_reveal.index_denom;
+        rc = &state->cmd[hash_index].exposed.data.rc;
+        denom = state->cmd[denom_index].exposed.data.dki;
+        rrc.denom_pub = denom->denom_pub;
+        rrc.coin_ev = "coin_ev";
+        rrc.coin_ev_size = strlen (rrc.coin_ev) + 1;
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &rrc.coin_sig,
+                                    sizeof (struct TALER_CoinSpendSignatureP));
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    tprivs,
+                                    sizeof (struct TALER_TransferPrivateKeyP)
+                                    * 2);
+        GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &tpub,
+                                    sizeof (struct TALER_TransferPublicKeyP));
+        GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
+                       state->plugin->insert_refresh_reveal (state->plugin->cls,
+                                                             state->session,
+                                                             rc,
+                                                             1,
+                                                             &rrc,
+                                                             2,
+                                                             tprivs,
+                                                             &tpub));
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_WITHDRAW:
-        {
-          unsigned int coin_index;
-          enum GNUNET_DB_QueryStatus qs;
-          struct PERF_TALER_EXCHANGEDB_Coin *coin;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_REVEAL:
+      {
+        int hash_index;
+        const struct TALER_RefreshCommitmentP *rc;
 
-          coin_index = state->cmd[state->i].details.insert_withdraw.index_coin;
-          coin = state->cmd[coin_index].exposed.data.coin;
-          qs = state->plugin->insert_withdraw_info (state->plugin->cls,
-                                                    state->session,
-                                                    &coin->blind);
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
-        }
-        break;
+        hash_index = state->cmd[state->i].details.get_refresh_reveal.index_hash;
+        rc = &state->cmd[hash_index].exposed.data.rc;
+        state->plugin->get_refresh_reveal (state->plugin->cls,
+                                           state->session,
+                                           rc,
+                                           &refresh_reveal_cb,
+                                           state);
+      }
+      break;
 
-      case PERF_TALER_EXCHANGEDB_CMD_GET_WITHDRAW:
-        {
-          unsigned int source_index;
-          enum GNUNET_DB_QueryStatus qs;
-          struct PERF_TALER_EXCHANGEDB_Data *data;
-
-          source_index = state->cmd[state->i].details.get_denomination.index_denom;
-          data = &state->cmd[source_index].exposed;
-          qs = state->plugin->get_withdraw_info (state->plugin->cls,
-						 state->session,
-						 &data->data.coin->blind.h_coin_envelope,
-						 &data->data.coin->blind);
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_COIN_TRANSACTION:
-        {
-          unsigned int coin_index;
-          struct PERF_TALER_EXCHANGEDB_Coin *coin;
-          struct TALER_EXCHANGEDB_TransactionList *transactions;
-	  enum GNUNET_DB_QueryStatus qs;
-
-          coin_index = state->cmd[state->i].details.get_coin_transaction.index_coin;
-          coin = state->cmd[coin_index].exposed.data.coin;
-          qs = state->plugin->get_coin_transactions (state->plugin->cls,
-						     state->session,
-						     &coin->public_info.coin_pub,
-                                                     GNUNET_YES,
-						     &transactions);
-	  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
-	  GNUNET_assert (transactions != NULL);
-          state->plugin->free_coin_transaction_list (state->plugin->cls,
-                                                     transactions);
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_CREATE_REFRESH_SESSION:
-        {
-          struct TALER_EXCHANGEDB_RefreshSession refresh_session;
-          unsigned int coin_index;
-          struct PERF_TALER_EXCHANGEDB_Coin *coin;
-
-          coin_index = state->cmd[state->i].details.create_refresh_session.index_coin;
-          coin = state->cmd[coin_index].exposed.data.coin;
-
-          refresh_session.coin = coin->public_info;
-          GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                      &refresh_session.coin_sig,
-                                      sizeof (refresh_session.coin_sig));
-          GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                            &refresh_session.rc.session_hash);
-          GNUNET_assert (GNUNET_OK ==
-                         TALER_string_to_amount (CURRENCY ":1.1",
-                                                 &refresh_session.amount_with_fee));
-          refresh_session.noreveal_index = 1;
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-			 state->plugin->ensure_coin_known (state->plugin->cls,
-                                                           state->session,
-                                                           &refresh_session.coin));
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-			 state->plugin->insert_melt (state->plugin->cls,
-                                                     state->session,
-                                                     &refresh_session));
-          state->cmd[state->i].exposed.data.rc = refresh_session.rc;
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION:
-        {
-          unsigned int hash_index;
-          const struct TALER_RefreshCommitmentP *rc;
-          struct TALER_EXCHANGEDB_RefreshMelt refresh;
-
-          hash_index = state->cmd[state->i].details.get_refresh_session.index_hash;
-          rc = &state->cmd[hash_index].exposed.data.rc;
-          state->plugin->get_melt (state->plugin->cls,
-                                   state->session,
-                                   rc,
-                                   &refresh);
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_REVEAL:
-        {
-          unsigned int hash_index;
-          unsigned int denom_index;
-          const struct TALER_RefreshCommitmentP *rc;
-          struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *denom;
-          struct TALER_TransferPublicKeyP tpub;
-          struct TALER_TransferPrivateKeyP tprivs[2];
-          struct TALER_EXCHANGEDB_RefreshRevealedCoin rrc;
-
-          hash_index = state->cmd[state->i].details.insert_refresh_reveal.index_hash;
-          denom_index = state->cmd[state->i].details.insert_refresh_reveal.index_denom;
-          rc = &state->cmd[hash_index].exposed.data.rc;
-          denom = state->cmd[denom_index].exposed.data.dki;
-          rrc.denom_pub = denom->denom_pub;
-          rrc.coin_ev = "coin_ev";
-          rrc.coin_ev_size = strlen (rrc.coin_ev) + 1;
-          GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                      &rrc.coin_sig,
-                                      sizeof (struct TALER_CoinSpendSignatureP));
-          GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                      tprivs,
-                                      sizeof (struct TALER_TransferPrivateKeyP) * 2);
-          GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                      &tpub,
-                                      sizeof (struct TALER_TransferPublicKeyP));
-          GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
-			 state->plugin->insert_refresh_reveal (state->plugin->cls,
-                                                               state->session,
-                                                               rc,
-                                                               1,
-                                                               &rrc,
-                                                               2,
-                                                               tprivs,
-                                                               &tpub));
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_REVEAL:
-        {
-          int hash_index;
-          const struct TALER_RefreshCommitmentP *rc;
-
-          hash_index = state->cmd[state->i].details.get_refresh_reveal.index_hash;
-          rc = &state->cmd[hash_index].exposed.data.rc;
-          state->plugin->get_refresh_reveal (state->plugin->cls,
-                                             state->session,
-                                             rc,
-                                             &refresh_reveal_cb,
-                                             state);
-        }
-        break;
-
-      case PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA:
-        break;
+    case PERF_TALER_EXCHANGEDB_CMD_GET_LINK_DATA:
+      break;
 
     }
   }
@@ -1579,80 +1606,80 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
   struct TALER_EXCHANGEDB_Plugin *plugin;
   struct GNUNET_CONFIGURATION_Handle *config;
   int ret = 0;
-  struct PERF_TALER_EXCHANGEDB_Cmd init_def[] =
-  {
+  struct PERF_TALER_EXCHANGEDB_Cmd init_def[] = {
     // Denomination used to create coins
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
 
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("01 - denomination loop",
-                                     PERF_TALER_EXCHANGEDB_NB_DENOMINATION_INIT),
+                                         PERF_TALER_EXCHANGEDB_NB_DENOMINATION_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION (""),
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_DENOMINATION ("01 - denomination"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DENOMINATION ("01 - insert",
-                                                    "01 - denomination"),
+                                                        "01 - denomination"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (""),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("01 - save denomination",
-                                           "01 - denomination loop",
-                                           "01 - denomination",
-                                           PERF_TALER_EXCHANGEDB_NB_DENOMINATION_SAVE),
+                                               "01 - denomination loop",
+                                               "01 - denomination",
+                                               PERF_TALER_EXCHANGEDB_NB_DENOMINATION_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("",
-                                         "01 - denomination loop"),
+                                             "01 - denomination loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("01 - init denomination complete"),
     // End of initialization
     // Reserve initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("02 - init reserve loop",
-                                     PERF_TALER_EXCHANGEDB_NB_RESERVE_INIT),
+                                         PERF_TALER_EXCHANGEDB_NB_RESERVE_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_RESERVE ("02 - reserve"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_RESERVE ("02 - insert",
-                                               "02 - reserve"),
+                                                   "02 - reserve"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("02 - save reserve",
-                                           "02 - init reserve loop",
-                                           "02 - reserve",
-                                           PERF_TALER_EXCHANGEDB_NB_RESERVE_SAVE),
+                                               "02 - init reserve loop",
+                                               "02 - reserve",
+                                               PERF_TALER_EXCHANGEDB_NB_RESERVE_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("",
-                                         "02 - init reserve loop"),
+                                             "02 - init reserve loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("02 - reserve init complete"),
     // End reserve init
     // Withdrawal initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("03 - init withdraw loop",
-                                     PERF_TALER_EXCHANGEDB_NB_WITHDRAW_INIT),
+                                         PERF_TALER_EXCHANGEDB_NB_WITHDRAW_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION (""),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("03 - denomination load",
-                                           "03 - init withdraw loop",
-                                           "01 - save denomination"),
+                                               "03 - init withdraw loop",
+                                               "01 - save denomination"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("03 - reserve load",
-                                           "03 - init withdraw loop",
-                                           "02 - save reserve"),
+                                               "03 - init withdraw loop",
+                                               "02 - save reserve"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_CREATE_WITHDRAW ("03 - withdraw",
-                                                "03 - denomination load",
-                                                "03 - reserve load"),
+                                                    "03 - denomination load",
+                                                    "03 - reserve load"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_WITHDRAW ("03 - insert",
-                                                "03 - withdraw"),
+                                                    "03 - withdraw"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (""),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("03 - save coin",
-                                           "03 - init withdraw loop",
-                                           "03 - withdraw",
-                                           PERF_TALER_EXCHANGEDB_NB_WITHDRAW_SAVE),
+                                               "03 - init withdraw loop",
+                                               "03 - withdraw",
+                                               PERF_TALER_EXCHANGEDB_NB_WITHDRAW_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("",
-                                         "03 - init withdraw loop"),
+                                             "03 - init withdraw loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("03 - withdraw init complete"),
-    //End of withdrawal initialization
-    //Deposit initialization
+    // End of withdrawal initialization
+    // Deposit initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("04 - deposit init loop",
-                                     PERF_TALER_EXCHANGEDB_NB_DEPOSIT_INIT),
+                                         PERF_TALER_EXCHANGEDB_NB_DEPOSIT_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION ("04 - start transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("04 - denomination load",
-                                           "04 - deposit init loop",
-                                           "03 - save coin"),
+                                               "04 - deposit init loop",
+                                               "03 - save coin"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_DEPOSIT ("04 - deposit",
-                                               "04 - denomination load"),
-    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION ("04 - commit transaction"),
+                                                   "04 - denomination load"),
+    PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (
+      "04 - commit transaction"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_SAVE_ARRAY ("04 - deposit array",
-                                           "04 - deposit init loop",
-                                           "04 - deposit",
-                                           PERF_TALER_EXCHANGEDB_NB_DEPOSIT_SAVE),
+                                               "04 - deposit init loop",
+                                               "04 - deposit",
+                                               PERF_TALER_EXCHANGEDB_NB_DEPOSIT_SAVE),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("04 - deposit init loop end",
-                                         "04 - deposit init loop"),
+                                             "04 - deposit init loop"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_DEBUG ("04 - deposit init complete"),
     // End of deposit initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_END ("end")
@@ -1703,7 +1730,7 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
    * Running the benchmark
    */
   ret = PERF_TALER_EXCHANGEDB_interpret (plugin,
-                                     benchmark);
+                                         benchmark);
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

@@ -43,7 +43,7 @@ PERF_TALER_EXCHANGEDB_denomination_init ()
   struct TALER_DenominationPublicKey denom_pub;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
 
-  master_prvt = GNUNET_CRYPTO_eddsa_key_create();
+  master_prvt = GNUNET_CRYPTO_eddsa_key_create ();
 
   dki = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation);
   GNUNET_assert (NULL != dki);
@@ -61,16 +61,21 @@ PERF_TALER_EXCHANGEDB_denomination_init ()
       struct TALER_Amount amount;
       struct GNUNET_TIME_Absolute now;
 
-      properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-      properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
+      properties.purpose.purpose = htonl (
+        TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
+      properties.purpose.size = htonl (sizeof (struct
+                                               TALER_DenominationKeyValidityPS));
       GNUNET_CRYPTO_eddsa_key_get_public (master_prvt,
                                           &properties.master.eddsa_pub);
-      now = GNUNET_TIME_absolute_get();
+      now = GNUNET_TIME_absolute_get ();
       (void) GNUNET_TIME_round_abs (&now);
       properties.start = GNUNET_TIME_absolute_hton (now);
-      properties.expire_withdraw = GNUNET_TIME_absolute_hton (GNUNET_TIME_UNIT_FOREVER_ABS);
-      properties.expire_deposit = GNUNET_TIME_absolute_hton (GNUNET_TIME_UNIT_FOREVER_ABS);
-      properties.expire_legal = GNUNET_TIME_absolute_hton (GNUNET_TIME_UNIT_FOREVER_ABS);
+      properties.expire_withdraw = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_UNIT_FOREVER_ABS);
+      properties.expire_deposit = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_UNIT_FOREVER_ABS);
+      properties.expire_legal = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_UNIT_FOREVER_ABS);
       GNUNET_assert (GNUNET_OK ==
                      TALER_string_to_amount (CURRENCY ":1.1", &amount));
       TALER_amount_hton (&properties.value, &amount);
@@ -105,15 +110,18 @@ PERF_TALER_EXCHANGEDB_denomination_init ()
  * @return a copy of @a deposit; NULL if error
  */
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-PERF_TALER_EXCHANGEDB_denomination_copy (const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+PERF_TALER_EXCHANGEDB_denomination_copy (const struct
+                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         *dki)
 {
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *copy;
 
   GNUNET_assert (NULL !=
-                 (copy = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation)));
+                 (copy = GNUNET_new (struct
+                                     TALER_EXCHANGEDB_DenominationKeyIssueInformation)));
   {/* denom_priv */
     copy->denom_priv.rsa_private_key =
-      GNUNET_CRYPTO_rsa_private_key_dup ( dki->denom_priv.rsa_private_key);
+      GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
   }
   {/* denom_pub */
     copy->denom_pub.rsa_public_key =
@@ -132,7 +140,9 @@ PERF_TALER_EXCHANGEDB_denomination_copy (const struct TALER_EXCHANGEDB_Denominat
  * @param dki pointer to the struct to free
  */
 int
-PERF_TALER_EXCHANGEDB_denomination_free (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+PERF_TALER_EXCHANGEDB_denomination_free (struct
+                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         *dki)
 {
   if (NULL == dki)
     return GNUNET_OK;
@@ -166,7 +176,8 @@ PERF_TALER_EXCHANGEDB_reserve_init ()
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve->private,
                                       &reserve->reserve.pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1000", &reserve->reserve.balance));
+                 TALER_string_to_amount (CURRENCY ":1000",
+                                         &reserve->reserve.balance));
   reserve->reserve.expiry = GNUNET_TIME_UNIT_FOREVER_ABS;
   return reserve;
 }
@@ -178,7 +189,8 @@ PERF_TALER_EXCHANGEDB_reserve_init ()
  * @return a copy of @a reserve; NULL if error
  */
 struct PERF_TALER_EXCHANGEDB_Reserve *
-PERF_TALER_EXCHANGEDB_reserve_copy (const struct PERF_TALER_EXCHANGEDB_Reserve *reserve)
+PERF_TALER_EXCHANGEDB_reserve_copy (const struct
+                                    PERF_TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PERF_TALER_EXCHANGEDB_Reserve *copy;
   GNUNET_assert (NULL !=
@@ -193,7 +205,8 @@ PERF_TALER_EXCHANGEDB_reserve_copy (const struct PERF_TALER_EXCHANGEDB_Reserve *
  * @param reserve pointer to the structure to be freed
  */
 int
-PERF_TALER_EXCHANGEDB_reserve_free (struct PERF_TALER_EXCHANGEDB_Reserve *reserve)
+PERF_TALER_EXCHANGEDB_reserve_free (struct
+                                    PERF_TALER_EXCHANGEDB_Reserve *reserve)
 {
   if (NULL == reserve)
     return GNUNET_OK;
@@ -208,7 +221,8 @@ PERF_TALER_EXCHANGEDB_reserve_free (struct PERF_TALER_EXCHANGEDB_Reserve *reserv
  * @param dki the denomination key used to sign the key
  */
 struct TALER_EXCHANGEDB_Deposit *
-PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coin)
+PERF_TALER_EXCHANGEDB_deposit_init (const struct
+                                    PERF_TALER_EXCHANGEDB_Coin *coin)
 {
   struct TALER_EXCHANGEDB_Deposit *deposit;
   struct TALER_CoinSpendSignatureP csig;
@@ -225,7 +239,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
                                     &h_contract_terms);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &h_wire);
-  { //csig
+  { // csig
     struct u32_presign
     {
       struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
@@ -242,11 +256,11 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
                                              &unsigned_data.purpose,
                                              &csig.eddsa_signature));
   }
-  { //merchant_pub
+  { // merchant_pub
     struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prv;
 
     eddsa_prv = GNUNET_CRYPTO_eddsa_key_create ();
-    GNUNET_assert(NULL != eddsa_prv);
+    GNUNET_assert (NULL != eddsa_prv);
     GNUNET_CRYPTO_eddsa_key_get_public (eddsa_prv,
                                         &merchant_pub.eddsa_pub);
     GNUNET_free (eddsa_prv);
@@ -289,7 +303,8 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
  * @return a copy of @a deposit; NULL if error
  */
 struct TALER_EXCHANGEDB_Deposit *
-PERF_TALER_EXCHANGEDB_deposit_copy (const struct TALER_EXCHANGEDB_Deposit *deposit)
+PERF_TALER_EXCHANGEDB_deposit_copy (const struct
+                                    TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct TALER_EXCHANGEDB_Deposit *copy;
 
@@ -337,7 +352,7 @@ PERF_TALER_EXCHANGEDB_coin_init (
   GNUNET_assert (NULL != coin);
   /* priv */
 
-  priv = GNUNET_CRYPTO_eddsa_key_create();
+  priv = GNUNET_CRYPTO_eddsa_key_create ();
   GNUNET_assert (NULL != priv);
   coin->priv = *priv;
   GNUNET_free (priv);
@@ -480,14 +495,16 @@ PERF_TALER_EXCHANGEDB_refresh_melt_init (struct TALER_RefreshCommitmentP *rc,
  * @return an copy of @ melt
  */
 struct TALER_EXCHANGEDB_RefreshMelt *
-PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMelt *melt)
+PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct
+                                         TALER_EXCHANGEDB_RefreshMelt *melt)
 {
   struct TALER_EXCHANGEDB_RefreshMelt *copy;
 
   copy = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMelt);
   *copy = *melt;
   copy->session.coin.denom_sig.rsa_signature =
-    GNUNET_CRYPTO_rsa_signature_dup (melt->session.coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_signature_dup (
+      melt->session.coin.denom_sig.rsa_signature);
   GNUNET_assert (NULL != copy->session.coin.denom_sig.rsa_signature);
 
   return copy;
@@ -501,7 +518,8 @@ PERF_TALER_EXCHANGEDB_refresh_melt_copy (const struct TALER_EXCHANGEDB_RefreshMe
  * @return #GNUNET_OK if the operation was successful, #GNUNET_SYSERROR
  */
 int
-PERF_TALER_EXCHANGEDB_refresh_melt_free (struct TALER_EXCHANGEDB_RefreshMelt *melt)
+PERF_TALER_EXCHANGEDB_refresh_melt_free (struct
+                                         TALER_EXCHANGEDB_RefreshMelt *melt)
 {
   GNUNET_CRYPTO_rsa_signature_free (melt->session.coin.denom_sig.rsa_signature);
   GNUNET_free (melt);

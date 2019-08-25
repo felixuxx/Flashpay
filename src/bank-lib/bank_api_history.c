@@ -88,7 +88,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  for (unsigned int i=0;i<json_array_size (history_array);i++)
+  for (unsigned int i = 0; i<json_array_size (history_array); i++)
   {
     struct TALER_BANK_TransferDetails td;
     const char *sign;
@@ -108,7 +108,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
                                (const char **) &td.wire_transfer_subject),
       GNUNET_JSON_spec_uint64 ("counterpart",
                                &other_account),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
     json_t *transaction = json_array_get (history_array,
                                           i);
@@ -147,7 +147,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
     bank_hostname += 3;
 
     GNUNET_asprintf (&td.account_url,
-                     ('/' == bank_hostname[strlen(bank_hostname)-1])
+                     ('/' == bank_hostname[strlen (bank_hostname) - 1])
                      ? "payto://x-taler-bank/%s%llu"
                      : "payto://x-taler-bank/%s/%llu",
                      bank_hostname,
@@ -456,12 +456,12 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
 
   if (UINT64_MAX == start_row)
     GNUNET_asprintf (&url,
-                   "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s",
-                   (unsigned long long) account_number,
-                   (long long) num_results,
-                   conv_direction (direction),
-                   conv_cancel (direction),
-                   (GNUNET_YES == ascending) ? "ascending" : "descending");
+                     "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s",
+                     (unsigned long long) account_number,
+                     (long long) num_results,
+                     conv_direction (direction),
+                     conv_cancel (direction),
+                     (GNUNET_YES == ascending) ? "ascending" : "descending");
   else
     GNUNET_asprintf (&url,
                      "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s&cancelled=%s&ordering=%s&start=%llu",

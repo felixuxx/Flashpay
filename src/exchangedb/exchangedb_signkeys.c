@@ -63,18 +63,20 @@ signkeys_iterate_dir_iter (void *cls,
 
   nread = GNUNET_DISK_fn_read (filename,
                                &issue,
-                               sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
+                               sizeof (struct
+                                       TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
   if (nread != sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid signkey file `%s': wrong size (%d, expected %u)\n",
                 filename,
                 (int) nread,
-                (unsigned int) sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
+                (unsigned int) sizeof (struct
+                                       TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
     return GNUNET_OK;
   }
   if (0 == GNUNET_TIME_absolute_get_remaining
-      (GNUNET_TIME_absolute_ntoh (issue.issue.expire)).rel_value_us)
+        (GNUNET_TIME_absolute_ntoh (issue.issue.expire)).rel_value_us)
   {
     if (0 != UNLINK (filename))
     {
@@ -143,7 +145,8 @@ get_signkey_file (const char *exchange_directory,
   char *fn;
 
   GNUNET_asprintf (&fn,
-                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS DIR_SEPARATOR_STR "%llu",
+                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS
+                   DIR_SEPARATOR_STR "%llu",
                    exchange_directory,
                    (unsigned long long) start.abs_value_us);
   return fn;
@@ -161,7 +164,9 @@ get_signkey_file (const char *exchange_directory,
 int
 TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
                                     struct GNUNET_TIME_Absolute start,
-                                    const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
+                                    const struct
+                                    TALER_EXCHANGEDB_PrivateSigningKeyInformationP
+                                    *ski)
 {
   char *skf;
   ssize_t nwrite;
@@ -173,8 +178,10 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
     return GNUNET_SYSERR;
   nwrite = GNUNET_DISK_fn_write (skf,
                                  ski,
-                                 sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP),
-                                 GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
+                                 sizeof (struct
+                                         TALER_EXCHANGEDB_PrivateSigningKeyInformationP),
+                                 GNUNET_DISK_PERM_USER_WRITE
+                                 | GNUNET_DISK_PERM_USER_READ);
   if (sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP) != nwrite)
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,

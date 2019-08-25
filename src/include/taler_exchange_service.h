@@ -322,8 +322,8 @@ enum TALER_EXCHANGE_VersionCompatibility
    * this implementation.
    */
   TALER_EXCHANGE_VC_INCOMPATIBLE_OUTDATED
-  = TALER_EXCHANGE_VC_INCOMPATIBLE
-  | TALER_EXCHANGE_VC_OLDER,
+    = TALER_EXCHANGE_VC_INCOMPATIBLE
+      | TALER_EXCHANGE_VC_OLDER,
 
   /**
    * The exchange is more recent than this implementation (bit).
@@ -334,8 +334,8 @@ enum TALER_EXCHANGE_VersionCompatibility
    * The exchange is too recent for this implementation.
    */
   TALER_EXCHANGE_VC_INCOMPATIBLE_NEWER
-  = TALER_EXCHANGE_VC_INCOMPATIBLE
-  | TALER_EXCHANGE_VC_NEWER,
+    = TALER_EXCHANGE_VC_INCOMPATIBLE
+      | TALER_EXCHANGE_VC_NEWER,
 
   /**
    * We could not even parse the version data.
@@ -357,7 +357,9 @@ enum TALER_EXCHANGE_VersionCompatibility
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (void *cls,
                                          const struct TALER_EXCHANGE_Keys *keys,
-                                         enum TALER_EXCHANGE_VersionCompatibility compat);
+                                         enum
+                                         TALER_EXCHANGE_VersionCompatibility
+                                         compat);
 
 
 /**
@@ -500,7 +502,8 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
-                                        const struct TALER_ExchangePublicKeyP *pub);
+                                        const struct
+                                        TALER_ExchangePublicKeyP *pub);
 
 
 /**
@@ -523,7 +526,8 @@ TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange);
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
-                                     const struct TALER_DenominationPublicKey *pk);
+                                     const struct
+                                     TALER_DenominationPublicKey *pk);
 
 
 /**
@@ -534,7 +538,8 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
  * @return details about the given denomination key
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *keys,
+TALER_EXCHANGE_get_denomination_key_by_hash (const struct
+                                             TALER_EXCHANGE_Keys *keys,
                                              const struct GNUNET_HashCode *hc);
 
 
@@ -547,8 +552,11 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
  * @return NULL on error (@a exchange_pub not known)
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
-TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *keys,
-                                              const struct TALER_ExchangePublicKeyP *exchange_pub);
+TALER_EXCHANGE_get_exchange_signing_key_info (const struct
+                                              TALER_EXCHANGE_Keys *keys,
+                                              const struct
+                                              TALER_ExchangePublicKeyP *
+                                              exchange_pub);
 
 
 /* *********************  /wire *********************** */
@@ -633,9 +641,10 @@ struct TALER_EXCHANGE_WireAccount
 typedef void
 (*TALER_EXCHANGE_WireResultCallback) (void *cls,
                                       unsigned int http_status,
-				      enum TALER_ErrorCode ec,
+                                      enum TALER_ErrorCode ec,
                                       unsigned int accounts_len,
-                                      const struct TALER_EXCHANGE_WireAccount *accounts);
+                                      const struct
+                                      TALER_EXCHANGE_WireAccount *accounts);
 
 
 /**
@@ -703,9 +712,11 @@ struct TALER_EXCHANGE_DepositHandle;
 typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (void *cls,
                                          unsigned int http_status,
-					 enum TALER_ErrorCode ec,
-                                         const struct TALER_ExchangeSignatureP *exchange_sig,
-					 const struct TALER_ExchangePublicKeyP *sign_key,
+                                         enum TALER_ErrorCode ec,
+                                         const struct
+                                         TALER_ExchangeSignatureP *exchange_sig,
+                                         const struct
+                                         TALER_ExchangePublicKeyP *sign_key,
                                          const json_t *obj);
 
 
@@ -791,10 +802,11 @@ struct TALER_EXCHANGE_RefundHandle;
  */
 typedef void
 (*TALER_EXCHANGE_RefundResultCallback) (void *cls,
-					unsigned int http_status,
-					enum TALER_ErrorCode ec,
-                                        const struct TALER_ExchangePublicKeyP *sign_key,
-					const json_t *obj);
+                                        unsigned int http_status,
+                                        enum TALER_ErrorCode ec,
+                                        const struct
+                                        TALER_ExchangePublicKeyP *sign_key,
+                                        const json_t *obj);
 
 
 /**
@@ -829,14 +841,14 @@ typedef void
  */
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
-		       const struct TALER_Amount *amount,
-		       const struct TALER_Amount *refund_fee,
-		       const struct GNUNET_HashCode *h_contract_terms,
-		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-		       uint64_t rtransaction_id,
-		       const struct TALER_MerchantPrivateKeyP *merchant_priv,
-		       TALER_EXCHANGE_RefundResultCallback cb,
-		       void *cb_cls);
+                       const struct TALER_Amount *amount,
+                       const struct TALER_Amount *refund_fee,
+                       const struct GNUNET_HashCode *h_contract_terms,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       uint64_t rtransaction_id,
+                       const struct TALER_MerchantPrivateKeyP *merchant_priv,
+                       TALER_EXCHANGE_RefundResultCallback cb,
+                       void *cb_cls);
 
 
 /**
@@ -872,15 +884,15 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
  */
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
-			const struct TALER_Amount *amount,
-			const struct TALER_Amount *refund_fee,
-			const struct GNUNET_HashCode *h_contract_terms,
-			const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			uint64_t rtransaction_id,
-			const struct TALER_MerchantPublicKeyP *merchant_pub,
-			const struct TALER_MerchantSignatureP *merchant_sig,
-			TALER_EXCHANGE_RefundResultCallback cb,
-			void *cb_cls);
+                        const struct TALER_Amount *amount,
+                        const struct TALER_Amount *refund_fee,
+                        const struct GNUNET_HashCode *h_contract_terms,
+                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                        uint64_t rtransaction_id,
+                        const struct TALER_MerchantPublicKeyP *merchant_pub,
+                        const struct TALER_MerchantSignatureP *merchant_sig,
+                        TALER_EXCHANGE_RefundResultCallback cb,
+                        void *cb_cls);
 
 
 /**
@@ -907,7 +919,8 @@ struct TALER_EXCHANGE_ReserveStatusHandle;
 /**
  * Ways how a reserve's balance may change.
  */
-enum TALER_EXCHANGE_ReserveTransactionType {
+enum TALER_EXCHANGE_ReserveTransactionType
+{
 
   /**
    * Deposit into the reserve.
@@ -951,13 +964,15 @@ struct TALER_EXCHANGE_ReserveHistory
   /**
    * Details depending on @e type.
    */
-  union {
+  union
+  {
 
     /**
      * Information about a deposit that filled this reserve.
      * @e type is #TALER_EXCHANGE_RTT_DEPOSIT.
      */
-    struct {
+    struct
+    {
       /**
        * Sender account payto://-URL of the incoming transfer.
        */
@@ -990,7 +1005,8 @@ struct TALER_EXCHANGE_ReserveHistory
      * Information provided if the reserve was filled via /payback.
      * @e type is #TALER_EXCHANGE_RTT_PAYBACK.
      */
-    struct {
+    struct
+    {
 
       /**
        * Public key of the coin that was paid back.
@@ -1019,7 +1035,8 @@ struct TALER_EXCHANGE_ReserveHistory
      * Information about a close operation of the reserve.
      * @e type is #TALER_EXCHANGE_RTT_CLOSE.
      */
-    struct {
+    struct
+    {
       /**
        * Receiver account information for the outgoing wire transfer.
        */
@@ -1069,11 +1086,14 @@ struct TALER_EXCHANGE_ReserveHistory
 typedef void
 (*TALER_EXCHANGE_ReserveStatusResultCallback) (void *cls,
                                                unsigned int http_status,
-					       enum TALER_ErrorCode ec,
+                                               enum TALER_ErrorCode ec,
                                                const json_t *json,
-                                               const struct TALER_Amount *balance,
+                                               const struct
+                                               TALER_Amount *balance,
                                                unsigned int history_length,
-                                               const struct TALER_EXCHANGE_ReserveHistory *history);
+                                               const struct
+                                               TALER_EXCHANGE_ReserveHistory *
+                                               history);
 
 
 /**
@@ -1094,7 +1114,8 @@ typedef void
  */
 struct TALER_EXCHANGE_ReserveStatusHandle *
 TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
-                               const struct TALER_ReservePublicKeyP *reserve_pub,
+                               const struct
+                               TALER_ReservePublicKeyP *reserve_pub,
                                TALER_EXCHANGE_ReserveStatusResultCallback cb,
                                void *cb_cls);
 
@@ -1106,7 +1127,8 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
  * @param rsh the reserve status request handle
  */
 void
-TALER_EXCHANGE_reserve_status_cancel (struct TALER_EXCHANGE_ReserveStatusHandle *rsh);
+TALER_EXCHANGE_reserve_status_cancel (struct
+                                      TALER_EXCHANGE_ReserveStatusHandle *rsh);
 
 
 /* ********************* /reserve/withdraw *********************** */
@@ -1133,7 +1155,9 @@ typedef void
 (*TALER_EXCHANGE_ReserveWithdrawResultCallback) (void *cls,
                                                  unsigned int http_status,
                                                  enum TALER_ErrorCode ec,
-                                                 const struct TALER_DenominationSignature *sig,
+                                                 const struct
+                                                 TALER_DenominationSignature *
+                                                 sig,
                                                  const json_t *full_response);
 
 
@@ -1161,9 +1185,11 @@ typedef void
 struct TALER_EXCHANGE_ReserveWithdrawHandle *
 TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                                 const struct TALER_ReservePrivateKeyP *reserve_priv,
+                                 const struct
+                                 TALER_ReservePrivateKeyP *reserve_priv,
                                  const struct TALER_PlanchetSecretsP *ps,
-                                 TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                 TALER_EXCHANGE_ReserveWithdrawResultCallback
+                                 res_cb,
                                  void *res_cb_cls);
 
 
@@ -1191,11 +1217,15 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
  */
 struct TALER_EXCHANGE_ReserveWithdrawHandle *
 TALER_EXCHANGE_reserve_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
-                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                                  const struct TALER_ReserveSignatureP *reserve_sig,
-                                  const struct TALER_ReservePublicKeyP *reserve_pub,
+                                  const struct
+                                  TALER_EXCHANGE_DenomPublicKey *pk,
+                                  const struct
+                                  TALER_ReserveSignatureP *reserve_sig,
+                                  const struct
+                                  TALER_ReservePublicKeyP *reserve_pub,
                                   const struct TALER_PlanchetSecretsP *ps,
-                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                  TALER_EXCHANGE_ReserveWithdrawResultCallback
+                                  res_cb,
                                   void *res_cb_cls);
 
 
@@ -1206,7 +1236,9 @@ TALER_EXCHANGE_reserve_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
  * @param sign the withdraw sign request handle
  */
 void
-TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHandle *sign);
+TALER_EXCHANGE_reserve_withdraw_cancel (struct
+                                        TALER_EXCHANGE_ReserveWithdrawHandle *
+                                        sign);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */
@@ -1254,13 +1286,17 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
  *         Non-null results should be freed using GNUNET_free().
  */
 char *
-TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_priv,
+TALER_EXCHANGE_refresh_prepare (const struct
+                                TALER_CoinSpendPrivateKeyP *melt_priv,
                                 const struct TALER_Amount *melt_amount,
-                                const struct TALER_DenominationSignature *melt_sig,
-                                const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
+                                const struct
+                                TALER_DenominationSignature *melt_sig,
+                                const struct
+                                TALER_EXCHANGE_DenomPublicKey *melt_pk,
                                 int check_sig,
                                 unsigned int fresh_pks_len,
-                                const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
+                                const struct
+                                TALER_EXCHANGE_DenomPublicKey *fresh_pks,
                                 size_t *res_size);
 
 
@@ -1291,7 +1327,8 @@ typedef void
                                        unsigned int http_status,
                                        enum TALER_ErrorCode ec,
                                        uint32_t noreveal_index,
-                                       const struct TALER_ExchangePublicKeyP *sign_key,
+                                       const struct
+                                       TALER_ExchangePublicKeyP *sign_key,
                                        const json_t *full_response);
 
 
@@ -1330,7 +1367,8 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
  * @param rmh the refresh handle
  */
 void
-TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh);
+TALER_EXCHANGE_refresh_melt_cancel (struct
+                                    TALER_EXCHANGE_RefreshMeltHandle *rmh);
 
 
 /* ********************* /refresh/reveal ***************************** */
@@ -1358,8 +1396,10 @@ typedef void
                                          unsigned int http_status,
                                          enum TALER_ErrorCode ec,
                                          unsigned int num_coins,
-                                         const struct TALER_PlanchetSecretsP *coin_privs,
-                                         const struct TALER_DenominationSignature *sigs,
+                                         const struct
+                                         TALER_PlanchetSecretsP *coin_privs,
+                                         const struct
+                                         TALER_DenominationSignature *sigs,
                                          const json_t *full_response);
 
 
@@ -1407,7 +1447,8 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
  * @param rrh the refresh reval handle
  */
 void
-TALER_EXCHANGE_refresh_reveal_cancel (struct TALER_EXCHANGE_RefreshRevealHandle *rrh);
+TALER_EXCHANGE_refresh_reveal_cancel (struct
+                                      TALER_EXCHANGE_RefreshRevealHandle *rrh);
 
 
 /* ********************* /refresh/link ***************************** */
@@ -1438,11 +1479,14 @@ struct TALER_EXCHANGE_RefreshLinkHandle;
 typedef void
 (*TALER_EXCHANGE_RefreshLinkCallback) (void *cls,
                                        unsigned int http_status,
-				       enum TALER_ErrorCode ec,
+                                       enum TALER_ErrorCode ec,
                                        unsigned int num_coins,
-                                       const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-                                       const struct TALER_DenominationSignature *sigs,
-                                       const struct TALER_DenominationPublicKey *pubs,
+                                       const struct
+                                       TALER_CoinSpendPrivateKeyP *coin_privs,
+                                       const struct
+                                       TALER_DenominationSignature *sigs,
+                                       const struct
+                                       TALER_DenominationPublicKey *pubs,
                                        const json_t *full_response);
 
 
@@ -1475,7 +1519,8 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
  * @param rlh the refresh link handle
  */
 void
-TALER_EXCHANGE_refresh_link_cancel (struct TALER_EXCHANGE_RefreshLinkHandle *rlh);
+TALER_EXCHANGE_refresh_link_cancel (struct
+                                    TALER_EXCHANGE_RefreshLinkHandle *rlh);
 
 
 /* ********************* /track/transfer *********************** */
@@ -1507,15 +1552,18 @@ struct TALER_EXCHANGE_TrackTransferHandle;
 typedef void
 (*TALER_EXCHANGE_TrackTransferCallback)(void *cls,
                                         unsigned int http_status,
-					enum TALER_ErrorCode ec,
-                                        const struct TALER_ExchangePublicKeyP *sign_key,
+                                        enum TALER_ErrorCode ec,
+                                        const struct
+                                        TALER_ExchangePublicKeyP *sign_key,
                                         const json_t *json,
                                         const struct GNUNET_HashCode *h_wire,
-                                        struct GNUNET_TIME_Absolute execution_time,
+                                        struct GNUNET_TIME_Absolute
+                                        execution_time,
                                         const struct TALER_Amount *total_amount,
                                         const struct TALER_Amount *wire_fee,
                                         unsigned int details_length,
-                                        const struct TALER_TrackTransferDetails *details);
+                                        const struct
+                                        TALER_TrackTransferDetails *details);
 
 
 /**
@@ -1530,7 +1578,8 @@ typedef void
  */
 struct TALER_EXCHANGE_TrackTransferHandle *
 TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
-                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               const struct
+                               TALER_WireTransferIdentifierRawP *wtid,
                                TALER_EXCHANGE_TrackTransferCallback cb,
                                void *cb_cls);
 
@@ -1542,7 +1591,8 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
  * @param wdh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_track_transfer_cancel (struct TALER_EXCHANGE_TrackTransferHandle *wdh);
+TALER_EXCHANGE_track_transfer_cancel (struct
+                                      TALER_EXCHANGE_TrackTransferHandle *wdh);
 
 
 /* ********************* /track/transaction *********************** */
@@ -1571,12 +1621,17 @@ struct TALER_EXCHANGE_TrackTransactionHandle;
 typedef void
 (*TALER_EXCHANGE_TrackTransactionCallback)(void *cls,
                                            unsigned int http_status,
-					   enum TALER_ErrorCode ec,
-                                           const struct TALER_ExchangePublicKeyP *sign_key,
+                                           enum TALER_ErrorCode ec,
+                                           const struct
+                                           TALER_ExchangePublicKeyP *sign_key,
                                            const json_t *json,
-                                           const struct TALER_WireTransferIdentifierRawP *wtid,
-                                           struct GNUNET_TIME_Absolute execution_time,
-                                           const struct TALER_Amount *coin_contribution);
+                                           const struct
+                                           TALER_WireTransferIdentifierRawP *
+                                           wtid,
+                                           struct GNUNET_TIME_Absolute
+                                           execution_time,
+                                           const struct
+                                           TALER_Amount *coin_contribution);
 
 
 /**
@@ -1593,10 +1648,13 @@ typedef void
  */
 struct TALER_EXCHANGE_TrackTransactionHandle *
 TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
-                                  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+                                  const struct
+                                  TALER_MerchantPrivateKeyP *merchant_priv,
                                   const struct GNUNET_HashCode *h_wire,
-                                  const struct GNUNET_HashCode *h_contract_terms,
-                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                  const struct
+                                  GNUNET_HashCode *h_contract_terms,
+                                  const struct
+                                  TALER_CoinSpendPublicKeyP *coin_pub,
                                   TALER_EXCHANGE_TrackTransactionCallback cb,
                                   void *cb_cls);
 
@@ -1608,7 +1666,9 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
  * @param dwh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionHandle *dwh);
+TALER_EXCHANGE_track_transaction_cancel (struct
+                                         TALER_EXCHANGE_TrackTransactionHandle *
+                                         dwh);
 
 
 
@@ -1624,7 +1684,8 @@ TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionH
  */
 int
 TALER_EXCHANGE_verify_coin_history (const char *currency,
-                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct
+                                    TALER_CoinSpendPublicKeyP *coin_pub,
                                     json_t *history,
                                     struct TALER_Amount *total);
 
@@ -1663,8 +1724,10 @@ typedef void
                                          enum TALER_ErrorCode ec,
                                          const struct TALER_Amount *amount,
                                          struct GNUNET_TIME_Absolute timestamp,
-                                         const struct TALER_ReservePublicKeyP *reserve_pub,
-                                         const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+                                         const struct
+                                         TALER_ReservePublicKeyP *reserve_pub,
+                                         const struct
+                                         TALER_CoinSpendPublicKeyP *old_coin_pub,
                                          const json_t *full_response);
 
 

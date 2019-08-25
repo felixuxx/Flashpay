@@ -59,7 +59,7 @@ signal_run (void *cls,
   struct SignalState *ss = cls;
 
   GNUNET_break (0 == GNUNET_OS_process_kill
-    (ss->process, ss->signal));
+                  (ss->process, ss->signal));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Signaling '%d'..\n",
               ss->signal);

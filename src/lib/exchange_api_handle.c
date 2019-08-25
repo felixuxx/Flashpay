@@ -61,8 +61,8 @@
  * @param code what was the curl error code
  */
 #define CURL_STRERROR(type, function, code)      \
- GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
-             function, __FILE__, __LINE__, curl_easy_strerror (code));
+  GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
+              function, __FILE__, __LINE__, curl_easy_strerror (code));
 
 /**
  * Stages of initialization for the `struct TALER_EXCHANGE_Handle`
@@ -281,7 +281,8 @@ TEAH_acc_confirmation_cb (void *cls,
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                _("Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n"),
+                _ (
+                  "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n"),
                 ale->auditor_url,
                 http_status,
                 (int) ec);
@@ -310,7 +311,8 @@ TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
   if (NULL == h->auditors_head)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _("No auditor available for exchange `%s'. Not submitting deposit confirmations.\n"),
+                _ (
+                  "No auditor available for exchange `%s'. Not submitting deposit confirmations.\n"),
                 h->url);
     return;
   }
@@ -385,7 +387,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
                                     &sign_key->valid_until),
     GNUNET_JSON_spec_absolute_time ("stamp_end",
                                     &sign_key->valid_legal),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -400,17 +402,19 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
   if (! check_sigs)
     return GNUNET_OK;
   sign_key_issue.signkey_pub = sign_key->key;
-  sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  sign_key_issue.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
+  sign_key_issue.purpose.purpose = htonl (
+    TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
+  sign_key_issue.purpose.size = htonl (sizeof (struct
+                                               TALER_ExchangeSigningKeyValidityPS));
   sign_key_issue.master_public_key = *master_key;
   sign_key_issue.start = GNUNET_TIME_absolute_hton (sign_key->valid_from);
   sign_key_issue.expire = GNUNET_TIME_absolute_hton (sign_key->valid_until);
   sign_key_issue.end = GNUNET_TIME_absolute_hton (sign_key->valid_legal);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-				  &sign_key_issue.purpose,
-				  &sign_key_issue_sig.eddsa_signature,
-				  &master_key->eddsa_pub))
+                                  &sign_key_issue.purpose,
+                                  &sign_key_issue_sig.eddsa_signature,
+                                  &master_key->eddsa_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -462,7 +466,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                             &denom_key->fee_refund),
     GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                                      &denom_key->key.rsa_public_key),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -488,9 +492,12 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   denom_key_issue.master = *master_key;
   denom_key_issue.denom_hash = denom_key->h_key;
   denom_key_issue.start = GNUNET_TIME_absolute_hton (denom_key->valid_from);
-  denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (denom_key->withdraw_valid_until);
-  denom_key_issue.expire_deposit = GNUNET_TIME_absolute_hton (denom_key->expire_deposit);
-  denom_key_issue.expire_legal = GNUNET_TIME_absolute_hton (denom_key->expire_legal);
+  denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (
+    denom_key->withdraw_valid_until);
+  denom_key_issue.expire_deposit = GNUNET_TIME_absolute_hton (
+    denom_key->expire_deposit);
+  denom_key_issue.expire_legal = GNUNET_TIME_absolute_hton (
+    denom_key->expire_legal);
   TALER_amount_hton (&denom_key_issue.value,
                      &denom_key->value);
   TALER_amount_hton (&denom_key_issue.fee_withdraw,
@@ -502,16 +509,17 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   TALER_amount_hton (&denom_key_issue.fee_refund,
                      &denom_key->fee_refund);
   EXITIF (GNUNET_SYSERR ==
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-                                      &denom_key_issue.purpose,
-                                      &denom_key->master_sig.eddsa_signature,
-                                      &master_key->eddsa_pub));
+          GNUNET_CRYPTO_eddsa_verify (
+            TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
+            &denom_key_issue.purpose,
+            &denom_key->master_sig.eddsa_signature,
+            &master_key->eddsa_pub));
   GNUNET_CRYPTO_hash_context_read (hash_context,
                                    &denom_key_issue.denom_hash,
                                    sizeof (struct GNUNET_HashCode));
   return GNUNET_OK;
 
- EXITIF_exit:
+  EXITIF_exit:
   GNUNET_JSON_parse_free (spec);
   return GNUNET_SYSERR;
 }
@@ -547,7 +555,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                              &auditor_url),
     GNUNET_JSON_spec_json ("denomination_keys",
                            &keys),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -567,7 +575,8 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   kv.master = key_data->master_pub;
   len = json_array_size (keys);
   auditor->denom_keys = GNUNET_new_array (len,
-					  struct TALER_EXCHANGE_AuditorDenominationInfo);
+                                          struct
+                                          TALER_EXCHANGE_AuditorDenominationInfo);
   i = 0;
   off = 0;
   json_array_foreach (keys, i, key) {
@@ -580,7 +589,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                                    &auditor_sig),
       GNUNET_JSON_spec_fixed_auto ("denom_pub_h",
                                    &denom_h),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
 
     if (GNUNET_OK !=
@@ -593,7 +602,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     dk = NULL;
     dk_off = UINT_MAX;
-    for (unsigned int j=0;j<key_data->num_denom_keys;j++)
+    for (unsigned int j = 0; j<key_data->num_denom_keys; j++)
     {
       if (0 == GNUNET_memcmp (&denom_h,
                               &key_data->denom_keys[j].h_key))
@@ -617,20 +626,20 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
       TALER_amount_hton (&kv.value,
                          &dk->value);
       TALER_amount_hton (&kv.fee_withdraw,
-			 &dk->fee_withdraw);
+                         &dk->fee_withdraw);
       TALER_amount_hton (&kv.fee_deposit,
-			 &dk->fee_deposit);
+                         &dk->fee_deposit);
       TALER_amount_hton (&kv.fee_refresh,
-			 &dk->fee_refresh);
+                         &dk->fee_refresh);
       TALER_amount_hton (&kv.fee_refund,
-			 &dk->fee_refund);
+                         &dk->fee_refund);
       kv.denom_hash = dk->h_key;
 
       if (GNUNET_OK !=
-	  GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
-				      &kv.purpose,
-				      &auditor_sig.eddsa_sig,
-				      &auditor->auditor_pub.eddsa_pub))
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
+                                      &kv.purpose,
+                                      &auditor_sig.eddsa_sig,
+                                      &auditor->auditor_pub.eddsa_pub))
       {
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);
@@ -658,26 +667,27 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 static void
 auditor_version_cb
   (void *cls,
-   const struct TALER_AUDITOR_VersionInformation *vi,
-   enum TALER_AUDITOR_VersionCompatibility compat)
+  const struct TALER_AUDITOR_VersionInformation *vi,
+  enum TALER_AUDITOR_VersionCompatibility compat)
 {
   struct TEAH_AuditorListEntry *ale = cls;
 
   if (0 != (TALER_AUDITOR_VC_INCOMPATIBLE & compat))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                _("Auditor `%s' runs incompatible protocol version!\n"),
+                _ ("Auditor `%s' runs incompatible protocol version!\n"),
                 ale->auditor_url);
     if (0 != (TALER_AUDITOR_VC_OLDER & compat))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  _("Auditor `%s' runs outdated protocol version!\n"),
+                  _ ("Auditor `%s' runs outdated protocol version!\n"),
                   ale->auditor_url);
     }
     if (0 != (TALER_AUDITOR_VC_NEWER & compat))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  _("Auditor `%s' runs more recent incompatible version. We should upgrade!\n"),
+                  _ (
+                    "Auditor `%s' runs more recent incompatible version. We should upgrade!\n"),
                   ale->auditor_url);
     }
     return;
@@ -698,7 +708,7 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
   struct TALER_EXCHANGE_Keys *kd = &exchange->key_data;
 
   TALER_LOG_DEBUG ("Updating auditors\n");
-  for (unsigned int i=0;i<kd->num_auditors;i++)
+  for (unsigned int i = 0; i<kd->num_auditors; i++)
   {
     /* Compare auditor data from /keys with auditor data
      * from owned exchange structures.  */
@@ -752,8 +762,8 @@ TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
 
   /* First check if pub is the same.  */
   if (0 != GNUNET_CRYPTO_rsa_public_key_cmp
-    (denom1->key.rsa_public_key,
-     denom2->key.rsa_public_key))
+        (denom1->key.rsa_public_key,
+        denom2->key.rsa_public_key))
     return 1;
 
   tmp1 = denom1->key.rsa_public_key;
@@ -815,7 +825,7 @@ decode_keys_json (const json_t *resp_obj,
                                     &key_data->list_issue_date),
     GNUNET_JSON_spec_relative_time ("reserve_closing_delay",
                                     &key_data->reserve_closing_delay),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (JSON_OBJECT != json_typeof (resp_obj))
@@ -829,7 +839,7 @@ decode_keys_json (const json_t *resp_obj,
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("version",
                                &ver),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
 
     if (GNUNET_OK !=
@@ -882,11 +892,11 @@ decode_keys_json (const json_t *resp_obj,
     unsigned int index;
 
     EXITIF (NULL == (sign_keys_array =
-                     json_object_get (resp_obj,
-                                      "signkeys")));
+                       json_object_get (resp_obj,
+                                        "signkeys")));
     EXITIF (JSON_ARRAY != json_typeof (sign_keys_array));
     EXITIF (0 == (key_data->num_sign_keys =
-                  json_array_size (sign_keys_array)));
+                    json_array_size (sign_keys_array)));
     key_data->sign_keys
       = GNUNET_new_array (key_data->num_sign_keys,
                           struct TALER_EXCHANGE_SigningPublicKey);
@@ -908,8 +918,8 @@ decode_keys_json (const json_t *resp_obj,
     unsigned int index;
 
     EXITIF (NULL == (denom_keys_array =
-                     json_object_get (resp_obj,
-                                      "denoms")));
+                       json_object_get (resp_obj,
+                                        "denoms")));
     EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
 
     index = 0;
@@ -924,7 +934,7 @@ decode_keys_json (const json_t *resp_obj,
                                    &key_data->master_pub,
                                    hash_context));
 
-      for (unsigned int j=0;
+      for (unsigned int j = 0;
            j<key_data->num_denom_keys;
            j++)
       {
@@ -965,8 +975,8 @@ decode_keys_json (const json_t *resp_obj,
     unsigned int index;
 
     EXITIF (NULL == (auditors_array =
-                     json_object_get (resp_obj,
-				      "auditors")));
+                       json_object_get (resp_obj,
+                                        "auditors")));
     EXITIF (JSON_ARRAY != json_typeof (auditors_array));
 
     /* Merge with the existing auditor information we have (/keys cherry picking) */
@@ -983,7 +993,7 @@ decode_keys_json (const json_t *resp_obj,
                                   check_sig,
                                   auditor_info,
                                   key_data));
-      for (unsigned int j=0;j<key_data->num_auditors;j++)
+      for (unsigned int j = 0; j<key_data->num_auditors; j++)
       {
         struct TALER_EXCHANGE_AuditorInformation *aix = &key_data->auditors[j];
 
@@ -998,9 +1008,10 @@ decode_keys_json (const json_t *resp_obj,
                              aix->num_denom_keys + ai.num_denom_keys);
           memcpy (&aix->denom_keys[aix->num_denom_keys - ai.num_denom_keys],
                   ai.denom_keys,
-                  ai.num_denom_keys * sizeof (struct TALER_EXCHANGE_AuditorDenominationInfo));
-	  break;
-	}
+                  ai.num_denom_keys * sizeof (struct
+                                              TALER_EXCHANGE_AuditorDenominationInfo));
+          break;
+        }
       }
       if (GNUNET_YES == found)
         continue; /* we are done */
@@ -1025,8 +1036,8 @@ decode_keys_json (const json_t *resp_obj,
                                        &ks.hc);
     hash_context = NULL;
     EXITIF (GNUNET_OK !=
-	    TALER_EXCHANGE_test_signing_key (key_data,
-                                         &pub));
+            TALER_EXCHANGE_test_signing_key (key_data,
+                                             &pub));
     EXITIF (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_KEY_SET,
                                         &ks.purpose,
@@ -1034,7 +1045,7 @@ decode_keys_json (const json_t *resp_obj,
                                         &pub.eddsa_pub));
   }
   return GNUNET_OK;
- EXITIF_exit:
+  EXITIF_exit:
 
   *vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
   if (NULL != hash_context)
@@ -1054,13 +1065,14 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
   GNUNET_array_grow (key_data->sign_keys,
                      key_data->num_sign_keys,
                      0);
-  for (unsigned int i=0;i<key_data->num_denom_keys;i++)
-    GNUNET_CRYPTO_rsa_public_key_free (key_data->denom_keys[i].key.rsa_public_key);
+  for (unsigned int i = 0; i<key_data->num_denom_keys; i++)
+    GNUNET_CRYPTO_rsa_public_key_free (
+      key_data->denom_keys[i].key.rsa_public_key);
 
   GNUNET_array_grow (key_data->denom_keys,
                      key_data->denom_keys_size,
                      0);
-  for (unsigned int i=0;i<key_data->num_auditors;i++)
+  for (unsigned int i = 0; i<key_data->num_auditors; i++)
   {
     GNUNET_array_grow (key_data->auditors[i].denom_keys,
                        key_data->auditors[i].num_denom_keys,
@@ -1157,7 +1169,8 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
     TEAH_handle_reset (exchange);
   }
   if ( (GNUNET_NO == force_download) &&
-       (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us) )
+       (0 < GNUNET_TIME_absolute_get_remaining (
+          exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;
   if (NULL == exchange->retry_task)
     exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
@@ -1223,19 +1236,22 @@ keys_completed_cb (void *cls,
     /* First make a shallow copy, we then need another pass for the RSA key... */
     memcpy (kd.denom_keys,
             kd_old.denom_keys,
-            kd_old.num_denom_keys * sizeof (struct TALER_EXCHANGE_DenomPublicKey));
+            kd_old.num_denom_keys * sizeof (struct
+                                            TALER_EXCHANGE_DenomPublicKey));
 
-    for (unsigned int i=0;i<kd_old.num_denom_keys;i++)
+    for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
       kd.denom_keys[i].key.rsa_public_key
-        = GNUNET_CRYPTO_rsa_public_key_dup (kd_old.denom_keys[i].key.rsa_public_key);
+        = GNUNET_CRYPTO_rsa_public_key_dup (
+            kd_old.denom_keys[i].key.rsa_public_key);
 
     kd.num_auditors = kd_old.num_auditors;
     kd.auditors = GNUNET_new_array (kd.num_auditors,
                                     struct TALER_EXCHANGE_AuditorInformation);
     /* Now the necessary deep copy... */
-    for (unsigned int i=0;i<kd_old.num_auditors;i++)
+    for (unsigned int i = 0; i<kd_old.num_auditors; i++)
     {
-      const struct TALER_EXCHANGE_AuditorInformation *aold = &kd_old.auditors[i];
+      const struct TALER_EXCHANGE_AuditorInformation *aold =
+        &kd_old.auditors[i];
       struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
 
       anew->auditor_pub = aold->auditor_pub;
@@ -1246,7 +1262,8 @@ keys_completed_cb (void *cls,
                          aold->num_denom_keys);
       memcpy (anew->denom_keys,
               aold->denom_keys,
-              aold->num_denom_keys * sizeof (struct TALER_EXCHANGE_AuditorDenominationInfo));
+              aold->num_denom_keys * sizeof (struct
+                                             TALER_EXCHANGE_AuditorDenominationInfo));
     }
 
     /* Old auditors got just copied into new ones.  */
@@ -1258,7 +1275,7 @@ keys_completed_cb (void *cls,
     {
       TALER_LOG_ERROR ("Could not decode /keys response\n");
       response_code = 0;
-      for (unsigned int i=0;i<kd.num_auditors;i++)
+      for (unsigned int i = 0; i<kd.num_auditors; i++)
       {
         struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
 
@@ -1270,7 +1287,7 @@ keys_completed_cb (void *cls,
       GNUNET_free (kd.auditors);
       kd.auditors = NULL;
       kd.num_auditors = 0;
-      for (unsigned int i=0;i<kd_old.num_denom_keys;i++)
+      for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
         GNUNET_CRYPTO_rsa_public_key_free (kd.denom_keys[i].key.rsa_public_key);
       GNUNET_array_grow (kd.denom_keys,
                          kd.denom_keys_size,
@@ -1375,10 +1392,10 @@ TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
  */
 char *
 TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
-                 const char *path)
+                  const char *path)
 {
   return TEAH_path_to_url2 (h->url,
-                           path);
+                            path);
 }
 
 
@@ -1391,7 +1408,7 @@ TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  */
 char *
 TEAH_path_to_url2 (const char *base_url,
-                  const char *path)
+                   const char *path)
 {
   char *url;
 
@@ -1515,14 +1532,14 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_TIME_Absolute expire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint32 ("version",
-			     &version),
+                             &version),
     GNUNET_JSON_spec_json ("keys",
-			   &keys),
+                           &keys),
     GNUNET_JSON_spec_string ("url",
-			     &url),
+                             &url),
     GNUNET_JSON_spec_absolute_time ("expire",
                                     &expire),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_Keys key_data;
 
@@ -1539,23 +1556,23 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   if (0 != version)
     return; /* unsupported version */
   if (0 != strcmp (url,
-		   exchange->url))
+                   exchange->url))
   {
     GNUNET_break (0);
     return;
   }
   memset (&key_data,
-	  0,
+          0,
           sizeof (struct TALER_EXCHANGE_Keys));
   if (GNUNET_OK !=
       decode_keys_json (keys,
                         GNUNET_NO,
                         &key_data,
                         &vc))
-    {
-      GNUNET_break (0);
-      return;
-    }
+  {
+    GNUNET_break (0);
+    return;
+  }
   /* decode successful, initialize with the result */
   GNUNET_assert (NULL == exchange->key_data_raw);
   exchange->key_data_raw = json_deep_copy (keys);
@@ -1566,7 +1583,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
-		     vc);
+                     vc);
 }
 
 
@@ -1599,7 +1616,7 @@ TALER_EXCHANGE_serialize_data
     GNUNET_break (0);
     return NULL;
   }
-  for (unsigned int i=0;i<kd->num_sign_keys;i++)
+  for (unsigned int i = 0; i<kd->num_sign_keys; i++)
   {
     const struct TALER_EXCHANGE_SigningPublicKey *sk = &kd->sign_keys[i];
     json_t *signkey;
@@ -1609,19 +1626,19 @@ TALER_EXCHANGE_serialize_data
     signkey = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                          "key",
                          GNUNET_JSON_from_data_auto
-                         (&sk->key),
+                           (&sk->key),
                          "master_sig",
                          GNUNET_JSON_from_data_auto
-                         (&sk->master_sig),
+                           (&sk->master_sig),
                          "stamp_start",
                          GNUNET_JSON_from_time_abs
-                         (sk->valid_from),
+                           (sk->valid_from),
                          "stamp_expire",
                          GNUNET_JSON_from_time_abs
-                         (sk->valid_until),
+                           (sk->valid_until),
                          "stamp_end",
                          GNUNET_JSON_from_time_abs
-                         (sk->valid_legal));
+                           (sk->valid_legal));
     if (NULL == signkey)
     {
       GNUNET_break (0);
@@ -1643,7 +1660,7 @@ TALER_EXCHANGE_serialize_data
     json_decref (signkeys);
     return NULL;
   }
-  for (unsigned int i=0;i<kd->num_denom_keys;i++)
+  for (unsigned int i = 0; i<kd->num_denom_keys; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
     json_t *denom;
@@ -1676,14 +1693,15 @@ TALER_EXCHANGE_serialize_data
                        GNUNET_JSON_from_data_auto (&dk->master_sig),
                        /* #10 */
                        "denom_pub",
-                       GNUNET_JSON_from_rsa_public_key (dk->key.rsa_public_key));
+                       GNUNET_JSON_from_rsa_public_key (
+                         dk->key.rsa_public_key));
     if (NULL == denom)
     {
       GNUNET_break (0);
       continue;
     }
     if (0 != json_array_append_new (denoms,
-                                     denom))
+                                    denom))
     {
       GNUNET_break (0);
       json_decref (denom);
@@ -1700,7 +1718,7 @@ TALER_EXCHANGE_serialize_data
     json_decref (signkeys);
     return NULL;
   }
-  for (unsigned int i=0;i<kd->num_auditors;i++)
+  for (unsigned int i = 0; i<kd->num_auditors; i++)
   {
     const struct TALER_EXCHANGE_AuditorInformation *ai = &kd->auditors[i];
     json_t *a;
@@ -1715,10 +1733,12 @@ TALER_EXCHANGE_serialize_data
       json_decref (auditors);
       return NULL;
     }
-    for (unsigned int j=0;j<ai->num_denom_keys;j++)
+    for (unsigned int j = 0; j<ai->num_denom_keys; j++)
     {
-      const struct TALER_EXCHANGE_AuditorDenominationInfo *adi = &ai->denom_keys[j];
-      const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[adi->denom_key_offset];
+      const struct TALER_EXCHANGE_AuditorDenominationInfo *adi =
+        &ai->denom_keys[j];
+      const struct TALER_EXCHANGE_DenomPublicKey *dk =
+        &kd->denom_keys[adi->denom_key_offset];
       json_t *k;
 
       if (now.abs_value_us > dk->expire_deposit.abs_value_us)
@@ -1832,10 +1852,10 @@ TALER_EXCHANGE_serialize_data
 struct TALER_EXCHANGE_Handle *
 TALER_EXCHANGE_connect
   (struct GNUNET_CURL_Context *ctx,
-   const char *url,
-   TALER_EXCHANGE_CertificationCallback cert_cb,
-   void *cert_cb_cls,
-   ...)
+  const char *url,
+  TALER_EXCHANGE_CertificationCallback cert_cb,
+  void *cert_cb_cls,
+  ...)
 {
   struct TALER_EXCHANGE_Handle *exchange;
   va_list ap;
@@ -1845,8 +1865,8 @@ TALER_EXCHANGE_connect
                    url);
   /* Disable 100 continue processing */
   GNUNET_break (GNUNET_OK ==
-		GNUNET_CURL_append_header (ctx,
-					   "Expect:"));
+                GNUNET_CURL_append_header (ctx,
+                                           "Expect:"));
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);
@@ -1856,20 +1876,21 @@ TALER_EXCHANGE_connect
                                                    exchange);
   va_start (ap, cert_cb_cls);
   while (TALER_EXCHANGE_OPTION_END !=
-	 (opt = va_arg (ap, int)))
+         (opt = va_arg (ap, int)))
   {
-    switch (opt) {
+    switch (opt)
+    {
     case TALER_EXCHANGE_OPTION_END:
       GNUNET_assert (0);
       break;
     case TALER_EXCHANGE_OPTION_DATA:
-    {
-      const json_t *data = va_arg (ap, const json_t *);
+      {
+        const json_t *data = va_arg (ap, const json_t *);
 
-      deserialize_data (exchange,
-			data);
-      break;
-    }
+        deserialize_data (exchange,
+                          data);
+        break;
+      }
     default:
       GNUNET_assert (0);
       break;
@@ -1902,10 +1923,13 @@ request_keys (void *cls)
   if (GNUNET_YES == TEAH_handle_is_ready (exchange))
   {
     TALER_LOG_DEBUG ("Last DK issue date (before GETting /keys): %s\n",
-                     GNUNET_STRINGS_absolute_time_to_string (exchange->key_data.last_denom_issue_date));
+                     GNUNET_STRINGS_absolute_time_to_string (
+                       exchange->key_data.last_denom_issue_date));
     sprintf (&url[strlen (url)],
              "last_issue_date=%llu&",
-             (unsigned long long) exchange->key_data.last_denom_issue_date.abs_value_us / 1000000LLU);
+             (unsigned long
+              long) exchange->key_data.last_denom_issue_date.abs_value_us
+             / 1000000LLU);
   }
 
   if (GNUNET_YES == exchange->with_now)
@@ -1969,7 +1993,8 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
     {
       GNUNET_assert (aie->ale == ale);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  _("Not sending deposit confirmation to auditor `%s' due to exchange disconnect\n"),
+                  _ (
+                    "Not sending deposit confirmation to auditor `%s' due to exchange disconnect\n"),
                   ale->auditor_url);
       TALER_AUDITOR_deposit_confirmation_cancel (aie->dch);
       GNUNET_CONTAINER_DLL_remove (ale->ai_head,
@@ -2017,9 +2042,10 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
-                                        const struct TALER_ExchangePublicKeyP *pub)
+                                        const struct
+                                        TALER_ExchangePublicKeyP *pub)
 {
-  for (unsigned int i=0;i<keys->num_sign_keys;i++)
+  for (unsigned int i = 0; i<keys->num_sign_keys; i++)
   {
     struct TALER_EXCHANGE_SigningPublicKey *spk = &keys->sign_keys[i];
 
@@ -2047,9 +2073,11 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
 
   /* we will check using a tolerance of 1h for the time */
   now = GNUNET_TIME_absolute_get ();
-  for (unsigned int i=0;i<keys->num_sign_keys;i++)
-    if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us + 60 * 60 * 1000LL * 1000LL) &&
-         (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us - 60 * 60 * 1000LL * 1000LL) &&
+  for (unsigned int i = 0; i<keys->num_sign_keys; i++)
+    if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us + 60
+          * 60 * 1000LL * 1000LL) &&
+         (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us - 60
+          * 60 * 1000LL * 1000LL) &&
          (0 == GNUNET_memcmp (pub,
                               &keys->sign_keys[i].key)) )
       return GNUNET_OK;
@@ -2080,11 +2108,13 @@ TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange)
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
-                                     const struct TALER_DenominationPublicKey *pk)
+                                     const struct
+                                     TALER_DenominationPublicKey *pk)
 {
-  for (unsigned int i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
     if (0 == GNUNET_CRYPTO_rsa_public_key_cmp (pk->rsa_public_key,
-                                               keys->denom_keys[i].key.rsa_public_key))
+                                               keys->denom_keys[i].key.
+                                               rsa_public_key))
       return &keys->denom_keys[i];
   return NULL;
 }
@@ -2098,10 +2128,11 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
  * @return details about the given denomination key
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *keys,
+TALER_EXCHANGE_get_denomination_key_by_hash (const struct
+                                             TALER_EXCHANGE_Keys *keys,
                                              const struct GNUNET_HashCode *hc)
 {
-  for (unsigned int i=0;i<keys->num_denom_keys;i++)
+  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
     if (0 == GNUNET_memcmp (hc,
                             &keys->denom_keys[i].h_key))
       return &keys->denom_keys[i];

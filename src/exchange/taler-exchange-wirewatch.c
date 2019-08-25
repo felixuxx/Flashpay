@@ -216,8 +216,9 @@ shutdown_task (void *cls)
   {
     char *wtid_s;
 
-    wtid_s = wa_pos->wire_plugin->reject_transfer_cancel (wa_pos->wire_plugin->cls,
-                                                          rt);
+    wtid_s = wa_pos->wire_plugin->reject_transfer_cancel (
+      wa_pos->wire_plugin->cls,
+      rt);
     rt = NULL;
     GNUNET_free (wtid_s);
   }
@@ -262,8 +263,8 @@ add_account_cb (void *cls,
   if (NULL == wa->wire_plugin)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-		"Failed to load wire plugin for `%s'\n",
-		ai->plugin_name);
+                "Failed to load wire plugin for `%s'\n",
+                ai->plugin_name);
     GNUNET_free (wa);
     return;
   }
@@ -355,7 +356,7 @@ reject_cb (void *cls,
                 ec);
     GNUNET_free (rtc->wtid_s);
     db_plugin->rollback (db_plugin->cls,
-			 rtc->session);
+                         rtc->session);
     GNUNET_free (rtc);
     GNUNET_SCHEDULER_shutdown ();
     return;
@@ -385,10 +386,10 @@ reject_cb (void *cls,
 static int
 history_cb (void *cls,
             enum TALER_ErrorCode ec,
-	    enum TALER_BANK_Direction dir,
-	    const void *row_off,
-	    size_t row_off_size,
-	    const struct TALER_WIRE_TransferDetails *details)
+            enum TALER_BANK_Direction dir,
+            const void *row_off,
+            size_t row_off_size,
+            const struct TALER_WIRE_TransferDetails *details)
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -409,7 +410,7 @@ history_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "End of list. Committing progress!\n");
     qs = db_plugin->commit (db_plugin->cls,
-			    session);
+                            session);
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -529,14 +530,14 @@ history_cb (void *cls,
           &details->wtid,
           sizeof (reserve_pub));
   qs = db_plugin->reserves_in_insert (db_plugin->cls,
-				      session,
-				      &reserve_pub,
-				      &details->amount,
-				      details->execution_date,
-				      details->account_url,
+                                      session,
+                                      &reserve_pub,
+                                      &details->amount,
+                                      details->execution_date,
+                                      details->account_url,
                                       wa_pos->section_name,
-				      row_off,
-				      row_off_size);
+                                      row_off,
+                                      row_off_size);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -554,7 +555,7 @@ history_cb (void *cls,
     /* try again */
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&find_transfers,
-				     NULL);
+                                     NULL);
     return GNUNET_SYSERR;
   }
 
@@ -565,8 +566,8 @@ history_cb (void *cls,
     latest_row_off_size = row_off_size;
   }
   memcpy (latest_row_off,
-	  row_off,
-	  row_off_size);
+          row_off,
+          row_off_size);
   return GNUNET_OK;
 }
 
@@ -705,24 +706,25 @@ main (int argc,
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('T',
-			       "test",
-			       "run in test mode and exit when idle",
-			       &test_mode),
+                               "test",
+                               "run in test mode and exit when idle",
+                               &test_mode),
     GNUNET_GETOPT_option_flag ('r',
-			       "reset",
-			       "start fresh with all transactions in the history",
-			       &reset_mode),
+                               "reset",
+                               "start fresh with all transactions in the history",
+                               &reset_mode),
     GNUNET_GETOPT_OPTION_END
   };
 
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
-				    &argc, &argv))
+                                    &argc, &argv))
     return 2;
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-exchange-wirewatch",
-                          gettext_noop ("background process that watches for incomming wire transfers from customers"),
+                          gettext_noop (
+                            "background process that watches for incomming wire transfers from customers"),
                           options,
                           &run, NULL))
   {

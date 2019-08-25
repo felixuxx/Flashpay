@@ -43,8 +43,8 @@
 int
 TALER_TESTING_get_trait_reserve_priv
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_ReservePrivateKeyP **reserve_priv)
+  unsigned int index,
+  const struct TALER_ReservePrivateKeyP **reserve_priv)
 {
   return cmd->traits (cmd->cls,
                       (const void **) reserve_priv,
@@ -63,7 +63,7 @@ TALER_TESTING_get_trait_reserve_priv
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_reserve_priv
   (unsigned int index,
-   const struct TALER_ReservePrivateKeyP *reserve_priv)
+  const struct TALER_ReservePrivateKeyP *reserve_priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

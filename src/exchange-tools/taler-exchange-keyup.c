@@ -297,7 +297,8 @@ get_cointype_dir (const struct CoinTypeParams *p)
 
   hash_coin_type (p, &hash);
   hash_str = GNUNET_STRINGS_data_to_string_alloc (&hash,
-                                                  sizeof (struct GNUNET_HashCode));
+                                                  sizeof (struct
+                                                          GNUNET_HashCode));
   GNUNET_assert (NULL != hash_str);
   GNUNET_assert (HASH_CUTOFF <= strlen (hash_str) + 1);
   hash_str[HASH_CUTOFF] = 0;
@@ -311,7 +312,8 @@ get_cointype_dir (const struct CoinTypeParams *p)
 
   GNUNET_snprintf (dir,
                    sizeof (dir),
-                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS DIR_SEPARATOR_STR "%s-%s",
+                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
+                   DIR_SEPARATOR_STR "%s-%s",
                    exchange_directory,
                    val_str,
                    hash_str);
@@ -462,7 +464,8 @@ static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
                            struct GNUNET_TIME_Relative duration,
                            struct GNUNET_TIME_Absolute end,
-                           struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *pi)
+                           struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP
+                           *pi)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
   struct TALER_ExchangeSigningKeyValidityPS *issue = &pi->issue;
@@ -478,7 +481,8 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
                                       &issue->signkey_pub.eddsa_pub);
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  issue->purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
+  issue->purpose.size = htonl (sizeof (struct
+                                       TALER_ExchangeSigningKeyValidityPS));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &issue->purpose,
@@ -753,20 +757,23 @@ get_cointype_params (const char *ct,
  */
 static void
 create_denomkey_issue (const struct CoinTypeParams *params,
-                       struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                       struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
+                       dki)
 {
   dki->denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize);
   GNUNET_assert (NULL != dki->denom_priv.rsa_private_key);
   dki->denom_pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key);
+    = GNUNET_CRYPTO_rsa_private_key_get_public (
+        dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &dki->issue.properties.denom_hash);
   dki->issue.properties.master = master_public_key;
   dki->issue.properties.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.properties.expire_withdraw =
-      GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
-                                                           params->duration_withdraw));
+    GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
+                                                         params->
+                                                         duration_withdraw));
   dki->issue.properties.expire_deposit =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                          params->duration_spend));
@@ -803,7 +810,7 @@ create_denomkey_issue (const struct CoinTypeParams *params,
  */
 static void
 exchange_keys_update_cointype (void *cls,
-			       const char *coin_alias)
+                               const char *coin_alias)
 {
   int *ret = cls;
   struct CoinTypeParams p;
@@ -837,7 +844,7 @@ exchange_keys_update_cointype (void *cls,
                 GNUNET_STRINGS_relative_time_to_string
                   (GNUNET_TIME_absolute_get_difference (p.anchor,
                                                         lookahead_sign_stamp),
-                                                        GNUNET_NO));
+                  GNUNET_NO));
     dkf = get_cointype_file (&p,
                              p.anchor);
     GNUNET_break (GNUNET_YES !=
@@ -853,14 +860,16 @@ exchange_keys_update_cointype (void *cls,
                            &denomkey_issue);
     if (GNUNET_OK !=
         TALER_EXCHANGEDB_denomination_key_write (dkf,
-						 &denomkey_issue))
+                                                 &denomkey_issue))
     {
       fprintf (stderr,
                "Failed to write denomination key information to file `%s'.\n",
                dkf);
       *ret = GNUNET_SYSERR;
-      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
-      GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
+      GNUNET_CRYPTO_rsa_private_key_free (
+        denomkey_issue.denom_priv.rsa_private_key);
+      GNUNET_CRYPTO_rsa_public_key_free (
+        denomkey_issue.denom_pub.rsa_public_key);
       return;
     }
     if ( (NULL != auditor_output_file) &&
@@ -875,11 +884,14 @@ exchange_keys_update_cointype (void *cls,
                auditorrequestfile,
                STRERROR (errno));
       *ret = GNUNET_SYSERR;
-      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
-      GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
+      GNUNET_CRYPTO_rsa_private_key_free (
+        denomkey_issue.denom_priv.rsa_private_key);
+      GNUNET_CRYPTO_rsa_public_key_free (
+        denomkey_issue.denom_pub.rsa_public_key);
       return;
     }
-    GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
+    GNUNET_CRYPTO_rsa_private_key_free (
+      denomkey_issue.denom_priv.rsa_private_key);
     GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
     p.anchor = GNUNET_TIME_absolute_add (p.anchor,
                                          p.duration_withdraw);
@@ -1146,7 +1158,7 @@ static int
 revoke_denomination (const struct GNUNET_HashCode *hc)
 {
   char *basedir;
-  
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
                                                "exchange",
@@ -1193,7 +1205,7 @@ run (void *cls,
 
   if (now.abs_value_us != now_tmp.abs_value_us)
   {
-    /* The user gave "--now", use it */ 
+    /* The user gave "--now", use it */
     now = now_tmp;
   }
   /* The user _might_ have given "--now" but it matched
@@ -1331,7 +1343,8 @@ run (void *cls,
                                        "exchange",
                                        "master_public_key",
                                        &master_public_key_from_cfg,
-                                       sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+                                       sizeof (struct
+                                               GNUNET_CRYPTO_EddsaPublicKey)))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
@@ -1346,7 +1359,7 @@ run (void *cls,
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
                                  "master_public_key",
-                                 _("does not match with private key"));
+                                 _ ("does not match with private key"));
       global_ret = 1;
       return;
     }
@@ -1369,7 +1382,7 @@ run (void *cls,
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "lookahead_sign",
-                               _("must not be zero"));
+                               _ ("must not be zero"));
     global_ret = 1;
     return;
   }
@@ -1457,10 +1470,10 @@ main (int argc,
   now = now_tmp = GNUNET_TIME_absolute_get ();
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
-			 "taler-exchange-keyup",
-			  "Setup signing and denomination keys for a Taler exchange",
-			  options,
-			  &run, NULL))
+                          "taler-exchange-keyup",
+                          "Setup signing and denomination keys for a Taler exchange",
+                          options,
+                          &run, NULL))
     return 1;
   if (NULL != auditor_output_file)
   {

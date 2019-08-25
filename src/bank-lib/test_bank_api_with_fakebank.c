@@ -37,8 +37,7 @@ static void
 run (void *cls)
 {
   int *resultp = cls;
-  static struct TBI_Command commands[] =
-  {
+  static struct TBI_Command commands[] = {
     { .oc = TBI_OC_HISTORY,
       .label = "history-0",
       .details.history.account_number = 1,
@@ -134,7 +133,8 @@ run (void *cls)
     { .oc = TBI_OC_HISTORY,
       .label = "history-r1c",
       .details.history.account_number = 1,
-      .details.history.direction = TALER_BANK_DIRECTION_BOTH | TALER_BANK_DIRECTION_CANCEL,
+      .details.history.direction = TALER_BANK_DIRECTION_BOTH
+                                   | TALER_BANK_DIRECTION_CANCEL,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
     { .oc = TBI_OC_EXPECT_TRANSFER,
@@ -160,7 +160,7 @@ run (void *cls)
  */
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   int result;
 

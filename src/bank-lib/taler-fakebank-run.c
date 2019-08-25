@@ -65,13 +65,13 @@ main (int argc,
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END
   };
-  
+
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-fakebank-run",
-			  "Runs the fakebank",
-			  options,
-			  &run,
+                          "Runs the fakebank",
+                          options,
+                          &run,
                           NULL))
     return 1;
 

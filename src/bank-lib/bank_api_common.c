@@ -130,7 +130,7 @@ TALER_BANK_parse_ec_ (const json_t *json)
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint32 ("ec",
                              &ec),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=

@@ -94,7 +94,7 @@ run (void *cls,
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");

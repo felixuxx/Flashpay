@@ -141,8 +141,10 @@ auditor_cb (void *cls,
   aie->dch = TALER_AUDITOR_deposit_confirmation (ah,
                                                  &dh->depconf.h_wire,
                                                  &dh->depconf.h_contract_terms,
-                                                 GNUNET_TIME_absolute_ntoh (dh->depconf.timestamp),
-                                                 GNUNET_TIME_absolute_ntoh (dh->depconf.refund_deadline),
+                                                 GNUNET_TIME_absolute_ntoh (
+                                                   dh->depconf.timestamp),
+                                                 GNUNET_TIME_absolute_ntoh (
+                                                   dh->depconf.refund_deadline),
                                                  &amount_without_fee,
                                                  &dh->depconf.coin_pub,
                                                  &dh->depconf.merchant,
@@ -179,7 +181,7 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("sig", exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -225,7 +227,8 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *dh,
+verify_deposit_signature_forbidden (const struct
+                                    TALER_EXCHANGE_DepositHandle *dh,
                                     const json_t *json)
 {
   json_t *history;
@@ -235,9 +238,9 @@ verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *d
                              "history");
   if (GNUNET_OK !=
       TALER_EXCHANGE_verify_coin_history (dh->coin_value.currency,
-					  &dh->depconf.coin_pub,
-					  history,
-					  &total))
+                                          &dh->depconf.coin_pub,
+                                          history,
+                                          &total))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -293,7 +296,7 @@ handle_deposit_finished (void *cls,
     if (GNUNET_OK !=
         verify_deposit_signature_ok (dh,
                                      j,
-				     &exchange_sig,
+                                     &exchange_sig,
                                      &exchange_pub))
     {
       GNUNET_break_op (0);
@@ -343,8 +346,8 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           response_code,
-	  TALER_JSON_get_error_code (j),
-	  es,
+          TALER_JSON_get_error_code (j),
+          es,
           ep,
           j);
   TALER_EXCHANGE_deposit_cancel (dh);
@@ -500,7 +503,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   (void) GNUNET_TIME_round_abs (&refund_deadline);
   GNUNET_assert (refund_deadline.abs_value_us <= wire_deadline.abs_value_us);
   GNUNET_assert (GNUNET_YES ==
-		 TEAH_handle_is_ready (exchange));
+                 TEAH_handle_is_ready (exchange));
   /* initialize h_wire */
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire_details,
@@ -547,14 +550,20 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "contribution", TALER_JSON_from_amount (amount),
                            "wire", wire_details,
                            "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
-                           "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
+                           "h_contract_terms", GNUNET_JSON_from_data_auto (
+                             h_contract_terms),
                            "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-                           "denom_pub_hash", GNUNET_JSON_from_data_auto (&denom_pub_hash),
-                           "ub_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
+                           "denom_pub_hash", GNUNET_JSON_from_data_auto (
+                             &denom_pub_hash),
+                           "ub_sig", GNUNET_JSON_from_rsa_signature (
+                             denom_sig->rsa_signature),
                            "timestamp", GNUNET_JSON_from_time_abs (timestamp),
-                           "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
-                           "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
-                           "wire_transfer_deadline", GNUNET_JSON_from_time_abs (wire_deadline),
+                           "merchant_pub", GNUNET_JSON_from_data_auto (
+                             merchant_pub),
+                           "refund_deadline", GNUNET_JSON_from_time_abs (
+                             refund_deadline),
+                           "wire_transfer_deadline", GNUNET_JSON_from_time_abs (
+                             wire_deadline),
                            "coin_sig", GNUNET_JSON_from_data_auto (coin_sig)
                            );
   if (NULL == deposit_obj)
@@ -568,8 +577,10 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->cb = cb;
   dh->cb_cls = cb_cls;
   dh->url = TEAH_path_to_url (exchange, "/deposit");
-  dh->depconf.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
-  dh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
+  dh->depconf.purpose.size = htonl (sizeof (struct
+                                            TALER_DepositConfirmationPS));
+  dh->depconf.purpose.purpose = htonl (
+    TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dh->depconf.h_contract_terms = *h_contract_terms;
   dh->depconf.h_wire = h_wire;
   dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
@@ -584,8 +595,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   eh = TEL_curl_easy_get (dh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&dh->ctx,
-                           eh,
-                           deposit_obj))
+                            eh,
+                            deposit_obj))
   {
     GNUNET_break (0);
     curl_easy_cleanup (eh);

@@ -33,10 +33,10 @@ static int result = -1;
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                              \
-    do {                                          \
-        if (!(cond)){ break;}                     \
-        GNUNET_break (0);                         \
-        goto drop;                                \
+  do {                                          \
+    if (! (cond)) { break;}                     \
+    GNUNET_break (0);                         \
+    goto drop;                                \
   } while (0)
 
 
@@ -66,7 +66,8 @@ static struct TALER_AUDITORDB_Plugin *plugin;
 
 static int
 select_denomination_info_result (void *cls,
-                                 const struct TALER_DenominationKeyValidityPS *issue2)
+                                 const struct
+                                 TALER_DenominationKeyValidityPS *issue2)
 {
   const struct TALER_DenominationKeyValidityPS *issue1 = cls;
 
@@ -159,26 +160,29 @@ run (void *cls)
   struct TALER_DenominationPublicKey denom_pub;
   struct GNUNET_HashCode denom_pub_hash;
   denom_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_priv.rsa_private_key);
+  denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
+    denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key, &denom_pub_hash);
 
   struct GNUNET_TIME_Absolute now, past, future, date;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   past = GNUNET_TIME_absolute_subtract (now,
-                                        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS,
-                                                                       4));
+                                        GNUNET_TIME_relative_multiply (
+                                          GNUNET_TIME_UNIT_HOURS,
+                                          4));
   future = GNUNET_TIME_absolute_add (now,
-                                     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS,
-                                                                  4));
+                                     GNUNET_TIME_relative_multiply (
+                                       GNUNET_TIME_UNIT_HOURS,
+                                       4));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: auditor_insert_exchange\n");
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-	  plugin->insert_exchange (plugin->cls,
-				   session,
-				   &master_pub,
-				   "https://exchange/"));
+          plugin->insert_exchange (plugin->cls,
+                                   session,
+                                   &master_pub,
+                                   "https://exchange/"));
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -190,16 +194,18 @@ run (void *cls)
 
   issue.start = GNUNET_TIME_absolute_hton (now);
   issue.expire_withdraw = GNUNET_TIME_absolute_hton
-    (GNUNET_TIME_absolute_add (now,
-                               GNUNET_TIME_UNIT_HOURS));
+                            (GNUNET_TIME_absolute_add (now,
+                                                       GNUNET_TIME_UNIT_HOURS));
   issue.expire_deposit = GNUNET_TIME_absolute_hton
-      (GNUNET_TIME_absolute_add
-       (now,
-        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
+                           (GNUNET_TIME_absolute_add
+                             (now,
+                             GNUNET_TIME_relative_multiply (
+                               GNUNET_TIME_UNIT_HOURS, 2)));
   issue.expire_legal = GNUNET_TIME_absolute_hton
-      (GNUNET_TIME_absolute_add
-       (now,
-        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
+                         (GNUNET_TIME_absolute_add
+                           (now,
+                           GNUNET_TIME_relative_multiply (
+                             GNUNET_TIME_UNIT_HOURS, 3)));
   TALER_amount_hton (&issue.value, &value);
   TALER_amount_hton (&issue.fee_withdraw, &fee_withdraw);
   TALER_amount_hton (&issue.fee_deposit, &fee_deposit);
@@ -318,7 +324,8 @@ run (void *cls)
 
   FAILIF (0 != GNUNET_memcmp (&date, &future)
           || 0 != GNUNET_memcmp (&reserve_balance2, &reserve_balance)
-          || 0 != GNUNET_memcmp (&withdraw_fee_balance2, &withdraw_fee_balance));
+          || 0 != GNUNET_memcmp (&withdraw_fee_balance2,
+                                 &withdraw_fee_balance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_summary\n");
@@ -355,8 +362,8 @@ run (void *cls)
 
   FAILIF ( (0 != GNUNET_memcmp (&reserve_balance2,
                                 &reserve_balance) ||
-	    (0 != GNUNET_memcmp (&withdraw_fee_balance2,
-                             &withdraw_fee_balance)) ) );
+            (0 != GNUNET_memcmp (&withdraw_fee_balance2,
+                                 &withdraw_fee_balance)) ) );
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_balance\n");
@@ -476,23 +483,23 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_balance_summary (plugin->cls,
-                                            session,
-                                            &master_pub,
-                                            &denom_balance2,
-                                            &deposit_fee_balance2,
-                                            &melt_fee_balance2,
-                                            &refund_fee_balance2,
-                                            &rbalance2,
-                                            &loss2));
+                                       session,
+                                       &master_pub,
+                                       &denom_balance2,
+                                       &deposit_fee_balance2,
+                                       &melt_fee_balance2,
+                                       &refund_fee_balance2,
+                                       &rbalance2,
+                                       &loss2));
 
   FAILIF ( (0 != GNUNET_memcmp (&denom_balance2,
                                 &denom_balance) ) ||
-	   (0 != GNUNET_memcmp (&deposit_fee_balance2,
-                            &deposit_fee_balance) ) ||
-	   (0 != GNUNET_memcmp (&melt_fee_balance2,
-                            &melt_fee_balance) ) ||
-	   (0 != GNUNET_memcmp (&refund_fee_balance2,
-                            &refund_fee_balance)) );
+           (0 != GNUNET_memcmp (&deposit_fee_balance2,
+                                &deposit_fee_balance) ) ||
+           (0 != GNUNET_memcmp (&melt_fee_balance2,
+                                &melt_fee_balance) ) ||
+           (0 != GNUNET_memcmp (&refund_fee_balance2,
+                                &refund_fee_balance)) );
   FAILIF (0 != GNUNET_memcmp (&rbalance2,
                               &rbalance));
   FAILIF (0 != GNUNET_memcmp (&loss2,
@@ -525,9 +532,12 @@ run (void *cls)
 
   int
   select_historic_denom_revenue_result (void *cls,
-                                        const struct GNUNET_HashCode *denom_pub_hash2,
-                                        struct GNUNET_TIME_Absolute revenue_timestamp2,
-                                        const struct TALER_Amount *revenue_balance2,
+                                        const struct
+                                        GNUNET_HashCode *denom_pub_hash2,
+                                        struct GNUNET_TIME_Absolute
+                                        revenue_timestamp2,
+                                        const struct
+                                        TALER_Amount *revenue_balance2,
                                         const struct TALER_Amount *loss2)
   {
     static int n = 0;
@@ -535,19 +545,19 @@ run (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "select_historic_denom_revenue_result: row %u\n", n);
 
-    if (2 <= n++
-        || cls != NULL
-        || (0 != GNUNET_memcmp (&revenue_timestamp2, &past)
-            && 0 != GNUNET_memcmp (&revenue_timestamp2, &now))
-        || (0 != GNUNET_memcmp (denom_pub_hash2, &denom_pub_hash)
-            && 0 != GNUNET_memcmp (denom_pub_hash2, &rnd_hash))
-        || 0 != GNUNET_memcmp (revenue_balance2, &rbalance)
-        || 0 != GNUNET_memcmp (loss2, &loss))
+    if ((2 <= n++)
+        || (cls != NULL)
+        || ((0 != GNUNET_memcmp (&revenue_timestamp2, &past))
+            && (0 != GNUNET_memcmp (&revenue_timestamp2, &now)))
+        || ((0 != GNUNET_memcmp (denom_pub_hash2, &denom_pub_hash))
+            && (0 != GNUNET_memcmp (denom_pub_hash2, &rnd_hash)))
+        || (0 != GNUNET_memcmp (revenue_balance2, &rbalance))
+        || (0 != GNUNET_memcmp (loss2, &loss)))
     {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "select_historic_denom_revenue_result: result does not match\n");
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "select_historic_denom_revenue_result: result does not match\n");
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
     }
     return GNUNET_OK;
   }
@@ -556,7 +566,8 @@ run (void *cls)
           plugin->select_historic_denom_revenue (plugin->cls,
                                                  session,
                                                  &master_pub,
-                                                 &select_historic_denom_revenue_result,
+                                                 &
+                                                 select_historic_denom_revenue_result,
                                                  NULL));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -588,26 +599,28 @@ run (void *cls)
 
   int
   select_historic_reserve_revenue_result (void *cls,
-                                          struct GNUNET_TIME_Absolute start_time2,
+                                          struct GNUNET_TIME_Absolute
+                                          start_time2,
                                           struct GNUNET_TIME_Absolute end_time2,
-                                          const struct TALER_Amount *reserve_profits2)
+                                          const struct
+                                          TALER_Amount *reserve_profits2)
   {
     static int n = 0;
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "select_historic_reserve_revenue_result: row %u\n", n);
 
-    if (2 <= n++
-        || cls != NULL
-        || (0 != GNUNET_memcmp (&start_time2, &past)
-            && 0 != GNUNET_memcmp (&start_time2, &now))
-        || 0 != GNUNET_memcmp (&end_time2, &future)
-        || 0 != GNUNET_memcmp (reserve_profits2, &reserve_profits))
+    if ((2 <= n++)
+        || (cls != NULL)
+        || ((0 != GNUNET_memcmp (&start_time2, &past))
+            && (0 != GNUNET_memcmp (&start_time2, &now)))
+        || (0 != GNUNET_memcmp (&end_time2, &future))
+        || (0 != GNUNET_memcmp (reserve_profits2, &reserve_profits)))
     {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "select_historic_reserve_revenue_result: result does not match\n");
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "select_historic_reserve_revenue_result: result does not match\n");
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
     }
     return GNUNET_OK;
   }
@@ -700,7 +713,7 @@ run (void *cls)
 
   result = 0;
 
-drop:
+  drop:
   if (NULL != session)
   {
     plugin->rollback (plugin->cls,
@@ -721,7 +734,7 @@ drop:
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls,
                                      GNUNET_YES));
- unload:
+  unload:
   TALER_AUDITORDB_plugin_unload (plugin);
   plugin = NULL;
 }

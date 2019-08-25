@@ -25,8 +25,8 @@
 
 
 int
-main(int argc,
-     const char *const argv[])
+main (int argc,
+      const char *const argv[])
 {
   struct TALER_MasterPublicKeyP master_pub;
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
@@ -34,7 +34,7 @@ main(int argc,
   json_t *wire;
   const char *payto = "payto://x-taler-bank/42";
   char *p;
-  
+
   GNUNET_log_setup ("test-json-wire",
                     "WARNING",
                     NULL);
@@ -52,7 +52,7 @@ main(int argc,
                  TALER_JSON_exchange_wire_signature_check (wire,
                                                            &master_pub));
   json_decref (wire);
-  
+
   return 0;
 }
 

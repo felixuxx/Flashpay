@@ -66,13 +66,14 @@ main (int argc,
   char *cfgfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
-    GNUNET_GETOPT_option_help ("Add or remove exchange to list of audited exchanges"),
+    GNUNET_GETOPT_option_help (
+      "Add or remove exchange to list of audited exchanges"),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_base32_auto ('m',
-                                       "exchange-key",
-                                       "KEY",
-                                       "public key of the exchange (Crockford base32 encoded)",
-                                       &master_public_key)),
+      (GNUNET_GETOPT_option_base32_auto ('m',
+                                         "exchange-key",
+                                         "KEY",
+                                         "public key of the exchange (Crockford base32 encoded)",
+                                         &master_public_key)),
     GNUNET_GETOPT_option_string ('u',
                                  "exchange-url",
                                  "URL",
@@ -108,7 +109,7 @@ main (int argc,
                                  cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
+                _ ("Malformed configuration file `%s', exit ...\n"),
                 cfgfile);
     GNUNET_free_non_null (cfgfile);
     return 1;
@@ -120,22 +121,22 @@ main (int argc,
     if (NULL == exchange_url)
     {
       FPRINTF (stderr,
-	       _("Missing either `%s' or `%s'.\n"),
-	       "-u URL",
-	       "--remove");
+               _ ("Missing either `%s' or `%s'.\n"),
+               "-u URL",
+               "--remove");
       return 1;
     }
     if ( (0 == strlen (exchange_url)) ||
-	 ( (0 != strncasecmp ("http://",
-			      exchange_url,
-			      strlen ("http://"))) &&
-	   (0 != strncasecmp ("https://",
-			      exchange_url,
-			      strlen ("https://"))) )  ||
-	 ('/' != exchange_url[strlen(exchange_url)-1]) )
+         ( (0 != strncasecmp ("http://",
+                              exchange_url,
+                              strlen ("http://"))) &&
+           (0 != strncasecmp ("https://",
+                              exchange_url,
+                              strlen ("https://"))) )  ||
+         ('/' != exchange_url[strlen (exchange_url) - 1]) )
     {
       fprintf (stderr,
-	       "Exchange URL must begin with `http://` or `https://` and end with `/'\n");
+               "Exchange URL must begin with `http://` or `https://` and end with `/'\n");
       return 1;
     }
   }

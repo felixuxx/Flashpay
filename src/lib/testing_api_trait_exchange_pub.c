@@ -42,8 +42,8 @@
 int
 TALER_TESTING_get_trait_exchange_pub
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_ExchangePublicKeyP **exchange_pub)
+  unsigned int index,
+  const struct TALER_ExchangePublicKeyP **exchange_pub)
 {
   return cmd->traits (cmd->cls,
                       (const void **) exchange_pub,
@@ -63,7 +63,7 @@ TALER_TESTING_get_trait_exchange_pub
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_exchange_pub
   (unsigned int index,
-   const struct TALER_ExchangePublicKeyP *exchange_pub)
+  const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

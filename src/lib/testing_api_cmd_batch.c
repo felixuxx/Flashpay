@@ -91,7 +91,7 @@ batch_cleanup (void *cls,
 {
   struct BatchState *bs = cls;
 
-  for (unsigned int i=0;
+  for (unsigned int i = 0;
        NULL != bs->batch[i].label;
        i++)
     bs->batch[i].cleanup (bs->batch[i].cls,
@@ -158,7 +158,7 @@ TALER_TESTING_cmd_batch (const char *label,
   bs = GNUNET_new (struct BatchState);
 
   /* Get number of commands.  */
-  for (i=0;NULL != batch[i].label;i++)
+  for (i = 0; NULL != batch[i].label; i++)
     /* noop */
     ;
 

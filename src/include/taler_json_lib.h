@@ -77,7 +77,7 @@ TALER_JSON_spec_amount (const char *name,
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_nbo (const char *name,
-			    struct TALER_AmountNBO *r_amount);
+                            struct TALER_AmountNBO *r_amount);
 
 
 /**
@@ -163,7 +163,8 @@ TALER_JSON_exchange_wire_signature_hash (const json_t *wire_s,
  */
 int
 TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
-                                          const struct TALER_MasterPublicKeyP *master_pub);
+                                          const struct
+                                          TALER_MasterPublicKeyP *master_pub);
 
 
 /**
@@ -174,7 +175,8 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
  */
 json_t *
 TALER_JSON_exchange_wire_signature_make (const char *payto_url,
-                                         const struct TALER_MasterPrivateKeyP *master_priv);
+                                         const struct
+                                         TALER_MasterPrivateKeyP *master_priv);
 
 
 /**

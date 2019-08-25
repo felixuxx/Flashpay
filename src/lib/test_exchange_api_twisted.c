@@ -97,7 +97,7 @@ static struct GNUNET_OS_Process *twisterd;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-   TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
 
 /**
  * Execute the taler-exchange-aggregator command with
@@ -106,7 +106,7 @@ static struct GNUNET_OS_Process *twisterd;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-   TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -117,9 +117,11 @@ static struct GNUNET_OS_Process *twisterd;
  * @param url exchange_url
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-   TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-     fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
-     USER_LOGIN_NAME, USER_LOGIN_PASS, exchange_url)
+  TALER_TESTING_cmd_fakebank_transfer (label, amount, \
+                                       fakebank_url, USER_ACCOUNT_NO, \
+                                       EXCHANGE_ACCOUNT_NO, \
+                                       USER_LOGIN_NAME, USER_LOGIN_PASS, \
+                                       exchange_url)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -129,10 +131,10 @@ static struct GNUNET_OS_Process *twisterd;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE_SUBJECT(label,amount,subject) \
-   TALER_TESTING_cmd_fakebank_transfer_with_subject \
-     (label, amount, fakebank_url, USER_ACCOUNT_NO, \
-      EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-      subject)
+  TALER_TESTING_cmd_fakebank_transfer_with_subject \
+    (label, amount, fakebank_url, USER_ACCOUNT_NO, \
+    EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
+    subject)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -152,7 +154,7 @@ run (void *cls,
 
     CMD_TRANSFER_TO_EXCHANGE
       ("refresh-create-reserve",
-       "EUR:5.01"),
+      "EUR:5.01"),
 
     /**
      * Make previous command effective.
@@ -165,42 +167,42 @@ run (void *cls,
      */
     TALER_TESTING_cmd_withdraw_amount
       ("refresh-withdraw-coin",
-       "refresh-create-reserve",
-       "EUR:5",
-       MHD_HTTP_OK),
+      "refresh-create-reserve",
+      "EUR:5",
+      MHD_HTTP_OK),
 
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-partial",
-       "refresh-withdraw-coin",
-       0,
-       TALER_TESTING_make_wire_details
-         (42,
-          fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\
+      "refresh-withdraw-coin",
+      0,
+      TALER_TESTING_make_wire_details
+        (42,
+        fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
-       GNUNET_TIME_UNIT_ZERO,
-       "EUR:1",
-       MHD_HTTP_OK),
+      GNUNET_TIME_UNIT_ZERO,
+      "EUR:1",
+      MHD_HTTP_OK),
 
     /**
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt",
-       "refresh-withdraw-coin",
-       MHD_HTTP_OK,
-       NULL),
+      "refresh-withdraw-coin",
+      MHD_HTTP_OK,
+      NULL),
 
     /* Trigger 409 Conflict.  */
     TALER_TESTING_cmd_flip_upload
       ("flip-upload",
-       CONFIG_FILE,
-       "transfer_privs.0"),
+      CONFIG_FILE,
+      "transfer_privs.0"),
 
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-(flipped-)reveal",
-       "refresh-melt",
-       MHD_HTTP_CONFLICT),
+      "refresh-melt",
+      MHD_HTTP_CONFLICT),
 
     TALER_TESTING_cmd_end ()
 
@@ -216,55 +218,55 @@ run (void *cls,
 
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-r1",
-       "EUR:5.01"),
+      "EUR:5.01"),
 
     CMD_EXEC_WIREWATCH
       ("wirewatch-r1"),
 
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-r1",
-       "create-reserve-r1",
-       "EUR:5",
-       MHD_HTTP_OK),
+      "create-reserve-r1",
+      "EUR:5",
+      MHD_HTTP_OK),
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1",
-       "withdraw-coin-r1",
-       0,
-       TALER_TESTING_make_wire_details
-         (42,
-          fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\","
-                    "\"value\":\"EUR:5\"}]}",
-       GNUNET_TIME_UNIT_MINUTES,
-       "EUR:5",
-       MHD_HTTP_OK),
+      "withdraw-coin-r1",
+      0,
+      TALER_TESTING_make_wire_details
+        (42,
+        fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\","
+      "\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_MINUTES,
+      "EUR:5",
+      MHD_HTTP_OK),
 
     TALER_TESTING_cmd_refund
       ("refund-currency-missmatch",
-       MHD_HTTP_PRECONDITION_FAILED,
-       "USD:5",
-       "USD:0.01",
-       "deposit-refund-1"),
+      MHD_HTTP_PRECONDITION_FAILED,
+      "USD:5",
+      "USD:0.01",
+      "deposit-refund-1"),
 
     TALER_TESTING_cmd_refund
       ("refund-fee-above-amount",
-       MHD_HTTP_BAD_REQUEST,
-       "EUR:5",
-       "EUR:10",
-       "deposit-refund-1"),
+      MHD_HTTP_BAD_REQUEST,
+      "EUR:5",
+      "EUR:10",
+      "deposit-refund-1"),
 
     TALER_TESTING_cmd_flip_upload
       ("flip-upload",
-       CONFIG_FILE,
-       "merchant_sig"),
+      CONFIG_FILE,
+      "merchant_sig"),
 
     TALER_TESTING_cmd_refund
       ("refund-bad-sig",
-       MHD_HTTP_UNAUTHORIZED,
-       "EUR:5",
-       "EUR:0.01",
-       "deposit-refund-1"),
+      MHD_HTTP_UNAUTHORIZED,
+      "EUR:5",
+      "EUR:0.01",
+      "deposit-refund-1"),
 
     /* This next deposit CMD is only used to provide a
      * good merchant signature to the next (failing) refund
@@ -272,40 +274,40 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-to-fail",
-       "withdraw-coin-r1",
-       0, /* coin index.  */
-       TALER_TESTING_make_wire_details
-         (42,
-          fakebank_url),
-       /* This parameter will make any comparison about
-          h_contract_terms fail, when /refund will be handled.
-          So in other words, this is h_contract missmatch.  */
-       "{\"items\":[{\"name\":\"ice skate\","
-                    "\"value\":\"EUR:5\"}]}",
-       GNUNET_TIME_UNIT_MINUTES,
-       "EUR:5",
-       MHD_HTTP_FORBIDDEN),
+      "withdraw-coin-r1",
+      0,  /* coin index.  */
+      TALER_TESTING_make_wire_details
+        (42,
+        fakebank_url),
+      /* This parameter will make any comparison about
+         h_contract_terms fail, when /refund will be handled.
+         So in other words, this is h_contract missmatch.  */
+      "{\"items\":[{\"name\":\"ice skate\","
+      "\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_MINUTES,
+      "EUR:5",
+      MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_refund
       ("refund-deposit-not-found",
-       MHD_HTTP_NOT_FOUND,
-       "EUR:5",
-       "EUR:0.01",
-       "deposit-refund-to-fail"),
+      MHD_HTTP_NOT_FOUND,
+      "EUR:5",
+      "EUR:0.01",
+      "deposit-refund-to-fail"),
 
     TALER_TESTING_cmd_refund
       ("refund-insufficient-funds",
-       MHD_HTTP_PRECONDITION_FAILED,
-       "EUR:50",
-       "EUR:0.01",
-       "deposit-refund-1"),
+      MHD_HTTP_PRECONDITION_FAILED,
+      "EUR:50",
+      "EUR:0.01",
+      "deposit-refund-1"),
 
     TALER_TESTING_cmd_refund
       ("refund-fee-too-low",
-       MHD_HTTP_BAD_REQUEST,
-       "EUR:5",
-       "EUR:0.000001",
-       "deposit-refund-1"),
+      MHD_HTTP_BAD_REQUEST,
+      "EUR:5",
+      "EUR:0.000001",
+      "deposit-refund-1"),
 
     TALER_TESTING_cmd_end ()
   };
@@ -341,7 +343,7 @@ purge_process (struct GNUNET_OS_Process *process)
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   unsigned int ret;
   /* These environment variables get in the way... */
@@ -351,12 +353,12 @@ main (int argc,
                     "DEBUG", NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
-               (CONFIG_FILE,
-                "account-2")))
+                                (CONFIG_FILE,
+                                "account-2")))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
-      (CONFIG_FILE)))
+                               (CONFIG_FILE)))
     return 77;
 
   TALER_TESTING_cleanup_files (CONFIG_FILE);
@@ -374,7 +376,7 @@ main (int argc,
   case GNUNET_OK:
 
     if (NULL == (twisterd = TALER_TESTING_run_twister
-        (CONFIG_FILE)))
+                              (CONFIG_FILE)))
       return 77;
 
     ret = TALER_TESTING_setup_with_exchange (&run,

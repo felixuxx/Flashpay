@@ -32,7 +32,8 @@
 /**
  * Commands for the interpreter.
  */
-enum OpCode {
+enum OpCode
+{
 
   /**
    * Terminate testcase with 'skipped' result.
@@ -86,14 +87,16 @@ struct Command
    */
   const char *label;
 
-  union {
+  union
+  {
 
     /**
      * If @e opcode is #OPCODE_EXPECT_TRANSACTION, this
      * specifies which transaction we expected.  Note that
      * the WTID will be set, not checked!
      */
-    struct {
+    struct
+    {
 
       /**
        * Amount to be transferred.
@@ -126,7 +129,8 @@ struct Command
      * If @e opcode is #OPCODE_DATABASE_DEPOST, this
      * specifies which deposit operation we should fake.
      */
-    struct {
+    struct
+    {
 
       /**
        * Each merchant name is automatically mapped to a unique
@@ -174,7 +178,7 @@ struct State
   /**
    * Array of commands to run.
    */
-  struct Command* commands;
+  struct Command*commands;
 
   /**
    * Offset of the next command to be run.
@@ -339,9 +343,10 @@ maint_child_death (void *cls)
   aggregator_state->ioff++;
   state = aggregator_state;
   aggregator_state = NULL;
-  child_death_task = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
-                                                     pr,
-                                                     &maint_child_death, NULL);
+  child_death_task = GNUNET_SCHEDULER_add_read_file (
+    GNUNET_TIME_UNIT_FOREVER_REL,
+    pr,
+    &maint_child_death, NULL);
 
   interpreter (state);
 }
@@ -354,7 +359,8 @@ maint_child_death (void *cls)
 static void
 fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
-  memset (issue, 0, sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
+  memset (issue, 0, sizeof (struct
+                            TALER_EXCHANGEDB_DenominationKeyInformationP));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:1",
                                              &issue->properties.value));
@@ -440,7 +446,8 @@ do_deposit (struct Command *cmd)
 
     GNUNET_asprintf (&str,
                      "payto://x-taler-bank/localhost:8082/%llu",
-                     (unsigned long long) cmd->details.deposit.merchant_account);
+                     (unsigned long
+                      long) cmd->details.deposit.merchant_account);
     deposit.receiver_wire_account
       = json_pack ("{s:s, s:s}",
                    "salt", "this-is-a-salt-value",
@@ -448,11 +455,13 @@ do_deposit (struct Command *cmd)
     GNUNET_free (str);
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_merchant_wire_signature_hash (deposit.receiver_wire_account,
-                                                          &deposit.h_wire));
+                 TALER_JSON_merchant_wire_signature_hash (
+                   deposit.receiver_wire_account,
+                   &deposit.h_wire));
   deposit.timestamp = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&deposit.timestamp);
-  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.wire_deadline);
+  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (
+    cmd->details.deposit.wire_deadline);
   GNUNET_TIME_round_abs (&deposit.wire_deadline);
 
   /* finally, actually perform the DB operation */
@@ -550,7 +559,7 @@ interpreter (void *cls)
         fail (cmd);
         return;
       }
-    return;
+      return;
     case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
       if (GNUNET_OK != TALER_FAKEBANK_check_empty (fb))
       {
@@ -585,7 +594,8 @@ interpreter (void *cls)
                                   &want_amount,
                                   cmd->details.expect_transaction.debit_account,
                                   cmd->details.expect_transaction.credit_account,
-                                  cmd->details.expect_transaction.exchange_base_url,
+                                  cmd->details.expect_transaction.
+                                  exchange_base_url,
                                   &cmd->details.expect_transaction.subject))
         {
           fail (cmd);
@@ -641,7 +651,8 @@ run_test ()
       .label = "expect-deposit-1",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.89"
     },
 
@@ -688,7 +699,8 @@ run_test ()
       .label = "expect-deposit-2",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:1.79"
     },
 
@@ -734,7 +746,8 @@ run_test ()
       .label = "expect-deposit-3a",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.89"
     },
     {
@@ -742,7 +755,8 @@ run_test ()
       .label = "expect-deposit-3b",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.89"
     },
     {
@@ -750,7 +764,8 @@ run_test ()
       .label = "expect-deposit-3c",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 5,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.89"
     },
     {
@@ -799,7 +814,8 @@ run_test ()
       .label = "expect-deposit-4",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.19"
     },
 
@@ -844,7 +860,8 @@ run_test ()
       .label = "expect-deposit-5",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.19"
     },
 
@@ -927,7 +944,8 @@ run_test ()
       .label = "expect-deposit-6",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.01"
     },
 
@@ -967,7 +985,8 @@ run_test ()
       .label = "expect-deposit-7",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.01"
     },
     /* Now check profit was actually taken */
@@ -989,7 +1008,8 @@ run_test ()
       .label = "expect-deposit-7",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.01"
     },
 
@@ -1047,7 +1067,8 @@ run_test ()
       .label = "expect-deposit-8",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.03"
     },
 
@@ -1107,7 +1128,8 @@ run_test ()
       .label = "expect-deposit-9",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transaction.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transaction.amount = "EUR:0.01"
     },
 
@@ -1166,7 +1188,7 @@ run (void *cls)
   fake_issue (&issue);
   dpk.rsa_public_key = coin_pub;
   GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
-				     &issue.properties.denom_hash);
+                                     &issue.properties.denom_hash);
   if ( (GNUNET_OK !=
         plugin->start (plugin->cls,
                        session,
@@ -1179,18 +1201,18 @@ run (void *cls)
        (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
         plugin->commit (plugin->cls,
                         session)) )
-    {
-      GNUNET_break (0);
-      TALER_EXCHANGEDB_plugin_unload (plugin);
-      plugin = NULL;
-      result = 77;
-      return;
-    }
+  {
+    GNUNET_break (0);
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
+    result = 77;
+    return;
+  }
   child_death_task =
     GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
-				    GNUNET_DISK_pipe_handle (sigpipe,
-							     GNUNET_DISK_PIPE_END_READ),
-				    &maint_child_death,
+                                    GNUNET_DISK_pipe_handle (sigpipe,
+                                                             GNUNET_DISK_PIPE_END_READ),
+                                    &maint_child_death,
                                     NULL);
   GNUNET_SCHEDULER_add_shutdown (&shutdown_action,
                                  NULL);
@@ -1217,13 +1239,13 @@ static void
 sighandler_child_death ()
 {
   static char c;
-  int old_errno = errno;	/* back-up errno */
+  int old_errno = errno;  /* back-up errno */
 
   GNUNET_break (1 ==
-		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
-					(sigpipe, GNUNET_DISK_PIPE_END_WRITE),
-					&c, sizeof (c)));
-  errno = old_errno;		/* restore errno */
+                GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
+                                          (sigpipe, GNUNET_DISK_PIPE_END_WRITE),
+                                        &c, sizeof (c)));
+  errno = old_errno;    /* restore errno */
 }
 
 
@@ -1266,14 +1288,14 @@ main (int argc,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+                "Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
     return 77;
   }
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     8082))
+                                     8082))
   {
     fprintf (stderr,
              "Required port %u not available, skipping.\n",

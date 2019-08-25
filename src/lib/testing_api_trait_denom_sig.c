@@ -44,8 +44,8 @@
 int
 TALER_TESTING_get_trait_denom_sig
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_DenominationSignature **denom_sig)
+  unsigned int index,
+  const struct TALER_DenominationSignature **denom_sig)
 {
   return cmd->traits (cmd->cls,
                       (const void **) denom_sig,
@@ -65,7 +65,7 @@ TALER_TESTING_get_trait_denom_sig
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_denom_sig
   (unsigned int index,
-   const struct TALER_DenominationSignature *denom_sig)
+  const struct TALER_DenominationSignature *denom_sig)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

@@ -94,7 +94,7 @@ handle_admin_add_incoming_finished (void *cls,
                                  &row_id),
         GNUNET_JSON_spec_absolute_time ("timestamp",
                                         &timestamp),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -217,8 +217,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
 
   GNUNET_assert
     (NULL != (aai->post_ctx.headers = curl_slist_append
-      (aai->post_ctx.headers,
-       "Content-Type: application/json")));
+                                        (aai->post_ctx.headers,
+                                        "Content-Type: application/json")));
 
   eh = curl_easy_init ();
 
@@ -248,7 +248,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
  * @param aai the admin add incoming request handle
  */
 void
-TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *aai)
+TALER_BANK_admin_add_incoming_cancel (struct
+                                      TALER_BANK_AdminAddIncomingHandle *aai)
 {
   if (NULL != aai->job)
   {

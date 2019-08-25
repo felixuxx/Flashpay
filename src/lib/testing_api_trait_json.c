@@ -43,8 +43,8 @@
 int
 TALER_TESTING_get_trait_exchange_keys
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const json_t **keys)
+  unsigned int index,
+  const json_t **keys)
 {
   return cmd->traits (cmd->cls,
                       (const void **) keys,
@@ -64,7 +64,7 @@ TALER_TESTING_get_trait_exchange_keys
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_exchange_keys
   (unsigned int index,
-   const json_t *keys)
+  const json_t *keys)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -87,8 +87,8 @@ TALER_TESTING_make_trait_exchange_keys
 int
 TALER_TESTING_get_trait_wire_details
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const json_t **wire_details)
+  unsigned int index,
+  const json_t **wire_details)
 {
   return cmd->traits (cmd->cls,
                       (const void **) wire_details,
@@ -109,7 +109,7 @@ TALER_TESTING_get_trait_wire_details
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wire_details
   (unsigned int index,
-   const json_t *wire_details)
+  const json_t *wire_details)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

@@ -33,7 +33,7 @@
 /**
  * Maximum POST request size.
  */
-#define REQUEST_BUFFER_MAX (1024*1024)
+#define REQUEST_BUFFER_MAX (1024 * 1024)
 
 
 
@@ -80,21 +80,21 @@ TEH_PARSE_post_json (struct MHD_Connection *connection,
 
   case GNUNET_JSON_PR_OUT_OF_MEMORY:
     return (MHD_NO == TEH_RESPONSE_reply_internal_error
-      (connection,
-       TALER_EC_PARSER_OUT_OF_MEMORY,
-       "out of memory")) ? GNUNET_SYSERR : GNUNET_NO;
+              (connection,
+              TALER_EC_PARSER_OUT_OF_MEMORY,
+              "out of memory")) ? GNUNET_SYSERR : GNUNET_NO;
 
   case GNUNET_JSON_PR_CONTINUE:
     return GNUNET_YES;
 
   case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
     return (MHD_NO == TEH_RESPONSE_reply_request_too_large
-      (connection)) ? GNUNET_SYSERR : GNUNET_NO;
+              (connection)) ? GNUNET_SYSERR : GNUNET_NO;
 
   case GNUNET_JSON_PR_JSON_INVALID:
     return (MHD_YES ==
             TEH_RESPONSE_reply_invalid_json (connection))
-      ? GNUNET_NO : GNUNET_SYSERR;
+           ? GNUNET_NO : GNUNET_SYSERR;
   case GNUNET_JSON_PR_SUCCESS:
     GNUNET_break (NULL != *json);
     return GNUNET_YES;
@@ -149,9 +149,9 @@ TEH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
   {
     return (MHD_NO ==
             TEH_RESPONSE_reply_arg_missing (connection,
-					    TALER_EC_PARAMETER_MISSING,
-					    param_name))
-      ? GNUNET_SYSERR : GNUNET_NO;
+                                            TALER_EC_PARAMETER_MISSING,
+                                            param_name))
+           ? GNUNET_SYSERR : GNUNET_NO;
   }
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (str,
@@ -160,9 +160,9 @@ TEH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
                                      out_size))
     return (MHD_NO ==
             TEH_RESPONSE_reply_arg_invalid (connection,
-					    TALER_EC_PARAMETER_MALFORMED,
-					    param_name))
-      ? GNUNET_SYSERR : GNUNET_NO;
+                                            TALER_EC_PARAMETER_MALFORMED,
+                                            param_name))
+           ? GNUNET_SYSERR : GNUNET_NO;
   return GNUNET_OK;
 }
 
@@ -203,10 +203,12 @@ TEH_PARSE_json_data (struct MHD_Connection *connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          "{s:s, s:I, s:s, s:I}",
                                          "error", "parse error",
-					 "code", (json_int_t) TALER_EC_JSON_INVALID_WITH_DETAILS,
+                                         "code",
+                                         (json_int_t)
+                                         TALER_EC_JSON_INVALID_WITH_DETAILS,
                                          "field", error_json_name,
                                          "line", (json_int_t) error_line))
-      ? GNUNET_NO : GNUNET_SYSERR;
+          ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
   return GNUNET_YES;
@@ -257,7 +259,7 @@ TEH_PARSE_json_array (struct MHD_Connection *connection,
                                          "{s:s, s:I}",
                                          "error", "parse error",
                                          "dimension", dim))
-      ? GNUNET_NO : GNUNET_SYSERR;
+          ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
   ret = GNUNET_JSON_parse (root,
@@ -275,7 +277,7 @@ TEH_PARSE_json_array (struct MHD_Connection *connection,
                                          "error", "parse error",
                                          "field", error_json_name,
                                          "line", (json_int_t) error_line))
-      ? GNUNET_NO : GNUNET_SYSERR;
+          ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
   return GNUNET_YES;

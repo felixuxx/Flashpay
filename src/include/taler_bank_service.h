@@ -31,7 +31,8 @@
 /**
  * Authentication method types.
  */
-enum TALER_BANK_AuthenticationMethod {
+enum TALER_BANK_AuthenticationMethod
+{
 
   /**
    * No authentication.
@@ -109,7 +110,8 @@ typedef void
                                               unsigned int http_status,
                                               enum TALER_ErrorCode ec,
                                               uint64_t serial_id,
-                                              struct GNUNET_TIME_Absolute timestamp,
+                                              struct GNUNET_TIME_Absolute
+                                              timestamp,
                                               const json_t *json);
 
 
@@ -153,13 +155,15 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
  * @param aai the admin add incoming request handle
  */
 void
-TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *aai);
+TALER_BANK_admin_add_incoming_cancel (struct
+                                      TALER_BANK_AdminAddIncomingHandle *aai);
 
 
 /**
  * Which types of transactions should be (or is being) returned?
  */
-enum TALER_BANK_Direction {
+enum TALER_BANK_Direction
+{
 
   /**
    * Base case, used to indicate errors or end of list.
@@ -179,7 +183,8 @@ enum TALER_BANK_Direction {
   /**
    * Return both types of transactions.
    */
-  TALER_BANK_DIRECTION_BOTH = (TALER_BANK_DIRECTION_CREDIT | TALER_BANK_DIRECTION_DEBIT),
+  TALER_BANK_DIRECTION_BOTH = (TALER_BANK_DIRECTION_CREDIT
+                               | TALER_BANK_DIRECTION_DEBIT),
 
   /**
    * Bit mask that is applied to view transactions that have been
@@ -247,7 +252,8 @@ typedef void
                                      enum TALER_ErrorCode ec,
                                      enum TALER_BANK_Direction dir,
                                      uint64_t serial_id,
-                                     const struct TALER_BANK_TransferDetails *details,
+                                     const struct
+                                     TALER_BANK_TransferDetails *details,
                                      const json_t *json);
 
 

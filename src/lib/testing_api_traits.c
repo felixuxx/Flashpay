@@ -61,7 +61,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
                          const char *trait,
                          unsigned int index)
 {
-  for (unsigned int i=0; NULL != traits[i].trait_name; i++)
+  for (unsigned int i = 0; NULL != traits[i].trait_name; i++)
   {
     if ( (0 == strcmp (trait, traits[i].trait_name)) &&
          (index == traits[i].index) )

@@ -43,8 +43,8 @@
 int
 TALER_TESTING_get_trait_wtid
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_WireTransferIdentifierRawP **wtid)
+  unsigned int index,
+  const struct TALER_WireTransferIdentifierRawP **wtid)
 {
   return cmd->traits (cmd->cls,
                       (const void **) wtid,
@@ -63,7 +63,7 @@ TALER_TESTING_get_trait_wtid
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_wtid
   (unsigned int index,
-   const struct TALER_WireTransferIdentifierRawP *wtid)
+  const struct TALER_WireTransferIdentifierRawP *wtid)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

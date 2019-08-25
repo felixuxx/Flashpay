@@ -320,7 +320,7 @@ TEH_json_validate_wireformat (const json_t *wire,
                      payto_url);
     return TALER_EC_PAYTO_MALFORMED;
   }
-  for (struct Plugin *p=wire_head; NULL != p; p = p->next)
+  for (struct Plugin *p = wire_head; NULL != p; p = p->next)
   {
     if (0 == strcasecmp (p->plugin->method,
                          method))

@@ -28,23 +28,23 @@
  * Different account types supported by payto://.
  */
 enum TALER_PaytoAccountType
-  {
+{
 
-   /**
-    * Used to indicate an uninitialized struct.
-    */
-   TALER_PAC_NONE = 0,
+  /**
+   * Used to indicate an uninitialized struct.
+   */
+  TALER_PAC_NONE = 0,
 
-   /**
-    * Account type of a bank running the x-taler-bank protocol.
-    */
-   TALER_PAC_X_TALER_BANK,
+  /**
+   * Account type of a bank running the x-taler-bank protocol.
+   */
+  TALER_PAC_X_TALER_BANK,
 
-   /**
-    * Account identified by IBAN number.
-    */
-   TALER_PAC_IBAN
-  };
+  /**
+   * Account identified by IBAN number.
+   */
+  TALER_PAC_IBAN
+};
 
 /**
  * Information about an account extracted from a payto://-URL.
@@ -60,13 +60,15 @@ struct TALER_Account
   /**
    * Internals depending on @e type.
    */
-  union {
+  union
+  {
 
     /**
      * Taler bank address from x-taler-bank.  Set if
      * @e type is #TALER_AC_X_TALER_BANK.
      */
-    struct {
+    struct
+    {
 
       /**
        * Hostname of the bank (possibly including port).
@@ -88,7 +90,8 @@ struct TALER_Account
      * Taler bank address from iban.  Set if
      * @e type is #TALER_AC_IBAN.
      */
-    struct {
+    struct
+    {
 
       /**
        * IBAN number.

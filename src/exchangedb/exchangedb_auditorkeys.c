@@ -141,8 +141,8 @@ auditor_iter (void *cls,
     return GNUNET_OK;
   }
   if ( (size - sizeof (struct AuditorFileHeaderP)) / dki_len <
-       (sizeof (struct TALER_DenominationKeyValidityPS) +
-        sizeof (struct TALER_AuditorSignatureP)) )
+       (sizeof (struct TALER_DenominationKeyValidityPS)
+        + sizeof (struct TALER_AuditorSignatureP)) )
   {
     GNUNET_break_op (0);
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -152,9 +152,9 @@ auditor_iter (void *cls,
     return GNUNET_OK;
   }
   url_len = size
-    - sizeof (struct AuditorFileHeaderP)
-    - dki_len * (sizeof (struct TALER_DenominationKeyValidityPS) +
-                 sizeof (struct TALER_AuditorSignatureP));
+            - sizeof (struct AuditorFileHeaderP)
+            - dki_len * (sizeof (struct TALER_DenominationKeyValidityPS)
+                         + sizeof (struct TALER_AuditorSignatureP));
   sigs = (const struct TALER_AuditorSignatureP *) &af[1];
   dki = (const struct TALER_DenominationKeyValidityPS *) &sigs[dki_len];
   auditor_url = (const char *) &dki[dki_len];
@@ -171,12 +171,12 @@ auditor_iter (void *cls,
   /* Ignoring return value to not interrupt the iteration */
   if (GNUNET_OK !=
       (iret = aic->it (aic->it_cls,
-		       &af->apub,
-		       auditor_url,
-		       &af->mpub,
-		       dki_len,
-		       sigs,
-		       dki)))
+                       &af->apub,
+                       auditor_url,
+                       &af->mpub,
+                       dki_len,
+                       sigs,
+                       dki)))
   {
     GNUNET_free (af);
     if (GNUNET_SYSERR == iret)
@@ -248,7 +248,8 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
                                 const struct TALER_AuditorSignatureP *asigs,
                                 const struct TALER_MasterPublicKeyP *mpub,
                                 unsigned int dki_len,
-                                const struct TALER_DenominationKeyValidityPS *dki)
+                                const struct
+                                TALER_DenominationKeyValidityPS *dki)
 {
   struct AuditorFileHeaderP af;
   struct GNUNET_DISK_FileHandle *fh;
@@ -262,9 +263,11 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
   af.dki_len = htonl ((uint32_t) dki_len);
   ret = GNUNET_SYSERR;
   if (NULL == (fh = GNUNET_DISK_file_open
-               (filename,
-                GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
-                GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
+                      (filename,
+                      GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE
+                      | GNUNET_DISK_OPEN_TRUNCATE,
+                      GNUNET_DISK_PERM_USER_READ
+                      | GNUNET_DISK_PERM_USER_WRITE)))
     goto cleanup;
   wsize = sizeof (struct AuditorFileHeaderP);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
@@ -291,7 +294,7 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
                               auditor_url,
                               wsize))
     ret = GNUNET_OK;
- cleanup:
+  cleanup:
   eno = errno;
   if (NULL != fh)
     (void) GNUNET_DISK_file_close (fh);

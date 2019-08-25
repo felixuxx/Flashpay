@@ -117,8 +117,8 @@ do_retry (void *cls)
 
   dcs->retry_task = NULL;
   deposit_confirmation_run (dcs,
-			    NULL,
-			    dcs->is);
+                            NULL,
+                            dcs->is);
 }
 
 
@@ -141,12 +141,12 @@ deposit_confirmation_cb (void *cls,
 
   dcs->dc = NULL;
   if (dcs->expected_response_code != http_status)
-    {
+  {
     if (GNUNET_YES == dcs->do_retry)
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying deposit confirmation failed with %u/%d\n",
@@ -220,22 +220,22 @@ deposit_confirmation_run (void *cls,
   }
 
   GNUNET_assert (GNUNET_OK ==
-		 TALER_TESTING_get_trait_exchange_pub (deposit_cmd,
-                                               dcs->coin_index,
-                                               &exchange_pub));
+                 TALER_TESTING_get_trait_exchange_pub (deposit_cmd,
+                                                       dcs->coin_index,
+                                                       &exchange_pub));
   GNUNET_assert (GNUNET_OK ==
-		 TALER_TESTING_get_trait_exchange_sig (deposit_cmd,
-                                               dcs->coin_index,
-                                               &exchange_sig));
+                 TALER_TESTING_get_trait_exchange_sig (deposit_cmd,
+                                                       dcs->coin_index,
+                                                       &exchange_sig));
   keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
   GNUNET_assert (NULL != keys);
   spk = TALER_EXCHANGE_get_exchange_signing_key_info (keys,
                                                       exchange_pub);
 
   GNUNET_assert (GNUNET_OK ==
-		 TALER_TESTING_get_trait_contract_terms (deposit_cmd,
-                                                 dcs->coin_index,
-                                                 &contract_terms));
+                 TALER_TESTING_get_trait_contract_terms (deposit_cmd,
+                                                         dcs->coin_index,
+                                                         &contract_terms));
   /* Very unlikely to fail */
   GNUNET_assert (NULL != contract_terms);
   GNUNET_assert (GNUNET_OK ==
@@ -267,7 +267,7 @@ deposit_confirmation_run (void *cls,
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
 
     if (GNUNET_OK !=
@@ -284,7 +284,7 @@ deposit_confirmation_run (void *cls,
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
 
     if (GNUNET_OK !=
@@ -296,23 +296,23 @@ deposit_confirmation_run (void *cls,
     }
   }
   dcs->dc = TALER_AUDITOR_deposit_confirmation
-    (dcs->auditor,
-     &h_wire,
-     &h_contract_terms,
-     timestamp,
-     refund_deadline,
-     &amount_without_fee,
-     &coin_pub,
-     &merchant_pub,
-     exchange_pub,
-     exchange_sig,
-     &keys->master_pub,
-     spk->valid_from,
-     spk->valid_until,
-     spk->valid_legal,
-     &spk->master_sig,
-     &deposit_confirmation_cb,
-     dcs);
+              (dcs->auditor,
+              &h_wire,
+              &h_contract_terms,
+              timestamp,
+              refund_deadline,
+              &amount_without_fee,
+              &coin_pub,
+              &merchant_pub,
+              exchange_pub,
+              exchange_sig,
+              &keys->master_pub,
+              spk->valid_from,
+              spk->valid_until,
+              spk->valid_legal,
+              &spk->master_sig,
+              &deposit_confirmation_cb,
+              dcs);
 
   if (NULL == dcs->dc)
   {
@@ -395,11 +395,11 @@ deposit_confirmation_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation
   (const char *label,
-   struct TALER_AUDITOR_Handle *auditor,
-   const char *deposit_reference,
-   unsigned int coin_index,
-   const char *amount_without_fee,
-   unsigned int expected_response_code)
+  struct TALER_AUDITOR_Handle *auditor,
+  const char *deposit_reference,
+  unsigned int coin_index,
+  const char *amount_without_fee,
+  unsigned int expected_response_code)
 {
   struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct DepositConfirmationState *dcs;
@@ -429,7 +429,8 @@ TALER_TESTING_cmd_deposit_confirmation
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command cmd)
+TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command
+                                                   cmd)
 {
   struct DepositConfirmationState *dcs;
 

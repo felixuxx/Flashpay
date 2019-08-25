@@ -151,7 +151,7 @@ confirmation_cb (void *cls,
     GNUNET_assert (NULL != emsg);
     fprintf (stderr,
              "%s",
-	     emsg);
+             emsg);
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -179,22 +179,22 @@ prepare_cb (void *cls,
   struct TALER_WIRE_ExecuteHandle *eh;
 
   if (NULL == (eh = plugin_handle->execute_wire_transfer
-      (plugin_handle->cls,
-      buf,
-      buf_size,
-      confirmation_cb,
-      NULL)))
+                      (plugin_handle->cls,
+                      buf,
+                      buf_size,
+                      confirmation_cb,
+                      NULL)))
   {
     fprintf (stderr,
              "Could not execute the wire transfer\n");
 
     plugin_handle->prepare_wire_transfer_cancel
       (plugin_handle->cls,
-       ph);
+      ph);
 
     plugin_handle->execute_wire_transfer_cancel
       (plugin_handle->cls,
-       eh);
+      eh);
 
     GNUNET_SCHEDULER_shutdown ();
   }
@@ -235,14 +235,14 @@ execute_wire_transfer ()
     return;
   }
   if (NULL == (ph = plugin_handle->prepare_wire_transfer
-    (plugin_handle->cls,
-     account_section,
-     destination_account_url,
-     &a,
-     "http://exchange.example.com/",
-     &wtid, /* Any value will do.  */
-     prepare_cb,
-     NULL)))
+                      (plugin_handle->cls,
+                      account_section,
+                      destination_account_url,
+                      &a,
+                      "http://exchange.example.com/",
+                      &wtid, /* Any value will do.  */
+                      prepare_cb,
+                      NULL)))
   {
     fprintf (stderr,
              "Could not prepare the wire transfer\n");
@@ -269,20 +269,20 @@ execute_history ()
     GNUNET_assert
       (GNUNET_OK == GNUNET_STRINGS_string_to_data
         (since_when,
-         strlen (since_when),
-         since_when_bin,
-         bin_len));
+        strlen (since_when),
+        since_when_bin,
+        bin_len));
   }
 
   if (NULL == plugin_handle->get_history
-      (plugin_handle->cls,
-       account_section,
-       TALER_BANK_DIRECTION_BOTH,
-       since_when_bin,
-       bin_len,
-       -10,
-       history_cb,
-       NULL))
+        (plugin_handle->cls,
+        account_section,
+        TALER_BANK_DIRECTION_BOTH,
+        since_when_bin,
+        bin_len,
+        -10,
+        history_cb,
+        NULL))
   {
     fprintf (stderr,
              "Could not request the transaction history.\n");
@@ -327,10 +327,10 @@ run (void *cls,
   }
 
   if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string
-      (cfg,
-       account_section,
-       "plugin",
-       &plugin_name))
+        (cfg,
+        account_section,
+        "plugin",
+        &plugin_name))
   {
     fprintf (stderr,
              "Could not find the 'plugin' value under %s\n",
@@ -353,7 +353,7 @@ run (void *cls,
     execute_wire_transfer ();
   else
     fprintf (stderr,
-           "Please give either --history/-H or --transfer/t\n");
+             "Please give either --history/-H or --transfer/t\n");
 
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
@@ -422,13 +422,13 @@ main (int argc,
                                     "WARNING",
                                     NULL)); /* filename */
   ret = GNUNET_PROGRAM_run
-    (argc,
-     argv,
-     "taler-wire",
-     "CLI bank client.",
-     options,
-     &run,
-     NULL);
+          (argc,
+          argv,
+          "taler-wire",
+          "CLI bank client.",
+          options,
+          &run,
+          NULL);
   if (GNUNET_OK != ret)
     return ret;
   return global_ret;

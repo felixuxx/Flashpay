@@ -118,7 +118,7 @@ find_command (const struct InterpreterState *is,
                 "Attempt to lookup command for empty label\n");
     return NULL;
   }
-  for (unsigned int i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
+  for (unsigned int i = 0; TBI_OC_END != (cmd = &is->commands[i])->oc; i++)
     if ( (NULL != cmd->label) &&
          (0 == strcmp (cmd->label,
                        label)) )
@@ -144,7 +144,7 @@ test_cancelled (struct InterpreterState *is,
 {
   const struct TBI_Command *cmd = &is->commands[off];
 
-  for (unsigned int i=0;i<is->ip;i++)
+  for (unsigned int i = 0; i<is->ip; i++)
   {
     const struct TBI_Command *c = &is->commands[i];
 
@@ -238,7 +238,7 @@ build_history (struct InterpreterState *is,
   ok = GNUNET_NO;
   if (NULL == ref)
     ok = GNUNET_YES;
-  for (unsigned int off = start;off != end + inc; off += inc)
+  for (unsigned int off = start; off != end + inc; off += inc)
   {
     const struct TBI_Command *pos = &is->commands[off];
     int cancelled;
@@ -262,10 +262,12 @@ build_history (struct InterpreterState *is,
     if ( (GNUNET_YES == cancelled) &&
          (0 == (cmd->details.history.direction & TALER_BANK_DIRECTION_CANCEL)) )
       continue;
-    if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+    if ( ( (0 != (cmd->details.history.direction
+                  & TALER_BANK_DIRECTION_CREDIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.credit_account_no)) ||
-         ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+         ( (0 != (cmd->details.history.direction
+                  & TALER_BANK_DIRECTION_DEBIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.debit_account_no)) )
       total++; /* found matching record */
@@ -283,7 +285,7 @@ build_history (struct InterpreterState *is,
   ok = GNUNET_NO;
   if (NULL == ref)
     ok = GNUNET_YES;
-  for (unsigned int off = start;off != end + inc; off += inc)
+  for (unsigned int off = start; off != end + inc; off += inc)
   {
     const struct TBI_Command *pos = &is->commands[off];
     int cancelled;
@@ -302,10 +304,12 @@ build_history (struct InterpreterState *is,
       continue; /* skip until we find the marker */
     if (total >= cmd->details.history.num_results * inc)
       break; /* hit limit specified by command */
-    if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+    if ( ( (0 != (cmd->details.history.direction
+                  & TALER_BANK_DIRECTION_CREDIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.credit_account_no)) &&
-         ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+         ( (0 != (cmd->details.history.direction
+                  & TALER_BANK_DIRECTION_DEBIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.debit_account_no)) )
     {
@@ -319,7 +323,8 @@ build_history (struct InterpreterState *is,
          (0 == (cmd->details.history.direction & TALER_BANK_DIRECTION_CANCEL)) )
       continue;
 
-    if ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+    if ( (0 != (cmd->details.history.direction
+                & TALER_BANK_DIRECTION_CREDIT)) &&
          (cmd->details.history.account_number ==
           pos->details.admin_add_incoming.credit_account_no))
     {
@@ -329,11 +334,12 @@ build_history (struct InterpreterState *is,
       GNUNET_asprintf (&h[total].details.account_url,
                        "payto://x-taler-bank/%s/%llu",
                        "localhost:8080",
-                       (unsigned long long) pos->details.admin_add_incoming.debit_account_no);
+                       (unsigned long
+                        long) pos->details.admin_add_incoming.debit_account_no);
     }
     if ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
-           (cmd->details.history.account_number ==
-            pos->details.admin_add_incoming.debit_account_no))
+         (cmd->details.history.account_number ==
+          pos->details.admin_add_incoming.debit_account_no))
     {
       h[total].direction = TALER_BANK_DIRECTION_DEBIT;
       if (GNUNET_YES == cancelled)
@@ -341,18 +347,22 @@ build_history (struct InterpreterState *is,
       GNUNET_asprintf (&h[total].details.account_url,
                        "payto://x-taler-bank/%s/%llu",
                        "localhost:8080",
-                       (unsigned long long) pos->details.admin_add_incoming.credit_account_no);
+                       (unsigned long
+                        long) pos->details.admin_add_incoming.credit_account_no);
     }
-    if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+    if ( ( (0 != (cmd->details.history.direction
+                  & TALER_BANK_DIRECTION_CREDIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.credit_account_no)) ||
-         ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+         ( (0 != (cmd->details.history.direction
+                  & TALER_BANK_DIRECTION_DEBIT)) &&
            (cmd->details.history.account_number ==
             pos->details.admin_add_incoming.debit_account_no)) )
     {
       GNUNET_assert (GNUNET_OK ==
-                     TALER_string_to_amount (pos->details.admin_add_incoming.amount,
-                                             &h[total].details.amount));
+                     TALER_string_to_amount (
+                       pos->details.admin_add_incoming.amount,
+                       &h[total].details.amount));
       /* h[total].execution_date; // unknown here */
       h[total].row_id
         = pos->details.admin_add_incoming.row_id;
@@ -386,7 +396,7 @@ print_expected (struct History *h,
               (unsigned long long) h_len);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Expected history:\n");
-  for (uint64_t i=0;i<h_len;i++)
+  for (uint64_t i = 0; i<h_len; i++)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "H(%llu): %s%s (serial: %llu, subject: %s, to: %s)\n",
@@ -410,7 +420,7 @@ static void
 free_history (struct History *h,
               uint64_t h_len)
 {
-  for (uint64_t off = 0;off<h_len;off++)
+  for (uint64_t off = 0; off<h_len; off++)
   {
     GNUNET_free (h[off].details.wire_transfer_subject);
     GNUNET_free (h[off].details.account_url);
@@ -747,11 +757,14 @@ interpreter_run (void *cls)
       = TALER_BANK_admin_add_incoming (is->ctx,
                                        "http://localhost:8080",
                                        &auth,
-                                       cmd->details.admin_add_incoming.exchange_base_url,
+                                       cmd->details.admin_add_incoming.
+                                       exchange_base_url,
                                        cmd->details.admin_add_incoming.subject,
                                        &amount,
-                                       cmd->details.admin_add_incoming.debit_account_no,
-                                       cmd->details.admin_add_incoming.credit_account_no,
+                                       cmd->details.admin_add_incoming.
+                                       debit_account_no,
+                                       cmd->details.admin_add_incoming.
+                                       credit_account_no,
                                        &add_incoming_cb,
                                        is);
     if (NULL == cmd->details.admin_add_incoming.aih)
@@ -813,8 +826,9 @@ interpreter_run (void *cls)
                         cmd->details.expect_transfer.cmd_ref);
     GNUNET_assert (NULL != ref);
     GNUNET_assert (GNUNET_OK ==
-                   TALER_string_to_amount (ref->details.admin_add_incoming.amount,
-                                           &amount));
+                   TALER_string_to_amount (
+                     ref->details.admin_add_incoming.amount,
+                     &amount));
     {
       char *subject;
 
@@ -822,8 +836,10 @@ interpreter_run (void *cls)
           TALER_FAKEBANK_check (is->fakebank,
                                 &amount,
                                 ref->details.admin_add_incoming.debit_account_no,
-                                ref->details.admin_add_incoming.credit_account_no,
-                                ref->details.admin_add_incoming.exchange_base_url,
+                                ref->details.admin_add_incoming.
+                                credit_account_no,
+                                ref->details.admin_add_incoming.
+                                exchange_base_url,
                                 &subject))
       {
         GNUNET_break (0);
@@ -841,7 +857,7 @@ interpreter_run (void *cls)
       GNUNET_free (subject);
     }
     next (is);
-   return;
+    return;
   case TBI_OC_EXPECT_TRANSFERS_EMPTY:
     if (GNUNET_OK != TALER_FAKEBANK_check_empty (is->fakebank))
     {
@@ -928,7 +944,7 @@ do_shutdown (void *cls)
     is->timeout_task = NULL;
   }
 
-  for (unsigned int i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
+  for (unsigned int i = 0; TBI_OC_END != (cmd = &is->commands[i])->oc; i++)
   {
     switch (cmd->oc)
     {
@@ -942,7 +958,8 @@ do_shutdown (void *cls)
                     "Command %u (%s) did not complete\n",
                     i,
                     cmd->label);
-        TALER_BANK_admin_add_incoming_cancel (cmd->details.admin_add_incoming.aih);
+        TALER_BANK_admin_add_incoming_cancel (
+          cmd->details.admin_add_incoming.aih);
         cmd->details.admin_add_incoming.aih = NULL;
       }
       break;
@@ -1025,7 +1042,7 @@ TBI_run_interpreter (int *resultp,
                                        is);
   is->timeout_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
-                                    (GNUNET_TIME_UNIT_SECONDS, 150),
+                                      (GNUNET_TIME_UNIT_SECONDS, 150),
                                     &do_timeout, is);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
 }

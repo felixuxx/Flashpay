@@ -203,48 +203,48 @@ main (int argc, char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
-    (TALER_getopt_get_amount ('a',
-                              "amount",
-                              "VALUE",
-                              "value to transfer",
-                              &amount)),
+      (TALER_getopt_get_amount ('a',
+                                "amount",
+                                "VALUE",
+                                "value to transfer",
+                                &amount)),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_string ('b',
-                                  "bank",
-                                  "URL",
-                                  "base URL of the bank",
-                                  &bank_url)),
+      (GNUNET_GETOPT_option_string ('b',
+                                    "bank",
+                                    "URL",
+                                    "base URL of the bank",
+                                    &bank_url)),
     GNUNET_GETOPT_option_help ("Deposit funds into a Taler reserve"),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_ulong ('C',
-                                 "credit",
-                                 "ACCOUNT",
-                                 "number of the bank account to credit",
-                                 &credit_account_no)),
+      (GNUNET_GETOPT_option_ulong ('C',
+                                   "credit",
+                                   "ACCOUNT",
+                                   "number of the bank account to credit",
+                                   &credit_account_no)),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_ulong ('D',
-                                 "debit",
-                                 "ACCOUNT",
-                                 "number of the bank account to debit",
-                                 &debit_account_no)),
+      (GNUNET_GETOPT_option_ulong ('D',
+                                   "debit",
+                                   "ACCOUNT",
+                                   "number of the bank account to debit",
+                                   &debit_account_no)),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_string ('s',
-                                  "subject",
-                                  "STRING",
-                                  "specifies the wire transfer subject",
-                                  &subject)),
+      (GNUNET_GETOPT_option_string ('s',
+                                    "subject",
+                                    "STRING",
+                                    "specifies the wire transfer subject",
+                                    &subject)),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_string ('u',
-                                  "user",
-                                  "USERNAME",
-                                  "username to use for authentication",
-                                  &username)),
+      (GNUNET_GETOPT_option_string ('u',
+                                    "user",
+                                    "USERNAME",
+                                    "username to use for authentication",
+                                    &username)),
     GNUNET_GETOPT_option_mandatory
-    (GNUNET_GETOPT_option_string ('p',
-                                  "pass",
-                                  "PASSPHRASE",
-                                  "passphrase to use for authentication",
-                                  &password)),
+      (GNUNET_GETOPT_option_string ('p',
+                                    "pass",
+                                    "PASSPHRASE",
+                                    "passphrase to use for authentication",
+                                    &password)),
     GNUNET_GETOPT_OPTION_END
   };
 
@@ -256,9 +256,9 @@ main (int argc, char *const *argv)
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-bank-transfer",
-			  "Execute bank transfer",
-			  options,
-			  &run, NULL))
+                          "Execute bank transfer",
+                          options,
+                          &run, NULL))
     return 1;
   return global_ret;
 }

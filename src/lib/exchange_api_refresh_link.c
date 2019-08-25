@@ -98,7 +98,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
     GNUNET_JSON_spec_rsa_signature ("ev_sig", &bsig),
     GNUNET_JSON_spec_fixed_auto ("link_sig", &link_sig),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetSecretsP fc;
@@ -151,7 +151,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                         pd.coin_ev_size,
                         &ldp.coin_envelope_hash);
     GNUNET_free (pd.coin_ev);
-        
+
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
                                     &ldp.purpose,
@@ -163,7 +163,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       return GNUNET_SYSERR;
     }
   }
-  
+
   /* clean up */
   pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
   GNUNET_JSON_parse_free (spec);
@@ -204,12 +204,12 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 
      num_coins tracks the size of the 1d array we return,
      whilst 'i' and 'session' track the 2d array. */
-  for (session=0;session<json_array_size (json); session++)
+  for (session = 0; session<json_array_size (json); session++)
   {
     json_t *jsona;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_json ("new_coins", &jsona),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
 
     if (GNUNET_OK !=
@@ -244,7 +244,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     memset (sigs, 0, sizeof (sigs));
     memset (pubs, 0, sizeof (pubs));
     off_coin = 0;
-    for (session=0;session<json_array_size (json); session++)
+    for (session = 0; session<json_array_size (json); session++)
     {
       json_t *jsona;
       struct TALER_TransferPublicKeyP trans_pub;
@@ -253,7 +253,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                                &jsona),
         GNUNET_JSON_spec_fixed_auto ("transfer_pub",
                                      &trans_pub),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -273,7 +273,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       }
 
       /* decode all coins */
-      for (i=0;i<json_array_size (jsona);i++)
+      for (i = 0; i<json_array_size (jsona); i++)
       {
         GNUNET_assert (i + off_coin < num_coins);
         if (GNUNET_OK !=
@@ -282,9 +282,9 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                                                      i),
                                      i,
                                      &trans_pub,
-                                     &coin_privs[i+off_coin],
-                                     &sigs[i+off_coin],
-                                     &pubs[i+off_coin]))
+                                     &coin_privs[i + off_coin],
+                                     &sigs[i + off_coin],
+                                     &pubs[i + off_coin]))
         {
           GNUNET_break_op (0);
           break;
@@ -323,7 +323,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 
     /* clean up */
     GNUNET_assert (off_coin <= num_coins);
-    for (i=0;i<off_coin;i++)
+    for (i = 0; i<off_coin; i++)
     {
       if (NULL != sigs[i].rsa_signature)
         GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
@@ -415,9 +415,9 @@ handle_refresh_link_finished (void *cls,
  */
 struct TALER_EXCHANGE_RefreshLinkHandle *
 TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
-			     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-			     TALER_EXCHANGE_RefreshLinkCallback link_cb,
-			     void *link_cb_cls)
+                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                             TALER_EXCHANGE_RefreshLinkCallback link_cb,
+                             void *link_cb_cls)
 {
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
   CURL *eh;
@@ -436,7 +436,8 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   pub_str = GNUNET_STRINGS_data_to_string_alloc (&coin_pub,
-                                                 sizeof (struct TALER_CoinSpendPublicKeyP));
+                                                 sizeof (struct
+                                                         TALER_CoinSpendPublicKeyP));
   GNUNET_asprintf (&arg_str,
                    "/refresh/link?coin_pub=%s",
                    pub_str);
@@ -454,10 +455,10 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   eh = TEL_curl_easy_get (rlh->url);
   ctx = TEAH_handle_to_context (exchange);
   rlh->job = GNUNET_CURL_job_add (ctx,
-                          eh,
-                          GNUNET_YES,
-                          &handle_refresh_link_finished,
-                          rlh);
+                                  eh,
+                                  GNUNET_YES,
+                                  &handle_refresh_link_finished,
+                                  rlh);
   return rlh;
 }
 
@@ -469,7 +470,8 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
  * @param rlh the refresh link handle
  */
 void
-TALER_EXCHANGE_refresh_link_cancel (struct TALER_EXCHANGE_RefreshLinkHandle *rlh)
+TALER_EXCHANGE_refresh_link_cancel (struct
+                                    TALER_EXCHANGE_RefreshLinkHandle *rlh)
 {
   if (NULL != rlh->job)
   {

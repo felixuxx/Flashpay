@@ -36,7 +36,8 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            const char *section,
                            struct TALER_BANK_AuthenticationData *auth)
 {
-  const struct {
+  const struct
+  {
     const char *m;
     enum TALER_BANK_AuthenticationMethod e;
   } methods[] = {
@@ -57,7 +58,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "TALER_BANK_AUTH_METHOD");
     return GNUNET_SYSERR;
   }
-  for (unsigned int i=0; NULL != methods[i].m;i++)
+  for (unsigned int i = 0; NULL != methods[i].m; i++)
   {
     if (0 == strcasecmp (method,
                          methods[i].m))

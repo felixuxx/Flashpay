@@ -232,10 +232,10 @@ signal_loop (void)
       break;
     }
     if (EINTR == errno)
-      {
-        ret = 2;
-        continue;
-      }
+    {
+      ret = 2;
+      continue;
+    }
     switch (c)
     {
     case SIGTERM:
@@ -325,7 +325,8 @@ handle_version (struct TAH_RequestHandler *rh,
     ver = json_pack ("{s:s, s:s, s:o}",
                      "version", AUDITOR_PROTOCOL_VERSION,
                      "currency", currency,
-                     "auditor_public_key", GNUNET_JSON_from_data_auto (&auditor_pub));
+                     "auditor_public_key", GNUNET_JSON_from_data_auto (
+                       &auditor_pub));
   }
   if (NULL == ver)
   {
@@ -361,44 +362,42 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-  static struct TAH_RequestHandler handlers[] =
-    {
-      /* Our most popular handler (thus first!), used by merchants to
-         probabilistically report us their deposit confirmations. */
-      { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "application/json",
-        NULL, 0,
-        &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK },
-      { "/exchanges", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TAH_EXCHANGES_handler, MHD_HTTP_OK },
-      { "/version", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &handle_version, MHD_HTTP_OK },
-      /* Landing page, for now tells humans to go away (FIXME: replace
-         with auditor's welcome page!) */
-      { "/", MHD_HTTP_METHOD_GET, "text/plain",
-        "Hello, I'm the Taler auditor. This HTTP server is not for humans.\n", 0,
-        &TAH_MHD_handler_static_response, MHD_HTTP_OK },
-      /* /robots.txt: disallow everything */
-      { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
-        "User-agent: *\nDisallow: /\n", 0,
-        &TAH_MHD_handler_static_response, MHD_HTTP_OK },
-      /* AGPL licensing page, redirect to source. As per the AGPL-license,
-         every deployment is required to offer the user a download of the
-         source. We make this easy by including a redirect to the source
-         here. */
-      { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
-        NULL, 0,
-        &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
+  static struct TAH_RequestHandler handlers[] = {
+    /* Our most popular handler (thus first!), used by merchants to
+       probabilistically report us their deposit confirmations. */
+    { "/deposit-confirmation", MHD_HTTP_METHOD_PUT, "application/json",
+      NULL, 0,
+      &TAH_DEPOSIT_CONFIRMATION_handler, MHD_HTTP_OK },
+    { "/exchanges", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &TAH_EXCHANGES_handler, MHD_HTTP_OK },
+    { "/version", MHD_HTTP_METHOD_GET, "application/json",
+      NULL, 0,
+      &handle_version, MHD_HTTP_OK },
+    /* Landing page, for now tells humans to go away (FIXME: replace
+       with auditor's welcome page!) */
+    { "/", MHD_HTTP_METHOD_GET, "text/plain",
+      "Hello, I'm the Taler auditor. This HTTP server is not for humans.\n", 0,
+      &TAH_MHD_handler_static_response, MHD_HTTP_OK },
+    /* /robots.txt: disallow everything */
+    { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
+      "User-agent: *\nDisallow: /\n", 0,
+      &TAH_MHD_handler_static_response, MHD_HTTP_OK },
+    /* AGPL licensing page, redirect to source. As per the AGPL-license,
+       every deployment is required to offer the user a download of the
+       source. We make this easy by including a redirect to the source
+       here. */
+    { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
+      NULL, 0,
+      &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
 
-      { NULL, NULL, NULL, NULL, 0, 0 }
-    };
-  static struct TAH_RequestHandler h404 =
-    {
-      "", NULL, "text/html",
-      "<html><title>404: not found</title></html>", 0,
-      &TAH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
-    };
+    { NULL, NULL, NULL, NULL, 0, 0 }
+  };
+  static struct TAH_RequestHandler h404 = {
+    "", NULL, "text/html",
+    "<html><title>404: not found</title></html>", 0,
+    &TAH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
+  };
   struct TAH_RequestHandler *rh;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -407,7 +406,7 @@ handle_mhd_request (void *cls,
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
-  for (unsigned int i=0;NULL != handlers[i].url;i++)
+  for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
     rh = &handlers[i];
     if ( (0 == strcasecmp (url,
@@ -802,7 +801,8 @@ main (int argc,
                                "SECONDS",
                                "after how long do connections timeout by default (in seconds)",
                                &connection_timeout),
-    GNUNET_GETOPT_option_help ("HTTP server providing a RESTful API to access a Taler auditor"),
+    GNUNET_GETOPT_option_help (
+      "HTTP server providing a RESTful API to access a Taler auditor"),
     GNUNET_GETOPT_option_loglevel (&loglev),
     GNUNET_GETOPT_option_logfile (&logfile),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
@@ -830,7 +830,7 @@ main (int argc,
                                  cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
+                _ ("Malformed configuration file `%s', exit ...\n"),
                 cfgfile);
     GNUNET_free_non_null (cfgfile);
     return 1;
@@ -846,9 +846,9 @@ main (int argc,
   listen_fds = getenv ("LISTEN_FDS");
   if ( (NULL != listen_pid) &&
        (NULL != listen_fds) &&
-       (getpid() == strtol (listen_pid,
-                            NULL,
-                            10)) &&
+       (getpid () == strtol (listen_pid,
+                             NULL,
+                             10)) &&
        (1 == strtoul (listen_fds,
                       NULL,
                       10)) )
@@ -885,7 +885,10 @@ main (int argc,
   }
 
   mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG | MHD_USE_DUAL_STACK | MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_TCP_FASTOPEN,
+    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
+                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                        | MHD_USE_INTERNAL_POLLING_THREAD
+                        | MHD_USE_TCP_FASTOPEN,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
                         &handle_mhd_request, NULL,
@@ -893,7 +896,8 @@ main (int argc,
                         MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
                         MHD_OPTION_LISTEN_SOCKET, fh,
                         MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                        MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                        MHD_OPTION_NOTIFY_COMPLETED,
+                        &handle_mhd_completion_callback, NULL,
                         MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
                         MHD_OPTION_END);
   if (NULL == mhd)
@@ -960,7 +964,8 @@ main (int argc,
          close it here */
       GNUNET_break (0 == close (sock));
       while (0 != MHD_get_daemon_info (mhd,
-                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections)
+                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->
+             num_connections)
         sleep (1);
       /* Now we're really done, practice clean shutdown */
       MHD_stop_daemon (mhd);

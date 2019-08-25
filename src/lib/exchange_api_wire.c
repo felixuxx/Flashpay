@@ -149,12 +149,12 @@ parse_fees (json_t *fees)
         TALER_JSON_spec_amount ("wire_fee",
                                 &wa->wire_fee),
         TALER_JSON_spec_amount ("closing_fee",
-                              &wa->closing_fee),
+                                &wa->closing_fee),
         GNUNET_JSON_spec_absolute_time ("start_date",
                                         &wa->start_date),
         GNUNET_JSON_spec_absolute_time ("end_date",
                                         &wa->end_date),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -188,7 +188,7 @@ static const struct TALER_EXCHANGE_WireAggregateFees *
 lookup_fee (const struct FeeMap *fm,
             const char *method)
 {
-  for (;NULL != fm; fm = fm->next)
+  for (; NULL != fm; fm = fm->next)
     if (0 == strcasecmp (fm->method,
                          method))
       return fm->fee_list;
@@ -230,7 +230,7 @@ handle_wire_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_json ("accounts", &accounts),
         GNUNET_JSON_spec_json ("fees", &fees),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -268,14 +268,14 @@ handle_wire_finished (void *cls,
       {
         struct TALER_EXCHANGE_WireAccount was[num_accounts];
 
-        for (unsigned int i=0;i<num_accounts;i++)
+        for (unsigned int i = 0; i<num_accounts; i++)
         {
           struct TALER_EXCHANGE_WireAccount *wa = &was[i];
           json_t *account;
           struct GNUNET_JSON_Specification spec_account[] = {
             GNUNET_JSON_spec_string ("url", &wa->url),
             GNUNET_JSON_spec_fixed_auto ("master_sig", &wa->master_sig),
-            GNUNET_JSON_spec_end()
+            GNUNET_JSON_spec_end ()
           };
           char *method;
 

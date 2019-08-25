@@ -304,7 +304,7 @@ reveal_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying refresh reveal failed with %u/%d\n",
@@ -333,7 +333,7 @@ reveal_cb (void *cls,
     return;
   }
   melt_cmd = TALER_TESTING_interpreter_lookup_command
-    (rrs->is, rrs->melt_reference);
+               (rrs->is, rrs->melt_reference);
   if (NULL == melt_cmd)
   {
     GNUNET_break (0);
@@ -345,8 +345,8 @@ reveal_cb (void *cls,
   {
   case MHD_HTTP_OK:
     rrs->fresh_coins = GNUNET_new_array
-      (num_coins, struct TALER_TESTING_FreshCoinData);
-    for (unsigned int i=0; i<num_coins; i++)
+                         (num_coins, struct TALER_TESTING_FreshCoinData);
+    for (unsigned int i = 0; i<num_coins; i++)
     {
       struct TALER_TESTING_FreshCoinData *fc = &rrs->fresh_coins[i];
 
@@ -362,7 +362,7 @@ reveal_cb (void *cls,
       fc->coin_priv = coin_privs[i].coin_priv;
       fc->blinding_key = coin_privs[i].blinding_key;
       fc->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup
-        (sigs[i].rsa_signature);
+                                (sigs[i].rsa_signature);
     }
     break;
   default:
@@ -392,7 +392,7 @@ refresh_reveal_run (void *cls,
 
   rrs->is = is;
   melt_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, rrs->melt_reference);
+               (is, rrs->melt_reference);
 
   if (NULL == melt_cmd)
   {
@@ -402,11 +402,11 @@ refresh_reveal_run (void *cls,
   }
   rms = melt_cmd->cls;
   rrs->rrh = TALER_EXCHANGE_refresh_reveal
-    (is->exchange,
-     rms->refresh_data_length,
-     rms->refresh_data,
-     rms->noreveal_index,
-     &reveal_cb, rrs);
+               (is->exchange,
+               rms->refresh_data_length,
+               rms->refresh_data,
+               rms->noreveal_index,
+               &reveal_cb, rrs);
 
   if (NULL == rrs->rrh)
   {
@@ -446,7 +446,7 @@ refresh_reveal_cleanup (void *cls,
     rrs->retry_task = NULL;
   }
 
-  for (unsigned int j=0; j < rrs->num_fresh_coins; j++)
+  for (unsigned int j = 0; j < rrs->num_fresh_coins; j++)
     GNUNET_CRYPTO_rsa_signature_free (rrs->fresh_coins[j].sig.rsa_signature);
 
   GNUNET_free_non_null (rrs->fresh_coins);
@@ -530,18 +530,18 @@ link_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying refresh link failed with %u/%d\n",
                     http_status,
                     (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  rls->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  rls->backoff = EXCHANGE_LIB_BACKOFF (rls->backoff);
-	rls->retry_task = GNUNET_SCHEDULER_add_delayed (rls->backoff,
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          rls->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          rls->backoff = EXCHANGE_LIB_BACKOFF (rls->backoff);
+        rls->retry_task = GNUNET_SCHEDULER_add_delayed (rls->backoff,
                                                         &do_link_retry,
                                                         rls);
         return;
@@ -559,7 +559,7 @@ link_cb (void *cls,
     return;
   }
   reveal_cmd = TALER_TESTING_interpreter_lookup_command
-    (rls->is, rls->reveal_reference);
+                 (rls->is, rls->reveal_reference);
 
   if (NULL == reveal_cmd)
   {
@@ -573,7 +573,7 @@ link_cb (void *cls,
   case MHD_HTTP_OK:
     /* check that number of coins returned matches */
     if (GNUNET_OK != TALER_TESTING_get_trait_uint
-      (reveal_cmd, 0, &num_fresh_coins))
+          (reveal_cmd, 0, &num_fresh_coins))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rls->is);
@@ -586,15 +586,15 @@ link_cb (void *cls,
                   num_coins,
                   *num_fresh_coins,
                   __FILE__,
-                __LINE__);
+                  __LINE__);
       TALER_TESTING_interpreter_fail (rls->is);
       return;
     }
     /* check that the coins match */
-    for (unsigned int i=0;i<num_coins;i++)
-      for (unsigned int j=i+1;j<num_coins;j++)
+    for (unsigned int i = 0; i<num_coins; i++)
+      for (unsigned int j = i + 1; j<num_coins; j++)
         if (0 == GNUNET_memcmp
-            (&coin_privs[i], &coin_privs[j]))
+              (&coin_privs[i], &coin_privs[j]))
           GNUNET_break (0);
     /* Note: coins might be legitimately permutated in here... */
     found = 0;
@@ -603,24 +603,24 @@ link_cb (void *cls,
     const struct TALER_TESTING_FreshCoinData *fc = NULL;
 
     if (GNUNET_OK != TALER_TESTING_get_trait_fresh_coins
-      (reveal_cmd, 0, &fc))
+          (reveal_cmd, 0, &fc))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rls->is);
       return;
     }
 
-    for (unsigned int i=0;i<num_coins;i++)
-      for (unsigned int j=0;j<num_coins;j++)
+    for (unsigned int i = 0; i<num_coins; i++)
+      for (unsigned int j = 0; j<num_coins; j++)
       {
         if ( (0 == GNUNET_memcmp
-              (&coin_privs[i], &fc[j].coin_priv)) &&
+                (&coin_privs[i], &fc[j].coin_priv)) &&
              (0 == GNUNET_CRYPTO_rsa_signature_cmp
-              (fc[i].sig.rsa_signature,
-               sigs[j].rsa_signature)) &&
+                (fc[i].sig.rsa_signature,
+                sigs[j].rsa_signature)) &&
              (0 == GNUNET_CRYPTO_rsa_public_key_cmp
-              (fc[i].pk->key.rsa_public_key,
-               pubs[j].rsa_public_key)) )
+                (fc[i].pk->key.rsa_public_key,
+                pubs[j].rsa_public_key)) )
         {
           found++;
           break;
@@ -630,7 +630,7 @@ link_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Only %u/%u coins match expectations\n",
-	          found, num_coins);
+                  found, num_coins);
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rls->is);
       return;
@@ -666,7 +666,7 @@ refresh_link_run (void *cls,
   rls->is = is;
 
   reveal_cmd = TALER_TESTING_interpreter_lookup_command
-    (rls->is, rls->reveal_reference);
+                 (rls->is, rls->reveal_reference);
 
   if (NULL == reveal_cmd)
   {
@@ -676,7 +676,7 @@ refresh_link_run (void *cls,
   }
   rrs = reveal_cmd->cls;
   melt_cmd = TALER_TESTING_interpreter_lookup_command
-    (rls->is, rrs->melt_reference);
+               (rls->is, rrs->melt_reference);
 
   if (NULL == melt_cmd)
   {
@@ -689,7 +689,7 @@ refresh_link_run (void *cls,
   {
     rms = melt_cmd->cls;
     coin_cmd = TALER_TESTING_interpreter_lookup_command
-      (rls->is, rms->coin_reference);
+                 (rls->is, rms->coin_reference);
     if (NULL == coin_cmd)
     {
       GNUNET_break (0);
@@ -700,7 +700,7 @@ refresh_link_run (void *cls,
 
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-    (coin_cmd, 0, &coin_priv))
+        (coin_cmd, 0, &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (rls->is);
@@ -709,7 +709,7 @@ refresh_link_run (void *cls,
 
   /* finally, use private key from withdraw sign command */
   rls->rlh = TALER_EXCHANGE_refresh_link
-    (is->exchange, coin_priv, &link_cb, rls);
+               (is->exchange, coin_priv, &link_cb, rls);
 
   if (NULL == rls->rlh)
   {
@@ -812,32 +812,32 @@ melt_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying refresh melt failed with %u/%d\n",
                     http_status,
                     (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  rms->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  rms->backoff = EXCHANGE_LIB_BACKOFF (rms->backoff);
-	rms->retry_task = GNUNET_SCHEDULER_add_delayed
-          (rms->backoff,
-           &do_melt_retry,
-           rms);
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          rms->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          rms->backoff = EXCHANGE_LIB_BACKOFF (rms->backoff);
+        rms->retry_task = GNUNET_SCHEDULER_add_delayed
+                            (rms->backoff,
+                            &do_melt_retry,
+                            rms);
         return;
       }
     }
     GNUNET_log
       (GNUNET_ERROR_TYPE_ERROR,
-       "Unexpected response code %u/%d to command %s in %s:%u\n",
-       http_status,
-       (int) ec,
-       rms->is->commands[rms->is->ip].label,
-       __FILE__,
-       __LINE__);
+      "Unexpected response code %u/%d to command %s in %s:%u\n",
+      http_status,
+      (int) ec,
+      rms->is->commands[rms->is->ip].label,
+      __FILE__,
+      __LINE__);
     json_dumpf (full_response, stderr, 0);
     TALER_TESTING_interpreter_fail (rms->is);
     return;
@@ -849,8 +849,8 @@ melt_cb (void *cls,
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
     rms->rmh = TALER_EXCHANGE_refresh_melt
-      (rms->is->exchange, rms->refresh_data_length,
-       rms->refresh_data, &melt_cb, rms);
+                 (rms->is->exchange, rms->refresh_data_length,
+                 rms->refresh_data, &melt_cb, rms);
     rms->double_melt = GNUNET_NO;
     return;
   }
@@ -882,13 +882,13 @@ refresh_melt_run (void *cls,
     melt_fresh_amounts = default_melt_fresh_amounts;
   rms->is = is;
   rms->noreveal_index = UINT16_MAX;
-  for (num_fresh_coins=0;
+  for (num_fresh_coins = 0;
        NULL != melt_fresh_amounts[num_fresh_coins];
-       num_fresh_coins++) ;
+       num_fresh_coins++);
   rms->num_fresh_coins = num_fresh_coins;
   rms->fresh_pks = GNUNET_new_array
-    (num_fresh_coins,
-     struct TALER_EXCHANGE_DenomPublicKey);
+                     (num_fresh_coins,
+                     struct TALER_EXCHANGE_DenomPublicKey);
   {
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
@@ -897,8 +897,8 @@ refresh_melt_run (void *cls,
     const struct TALER_TESTING_Command *coin_command;
 
     if (NULL == (coin_command
-      = TALER_TESTING_interpreter_lookup_command
-        (is, rms->coin_reference)))
+                   = TALER_TESTING_interpreter_lookup_command
+                       (is, rms->coin_reference)))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -906,7 +906,7 @@ refresh_melt_run (void *cls,
     }
 
     if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-      (coin_command, 0, &rms->melt_priv))
+          (coin_command, 0, &rms->melt_priv))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -923,7 +923,7 @@ refresh_melt_run (void *cls,
       return;
     }
     if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
-        (coin_command, 0, &melt_denom_pub))
+          (coin_command, 0, &melt_denom_pub))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -932,12 +932,12 @@ refresh_melt_run (void *cls,
     /* Melt amount starts with the melt fee of the old coin; we'll add the
        values and withdraw fees of the fresh coins next */
     melt_amount = melt_denom_pub->fee_refresh;
-    for (unsigned int i=0;i<num_fresh_coins;i++)
+    for (unsigned int i = 0; i<num_fresh_coins; i++)
     {
       const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;
 
       if (GNUNET_OK != TALER_string_to_amount
-        (melt_fresh_amounts[i], &fresh_amount))
+            (melt_fresh_amounts[i], &fresh_amount))
       {
         GNUNET_break (0);
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -947,7 +947,7 @@ refresh_melt_run (void *cls,
         return;
       }
       fresh_pk = TALER_TESTING_find_pk
-        (TALER_EXCHANGE_get_keys (is->exchange), &fresh_amount);
+                   (TALER_EXCHANGE_get_keys (is->exchange), &fresh_amount);
       if (NULL == fresh_pk)
       {
         GNUNET_break (0);
@@ -966,9 +966,10 @@ refresh_melt_run (void *cls,
       rms->fresh_pks[i] = *fresh_pk;
     }
     rms->refresh_data = TALER_EXCHANGE_refresh_prepare
-      (rms->melt_priv, &melt_amount, melt_sig, melt_denom_pub,
-       GNUNET_YES, num_fresh_coins, rms->fresh_pks,
-       &rms->refresh_data_length);
+                          (rms->melt_priv, &melt_amount, melt_sig,
+                          melt_denom_pub,
+                          GNUNET_YES, num_fresh_coins, rms->fresh_pks,
+                          &rms->refresh_data_length);
 
     if (NULL == rms->refresh_data)
     {
@@ -977,8 +978,8 @@ refresh_melt_run (void *cls,
       return;
     }
     rms->rmh = TALER_EXCHANGE_refresh_melt
-      (is->exchange, rms->refresh_data_length,
-       rms->refresh_data, &melt_cb, rms);
+                 (is->exchange, rms->refresh_data_length,
+                 rms->refresh_data, &melt_cb, rms);
 
     if (NULL == rms->rmh)
     {
@@ -1126,9 +1127,9 @@ parse_amounts (struct RefreshMeltState *rms,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt
   (const char *label,
-   const char *coin_reference,
-   unsigned int expected_response_code,
-   ...)
+  const char *coin_reference,
+  unsigned int expected_response_code,
+  ...)
 {
   struct RefreshMeltState *rms;
   va_list ap;
@@ -1170,9 +1171,9 @@ TALER_TESTING_cmd_refresh_melt
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_melt_double
   (const char *label,
-   const char *coin_reference,
-   unsigned int expected_response_code,
-   ...)
+  const char *coin_reference,
+  unsigned int expected_response_code,
+  ...)
 {
   struct RefreshMeltState *rms;
   va_list ap;
@@ -1239,30 +1240,30 @@ refresh_reveal_traits (void *cls,
   struct TALER_TESTING_Trait traits[NUM_TRAITS];
 
   /* Making coin privs traits */
-  for (unsigned int i=0; i<num_coins; i++)
+  for (unsigned int i = 0; i<num_coins; i++)
     traits[i] = TALER_TESTING_make_trait_coin_priv
-      (i, &rrs->fresh_coins[i].coin_priv);
+                  (i, &rrs->fresh_coins[i].coin_priv);
 
   /* Making denom pubs traits */
-  for (unsigned int i=0; i<num_coins; i++)
+  for (unsigned int i = 0; i<num_coins; i++)
     traits[num_coins + i]
       = TALER_TESTING_make_trait_denom_pub
-        (i, rrs->fresh_coins[i].pk);
+          (i, rrs->fresh_coins[i].pk);
 
   /* Making denom sigs traits */
-  for (unsigned int i=0; i<num_coins; i++)
+  for (unsigned int i = 0; i<num_coins; i++)
     traits[(num_coins * 2) + i]
       = TALER_TESTING_make_trait_denom_sig
-        (i, &rrs->fresh_coins[i].sig);
+          (i, &rrs->fresh_coins[i].sig);
   /* blinding key traits */
-  for (unsigned int i=0; i<num_coins; i++)
+  for (unsigned int i = 0; i<num_coins; i++)
     traits[(num_coins * 3) + i]
       = TALER_TESTING_make_trait_blinding_key (i,
                                                &rrs->fresh_coins[i].blinding_key),
 
-  /* number of fresh coins */
-  traits[(num_coins * 4)] = TALER_TESTING_make_trait_uint
-    (0, &rrs->num_fresh_coins);
+    /* number of fresh coins */
+    traits[(num_coins * 4)] = TALER_TESTING_make_trait_uint
+                                (0, &rrs->num_fresh_coins);
 
   /* whole array of fresh coins */
   traits[(num_coins * 4) + 1]
@@ -1291,8 +1292,8 @@ refresh_reveal_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal
   (const char *label,
-   const char *melt_reference,
-   unsigned int expected_response_code)
+  const char *melt_reference,
+  unsigned int expected_response_code)
 {
   struct RefreshRevealState *rrs;
 
@@ -1343,8 +1344,8 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_link
   (const char *label,
-   const char *reveal_reference,
-   unsigned int expected_response_code)
+  const char *reveal_reference,
+  unsigned int expected_response_code)
 {
   struct RefreshLinkState *rrs;
 

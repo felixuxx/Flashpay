@@ -158,13 +158,13 @@ struct TrackTransferState
 static void
 deposit_wtid_cb
   (void *cls,
-   unsigned int http_status,
-   enum TALER_ErrorCode ec,
-   const struct TALER_ExchangePublicKeyP *exchange_pub,
-   const json_t *json,
-   const struct TALER_WireTransferIdentifierRawP *wtid,
-   struct GNUNET_TIME_Absolute execution_time,
-   const struct TALER_Amount *coin_contribution)
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const json_t *json,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Absolute execution_time,
+  const struct TALER_Amount *coin_contribution)
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
@@ -197,7 +197,7 @@ deposit_wtid_cb
                                                 sizeof (*wtid));
 
       bank_transfer_cmd = TALER_TESTING_interpreter_lookup_command
-        (is, tts->bank_transfer_reference);
+                            (is, tts->bank_transfer_reference);
 
       if (NULL == bank_transfer_cmd)
       {
@@ -210,8 +210,8 @@ deposit_wtid_cb
       const char *transfer_subject;
 
       if (GNUNET_OK !=
-	  TALER_TESTING_get_trait_transfer_subject
-        (bank_transfer_cmd, 0, &transfer_subject))
+          TALER_TESTING_get_trait_transfer_subject
+            (bank_transfer_cmd, 0, &transfer_subject))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -268,7 +268,7 @@ track_transaction_run (void *cls,
 
   tts->is = is;
   transaction_cmd = TALER_TESTING_interpreter_lookup_command
-    (tts->is, tts->transaction_reference);
+                      (tts->is, tts->transaction_reference);
 
   if (NULL == transaction_cmd)
   {
@@ -278,7 +278,7 @@ track_transaction_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-    (transaction_cmd, tts->coin_index, &coin_priv))
+        (transaction_cmd, tts->coin_index, &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -290,7 +290,7 @@ track_transaction_run (void *cls,
 
   /* Get the strings.. */
   if (GNUNET_OK != TALER_TESTING_get_trait_wire_details
-    (transaction_cmd, 0, &wire_details))
+        (transaction_cmd, 0, &wire_details))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -298,7 +298,7 @@ track_transaction_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_contract_terms
-    (transaction_cmd, 0, &contract_terms))
+        (transaction_cmd, 0, &contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -317,12 +317,12 @@ track_transaction_run (void *cls,
     ( (GNUNET_OK ==
        TALER_JSON_merchant_wire_signature_hash (wire_details,
                                                 &h_wire_details)) &&
-      (GNUNET_OK ==
-       TALER_JSON_hash (contract_terms,
-                        &h_contract_terms)) );
+    (GNUNET_OK ==
+     TALER_JSON_hash (contract_terms,
+                      &h_contract_terms)) );
 
   if (GNUNET_OK != TALER_TESTING_get_trait_peer_key
-    (transaction_cmd, 0, &merchant_priv))
+        (transaction_cmd, 0, &merchant_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -330,13 +330,13 @@ track_transaction_run (void *cls,
   }
 
   tts->tth = TALER_EXCHANGE_track_transaction
-    (is->exchange,
-     (struct TALER_MerchantPrivateKeyP *) merchant_priv,
-     &h_wire_details,
-     &h_contract_terms,
-     &coin_pub,
-     &deposit_wtid_cb,
-     tts);
+               (is->exchange,
+               (struct TALER_MerchantPrivateKeyP *) merchant_priv,
+               &h_wire_details,
+               &h_contract_terms,
+               &coin_pub,
+               &deposit_wtid_cb,
+               tts);
 
   GNUNET_assert (NULL != tts->tth);
 }
@@ -352,7 +352,7 @@ track_transaction_run (void *cls,
 static void
 track_transaction_cleanup
   (void *cls,
-   const struct TALER_TESTING_Command *cmd)
+  const struct TALER_TESTING_Command *cmd)
 {
   struct TrackTransactionState *tts = cls;
 
@@ -415,10 +415,10 @@ track_transaction_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transaction
   (const char *label,
-   const char *transaction_reference,
-   unsigned int coin_index,
-   unsigned int expected_response_code,
-   const char *bank_transfer_reference)
+  const char *transaction_reference,
+  unsigned int coin_index,
+  unsigned int expected_response_code,
+  const char *bank_transfer_reference)
 {
   struct TrackTransactionState *tts;
 
@@ -494,16 +494,16 @@ track_transfer_cleanup (void *cls,
 static void
 track_transfer_cb
   (void *cls,
-   unsigned int http_status,
-   enum TALER_ErrorCode ec,
-   const struct TALER_ExchangePublicKeyP *exchange_pub,
-   const json_t *json,
-   const struct GNUNET_HashCode *h_wire,
-   struct GNUNET_TIME_Absolute execution_time,
-   const struct TALER_Amount *total_amount,
-   const struct TALER_Amount *wire_fee,
-   unsigned int details_length,
-   const struct TALER_TrackTransferDetails *details)
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const json_t *json,
+  const struct GNUNET_HashCode *h_wire,
+  struct GNUNET_TIME_Absolute execution_time,
+  const struct TALER_Amount *total_amount,
+  const struct TALER_Amount *wire_fee,
+  unsigned int details_length,
+  const struct TALER_TrackTransferDetails *details)
 {
   struct TrackTransferState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
@@ -598,8 +598,8 @@ track_transfer_cb
       struct GNUNET_HashCode h_wire_details;
 
       if (NULL == (wire_details_cmd
-        = TALER_TESTING_interpreter_lookup_command
-          (is, tts->wire_details_reference)))
+                     = TALER_TESTING_interpreter_lookup_command
+                         (is, tts->wire_details_reference)))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -618,8 +618,8 @@ track_transfer_cb
 
       GNUNET_assert
         (GNUNET_OK ==
-         TALER_JSON_merchant_wire_signature_hash (wire_details,
-                                                  &h_wire_details));
+        TALER_JSON_merchant_wire_signature_hash (wire_details,
+                                                 &h_wire_details));
 
       if (0 != GNUNET_memcmp (&h_wire_details,
                               h_wire))
@@ -639,8 +639,8 @@ track_transfer_cb
       struct TALER_Amount total_amount_from_reference;
 
       if (NULL == (total_amount_cmd
-        = TALER_TESTING_interpreter_lookup_command
-          (is, tts->total_amount_reference)))
+                     = TALER_TESTING_interpreter_lookup_command
+                         (is, tts->total_amount_reference)))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -648,7 +648,7 @@ track_transfer_cb
       }
 
       if (GNUNET_OK != TALER_TESTING_get_trait_amount
-        (total_amount_cmd, 0, &total_amount_from_reference_str))
+            (total_amount_cmd, 0, &total_amount_from_reference_str))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -656,8 +656,8 @@ track_transfer_cb
       }
 
       GNUNET_assert (GNUNET_OK == TALER_string_to_amount
-        (total_amount_from_reference_str,
-         &total_amount_from_reference));
+                       (total_amount_from_reference_str,
+                       &total_amount_from_reference));
 
       if (0 != TALER_amount_cmp (total_amount,
                                  &total_amount_from_reference))
@@ -702,7 +702,7 @@ track_transfer_run (void *cls,
     const struct TALER_TESTING_Command *wtid_cmd;
 
     wtid_cmd = TALER_TESTING_interpreter_lookup_command
-      (tts->is, tts->wtid_reference);
+                 (tts->is, tts->wtid_reference);
 
     if (NULL == wtid_cmd)
     {
@@ -712,7 +712,7 @@ track_transfer_run (void *cls,
     }
 
     if (GNUNET_OK != TALER_TESTING_get_trait_wtid
-      (wtid_cmd, tts->index, &wtid_ptr))
+          (wtid_cmd, tts->index, &wtid_ptr))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (tts->is);
@@ -747,9 +747,9 @@ track_transfer_run (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty
   (const char *label,
-   const char *wtid_reference,
-   unsigned int index,
-   unsigned int expected_response_code)
+  const char *wtid_reference,
+  unsigned int index,
+  unsigned int expected_response_code)
 {
   struct TrackTransferState *tts;
 
@@ -788,11 +788,11 @@ TALER_TESTING_cmd_track_transfer_empty
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer
   (const char *label,
-   const char *wtid_reference,
-   unsigned int index,
-   unsigned int expected_response_code,
-   const char *expected_total_amount,
-   const char *expected_wire_fee)
+  const char *wtid_reference,
+  unsigned int index,
+  unsigned int expected_response_code,
+  const char *expected_total_amount,
+  const char *expected_wire_fee)
 {
   struct TrackTransferState *tts;
 

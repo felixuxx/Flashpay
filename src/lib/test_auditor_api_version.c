@@ -87,8 +87,8 @@ do_timeout (void *cls)
  */
 static void
 version_cb (void *cls,
-	    const struct TALER_AUDITOR_VersionInformation *vi,
-	    enum TALER_AUDITOR_VersionCompatibility compat)
+            const struct TALER_AUDITOR_VersionInformation *vi,
+            enum TALER_AUDITOR_VersionCompatibility compat)
 {
   if ( (NULL != vi) &&
        (TALER_AUDITOR_VC_MATCH == compat) )
@@ -109,29 +109,29 @@ static void
 run (void *cls)
 {
   const char *auditor_url = "http://localhost:8083/";
-  
+
   (void) cls;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
-			  &rc);
+                          &rc);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   ah = TALER_AUDITOR_connect (ctx,
-			      auditor_url,
-			      &version_cb,
-			      NULL);
+                              auditor_url,
+                              &version_cb,
+                              NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
-				 NULL);
+                                 NULL);
   tt = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_SECONDS,
-				     &do_timeout,
-				     NULL);
+                                     &do_timeout,
+                                     NULL);
 }
 
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   struct GNUNET_OS_Process *proc;
-  
+
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
@@ -148,12 +148,12 @@ main (int argc,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-auditor-httpd`,"
+                "Failed to run `taler-auditor-httpd`,"
                 " is your PATH correct?\n");
     return 77;
   }
   GNUNET_SCHEDULER_run (&run,
-			NULL);
+                        NULL);
   GNUNET_OS_process_kill (proc, SIGTERM);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);

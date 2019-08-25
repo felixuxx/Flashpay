@@ -127,7 +127,8 @@ ebics_prepare_wire_transfer (void *cls,
                              const char *destination_account_url,
                              const struct TALER_Amount *amount,
                              const char *exchange_base_url,
-                             const struct TALER_WireTransferIdentifierRawP *wtid,
+                             const struct
+                             TALER_WireTransferIdentifierRawP *wtid,
                              TALER_WIRE_PrepareTransactionCallback psc,
                              void *psc_cls)
 {
@@ -145,7 +146,7 @@ ebics_prepare_wire_transfer (void *cls,
  */
 static void
 ebics_prepare_wire_transfer_cancel (void *cls,
-                                   struct TALER_WIRE_PrepareHandle *pth)
+                                    struct TALER_WIRE_PrepareHandle *pth)
 {
   GNUNET_break (0); // FIXME: not implemented
 }

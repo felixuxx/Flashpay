@@ -37,7 +37,8 @@
  */
 int
 TALER_EXCHANGE_verify_coin_history (const char *currency,
-                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct
+                                    TALER_CoinSpendPublicKeyP *coin_pub,
                                     json_t *history,
                                     struct TALER_Amount *total)
 {
@@ -61,7 +62,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &rtotal));
-  for (size_t off=0;off<len;off++)
+  for (size_t off = 0; off<len; off++)
   {
     int add;
     json_t *transaction;
@@ -72,7 +73,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                               &amount),
       GNUNET_JSON_spec_string ("type",
                                &type),
-      GNUNET_JSON_spec_end()
+      GNUNET_JSON_spec_end ()
     };
 
     transaction = json_array_get (history,
@@ -99,14 +100,14 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &dr.h_wire),
         GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-					    &dr.timestamp),
+                                            &dr.timestamp),
         GNUNET_JSON_spec_absolute_time_nbo ("refund_deadline",
-					    &dr.refund_deadline),
+                                            &dr.refund_deadline),
         TALER_JSON_spec_amount_nbo ("deposit_fee",
-				    &dr.deposit_fee),
+                                    &dr.deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &dr.merchant),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -120,7 +121,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       dr.purpose.size = htonl (sizeof (dr));
       dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
       TALER_amount_hton (&dr.amount_with_fee,
-			 &amount);
+                         &amount);
       dr.coin_pub = *coin_pub;
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
@@ -132,7 +133,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         return GNUNET_SYSERR;
       }
       /* TODO: check that deposit fee and coin value match
-	 our expectations from /keys! */
+   our expectations from /keys! */
       add = GNUNET_YES;
     }
     else if (0 == strcasecmp (type,
@@ -146,8 +147,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         GNUNET_JSON_spec_fixed_auto ("rc",
                                      &rm.rc),
         TALER_JSON_spec_amount_nbo ("melt_fee",
-				    &rm.melt_fee),
-        GNUNET_JSON_spec_end()
+                                    &rm.melt_fee),
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -161,7 +162,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       rm.purpose.size = htonl (sizeof (rm));
       rm.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
       TALER_amount_hton (&rm.amount_with_fee,
-			 &amount);
+                         &amount);
       rm.coin_pub = *coin_pub;
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
@@ -173,7 +174,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         return GNUNET_SYSERR;
       }
       /* TODO: check that deposit fee and coin value match
-	 our expectations from /keys! */
+   our expectations from /keys! */
       add = GNUNET_YES;
     }
     else if (0 == strcasecmp (type,
@@ -189,10 +190,10 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &rr.merchant),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
-				 &rr.rtransaction_id),
+                                 &rr.rtransaction_id),
         TALER_JSON_spec_amount_nbo ("refund_fee",
-				    &rr.refund_fee),
-        GNUNET_JSON_spec_end()
+                                    &rr.refund_fee),
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -207,7 +208,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
       rr.coin_pub = *coin_pub;
       TALER_amount_hton (&rr.refund_amount,
-			 &amount);
+                         &amount);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
                                       &rr.purpose,
@@ -225,7 +226,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
          had no reason to check the merchant's signature (other than a
          well-formendess check). */
       /* TODO: check that deposit fee and coin value match
-	 our expectations from /keys! */
+   our expectations from /keys! */
       add = GNUNET_NO;
     }
     else if (0 == strcasecmp (type,
@@ -243,7 +244,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                      &pc.reserve_pub),
         GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
                                             &pc.timestamp),
-        GNUNET_JSON_spec_end()
+        GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
@@ -258,7 +259,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
       pc.coin_pub = *coin_pub;
       TALER_amount_hton (&pc.payback_amount,
-			 &amount);
+                         &amount);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK,
                                       &pc.purpose,
@@ -334,10 +335,13 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
  * @return NULL on error (@a exchange_pub not known)
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
-TALER_EXCHANGE_get_exchange_signing_key_info (const struct TALER_EXCHANGE_Keys *keys,
-                                              const struct TALER_ExchangePublicKeyP *exchange_pub)
+TALER_EXCHANGE_get_exchange_signing_key_info (const struct
+                                              TALER_EXCHANGE_Keys *keys,
+                                              const struct
+                                              TALER_ExchangePublicKeyP *
+                                              exchange_pub)
 {
-  for (unsigned int i=0;i<keys->num_sign_keys;i++)
+  for (unsigned int i = 0; i<keys->num_sign_keys; i++)
   {
     const struct TALER_EXCHANGE_SigningPublicKey *spk;
 

@@ -55,7 +55,7 @@ TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
   GNUNET_free (plugin_name);
   cfg_dup = GNUNET_CONFIGURATION_dup (cfg);
   plugin = GNUNET_PLUGIN_load (lib_name,
-			       cfg_dup);
+                               cfg_dup);
   if (NULL != plugin)
     plugin->library_name = lib_name;
   else

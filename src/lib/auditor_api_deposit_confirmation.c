@@ -82,8 +82,8 @@ struct TALER_AUDITOR_DepositConfirmationHandle
  */
 static void
 handle_deposit_confirmation_finished (void *cls,
-				      long response_code,
-				      const void *djson)
+                                      long response_code,
+                                      const void *djson)
 {
   const json_t *json = djson;
   struct TALER_AUDITOR_DepositConfirmationHandle *dh = cls;
@@ -123,7 +123,7 @@ handle_deposit_confirmation_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           response_code,
-	  TALER_JSON_get_error_code (json),
+          TALER_JSON_get_error_code (json),
           json);
   TALER_AUDITOR_deposit_confirmation_cancel (dh);
 }
@@ -254,20 +254,29 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                                     const struct GNUNET_HashCode *h_wire,
-                                    const struct GNUNET_HashCode *h_contract_terms,
+                                    const struct
+                                    GNUNET_HashCode *h_contract_terms,
                                     struct GNUNET_TIME_Absolute timestamp,
                                     struct GNUNET_TIME_Absolute refund_deadline,
-                                    const struct TALER_Amount *amount_without_fee,
-                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                    const struct TALER_ExchangePublicKeyP *exchange_pub,
-                                    const struct TALER_ExchangeSignatureP *exchange_sig,
-                                    const struct TALER_MasterPublicKeyP *master_pub,
+                                    const struct
+                                    TALER_Amount *amount_without_fee,
+                                    const struct
+                                    TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct
+                                    TALER_MerchantPublicKeyP *merchant_pub,
+                                    const struct
+                                    TALER_ExchangePublicKeyP *exchange_pub,
+                                    const struct
+                                    TALER_ExchangeSignatureP *exchange_sig,
+                                    const struct
+                                    TALER_MasterPublicKeyP *master_pub,
                                     struct GNUNET_TIME_Absolute ep_start,
                                     struct GNUNET_TIME_Absolute ep_expire,
                                     struct GNUNET_TIME_Absolute ep_end,
-                                    const struct TALER_MasterSignatureP *master_sig,
-                                    TALER_AUDITOR_DepositConfirmationResultCallback cb,
+                                    const struct
+                                    TALER_MasterSignatureP *master_sig,
+                                    TALER_AUDITOR_DepositConfirmationResultCallback
+                                    cb,
                                     void *cb_cls)
 {
   struct TALER_AUDITOR_DepositConfirmationHandle *dh;
@@ -311,10 +320,12 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                  " s:o, s:o," /* ep_expire, ep_end */
                  " s:o, s:o}", /* master_sig, exchange_pub */
                  "h_wire", GNUNET_JSON_from_data_auto (h_wire),
-                 "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
+                 "h_contract_terms", GNUNET_JSON_from_data_auto (
+                   h_contract_terms),
                  "timestamp", GNUNET_JSON_from_time_abs (timestamp),
                  "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
-                 "amount_without_fee", TALER_JSON_from_amount (amount_without_fee),
+                 "amount_without_fee", TALER_JSON_from_amount (
+                   amount_without_fee),
                  "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                  "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
                  "exchange_sig", GNUNET_JSON_from_data_auto (exchange_sig),
@@ -344,8 +355,8 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                                    "PUT"));
   if (GNUNET_OK !=
       TALER_curl_easy_post (&dh->ctx,
-                           eh,
-                           deposit_confirmation_obj))
+                            eh,
+                            deposit_confirmation_obj))
   {
     GNUNET_break (0);
     curl_easy_cleanup (eh);
@@ -375,7 +386,9 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
  * @param deposit-confirmation the deposit-confirmation permission request handle
  */
 void
-TALER_AUDITOR_deposit_confirmation_cancel (struct TALER_AUDITOR_DepositConfirmationHandle *deposit_confirmation)
+TALER_AUDITOR_deposit_confirmation_cancel (struct
+                                           TALER_AUDITOR_DepositConfirmationHandle
+                                           *deposit_confirmation)
 {
   if (NULL != deposit_confirmation->job)
   {

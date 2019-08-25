@@ -61,7 +61,7 @@ signkeys_iter (void *cls,
               "Iterating over key `%s' for start time %s\n",
               filename,
               GNUNET_STRINGS_absolute_time_to_string
-              (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
+                (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
 
   if (ntohl (ski->issue.purpose.size) !=
       (sizeof (struct TALER_ExchangeSigningKeyValidityPS)))
@@ -71,9 +71,12 @@ signkeys_iter (void *cls,
              filename);
     return GNUNET_SYSERR;
   }
-  if ( (0 != GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (ski->issue.end).abs_value_us % 1000000) )
+  if ( (0 != GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us
+        % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us
+        % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (ski->issue.end).abs_value_us
+        % 1000000) )
   {
     fprintf (stderr,
              "Timestamps are not multiples of a round second\n");
@@ -127,7 +130,8 @@ exchange_signkeys_check ()
 static int
 denomkeys_iter (void *cls,
                 const char *alias,
-                const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                const struct
+                TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
 {
   struct GNUNET_HashCode hc;
 
@@ -140,10 +144,14 @@ denomkeys_iter (void *cls,
     return GNUNET_SYSERR;
   }
 
-  if ( (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_legal).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us % 1000000) )
+  if ( (0 != GNUNET_TIME_absolute_ntoh (
+          dki->issue.properties.start).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (
+          dki->issue.properties.expire_withdraw).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (
+          dki->issue.properties.expire_legal).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (
+          dki->issue.properties.expire_deposit).abs_value_us % 1000000) )
   {
     fprintf (stderr,
              "Timestamps are not multiples of a round second\n");
@@ -151,10 +159,11 @@ denomkeys_iter (void *cls,
   }
 
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-                                  &dki->issue.properties.purpose,
-                                  &dki->issue.signature.eddsa_signature,
-                                  &dki->issue.properties.master.eddsa_pub))
+      GNUNET_CRYPTO_eddsa_verify (
+        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
+        &dki->issue.properties.purpose,
+        &dki->issue.signature.eddsa_signature,
+        &dki->issue.properties.master.eddsa_pub))
   {
     fprintf (stderr,
              "Denomination key for `%s' has invalid signature\n",
@@ -194,7 +203,8 @@ exchange_denomkeys_check ()
                                      "exchange",
                                      "master_public_key",
                                      &master_public_key_from_cfg,
-                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+                                     sizeof (struct
+                                             GNUNET_CRYPTO_EddsaPublicKey)))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
@@ -268,9 +278,9 @@ main (int argc, char *const *argv)
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-exchange-keycheck",
-			  "Check keys of the exchange for validity",
-			  options,
-			  &run, NULL))
+                          "Check keys of the exchange for validity",
+                          options,
+                          &run, NULL))
     return 1;
   return global_ret;
 

@@ -74,7 +74,7 @@ auditor_sign_run (void *cls,
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
-    (cfg, ass->config_filename))
+        (cfg, ass->config_filename))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -99,9 +99,9 @@ auditor_sign_run (void *cls,
   now = GNUNET_TIME_absolute_get ();
   GNUNET_asprintf
     (&ass->signed_keys_out,
-     "%s/.local/share/taler/auditors/auditor-%llu.out",
-     test_home_dir,
-     (unsigned long long) now.abs_value_us);
+    "%s/.local/share/taler/auditors/auditor-%llu.out",
+    test_home_dir,
+    (unsigned long long) now.abs_value_us);
   GNUNET_free (test_home_dir);
 
   if (GNUNET_OK !=
@@ -123,17 +123,17 @@ auditor_sign_run (void *cls,
   GNUNET_CONFIGURATION_destroy (cfg);
 
   ass->auditor_sign_proc = GNUNET_OS_start_process
-    (GNUNET_NO,
-     GNUNET_OS_INHERIT_STD_ALL,
-     NULL, NULL, NULL,
-     "taler-auditor-sign",
-     "taler-auditor-sign",
-     "-c", ass->config_filename,
-     "-u", "http://auditor/",
-     "-m", exchange_master_pub,
-     "-r", "auditor.in",
-     "-o", ass->signed_keys_out,
-     NULL);
+                             (GNUNET_NO,
+                             GNUNET_OS_INHERIT_STD_ALL,
+                             NULL, NULL, NULL,
+                             "taler-auditor-sign",
+                             "taler-auditor-sign",
+                             "-c", ass->config_filename,
+                             "-u", "http://auditor/",
+                             "-m", exchange_master_pub,
+                             "-r", "auditor.in",
+                             "-o", ass->signed_keys_out,
+                             NULL);
   GNUNET_free (exchange_master_pub);
   if (NULL == ass->auditor_sign_proc)
   {
@@ -161,7 +161,7 @@ auditor_sign_cleanup (void *cls,
   if (NULL != ass->auditor_sign_proc)
   {
     GNUNET_break (0 == GNUNET_OS_process_kill
-      (ass->auditor_sign_proc, SIGKILL));
+                    (ass->auditor_sign_proc, SIGKILL));
     GNUNET_OS_process_wait (ass->auditor_sign_proc);
     GNUNET_OS_process_destroy (ass->auditor_sign_proc);
     ass->auditor_sign_proc = NULL;

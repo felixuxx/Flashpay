@@ -114,7 +114,7 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
     TALER_JSON_spec_amount ("amount", &amount),
     GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
     GNUNET_JSON_spec_fixed_auto ("reserve_pub", &pc.reserve_pub),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
   struct GNUNET_JSON_Specification spec_refresh[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
@@ -122,7 +122,7 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
     TALER_JSON_spec_amount ("amount", &amount),
     GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
     GNUNET_JSON_spec_fixed_auto ("old_coin_pub", &pr.old_coin_pub),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -143,17 +143,19 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
   }
   if (ph->was_refreshed)
   {
-    pr.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+    pr.purpose.purpose = htonl (
+      TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
     pr.purpose.size = htonl (sizeof (pr));
     pr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
     TALER_amount_hton (&pr.payback_amount,
                        &amount);
     pr.coin_pub = ph->coin_pub;
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH,
-                                    &pr.purpose,
-                                    &exchange_sig.eddsa_signature,
-                                    &exchange_pub.eddsa_pub))
+        GNUNET_CRYPTO_eddsa_verify (
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH,
+          &pr.purpose,
+          &exchange_sig.eddsa_signature,
+          &exchange_pub.eddsa_pub))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -233,12 +235,12 @@ handle_payback_finished (void *cls,
 
       dki = &ph->pk;
       history = json_object_get (j,
-				 "history");
+                                 "history");
       if (GNUNET_OK !=
-	  TALER_EXCHANGE_verify_coin_history (dki->fee_deposit.currency,
-					      &ph->coin_pub,
-					      history,
-					      &total))
+          TALER_EXCHANGE_verify_coin_history (dki->fee_deposit.currency,
+                                              &ph->coin_pub,
+                                              history,
+                                              &total))
       {
         GNUNET_break_op (0);
         response_code = 0;
@@ -326,7 +328,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
 
   GNUNET_assert (GNUNET_YES ==
-		 TEAH_handle_is_ready (exchange));
+                 TEAH_handle_is_ready (exchange));
   pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
   pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
@@ -343,13 +345,17 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   payback_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
                            " s:o, s:o," /* coin pub/sig */
                            " s:o, s:o}", /* coin_bks */
-                           "denom_pub_hash", GNUNET_JSON_from_data_auto (&h_denom_pub),
-                           "denom_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
-                           "coin_pub", GNUNET_JSON_from_data_auto (&pr.coin_pub),
+                           "denom_pub_hash", GNUNET_JSON_from_data_auto (
+                             &h_denom_pub),
+                           "denom_sig", GNUNET_JSON_from_rsa_signature (
+                             denom_sig->rsa_signature),
+                           "coin_pub", GNUNET_JSON_from_data_auto (
+                             &pr.coin_pub),
                            "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
-                           "coin_blind_key_secret", GNUNET_JSON_from_data_auto (&ps->blinding_key),
+                           "coin_blind_key_secret", GNUNET_JSON_from_data_auto (
+                             &ps->blinding_key),
                            "refreshed", json_boolean (was_refreshed)
-			  );
+                           );
   if (NULL == payback_obj)
   {
     GNUNET_break (0);
@@ -360,7 +366,8 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->coin_pub = pr.coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
-  ph->pk.key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (pk->key.rsa_public_key);
+  ph->pk.key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
+    pk->key.rsa_public_key);
   ph->cb = payback_cb;
   ph->cb_cls = payback_cb_cls;
   ph->url = TEAH_path_to_url (exchange, "/payback");
@@ -368,8 +375,8 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   eh = TEL_curl_easy_get (ph->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ph->ctx,
-                           eh,
-                           payback_obj))
+                            eh,
+                            payback_obj))
   {
     GNUNET_break (0);
     curl_easy_cleanup (eh);
@@ -385,10 +392,10 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
               ph->url);
   ctx = TEAH_handle_to_context (exchange);
   ph->job = GNUNET_CURL_job_add2 (ctx,
-			          eh,
-				  ph->ctx.headers,
-				  &handle_payback_finished,
-				  ph);
+                                  eh,
+                                  ph->ctx.headers,
+                                  &handle_payback_finished,
+                                  ph);
   return ph;
 }
 

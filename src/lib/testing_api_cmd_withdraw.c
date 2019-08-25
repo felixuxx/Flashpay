@@ -133,8 +133,8 @@ do_retry (void *cls)
 
   ws->retry_task = NULL;
   withdraw_run (ws,
-		NULL,
-		ws->is);
+                NULL,
+                ws->is);
 }
 
 
@@ -152,7 +152,7 @@ do_retry (void *cls)
 static void
 reserve_withdraw_cb (void *cls,
                      unsigned int http_status,
-		     enum TALER_ErrorCode ec,
+                     enum TALER_ErrorCode ec,
                      const struct TALER_DenominationSignature *sig,
                      const json_t *full_response)
 {
@@ -166,23 +166,23 @@ reserve_withdraw_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == ec) ||
-	   (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == ec) ||
+           (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying withdraw failed with %u/%d\n",
                     http_status,
                     (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  ws->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  ws->backoff = EXCHANGE_LIB_BACKOFF (ws->backoff);
-	ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
-						       &do_retry,
-						       ws);
-	return;
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          ws->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          ws->backoff = EXCHANGE_LIB_BACKOFF (ws->backoff);
+        ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
+                                                       &do_retry,
+                                                       ws);
+        return;
       }
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -244,7 +244,7 @@ withdraw_run (void *cls,
 
   (void) cmd;
   create_reserve = TALER_TESTING_interpreter_lookup_command
-    (is, ws->reserve_reference);
+                     (is, ws->reserve_reference);
   if (NULL == create_reserve)
   {
     GNUNET_break (0);
@@ -264,8 +264,8 @@ withdraw_run (void *cls,
   ws->is = is;
 
   ws->pk = TALER_TESTING_find_pk
-    (TALER_EXCHANGE_get_keys (is->exchange),
-     &ws->amount);
+             (TALER_EXCHANGE_get_keys (is->exchange),
+             &ws->amount);
   if (NULL == ws->pk)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -349,7 +349,7 @@ withdraw_traits (void *cls,
   /* We offer the reserve key where these coins were withdrawn
    * from. */
   reserve_cmd = TALER_TESTING_interpreter_lookup_command
-    (ws->is, ws->reserve_reference);
+                  (ws->is, ws->reserve_reference);
 
   if (NULL == reserve_cmd)
   {
@@ -359,7 +359,7 @@ withdraw_traits (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
-    (reserve_cmd, 0, &reserve_priv))
+        (reserve_cmd, 0, &reserve_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ws->is);
@@ -407,9 +407,9 @@ withdraw_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount
   (const char *label,
-   const char *reserve_reference,
-   const char *amount,
-   unsigned int expected_response_code)
+  const char *reserve_reference,
+  const char *amount,
+  unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 
@@ -457,9 +457,9 @@ TALER_TESTING_cmd_withdraw_amount
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_denomination
   (const char *label,
-   const char *reserve_reference,
-   const struct TALER_EXCHANGE_DenomPublicKey *dk,
-   unsigned int expected_response_code)
+  const char *reserve_reference,
+  const struct TALER_EXCHANGE_DenomPublicKey *dk,
+  unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 

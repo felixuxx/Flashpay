@@ -209,7 +209,7 @@ payback_cb (void *cls,
   }
 
   reserve_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, cref);
+                  (is, cref);
   GNUNET_free (cref);
 
   if (NULL == reserve_cmd)
@@ -289,7 +289,7 @@ payback_cb (void *cls,
         return;
       }
       if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
-          (reserve_cmd, idx, &reserve_priv))
+            (reserve_cmd, idx, &reserve_priv))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -348,7 +348,7 @@ payback_run (void *cls,
   }
 
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, cref);
+               (is, cref);
   GNUNET_free (cref);
 
   if (NULL == coin_cmd)
@@ -359,7 +359,7 @@ payback_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-    (coin_cmd, idx, &coin_priv))
+        (coin_cmd, idx, &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -367,7 +367,7 @@ payback_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_blinding_key
-    (coin_cmd, idx, &blinding_key))
+        (coin_cmd, idx, &blinding_key))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -377,7 +377,7 @@ payback_run (void *cls,
   planchet.blinding_key = *blinding_key;
 
   if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
-    (coin_cmd, idx, &denom_pub))
+        (coin_cmd, idx, &denom_pub))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -385,7 +385,7 @@ payback_run (void *cls,
   }
 
   if (GNUNET_OK != TALER_TESTING_get_trait_denom_sig
-     (coin_cmd, idx, &coin_sig))
+        (coin_cmd, idx, &coin_sig))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -423,7 +423,7 @@ revoke_cleanup (void *cls,
   if (NULL != rs->revoke_proc)
   {
     GNUNET_break (0 == GNUNET_OS_process_kill
-      (rs->revoke_proc, SIGKILL));
+                    (rs->revoke_proc, SIGKILL));
     GNUNET_OS_process_wait (rs->revoke_proc);
     GNUNET_OS_process_destroy (rs->revoke_proc);
     rs->revoke_proc = NULL;
@@ -506,7 +506,7 @@ revoke_run (void *cls,
   rs->is = is;
   /* Get denom pub from trait */
   coin_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, rs->coin_reference);
+               (is, rs->coin_reference);
 
   if (NULL == coin_cmd)
   {
@@ -516,24 +516,24 @@ revoke_run (void *cls,
   }
 
   GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_denom_pub
-    (coin_cmd, 0, &denom_pub));
+                   (coin_cmd, 0, &denom_pub));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to revoke denom '%s..'\n",
               TALER_B2S (&denom_pub->h_key));
 
   rs->dhks = GNUNET_STRINGS_data_to_string_alloc
-    (&denom_pub->h_key, sizeof (struct GNUNET_HashCode));
+               (&denom_pub->h_key, sizeof (struct GNUNET_HashCode));
 
   rs->revoke_proc = GNUNET_OS_start_process
-    (GNUNET_NO,
-     GNUNET_OS_INHERIT_STD_ALL,
-     NULL, NULL, NULL,
-     "taler-exchange-keyup",
-     "taler-exchange-keyup",
-     "-c", rs->config_filename,
-     "-r", rs->dhks,
-     NULL);
+                      (GNUNET_NO,
+                      GNUNET_OS_INHERIT_STD_ALL,
+                      NULL, NULL, NULL,
+                      "taler-exchange-keyup",
+                      "taler-exchange-keyup",
+                      "-c", rs->config_filename,
+                      "-r", rs->dhks,
+                      NULL);
 
   if (NULL == rs->revoke_proc)
   {

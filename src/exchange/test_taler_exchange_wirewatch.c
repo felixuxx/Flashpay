@@ -34,7 +34,8 @@
 /**
  * Commands for the interpreter.
  */
-enum OpCode {
+enum OpCode
+{
 
   /**
    * Terminate testcase with 'skipped' result.
@@ -94,14 +95,16 @@ struct Command
    */
   const char *label;
 
-  union {
+  union
+  {
 
     /**
      * If @e opcode is #OPCODE_EXPECT_TRANSFER, this
      * specifies which transaction we expected.  Note that
      * the WTID will be set, not checked!
      */
-    struct {
+    struct
+    {
 
       /**
        * Amount to be transferred.
@@ -135,7 +138,8 @@ struct Command
      * If @e opcode is #OPCODE_RUN_TRANSFER, this
      * specifies which transaction the bank should do.
      */
-    struct {
+    struct
+    {
 
       /**
        * Amount to be transferred.
@@ -164,7 +168,8 @@ struct Command
 
     } run_transfer;
 
-    struct {
+    struct
+    {
 
       /**
        * The handle for the aggregator process that we are testing.
@@ -178,7 +183,8 @@ struct Command
 
     } aggregator;
 
-    struct {
+    struct
+    {
 
       /**
        * The handle for the wirewatch process that we are testing.
@@ -210,7 +216,7 @@ struct State
   /**
    * Array of commands to run.
    */
-  struct Command* commands;
+  struct Command*commands;
 
   /**
    * Offset of the next command to be run.
@@ -335,7 +341,7 @@ shutdown_action (void *cls)
     TALER_FAKEBANK_stop (fb);
     fb = NULL;
   }
-  for (unsigned int i=0;i<=state->ioff;i++)
+  for (unsigned int i = 0; i<=state->ioff; i++)
   {
     struct Command *cmd = &state->commands[i];
 
@@ -351,8 +357,9 @@ shutdown_action (void *cls)
       }
       if (NULL != cmd->details.aggregator.aggregator_proc)
       {
-        GNUNET_break (0 == GNUNET_OS_process_kill (cmd->details.aggregator.aggregator_proc,
-                                                   SIGKILL));
+        GNUNET_break (0 == GNUNET_OS_process_kill (
+                        cmd->details.aggregator.aggregator_proc,
+                        SIGKILL));
         GNUNET_OS_process_wait (cmd->details.aggregator.aggregator_proc);
         GNUNET_OS_process_destroy (cmd->details.aggregator.aggregator_proc);
         cmd->details.aggregator.aggregator_proc = NULL;
@@ -366,8 +373,9 @@ shutdown_action (void *cls)
       }
       if (NULL != cmd->details.wirewatch.wirewatch_proc)
       {
-        GNUNET_break (0 == GNUNET_OS_process_kill (cmd->details.wirewatch.wirewatch_proc,
-                                                   SIGKILL));
+        GNUNET_break (0 == GNUNET_OS_process_kill (
+                        cmd->details.wirewatch.wirewatch_proc,
+                        SIGKILL));
         GNUNET_OS_process_wait (cmd->details.wirewatch.wirewatch_proc);
         GNUNET_OS_process_destroy (cmd->details.wirewatch.wirewatch_proc);
         cmd->details.wirewatch.wirewatch_proc = NULL;
@@ -614,7 +622,8 @@ run (void *cls)
       .label = "run-transfer-good-to-exchange",
       .details.run_transfer.debit_account = 4,
       .details.run_transfer.credit_account = 3,
-      .details.run_transfer.subject = "SRB8VQHNTNJWSSG7BXT24Z063ZSXN7T0MHCQCBAFC1V17BZH10D0",
+      .details.run_transfer.subject =
+        "SRB8VQHNTNJWSSG7BXT24Z063ZSXN7T0MHCQCBAFC1V17BZH10D0",
       .details.run_transfer.amount = "EUR:5.00"
     },
     /* creates reserve */
@@ -628,7 +637,8 @@ run (void *cls)
       .label = "clear-good-transfer-to-exchange",
       .details.expect_transfer.debit_account = 4,
       .details.expect_transfer.credit_account = 3,
-      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transfer.amount = "EUR:5.00"
     },
     /* should do NOTHING, it is too early... */
@@ -658,7 +668,8 @@ run (void *cls)
       .label = "check-reserve-expiration-transfer",
       .details.expect_transfer.debit_account = 3,
       .details.expect_transfer.credit_account = 4,
-      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transfer.amount = "EUR:4.99"
     },
     /* check nothing else happened */
@@ -685,7 +696,8 @@ run (void *cls)
       .label = "expect-bad-transfer-to-exchange",
       .details.expect_transfer.debit_account = 4,
       .details.expect_transfer.credit_account = 3,
-      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transfer.amount = "EUR:5.00"
     },
     {
@@ -693,7 +705,8 @@ run (void *cls)
       .label = "expect-rewire-transfer-from-exchange",
       .details.expect_transfer.debit_account = 3,
       .details.expect_transfer.credit_account = 4,
-      .details.expect_transfer.exchange_base_url = "https://exchange.taler.net/",
+      .details.expect_transfer.exchange_base_url =
+        "https://exchange.taler.net/",
       .details.expect_transfer.amount = "EUR:5.00"
     },
     {
@@ -739,13 +752,13 @@ static void
 sighandler_child_death ()
 {
   static char c;
-  int old_errno = errno;	/* back-up errno */
+  int old_errno = errno;  /* back-up errno */
 
   GNUNET_break (1 ==
-		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
-					(sigpipe, GNUNET_DISK_PIPE_END_WRITE),
-					&c, sizeof (c)));
-  errno = old_errno;		/* restore errno */
+                GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
+                                          (sigpipe, GNUNET_DISK_PIPE_END_WRITE),
+                                        &c, sizeof (c)));
+  errno = old_errno;    /* restore errno */
 }
 
 
@@ -788,7 +801,7 @@ main (int argc,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+                "Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
     return 77;
   }
   GNUNET_OS_process_wait (proc);
@@ -804,14 +817,14 @@ main (int argc,
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+                "Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
     return 77;
   }
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     8082))
+                                     8082))
   {
     fprintf (stderr,
              "Required port %u not available, skipping.\n",

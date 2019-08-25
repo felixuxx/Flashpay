@@ -95,19 +95,18 @@ TALER_TESTING_prepare_bank (const char *config_filename);
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
- * @param num_result how many rows we want in the result. 
+ * @param num_result how many rows we want in the result.
  *
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_history
-  (const char *label,
-   const char *bank_url,
-   uint64_t account_no,
-   enum TALER_BANK_Direction direction,
-   unsigned int ascending,
-   const char *start_row_reference,
-   long long num_results);
+TALER_TESTING_cmd_bank_history (const char *label,
+                                const char *bank_url,
+                                uint64_t account_no,
+                                enum TALER_BANK_Direction direction,
+                                unsigned int ascending,
+                                const char *start_row_reference,
+                                long long num_results);
 
 
 /**
@@ -127,14 +126,16 @@ TALER_TESTING_cmd_bank_history
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_history_range_with_dates
-  (const char *label,
-   const char *bank_url,
-   uint64_t account_no,
-   enum TALER_BANK_Direction direction,
-   unsigned int ascending,
-   struct GNUNET_TIME_Absolute start_date,
-   struct GNUNET_TIME_Absolute end_date);
+TALER_TESTING_cmd_bank_history_range_with_dates (const char *label,
+                                                 const char *bank_url,
+                                                 uint64_t account_no,
+                                                 enum TALER_BANK_Direction
+                                                 direction,
+                                                 unsigned int ascending,
+                                                 struct GNUNET_TIME_Absolute
+                                                 start_date,
+                                                 struct GNUNET_TIME_Absolute
+                                                 end_date);
 
 
 /**
@@ -156,14 +157,13 @@ TALER_TESTING_cmd_bank_history_range_with_dates
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_history_range
-  (const char *label,
-   const char *bank_url,
-   uint64_t account_no,
-   enum TALER_BANK_Direction direction,
-   unsigned int ascending,
-   const char *start_row_reference,
-   const char *end_row_reference);
+TALER_TESTING_cmd_bank_history_range (const char *label,
+                                      const char *bank_url,
+                                      uint64_t account_no,
+                                      enum TALER_BANK_Direction direction,
+                                      unsigned int ascending,
+                                      const char *start_row_reference,
+                                      const char *end_row_reference);
 
 
 /**

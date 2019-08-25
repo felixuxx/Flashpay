@@ -79,7 +79,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
+  { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
   return res;
 }
 
@@ -142,7 +142,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount (const struct TALER_Amount *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_amount, NULL, x, sizeof (*x), 2 };
+  { &qconv_amount, NULL, x, sizeof (*x), 2 };
   return res;
 }
 
@@ -196,7 +196,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_json (const json_t *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_json, NULL, x, 0, 1 };
+  { &qconv_json, NULL, x, 0, 1 };
   return res;
 }
 
@@ -260,7 +260,7 @@ struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_round_time, NULL, x, sizeof (*x), 1 };
+  { &qconv_round_time, NULL, x, sizeof (*x), 1 };
   return res;
 }
 
@@ -316,10 +316,10 @@ qconv_round_time_abs (void *cls,
  * @param x pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_absolute_time_nbo(const struct GNUNET_TIME_AbsoluteNBO *x)
+TALER_PQ_query_param_absolute_time_nbo (const struct GNUNET_TIME_AbsoluteNBO *x)
 {
   struct GNUNET_PQ_QueryParam res =
-    { &qconv_round_time_abs, NULL, x, sizeof (*x), 1 };
+  { &qconv_round_time_abs, NULL, x, sizeof (*x), 1 };
   return res;
 }
 

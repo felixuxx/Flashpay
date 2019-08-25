@@ -109,7 +109,7 @@ list_exchanges (void *cls,
   {
     TALER_LOG_WARNING ("Failed to handle /exchanges in database\n");
     *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_LIST_EXCHANGES_DB_ERROR);
+                                                     TALER_EC_LIST_EXCHANGES_DB_ERROR);
   }
   return qs;
 }
@@ -139,9 +139,9 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
   if (GNUNET_OK !=
       TAH_DB_run_transaction (connection,
                               "list exchanges",
-			      &mhd_ret,
-			      &list_exchanges,
-			      (void *) ja))
+                              &mhd_ret,
+                              &list_exchanges,
+                              (void *) ja))
     return mhd_ret;
   return reply_exchanges_success (connection,
                                   ja);

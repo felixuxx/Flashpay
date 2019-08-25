@@ -116,12 +116,12 @@ check_keys_run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Triggering GET /keys, cmd `%s'\n",
                 cmd->label);
-    
+
     if (GNUNET_YES == cks->set_last_denom)
     {
       TALER_LOG_DEBUG ("Forcing last_denom_date URL argument\n");
       TALER_EXCHANGE_set_last_denom (is->exchange,
-                                     cks->last_denom_date);  
+                                     cks->last_denom_date);
     }
 
     if (GNUNET_YES == cks->with_now)
@@ -131,8 +131,8 @@ check_keys_run (void *cls,
     GNUNET_break
       (0 == TALER_EXCHANGE_check_keys_current
         (is->exchange,
-         GNUNET_YES,
-         cks->pull_all_keys).abs_value_us);
+        GNUNET_YES,
+        cks->pull_all_keys).abs_value_us);
     return;
   }
 
@@ -215,9 +215,9 @@ check_keys_cleanup (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_with_last_denom
   (const char *label,
-   unsigned int generation,
-   unsigned int num_denom_keys,
-   struct GNUNET_TIME_Absolute last_denom_date)
+  unsigned int generation,
+  unsigned int num_denom_keys,
+  struct GNUNET_TIME_Absolute last_denom_date)
 {
   struct CheckKeysState *cks;
 
@@ -256,8 +256,8 @@ TALER_TESTING_cmd_check_keys_with_last_denom
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys
   (const char *label,
-   unsigned int generation,
-   unsigned int num_denom_keys)
+  unsigned int generation,
+  unsigned int num_denom_keys)
 {
   struct CheckKeysState *cks;
 
@@ -295,9 +295,9 @@ TALER_TESTING_cmd_check_keys
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_with_now
   (const char *label,
-   unsigned int generation,
-   unsigned int num_denom_keys,
-   struct GNUNET_TIME_Absolute now)
+  unsigned int generation,
+  unsigned int num_denom_keys,
+  struct GNUNET_TIME_Absolute now)
 {
   struct CheckKeysState *cks;
 
@@ -341,8 +341,8 @@ TALER_TESTING_cmd_check_keys_with_now
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_pull_all_keys
   (const char *label,
-   unsigned int generation,
-   unsigned int num_denom_keys)
+  unsigned int generation,
+  unsigned int num_denom_keys)
 {
   struct CheckKeysState *cks;
 

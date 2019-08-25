@@ -115,7 +115,7 @@ purge_process (struct GNUNET_OS_Process *process)
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   unsigned int ret;
   /* These environment variables get in the way... */
@@ -127,19 +127,19 @@ main (int argc,
                     NULL);
 
   if (NULL == (bank_url = TALER_TESTING_prepare_bank
-      (CONFIG_FILE)))
+                            (CONFIG_FILE)))
     return 77;
 
   if (NULL == (bankd = TALER_TESTING_run_bank
-      (CONFIG_FILE,
-       bank_url)))
+                         (CONFIG_FILE,
+                         bank_url)))
   {
     GNUNET_free (bank_url);
     return 77;
   }
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
-      (CONFIG_FILE)))
+                               (CONFIG_FILE)))
   {
     purge_process (bankd);
     GNUNET_free (bank_url);

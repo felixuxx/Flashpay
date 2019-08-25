@@ -45,8 +45,8 @@
 int
 TALER_TESTING_get_trait_amount_obj
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_Amount **amount)
+  unsigned int index,
+  const struct TALER_Amount **amount)
 {
   return cmd->traits (cmd->cls,
                       (const void **) amount,
@@ -67,7 +67,7 @@ TALER_TESTING_get_trait_amount_obj
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount_obj
   (unsigned int index,
-   const struct TALER_Amount *amount)
+  const struct TALER_Amount *amount)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

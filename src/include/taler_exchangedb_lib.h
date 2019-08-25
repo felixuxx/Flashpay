@@ -128,7 +128,9 @@ struct TALER_EXCHANGEDB_DenominationKeyIssueInformation
 typedef int
 (*TALER_EXCHANGEDB_SigningKeyIterator)(void *cls,
                                        const char *filename,
-                                       const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
+                                       const struct
+                                       TALER_EXCHANGEDB_PrivateSigningKeyInformationP
+                                       *ski);
 
 
 /**
@@ -160,7 +162,9 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
 int
 TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
                                     struct GNUNET_TIME_Absolute start,
-                                    const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
+                                    const struct
+                                    TALER_EXCHANGEDB_PrivateSigningKeyInformationP
+                                    *ski);
 
 
 /**
@@ -176,7 +180,9 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
 typedef int
 (*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
                                             const char *alias,
-                                            const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                            const struct
+                                            TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                            *dki);
 
 
 /**
@@ -192,7 +198,9 @@ typedef int
 typedef int
 (*TALER_EXCHANGEDB_RevocationIterator)(void *cls,
                                        const struct GNUNET_HashCode *denom_hash,
-                                       const struct TALER_MasterSignatureP *revocation_master_sig);
+                                       const struct
+                                       TALER_MasterSignatureP *
+                                       revocation_master_sig);
 
 
 /**
@@ -210,7 +218,8 @@ typedef int
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
-                                            TALER_EXCHANGEDB_DenominationKeyIterator it,
+                                            TALER_EXCHANGEDB_DenominationKeyIterator
+                                            it,
                                             void *it_cls);
 
 
@@ -228,9 +237,10 @@ TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
  */
 int
 TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
-				      const struct TALER_MasterPublicKeyP *master_pub,
-				      TALER_EXCHANGEDB_RevocationIterator it,
-				      void *it_cls);
+                                      const struct
+                                      TALER_MasterPublicKeyP *master_pub,
+                                      TALER_EXCHANGEDB_RevocationIterator it,
+                                      void *it_cls);
 
 
 /**
@@ -244,8 +254,10 @@ TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
  */
 int
 TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
-                                          const struct GNUNET_HashCode *denom_hash,
-                                          const struct TALER_MasterPrivateKeyP *mpriv);
+                                          const struct
+                                          GNUNET_HashCode *denom_hash,
+                                          const struct
+                                          TALER_MasterPrivateKeyP *mpriv);
 
 
 /**
@@ -257,7 +269,9 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
  */
 int
 TALER_EXCHANGEDB_denomination_key_write (const char *filename,
-                                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                         const struct
+                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         *dki);
 
 
 /**
@@ -269,7 +283,9 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
  */
 int
 TALER_EXCHANGEDB_denomination_key_read (const char *filename,
-                                        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                        struct
+                                        TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                        *dki);
 
 
 /**
@@ -293,7 +309,8 @@ typedef int
                                     const struct TALER_MasterPublicKeyP *mpub,
                                     unsigned int dki_len,
                                     const struct TALER_AuditorSignatureP *asigs,
-                                    const struct TALER_DenominationKeyValidityPS *dki);
+                                    const struct
+                                    TALER_DenominationKeyValidityPS *dki);
 
 
 /**
@@ -333,7 +350,8 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
                                 const struct TALER_AuditorSignatureP *asigs,
                                 const struct TALER_MasterPublicKeyP *mpub,
                                 unsigned int dki_len,
-                                const struct TALER_DenominationKeyValidityPS *dki);
+                                const struct
+                                TALER_DenominationKeyValidityPS *dki);
 
 
 /**
@@ -492,7 +510,8 @@ struct TALER_EXCHANGEDB_AccountInfo
  */
 typedef void
 (*TALER_EXCHANGEDB_AccountCallback)(void *cls,
-                                    const struct TALER_EXCHANGEDB_AccountInfo *ai);
+                                    const struct
+                                    TALER_EXCHANGEDB_AccountInfo *ai);
 
 /**
  * Parse the configuration to find account information.

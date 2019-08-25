@@ -18,7 +18,7 @@
  * @file include/platform.h
  * @brief This file contains the includes and definitions which are used by the
  *        rest of the modules
- * @author Sree Harsha Totakura <sreeharsha@totakura.in> 
+ * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 
 #ifndef PLATFORM_H_
@@ -36,7 +36,7 @@
 #if (GNUNET_EXTRA_LOGGING >= 1)
 #define VERBOSE(cmd) cmd
 #else
-#define VERBOSE(cmd) do { break; }while(0)
+#define VERBOSE(cmd) do { break; } while (0)
 #endif
 
 /* Include the features available for GNU source */

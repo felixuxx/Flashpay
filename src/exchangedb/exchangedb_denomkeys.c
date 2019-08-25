@@ -59,8 +59,10 @@ GNUNET_NETWORK_STRUCT_END
  */
 int
 TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
-                                          const struct GNUNET_HashCode *denom_hash,
-                                          const struct TALER_MasterPrivateKeyP *mpriv)
+                                          const struct
+                                          GNUNET_HashCode *denom_hash,
+                                          const struct
+                                          TALER_MasterPrivateKeyP *mpriv)
 {
   struct TALER_MasterDenominationKeyRevocationPS rm;
   char *fn;
@@ -69,7 +71,7 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
 
   ret = GNUNET_SYSERR;
   GNUNET_asprintf (&fn,
-                   "%s" DIR_SEPARATOR_STR                   
+                   "%s" DIR_SEPARATOR_STR
                    "%s.rev",
                    revocation_dir,
                    GNUNET_h2s_full (denom_hash));
@@ -83,9 +85,10 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
   rd.denom_hash = *denom_hash;
   if (sizeof (rd) !=
       GNUNET_DISK_fn_write (fn,
-			    &rd,
-			    sizeof (rd),
-			    GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE))
+                            &rd,
+                            sizeof (rd),
+                            GNUNET_DISK_PERM_USER_READ
+                            | GNUNET_DISK_PERM_USER_WRITE))
     ret = GNUNET_SYSERR;
   else
     ret = GNUNET_OK;
@@ -104,7 +107,9 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
  */
 int
 TALER_EXCHANGEDB_denomination_key_read (const char *filename,
-                                        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                                        struct
+                                        TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                        *dki)
 {
   uint64_t size;
   size_t offset;
@@ -156,7 +161,8 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
           offset);
   GNUNET_free (data);
   if (0 == GNUNET_TIME_absolute_get_remaining
-      (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw)).rel_value_us)
+        (GNUNET_TIME_absolute_ntoh (
+          dki->issue.properties.expire_withdraw)).rel_value_us)
   {
     if (0 != UNLINK (filename))
     {
@@ -180,7 +186,9 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
  */
 int
 TALER_EXCHANGEDB_denomination_key_write (const char *filename,
-                                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                                         const struct
+                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         *dki)
 {
   char *priv_enc;
   size_t priv_enc_size;
@@ -198,9 +206,11 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
       GNUNET_DISK_directory_create_for_file (filename))
     return GNUNET_SYSERR;
   if (NULL == (fh = GNUNET_DISK_file_open
-               (filename,
-                GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
-                GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_OPEN_FAILIFEXISTS)))
+                      (filename,
+                      GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE
+                      | GNUNET_DISK_OPEN_TRUNCATE,
+                      GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE
+                      | GNUNET_DISK_OPEN_FAILIFEXISTS)))
     goto cleanup;
   wsize = sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
@@ -217,7 +227,7 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
   if (wrote != priv_enc_size)
     goto cleanup;
   ret = GNUNET_OK;
- cleanup:
+  cleanup:
   GNUNET_free_non_null (priv_enc);
   if (NULL != fh)
     (void) GNUNET_DISK_file_close (fh);
@@ -328,7 +338,8 @@ denomkeys_iterate_topdir_iter (void *cls,
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
-                                            TALER_EXCHANGEDB_DenominationKeyIterator it,
+                                            TALER_EXCHANGEDB_DenominationKeyIterator
+                                            it,
                                             void *it_cls)
 {
   char *dir;
@@ -336,7 +347,8 @@ TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
   int ret;
 
   GNUNET_asprintf (&dir,
-                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS,
+                   "%s" DIR_SEPARATOR_STR
+                   TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS,
                    exchange_base_dir);
   dic.it = it;
   dic.it_cls = it_cls;
@@ -363,7 +375,7 @@ struct RevocationsIterateContext
    * Closure for @e it.
    */
   void *it_cls;
-  
+
   /**
    * Master public key to use to validate revocations.
    */
@@ -385,7 +397,7 @@ struct RevocationsIterateContext
  */
 static int
 revocations_iterate_cb (void *cls,
-			const char *filename)
+                        const char *filename)
 {
   struct RevocationsIterateContext *ric = cls;
   struct RevocationFileP rf;
@@ -394,34 +406,37 @@ revocations_iterate_cb (void *cls,
   /* Check if revocation is valid... */
   if (sizeof (rf) !=
       GNUNET_DISK_fn_read (filename,
-			   &rf,
-			   sizeof (rf)))
+                           &rf,
+                           sizeof (rf)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		_("Invalid revocation file `%s' found and ignored (bad size)\n"),
-		filename);
+                _ (
+                  "Invalid revocation file `%s' found and ignored (bad size)\n"),
+                filename);
     return GNUNET_OK;
   }
   rm.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
   rm.purpose.size = htonl (sizeof (rm));
   rm.h_denom_pub = rf.denom_hash;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-				  &rm.purpose,
-				  &rf.msig.eddsa_signature,
-				  &ric->master_pub->eddsa_pub))
+      GNUNET_CRYPTO_eddsa_verify (
+        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
+        &rm.purpose,
+        &rf.msig.eddsa_signature,
+        &ric->master_pub->eddsa_pub))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		_("Invalid revocation file `%s' found and ignored (bad signature)\n"),
-		filename);
+                _ (
+                  "Invalid revocation file `%s' found and ignored (bad signature)\n"),
+                filename);
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-	      "Denomination key `%s' was revoked!\n",
-	      GNUNET_h2s (&rm.h_denom_pub));
+              "Denomination key `%s' was revoked!\n",
+              GNUNET_h2s (&rm.h_denom_pub));
   return ric->it (ric->it_cls,
-		  &rm.h_denom_pub,
-		  &rf.msig);
+                  &rm.h_denom_pub,
+                  &rf.msig);
 }
 
 
@@ -439,9 +454,10 @@ revocations_iterate_cb (void *cls,
  */
 int
 TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
-				      const struct TALER_MasterPublicKeyP *master_pub,
-				      TALER_EXCHANGEDB_RevocationIterator it,
-				      void *it_cls)
+                                      const struct
+                                      TALER_MasterPublicKeyP *master_pub,
+                                      TALER_EXCHANGEDB_RevocationIterator it,
+                                      void *it_cls)
 {
   struct RevocationsIterateContext ric = {
     .it = it,
@@ -452,10 +468,10 @@ TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create (revocation_dir))
     return 0; /* directory doesn't exist and we couldn't even create it,
-		 clearly means there are no revocations there */
+     clearly means there are no revocations there */
   return GNUNET_DISK_directory_scan (revocation_dir,
-				     &revocations_iterate_cb,
-				     &ric);
+                                     &revocations_iterate_cb,
+                                     &ric);
 }
 
 

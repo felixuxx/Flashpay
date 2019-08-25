@@ -65,22 +65,22 @@ TAH_RESPONSE_can_compress (struct MHD_Connection *connection)
   const char *de;
 
   ae = MHD_lookup_connection_value (connection,
-				    MHD_HEADER_KIND,
-				    MHD_HTTP_HEADER_ACCEPT_ENCODING);
+                                    MHD_HEADER_KIND,
+                                    MHD_HTTP_HEADER_ACCEPT_ENCODING);
   if (NULL == ae)
     return MHD_NO;
   if (0 == strcmp (ae,
                    "*"))
     return MHD_YES;
   de = strstr (ae,
-	       "deflate");
+               "deflate");
   if (NULL == de)
     return MHD_NO;
   if ( ( (de == ae) ||
-	 (de[-1] == ',') ||
-	 (de[-1] == ' ') ) &&
+         (de[-1] == ',') ||
+         (de[-1] == ' ') ) &&
        ( (de[strlen ("deflate")] == '\0') ||
-	 (de[strlen ("deflate")] == ',') ||
+         (de[strlen ("deflate")] == ',') ||
          (de[strlen ("deflate")] == ';') ) )
     return MHD_YES;
   return MHD_NO;
@@ -96,7 +96,7 @@ TAH_RESPONSE_can_compress (struct MHD_Connection *connection)
  */
 int
 TAH_RESPONSE_body_compress (void **buf,
-			    size_t *buf_size)
+                            size_t *buf_size)
 {
   Bytef *cbuf;
   uLongf cbuf_size;
@@ -107,9 +107,9 @@ TAH_RESPONSE_body_compress (void **buf,
   if (NULL == cbuf)
     return MHD_NO;
   ret = compress (cbuf,
-		  &cbuf_size,
-		  (const Bytef *) *buf,
-		  *buf_size);
+                  &cbuf_size,
+                  (const Bytef *) *buf,
+                  *buf_size);
   if ( (Z_OK != ret) ||
        (cbuf_size >= *buf_size) )
   {
@@ -144,7 +144,7 @@ TAH_RESPONSE_reply_json (struct MHD_Connection *connection,
   int comp;
 
   json_str = json_dumps (json,
-			 JSON_INDENT(2));
+                         JSON_INDENT (2));
   if (NULL == json_str)
   {
     /**
@@ -163,7 +163,7 @@ TAH_RESPONSE_reply_json (struct MHD_Connection *connection,
   if (MHD_YES ==
       TAH_RESPONSE_can_compress (connection))
     comp = TAH_RESPONSE_body_compress (&json_str,
-				       &json_len);
+                                       &json_len);
   resp = MHD_create_response_from_buffer (json_len,
                                           json_str,
                                           MHD_RESPMEM_MUST_FREE);
@@ -181,9 +181,9 @@ TAH_RESPONSE_reply_json (struct MHD_Connection *connection,
   {
     /* Need to indicate to client that body is compressed */
     if (MHD_NO ==
-	MHD_add_response_header (resp,
-				 MHD_HTTP_HEADER_CONTENT_ENCODING,
-				 "deflate"))
+        MHD_add_response_header (resp,
+                                 MHD_HTTP_HEADER_CONTENT_ENCODING,
+                                 "deflate"))
     {
       GNUNET_break (0);
       MHD_destroy_response (resp);
@@ -249,14 +249,14 @@ TAH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:I, s:s}",
                                        "error", "invalid parameter",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -273,14 +273,14 @@ TAH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:I, s:s}",
                                        "error", "unknown entity referenced",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -295,14 +295,14 @@ TAH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
+                                      enum TALER_ErrorCode ec,
                                       const char *param_name)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_UNAUTHORIZED,
                                        "{s:s, s:I, s:s}",
                                        "error", "invalid signature",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -317,14 +317,14 @@ TAH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
-				enum TALER_ErrorCode ec,
+                                enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:I, s:s}",
                                        "error", "missing parameter",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -339,14 +339,14 @@ TAH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec,
+                                      enum TALER_ErrorCode ec,
                                       const char *hint)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:s}",
                                        "error", "permission denied",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -361,14 +361,14 @@ TAH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        "{s:s, s:I, s:s}",
                                        "error", "internal error",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -383,14 +383,14 @@ TAH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
-				   enum TALER_ErrorCode ec,
+                                   enum TALER_ErrorCode ec,
                                    const char *hint)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:I, s:s}",
                                        "error", "client error",
-				       "code", (json_int_t) ec,
+                                       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -405,13 +405,13 @@ TAH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
-				 enum TALER_ErrorCode ec)
+                                 enum TALER_ErrorCode ec)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        "{s:s, s:I}",
                                        "error", "commit failure",
-				       "code", (json_int_t) ec);
+                                       "code", (json_int_t) ec);
 }
 
 
@@ -425,10 +425,10 @@ TAH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
  */
 int
 TAH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection,
-				      enum TALER_ErrorCode ec)
+                                      enum TALER_ErrorCode ec)
 {
   return TAH_RESPONSE_reply_internal_error (connection,
-					    ec,
+                                            ec,
                                             "Failure in database interaction");
 }
 
@@ -472,7 +472,8 @@ TAH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:I}",
                                        "error", "invalid json",
-				       "code", (json_int_t) TALER_EC_JSON_INVALID);
+                                       "code",
+                                       (json_int_t) TALER_EC_JSON_INVALID);
 }
 
 

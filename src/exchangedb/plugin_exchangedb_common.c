@@ -38,7 +38,7 @@ common_free_reserve_history (void *cls,
 
   while (NULL != rh)
   {
-    switch(rh->type)
+    switch (rh->type)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
       bt = rh->details.bank;
@@ -91,32 +91,38 @@ common_free_coin_transaction_list (void *cls,
       if (NULL != list->details.deposit->receiver_wire_account)
         json_decref (list->details.deposit->receiver_wire_account);
       if (NULL != list->details.deposit->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.deposit->coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (
+          list->details.deposit->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.deposit);
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
       if (NULL != list->details.melt->session.coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.melt->session.coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (
+          list->details.melt->session.coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.melt);
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
       if (NULL != list->details.payback_refresh->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.payback_refresh->coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (
+          list->details.payback_refresh->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.old_coin_payback);
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
       if (NULL != list->details.refund->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.refund->coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (
+          list->details.refund->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.refund);
       break;
     case TALER_EXCHANGEDB_TT_PAYBACK:
       if (NULL != list->details.payback->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.payback->coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (
+          list->details.payback->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.payback);
       break;
     case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
       if (NULL != list->details.payback_refresh->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (list->details.payback_refresh->coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (
+          list->details.payback_refresh->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.payback_refresh);
       break;
     }

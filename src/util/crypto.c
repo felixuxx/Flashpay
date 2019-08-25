@@ -48,14 +48,14 @@ fatal_error_handler (void *cls,
   fprintf (stderr,
            "Fatal error in libgcrypt: %s\n",
            msg);
-  abort();
+  abort ();
 }
 
 
 /**
  * Initialize libgcrypt.
  */
-void  __attribute__ ((constructor))
+void __attribute__ ((constructor))
 TALER_gcrypt_init ()
 {
   gcry_set_fatalerror_handler (&fatal_error_handler,
@@ -125,8 +125,10 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * @param[out] ts computed transfer secret
  */
 void
-TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                                   const struct TALER_TransferPrivateKeyP *trans_priv,
+TALER_link_derive_transfer_secret (const struct
+                                   TALER_CoinSpendPrivateKeyP *coin_priv,
+                                   const struct
+                                   TALER_TransferPrivateKeyP *trans_priv,
                                    struct TALER_TransferSecretP *ts)
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -150,8 +152,10 @@ TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin
  * @param[out] transfer_secret set to the shared secret
  */
 void
-TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans_priv,
-                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+TALER_link_reveal_transfer_secret (const struct
+                                   TALER_TransferPrivateKeyP *trans_priv,
+                                   const struct
+                                   TALER_CoinSpendPublicKeyP *coin_pub,
                                    struct TALER_TransferSecretP *transfer_secret)
 {
   GNUNET_assert (GNUNET_OK ==
@@ -170,9 +174,12 @@ TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans
  * @param[out] transfer_secret set to the shared secret
  */
 void
-TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans_pub,
-                                    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                                    struct TALER_TransferSecretP *transfer_secret)
+TALER_link_recover_transfer_secret (const struct
+                                    TALER_TransferPublicKeyP *trans_pub,
+                                    const struct
+                                    TALER_CoinSpendPrivateKeyP *coin_priv,
+                                    struct TALER_TransferSecretP *
+                                    transfer_secret)
 {
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_ecdh (&coin_priv->eddsa_priv,
@@ -349,7 +356,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   /* first, iterate over transfer public keys for hash_context */
-  for (unsigned int i=0;i<kappa;i++)
+  for (unsigned int i = 0; i<kappa; i++)
   {
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &rcs[i].transfer_pub,
@@ -357,7 +364,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
   }
   /* next, add all of the hashes from the denomination keys to the
      hash_context */
-  for (unsigned int i=0;i<num_new_coins;i++)
+  for (unsigned int i = 0; i<num_new_coins; i++)
   {
     char *buf;
     size_t buf_size;
@@ -365,11 +372,12 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
     /* The denomination keys should / must all be identical regardless
        of what offset we use, so we use [0]. */
     GNUNET_assert (kappa > 0); /* sanity check */
-    buf_size = GNUNET_CRYPTO_rsa_public_key_encode (rcs[0].new_coins[i].dk->rsa_public_key,
-						    &buf);
+    buf_size = GNUNET_CRYPTO_rsa_public_key_encode (
+      rcs[0].new_coins[i].dk->rsa_public_key,
+      &buf);
     GNUNET_CRYPTO_hash_context_read (hash_context,
-				     buf,
-				     buf_size);
+                                     buf,
+                                     buf_size);
     GNUNET_free (buf);
   }
 
@@ -388,11 +396,11 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
   }
 
   /* finally, add all the envelopes */
-  for (unsigned int i=0;i<kappa;i++)
+  for (unsigned int i = 0; i<kappa; i++)
   {
     const struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
 
-    for (unsigned int j=0;j<num_new_coins;j++)
+    for (unsigned int j = 0; j<num_new_coins; j++)
     {
       const struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
 

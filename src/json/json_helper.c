@@ -234,7 +234,7 @@ parse_amount_nbo (void *cls,
   strcpy (amount.currency, currency);
   (void) TALER_amount_normalize (&amount);
   TALER_amount_hton (r_amount,
-		     &amount);
+                     &amount);
   return GNUNET_OK;
 }
 
@@ -247,7 +247,7 @@ parse_amount_nbo (void *cls,
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_nbo (const char *name,
-			    struct TALER_AmountNBO *r_amount)
+                            struct TALER_AmountNBO *r_amount)
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_amount_nbo,

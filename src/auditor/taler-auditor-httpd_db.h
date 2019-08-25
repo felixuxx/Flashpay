@@ -41,9 +41,9 @@
  */
 typedef enum GNUNET_DB_QueryStatus
 (*TAH_DB_TransactionCallback)(void *cls,
-			      struct MHD_Connection *connection,
-			      struct TALER_AUDITORDB_Session *session,
-			      int *mhd_ret);
+                              struct MHD_Connection *connection,
+                              struct TALER_AUDITORDB_Session *session,
+                              int *mhd_ret);
 
 
 /**
@@ -63,9 +63,9 @@ typedef enum GNUNET_DB_QueryStatus
 int
 TAH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
-			int *mhd_ret,
-			TAH_DB_TransactionCallback cb,
-			void *cb_cls);
+                        int *mhd_ret,
+                        TAH_DB_TransactionCallback cb,
+                        void *cb_cls);
 
 
 #endif

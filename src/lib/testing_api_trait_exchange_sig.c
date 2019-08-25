@@ -42,8 +42,8 @@
 int
 TALER_TESTING_get_trait_exchange_sig
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const struct TALER_ExchangeSignatureP **exchange_sig)
+  unsigned int index,
+  const struct TALER_ExchangeSignatureP **exchange_sig)
 {
   return cmd->traits (cmd->cls,
                       (const void **) exchange_sig,
@@ -63,7 +63,7 @@ TALER_TESTING_get_trait_exchange_sig
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_exchange_sig
   (unsigned int index,
-   const struct TALER_ExchangeSignatureP *exchange_sig)
+  const struct TALER_ExchangeSignatureP *exchange_sig)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

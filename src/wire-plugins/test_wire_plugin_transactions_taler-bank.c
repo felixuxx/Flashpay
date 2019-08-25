@@ -163,11 +163,11 @@ timeout_cb (void *cls)
 static int
 history_result_cb
   (void *cls,
-   enum TALER_ErrorCode ec,
-   enum TALER_BANK_Direction dir,
-   const void *row_off,
-   size_t row_off_size,
-   const struct TALER_WIRE_TransferDetails *details)
+  enum TALER_ErrorCode ec,
+  enum TALER_BANK_Direction dir,
+  const void *row_off,
+  size_t row_off_size,
+  const struct TALER_WIRE_TransferDetails *details)
 {
   uint64_t *serialp;
   uint64_t serialh;

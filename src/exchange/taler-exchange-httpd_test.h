@@ -43,10 +43,10 @@
   */
 int
 TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
-			      struct MHD_Connection *connection,
-			      void **connection_cls,
-			      const char *upload_data,
-			      size_t *upload_data_size);
+                              struct MHD_Connection *connection,
+                              void **connection_cls,
+                              const char *upload_data,
+                              size_t *upload_data_size);
 
 
 /**
@@ -68,10 +68,10 @@ TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
  */
 int
 TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
-			       struct MHD_Connection *connection,
-			       void **connection_cls,
-			       const char *upload_data,
-			       size_t *upload_data_size);
+                               struct MHD_Connection *connection,
+                               void **connection_cls,
+                               const char *upload_data,
+                               size_t *upload_data_size);
 
 
 /**
@@ -93,10 +93,10 @@ TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
  */
 int
 TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
-			    struct MHD_Connection *connection,
-			    void **connection_cls,
-			    const char *upload_data,
-			    size_t *upload_data_size);
+                            struct MHD_Connection *connection,
+                            void **connection_cls,
+                            const char *upload_data,
+                            size_t *upload_data_size);
 
 
 /**
@@ -115,10 +115,10 @@ TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
-			     struct MHD_Connection *connection,
-			     void **connection_cls,
-			     const char *upload_data,
-			     size_t *upload_data_size);
+                             struct MHD_Connection *connection,
+                             void **connection_cls,
+                             const char *upload_data,
+                             size_t *upload_data_size);
 
 
 /**
@@ -138,10 +138,10 @@ TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
-			     struct MHD_Connection *connection,
-			     void **connection_cls,
-			     const char *upload_data,
-			     size_t *upload_data_size);
+                             struct MHD_Connection *connection,
+                             void **connection_cls,
+                             const char *upload_data,
+                             size_t *upload_data_size);
 
 
 /**
@@ -199,10 +199,10 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
-				struct MHD_Connection *connection,
-				void **connection_cls,
-				const char *upload_data,
-				size_t *upload_data_size);
+                                struct MHD_Connection *connection,
+                                void **connection_cls,
+                                const char *upload_data,
+                                size_t *upload_data_size);
 
 
 /**
@@ -217,9 +217,9 @@ TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
   */
 int
 TEH_TEST_handler_test (struct TEH_RequestHandler *rh,
-		       struct MHD_Connection *connection,
-		       void **connection_cls,
-		       const char *upload_data,
-		       size_t *upload_data_size);
+                       struct MHD_Connection *connection,
+                       void **connection_cls,
+                       const char *upload_data,
+                       size_t *upload_data_size);
 
 #endif

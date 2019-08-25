@@ -191,11 +191,11 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
     return GNUNET_SYSERR;
 
   fh = GNUNET_DISK_file_open (filename,
-                              GNUNET_DISK_OPEN_WRITE |
-                              GNUNET_DISK_OPEN_TRUNCATE |
-                              GNUNET_DISK_OPEN_CREATE,
-                              GNUNET_DISK_PERM_USER_READ |
-                              GNUNET_DISK_PERM_USER_WRITE);
+                              GNUNET_DISK_OPEN_WRITE
+                              | GNUNET_DISK_OPEN_TRUNCATE
+                              | GNUNET_DISK_OPEN_CREATE,
+                              GNUNET_DISK_PERM_USER_READ
+                              | GNUNET_DISK_PERM_USER_WRITE);
   if (NULL == fh)
     return GNUNET_SYSERR;
 

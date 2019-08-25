@@ -80,9 +80,9 @@ TEH_DB_know_coin_transaction (void *cls,
  */
 typedef enum GNUNET_DB_QueryStatus
 (*TEH_DB_TransactionCallback)(void *cls,
-			      struct MHD_Connection *connection,
-			      struct TALER_EXCHANGEDB_Session *session,
-			      int *mhd_ret);
+                              struct MHD_Connection *connection,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              int *mhd_ret);
 
 
 /**
@@ -102,9 +102,9 @@ typedef enum GNUNET_DB_QueryStatus
 int
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
-			int *mhd_ret,
-			TEH_DB_TransactionCallback cb,
-			void *cb_cls);
+                        int *mhd_ret,
+                        TEH_DB_TransactionCallback cb,
+                        void *cb_cls);
 
 
 /**
@@ -119,9 +119,10 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
  */
 // FIXME: maybe move to another module, i.e. exchangedb???
 int
-TEH_DB_calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
-					  const struct TALER_Amount *off,
-					  struct TALER_Amount *ret);
+TEH_DB_calculate_transaction_list_totals (struct
+                                          TALER_EXCHANGEDB_TransactionList *tl,
+                                          const struct TALER_Amount *off,
+                                          struct TALER_Amount *ret);
 
 
 #endif

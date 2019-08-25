@@ -48,8 +48,8 @@
 int
 TALER_TESTING_get_trait_contract_terms
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const json_t **contract_terms)
+  unsigned int index,
+  const json_t **contract_terms)
 {
   return cmd->traits (cmd->cls,
                       (const void **) contract_terms,
@@ -67,7 +67,7 @@ TALER_TESTING_get_trait_contract_terms
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_contract_terms
   (unsigned int index,
-   const json_t *contract_terms)
+  const json_t *contract_terms)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -91,8 +91,8 @@ TALER_TESTING_make_trait_contract_terms
 int
 TALER_TESTING_get_trait_transfer_subject
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const char **transfer_subject)
+  unsigned int index,
+  const char **transfer_subject)
 {
   return cmd->traits (cmd->cls,
                       (const void **) transfer_subject,
@@ -112,7 +112,7 @@ TALER_TESTING_get_trait_transfer_subject
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_transfer_subject
   (unsigned int index,
-   const char *transfer_subject)
+  const char *transfer_subject)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -136,8 +136,8 @@ TALER_TESTING_make_trait_transfer_subject
 int
 TALER_TESTING_get_trait_amount
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const char **amount)
+  unsigned int index,
+  const char **amount)
 {
   return cmd->traits (cmd->cls,
                       (const void **) amount,
@@ -157,7 +157,7 @@ TALER_TESTING_get_trait_amount
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount
   (unsigned int index,
-   const char *amount)
+  const char *amount)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -181,8 +181,8 @@ TALER_TESTING_make_trait_amount
 int
 TALER_TESTING_get_trait_url
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const char **url)
+  unsigned int index,
+  const char **url)
 {
   return cmd->traits (cmd->cls,
                       (const void **) url,
@@ -202,7 +202,7 @@ TALER_TESTING_get_trait_url
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_url
   (unsigned int index,
-   const char *url)
+  const char *url)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -226,8 +226,8 @@ TALER_TESTING_make_trait_url
 int
 TALER_TESTING_get_trait_order_id
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const char **order_id)
+  unsigned int index,
+  const char **order_id)
 {
   return cmd->traits (cmd->cls,
                       (const void **) order_id,
@@ -247,7 +247,7 @@ TALER_TESTING_get_trait_order_id
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_order_id
   (unsigned int index,
-   const char *order_id)
+  const char *order_id)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -271,8 +271,8 @@ TALER_TESTING_make_trait_order_id
 int
 TALER_TESTING_get_trait_rejected
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   const char **rejected_reference)
+  unsigned int index,
+  const char **rejected_reference)
 {
   return cmd->traits (cmd->cls,
                       (const void **) rejected_reference,
@@ -292,7 +292,7 @@ TALER_TESTING_get_trait_rejected
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_rejected
   (unsigned int index,
-   const char *rejected)
+  const char *rejected)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

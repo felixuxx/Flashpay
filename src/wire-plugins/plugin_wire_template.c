@@ -109,7 +109,8 @@ template_prepare_wire_transfer (void *cls,
                                 const char *destination_account_url,
                                 const struct TALER_Amount *amount,
                                 const char *exchange_base_url,
-                                const struct TALER_WireTransferIdentifierRawP *wtid,
+                                const struct
+                                TALER_WireTransferIdentifierRawP *wtid,
                                 TALER_WIRE_PrepareTransactionCallback ptc,
                                 void *ptc_cls)
 {
@@ -220,7 +221,7 @@ template_get_history (void *cls,
  */
 static void
 template_get_history_cancel (void *cls,
-			     struct TALER_WIRE_HistoryHandle *whh)
+                             struct TALER_WIRE_HistoryHandle *whh)
 {
   GNUNET_break (0);
 }

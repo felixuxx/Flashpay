@@ -136,7 +136,8 @@ struct TBI_Command
 
     } admin_add_incoming;
 
-    struct {
+    struct
+    {
 
       /**
        * For which account do we query the history.
@@ -186,7 +187,8 @@ struct TBI_Command
      * If @e opcode is #TBI_OC_EXPECT_TRANSFER, this
      * specifies which transfer we expected.
      */
-    struct {
+    struct
+    {
 
       /**
        * Label of the command of an /admin/add/incoming
@@ -199,7 +201,8 @@ struct TBI_Command
     /**
      * Execute /reject operation.
      */
-    struct {
+    struct
+    {
 
       /**
        * Reference to the matching transfer that is now to be rejected.

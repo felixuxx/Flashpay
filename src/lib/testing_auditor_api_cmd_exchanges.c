@@ -88,8 +88,8 @@ struct ExchangesState
  */
 static void
 exchanges_run (void *cls,
-	       const struct TALER_TESTING_Command *cmd,
-	       struct TALER_TESTING_Interpreter *is);
+               const struct TALER_TESTING_Command *cmd,
+               struct TALER_TESTING_Interpreter *is);
 
 
 /**
@@ -104,8 +104,8 @@ do_retry (void *cls)
 
   es->retry_task = NULL;
   exchanges_run (es,
-		 NULL,
-		 es->is);
+                 NULL,
+                 es->is);
 }
 
 
@@ -119,11 +119,11 @@ do_retry (void *cls)
  */
 static void
 exchanges_cb (void *cls,
-	      unsigned int http_status,
-	      enum TALER_ErrorCode ec,
-	      unsigned int num_exchanges,
-	      const struct TALER_AUDITOR_ExchangeInfo *ei,
-	      const json_t *raw_response)
+              unsigned int http_status,
+              enum TALER_ErrorCode ec,
+              unsigned int num_exchanges,
+              const struct TALER_AUDITOR_ExchangeInfo *ei,
+              const json_t *raw_response)
 {
   struct ExchangesState *es = cls;
 
@@ -134,30 +134,30 @@ exchanges_cb (void *cls,
     {
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-	   (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying list exchanges failed with %u/%d\n",
                     http_status,
                     (int) ec);
-	/* on DB conflicts, do not use backoff */
-	if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
-	  es->backoff = GNUNET_TIME_UNIT_ZERO;
-	else
-	  es->backoff = EXCHANGE_LIB_BACKOFF (es->backoff);
-	es->retry_task = GNUNET_SCHEDULER_add_delayed (es->backoff,
-							&do_retry,
-							es);
+        /* on DB conflicts, do not use backoff */
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+          es->backoff = GNUNET_TIME_UNIT_ZERO;
+        else
+          es->backoff = EXCHANGE_LIB_BACKOFF (es->backoff);
+        es->retry_task = GNUNET_SCHEDULER_add_delayed (es->backoff,
+                                                       &do_retry,
+                                                       es);
         return;
       }
     }
     GNUNET_log
       (GNUNET_ERROR_TYPE_ERROR,
-       "Unexpected response code %u to command %s in %s:%u\n",
-       http_status,
-       es->is->commands[es->is->ip].label,
-       __FILE__,
-       __LINE__);
+      "Unexpected response code %u to command %s in %s:%u\n",
+      http_status,
+      es->is->commands[es->is->ip].label,
+      __FILE__,
+      __LINE__);
     json_dumpf (raw_response, stderr, 0);
     TALER_TESTING_interpreter_fail (es->is);
     return;
@@ -166,7 +166,7 @@ exchanges_cb (void *cls,
   {
     unsigned int found = GNUNET_NO;
 
-    for (unsigned int i=0;
+    for (unsigned int i = 0;
          i<num_exchanges;
          i++)
       if (0 == strcmp (es->exchange_url,
@@ -176,7 +176,7 @@ exchanges_cb (void *cls,
     {
       TALER_LOG_ERROR
         ("Exchange '%s' doesn't exist at this auditor\n",
-         es->exchange_url);
+        es->exchange_url);
       TALER_TESTING_interpreter_fail (es->is);
       return;
     }
@@ -197,16 +197,16 @@ exchanges_cb (void *cls,
  */
 static void
 exchanges_run (void *cls,
-	       const struct TALER_TESTING_Command *cmd,
-	       struct TALER_TESTING_Interpreter *is)
+               const struct TALER_TESTING_Command *cmd,
+               struct TALER_TESTING_Interpreter *is)
 {
   struct ExchangesState *es = cls;
 
   es->is = is;
   es->leh = TALER_AUDITOR_list_exchanges
-    (is->auditor,
-     &exchanges_cb,
-     es);
+              (is->auditor,
+              &exchanges_cb,
+              es);
 
   if (NULL == es->leh)
   {
@@ -227,7 +227,7 @@ exchanges_run (void *cls,
  */
 static void
 exchanges_cleanup (void *cls,
-		   const struct TALER_TESTING_Command *cmd)
+                   const struct TALER_TESTING_Command *cmd)
 {
   struct ExchangesState *es = cls;
 
@@ -261,9 +261,9 @@ exchanges_cleanup (void *cls,
  */
 static int
 exchanges_traits (void *cls,
-		  const void **ret,
-		  const char *trait,
-		  unsigned int index)
+                  const void **ret,
+                  const char *trait,
+                  unsigned int index)
 {
   /* Must define this function because some callbacks
    * look for certain traits on _all_ the commands. */
@@ -282,8 +282,8 @@ exchanges_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges
   (const char *label,
-   struct TALER_AUDITOR_Handle *auditor,
-   unsigned int expected_response_code)
+  struct TALER_AUDITOR_Handle *auditor,
+  unsigned int expected_response_code)
 {
   struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct ExchangesState *es;
@@ -316,8 +316,8 @@ TALER_TESTING_cmd_exchanges
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges_with_url
   (const char *label,
-   unsigned int expected_response_code,
-   const char *exchange_url)
+  unsigned int expected_response_code,
+  const char *exchange_url)
 {
   struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct ExchangesState *es;

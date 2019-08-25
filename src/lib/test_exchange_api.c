@@ -42,7 +42,8 @@
  */
 #define CONFIG_FILE "test_exchange_api.conf"
 
-#define CONFIG_FILE_EXPIRE_RESERVE_NOW "test_exchange_api_expire_reserve_now.conf"
+#define CONFIG_FILE_EXPIRE_RESERVE_NOW \
+  "test_exchange_api_expire_reserve_now.conf"
 
 /**
  * Is the configuration file is set to include wire format 'ebics'?
@@ -99,7 +100,7 @@ static char *auditor_url;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-   TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
 
 /**
  * Execute the taler-exchange-aggregator command with
@@ -108,7 +109,7 @@ static char *auditor_url;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-   TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -118,9 +119,11 @@ static char *auditor_url;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-   TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-     fakebank_url, USER_ACCOUNT_NO, EXCHANGE_ACCOUNT_NO, \
-     USER_LOGIN_NAME, USER_LOGIN_PASS, exchange_url)
+  TALER_TESTING_cmd_fakebank_transfer (label, amount, \
+                                       fakebank_url, USER_ACCOUNT_NO, \
+                                       EXCHANGE_ACCOUNT_NO, \
+                                       USER_LOGIN_NAME, USER_LOGIN_PASS, \
+                                       exchange_url)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -130,10 +133,10 @@ static char *auditor_url;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE_SUBJECT(label,amount,subject) \
-   TALER_TESTING_cmd_fakebank_transfer_with_subject \
-     (label, amount, fakebank_url, USER_ACCOUNT_NO, \
-      EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-      subject, exchange_url)
+  TALER_TESTING_cmd_fakebank_transfer_with_subject \
+    (label, amount, fakebank_url, USER_ACCOUNT_NO, \
+    EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
+    subject, exchange_url)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -214,10 +217,10 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-simple", "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_OK),
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_OK),
 
     /**
      * Try to overdraw.
@@ -232,10 +235,10 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-1", "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details (43,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
+      TALER_TESTING_make_wire_details (43,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
 
     /**
      * Try to double spend using a different transaction id.
@@ -248,20 +251,20 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-1", "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details (43,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
+      TALER_TESTING_make_wire_details (43,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
 
     /**
      * Try to double spend with different proposal.
      */
     TALER_TESTING_cmd_deposit
       ("deposit-double-2", "withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details (43,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
+      TALER_TESTING_make_wire_details (43,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_end ()
   };
@@ -288,9 +291,9 @@ run (void *cls,
      */
     TALER_TESTING_cmd_withdraw_amount
       ("refresh-withdraw-coin-1",
-       "refresh-create-reserve-1",
-       "EUR:5",
-       MHD_HTTP_OK),
+      "refresh-create-reserve-1",
+      "EUR:5",
+      MHD_HTTP_OK),
     /**
      * Try to partially spend (deposit) 1 EUR of the 5 EUR coin
      * (in full) (merchant would receive EUR:0.99 due to 1 ct
@@ -298,74 +301,74 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-partial",
-       "refresh-withdraw-coin-1", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\
+      "refresh-withdraw-coin-1", 0,
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
+      GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
 
     /**
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt_double
       ("refresh-melt-1",
-       "refresh-withdraw-coin-1",
-       MHD_HTTP_OK,
-       NULL),
+      "refresh-withdraw-coin-1",
+      MHD_HTTP_OK,
+      NULL),
     /**
      * Complete (successful) melt operation, and
      * withdraw the coins
      */
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-1",
-       "refresh-melt-1", MHD_HTTP_OK),
+      "refresh-melt-1", MHD_HTTP_OK),
 
     /**
      * Do it again to check idempotency
      */
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-reveal-1-idempotency",
-       "refresh-melt-1", MHD_HTTP_OK),
+      "refresh-melt-1", MHD_HTTP_OK),
 
     /**
      * Test that /refresh/link works
      */
     TALER_TESTING_cmd_refresh_link
       ("refresh-link-1",
-       "refresh-reveal-1", MHD_HTTP_OK),
+      "refresh-reveal-1", MHD_HTTP_OK),
 
     /**
      * Try to spend a refreshed EUR:1 coin
      */
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-refreshed-1a",
-       "refresh-reveal-1-idempotency", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\
+      "refresh-reveal-1-idempotency", 0,
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":3}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
+      GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_OK),
 
     /**
      * Try to spend a refreshed EUR:0.1 coin
      */
     TALER_TESTING_cmd_deposit
       ("refresh-deposit-refreshed-1b",
-       "refresh-reveal-1", 3,
-       TALER_TESTING_make_wire_details (43,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\
+      "refresh-reveal-1", 3,
+      TALER_TESTING_make_wire_details (43,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":3}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:0.1", MHD_HTTP_OK),
+      GNUNET_TIME_UNIT_ZERO, "EUR:0.1", MHD_HTTP_OK),
 
     /* Test running a failing melt operation (same operation
      * again must fail) */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt-failing",
-       "refresh-withdraw-coin-1",
-       MHD_HTTP_FORBIDDEN,
-       NULL),
+      "refresh-withdraw-coin-1",
+      MHD_HTTP_FORBIDDEN,
+      NULL),
 
     /* FIXME: also test with coin that was already melted
      * (signature differs from coin that was deposited...) */
@@ -380,8 +383,8 @@ run (void *cls,
      * the exchange knows about the deposit, but has no WTID yet.
      */
     TALER_TESTING_cmd_track_transaction
-    ("deposit-wtid-found",
-     "deposit-simple", 0, MHD_HTTP_ACCEPTED, NULL),
+      ("deposit-wtid-found",
+      "deposit-simple", 0, MHD_HTTP_ACCEPTED, NULL),
 
     /**
      * Try resolving a deposit's WTID for a failed deposit.
@@ -389,8 +392,8 @@ run (void *cls,
      * exchange does NOT know about the deposit.
      */
     TALER_TESTING_cmd_track_transaction
-    ("deposit-wtid-failing",
-     "deposit-double-2", 0, MHD_HTTP_NOT_FOUND, NULL),
+      ("deposit-wtid-failing",
+      "deposit-double-2", 0, MHD_HTTP_NOT_FOUND, NULL),
 
     /**
      * Try resolving an undefined (all zeros) WTID; this
@@ -399,7 +402,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_track_transfer_empty
       ("wire-deposit-failing",
-       NULL, 0, MHD_HTTP_NOT_FOUND),
+      NULL, 0, MHD_HTTP_NOT_FOUND),
 
     /**
      * Run transfers. Note that _actual_ aggregation will NOT
@@ -415,23 +418,23 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-499c", exchange_url,
-       "EUR:4.98", 2, 42),
+      "EUR:4.98", 2, 42),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c1", exchange_url,
-       "EUR:0.98", 2, 42),
+      "EUR:0.98", 2, 42),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c2", exchange_url,
-       "EUR:0.98", 2, 42),
+      "EUR:0.98", 2, 42),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c", exchange_url,
-       "EUR:0.08", 2, 43),
+      "EUR:0.08", 2, 43),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-1", exchange_url,
-       "EUR:5.01", 42, 2),
+      "EUR:5.01", 42, 2),
 
     /**
      * NOTE: the old test-suite had this "check bank transfer"
@@ -439,23 +442,23 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-2", exchange_url,
-       "EUR:5.01", 42, 2),
+      "EUR:5.01", 42, 2),
 
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
 
     TALER_TESTING_cmd_track_transaction
-    ("deposit-wtid-ok",
-     "deposit-simple", 0, MHD_HTTP_OK, "check_bank_transfer-499c"),
+      ("deposit-wtid-ok",
+      "deposit-simple", 0, MHD_HTTP_OK, "check_bank_transfer-499c"),
 
     TALER_TESTING_cmd_track_transfer
       ("wire-deposit-success-bank",
-       "check_bank_transfer-99c1", 0, MHD_HTTP_OK, "EUR:0.98",
-       "EUR:0.01"),
+      "check_bank_transfer-99c1", 0, MHD_HTTP_OK, "EUR:0.98",
+      "EUR:0.01"),
 
     TALER_TESTING_cmd_track_transfer
       ("wire-deposits-success-wtid",
-       "deposit-wtid-ok", 0, MHD_HTTP_OK, "EUR:4.98",
-       "EUR:0.01"),
+      "deposit-wtid-ok", 0, MHD_HTTP_OK, "EUR:4.98",
+      "EUR:0.01"),
 
     TALER_TESTING_cmd_end ()
   };
@@ -478,30 +481,30 @@ run (void *cls,
     /* "consume" reserve creation transfer.  */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-unaggregated",
-       exchange_url,
-       "EUR:5.01",
-       42,
-       2),
+      exchange_url,
+      "EUR:5.01",
+      42,
+      2),
 
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-unaggregated",
-       "create-reserve-unaggregated",
-       "EUR:5",
-       MHD_HTTP_OK),
+      "create-reserve-unaggregated",
+      "EUR:5",
+      MHD_HTTP_OK),
 
     TALER_TESTING_cmd_deposit
       ("deposit-unaggregated",
-       "withdraw-coin-unaggregated",
-       0,
-       TALER_TESTING_make_wire_details
-         (43,
-          fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-       GNUNET_TIME_relative_multiply
-         (GNUNET_TIME_UNIT_YEARS,
-          3000),
-       "EUR:5",
-       MHD_HTTP_OK),
+      "withdraw-coin-unaggregated",
+      0,
+      TALER_TESTING_make_wire_details
+        (43,
+        fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+      GNUNET_TIME_relative_multiply
+        (GNUNET_TIME_UNIT_YEARS,
+        3000),
+      "EUR:5",
+      MHD_HTTP_OK),
 
     CMD_EXEC_AGGREGATOR ("aggregation-attempt"),
 
@@ -538,11 +541,11 @@ run (void *cls,
      */
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1", "withdraw-coin-r1", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\","
-                    "\"value\":\"EUR:5\"}]}",
-       GNUNET_TIME_UNIT_MINUTES, "EUR:5", MHD_HTTP_OK),
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\","
+      "\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_MINUTES, "EUR:5", MHD_HTTP_OK),
 
 
     /**
@@ -561,23 +564,23 @@ run (void *cls,
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pre-refund", exchange_url,
-       "EUR:5.01", 42, 2),
+      "EUR:5.01", 42, 2),
 
     TALER_TESTING_cmd_check_bank_empty
       ("check_bank_transfer-pre-refund"),
 
     TALER_TESTING_cmd_refund
       ("refund-ok", MHD_HTTP_OK,
-       "EUR:5", "EUR:0.01", "deposit-refund-1"),
+      "EUR:5", "EUR:0.01", "deposit-refund-1"),
 
     TALER_TESTING_cmd_refund
       ("refund-ok-double", MHD_HTTP_OK,
-       "EUR:5", "EUR:0.01", "deposit-refund-1"),
+      "EUR:5", "EUR:0.01", "deposit-refund-1"),
 
     /* Previous /refund(s) had id == 0.  */
     TALER_TESTING_cmd_refund_with_id
       ("refund-conflicting", MHD_HTTP_CONFLICT,
-       "EUR:5", "EUR:0.01", "deposit-refund-1", 1),
+      "EUR:5", "EUR:0.01", "deposit-refund-1", 1),
 
     /**
      * Spend 4.99 EUR of the refunded 4.99 EUR coin (1ct gone
@@ -585,11 +588,11 @@ run (void *cls,
      * 1 ct deposit fee) */
     TALER_TESTING_cmd_deposit
       ("deposit-refund-2", "withdraw-coin-r1", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"more ice cream\","
-                    "\"value\":\"EUR:5\"}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:4.99", MHD_HTTP_OK),
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"more ice cream\","
+      "\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:4.99", MHD_HTTP_OK),
 
 
     /**
@@ -603,14 +606,14 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pre-refund", exchange_url,
-       "EUR:4.97", 2, 42),
+      "EUR:4.97", 2, 42),
 
     /**
      * Run failing refund, as past deadline & aggregation.
      */
     TALER_TESTING_cmd_refund
       ("refund-fail", MHD_HTTP_GONE,
-       "EUR:4.99", "EUR:0.01", "deposit-refund-2"),
+      "EUR:4.99", "EUR:0.01", "deposit-refund-2"),
 
     TALER_TESTING_cmd_check_bank_empty
       ("check-empty-after-refund"),
@@ -631,16 +634,16 @@ run (void *cls,
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-3b", exchange_url,
-       "EUR:5.01", 42, 2),
+      "EUR:5.01", 42, 2),
 
 
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1b", "withdraw-coin-rb", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"ice cream\","
-                    "\"value\":\"EUR:5\"}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_OK),
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"ice cream\","
+      "\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_OK),
 
     /**
      * Trigger refund (before aggregator had a chance to execute
@@ -648,7 +651,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_refund
       ("refund-ok-fast", MHD_HTTP_OK,
-       "EUR:5", "EUR:0.01", "deposit-refund-1b"),
+      "EUR:5", "EUR:0.01", "deposit-refund-1b"),
 
     /**
      * Run transfers. This will do the transfer as refund deadline
@@ -713,9 +716,9 @@ run (void *cls,
      */
     TALER_TESTING_cmd_withdraw_amount
       ("payback-withdraw-coin-2-over",
-       "payback-create-reserve-1",
-       "EUR:10",
-       MHD_HTTP_FORBIDDEN),
+      "payback-create-reserve-1",
+      "EUR:10",
+      MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_status ("payback-reserve-status-2",
                               "payback-create-reserve-1",
@@ -729,15 +732,15 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE
       ("short-lived-reserve",
-       "EUR:5.01"),
+      "EUR:5.01"),
 
     TALER_TESTING_cmd_exec_wirewatch
       ("short-lived-aggregation",
-       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+      CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
     TALER_TESTING_cmd_exec_aggregator
       ("close-reserves",
-       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+      CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
     TALER_TESTING_cmd_status ("short-lived-status",
                               "short-lived-reserve",
@@ -746,23 +749,23 @@ run (void *cls,
 
     TALER_TESTING_cmd_withdraw_amount
       ("expired-withdraw",
-       "short-lived-reserve",
-       "EUR:1",
-       MHD_HTTP_FORBIDDEN),
+      "short-lived-reserve",
+      "EUR:1",
+      MHD_HTTP_FORBIDDEN),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_short-lived_transfer",
-       exchange_url,
-       "EUR:5.01",
-       42,
-       2),
+      exchange_url,
+      "EUR:5.01",
+      42,
+      2),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_short-lived_reimburse",
-       exchange_url,
-       "EUR:5",
-       2,
-       42),
+      exchange_url,
+      "EUR:5",
+      2,
+      42),
 
     /**
      * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
@@ -791,11 +794,11 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("payback-deposit-partial",
-       "payback-withdraw-coin-2a", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:0.5", MHD_HTTP_OK),
+      "payback-withdraw-coin-2a", 0,
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:0.5", MHD_HTTP_OK),
 
 
     TALER_TESTING_cmd_revoke ("revoke-2", MHD_HTTP_OK,
@@ -814,11 +817,11 @@ run (void *cls,
 
     TALER_TESTING_cmd_deposit
       ("payback-deposit-revoked",
-       "payback-withdraw-coin-2b", 0,
-       TALER_TESTING_make_wire_details (42,
-                                        fakebank_url),
-       "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_NOT_FOUND),
+      "payback-withdraw-coin-2b", 0,
+      TALER_TESTING_make_wire_details (42,
+                                       fakebank_url),
+      "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
+      GNUNET_TIME_UNIT_ZERO, "EUR:1", MHD_HTTP_NOT_FOUND),
 
 
     /* Test deposit fails after payback, with proof in payback */
@@ -828,15 +831,15 @@ run (void *cls,
      * 404 on the DK! */
     TALER_TESTING_cmd_deposit
       ("payback-deposit-partial-after-payback",
-       "payback-withdraw-coin-2a",
-       0,
-       TALER_TESTING_make_wire_details
-         (42,
-          fakebank_url),
-       "{\"items\":[{\"name\":\"extra ice cream\",\"value\":1}]}",
-       GNUNET_TIME_UNIT_ZERO,
-       "EUR:0.5",
-       MHD_HTTP_NOT_FOUND),
+      "payback-withdraw-coin-2a",
+      0,
+      TALER_TESTING_make_wire_details
+        (42,
+        fakebank_url),
+      "{\"items\":[{\"name\":\"extra ice cream\",\"value\":1}]}",
+      GNUNET_TIME_UNIT_ZERO,
+      "EUR:0.5",
+      MHD_HTTP_NOT_FOUND),
 
     /* Test that revoked coins cannot be withdrawn */
     CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-3",
@@ -846,20 +849,20 @@ run (void *cls,
 
     TALER_TESTING_cmd_withdraw_amount
       ("payback-withdraw-coin-3-revoked",
-       "payback-create-reserve-3",
-       "EUR:1",
-       MHD_HTTP_NOT_FOUND),
+      "payback-create-reserve-3",
+      "EUR:1",
+      MHD_HTTP_NOT_FOUND),
 
     /* check that we are empty before the rejection test */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr1", exchange_url,
-       "EUR:5.01", 42, 2),
+      "EUR:5.01", 42, 2),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr2", exchange_url,
-       "EUR:2.02", 42, 2),
+      "EUR:2.02", 42, 2),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr3", exchange_url,
-       "EUR:1.01", 42, 2),
+      "EUR:1.01", 42, 2),
 
     TALER_TESTING_cmd_check_bank_empty
       ("check-empty-again"),
@@ -867,8 +870,8 @@ run (void *cls,
     /* Test rejection of bogus wire transfers */
     CMD_TRANSFER_TO_EXCHANGE_SUBJECT
       ("bogus-subject",
-       "EUR:1.01",
-       "not a reserve public key"),
+      "EUR:1.01",
+      "not a reserve public key"),
 
     CMD_EXEC_WIREWATCH ("wirewatch-7"),
 
@@ -881,11 +884,11 @@ run (void *cls,
   #define RESERVE_OPEN_CLOSE_CHUNK 4
   #define RESERVE_OPEN_CLOSE_ITERATIONS 3
   #define CONSTANT_KEY \
-    "09QGYPEKNHBACK135BNXZFHA0YTQXT1KJDRVXF4J822G99AYNQ8G"
+  "09QGYPEKNHBACK135BNXZFHA0YTQXT1KJDRVXF4J822G99AYNQ8G"
 
   struct TALER_TESTING_Command reserve_open_close
-    [(RESERVE_OPEN_CLOSE_ITERATIONS
-      * RESERVE_OPEN_CLOSE_CHUNK) + 1];
+  [(RESERVE_OPEN_CLOSE_ITERATIONS
+    * RESERVE_OPEN_CLOSE_CHUNK) + 1];
 
   for (unsigned int i = 0;
        i < RESERVE_OPEN_CLOSE_ITERATIONS;
@@ -894,18 +897,18 @@ run (void *cls,
     reserve_open_close[i * RESERVE_OPEN_CLOSE_CHUNK]
       = CMD_TRANSFER_TO_EXCHANGE_SUBJECT
           ("reserve-open-close-key",
-           "EUR:20",
-           CONSTANT_KEY);
+          "EUR:20",
+          CONSTANT_KEY);
 
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 1]
       = TALER_TESTING_cmd_exec_wirewatch
           ("reserve-open-close-wirewatch",
-           CONFIG_FILE_EXPIRE_RESERVE_NOW);
+          CONFIG_FILE_EXPIRE_RESERVE_NOW);
 
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
       = TALER_TESTING_cmd_exec_aggregator
           ("reserve-open-close-aggregation",
-           CONFIG_FILE_EXPIRE_RESERVE_NOW);
+          CONFIG_FILE_EXPIRE_RESERVE_NOW);
 
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 3]
       = TALER_TESTING_cmd_status ("reserve-open-close-status",
@@ -914,8 +917,8 @@ run (void *cls,
                                   MHD_HTTP_OK);
   }
   reserve_open_close
-    [RESERVE_OPEN_CLOSE_ITERATIONS * RESERVE_OPEN_CLOSE_CHUNK]
-      = TALER_TESTING_cmd_end ();
+  [RESERVE_OPEN_CLOSE_ITERATIONS * RESERVE_OPEN_CLOSE_CHUNK]
+    = TALER_TESTING_cmd_end ();
 
   struct TALER_TESTING_Command commands[] = {
 
@@ -960,7 +963,7 @@ run (void *cls,
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -969,10 +972,10 @@ main (int argc,
                     "INFO",
                     NULL);
   if (NULL == (fakebank_url
-       /* Check fakebank port is available and config cares
-        * about bank url. */
-               = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                                 "account-2")))
+               /* Check fakebank port is available and config cares
+                * about bank url. */
+                 = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                                   "account-2")))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it

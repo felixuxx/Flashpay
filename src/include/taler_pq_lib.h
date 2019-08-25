@@ -87,7 +87,8 @@ TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x);
  * @param x pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
-TALER_PQ_query_param_absolute_time_nbo (const struct GNUNET_TIME_AbsoluteNBO *x);
+TALER_PQ_query_param_absolute_time_nbo (const struct
+                                        GNUNET_TIME_AbsoluteNBO *x);
 
 
 /**

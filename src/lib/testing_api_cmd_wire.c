@@ -85,7 +85,7 @@ struct WireState
 static void
 wire_cb (void *cls,
          unsigned int http_status,
-	 enum TALER_ErrorCode ec,
+         enum TALER_ErrorCode ec,
          unsigned int accounts_len,
          const struct TALER_EXCHANGE_WireAccount *accounts)
 {
@@ -105,7 +105,7 @@ wire_cb (void *cls,
 
   if (MHD_HTTP_OK == http_status)
   {
-    for (unsigned int i=0;i<accounts_len;i++)
+    for (unsigned int i = 0; i<accounts_len; i++)
     {
       char *method;
 
@@ -118,9 +118,9 @@ wire_cb (void *cls,
         {
           GNUNET_assert
             (GNUNET_OK ==
-             TALER_string_to_amount (ws->expected_fee,
-                                     &expected_fee));
-          const struct TALER_EXCHANGE_WireAggregateFees *waf; 
+            TALER_string_to_amount (ws->expected_fee,
+                                    &expected_fee));
+          const struct TALER_EXCHANGE_WireAggregateFees *waf;
           for (waf = accounts[i].fees;
                NULL != waf;
                waf = waf->next)

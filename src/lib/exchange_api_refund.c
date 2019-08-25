@@ -96,7 +96,7 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
-    GNUNET_JSON_spec_end()
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -154,7 +154,7 @@ handle_refund_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_refund_signature_ok (rh,
-				    j,
+                                    j,
                                     &exchange_pub))
     {
       GNUNET_break_op (0);
@@ -205,7 +205,7 @@ handle_refund_finished (void *cls,
   }
   rh->cb (rh->cb_cls,
           response_code,
-	  TALER_JSON_get_error_code (j),
+          TALER_JSON_get_error_code (j),
           ep,
           j);
   TALER_EXCHANGE_refund_cancel (rh);
@@ -244,20 +244,20 @@ handle_refund_finished (void *cls,
  */
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
-		       const struct TALER_Amount *amount,
-		       const struct TALER_Amount *refund_fee,
-		       const struct GNUNET_HashCode *h_contract_terms,
-		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-		       uint64_t rtransaction_id,
-		       const struct TALER_MerchantPrivateKeyP *merchant_priv,
-		       TALER_EXCHANGE_RefundResultCallback cb,
-		       void *cb_cls)
+                       const struct TALER_Amount *amount,
+                       const struct TALER_Amount *refund_fee,
+                       const struct GNUNET_HashCode *h_contract_terms,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       uint64_t rtransaction_id,
+                       const struct TALER_MerchantPrivateKeyP *merchant_priv,
+                       TALER_EXCHANGE_RefundResultCallback cb,
+                       void *cb_cls)
 {
   struct TALER_RefundRequestPS rr;
   struct TALER_MerchantSignatureP merchant_sig;
 
   GNUNET_assert (GNUNET_YES ==
-		 TEAH_handle_is_ready (exchange));
+                 TEAH_handle_is_ready (exchange));
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
   rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
   rr.h_contract_terms = *h_contract_terms;
@@ -274,15 +274,15 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                                            &rr.purpose,
                                            &merchant_sig.eddsa_sig));
   return TALER_EXCHANGE_refund2 (exchange,
-				 amount,
-				 refund_fee,
-				 h_contract_terms,
-				 coin_pub,
-				 rtransaction_id,
-				 &rr.merchant,
-				 &merchant_sig,
-				 cb,
-				 cb_cls);
+                                 amount,
+                                 refund_fee,
+                                 h_contract_terms,
+                                 coin_pub,
+                                 rtransaction_id,
+                                 &rr.merchant,
+                                 &merchant_sig,
+                                 cb,
+                                 cb_cls);
 }
 
 
@@ -319,33 +319,36 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
  */
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
-		       const struct TALER_Amount *amount,
-		       const struct TALER_Amount *refund_fee,
-		       const struct GNUNET_HashCode *h_contract_terms,
-		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-		       uint64_t rtransaction_id,
-		       const struct TALER_MerchantPublicKeyP *merchant_pub,
-		       const struct TALER_MerchantSignatureP *merchant_sig,
-		       TALER_EXCHANGE_RefundResultCallback cb,
-		       void *cb_cls)
+                        const struct TALER_Amount *amount,
+                        const struct TALER_Amount *refund_fee,
+                        const struct GNUNET_HashCode *h_contract_terms,
+                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                        uint64_t rtransaction_id,
+                        const struct TALER_MerchantPublicKeyP *merchant_pub,
+                        const struct TALER_MerchantSignatureP *merchant_sig,
+                        TALER_EXCHANGE_RefundResultCallback cb,
+                        void *cb_cls)
 {
   struct TALER_EXCHANGE_RefundHandle *rh;
   struct GNUNET_CURL_Context *ctx;
   json_t *refund_obj;
   CURL *eh;
 
-refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
-			  " s:o, s:o," /* h_contract_terms, coin_pub */
-			  " s:I," /* rtransaction id */
-			  " s:o, s:o}", /* merchant_pub, merchant_sig */
-			  "refund_amount", TALER_JSON_from_amount (amount),
-			  "refund_fee", TALER_JSON_from_amount (refund_fee),
-			  "h_contract_terms", GNUNET_JSON_from_data_auto (h_contract_terms),
-			  "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-			  "rtransaction_id", (json_int_t) rtransaction_id,
-			  "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
-			  "merchant_sig", GNUNET_JSON_from_data_auto (merchant_sig)
-			  );
+  refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
+                          " s:o, s:o," /* h_contract_terms, coin_pub */
+                          " s:I," /* rtransaction id */
+                          " s:o, s:o}", /* merchant_pub, merchant_sig */
+                          "refund_amount", TALER_JSON_from_amount (amount),
+                          "refund_fee", TALER_JSON_from_amount (refund_fee),
+                          "h_contract_terms", GNUNET_JSON_from_data_auto (
+                            h_contract_terms),
+                          "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
+                          "rtransaction_id", (json_int_t) rtransaction_id,
+                          "merchant_pub", GNUNET_JSON_from_data_auto (
+                            merchant_pub),
+                          "merchant_sig", GNUNET_JSON_from_data_auto (
+                            merchant_sig)
+                          );
   if (NULL == refund_obj)
   {
     GNUNET_break (0);
@@ -371,8 +374,8 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
   eh = TEL_curl_easy_get (rh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&rh->ctx,
-                           eh,
-                           refund_obj))
+                            eh,
+                            refund_obj))
   {
     GNUNET_break (0);
     curl_easy_cleanup (eh);
@@ -387,10 +390,10 @@ refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
               rh->url);
   ctx = TEAH_handle_to_context (exchange);
   rh->job = GNUNET_CURL_job_add2 (ctx,
-			          eh,
-				  rh->ctx.headers,
-				  &handle_refund_finished,
-				  rh);
+                                  eh,
+                                  rh->ctx.headers,
+                                  &handle_refund_finished,
+                                  rh);
   return rh;
 }
 

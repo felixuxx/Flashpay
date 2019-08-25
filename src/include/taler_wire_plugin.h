@@ -106,7 +106,8 @@ typedef int
                                      enum TALER_BANK_Direction dir,
                                      const void *row_off,
                                      size_t row_off_size,
-                                     const struct TALER_WIRE_TransferDetails *details);
+                                     const struct
+                                     TALER_WIRE_TransferDetails *details);
 
 
 /**
@@ -201,8 +202,8 @@ struct TALER_WIRE_Plugin
    * @return #TALER_EC_NONE if correctly formatted
    */
   enum TALER_ErrorCode
-  (*wire_validate) (void *cls,
-                    const char *account_url);
+  (*wire_validate)(void *cls,
+                   const char *account_url);
 
 
   /**
@@ -343,7 +344,7 @@ struct TALER_WIRE_Plugin
    */
   void
   (*get_history_cancel) (void *cls,
-			 struct TALER_WIRE_HistoryHandle *whh);
+                         struct TALER_WIRE_HistoryHandle *whh);
 
 
   /**

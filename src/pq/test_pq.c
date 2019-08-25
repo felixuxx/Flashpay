@@ -91,7 +91,7 @@ run_queries (PGconn *conn)
                  TALER_string_to_amount ("EUR:5.5",
                                          &hamount));
   TALER_amount_hton (&namount,
-		     &hamount);
+                     &hamount);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4.4",
                                          &hamount));
@@ -113,8 +113,8 @@ run_queries (PGconn *conn)
     if (PGRES_COMMAND_OK != PQresultStatus (result))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		  "Database failure: %s\n",
-		  PQresultErrorMessage (result));
+                  "Database failure: %s\n",
+                  PQresultErrorMessage (result));
       PQclear (result);
       return 1;
     }
@@ -146,19 +146,19 @@ run_queries (PGconn *conn)
     };
 
     ret = GNUNET_PQ_extract_result (result,
-				    results_select,
-				    0);
+                                    results_select,
+                                    0);
     GNUNET_break (0 ==
-		  TALER_amount_cmp (&hamount,
-				    &hamount2));
+                  TALER_amount_cmp (&hamount,
+                                    &hamount2));
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount ("EUR:5.5",
                                            &hamount));
     TALER_amount_ntoh (&hamount2,
-		       &namount2);
+                       &namount2);
     GNUNET_break (0 ==
-		  TALER_amount_cmp (&hamount,
-                            &hamount2));
+                  TALER_amount_cmp (&hamount,
+                                    &hamount2));
     GNUNET_break (42 ==
                   json_integer_value (json_object_get (json2, "foo")));
     GNUNET_PQ_cleanup_result (results_select);
@@ -173,8 +173,8 @@ run_queries (PGconn *conn)
 
 
 int
-main(int argc,
-     const char *const argv[])
+main (int argc,
+      const char *const argv[])
 {
   PGconn *conn;
   PGresult *result;
@@ -187,21 +187,21 @@ main(int argc,
   if (CONNECTION_OK != PQstatus (conn))
   {
     fprintf (stderr,
-	     "Cannot run test, database connection failed: %s\n",
-	     PQerrorMessage (conn));
+             "Cannot run test, database connection failed: %s\n",
+             PQerrorMessage (conn));
     GNUNET_break (0);
     PQfinish (conn);
     return 0; /* We ignore this type of error... */
   }
 
   result = PQexec (conn,
-		   "CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
-		   " hamount_val INT8 NOT NULL"
-		   ",hamount_frac INT4 NOT NULL"
-		   ",namount_val INT8 NOT NULL"
-		   ",namount_frac INT4 NOT NULL"
-		   ",json VARCHAR NOT NULL"
-		   ")");
+                   "CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
+                   " hamount_val INT8 NOT NULL"
+                   ",hamount_frac INT4 NOT NULL"
+                   ",namount_val INT8 NOT NULL"
+                   ",namount_frac INT4 NOT NULL"
+                   ",json VARCHAR NOT NULL"
+                   ")");
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     fprintf (stderr,

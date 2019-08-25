@@ -97,7 +97,7 @@ reject_cb (void *cls,
 static void
 reject_cleanup
   (void *cls,
-   const struct TALER_TESTING_Command *cmd)
+  const struct TALER_TESTING_Command *cmd)
 {
   struct RejectState *rs = cls;
 
@@ -119,8 +119,8 @@ reject_cleanup
  */
 static void
 reject_run (void *cls,
-             const struct TALER_TESTING_Command *cmd,
-             struct TALER_TESTING_Interpreter *is)
+            const struct TALER_TESTING_Command *cmd,
+            struct TALER_TESTING_Interpreter *is)
 {
   struct RejectState *rs = cls;
   const struct TALER_TESTING_Command *deposit_cmd;
@@ -129,7 +129,7 @@ reject_run (void *cls,
   extern struct TALER_BANK_AuthenticationData AUTHS[];
 
   deposit_cmd = TALER_TESTING_interpreter_lookup_command
-    (is, rs->deposit_reference);
+                  (is, rs->deposit_reference);
 
   if (NULL == deposit_cmd)
     TALER_TESTING_FAIL (is);
@@ -145,7 +145,7 @@ reject_run (void *cls,
                   (unsigned long long) *credit_account);
   rs->rh = TALER_BANK_reject (is->ctx,
                               rs->bank_url,
-                              &AUTHS[*credit_account -1],
+                              &AUTHS[*credit_account - 1],
                               *credit_account,
                               *row_id,
                               &reject_cb,

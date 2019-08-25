@@ -140,13 +140,15 @@ main (int argc,
   GNUNET_free (pk);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &dki.issue,
-                              sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
+                              sizeof (struct
+                                      TALER_EXCHANGEDB_DenominationKeyInformationP));
   dki.denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEY_SIZE);
   dki.denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_private_key_get_public (dki.denom_priv.rsa_private_key);
-  enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki.denom_priv.rsa_private_key,
-                                                   &enc);
+  enc_size = GNUNET_CRYPTO_rsa_private_key_encode (
+    dki.denom_priv.rsa_private_key,
+    &enc);
   EXITIF (NULL == (tmpdir = GNUNET_DISK_mkdtemp ("test_exchangedb_dki")));
   start = GNUNET_TIME_absolute_ntoh (dki.issue.properties.start);
   GNUNET_asprintf (&tmpfile,
@@ -172,24 +174,26 @@ main (int argc,
 
   EXITIF (GNUNET_OK !=
           TALER_EXCHANGEDB_denomination_key_revoke (revdir,
-                                                    &dki.issue.properties.denom_hash,
+                                                    &dki.issue.properties.
+                                                    denom_hash,
                                                     &master_priv));
   EXITIF (1 !=
           TALER_EXCHANGEDB_revocations_iterate (revdir,
-						&master_pub,
-						&dki_iter_revoked,
-						&dki));
+                                                &master_pub,
+                                                &dki_iter_revoked,
+                                                &dki));
   GNUNET_free (revdir);
 
-  enc_read_size = GNUNET_CRYPTO_rsa_private_key_encode (dki_read.denom_priv.rsa_private_key,
-                                                        &enc_read);
+  enc_read_size = GNUNET_CRYPTO_rsa_private_key_encode (
+    dki_read.denom_priv.rsa_private_key,
+    &enc_read);
   EXITIF (enc_size != enc_read_size);
   EXITIF (0 != memcmp (enc,
                        enc_read,
                        enc_size));
   ret = 0;
 
- EXITIF_exit:
+  EXITIF_exit:
   GNUNET_free_non_null (enc);
   GNUNET_free_non_null (tmpfile);
   if (NULL != tmpdir)

@@ -100,7 +100,7 @@ check_for_account (void *cls,
   ai.plugin_name = plugin_name;
   ai.payto_url = payto_url;
   ai.wire_response_filename = wire_response_filename;
-  
+
   ai.debit_enabled = (GNUNET_YES ==
                       GNUNET_CONFIGURATION_get_value_yesno (ctx->cfg,
                                                             section,

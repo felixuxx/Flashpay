@@ -58,8 +58,8 @@ struct WirewatchState
  */
 static void
 wirewatch_run (void *cls,
-              const struct TALER_TESTING_Command *cmd,
-              struct TALER_TESTING_Interpreter *is)
+               const struct TALER_TESTING_Command *cmd,
+               struct TALER_TESTING_Interpreter *is)
 {
   struct WirewatchState *ws = cls;
 

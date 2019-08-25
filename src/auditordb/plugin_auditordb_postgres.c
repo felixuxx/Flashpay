@@ -27,7 +27,8 @@
 #include <libpq-fe.h>
 
 
-#define LOG(kind,...) GNUNET_log_from (kind, "taler-auditordb-postgres", __VA_ARGS__)
+#define LOG(kind,...) GNUNET_log_from (kind, "taler-auditordb-postgres", \
+                                       __VA_ARGS__)
 
 
 /**
@@ -37,7 +38,8 @@
  * @param field name of the database field to fetch amount from
  * @param amountp[out] pointer to amount to set
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount(field,pg->currency,amountp)
+#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount ( \
+    field,pg->currency,amountp)
 
 /**
  * Wrapper macro to add the currency from the plugin's state
@@ -46,7 +48,9 @@
  * @param field name of the database field to fetch amount from
  * @param amountp[out] pointer to amount to set
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field,amountp) TALER_PQ_result_spec_amount_nbo(field,pg->currency,amountp)
+#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field, \
+                                        amountp) TALER_PQ_result_spec_amount_nbo ( \
+    field,pg->currency,amountp)
 
 
 /**
@@ -166,19 +170,25 @@ postgres_drop_tables (void *cls,
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_predicted_result;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_ledger;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_denomination_revenue;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS auditor_historic_denomination_revenue;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_balance_summary;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_denomination_pending;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS auditor_denomination_pending;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserve_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_wire_fee_balance;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserves;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_reserve;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_aggregation;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS auditor_progress_aggregation;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_account_progress;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS wire_auditor_account_progress;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement esx[] = {
@@ -225,14 +235,15 @@ postgres_create_tables (void *cls)
                             ",exchange_url VARCHAR NOT NULL"
                             ")"),
     /* Table with list of signing keys of exchanges we are auditing */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",ep_start INT8 NOT NULL"
-                            ",ep_expire INT8 NOT NULL"
-                            ",ep_end INT8 NOT NULL"
-                            ",exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)"
-                            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
-			    ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",ep_start INT8 NOT NULL"
+      ",ep_expire INT8 NOT NULL"
+      ",ep_end INT8 NOT NULL"
+      ",exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)"
+      ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
+      ")"),
     /* Table with all of the denomination keys that the auditor
        is aware of. */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denominations"
@@ -260,21 +271,24 @@ postgres_create_tables (void *cls)
        processed. Thus, we need to select those table entries that are
        strictly larger (and process in monotonically increasing
        order). */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_reserve"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0"
-                            ")"),
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_aggregation"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
-                            ")"),
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0"
-                            ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_progress_reserve"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
+      ",last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0"
+      ",last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0"
+      ",last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0"
+      ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_progress_aggregation"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",last_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+      ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0"
+      ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_progress_coin"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",last_withdraw_serial_id INT8 NOT NULL DEFAULT 0"
@@ -284,15 +298,16 @@ postgres_create_tables (void *cls)
                             ",last_payback_serial_id INT8 NOT NULL DEFAULT 0"
                             ",last_payback_refresh_serial_id INT8 NOT NULL DEFAULT 0"
                             ")"),
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_account_progress"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",account_name TEXT NOT NULL"
-                            ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
-                            ",wire_in_off BYTEA"
-                            ",wire_out_off BYTEA"
-                            ")"),
-   GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS wire_auditor_account_progress"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",account_name TEXT NOT NULL"
+      ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
+      ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
+      ",wire_in_off BYTEA"
+      ",wire_out_off BYTEA"
+      ")"),
+    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",last_timestamp INT8 NOT NULL"
                             ")"),
@@ -325,28 +340,30 @@ postgres_create_tables (void *cls)
                             ")"),
     /* Table with the sum of the balances of all wire fees
        (by exchange's master public key) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_wire_fee_balance"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",wire_fee_balance_val INT8 NOT NULL"
-                            ",wire_fee_balance_frac INT4 NOT NULL"
-                            ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_wire_fee_balance"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",wire_fee_balance_val INT8 NOT NULL"
+      ",wire_fee_balance_frac INT4 NOT NULL"
+      ")"),
     /* Table with all of the outstanding denomination coins that the
        exchange is aware of and what the respective balances are
        (outstanding as well as issued overall which implies the
        maximum value at risk).  We also count the number of coins
        issued (withdraw, refresh-reveal) and the number of coins seen
        at the exchange (refresh-commit, deposit), not just the amounts. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_denomination_pending"
-                            "(denom_pub_hash BYTEA PRIMARY KEY"
-                            " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
-                            ",denom_balance_val INT8 NOT NULL"
-                            ",denom_balance_frac INT4 NOT NULL"
-                            ",num_issued INT8 NOT NULL"
-                            ",denom_risk_val INT8 NOT NULL"
-                            ",denom_risk_frac INT4 NOT NULL"
-                            ",payback_loss_val INT8 NOT NULL"
-                            ",payback_loss_frac INT4 NOT NULL"
-                            ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_denomination_pending"
+      "(denom_pub_hash BYTEA PRIMARY KEY"
+      " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
+      ",denom_balance_val INT8 NOT NULL"
+      ",denom_balance_frac INT4 NOT NULL"
+      ",num_issued INT8 NOT NULL"
+      ",denom_risk_val INT8 NOT NULL"
+      ",denom_risk_frac INT4 NOT NULL"
+      ",payback_loss_val INT8 NOT NULL"
+      ",payback_loss_frac INT4 NOT NULL"
+      ")"),
     /* Table with the sum of the outstanding coins from
        "auditor_denomination_pending" (denom_pubs must belong to the
        respective's exchange's master public key); it represents the
@@ -377,27 +394,30 @@ postgres_create_tables (void *cls)
        historic_reserve_revenue); the deposit, melt and refund fees are given
        individually; the delta to the revenue_balance is from coins that
        were withdrawn but never deposited prior to expiration. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
-                            ",revenue_timestamp INT8 NOT NULL"
-                            ",revenue_balance_val INT8 NOT NULL"
-                            ",revenue_balance_frac INT4 NOT NULL"
-                            ",loss_balance_val INT8 NOT NULL"
-                            ",loss_balance_frac INT4 NOT NULL"
-                            ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+      ",revenue_timestamp INT8 NOT NULL"
+      ",revenue_balance_val INT8 NOT NULL"
+      ",revenue_balance_frac INT4 NOT NULL"
+      ",loss_balance_val INT8 NOT NULL"
+      ",loss_balance_frac INT4 NOT NULL"
+      ")"),
     /* Table with historic profits from reserves; we eventually
        GC "auditor_historic_reserve_revenue", and then store the totals
        in here (by time intervals). */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",start_date INT8 NOT NULL"
-                            ",end_date INT8 NOT NULL"
-                            ",reserve_profits_val INT8 NOT NULL"
-                            ",reserve_profits_frac INT4 NOT NULL"
-                            ")"),
-    GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date "
-                                "ON auditor_historic_reserve_summary(master_pub,start_date)"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",start_date INT8 NOT NULL"
+      ",end_date INT8 NOT NULL"
+      ",reserve_profits_val INT8 NOT NULL"
+      ",reserve_profits_frac INT4 NOT NULL"
+      ")"),
+    GNUNET_PQ_make_try_execute (
+      "CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date "
+      "ON auditor_historic_reserve_summary(master_pub,start_date)"),
 
     /* Table with deposit confirmation sent to us by merchants;
        we must check that the exchange reported these properly. */
@@ -437,17 +457,19 @@ postgres_create_tables (void *cls)
                             ",balance_val INT8 NOT NULL"
                             ",balance_frac INT4 NOT NULL"
                             ")"),
-    GNUNET_PQ_make_try_execute ("CREATE INDEX history_ledger_by_master_pub_and_time "
-                                "ON auditor_historic_ledger(master_pub,timestamp)"),
+    GNUNET_PQ_make_try_execute (
+      "CREATE INDEX history_ledger_by_master_pub_and_time "
+      "ON auditor_historic_ledger(master_pub,timestamp)"),
     /* Table with the sum of the ledger, auditor_historic_revenue and
        the auditor_reserve_balance.  This is the
        final amount that the exchange should have in its bank account
        right now. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_predicted_result"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",balance_val INT8 NOT NULL"
-                            ",balance_frac INT4 NOT NULL"
-                            ")"),
+    GNUNET_PQ_make_execute (
+      "CREATE TABLE IF NOT EXISTS auditor_predicted_result"
+      "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
+      ",balance_val INT8 NOT NULL"
+      ",balance_frac INT4 NOT NULL"
+      ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   PGconn *conn;
@@ -1042,7 +1064,7 @@ postgres_get_session (void *cls)
        * DB.  Needed after the database server restarts as we need to
        * properly reconnect. */
       GNUNET_assert (0 == pthread_setspecific (pc->db_conn_threadlocal,
-					      NULL));
+                                               NULL));
       PQfinish (session->conn);
       GNUNET_free (session);
     }
@@ -1358,7 +1380,8 @@ postgres_list_exchanges (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_exchange_signkey (void *cls,
                                   struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_AUDITORDB_ExchangeSigningKey *sk)
+                                  const struct
+                                  TALER_AUDITORDB_ExchangeSigningKey *sk)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&sk->master_public_key),
@@ -1387,7 +1410,8 @@ postgres_insert_exchange_signkey (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_deposit_confirmation (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
-                                      const struct TALER_AUDITORDB_DepositConfirmation *dc)
+                                      const struct
+                                      TALER_AUDITORDB_DepositConfirmation *dc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&dc->master_public_key),
@@ -1459,7 +1483,7 @@ deposit_confirmation_cb (void *cls,
 {
   struct DepositConfirmationContext *dcc = cls;
   struct PostgresClosure *pg = dcc->pg;
-  
+
   for (unsigned int i = 0; i < num_results; i++)
   {
     uint64_t serial_id;
@@ -1494,8 +1518,8 @@ deposit_confirmation_cb (void *cls,
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
-				  rs,
-				  i))
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       dcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -1524,9 +1548,11 @@ deposit_confirmation_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_deposit_confirmations (void *cls,
                                     struct TALER_AUDITORDB_Session *session,
-                                    const struct TALER_MasterPublicKeyP *master_public_key,
+                                    const struct
+                                    TALER_MasterPublicKeyP *master_public_key,
                                     uint64_t start_id,
-                                    TALER_AUDITORDB_DepositConfirmationCallback cb,
+                                    TALER_AUDITORDB_DepositConfirmationCallback
+                                    cb,
                                     void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
@@ -1544,10 +1570,10 @@ postgres_get_deposit_confirmations (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "auditor_deposit_confirmation_select",
-					     params,
-					     &deposit_confirmation_cb,
-					     &dcc);
+                                             "auditor_deposit_confirmation_select",
+                                             params,
+                                             &deposit_confirmation_cb,
+                                             &dcc);
   if (qs > 0)
     return dcc.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -1569,7 +1595,8 @@ postgres_get_deposit_confirmations (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_info (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
-                                   const struct TALER_DenominationKeyValidityPS *issue)
+                                   const struct
+                                   TALER_DenominationKeyValidityPS *issue)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->denom_hash),
@@ -1598,7 +1625,7 @@ postgres_insert_denomination_info (void *cls,
                                                 &issue->fee_refresh));
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->value,
-                                               &issue->fee_refund));
+                                                &issue->fee_refund));
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_denominations_insert",
                                              params);
@@ -1630,7 +1657,7 @@ struct DenominationInfoContext
    * Plugin context.
    */
   struct PostgresClosure *pg;
-  
+
   /**
    * Query status to return.
    */
@@ -1661,11 +1688,15 @@ denomination_info_cb (void *cls,
       .master = *dic->master_pub
     };
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &issue.denom_hash),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                            &issue.denom_hash),
       TALER_PQ_result_spec_absolute_time_nbo ("valid_from", &issue.start),
-      TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw", &issue.expire_withdraw),
-      TALER_PQ_result_spec_absolute_time_nbo ("expire_deposit", &issue.expire_deposit),
-      TALER_PQ_result_spec_absolute_time_nbo ("expire_legal", &issue.expire_legal),
+      TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
+                                              &issue.expire_withdraw),
+      TALER_PQ_result_spec_absolute_time_nbo ("expire_deposit",
+                                              &issue.expire_deposit),
+      TALER_PQ_result_spec_absolute_time_nbo ("expire_legal",
+                                              &issue.expire_legal),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("coin", &issue.value),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_withdraw", &issue.fee_withdraw),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_deposit", &issue.fee_deposit),
@@ -1676,8 +1707,8 @@ denomination_info_cb (void *cls,
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
-				  rs,
-				  i))
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       dic->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -1685,8 +1716,8 @@ denomination_info_cb (void *cls,
     }
     dic->qs = i + 1;
     if (GNUNET_OK !=
-	dic->cb (dic->cb_cls,
-		 &issue))
+        dic->cb (dic->cb_cls,
+                 &issue))
       return;
   }
 }
@@ -1705,8 +1736,10 @@ denomination_info_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_denomination_info (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
-                                   const struct TALER_MasterPublicKeyP *master_pub,
-                                   TALER_AUDITORDB_DenominationInfoDataCallback cb,
+                                   const struct
+                                   TALER_MasterPublicKeyP *master_pub,
+                                   TALER_AUDITORDB_DenominationInfoDataCallback
+                                   cb,
                                    void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
@@ -1723,10 +1756,10 @@ postgres_select_denomination_info (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-					     "auditor_denominations_select",
-					     params,
-					     &denomination_info_cb,
-					     &dic);
+                                             "auditor_denominations_select",
+                                             params,
+                                             &denomination_info_cb,
+                                             &dic);
   if (qs > 0)
     return dic.qs;
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
@@ -1746,9 +1779,13 @@ postgres_select_denomination_info (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_reserve (void *cls,
-                                          struct TALER_AUDITORDB_Session *session,
-                                          const struct TALER_MasterPublicKeyP *master_pub,
-                                          const struct TALER_AUDITORDB_ProgressPointReserve *ppr)
+                                          struct TALER_AUDITORDB_Session *
+                                          session,
+                                          const struct
+                                          TALER_MasterPublicKeyP *master_pub,
+                                          const struct
+                                          TALER_AUDITORDB_ProgressPointReserve *
+                                          ppr)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1777,9 +1814,13 @@ postgres_insert_auditor_progress_reserve (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_reserve (void *cls,
-                                          struct TALER_AUDITORDB_Session *session,
-                                          const struct TALER_MasterPublicKeyP *master_pub,
-                                          const struct TALER_AUDITORDB_ProgressPointReserve *ppr)
+                                          struct TALER_AUDITORDB_Session *
+                                          session,
+                                          const struct
+                                          TALER_MasterPublicKeyP *master_pub,
+                                          const struct
+                                          TALER_AUDITORDB_ProgressPointReserve *
+                                          ppr)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
@@ -1808,8 +1849,10 @@ postgres_update_auditor_progress_reserve (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_reserve (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
-                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                       struct TALER_AUDITORDB_ProgressPointReserve *ppr)
+                                       const struct
+                                       TALER_MasterPublicKeyP *master_pub,
+                                       struct
+                                       TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1846,9 +1889,13 @@ postgres_get_auditor_progress_reserve (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_aggregation (void *cls,
-                                              struct TALER_AUDITORDB_Session *session,
-                                              const struct TALER_MasterPublicKeyP *master_pub,
-                                              const struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
+                                              struct TALER_AUDITORDB_Session *
+                                              session,
+                                              const struct
+                                              TALER_MasterPublicKeyP *master_pub,
+                                              const struct
+                                              TALER_AUDITORDB_ProgressPointAggregation
+                                              *ppa)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1874,9 +1921,13 @@ postgres_insert_auditor_progress_aggregation (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_aggregation (void *cls,
-                                              struct TALER_AUDITORDB_Session *session,
-                                              const struct TALER_MasterPublicKeyP *master_pub,
-                                              const struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
+                                              struct TALER_AUDITORDB_Session *
+                                              session,
+                                              const struct
+                                              TALER_MasterPublicKeyP *master_pub,
+                                              const struct
+                                              TALER_AUDITORDB_ProgressPointAggregation
+                                              *ppa)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppa->last_wire_out_serial_id),
@@ -1901,9 +1952,13 @@ postgres_update_auditor_progress_aggregation (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_aggregation (void *cls,
-                                           struct TALER_AUDITORDB_Session *session,
-                                           const struct TALER_MasterPublicKeyP *master_pub,
-                                           struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
+                                           struct TALER_AUDITORDB_Session *
+                                           session,
+                                           const struct
+                                           TALER_MasterPublicKeyP *master_pub,
+                                           struct
+                                           TALER_AUDITORDB_ProgressPointAggregation
+                                           *ppa)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1934,9 +1989,15 @@ postgres_get_auditor_progress_aggregation (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_deposit_confirmation (void *cls,
-                                                       struct TALER_AUDITORDB_Session *session,
-                                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                                       const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
+                                                       struct
+                                                       TALER_AUDITORDB_Session *
+                                                       session,
+                                                       const struct
+                                                       TALER_MasterPublicKeyP *
+                                                       master_pub,
+                                                       const struct
+                                                       TALER_AUDITORDB_ProgressPointDepositConfirmation
+                                                       *ppdc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1962,9 +2023,15 @@ postgres_insert_auditor_progress_deposit_confirmation (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_deposit_confirmation (void *cls,
-                                                       struct TALER_AUDITORDB_Session *session,
-                                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                                       const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
+                                                       struct
+                                                       TALER_AUDITORDB_Session *
+                                                       session,
+                                                       const struct
+                                                       TALER_MasterPublicKeyP *
+                                                       master_pub,
+                                                       const struct
+                                                       TALER_AUDITORDB_ProgressPointDepositConfirmation
+                                                       *ppdc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppdc->last_deposit_confirmation_serial_id),
@@ -1989,9 +2056,15 @@ postgres_update_auditor_progress_deposit_confirmation (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_deposit_confirmation (void *cls,
-                                                    struct TALER_AUDITORDB_Session *session,
-                                                    const struct TALER_MasterPublicKeyP *master_pub,
-                                                    struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
+                                                    struct
+                                                    TALER_AUDITORDB_Session *
+                                                    session,
+                                                    const struct
+                                                    TALER_MasterPublicKeyP *
+                                                    master_pub,
+                                                    struct
+                                                    TALER_AUDITORDB_ProgressPointDepositConfirmation
+                                                    *ppdc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2023,8 +2096,10 @@ postgres_get_auditor_progress_deposit_confirmation (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_coin (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
-                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                       const struct TALER_AUDITORDB_ProgressPointCoin *ppc)
+                                       const struct
+                                       TALER_MasterPublicKeyP *master_pub,
+                                       const struct
+                                       TALER_AUDITORDB_ProgressPointCoin *ppc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2056,8 +2131,10 @@ postgres_insert_auditor_progress_coin (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_coin (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
-                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                       const struct TALER_AUDITORDB_ProgressPointCoin *ppc)
+                                       const struct
+                                       TALER_MasterPublicKeyP *master_pub,
+                                       const struct
+                                       TALER_AUDITORDB_ProgressPointCoin *ppc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppc->last_withdraw_serial_id),
@@ -2088,8 +2165,10 @@ postgres_update_auditor_progress_coin (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_coin (void *cls,
                                     struct TALER_AUDITORDB_Session *session,
-                                    const struct TALER_MasterPublicKeyP *master_pub,
-                                    struct TALER_AUDITORDB_ProgressPointCoin *ppc)
+                                    const struct
+                                    TALER_MasterPublicKeyP *master_pub,
+                                    struct TALER_AUDITORDB_ProgressPointCoin *
+                                    ppc)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2130,10 +2209,15 @@ postgres_get_auditor_progress_coin (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_account_progress (void *cls,
-                                               struct TALER_AUDITORDB_Session *session,
-                                               const struct TALER_MasterPublicKeyP *master_pub,
+                                               struct TALER_AUDITORDB_Session *
+                                               session,
+                                               const struct
+                                               TALER_MasterPublicKeyP *
+                                               master_pub,
                                                const char *account_name,
-                                               const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                               const struct
+                                               TALER_AUDITORDB_WireAccountProgressPoint
+                                               *pp,
                                                const void *in_wire_off,
                                                const void *out_wire_off,
                                                size_t wire_off_size)
@@ -2168,10 +2252,15 @@ postgres_insert_wire_auditor_account_progress (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_account_progress (void *cls,
-                                               struct TALER_AUDITORDB_Session *session,
-                                               const struct TALER_MasterPublicKeyP *master_pub,
+                                               struct TALER_AUDITORDB_Session *
+                                               session,
+                                               const struct
+                                               TALER_MasterPublicKeyP *
+                                               master_pub,
                                                const char *account_name,
-                                               const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                               const struct
+                                               TALER_AUDITORDB_WireAccountProgressPoint
+                                               *pp,
                                                const void *in_wire_off,
                                                const void *out_wire_off,
                                                size_t wire_off_size)
@@ -2209,10 +2298,14 @@ postgres_update_wire_auditor_account_progress (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_account_progress (void *cls,
-                                            struct TALER_AUDITORDB_Session *session,
-                                            const struct TALER_MasterPublicKeyP *master_pub,
+                                            struct TALER_AUDITORDB_Session *
+                                            session,
+                                            const struct
+                                            TALER_MasterPublicKeyP *master_pub,
                                             const char *account_name,
-                                            struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+                                            struct
+                                            TALER_AUDITORDB_WireAccountProgressPoint
+                                            *pp,
                                             void **in_wire_off,
                                             void **out_wire_off,
                                             size_t *wire_off_size)
@@ -2265,8 +2358,10 @@ postgres_get_wire_auditor_account_progress (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
-                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                       const struct TALER_AUDITORDB_WireProgressPoint *pp)
+                                       const struct
+                                       TALER_MasterPublicKeyP *master_pub,
+                                       const struct
+                                       TALER_AUDITORDB_WireProgressPoint *pp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2293,8 +2388,10 @@ postgres_insert_wire_auditor_progress (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_progress (void *cls,
                                        struct TALER_AUDITORDB_Session *session,
-                                       const struct TALER_MasterPublicKeyP *master_pub,
-                                       const struct TALER_AUDITORDB_WireProgressPoint *pp)
+                                       const struct
+                                       TALER_MasterPublicKeyP *master_pub,
+                                       const struct
+                                       TALER_AUDITORDB_WireProgressPoint *pp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
@@ -2320,7 +2417,8 @@ postgres_update_wire_auditor_progress (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_progress (void *cls,
                                     struct TALER_AUDITORDB_Session *session,
-                                    const struct TALER_MasterPublicKeyP *master_pub,
+                                    const struct
+                                    TALER_MasterPublicKeyP *master_pub,
                                     struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2329,7 +2427,7 @@ postgres_get_wire_auditor_progress (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_absolute_time ("last_timestamp",
-                                         &pp->last_timestamp),
+                                        &pp->last_timestamp),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2511,9 +2609,11 @@ postgres_get_reserve_info (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_reserve_summary (void *cls,
                                  struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct
+                                 TALER_MasterPublicKeyP *master_pub,
                                  const struct TALER_Amount *reserve_balance,
-                                 const struct TALER_Amount *withdraw_fee_balance)
+                                 const struct
+                                 TALER_Amount *withdraw_fee_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2547,9 +2647,11 @@ postgres_insert_reserve_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_reserve_summary (void *cls,
                                  struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct
+                                 TALER_MasterPublicKeyP *master_pub,
                                  const struct TALER_Amount *reserve_balance,
-                                 const struct TALER_Amount *withdraw_fee_balance)
+                                 const struct
+                                 TALER_Amount *withdraw_fee_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (reserve_balance),
@@ -2614,7 +2716,8 @@ postgres_get_reserve_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_fee_summary (void *cls,
                                   struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct
+                                  TALER_MasterPublicKeyP *master_pub,
                                   const struct TALER_Amount *wire_fee_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2642,7 +2745,8 @@ postgres_insert_wire_fee_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire_fee_summary (void *cls,
                                   struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct
+                                  TALER_MasterPublicKeyP *master_pub,
                                   const struct TALER_Amount *wire_fee_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2706,7 +2810,8 @@ postgres_get_wire_fee_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
-                                      const struct GNUNET_HashCode *denom_pub_hash,
+                                      const struct
+                                      GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *denom_risk,
                                       const struct TALER_Amount *payback_loss,
@@ -2743,7 +2848,8 @@ postgres_insert_denomination_balance (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
-                                      const struct GNUNET_HashCode *denom_pub_hash,
+                                      const struct
+                                      GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *denom_risk,
                                       const struct TALER_Amount *payback_loss,
@@ -2823,7 +2929,8 @@ postgres_get_denomination_balance (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_balance_summary (void *cls,
                                  struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct
+                                 TALER_MasterPublicKeyP *master_pub,
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *deposit_fee_balance,
                                  const struct TALER_Amount *melt_fee_balance,
@@ -2878,7 +2985,8 @@ postgres_insert_balance_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_balance_summary (void *cls,
                                  struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct
+                                 TALER_MasterPublicKeyP *master_pub,
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *deposit_fee_balance,
                                  const struct TALER_Amount *melt_fee_balance,
@@ -2967,10 +3075,14 @@ postgres_get_balance_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_historic_denom_revenue (void *cls,
                                         struct TALER_AUDITORDB_Session *session,
-                                        const struct TALER_MasterPublicKeyP *master_pub,
-                                        const struct GNUNET_HashCode *denom_pub_hash,
-                                        struct GNUNET_TIME_Absolute revenue_timestamp,
-                                        const struct TALER_Amount *revenue_balance,
+                                        const struct
+                                        TALER_MasterPublicKeyP *master_pub,
+                                        const struct
+                                        GNUNET_HashCode *denom_pub_hash,
+                                        struct GNUNET_TIME_Absolute
+                                        revenue_timestamp,
+                                        const struct
+                                        TALER_Amount *revenue_balance,
                                         const struct TALER_Amount *loss_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2983,8 +3095,8 @@ postgres_insert_historic_denom_revenue (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-					     "auditor_historic_denomination_revenue_insert",
-					     params);
+                                             "auditor_historic_denomination_revenue_insert",
+                                             params);
 }
 
 
@@ -3005,7 +3117,7 @@ struct HistoricDenomRevenueContext
 
   /**
    * Plugin context.
-   */ 
+   */
   struct PostgresClosure *pg;
 
   /**
@@ -3031,7 +3143,7 @@ historic_denom_revenue_cb (void *cls,
 {
   struct HistoricDenomRevenueContext *hrc = cls;
   struct PostgresClosure *pg = hrc->pg;
-  
+
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct GNUNET_HashCode denom_pub_hash;
@@ -3040,7 +3152,8 @@ historic_denom_revenue_cb (void *cls,
     struct TALER_Amount loss;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
-      TALER_PQ_result_spec_absolute_time ("revenue_timestamp", &revenue_timestamp),
+      TALER_PQ_result_spec_absolute_time ("revenue_timestamp",
+                                          &revenue_timestamp),
       TALER_PQ_RESULT_SPEC_AMOUNT ("revenue_balance", &revenue_balance),
       TALER_PQ_RESULT_SPEC_AMOUNT ("loss_balance", &loss),
       GNUNET_PQ_result_spec_end
@@ -3082,8 +3195,10 @@ historic_denom_revenue_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_historic_denom_revenue (void *cls,
                                         struct TALER_AUDITORDB_Session *session,
-                                        const struct TALER_MasterPublicKeyP *master_pub,
-                                        TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
+                                        const struct
+                                        TALER_MasterPublicKeyP *master_pub,
+                                        TALER_AUDITORDB_HistoricDenominationRevenueDataCallback
+                                        cb,
                                         void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
@@ -3122,11 +3237,15 @@ postgres_select_historic_denom_revenue (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_historic_reserve_revenue (void *cls,
-                                          struct TALER_AUDITORDB_Session *session,
-                                          const struct TALER_MasterPublicKeyP *master_pub,
-                                          struct GNUNET_TIME_Absolute start_time,
+                                          struct TALER_AUDITORDB_Session *
+                                          session,
+                                          const struct
+                                          TALER_MasterPublicKeyP *master_pub,
+                                          struct GNUNET_TIME_Absolute
+                                          start_time,
                                           struct GNUNET_TIME_Absolute end_time,
-                                          const struct TALER_Amount *reserve_profits)
+                                          const struct
+                                          TALER_Amount *reserve_profits)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -3185,7 +3304,7 @@ historic_reserve_revenue_cb (void *cls,
 {
   struct HistoricReserveRevenueContext *hrc = cls;
   struct PostgresClosure *pg = hrc->pg;
-  
+
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct GNUNET_TIME_Absolute start_date;
@@ -3200,8 +3319,8 @@ historic_reserve_revenue_cb (void *cls,
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
-				  rs,
-				  i))
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       hrc->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -3230,9 +3349,12 @@ historic_reserve_revenue_cb (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_select_historic_reserve_revenue (void *cls,
-                                          struct TALER_AUDITORDB_Session *session,
-                                          const struct TALER_MasterPublicKeyP *master_pub,
-                                          TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
+                                          struct TALER_AUDITORDB_Session *
+                                          session,
+                                          const struct
+                                          TALER_MasterPublicKeyP *master_pub,
+                                          TALER_AUDITORDB_HistoricReserveRevenueDataCallback
+                                          cb,
                                           void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
@@ -3271,7 +3393,8 @@ postgres_select_historic_reserve_revenue (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_predicted_result (void *cls,
                                   struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct
+                                  TALER_MasterPublicKeyP *master_pub,
                                   const struct TALER_Amount *balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3299,7 +3422,8 @@ postgres_insert_predicted_result (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_update_predicted_result (void *cls,
                                   struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct
+                                  TALER_MasterPublicKeyP *master_pub,
                                   const struct TALER_Amount *balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3423,21 +3547,32 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->insert_denomination_info = &postgres_insert_denomination_info;
 
   plugin->get_auditor_progress_reserve = &postgres_get_auditor_progress_reserve;
-  plugin->update_auditor_progress_reserve = &postgres_update_auditor_progress_reserve;
-  plugin->insert_auditor_progress_reserve = &postgres_insert_auditor_progress_reserve;
-  plugin->get_auditor_progress_aggregation = &postgres_get_auditor_progress_aggregation;
-  plugin->update_auditor_progress_aggregation = &postgres_update_auditor_progress_aggregation;
-  plugin->insert_auditor_progress_aggregation = &postgres_insert_auditor_progress_aggregation;
-  plugin->get_auditor_progress_deposit_confirmation = &postgres_get_auditor_progress_deposit_confirmation;
-  plugin->update_auditor_progress_deposit_confirmation = &postgres_update_auditor_progress_deposit_confirmation;
-  plugin->insert_auditor_progress_deposit_confirmation = &postgres_insert_auditor_progress_deposit_confirmation;
+  plugin->update_auditor_progress_reserve =
+    &postgres_update_auditor_progress_reserve;
+  plugin->insert_auditor_progress_reserve =
+    &postgres_insert_auditor_progress_reserve;
+  plugin->get_auditor_progress_aggregation =
+    &postgres_get_auditor_progress_aggregation;
+  plugin->update_auditor_progress_aggregation =
+    &postgres_update_auditor_progress_aggregation;
+  plugin->insert_auditor_progress_aggregation =
+    &postgres_insert_auditor_progress_aggregation;
+  plugin->get_auditor_progress_deposit_confirmation =
+    &postgres_get_auditor_progress_deposit_confirmation;
+  plugin->update_auditor_progress_deposit_confirmation =
+    &postgres_update_auditor_progress_deposit_confirmation;
+  plugin->insert_auditor_progress_deposit_confirmation =
+    &postgres_insert_auditor_progress_deposit_confirmation;
   plugin->get_auditor_progress_coin = &postgres_get_auditor_progress_coin;
   plugin->update_auditor_progress_coin = &postgres_update_auditor_progress_coin;
   plugin->insert_auditor_progress_coin = &postgres_insert_auditor_progress_coin;
 
-  plugin->get_wire_auditor_account_progress = &postgres_get_wire_auditor_account_progress;
-  plugin->update_wire_auditor_account_progress = &postgres_update_wire_auditor_account_progress;
-  plugin->insert_wire_auditor_account_progress = &postgres_insert_wire_auditor_account_progress;
+  plugin->get_wire_auditor_account_progress =
+    &postgres_get_wire_auditor_account_progress;
+  plugin->update_wire_auditor_account_progress =
+    &postgres_update_wire_auditor_account_progress;
+  plugin->insert_wire_auditor_account_progress =
+    &postgres_insert_wire_auditor_account_progress;
   plugin->get_wire_auditor_progress = &postgres_get_wire_auditor_progress;
   plugin->update_wire_auditor_progress = &postgres_update_wire_auditor_progress;
   plugin->insert_wire_auditor_progress = &postgres_insert_wire_auditor_progress;
@@ -3463,11 +3598,15 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_balance_summary = &postgres_update_balance_summary;
   plugin->insert_balance_summary = &postgres_insert_balance_summary;
 
-  plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
-  plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;
+  plugin->select_historic_denom_revenue =
+    &postgres_select_historic_denom_revenue;
+  plugin->insert_historic_denom_revenue =
+    &postgres_insert_historic_denom_revenue;
 
-  plugin->select_historic_reserve_revenue = &postgres_select_historic_reserve_revenue;
-  plugin->insert_historic_reserve_revenue = &postgres_insert_historic_reserve_revenue;
+  plugin->select_historic_reserve_revenue =
+    &postgres_select_historic_reserve_revenue;
+  plugin->insert_historic_reserve_revenue =
+    &postgres_insert_historic_reserve_revenue;
 
   plugin->get_predicted_balance = &postgres_get_predicted_balance;
   plugin->update_predicted_result = &postgres_update_predicted_result;

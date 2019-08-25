@@ -52,7 +52,8 @@
  */
 static int
 reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
-					   const struct TALER_EXCHANGEDB_ReserveHistory *rh)
+                                           const struct
+                                           TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -65,7 +66,7 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
        * it fails "internally" to dump as string (= corrupted).  */
       || (0 == json_dumpb (json_history, NULL, 0, 0)))
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
+                                              TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
 
@@ -73,7 +74,9 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o, s:o}",
                                        "error", "Insufficient funds",
-                                       "code", (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
+                                       "code",
+                                       (json_int_t)
+                                       TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
                                        "balance", json_balance,
                                        "history", json_history);
 }
@@ -88,7 +91,9 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
  */
 static int
 reply_reserve_withdraw_success (struct MHD_Connection *connection,
-				const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
+                                const struct
+                                TALER_EXCHANGEDB_CollectableBlindcoin *
+                                collectable)
 {
   json_t *sig_json;
 
@@ -205,7 +210,7 @@ withdraw_transaction (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
+                                                       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
     wc->collectable.sig = denom_sig;
     return qs;
   }
@@ -248,14 +253,14 @@ withdraw_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
+                                                       TALER_EC_WITHDRAW_DB_FETCH_ERROR);
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
-					       TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
-					       "reserve_pub");
+                                               TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
+                                               "reserve_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 < TALER_amount_cmp (&wc->amount_required,
@@ -293,7 +298,7 @@ withdraw_transaction (void *cls,
   }
 
   /* Balance is good, sign the coin! */
-#if !OPTIMISTIC_SIGN
+#if ! OPTIMISTIC_SIGN
   if (NULL == wc->collectable.sig.rsa_signature)
   {
     wc->collectable.sig.rsa_signature
@@ -326,7 +331,7 @@ withdraw_transaction (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						       TALER_EC_WITHDRAW_DB_STORE_ERROR);
+                                                       TALER_EC_WITHDRAW_DB_STORE_ERROR);
     return qs;
   }
   return qs;
@@ -407,7 +412,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
     return TEH_RESPONSE_reply_arg_unknown (connection,
-					   TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND,
+                                           TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND,
                                            "denom_pub");
   }
   GNUNET_assert (NULL != wc.dki->denom_priv.rsa_private_key);
@@ -417,14 +422,14 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
                      &wc.dki->issue.properties.fee_withdraw);
   if (GNUNET_OK !=
       TALER_amount_add (&wc.amount_required,
-			&amount,
-			&fee_withdraw))
+                        &amount,
+                        &fee_withdraw))
   {
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
     return TEH_RESPONSE_reply_internal_error (connection,
-					      TALER_EC_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-					      "amount overflow for value plus withdraw fee");
+                                              TALER_EC_WITHDRAW_AMOUNT_FEE_OVERFLOW,
+                                              "amount overflow for value plus withdraw fee");
   }
   TALER_amount_hton (&wc.wsrd.amount_with_fee,
                      &wc.amount_required);
@@ -446,11 +451,12 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
                                   &wc.signature.eddsa_signature,
                                   &wc.wsrd.reserve_pub.eddsa_pub))
   {
-    TALER_LOG_WARNING ("Client supplied invalid signature for /reserve/withdraw request\n");
+    TALER_LOG_WARNING (
+      "Client supplied invalid signature for /reserve/withdraw request\n");
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_WITHDRAW_RESERVE_SIGNATURE_INVALID,
+                                                 TALER_EC_WITHDRAW_RESERVE_SIGNATURE_INVALID,
                                                  "reserve_sig");
   }
 
@@ -474,9 +480,9 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "run reserve withdraw",
-			      &mhd_ret,
-			      &withdraw_transaction,
-			      &wc))
+                              &mhd_ret,
+                              &withdraw_transaction,
+                              &wc))
   {
     TEH_KS_release (wc.key_state);
     /* Even if #withdraw_transaction() failed, it may have created a signature
@@ -490,7 +496,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   GNUNET_JSON_parse_free (spec);
 
   mhd_ret = reply_reserve_withdraw_success (connection,
-					    &wc.collectable);
+                                            &wc.collectable);
   GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
   return mhd_ret;
 }

@@ -76,14 +76,14 @@ run (void *cls,
      * the parameters, although it was always set as '200 OK' */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("debit-1",
-       "KUDOS:5.01",
-       fakebank_url,
-       EXCHANGE_ACCOUNT_NUMBER,
-       BANK_ACCOUNT_NUMBER,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER -1].details.basic.username,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER -1].details.basic.password,
-       "subject 1",
-       "http://exchange.com/"),
+      "KUDOS:5.01",
+      fakebank_url,
+      EXCHANGE_ACCOUNT_NUMBER,
+      BANK_ACCOUNT_NUMBER,
+      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
+      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
+      "subject 1",
+      "http://exchange.com/"),
 
     TALER_TESTING_cmd_bank_history ("history-1c",
                                     fakebank_url,
@@ -103,25 +103,25 @@ run (void *cls,
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("debit-2",
-       "KUDOS:3.21",
-       fakebank_url,
-       EXCHANGE_ACCOUNT_NUMBER, // debit account.
-       USER_ACCOUNT_NUMBER,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER -1].details.basic.username,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER -1].details.basic.password,
-       "subject 2",
-       "http://exchange.org/"),
+      "KUDOS:3.21",
+      fakebank_url,
+      EXCHANGE_ACCOUNT_NUMBER,  // debit account.
+      USER_ACCOUNT_NUMBER,
+      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
+      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
+      "subject 2",
+      "http://exchange.org/"),
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("credit-2",
-       "KUDOS:3.22",
-       fakebank_url,
-       USER_ACCOUNT_NUMBER, // debit account.
-       EXCHANGE_ACCOUNT_NUMBER,
-       AUTHS[USER_ACCOUNT_NUMBER -1].details.basic.username,
-       AUTHS[USER_ACCOUNT_NUMBER -1].details.basic.password,
-       "credit 2",
-       "http://exchange.org/"),
+      "KUDOS:3.22",
+      fakebank_url,
+      USER_ACCOUNT_NUMBER,  // debit account.
+      EXCHANGE_ACCOUNT_NUMBER,
+      AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.username,
+      AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.password,
+      "credit 2",
+      "http://exchange.org/"),
 
     TALER_TESTING_cmd_bank_history ("history-2b",
                                     fakebank_url,
@@ -152,18 +152,18 @@ run (void *cls,
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("credit-for-reject-1",
-       "KUDOS:5.01",
-       fakebank_url,
-       BANK_ACCOUNT_NUMBER,
-       EXCHANGE_ACCOUNT_NUMBER,
-       AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.username,
-       AUTHS[BANK_ACCOUNT_NUMBER -1].details.basic.password,
-       "subject 3",
-       "http://exchange.net/"),
+      "KUDOS:5.01",
+      fakebank_url,
+      BANK_ACCOUNT_NUMBER,
+      EXCHANGE_ACCOUNT_NUMBER,
+      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.username,
+      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.password,
+      "subject 3",
+      "http://exchange.net/"),
 
-     TALER_TESTING_cmd_bank_reject ("reject-1",
-                                    fakebank_url,
-                                    "credit-for-reject-1"),
+    TALER_TESTING_cmd_bank_reject ("reject-1",
+                                   fakebank_url,
+                                   "credit-for-reject-1"),
 
     TALER_TESTING_cmd_bank_history ("history-r1",
                                     fakebank_url,
@@ -176,15 +176,15 @@ run (void *cls,
     TALER_TESTING_cmd_bank_history ("history-r1c",
                                     fakebank_url,
                                     BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH |
-                                    TALER_BANK_DIRECTION_CANCEL,
+                                    TALER_BANK_DIRECTION_BOTH
+                                    | TALER_BANK_DIRECTION_CANCEL,
                                     GNUNET_YES,
                                     NULL,
                                     5),
 
     TALER_TESTING_cmd_check_bank_transfer_with_ref
       ("expect-credit-reject-1",
-       "credit-for-reject-1"),
+      "credit-for-reject-1"),
 
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-2"),
 
@@ -202,7 +202,7 @@ run (void *cls,
 
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");

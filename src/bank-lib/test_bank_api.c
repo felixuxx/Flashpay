@@ -41,8 +41,7 @@ static void
 run (void *cls)
 {
   int *resultp = cls;
-  static struct TBI_Command commands[] =
-  {
+  static struct TBI_Command commands[] = {
     /* Ask complete history of 'Exchange' user (number 2) */
     { .oc = TBI_OC_HISTORY,
       .label = "history-0",
@@ -113,7 +112,8 @@ run (void *cls)
     { .oc = TBI_OC_HISTORY,
       .label = "history-r3",
       .details.history.account_number = 2,
-      .details.history.direction = TALER_BANK_DIRECTION_BOTH | TALER_BANK_DIRECTION_CANCEL,
+      .details.history.direction = TALER_BANK_DIRECTION_BOTH
+                                   | TALER_BANK_DIRECTION_CANCEL,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
     { .oc = TBI_OC_END }
@@ -133,7 +133,7 @@ run (void *cls)
  */
 int
 main (int argc,
-      char * const *argv)
+      char *const *argv)
 {
   struct GNUNET_OS_Process *bankd;
   unsigned int cnt;
@@ -143,11 +143,11 @@ main (int argc,
 
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-				     8081))
+                                     8081))
   {
     fprintf (stderr,
              "Required port %u not available, skipping.\n",
-	     8081);
+             8081);
     return 77;
   }
   GNUNET_log_setup ("test-bank-api",
@@ -157,13 +157,14 @@ main (int argc,
   if (NULL == (dbconn = getenv ("TALER_EXCHANGEDB_POSTGRES_CONFIG")))
     dbconn = defaultdb;
   char *purgedb_cmd;
-  GNUNET_asprintf (&purgedb_cmd, "taler-bank-manage -c bank.conf --with-db=%s django flush --no-input",
+  GNUNET_asprintf (&purgedb_cmd,
+                   "taler-bank-manage -c bank.conf --with-db=%s django flush --no-input",
                    dbconn);
   if (0 != system (purgedb_cmd))
   {
-      fprintf (stderr,
-               "Could not purge database\n");
-      return 77;
+    fprintf (stderr,
+             "Could not purge database\n");
+    return 77;
   }
 
   bankd = GNUNET_OS_start_process (GNUNET_NO,
@@ -188,14 +189,15 @@ main (int argc,
            "Waiting for taler-bank-manage to be ready\n");
   cnt = 0;
   do
-    {
-      fprintf (stderr, ".");
-      sleep (1);
-      cnt++;
-      if (cnt > 30)
-        break;
-    }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8080/ -o /dev/null -O /dev/null"));
+  {
+    fprintf (stderr, ".");
+    sleep (1);
+    cnt++;
+    if (cnt > 30)
+      break;
+  }
+  while (0 != system (
+           "wget -q -t 1 -T 1 http://127.0.0.1:8080/ -o /dev/null -O /dev/null"));
 
 
   fprintf (stderr, "\n");

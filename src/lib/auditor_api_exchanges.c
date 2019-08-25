@@ -118,12 +118,12 @@ handle_exchanges_finished (void *cls,
       int ok;
 
       ok = GNUNET_YES;
-      for (unsigned int i=0;i<ja_len;i++)
+      for (unsigned int i = 0; i<ja_len; i++)
       {
         struct GNUNET_JSON_Specification spec[] = {
           GNUNET_JSON_spec_fixed_auto ("master_pub", &ei[i].master_pub),
           GNUNET_JSON_spec_string ("exchange_url", &ei[i].exchange_url),
-          GNUNET_JSON_spec_end()
+          GNUNET_JSON_spec_end ()
         };
 
         if (GNUNET_OK !=
@@ -201,7 +201,7 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
   CURL *eh;
 
   GNUNET_assert (GNUNET_YES ==
-		 MAH_handle_is_ready (auditor));
+                 MAH_handle_is_ready (auditor));
 
   leh = GNUNET_new (struct TALER_AUDITOR_ListExchangesHandle);
   leh->auditor = auditor;
@@ -230,7 +230,8 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
  * @param deposit-confirmation the deposit-confirmation permission request handle
  */
 void
-TALER_AUDITOR_list_exchanges_cancel (struct TALER_AUDITOR_ListExchangesHandle *leh)
+TALER_AUDITOR_list_exchanges_cancel (struct
+                                     TALER_AUDITOR_ListExchangesHandle *leh)
 {
   if (NULL != leh->job)
   {

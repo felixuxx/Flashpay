@@ -45,7 +45,7 @@
  */
 static int
 reply_refund_success (struct MHD_Connection *connection,
-		      const struct TALER_EXCHANGEDB_Refund *refund)
+                      const struct TALER_EXCHANGEDB_Refund *refund)
 {
   struct TALER_RefundConfirmationPS rc;
   struct TALER_ExchangePublicKeyP pub;
@@ -63,8 +63,8 @@ reply_refund_success (struct MHD_Connection *connection,
                      &refund->refund_fee);
   if (GNUNET_OK !=
       TEH_KS_sign (&rc.purpose,
-		   &pub,
-		   &sig))
+                   &pub,
+                   &sig))
   {
     return TEH_RESPONSE_reply_internal_error (connection,
                                               TALER_EC_EXCHANGE_BAD_CONFIGURATION,
@@ -75,7 +75,8 @@ reply_refund_success (struct MHD_Connection *connection,
                                        "{s:s, s:o, s:o}",
                                        "status", "REFUND_OK",
                                        "sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "pub", GNUNET_JSON_from_data_auto (&pub));
+                                       "pub", GNUNET_JSON_from_data_auto (
+                                         &pub));
 }
 
 
@@ -90,14 +91,14 @@ reply_refund_success (struct MHD_Connection *connection,
  */
 static int
 reply_refund_failure (struct MHD_Connection *connection,
-		      unsigned int response_code,
-		      enum TALER_ErrorCode ec)
+                      unsigned int response_code,
+                      enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        response_code,
                                        "{s:s, s:I}",
                                        "status", "refund failure",
-				       "code", (json_int_t) ec);
+                                       "code", (json_int_t) ec);
 }
 
 
@@ -111,14 +112,17 @@ reply_refund_failure (struct MHD_Connection *connection,
  */
 static int
 reply_refund_conflict (struct MHD_Connection *connection,
-		       const struct TALER_EXCHANGEDB_TransactionList *tl)
+                       const struct TALER_EXCHANGEDB_TransactionList *tl)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
                                        "{s:s, s:I, s:o}",
                                        "status", "conflicting refund",
-				       "code", (json_int_t) TALER_EC_REFUND_CONFLICT,
-                                       "history", TEH_RESPONSE_compile_transaction_history (tl));
+                                       "code",
+                                       (json_int_t) TALER_EC_REFUND_CONFLICT,
+                                       "history",
+                                       TEH_RESPONSE_compile_transaction_history (
+                                         tl));
 }
 
 
@@ -142,9 +146,9 @@ reply_refund_conflict (struct MHD_Connection *connection,
  */
 static enum GNUNET_DB_QueryStatus
 refund_transaction (void *cls,
-		    struct MHD_Connection *connection,
-		    struct TALER_EXCHANGEDB_Session *session,
-		    int *mhd_ret)
+                    struct MHD_Connection *connection,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    int *mhd_ret)
 {
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
   struct TALER_EXCHANGEDB_TransactionList *tl;
@@ -170,8 +174,8 @@ refund_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = reply_refund_failure (connection,
-				       MHD_HTTP_NOT_FOUND,
-				       TALER_EC_REFUND_COIN_NOT_FOUND);
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_REFUND_COIN_NOT_FOUND);
     return qs;
   }
   deposit_found = GNUNET_NO;
@@ -254,14 +258,14 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_transaction_unknown (connection,
-						       TALER_EC_REFUND_DEPOSIT_NOT_FOUND);
+                                                       TALER_EC_REFUND_DEPOSIT_NOT_FOUND);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* handle if conflicting refund found */
   if (GNUNET_SYSERR == refund_found)
   {
     *mhd_ret = reply_refund_conflict (connection,
-				      tl);
+                                      tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -271,7 +275,7 @@ refund_transaction (void *cls,
   {
     /* /refund already done, simply re-transmit confirmation */
     *mhd_ret = reply_refund_success (connection,
-				     ref);
+                                     ref);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -287,15 +291,15 @@ refund_transaction (void *cls,
   {
     GNUNET_break_op (0); /* currency missmatch */
     *mhd_ret = reply_refund_failure (connection,
-				     MHD_HTTP_PRECONDITION_FAILED,
-				     TALER_EC_REFUND_CURRENCY_MISSMATCH);
+                                     MHD_HTTP_PRECONDITION_FAILED,
+                                     TALER_EC_REFUND_CURRENCY_MISSMATCH);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
   /* check if we already send the money for the /deposit */
   qs = TEH_plugin->test_deposit_done (TEH_plugin->cls,
-				      session,
-				      dep);
+                                      session,
+                                      dep);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     /* Internal error, we first had the deposit in the history,
@@ -304,8 +308,8 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
-						  TALER_EC_REFUND_DB_INCONSISTENT,
-						  "database inconsistent");
+                                                  TALER_EC_REFUND_DB_INCONSISTENT,
+                                                  "database inconsistent");
     return qs;
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -317,8 +321,8 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = reply_refund_failure (connection,
-				     MHD_HTTP_GONE,
-				     TALER_EC_REFUND_MERCHANT_ALREADY_PAID);
+                                     MHD_HTTP_GONE,
+                                     TALER_EC_REFUND_MERCHANT_ALREADY_PAID);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -330,8 +334,8 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = reply_refund_failure (connection,
-				     MHD_HTTP_PRECONDITION_FAILED,
-				     TALER_EC_REFUND_INSUFFICIENT_FUNDS);
+                                     MHD_HTTP_PRECONDITION_FAILED,
+                                     TALER_EC_REFUND_INSUFFICIENT_FUNDS);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -360,8 +364,8 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
-						  TALER_EC_REFUND_DENOMINATION_KEY_NOT_FOUND,
-						  "denomination key not found");
+                                                  TALER_EC_REFUND_DENOMINATION_KEY_NOT_FOUND,
+                                                  "denomination key not found");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TALER_amount_ntoh (&expect_fee,
@@ -375,8 +379,8 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TEH_RESPONSE_reply_arg_invalid (connection,
-					       TALER_EC_REFUND_FEE_TOO_LOW,
-					       "refund_fee");
+                                               TALER_EC_REFUND_FEE_TOO_LOW,
+                                               "refund_fee");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (1 == fee_cmp)
@@ -389,13 +393,13 @@ refund_transaction (void *cls,
 
   /* Finally, store new refund data */
   qs = TEH_plugin->insert_refund (TEH_plugin->cls,
-				  session,
-				  refund);
+                                  session,
+                                  refund);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to store /refund information in database\n");
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-						     TALER_EC_REFUND_STORE_DB_ERROR);
+                                                     TALER_EC_REFUND_STORE_DB_ERROR);
     return qs;
   }
   /* Success or soft failure */
@@ -415,7 +419,7 @@ refund_transaction (void *cls,
  */
 static int
 verify_and_execute_refund (struct MHD_Connection *connection,
-			   const struct TALER_EXCHANGEDB_Refund *refund)
+                           const struct TALER_EXCHANGEDB_Refund *refund)
 {
   struct TALER_RefundRequestPS rr;
   int mhd_ret;
@@ -436,7 +440,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   {
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
+                                           TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
                                            "refund_fee");
   }
   if (-1 == TALER_amount_cmp (&refund->refund_amount,
@@ -444,8 +448,8 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   {
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
-					   TALER_EC_REFUND_FEE_ABOVE_AMOUNT,
-					   "refund_amount");
+                                           TALER_EC_REFUND_FEE_ABOVE_AMOUNT,
+                                           "refund_amount");
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
@@ -455,18 +459,18 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on /refund request\n");
     return TEH_RESPONSE_reply_signature_invalid (connection,
-						 TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
+                                                 TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
                                                  "merchant_sig");
   }
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "run refund",
-			      &mhd_ret,
-			      &refund_transaction,
-			      (void *) refund))
+                              &mhd_ret,
+                              &refund_transaction,
+                              (void *) refund))
     return mhd_ret;
   return reply_refund_success (connection,
-			       refund);
+                               refund);
 }
 
 
@@ -486,10 +490,10 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   */
 int
 TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
-			   struct MHD_Connection *connection,
-			   void **connection_cls,
-			   const char *upload_data,
-			   size_t *upload_data_size)
+                           struct MHD_Connection *connection,
+                           void **connection_cls,
+                           const char *upload_data,
+                           size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -523,7 +527,7 @@ TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
   res = verify_and_execute_refund (connection,
-				   &refund);
+                                   &refund);
   GNUNET_JSON_parse_free (spec);
   return res;
 }

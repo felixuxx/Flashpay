@@ -45,10 +45,10 @@
  */
 int
 TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
+                                 struct MHD_Connection *connection,
+                                 void **connection_cls,
+                                 const char *upload_data,
+                                 size_t *upload_data_size)
 {
   struct MHD_Response *response;
   int ret;
@@ -142,16 +142,16 @@ TAH_MHD_handler_agpl_redirect (struct TAH_RequestHandler *rh,
  */
 int
 TAH_MHD_handler_send_json_pack_error (struct TAH_RequestHandler *rh,
-                                         struct MHD_Connection *connection,
-                                         void **connection_cls,
-                                         const char *upload_data,
-                                         size_t *upload_data_size)
+                                      struct MHD_Connection *connection,
+                                      void **connection_cls,
+                                      const char *upload_data,
+                                      size_t *upload_data_size)
 {
   return TAH_RESPONSE_reply_json_pack (connection,
-                                     rh->response_code,
-                                     "{s:s}",
-                                     "error",
-                                     rh->data);
+                                       rh->response_code,
+                                       "{s:s}",
+                                       "error",
+                                       rh->data);
 }
 
 

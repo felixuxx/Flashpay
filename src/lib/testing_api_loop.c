@@ -47,7 +47,7 @@ static struct GNUNET_DISK_PipeHandle *sigpipe;
 const struct TALER_TESTING_Command *
 TALER_TESTING_interpreter_lookup_command
   (struct TALER_TESTING_Interpreter *is,
-   const char *label)
+  const char *label)
 {
   if (NULL == label)
   {
@@ -56,7 +56,7 @@ TALER_TESTING_interpreter_lookup_command
     return NULL;
   }
   /* Search backwards as we most likely reference recent commands */
-  for (int i=is->ip; i >= 0; i--)
+  for (int i = is->ip; i >= 0; i--)
   {
     const struct TALER_TESTING_Command *cmd = &is->commands[i];
 
@@ -75,7 +75,7 @@ TALER_TESTING_interpreter_lookup_command
                      TALER_TESTING_get_trait_cmd (cmd,
                                                   BATCH_INDEX,
                                                   &batch));
-      for (unsigned int j=0;
+      for (unsigned int j = 0;
            NULL != (cmd = &batch[j])->label;
            j++)
       {
@@ -125,8 +125,8 @@ TALER_TESTING_interpreter_get_fakebank
 void
 TALER_TESTING_run_with_fakebank
   (struct TALER_TESTING_Interpreter *is,
-   struct TALER_TESTING_Command *commands,
-   const char *bank_url)
+  struct TALER_TESTING_Command *commands,
+  const char *bank_url)
 {
   const char *port;
   long pnum;
@@ -183,8 +183,9 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
     if (0 != ipc)
       GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                   "Interpreter executed 1000 instructions in %s\n",
-                  GNUNET_STRINGS_relative_time_to_string (GNUNET_TIME_absolute_get_duration (last_report),
-                                                          GNUNET_YES));
+                  GNUNET_STRINGS_relative_time_to_string (
+                    GNUNET_TIME_absolute_get_duration (last_report),
+                    GNUNET_YES));
     last_report = GNUNET_TIME_absolute_get ();
   }
   ipc++;
@@ -208,12 +209,12 @@ TALER_TESTING_interpreter_fail
               "Failed at command `%s'\n",
               cmd->label);
   while (TALER_TESTING_cmd_is_batch (cmd))
-    {
-      cmd = TALER_TESTING_cmd_batch_get_current (cmd);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Batch is at command `%s'\n",
-                  cmd->label);
-    }
+  {
+    cmd = TALER_TESTING_cmd_batch_get_current (cmd);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Batch is at command `%s'\n",
+                cmd->label);
+  }
   is->result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_shutdown ();
 }
@@ -301,7 +302,7 @@ do_shutdown (void *cls)
               "Executing shutdown at `%s'\n",
               label);
 
-  for (unsigned int j=0;
+  for (unsigned int j = 0;
        NULL != (cmd = &is->commands[j])->label;
        j++)
     cmd->cleanup (cmd->cls,
@@ -433,7 +434,7 @@ maint_child_death (void *cls)
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Triggering key state reload at exchange\n");
       GNUNET_break (0 == GNUNET_OS_process_kill
-      (is->exchanged, SIGUSR1));
+                      (is->exchanged, SIGUSR1));
       sleep (5); /* make sure signal was received and processed */
     }
   }
@@ -490,16 +491,16 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
     is->timeout_task = NULL;
   }
   /* get the number of commands */
-  for (i=0;NULL != commands[i].label;i++) ;
+  for (i = 0; NULL != commands[i].label; i++);
   is->commands = GNUNET_new_array (i + 1,
                                    struct TALER_TESTING_Command);
   memcpy (is->commands,
           commands,
           sizeof (struct TALER_TESTING_Command) * i);
   is->timeout_task = GNUNET_SCHEDULER_add_delayed
-    (timeout,
-     &do_timeout,
-     is);
+                       (timeout,
+                       &do_timeout,
+                       is);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
 }
@@ -570,12 +571,13 @@ static void
 sighandler_child_death ()
 {
   static char c;
-  int old_errno = errno;	/* back-up errno */
+  int old_errno = errno;  /* back-up errno */
 
   GNUNET_break (1 == GNUNET_DISK_file_write
-    (GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_WRITE),
-     &c, sizeof (c)));
-  errno = old_errno;		/* restore errno */
+                  (GNUNET_DISK_pipe_handle (sigpipe,
+                                            GNUNET_DISK_PIPE_END_WRITE),
+                  &c, sizeof (c)));
+  errno = old_errno;    /* restore errno */
 }
 
 
@@ -591,8 +593,8 @@ sighandler_child_death ()
 void
 TALER_TESTING_cert_cb
   (void *cls,
-   const struct TALER_EXCHANGE_Keys *keys,
-   enum TALER_EXCHANGE_VersionCompatibility compat)
+  const struct TALER_EXCHANGE_Keys *keys,
+  enum TALER_EXCHANGE_VersionCompatibility compat)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
@@ -603,23 +605,23 @@ TALER_TESTING_cert_cb
     {
       GNUNET_log
         (GNUNET_ERROR_TYPE_WARNING,
-         "Got NULL response for /keys"
-         " during startup, retrying!\n");
+        "Got NULL response for /keys"
+        " during startup, retrying!\n");
       TALER_EXCHANGE_disconnect (is->exchange);
       GNUNET_assert
         (NULL != (is->exchange = TALER_EXCHANGE_connect
-          (is->ctx,
-           main_ctx->exchange_url,
-           &TALER_TESTING_cert_cb,
-           main_ctx,
-           TALER_EXCHANGE_OPTION_END)));
+                                   (is->ctx,
+                                   main_ctx->exchange_url,
+                                   &TALER_TESTING_cert_cb,
+                                   main_ctx,
+                                   TALER_EXCHANGE_OPTION_END)));
       return;
     }
     else
       GNUNET_log
         (GNUNET_ERROR_TYPE_ERROR,
-         "Got NULL response for /keys"
-         " during execution!\n");
+        "Got NULL response for /keys"
+        " during execution!\n");
   }
   else
   {
@@ -705,7 +707,7 @@ do_abort (void *cls)
 static int
 main_exchange_connect_with_cfg
   (void *cls,
-   const struct GNUNET_CONFIGURATION_Handle *cfg)
+  const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
@@ -725,14 +727,14 @@ main_exchange_connect_with_cfg
   main_ctx->exchange_url = exchange_url;
   is->cfg = cfg;
   is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
-						    main_ctx);
+                                                    main_ctx);
   GNUNET_break
     (NULL != (is->exchange = TALER_EXCHANGE_connect
-      (is->ctx,
-       exchange_url,
-       &TALER_TESTING_cert_cb,
-       main_ctx,
-       TALER_EXCHANGE_OPTION_END)));
+                               (is->ctx,
+                               exchange_url,
+                               &TALER_TESTING_cert_cb,
+                               main_ctx,
+                               TALER_EXCHANGE_OPTION_END)));
   is->cfg = NULL;
   return GNUNET_OK;
 }
@@ -751,7 +753,8 @@ main_wrapper_exchange_connect (void *cls)
 
   GNUNET_break (GNUNET_OK ==
                 GNUNET_CONFIGURATION_parse_and_run (main_ctx->config_filename,
-                                                    &main_exchange_connect_with_cfg,
+                                                    &
+                                                    main_exchange_connect_with_cfg,
                                                     main_ctx));
 }
 
@@ -802,11 +805,11 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                               GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install
-    (GNUNET_SIGCHLD,
-     &sighandler_child_death);
+               (GNUNET_SIGCHLD,
+               &sighandler_child_death);
   is.ctx = GNUNET_CURL_init
-    (&GNUNET_CURL_gnunet_scheduler_reschedule,
-     &is.rc);
+             (&GNUNET_CURL_gnunet_scheduler_reschedule,
+             &is.rc);
   GNUNET_CURL_enable_async_scope_header (is.ctx, "Taler-Correlation-Id");
   GNUNET_assert (NULL != is.ctx);
   is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
@@ -817,8 +820,8 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     GNUNET_SCHEDULER_run (&main_wrapper_exchange_connect,
                           &main_ctx);
   else
-     GNUNET_SCHEDULER_run (&main_wrapper_exchange_agnostic,
-                           &main_ctx);
+    GNUNET_SCHEDULER_run (&main_wrapper_exchange_agnostic,
+                          &main_ctx);
   if (NULL != is.final_cleanup_cb)
     is.final_cleanup_cb (is.final_cleanup_cb_cls);
   GNUNET_free_non_null (main_ctx.exchange_url);

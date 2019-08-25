@@ -47,8 +47,8 @@
 int
 TALER_TESTING_get_trait_process
   (const struct TALER_TESTING_Command *cmd,
-   unsigned int index,
-   struct GNUNET_OS_Process ***processp)
+  unsigned int index,
+  struct GNUNET_OS_Process ***processp)
 {
   return cmd->traits (cmd->cls,
                       (const void **) processp,
@@ -59,7 +59,7 @@ TALER_TESTING_get_trait_process
 
 /**
  * Offer location where a command stores a pointer to a process.
- * 
+ *
  * @param index offered location index number, in case there are
  *        multiple on offer.
  * @param processp process location to offer.
@@ -69,7 +69,7 @@ TALER_TESTING_get_trait_process
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_process
   (unsigned int index,
-   struct GNUNET_OS_Process **processp)
+  struct GNUNET_OS_Process **processp)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
