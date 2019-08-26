@@ -849,6 +849,12 @@ postgres_prepare (PGconn *db_conn)
                             " WHERE coin_pub=$1"
                             " FOR UPDATE;",
                             1),
+    /* Lock deposit table; NOTE: we may want to eventually shard the
+       deposit table to avoid this lock being the main point of
+       contention limiting transaction performance. */
+    GNUNET_PQ_make_prepare ("lock_known_coins",
+                            "LOCK TABLE known_coins;",
+                            0),
     /* Used in #postgres_insert_known_coin() to store
        the denomination public key and signature for
        a coin known to the exchange. */
@@ -3462,6 +3468,14 @@ postgres_ensure_coin_known (void *cls,
   struct PostgresClosure *pc = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_CoinPublicInfo known_coin;
+  struct GNUNET_PQ_QueryParam no_params[] = {
+    GNUNET_PQ_query_param_end
+  };
+
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                                    "lock_known_coins",
+                                                    no_params)))
+    return qs;
 
   /* check if the coin is already known */
   qs = postgres_get_known_coin (pc,
