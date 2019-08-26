@@ -2228,9 +2228,13 @@ postgres_insert_wire_auditor_account_progress (void *cls,
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     GNUNET_PQ_query_param_fixed_size (in_wire_off,
-                                      wire_off_size),
+                                      NULL == in_wire_off
+                                      ? 0
+                                      : wire_off_size),
     GNUNET_PQ_query_param_fixed_size (out_wire_off,
-                                      wire_off_size),
+                                      NULL == out_wire_off
+                                      ? 0
+                                      : wire_off_size),
     GNUNET_PQ_query_param_end
   };
 
@@ -2269,9 +2273,13 @@ postgres_update_wire_auditor_account_progress (void *cls,
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     GNUNET_PQ_query_param_fixed_size (in_wire_off,
-                                      wire_off_size),
+                                      NULL == in_wire_off
+                                      ? 0
+                                      : wire_off_size),
     GNUNET_PQ_query_param_fixed_size (out_wire_off,
-                                      wire_off_size),
+                                      NULL == out_wire_off
+                                      ? 0
+                                      : wire_off_size),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
@@ -2340,7 +2348,11 @@ postgres_get_wire_auditor_account_progress (void *cls,
     *wire_off_size = 0;
     xsize = 0;
   }
-  GNUNET_assert (xsize == *wire_off_size);
+  if ( (0 != xsize) &&
+       (0 != *wire_off_size) )
+  {
+    GNUNET_assert (xsize == *wire_off_size);
+  }
   return qs;
 }
 

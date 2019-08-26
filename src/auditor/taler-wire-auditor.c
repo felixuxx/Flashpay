@@ -1175,7 +1175,7 @@ conclude_credit_history ()
  * as claimed by the exchange DB.
  *
  * @param cls a `struct WireAccount` we are processing
- * @param rowid unique serial ID for the refresh session in our DB
+ * @param rowid unique serial ID for the entry in our DB
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
  * @param sender_url payto://-URL of the sender's bank account
@@ -1198,7 +1198,8 @@ reserve_in_cb (void *cls,
   struct ReserveInInfo *rii;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Analyzing exchange wire IN at %s of %s with reserve_pub %s\n",
+              "Analyzing exchange wire IN (%llu) at %s of %s with reserve_pub %s\n",
+              (unsigned long long) rowid,
               GNUNET_STRINGS_absolute_time_to_string (execution_date),
               TALER_amount2s (credit),
               TALER_B2S (reserve_pub));
@@ -1256,9 +1257,8 @@ complain_in_not_found (void *cls,
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii = value;
 
-  (void) wa; // FIXME: log which account is affected...
   report (report_reserve_in_inconsistencies,
-          json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+          json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s, s:s}",
                      "row", (json_int_t) rii->rowid,
                      "amount_expected", TALER_JSON_from_amount (
                        &rii->details.amount),
@@ -1266,6 +1266,7 @@ complain_in_not_found (void *cls,
                      "wtid", GNUNET_JSON_from_data_auto (&rii->details.wtid),
                      "timestamp", GNUNET_STRINGS_absolute_time_to_string (
                        rii->details.execution_date),
+                     "account", wa->section_name,
                      "diagnostic",
                      "incoming wire transfer claimed by exchange not found"));
   GNUNET_break (GNUNET_OK ==
@@ -1379,9 +1380,11 @@ history_credit_cb (void *cls,
   {
     GNUNET_break (0);
     report (report_row_inconsistencies,
-            json_pack ("{s:s, s:o, s:o, s:s}",
+            json_pack ("{s:s, s:I, s:o, s:o, s:s}",
                        "table", "reserves_in",
-                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "row", (json_int_t) rii->rowid,
+                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
+                                                              row_off_size),
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (&key),
                        "diagnostic", "wire reference size missmatch"));
     return GNUNET_OK;
@@ -1390,8 +1393,10 @@ history_credit_cb (void *cls,
                           &rii->details.wtid))
   {
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
-                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rii->rowid,
+                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
+                                                              row_off_size),
                        "amount_exchange_expected", TALER_JSON_from_amount (
                          &rii->details.amount),
                        "amount_wired", TALER_JSON_from_amount (&zero),
@@ -1404,8 +1409,10 @@ history_credit_cb (void *cls,
                                     &total_bad_amount_in_minus,
                                     &rii->details.amount));
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
-                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rii->rowid,
+                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
+                                                              row_off_size),
                        "amount_exchange_expected", TALER_JSON_from_amount (
                          &zero),
                        "amount_wired", TALER_JSON_from_amount (
@@ -1425,8 +1432,10 @@ history_credit_cb (void *cls,
                              &details->amount))
   {
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
-                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+                       "row", (json_int_t) rii->rowid,
+                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
+                                                              row_off_size),
                        "amount_exchange_expected", TALER_JSON_from_amount (
                          &rii->details.amount),
                        "amount_wired", TALER_JSON_from_amount (
@@ -1470,9 +1479,11 @@ history_credit_cb (void *cls,
                        rii->details.account_url))
   {
     report (report_missattribution_in_inconsistencies,
-            json_pack ("{s:s, s:o, s:o}",
+            json_pack ("{s:s, s:I, s:o, s:o}",
                        "amount", TALER_JSON_from_amount (&rii->details.amount),
-                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "row", (json_int_t) rii->rowid,
+                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
+                                                              row_off_size),
                        "wtid", GNUNET_JSON_from_data_auto (
                          &rii->details.wtid)));
     GNUNET_break (GNUNET_OK ==
@@ -1484,9 +1495,11 @@ history_credit_cb (void *cls,
       rii->details.execution_date.abs_value_us)
   {
     report (report_row_minor_inconsistencies,
-            json_pack ("{s:s, s:o, s:s}",
+            json_pack ("{s:s, s:I, s:o, s:s}",
                        "table", "reserves_in",
-                       "row", GNUNET_JSON_from_data (row_off, row_off_size),
+                       "row", (json_int_t) rii->rowid,
+                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
+                                                              row_off_size),
                        "diagnostic", "execution date missmatch"));
   }
   cleanup:

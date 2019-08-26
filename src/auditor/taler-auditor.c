@@ -1384,6 +1384,7 @@ verify_reserve_balance (void *cls,
   struct ReserveSummary *rs = value;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
+  struct TALER_Amount nbalance;
   enum GNUNET_DB_QueryStatus qs;
   int ret;
 
@@ -1422,7 +1423,7 @@ verify_reserve_balance (void *cls,
   }
 
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&balance,
+      TALER_amount_subtract (&nbalance,
                              &balance,
                              &rs->total_out))
   {
@@ -1437,25 +1438,25 @@ verify_reserve_balance (void *cls,
                                     &total_balance_insufficient_loss,
                                     &loss));
     report (report_reserve_balance_insufficient_inconsistencies,
-            json_pack ("{s:o, s:o, s:o, s:s}",
+            json_pack ("{s:o, s:o}",
                        "reserve_pub",
                        GNUNET_JSON_from_data_auto (&rs->reserve_pub),
                        "loss",
                        TALER_JSON_from_amount (&loss)));
     goto cleanup;
   }
-  if (0 != TALER_amount_cmp (&balance,
+  if (0 != TALER_amount_cmp (&nbalance,
                              &reserve.balance))
   {
     struct TALER_Amount delta;
 
-    if (0 < TALER_amount_cmp (&balance,
+    if (0 < TALER_amount_cmp (&nbalance,
                               &reserve.balance))
     {
       /* balance > reserve.balance */
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_subtract (&delta,
-                                            &balance,
+                                            &nbalance,
                                             &reserve.balance));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_balance_summary_delta_plus,
@@ -1468,7 +1469,7 @@ verify_reserve_balance (void *cls,
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_subtract (&delta,
                                             &reserve.balance,
-                                            &balance));
+                                            &nbalance));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_balance_summary_delta_minus,
                                        &total_balance_summary_delta_minus,
@@ -1481,7 +1482,7 @@ verify_reserve_balance (void *cls,
                        "exchange",
                        TALER_JSON_from_amount (&reserve.balance),
                        "auditor",
-                       TALER_JSON_from_amount (&balance)));
+                       TALER_JSON_from_amount (&nbalance)));
     goto cleanup;
   }
 
@@ -1489,19 +1490,19 @@ verify_reserve_balance (void *cls,
   if ( (CLOSING_GRACE_PERIOD.rel_value_us >
         GNUNET_TIME_absolute_get_duration (
           rs->a_expiration_date).rel_value_us) &&
-       ( (0 != balance.value) ||
-         (0 != balance.fraction) ) )
+       ( (0 != nbalance.value) ||
+         (0 != nbalance.fraction) ) )
   {
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_add (&total_balance_reserve_not_closed,
                                      &total_balance_reserve_not_closed,
-                                     &balance));
+                                     &nbalance));
     report (report_reserve_not_closed_inconsistencies,
             json_pack ("{s:o, s:o, s:s}",
                        "reserve_pub",
                        GNUNET_JSON_from_data_auto (&rs->reserve_pub),
                        "balance",
-                       TALER_JSON_from_amount (&balance),
+                       TALER_JSON_from_amount (&nbalance),
                        "expiration_time",
                        GNUNET_STRINGS_absolute_time_to_string (
                          rs->a_expiration_date)));
@@ -1548,7 +1549,7 @@ verify_reserve_balance (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Final balance of reserve `%s' is %s, dropping it\n",
                   TALER_B2S (&rs->reserve_pub),
-                  TALER_amount2s (&balance));
+                  TALER_amount2s (&nbalance));
       qs = adb->del_reserve_info (adb->cls,
                                   asession,
                                   &rs->reserve_pub,
@@ -1566,7 +1567,7 @@ verify_reserve_balance (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Final balance of reserve `%s' is %s, no need to remember it\n",
                   TALER_B2S (&rs->reserve_pub),
-                  TALER_amount2s (&balance));
+                  TALER_amount2s (&nbalance));
     }
     ret = GNUNET_OK;
     goto cleanup;
@@ -1575,14 +1576,14 @@ verify_reserve_balance (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Remembering final balance of reserve `%s' as %s\n",
               TALER_B2S (&rs->reserve_pub),
-              TALER_amount2s (&balance));
+              TALER_amount2s (&nbalance));
 
   if (rs->had_ri)
     qs = adb->update_reserve_info (adb->cls,
                                    asession,
                                    &rs->reserve_pub,
                                    &master_pub,
-                                   &balance,
+                                   &nbalance,
                                    &rs->a_withdraw_fee_balance,
                                    rs->a_expiration_date);
   else
@@ -1590,7 +1591,7 @@ verify_reserve_balance (void *cls,
                                    asession,
                                    &rs->reserve_pub,
                                    &master_pub,
-                                   &balance,
+                                   &nbalance,
                                    &rs->a_withdraw_fee_balance,
                                    rs->a_expiration_date);
   if (0 >= qs)
@@ -2774,10 +2775,8 @@ check_wire_out_cb
 
     report (report_wire_out_inconsistencies,
             json_pack ("{s:O, s:I, s:o, s:o}",
-                       "destination_account",
-                       wire,
-                       "rowid",
-                       (json_int_t) rowid,
+                       "destination_account", wire,
+                       "rowid", (json_int_t) rowid,
                        "expected",
                        TALER_JSON_from_amount (&final_amount),
                        "claimed",
