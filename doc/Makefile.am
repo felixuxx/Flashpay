@@ -18,22 +18,6 @@ man_MANS = \
   taler-exchange-benchmark.1 \
   taler.conf.5
 
-AM_MAKEINFOHTMLFLAGS = --no-split --css-ref=docstyle.css --css-ref=brown-paper.css
-
-DISTCLEANFILES = \
-  taler-exchange.cps \
-  taler-exchange.dvi
-
-info_TEXINFOS = \
-  taler-exchange.texi
-extra_TEXINFOS = \
-  fdl-1.3.texi \
-  agpl.texi \
-  syntax.texi
 EXTRA_DIST = \
   coding-style.txt \
   $(man_MANS) \
-  $(extra_TEXINFOS) \
-  docstyle.css \
-  brown-paper.css \
-  exchange-db.png
