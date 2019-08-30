@@ -1596,6 +1596,13 @@ enum TALER_ErrorCode
   TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2810,
 
   /**
+   * The backend could not find the merchant instance specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_TIP_INSTANCE_UNKNOWN = 2811,
+
+  /**
    * The instance for check-payment is unknown, likely
    * a buggy frontend or misconfigured instances.
    */
