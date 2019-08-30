@@ -20,4 +20,4 @@ man_MANS = \
 
 EXTRA_DIST = \
   coding-style.txt \
-  $(man_MANS) \
+  $(man_MANS)
