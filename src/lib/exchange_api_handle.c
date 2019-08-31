@@ -672,6 +672,15 @@ auditor_version_cb
 {
   struct TEAH_AuditorListEntry *ale = cls;
 
+  if (NULL == vi)
+  {
+    /* In this case, we don't mark the auditor as 'up' */
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                _ ("Auditor `%s' gave unexpected version response.\n"),
+                ale->auditor_url);
+    return;
+  }
+
   if (0 != (TALER_AUDITOR_VC_INCOMPATIBLE & compat))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
