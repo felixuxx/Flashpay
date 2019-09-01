@@ -41,6 +41,10 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
   .homepage = "http://www.gnu.org/s/taler/",
   .config_file = "taler.conf",
   .user_config_file = "~/.config/taler.conf",
+  .version = PACKAGE_VERSION,
+  .is_gnu = 1,
+  .gettext_domain = "taler",
+  .gettext_path = NULL,
 };
 
 
