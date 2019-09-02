@@ -25,6 +25,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{multirow}
 \usepackage{longtable}
+\usepackage[breakall]{truncate}
 
 \begin{document}
 
@@ -201,7 +202,7 @@ respective denomination that the exchange has redeemed so far may have
 been created by the attacker, and the exchange would have to refund
 all of the outstanding coins from ordinary users.  Thus, the {\bf risk
 exposure} is the amount of coins in circulation for a particular
-denominatin and the maximum loss for the exchange from this type of
+denomination and the maximum loss for the exchange from this type of
 compromise.
 
 % FIXME: expand to include actual losses (materizlied risk)!
@@ -209,26 +210,27 @@ compromise.
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|r|c|r}
-  {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
+  \begin{longtable}{r|c|r}
+  \multicolumn{3}{c}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
 \endfirsthead
-  {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
+  \multicolumn{3}{|c|}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Public key hash} & {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\
+  \multicolumn{3}{|c|}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\
 \endfoot
   \hline
-% FIXME: replace these with the summary column adding up the amounts!
-  \multicolumn{4}{|c|}{ {\bf Total risk from emergencies}} & {{ data.emergencies_risk_total }} \\
+  \multicolumn{2}{c|}{ {\bf Total risk from emergencies}} & {{ data.emergencies_risk_total }} \\
     \caption{Emergencies.}
     \label{table:emergencies}
 \endlastfoot
-{% for item in data.reserve_inconsistencies %}
-  \multicolumn{4}{l}{ {\tt \small {{ item.denompub_hash }} } } \\
+{% for item in data.emergencies %}
+  \multicolumn{3}{l}{ {\tt \truncate{\textwidth}{ {{ item.denompub_hash }} } } } \\
 \nopagebreak
-  &
   {{ item.value }} &
-  {{ item.start }} - {{ item.deposit_end }} &
+  {\tiny {{ item.start }} - {{ item.deposit_end }} } &
   {{ item.denom_risk }} \\ \hline
 {% endfor %}
   \end{longtable}
@@ -656,7 +658,7 @@ have a clear financial impact.
   {{ item.row }} &
   {{ item.diagnostic }} \\
 \nopagebreak
-  \multicolumn{3}{l}{ {\tiny {\tt {{ item.wire_offset_hash }} } } } \\ \hline
+  \multicolumn{3}{l}{ {\tiny {\tt \truncate{\textwidth}{ {{ item.wire_offset_hash }} } } } } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -693,7 +695,7 @@ with duplicate or malformed wire transfer subjects.
   \label{table:outgoing:wtid}
 \endlastfoot
 {% for item in wire.wire_format_inconsistencies %}
-  \multicolumn{3}{l}{ \verb! {{ item.wire_offset_hash }} ! } \\
+  \multicolumn{3}{l}{ \tt \small \truncate{\textwidth}{ {{ item.wire_offset_hash }} } } \\
 \nopagebreak
   {{ item.diagnostic }} &
   {{ item.amount }} \\
@@ -781,7 +783,7 @@ reserve expired.
 {% if data.reserve_not_closed_inconsistencies|length() == 0 %}
   {\bf All expired reserves were closed.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|c|r}
+  \begin{longtable}{p{5.5cm}|c|r}
   {\bf Reserve} & {\bf Expired} & {\bf Balance} \\ \hline \hline
 \endfirsthead
   {\bf Reserve} & {\bf Expired} & {\bf Balance} \\ \hline \hline
@@ -796,10 +798,8 @@ reserve expired.
   \label{table:reserve:not_closed}
 \endlastfoot
 {% for item in data.reserve_not_closed_inconsistencies %}
-  \multicolumn{4}{l}{ {\tt \small {{ item.reserve_pub }} } } \\
-\nopagebreak
-  &
-  {{ item.expiration_time }} &
+  {\tt \tiny {{ item.reserve_pub }} } &
+  {\tiny {{ item.expiration_time }} } &
   {{ item.balance }} \\ \hline
 {% endfor %}
   \end{longtable}
@@ -873,10 +873,10 @@ implications.
   \label{table:withdraw:bad_time}
 \endlastfoot
 {% for item in data.denomination_key_validity_withdraw_inconsistencies %}
-  {\tt \small {{ item.reserve_pub }} } & {{ item.row }} \\
+  {\tt \small \truncate{0.6\textwidth}{ {{ item.reserve_pub }} } } & {{ item.row }} \\
 \nopagebreak
   &
-  {\tt \small {{ item.denompub_h }} } & {{ item.execution_date }} \\ \hline
+  {\tt \small \truncate{0.6\textwidth}{ {{ item.denompub_h }} } } & {{ item.execution_date }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
