@@ -118,7 +118,7 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
     \label{table:lag}
 \endlastfoot
 {% for item in wire.lag_details %}
-  \multicolumn{4}{l}{ {\tt {{ item.coin_pub }} } } \\
+  \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
 \nopagebreak
   &
   {{ item.deadline }} &
@@ -224,7 +224,7 @@ compromise.
     \label{table:emergencies}
 \endlastfoot
 {% for item in data.reserve_inconsistencies %}
-  \multicolumn{4}{l}{ {\tt {{ item.denompub_hash }} } } \\
+  \multicolumn{4}{l}{ {\tt \small {{ item.denompub_hash }} } } \\
 \nopagebreak
   &
   {{ item.value }} &
@@ -271,17 +271,19 @@ the financial damage done to the customer).
   \end{longtable}
 {% endif %}
 
+
 \subsection{Reserve withdrawals exceeding balance}
 
 This section highlights cases where more coins were withdrawn from a
 reserve than the reserve contained funding for.  This is a serious
 compromise resulting in proportional financial losses to the exchange.
 
+% Table generation tested by testcase #2 in test-auditor.sh
 
 {% if data.reserve_balance_insufficient_inconsistencies|length() == 0 %}
   {\bf All withdrawals were covered by sufficient reserve funding.}
 {% else %}
-  \begin{longtable}{p{4.5cm}|r}
+  \begin{longtable}{p{8.5cm}|r}
   {\bf Reserve} & {\bf Loss}  \\ \hline \hline
 \endfirsthead
   {\bf Reserve} & {\bf Loss}  \\ \hline \hline
@@ -296,7 +298,7 @@ compromise resulting in proportional financial losses to the exchange.
   \label{table:reserve:balance_insufficient}
 \endlastfoot
 {% for item in data.reserve_balance_insufficient_inconsistencies %}
-  {\tt {{ item.reserve_pub }} }
+  {\tt \small {{ item.reserve_pub }} }
   &
   {{ item.loss }} \\ \hline
 {% endfor %}
@@ -374,7 +376,7 @@ any effects on its own balance, those entries are excluded from the total.
 \endlastfoot
 {% for item in data.coin_inconsistencies %}
   {{ item.operation }} &
-  \multicolumn{5}{l}{ {\tt {{ item.coin_pub }} } } \\
+  \multicolumn{5}{l}{ {\tt \small {{ item.coin_pub }} } } \\
 \nopagebreak & &
   {{ item.exchange }} &
   {{ item.auditor }} \\ \hline
@@ -416,7 +418,7 @@ public key for ``payback-master'' operations.
   \label{table:bad_signature_losses}
 \endlastfoot
 {% for item in data.bad_sig_losses %}
-  \multicolumn{5}{l}{ {\tt {{ item.key_pub }} } } \\
+  \multicolumn{5}{l}{ {\tt \small {{ item.key_pub }} } } \\
 \nopagebreak
   & {{ item.operation }} & {{ item.rowid }} &
     {{ item.loss }} \\ \hline
@@ -426,26 +428,31 @@ public key for ``payback-master'' operations.
 
 
 
-\subsection{Actual incoming wire transfers}
+\subsection{Actual incoming wire transfers} \label{sec:wire_in}
 
 This section highlights cases where the exchange's record about
 incoming wire transfers does not match with that of the bank.
+
+% Table generation tested by testcase #3 in test-auditor.sh
 
 {% if wire.reserve_in_amount_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer amounts and subjects matched up.}
 {% else %}
   \begin{longtable}{p{5.5cm}|r|r}
   \multicolumn{2}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
-  {\bf Diagnostic} & {\bf Wired} & {\bf Expected}  \\
+  \multicolumn{3}{l}{ {\bf Diagnostic} } \\
+  {\bf When} & {\bf Wired} & {\bf Expected}  \\
   \hline \hline
 \endfirsthead
   \multicolumn{2}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
-  {\bf Diagnostic} & {\bf Wired} & {\bf Expected}  \\
+  \multicolumn{3}{l}{ {\bf Diagnostic} } \\
+  {\bf When} & {\bf Wired} & {\bf Expected}  \\
   \hline \hline
 \endhead
   \hline \hline
   \multicolumn{2}{l}{ {\bf Wire transfer identifier} ({\bf Row}) } \\
-  {\bf Diagnostic} & {\bf Wired} & {\bf Expected}  \\
+  \multicolumn{3}{l}{ {\bf Diagnostic} } \\
+  {\bf When} & {\bf Wired} & {\bf Expected}  \\
 \endfoot
   \hline \hline
   {\bf Total deltas}  &
@@ -455,15 +462,30 @@ incoming wire transfers does not match with that of the bank.
   \label{table:wire_in:transfer_amount_inconsistencies}
 \endlastfoot
 {% for item in wire.reserve_in_amount_inconsistencies %}
-  \multicolumn{2}{l}{ {\tt {{ item.wtid }} } ({{ item.row }}) } \\
+  \multicolumn{3}{l}{ {\tt \small {{ item.wtid }} } ({{ item.row }}) } \\
 \nopagebreak
-  {{ item.timestamp }}: &
+  \multicolumn{3}{l}{ {{ item.diagnostic }} } \\
+\nopagebreak
+  {{ item.timestamp }} &
   {{ item.amount_wired }} &
   {{ item.amount_exchange_expected }} \\
-  \multicolumn{3}{l}{ {{ item.diagnostic }} } \\
   \hline
 {% endfor %}
   \end{longtable}
+{% endif %}
+
+
+{% if wire.reserve_in_amount_inconsistencies|length() != 0 %}
+This means that there are inconsistencies in the exchange's
+claims about incoming wire transfers, amounting to:
+\begin{itemize}
+\item The exchange believing it received
+{\bf {{ wire.total_wire_in_delta_plus }} } {\em less} than it
+actually received in some reserves.
+\item The exchange believing that it received
+{\bf {{ wire.total_wire_in_delta_minus}} } {\em more} than it
+actually received in some reserves.
+\end{itemize}
 {% endif %}
 
 
@@ -534,7 +556,7 @@ with respect to outgoing wire transfers.
   \label{table:wire_out:transfer_amount_inconsistencies}
 \endlastfoot
 {% for item in wire.wire_out_amount_inconsistencies %}
-  {\tt {{ item.wtid }} } &
+  {\tt \small {{ item.wtid }} } &
   {{ item.amount_wired }} &
   {{ item.amount_justified }} \\ \hline
 \nopagebreak
@@ -556,11 +578,12 @@ in the database does not match the calculations made by the auditor.
 Deltas may indicate a corrupt database, but do not necessarily
 translate into a financial loss (yet).
 
+% Table generation tested by testcase #3 in test-auditor.sh
 
 {% if data.reserve_balance_summary_wrong_inconsistencies|length() == 0 %}
   {\bf All balances matched up.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|r|r}
+  \begin{longtable}{p{6cm}|r|r}
   {\bf Reserve} & {\bf Auditor} & {\bf Exchange} \\ \hline \hline
 \endfirsthead
   {\bf Reserve} & {\bf Auditor} & {\bf Exchange} \\ \hline \hline
@@ -569,20 +592,39 @@ translate into a financial loss (yet).
   {\bf Reserve} & {\bf Auditor} & {\bf Exchange}
 \endfoot
   \hline
-  {\bf Total deltas}  & &
+  {\bf Total deltas}  & 
   {{ data.total_balance_summary_delta_plus}} &
   - {{ data.total_balance_summary_delta_minus}} \\
   \caption{Reserves balances not matching up.}
   \label{table:reserve:balance_inconsistencies}
 \endlastfoot
 {% for item in data.reserve_balance_summary_wrong_inconsistencies %}
-  \multicolumn{5}{l}{ {\tt {{ item.reserve_pub }} } } \\
-\nopagebreak
-  &
+ {\tt \tiny {{ item.reserve_pub }} } &
   {{ item.auditor }} &
   {{ item.exchange }} \\ \hline
 {% endfor %}
   \end{longtable}
+{% endif %}
+
+{% if data.reserve_balance_summary_wrong_inconsistencies|length() != 0 %}
+This means that there are inconsistencies in the exchange's
+summary data about reserve balances.
+\begin{itemize}
+\item The exchange believes some reserves contain (in total)
+{\bf {{ data.total_balance_summary_delta_plus}} } {\em less} than they
+actually contain.  A non-zero value here means the exchange may deny legitimate withdrawal
+requests, denying customers access to their funds.
+\item The exchange believes some reserves contain (in total)
+{\bf {{ data.total_balance_summary_delta_minus}} } {\em more} than they
+actually contain.  A non-zero value here means the exchange may allow coins to be withdrawn
+for which it never received any income, at a loss (for the exchange).
+\end{itemize}
+
+{% if wire.reserve_in_amount_inconsistencies|length() != 0 %}
+Note that inconsistencies detected in Section~\ref{sec:wire_in} may
+have created follow-up errors in this table.
+{% endif %}
+
 {% endif %}
 
 
@@ -754,7 +796,7 @@ reserve expired.
   \label{table:reserve:not_closed}
 \endlastfoot
 {% for item in data.reserve_not_closed_inconsistencies %}
-  \multicolumn{4}{l}{ {\tt {{ item.reserve_pub }} } } \\
+  \multicolumn{4}{l}{ {\tt \small {{ item.reserve_pub }} } } \\
 \nopagebreak
   &
   {{ item.expiration_time }} &
@@ -792,7 +834,7 @@ may happen even if the exchange is correct.
   \label{table:refresh:hanging}
 \endlastfoot
 {% for item in data.refresh_hanging %}
-  \multicolumn{4}{l}{ {\tt {{ item.coin_pub }} } } \\
+  \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
 \nopagebreak
   &
   {{ item.row }} &
@@ -831,10 +873,10 @@ implications.
   \label{table:withdraw:bad_time}
 \endlastfoot
 {% for item in data.denomination_key_validity_withdraw_inconsistencies %}
-  {\tt {{ item.reserve_pub }} } & {{ item.row }} \\
+  {\tt \small {{ item.reserve_pub }} } & {{ item.row }} \\
 \nopagebreak
   &
-  {\tt {{ item.denompub_h }} } & {{ item.execution_date }} \\ \hline
+  {\tt \small {{ item.denompub_h }} } & {{ item.execution_date }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
