@@ -7,6 +7,14 @@
 # Requires 'jq' tool and Postgres superuser rights!
 set -eu
 
+# Which tests should we run, used to make it easy to
+# only run a subset of the tests. To only run a subset,
+# pass the numbers of the tests to run as the FIRST
+# argument to test-auditor.sh
+ALL_TESTS=`seq 1 3`
+TESTS=${1:-$ALL_TESTS}
+
+
 function exit_skip() {
     echo $1
     exit 77
@@ -33,7 +41,7 @@ function run_audit () {
     # Run the auditor!
     echo "Running audit(s)"
     taler-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-audit.json || exit_fail "auditor failed"
-    
+
     taler-wire-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json || exit_fail "wire auditor failed"
 
     echo "Shutting down services"
@@ -42,8 +50,8 @@ function run_audit () {
     echo "TeXing"
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail Renderer failed
 
-    pdflatex test-report.tex >/dev/null || exit_fail pdflatex failed
-    pdflatex test-report.tex >/dev/null
+    timeout 10 pdflatex test-report.tex >/dev/null || exit_fail pdflatex failed
+    timeout 10 pdflatex test-report.tex >/dev/null
 }
 
 
@@ -64,11 +72,13 @@ createdb -T template0 $DB || exit_skip "could not create database"
 psql $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
 MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
 
+
+test_1() {
+
 echo "===========1: normal run==========="
 run_audit
 
 echo "Checking output"
-fail=0
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
@@ -111,10 +121,12 @@ then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
 fi
 echo "OK"
+}
 
+
+test_2() {
 
 echo "===========2: reserves_in inconsitency==========="
-# TODO: Add more checks to ensure test-audit.json matches expectations
 echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql $DB
 
 run_audit
@@ -135,6 +147,12 @@ if test $EXPECTED != "TESTKUDOS:5"
 then
     exit_fail "Expected amount wrong"
 fi
+
+WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
+fi
 DELTA=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
 if test $DELTA != "TESTKUDOS:5"
 then
@@ -145,9 +163,78 @@ echo OK
 # Undo database modification
 echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql $DB
 
-# TODO: insert more tests!
+}
+
+
+# Check for incoming wire transfer amount given being
+# lower than what exchange claims to have received.
+test_3() {
+
+echo "===========3: reserves_in inconsitency==========="
+echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql $DB
+
+run_audit
+
+EXPECTED=`jq -r .reserve_balance_insufficient_inconsistencies[0].loss < test-audit.json`
+if test $EXPECTED != "TESTKUDOS:5"
+then
+    exit_fail "Expected reserve balance loss amount wrong, got $EXPECTED"
+fi
+
+WIRED=`jq -r .total_loss_balance_insufficient < test-audit.json`
+if test $WIRED != "TESTKUDOS:5"
+then
+    exit_fail "Wrong total loss from insufficient balance, got $WIRED"
+fi
+
+ROW=`jq -e .reserve_in_amount_inconsistencies[0].row < test-wire-audit.json`
+if test $ROW != 1
+then
+    exit_fail "Row wrong, got $ROW"
+fi
+
+WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:15"
+then
+    exit_fail "Wrong amount_exchange_expected, got $WIRED"
+fi
+
+WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:10"
+then
+    exit_fail "Wrong amount_wired, got $WIRED"
+fi
+
+WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:5"
+then
+    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
+fi
+
+WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total wire_in_delta_plus, got $WIRED"
+fi
+
+# Undo database modification
+echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql $DB
+
+}
+
+
+fail=0
+for i in $TESTS
+do
+    test_$i
+    if test 0 != $fail
+    then
+       break
+    fi
+done
+
 
 echo "Cleanup"
-dropdb $DB
+#$ dropdb $DB
 
 exit $fail
