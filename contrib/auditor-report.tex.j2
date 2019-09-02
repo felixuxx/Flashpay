@@ -205,33 +205,75 @@ exposure} is the amount of coins in circulation for a particular
 denomination and the maximum loss for the exchange from this type of
 compromise.
 
-% FIXME: expand to include actual losses (materizlied risk)!
+{% if (data.emergencies|length() != 0)
+   or (data.emergencies_by_count|length() != 0) %}
+The total risk from emergencies is
+{\bf {{ data.emergencies_risk_total }} }
+{% endif %}
 
-{% if data.emergencies|length() == 0 %}
-  {\bf No emergencies detected.}
+
+\subsubsection{Emergencies by counting coins}
+
+{% if data.emergencies_by_count|length() == 0 %}
+  {\bf No emergencies detected by counting coins.}
 {% else %}
-  \begin{longtable}{r|c|r}
-  \multicolumn{3}{c}{ {\bf Public key hash} } \\
-  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
+  \begin{longtable}{r|c|r|r}
+  \multicolumn{4}{c}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf \# Issued}  & {\bf \# Deposited} \\ \hline \hline
 \endfirsthead
-  \multicolumn{3}{|c|}{ {\bf Public key hash} } \\
-  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\ \hline \hline
+  \multicolumn{4}{|c|}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf \# Issued}  & {\bf \# Deposited} \\ \hline \hline
 \endhead
   \hline \hline
-  \multicolumn{3}{|c|}{ {\bf Public key hash} } \\
-  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} \\
+  \multicolumn{4}{|c|}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf \# Issued}  & {\bf \# Deposited} \\ \hline \hline
 \endfoot
-  \hline
-  \multicolumn{2}{c|}{ {\bf Total risk from emergencies}} & {{ data.emergencies_risk_total }} \\
-    \caption{Emergencies.}
+    \caption{Emergencies by counting coins.}
+    \label{table:emergencies_coin_counting}
+\endlastfoot
+{% for item in data.emergencies_by_count %}
+  \multicolumn{4}{l}{ {\tt \truncate{\textwidth}{ {{ item.denompub_hash }} } } } \\
+\nopagebreak
+  {{ item.value }} &
+  {\tiny \begin{tabular}{c}
+          {{ item.start }} \\ \hline
+          {{ item.deposit_end }}
+         \end{tabular} } &
+  {{ item.num_issued }} &
+  {{ item.num_known }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+\subsubsection{Emergencies by value deposited}
+
+{% if data.emergencies|length() == 0 %}
+  {\bf No emergencies by value detected.}
+{% else %}
+  \begin{longtable}{r|c|r|r}
+  \multicolumn{4}{c}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure}  & {\bf Loss} \\ \hline \hline
+\endfirsthead
+  \multicolumn{4}{|c|}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure}  & {\bf Loss} \\ \hline \hline
+\endhead
+  \hline \hline
+  \multicolumn{4}{|c|}{ {\bf Public key hash} } \\
+  {\bf Denomination} & {\bf Lifetime} & {\bf Risk exposure} & {\bf Loss} \\
+\endfoot
+    \caption{Emergencies by value deposited.}
     \label{table:emergencies}
 \endlastfoot
 {% for item in data.emergencies %}
-  \multicolumn{3}{l}{ {\tt \truncate{\textwidth}{ {{ item.denompub_hash }} } } } \\
+  \multicolumn{4}{l}{ {\tt \truncate{\textwidth}{ {{ item.denompub_hash }} } } } \\
 \nopagebreak
   {{ item.value }} &
-  {\tiny {{ item.start }} - {{ item.deposit_end }} } &
-  {{ item.denom_risk }} \\ \hline
+  {\tiny \begin{tabular}{c}
+          {{ item.start }} \\ \hline
+          {{ item.deposit_end }}
+         \end{tabular} } &
+  {{ item.denom_risk }} &
+  {{ item.denom_loss }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}

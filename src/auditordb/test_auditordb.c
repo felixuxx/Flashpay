@@ -369,6 +369,8 @@ run (void *cls)
               "Test: insert_denomination_balance\n");
 
   struct TALER_Amount denom_balance;
+  struct TALER_Amount denom_loss;
+  struct TALER_Amount denom_loss2;
   struct TALER_Amount deposit_fee_balance;
   struct TALER_Amount melt_fee_balance;
   struct TALER_Amount refund_fee_balance;
@@ -385,6 +387,9 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":12.345678",
                                          &denom_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.1",
+                                         &denom_loss));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":23.456789",
                                          &deposit_fee_balance));
@@ -406,6 +411,7 @@ run (void *cls)
                                                session,
                                                &denom_pub_hash,
                                                &denom_balance,
+                                               &denom_loss,
                                                &rbalance,
                                                &loss,
                                                42));
@@ -423,6 +429,7 @@ run (void *cls)
                                                session,
                                                &denom_pub_hash,
                                                &denom_balance,
+                                               &denom_loss,
                                                &rbalance,
                                                &loss,
                                                62));
@@ -434,11 +441,13 @@ run (void *cls)
                                             session,
                                             &denom_pub_hash,
                                             &denom_balance2,
+                                            &denom_loss2,
                                             &rbalance2,
                                             &loss2,
                                             &nissued));
 
   FAILIF (0 != GNUNET_memcmp (&denom_balance2, &denom_balance));
+  FAILIF (0 != GNUNET_memcmp (&denom_loss2, &denom_loss));
   FAILIF (0 != GNUNET_memcmp (&rbalance2, &rbalance));
   FAILIF (62 != nissued);
 

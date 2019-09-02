@@ -1201,6 +1201,7 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
+   * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
    * @param denom_risk value of coins issued with this denomination key
    * @param denom_payback value of coins paid back if this denomination key was revoked
    * @param num_issued how many coins of this denomination did the exchange blind-sign
@@ -1211,6 +1212,7 @@ struct TALER_AUDITORDB_Plugin
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
+                                 const struct TALER_Amount *denom_loss,
                                  const struct TALER_Amount *denom_risk,
                                  const struct TALER_Amount *payback_loss,
                                  uint64_t num_issued);
@@ -1224,6 +1226,7 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding with this denomination key
+   * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
    * @param denom_risk value of coins issued with this denomination key
    * @param denom_payback value of coins paid back if this denomination key was revoked
    * @param num_issued how many coins of this denomination did the exchange blind-sign
@@ -1234,6 +1237,7 @@ struct TALER_AUDITORDB_Plugin
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
+                                 const struct TALER_Amount *denom_loss,
                                  const struct TALER_Amount *denom_risk,
                                  const struct TALER_Amount *payback_loss,
                                  uint64_t num_issued);
@@ -1246,6 +1250,7 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param[out] denom_balance value of coins outstanding with this denomination key
+   * @param[out] denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
    * @param[out] denom_risk value of coins issued with this denomination key
    * @param[out] denom_payback value of coins paid back if this denomination key was revoked
    * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
@@ -1256,6 +1261,7 @@ struct TALER_AUDITORDB_Plugin
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash,
                               struct TALER_Amount *denom_balance,
+                              struct TALER_Amount *denom_loss,
                               struct TALER_Amount *denom_risk,
                               struct TALER_Amount *payback_loss,
                               uint64_t *num_issued);

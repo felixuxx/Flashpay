@@ -139,9 +139,15 @@ static struct TALER_AUDITORDB_ProgressPointCoin ppc;
 
 /**
  * Array of reports about denomination keys with an
- * emergency (more deposited than withdrawn)
+ * emergency (more value deposited than withdrawn)
  */
 static json_t *report_emergencies;
+
+/**
+ * Array of reports about denomination keys with an
+ * emergency (more coins deposited than withdrawn)
+ */
+static json_t *report_emergencies_by_count;
 
 /**
  * Array of reports about row inconsitencies.
@@ -331,6 +337,37 @@ static json_t *report_refreshs_hanging;
 static struct TALER_Amount total_refresh_hanging;
 
 
+/* ********************************* helpers *************************** */
+
+/**
+ * Convert absolute time to human-readable JSON string.
+ *
+ * @param at time to convert
+ * @return human-readable string representing the time
+ */
+static json_t *
+json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
+{
+  return json_string
+           (GNUNET_STRINGS_absolute_time_to_string
+             (GNUNET_TIME_absolute_ntoh (at)));
+}
+
+
+/**
+ * Convert absolute time to human-readable JSON string.
+ *
+ * @param at time to convert
+ * @return human-readable string representing the time
+ */
+static json_t *
+json_from_time_abs (struct GNUNET_TIME_Absolute at)
+{
+  return json_string
+           (GNUNET_STRINGS_absolute_time_to_string (at));
+}
+
+
 /* ***************************** Report logic **************************** */
 
 
@@ -361,25 +398,26 @@ report (json_t *array,
  *
  * @param dki denomination key where the loss was detected
  * @param risk maximum risk that might have just become real (coins created by this @a dki)
+ * @param loss actual losses already (actualized before denomination was revoked)
  */
 static void
 report_emergency_by_amount (const struct
                             TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
-                            const struct TALER_Amount *risk)
+                            const struct TALER_Amount *risk,
+                            const struct TALER_Amount *loss)
 {
   report (report_emergencies,
-          json_pack ("{s:o, s:o, s:s, s:s, s:o}",
+          json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                      "denompub_hash",
                      GNUNET_JSON_from_data_auto (&dki->properties.denom_hash),
                      "denom_risk",
                      TALER_JSON_from_amount (risk),
+                     "denom_loss",
+                     TALER_JSON_from_amount (loss),
                      "start",
-                     GNUNET_STRINGS_absolute_time_to_string (
-                       GNUNET_TIME_absolute_ntoh (dki->properties.start)),
+                     json_from_time_abs_nbo (dki->properties.start),
                      "deposit_end",
-                     GNUNET_STRINGS_absolute_time_to_string (
-                       GNUNET_TIME_absolute_ntoh (
-                         dki->properties.expire_deposit)),
+                     json_from_time_abs_nbo (dki->properties.expire_deposit),
                      "value",
                      TALER_JSON_from_amount_nbo (&dki->properties.value)));
   GNUNET_assert (GNUNET_OK ==
@@ -410,8 +448,8 @@ report_emergency_by_count (const struct
                            uint64_t num_known,
                            const struct TALER_Amount *risk)
 {
-  report (report_emergencies,
-          json_pack ("{s:o, s:I, s:I, s:o, s:s, s:s, s:o}",
+  report (report_emergencies_by_count,
+          json_pack ("{s:o, s:I, s:I, s:o, s:o, s:o, s:o}",
                      "denompub_hash",
                      GNUNET_JSON_from_data_auto (&dki->properties.denom_hash),
                      "num_issued",
@@ -421,12 +459,9 @@ report_emergency_by_count (const struct
                      "denom_risk",
                      TALER_JSON_from_amount (risk),
                      "start",
-                     GNUNET_STRINGS_absolute_time_to_string (
-                       GNUNET_TIME_absolute_ntoh (dki->properties.start)),
+                     json_from_time_abs_nbo (dki->properties.start),
                      "deposit_end",
-                     GNUNET_STRINGS_absolute_time_to_string (
-                       GNUNET_TIME_absolute_ntoh (
-                         dki->properties.expire_deposit)),
+                     json_from_time_abs_nbo (dki->properties.expire_deposit),
                      "value",
                      TALER_JSON_from_amount_nbo (&dki->properties.value)));
   GNUNET_assert (GNUNET_OK ==
@@ -635,6 +670,20 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                 "Tracking denomination `%s' (%s)\n",
                 GNUNET_h2s (dh),
                 TALER_amount2s (&value));
+    TALER_amount_ntoh (&value,
+                       &dkip->properties.fee_withdraw);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Withdraw fee is %s\n",
+                TALER_amount2s (&value));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Start time is %s\n",
+                GNUNET_STRINGS_absolute_time_to_string
+                  (GNUNET_TIME_absolute_ntoh (dkip->properties.start)));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Expire deposit time is %s\n",
+                GNUNET_STRINGS_absolute_time_to_string
+                  (GNUNET_TIME_absolute_ntoh (
+                    dkip->properties.expire_deposit)));
   }
   *dki = dkip;
   GNUNET_assert (GNUNET_OK ==
@@ -1007,10 +1056,10 @@ handle_reserve_out (void *cls,
        (expire_withdraw.abs_value_us < execution_date.abs_value_us) )
   {
     report (denomination_key_validity_withdraw_inconsistencies,
-            json_pack ("{s:I, s:s, s:o, s:o}",
+            json_pack ("{s:I, s:o, s:o, s:o}",
                        "row", (json_int_t) rowid,
                        "execution_date",
-                       GNUNET_STRINGS_absolute_time_to_string (execution_date),
+                       json_from_time_abs (execution_date),
                        "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
                        "denompub_h", GNUNET_JSON_from_data_auto (
                          &wsrd.h_denomination_pub)));
@@ -1086,6 +1135,9 @@ handle_reserve_out (void *cls,
               TALER_amount2s (amount_with_fee));
   TALER_amount_ntoh (&withdraw_fee,
                      &dki->properties.fee_withdraw);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Increasing withdraw profits by fee %s\n",
+              TALER_amount2s (&withdraw_fee));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_add (&rs->total_fee,
                                    &rs->total_fee,
@@ -1498,14 +1550,13 @@ verify_reserve_balance (void *cls,
                                      &total_balance_reserve_not_closed,
                                      &nbalance));
     report (report_reserve_not_closed_inconsistencies,
-            json_pack ("{s:o, s:o, s:s}",
+            json_pack ("{s:o, s:o, s:o}",
                        "reserve_pub",
                        GNUNET_JSON_from_data_auto (&rs->reserve_pub),
                        "balance",
                        TALER_JSON_from_amount (&nbalance),
                        "expiration_time",
-                       GNUNET_STRINGS_absolute_time_to_string (
-                         rs->a_expiration_date)));
+                       json_from_time_abs (rs->a_expiration_date)));
   }
 
   /* Add withdraw fees we encountered to totals */
@@ -2573,21 +2624,19 @@ get_wire_fee (struct AggregationContext *ac,
        (wfi->prev->end_date.abs_value_us > wfi->start_date.abs_value_us) )
   {
     report (report_fee_time_inconsistencies,
-            json_pack ("{s:s, s:s, s:s}",
+            json_pack ("{s:s, s:s, s:o}",
                        "type", type,
                        "diagnostic", "start date before previous end date",
-                       "time", GNUNET_STRINGS_absolute_time_to_string (
-                         wfi->start_date)));
+                       "time", json_from_time_abs (wfi->start_date)));
   }
   if ( (NULL != wfi->next) &&
        (wfi->next->start_date.abs_value_us >= wfi->end_date.abs_value_us) )
   {
     report (report_fee_time_inconsistencies,
-            json_pack ("{s:s, s:s, s:s}",
+            json_pack ("{s:s, s:s, s:o}",
                        "type", type,
                        "diagnostic", "end date date after next start date",
-                       "time", GNUNET_STRINGS_absolute_time_to_string (
-                         wfi->end_date)));
+                       "time", json_from_time_abs (wfi->end_date)));
   }
   return &wfi->wire_fee;
 }
@@ -2932,6 +2981,13 @@ struct DenominationSummary
   struct TALER_Amount denom_balance;
 
   /**
+   * Total losses made (once coins deposited exceed
+   * coins withdrawn and thus the @e denom_balance is
+   * effectively negative).
+   */
+  struct TALER_Amount denom_loss;
+
+  /**
    * Total value of coins issued with this denomination key.
    */
   struct TALER_Amount denom_risk;
@@ -2958,6 +3014,11 @@ struct DenominationSummary
    * #sync_denomination().
    */
   int in_db;
+
+  /**
+   * Should we report an emergency for this denomination?
+   */
+  int report_emergency;
 
   /**
    * #GNUNET_YES if this denomination was revoked.
@@ -3009,6 +3070,7 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
                                       asession,
                                       denom_hash,
                                       &ds->denom_balance,
+                                      &ds->denom_loss,
                                       &ds->denom_risk,
                                       &ds->denom_payback,
                                       &ds->num_issued);
@@ -3064,6 +3126,9 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &ds->denom_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->denom_loss));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &ds->denom_risk));
@@ -3217,18 +3282,26 @@ sync_denomination (void *cls,
     }
     else
     {
-      if (ds->num_issued > (uint64_t) cnt)
+      if (ds->num_issued < (uint64_t) cnt)
       {
         report_emergency_by_count (dki,
-                                   cnt,
                                    ds->num_issued,
+                                   cnt,
                                    &ds->denom_risk);
+      }
+      if (GNUNET_YES == ds->report_emergency)
+      {
+        report_emergency_by_amount (dki,
+                                    &ds->denom_risk,
+                                    &ds->denom_loss);
+
       }
       if (ds->in_db)
         qs = adb->update_denomination_balance (adb->cls,
                                                asession,
                                                denom_hash,
                                                &ds->denom_balance,
+                                               &ds->denom_loss,
                                                &ds->denom_risk,
                                                &ds->denom_payback,
                                                ds->num_issued);
@@ -3237,6 +3310,7 @@ sync_denomination (void *cls,
                                                asession,
                                                denom_hash,
                                                &ds->denom_balance,
+                                               &ds->denom_loss,
                                                &ds->denom_risk,
                                                &ds->denom_payback,
                                                ds->num_issued);
@@ -3704,12 +3778,16 @@ refresh_session_cb (void *cls,
                              &dso->denom_balance,
                              amount_with_fee))
   {
-    report_emergency_by_amount (dki,
-                                &dso->denom_risk);
-    /* FIXME: we can't exactly just stop here! */
-    return GNUNET_SYSERR;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&dso->denom_loss,
+                                     &dso->denom_loss,
+                                     amount_with_fee));
+    dso->report_emergency = GNUNET_YES;
   }
-  dso->denom_balance = tmp;
+  else
+  {
+    dso->denom_balance = tmp;
+  }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&total_escrow_balance,
                              &total_escrow_balance,
@@ -3727,7 +3805,7 @@ refresh_session_cb (void *cls,
               GNUNET_h2s (&dki->properties.denom_hash),
               TALER_amount2s (&dso->denom_balance));
 
-  /* update global up melt fees */
+  /* update global melt fees */
   {
     struct TALER_Amount rfee;
 
@@ -3862,13 +3940,16 @@ deposit_cb (void *cls,
                              &ds->denom_balance,
                              amount_with_fee))
   {
-    report_emergency_by_amount (dki,
-                                &ds->denom_risk);
-    /* FIXME: we can't exactly just stop here like this! */
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&ds->denom_loss,
+                                     &ds->denom_loss,
+                                     amount_with_fee));
+    ds->report_emergency = GNUNET_YES;
   }
-  ds->denom_balance = tmp;
+  else
+  {
+    ds->denom_balance = tmp;
+  }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&total_escrow_balance,
                              &total_escrow_balance,
@@ -4525,9 +4606,9 @@ test_dc (void *cls,
   }
   /* deposit confirmation missing! report! */
   report (report_deposit_confirmation_inconsistencies,
-          json_pack ("{s:s, s:o, s:I, s:o}",
+          json_pack ("{s:o, s:o, s:I, s:o}",
                      "timestamp",
-                     GNUNET_STRINGS_absolute_time_to_string (dc->timestamp),
+                     json_from_time_abs (dc->timestamp),
                      "amount",
                      TALER_JSON_from_amount (&dc->amount_without_fee),
                      "rowid",
@@ -4997,6 +5078,8 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_emergencies = json_array ()));
   GNUNET_assert (NULL !=
+                 (report_emergencies_by_count = json_array ()));
+  GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
                  (denomination_key_validity_withdraw_inconsistencies =
@@ -5050,7 +5133,7 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:I,"
-                      " s:o, s:o }",
+                      " s:o, s:o, s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
                       "reserve_balance_insufficient_inconsistencies",
@@ -5137,7 +5220,9 @@ run (void *cls,
                       TALER_JSON_from_amount (
                         &total_missed_deposit_confirmations),
                       "total_payback_loss",
-                      TALER_JSON_from_amount (&total_payback_loss)
+                      TALER_JSON_from_amount (&total_payback_loss),
+                      "emergencies_by_count",
+                      report_emergencies_by_count
                       );
   GNUNET_break (NULL != report);
   json_dumpf (report,

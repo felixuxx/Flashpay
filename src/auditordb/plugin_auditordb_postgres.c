@@ -358,6 +358,8 @@ postgres_create_tables (void *cls)
       " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
       ",denom_balance_val INT8 NOT NULL"
       ",denom_balance_frac INT4 NOT NULL"
+      ",denom_loss_val INT8 NOT NULL"
+      ",denom_loss_frac INT4 NOT NULL"
       ",num_issued INT8 NOT NULL"
       ",denom_risk_val INT8 NOT NULL"
       ",denom_risk_frac INT4 NOT NULL"
@@ -860,30 +862,38 @@ postgres_prepare (PGconn *db_conn)
                             "(denom_pub_hash"
                             ",denom_balance_val"
                             ",denom_balance_frac"
+                            ",denom_loss_val"
+                            ",denom_loss_frac"
                             ",num_issued"
                             ",denom_risk_val"
                             ",denom_risk_frac"
                             ",payback_loss_val"
                             ",payback_loss_frac"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
-                            8),
+                            ") VALUES ("
+                            "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10"
+                            ");",
+                            10),
     /* Used in #postgres_update_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_update",
                             "UPDATE auditor_denomination_pending SET"
                             " denom_balance_val=$1"
                             ",denom_balance_frac=$2"
-                            ",num_issued=$3"
-                            ",denom_risk_val=$4"
-                            ",denom_risk_frac=$5"
-                            ",payback_loss_val=$6"
-                            ",payback_loss_frac=$7"
-                            " WHERE denom_pub_hash=$8",
-                            8),
+                            ",denom_loss_val=$3"
+                            ",denom_loss_frac=$4"
+                            ",num_issued=$5"
+                            ",denom_risk_val=$6"
+                            ",denom_risk_frac=$7"
+                            ",payback_loss_val=$8"
+                            ",payback_loss_frac=$9"
+                            " WHERE denom_pub_hash=$10",
+                            10),
     /* Used in #postgres_get_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_select",
                             "SELECT"
                             " denom_balance_val"
                             ",denom_balance_frac"
+                            ",denom_loss_val"
+                            ",denom_loss_frac"
                             ",num_issued"
                             ",denom_risk_val"
                             ",denom_risk_frac"
@@ -2814,6 +2824,7 @@ postgres_get_wire_fee_summary (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
+ * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
  * @param denom_risk value of coins issued with this denomination key
  * @param payback_loss losses from payback (if this denomination was revoked)
  * @param num_issued how many coins of this denomination did the exchange blind-sign
@@ -2825,6 +2836,7 @@ postgres_insert_denomination_balance (void *cls,
                                       const struct
                                       GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *denom_loss,
                                       const struct TALER_Amount *denom_risk,
                                       const struct TALER_Amount *payback_loss,
                                       uint64_t num_issued)
@@ -2832,6 +2844,7 @@ postgres_insert_denomination_balance (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (denom_loss),
     GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
     TALER_PQ_query_param_amount (payback_loss),
@@ -2852,7 +2865,8 @@ postgres_insert_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
- * @param denom_risk value of coins issued with this denomination key
+ * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
+* @param denom_risk value of coins issued with this denomination key
  * @param payback_loss losses from payback (if this denomination was revoked)
  * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
@@ -2863,12 +2877,14 @@ postgres_update_denomination_balance (void *cls,
                                       const struct
                                       GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *denom_loss,
                                       const struct TALER_Amount *denom_risk,
                                       const struct TALER_Amount *payback_loss,
                                       uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (denom_loss),
     GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
     TALER_PQ_query_param_amount (payback_loss),
@@ -2890,6 +2906,7 @@ postgres_update_denomination_balance (void *cls,
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
  * @param[out] denom_risk value of coins issued with this denomination key
+ * @param[out] denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
  * @param[out] payback_loss losses from payback (if this denomination was revoked)
  * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
@@ -2899,6 +2916,7 @@ postgres_get_denomination_balance (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct TALER_Amount *denom_balance,
+                                   struct TALER_Amount *denom_loss,
                                    struct TALER_Amount *denom_risk,
                                    struct TALER_Amount *payback_loss,
                                    uint64_t *num_issued)
@@ -2910,6 +2928,7 @@ postgres_get_denomination_balance (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance", denom_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss", denom_loss),
     TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk", denom_risk),
     TALER_PQ_RESULT_SPEC_AMOUNT ("payback_loss", payback_loss),
     GNUNET_PQ_result_spec_uint64 ("num_issued", num_issued),
@@ -2964,7 +2983,6 @@ postgres_insert_balance_summary (void *cls,
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (denom_balance,
                                             deposit_fee_balance));
-
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (denom_balance,
                                             melt_fee_balance));

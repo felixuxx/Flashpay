@@ -48,9 +48,9 @@ function run_audit () {
     kill `jobs -p`
 
     echo "TeXing"
-    ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail Renderer failed
+    ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
-    timeout 10 pdflatex test-report.tex >/dev/null || exit_fail pdflatex failed
+    timeout 10 pdflatex test-report.tex >/dev/null || exit_fail "pdflatex failed"
     timeout 10 pdflatex test-report.tex >/dev/null
 }
 
@@ -83,6 +83,8 @@ echo "Checking output"
 echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
 
+jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo OK
+
 echo -n "Test for wire inconsistencies... "
 jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
 jq -e .reserve_in_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
@@ -91,6 +93,9 @@ jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "U
 jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
 jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
 jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+
+# FIXME: check operation balances are correct (once we have more transaction types)
+# FIXME: check revenue summaries are correct (once we have more transaction types)
 
 echo OK
 
@@ -175,14 +180,20 @@ echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql 
 
 run_audit
 
-EXPECTED=`jq -r .reserve_balance_insufficient_inconsistencies[0].loss < test-audit.json`
-if test $EXPECTED != "TESTKUDOS:5"
+EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit.json`
+if test $EXPECTED != "TESTKUDOS:5.01"
 then
-    exit_fail "Expected reserve balance loss amount wrong, got $EXPECTED"
+    exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
+fi
+
+EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit.json`
+if test $EXPECTED != "TESTKUDOS:0.01"
+then
+    exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
 fi
 
 WIRED=`jq -r .total_loss_balance_insufficient < test-audit.json`
-if test $WIRED != "TESTKUDOS:5"
+if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Wrong total loss from insufficient balance, got $WIRED"
 fi

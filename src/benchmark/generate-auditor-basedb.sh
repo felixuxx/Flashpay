@@ -26,7 +26,7 @@ DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
 rm -rf $DATA_DIR || true
 
 # reset database
-dropdb $TARGET_DB || true
+dropdb $TARGET_DB >/dev/null 2>/dev/null || true
 createdb $TARGET_DB
 
 # obtain key configuration data
