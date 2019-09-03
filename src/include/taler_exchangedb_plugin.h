@@ -655,6 +655,11 @@ struct TALER_EXCHANGEDB_TransactionList
   enum TALER_EXCHANGEDB_TransactionType type;
 
   /**
+   * Serial ID of this entry in the database.
+   */
+  uint64_t serial_id;
+
+  /**
    * Details about the transaction, depending on @e type.
    */
   union

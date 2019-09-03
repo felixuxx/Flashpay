@@ -937,6 +937,7 @@ postgres_prepare (PGconn *db_conn)
                             ",amount_with_fee_frac"
                             ",denom.fee_refresh_val "
                             ",denom.fee_refresh_frac "
+                            ",melt_serial_id"
                             " FROM refresh_commitments"
                             "    JOIN known_coins "
                             "      ON (refresh_commitments.old_coin_pub = known_coins.coin_pub)"
@@ -1020,6 +1021,7 @@ postgres_prepare (PGconn *db_conn)
                             ",amount_with_fee_frac"
                             ",denom.fee_refund_val "
                             ",denom.fee_refund_frac "
+                            ",refund_serial_id"
                             " FROM refunds"
                             "    JOIN known_coins USING (coin_pub)"
                             "    JOIN denominations denom USING (denom_pub_hash)"
@@ -1168,9 +1170,9 @@ postgres_prepare (PGconn *db_conn)
                             "    JOIN denominations denom"
                             "      USING (denom_pub_hash)"
                             " WHERE"
-                            " merchant_pub=$1 AND"
-                            " h_wire=$2 AND"
-                            " done=FALSE"
+                            "     merchant_pub=$1 AND"
+                            "     h_wire=$2 AND"
+                            "     done=FALSE"
                             " ORDER BY wire_deadline ASC"
                             " LIMIT "
                             TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT_STR ";",
@@ -1212,6 +1214,7 @@ postgres_prepare (PGconn *db_conn)
                             ",h_wire"
                             ",wire"
                             ",coin_sig"
+                            ",deposit_serial_id"
                             " FROM deposits"
                             "    JOIN known_coins"
                             "      USING (coin_pub)"
@@ -1547,6 +1550,7 @@ postgres_prepare (PGconn *db_conn)
                             ",timestamp"
                             ",coins.denom_pub_hash"
                             ",coins.denom_sig"
+                            ",payback_refresh_uuid"
                             " FROM payback_refresh"
                             "    JOIN known_coins coins"
                             "      USING (coin_pub)"
@@ -1599,6 +1603,7 @@ postgres_prepare (PGconn *db_conn)
                             ",timestamp"
                             ",coins.denom_pub_hash"
                             ",coins.denom_sig"
+                            ",payback_uuid"
                             " FROM payback"
                             "    JOIN known_coins coins"
                             "      USING (coin_pub)"
@@ -1619,6 +1624,7 @@ postgres_prepare (PGconn *db_conn)
                             ",timestamp"
                             ",coins.denom_pub_hash"
                             ",coins.denom_sig"
+                            ",payback_refresh_uuid"
                             " FROM payback_refresh"
                             "    JOIN refresh_revealed_coins rrc"
                             "      ON (rrc.coin_ev = h_blind_ev)"
@@ -4352,6 +4358,7 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_Deposit *deposit;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     enum GNUNET_DB_QueryStatus qs;
+    uint64_t serial_id;
 
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
     {
@@ -4376,6 +4383,8 @@ add_coin_deposit (void *cls,
                                    &deposit->receiver_wire_account),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &deposit->csig),
+        GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+                                      &serial_id),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4395,6 +4404,7 @@ add_coin_deposit (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_DEPOSIT;
     tl->details.deposit = deposit;
+    tl->serial_id = serial_id;
     qs = postgres_get_known_coin (chc->db_cls,
                                   chc->session,
                                   chc->coin_pub,
@@ -4432,6 +4442,7 @@ add_coin_melt (void *cls,
     struct TALER_EXCHANGEDB_RefreshMelt *melt;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     enum GNUNET_DB_QueryStatus qs;
+    uint64_t serial_id;
 
     melt = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMelt);
     {
@@ -4445,6 +4456,8 @@ add_coin_melt (void *cls,
                                      &melt->session.amount_with_fee),
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
                                      &melt->melt_fee),
+        GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
+                                      &serial_id),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4464,6 +4477,7 @@ add_coin_melt (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
     tl->details.melt = melt;
+    tl->serial_id = serial_id;
     /* FIXME: integrate via JOIN in main select, instead of using separate query */
     qs = postgres_get_known_coin (chc->db_cls,
                                   chc->session,
@@ -4502,6 +4516,7 @@ add_coin_refund (void *cls,
     struct TALER_EXCHANGEDB_Refund *refund;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     enum GNUNET_DB_QueryStatus qs;
+    uint64_t serial_id;
 
     refund = GNUNET_new (struct TALER_EXCHANGEDB_Refund);
     {
@@ -4518,6 +4533,8 @@ add_coin_refund (void *cls,
                                      &refund->refund_amount),
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
                                      &refund->refund_fee),
+        GNUNET_PQ_result_spec_uint64 ("refund_serial_id",
+                                      &serial_id),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4537,6 +4554,7 @@ add_coin_refund (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_REFUND;
     tl->details.refund = refund;
+    tl->serial_id = serial_id;
     qs = postgres_get_known_coin (chc->db_cls,
                                   chc->session,
                                   chc->coin_pub,
@@ -4573,6 +4591,7 @@ add_old_coin_payback (void *cls,
   {
     struct TALER_EXCHANGEDB_PaybackRefresh *payback;
     struct TALER_EXCHANGEDB_TransactionList *tl;
+    uint64_t serial_id;
 
     payback = GNUNET_new (struct TALER_EXCHANGEDB_PaybackRefresh);
     {
@@ -4592,6 +4611,8 @@ add_old_coin_payback (void *cls,
         GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                              &payback->coin.denom_sig.
                                              rsa_signature),
+        GNUNET_PQ_result_spec_uint64 ("payback_refresh_uuid",
+                                      &serial_id),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4611,6 +4632,7 @@ add_old_coin_payback (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK;
     tl->details.old_coin_payback = payback;
+    tl->serial_id = serial_id;
     chc->head = tl;
   }
 }
@@ -4636,6 +4658,7 @@ add_coin_payback (void *cls,
   {
     struct TALER_EXCHANGEDB_Payback *payback;
     struct TALER_EXCHANGEDB_TransactionList *tl;
+    uint64_t serial_id;
 
     payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
     {
@@ -4655,6 +4678,8 @@ add_coin_payback (void *cls,
         GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                              &payback->coin.denom_sig.
                                              rsa_signature),
+        GNUNET_PQ_result_spec_uint64 ("payback_uuid",
+                                      &serial_id),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4674,6 +4699,7 @@ add_coin_payback (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_PAYBACK;
     tl->details.payback = payback;
+    tl->serial_id = serial_id;
     chc->head = tl;
   }
 }
@@ -4699,6 +4725,7 @@ add_coin_payback_refresh (void *cls,
   {
     struct TALER_EXCHANGEDB_PaybackRefresh *payback;
     struct TALER_EXCHANGEDB_TransactionList *tl;
+    uint64_t serial_id;
 
     payback = GNUNET_new (struct TALER_EXCHANGEDB_PaybackRefresh);
     {
@@ -4718,6 +4745,8 @@ add_coin_payback_refresh (void *cls,
         GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                              &payback->coin.denom_sig.
                                              rsa_signature),
+        GNUNET_PQ_result_spec_uint64 ("payback_refresh_uuid",
+                                      &serial_id),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4737,6 +4766,7 @@ add_coin_payback_refresh (void *cls,
     tl->next = chc->head;
     tl->type = TALER_EXCHANGEDB_TT_PAYBACK_REFRESH;
     tl->details.payback_refresh = payback;
+    tl->serial_id = serial_id;
     chc->head = tl;
   }
 }
