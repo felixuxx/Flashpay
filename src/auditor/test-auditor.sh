@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 6`
+ALL_TESTS=`seq 0 7`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -440,6 +440,57 @@ echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | 
 
 }
 
+
+
+# Test where h_wire in the deposit table is wrong
+test_7() {
+echo "===========7: reserves_out signature wrong================="
+# Modify reserve_sig, so it is bogus
+HBE=`echo 'SELECT h_blind_ev FROM reserves_out LIMIT 1;' | psql taler-auditor-test -Aqt`
+OLD_SIG=`echo "SELECT reserve_sig FROM reserves_out WHERE h_blind_ev='$HBE';" | psql taler-auditor-test -Aqt`
+A_VAL=`echo "SELECT amount_with_fee_val FROM reserves_out WHERE h_blind_ev='$HBE';" | psql taler-auditor-test -Aqt`
+A_FRAC=`echo "SELECT amount_with_fee_frac FROM reserves_out WHERE h_blind_ev='$HBE';" | psql taler-auditor-test -Aqt`
+# Normalize, we only deal with cents in this test-case
+A_FRAC=`expr $A_FRAC / 1000000`
+echo "UPDATE reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
+
+run_audit
+
+OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+if test $OP != "withdraw"
+then
+    exit_fail "Wrong operation, got $OP"
+fi
+
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+LOSS_TOTAL=`jq -r .total_bad_sig_loss < test-audit.json`
+if test $LOSS != $LOSS_TOTAL
+then
+    exit_fail "Expected loss $LOSS and total loss $LOSS_TOTAL do not match"
+fi
+if test $A_FRAC != 0
+then
+    if [ $A_FRAC -lt 10 ]
+    then
+        A_PREV="0"
+    else
+        A_PREV=""
+    fi
+    if test $LOSS != "TESTKUDOS:$A_VAL.$A_PREV$A_FRAC"
+    then
+        exit_fail "Expected loss TESTKUDOS:$A_VAL.$A_PREV$A_FRAC but got $LOSS"
+    fi
+else
+    if test $LOSS != "TESTKUDOS:$A_VAL"
+    then
+        exit_fail "Expected loss TESTKUDOS:$A_VAL but got $LOSS"
+    fi
+fi
+
+# Undo:
+echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
+
+}
 
 
 
