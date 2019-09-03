@@ -394,6 +394,26 @@ echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=1"
 }
 
 
+# Test where denom_sig in known_coins table is wrong
+# (=> bad signature)
+test_6() {
+echo "===========6: known_coins signature wrong================="
+# Modify denom_sig, so it is wrong
+OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql taler-auditor-test -Aqt`
+COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql taler-auditor-test -Aqt`
+echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441443035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+
+run_audit
+
+# FIXME: add logic to check bad signature was detected
+# (NOTE: FIXME42-bug: auditor does not yet check denom_sigs!)
+
+# Undo
+echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+
+}
+
+
 
 
 # Test where h_wire in the deposit table is wrong

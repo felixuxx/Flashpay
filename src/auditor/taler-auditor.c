@@ -3904,6 +3904,9 @@ deposit_cb (void *cls,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
+  // FIXME42: should verify that the
+  // coin was properly signed via TALER_test_coin_valid() here!
+  // (but may need more information from DB to do so!)
 
   /* Verify deposit signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
