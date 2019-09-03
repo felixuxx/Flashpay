@@ -493,6 +493,10 @@ echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | 
 }
 
 
+# NEXT: wire transfer subject disagreement! (for wire-auditor!)
+
+# NEXT: wire fee disagreement! (for wire-auditor!)
+
 
 # Test where h_wire in the deposit table is wrong
 test_99() {
