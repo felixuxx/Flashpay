@@ -446,26 +446,30 @@ public key for ``payback-master'' operations.
 {% if data.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|c|l|r}
-  {\bf Public key} & {\bf Operation type} & Database row & {\bf Loss amount} \\
+  \begin{longtable}{c|r|r}
+  \multicolumn{3}{l}{ {\bf Public key} }\\
+  {\bf Operation type} & Database row & {\bf Loss amount} \\
   \hline \hline
 \endfirsthead
-  {\bf Public key} & {\bf Operation type} & Database row & {\bf Loss amount} \\ \hline \hline
+  \multicolumn{3}{l}{ {\bf Public key} }\\
+  {\bf Operation type} & Database row & {\bf Loss amount} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Public key} & {\bf Operation type} & Database row & {\bf Loss amount} \\
+  \multicolumn{3}{l}{ {\bf Public key} }\\
+  {\bf Operation type} & Database row & {\bf Loss amount} \\
 \endfoot
   \hline
-  {\bf Total losses}  & & &
-  {{ data.total_bad_sig_loss}} \\
+  {\bf Total losses}  & & 
+  {\bf {{ data.total_bad_sig_loss}} } \\
   \caption{Losses from operations performed on coins without proper signatures.}
   \label{table:bad_signature_losses}
 \endlastfoot
 {% for item in data.bad_sig_losses %}
-  \multicolumn{5}{l}{ {\tt \small {{ item.key_pub }} } } \\
+  \multicolumn{3}{l}{ {\tt \small {{ item.key_pub }} } } \\
 \nopagebreak
-  & {{ item.operation }} & {{ item.rowid }} &
-    {{ item.loss }} \\ \hline
+  {{ item.operation }} &
+  {{ item.row }} &
+  {{ item.loss }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}

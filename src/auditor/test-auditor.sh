@@ -7,25 +7,37 @@
 # Requires 'jq' tool and Postgres superuser rights!
 set -eu
 
-# Which tests should we run, used to make it easy to
+# Set of numbers for all the testcases.
+# When adding new tests, increase the last number:
+ALL_TESTS=`seq 1 4`
+
+# $TESTS determines which tests we should run.
+# This construction is used to make it easy to
 # only run a subset of the tests. To only run a subset,
 # pass the numbers of the tests to run as the FIRST
-# argument to test-auditor.sh
-ALL_TESTS=`seq 1 3`
+# argument to test-auditor.sh, i.e.:
+#
+# $ test-auditor.sh "1 3"
+#
+# to run tests 1 and 3 only.  By default, all tests are run.
+#
 TESTS=${1:-$ALL_TESTS}
 
-
+# Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
     echo $1
     exit 77
 }
 
+# Exit, with error message (hard failure)
 function exit_fail() {
     echo $1
     kill `jobs -p`
     exit 1
 }
 
+# Run audit process on current database, including report
+# generation.
 function run_audit () {
     # Launch bank
     echo "Launching bank"
@@ -233,6 +245,51 @@ echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql 
 
 }
 
+
+# Check for incoming wire transfer amount given being
+# lower than what exchange claims to have received.
+test_4() {
+
+echo "===========4: deposit wire target wrong================="
+# Original target bank account was 43, changing to 44
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql $DB
+
+run_audit
+
+ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+if test $ROW != 1
+then
+    exit_fail "Row wrong, got $ROW"
+fi
+
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:0.1"
+then
+    exit_fail "Wrong deposit bad signature loss, got $LOSS"
+fi
+
+OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+if test $OP != "deposit"
+then
+    exit_fail "Wrong operation, got $OP"
+fi
+
+LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:0.1"
+then
+    exit_fail "Wrong total bad sig loss, got $LOSS"
+fi
+
+# Undo:
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/43\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql $DB
+
+}
+
+
+
+
+
+# Add more tests here! :-)
 
 fail=0
 for i in $TESTS
