@@ -34,14 +34,12 @@
  *   this eventually anyway!
  *
  * KNOWN BUGS:
- * - we also seem to nowhere check the denomination signatures over the coins
- *   (While as the exchange could easily falsify those, we should
- *    probably check as otherwise insider *without* RSA private key
- *    access could still create false paybacks to drain exchange funds!)
- *   => See FIXME42 for last place (likely) missing!
  * - error handling if denomination keys are used that are not known to the
  *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
  *   violation back at the user. Great UX.
+ *
+ * UNDECIDED:
+ * - do we care about checking the 'done' flag in deposit_cb?
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -3513,6 +3511,55 @@ reveal_data_cb (void *cls,
 
 
 /**
+ * Check that the @a coin_pub is a known coin with a proper
+ * signature for denominatinon @a denom_pub. If not, report
+ * a loss of @a loss_potential.
+ *
+ * @param coin_pub public key of a coin
+ * @param denom_pub expected denomination of the coin
+ * @return database transaction status, on success
+ *  #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+ */
+static enum GNUNET_DB_QueryStatus
+check_known_coin (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                  const struct TALER_DenominationPublicKey *denom_pub,
+                  const struct TALER_Amount *loss_potential)
+{
+  struct TALER_CoinPublicInfo ci;
+  enum GNUNET_DB_QueryStatus qs;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Checking denomination signature on %s\n",
+              TALER_B2S (coin_pub));
+  qs = edb->get_known_coin (edb->cls,
+                            esession,
+                            coin_pub,
+                            &ci);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (GNUNET_YES !=
+      TALER_test_coin_valid (&ci,
+                             denom_pub))
+  {
+    report (report_bad_sig_losses,
+            json_pack ("{s:s, s:I, s:o, s:o}",
+                       "operation", "known-coin",
+                       "row", (json_int_t) -1,
+                       "loss", TALER_JSON_from_amount (loss_potential),
+                       "key_pub", GNUNET_JSON_from_data_auto (coin_pub)));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_sig_loss,
+                                    &total_bad_sig_loss,
+                                    loss_potential));
+  }
+  return qs;
+}
+
+
+/**
  * Function called with details about coins that were melted, with the
  * goal of auditing the refresh's execution.  Verifies the signature
  * and updates our information about coins outstanding (the old coin's
@@ -3559,9 +3606,15 @@ refresh_session_cb (void *cls,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
-  // FIXME42: should verify that the
-  // coin was properly signed via TALER_test_coin_valid() here!
-  // (but would need more information from DB to do so!)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+      check_known_coin (coin_pub,
+                        denom_pub,
+                        amount_with_fee))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cc->qs = qs;
+    return GNUNET_SYSERR;
+  }
 
   /* verify melt signature */
   rmc.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
@@ -3904,9 +3957,15 @@ deposit_cb (void *cls,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
-  // FIXME42: should verify that the
-  // coin was properly signed via TALER_test_coin_valid() here!
-  // (but may need more information from DB to do so!)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+      check_known_coin (coin_pub,
+                        denom_pub,
+                        amount_with_fee))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    cc->qs = qs;
+    return GNUNET_SYSERR;
+  }
 
   /* Verify deposit signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);

@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 5`
+ALL_TESTS=`seq 0 6`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -42,7 +42,7 @@ function exit_fail() {
 # before auditor (to trigger pending wire transfers).
 function run_audit () {
     # Launch bank
-    echo "Launching bank"
+    echo -n "Launching bank "
     taler-bank-manage -c test-auditor.conf serve-http 2>bank.err >bank.log &
     while true
     do
@@ -50,28 +50,30 @@ function run_audit () {
         wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null && break
         sleep 1
     done
-    echo "OK"
+    echo " DONE"
 
     if test ${1:-no} = "aggregator"
     then
-        echo "Running exchange aggregator"
+        echo -e "Running exchange aggregator ..."
         taler-exchange-aggregator -t -c test-auditor.conf
+        echo " DONE"
     fi
 
     # Run the auditor!
-    echo "Running audit(s)"
+    echo -n "Running audit(s) ..."
     taler-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
 
     taler-wire-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
-
-    echo "Shutting down services"
+    echo " DONE"
+    
     kill `jobs -p` || true
 
-    echo "TeXing"
+    echo -n "TeXing ..."
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
     timeout 10 pdflatex test-report.tex >/dev/null || exit_fail "pdflatex failed"
     timeout 10 pdflatex test-report.tex >/dev/null
+    echo "DONE"
 }
 
 
@@ -94,7 +96,7 @@ echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
-
+echo -n "Test for emergencies by count... "
 jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo OK
 
 echo -n "Test for wire inconsistencies... "
@@ -137,12 +139,15 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
 fi
+echo " OK"
 
 # FIXME: check NO lag reported
 
 # cannot easily undo aggregator, hence full reload
+echo -n "Reloading database ..."
 full_reload
-echo "OK"
+echo "DONE"
+
 }
 
 
@@ -157,7 +162,7 @@ echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
-
+echo -n "Test for emergencies by count... "
 jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo OK
 
 echo -n "Test for wire inconsistencies... "
@@ -319,7 +324,8 @@ test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
+OLD_WIRE=`echo 'SELECT wire FROM deposits WHERE deposit_serial_id=1;' | psql taler-auditor-test -Aqt`
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 run_audit
 
@@ -348,7 +354,7 @@ then
 fi
 
 # Undo:
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/43\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
+echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -401,12 +407,33 @@ echo "===========6: known_coins signature wrong================="
 # Modify denom_sig, so it is wrong
 OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql taler-auditor-test -Aqt`
 COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql taler-auditor-test -Aqt`
-echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441443035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 run_audit
 
-# FIXME: add logic to check bad signature was detected
-# (NOTE: FIXME42-bug: auditor does not yet check denom_sigs!)
+ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+if test $ROW != "-1"
+then
+    exit_fail "Row wrong, got $ROW"
+fi
+
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:0.1"
+then
+    exit_fail "Wrong deposit bad signature loss, got $LOSS"
+fi
+
+OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+if test $OP != "known-coin"
+then
+    exit_fail "Wrong operation, got $OP"
+fi
+
+LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:0.1"
+then
+    exit_fail "Wrong total bad sig loss, got $LOSS"
+fi
 
 # Undo
 echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
@@ -460,8 +487,9 @@ taler-bank-manage -h >/dev/null </dev/null || exit_skip "taler-bank-manage requi
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 
-echo "Database setup"
+echo -n "Database setup ..."
 full_reload
+echo " DONE"
 
 # Run test suite
 fail=0
