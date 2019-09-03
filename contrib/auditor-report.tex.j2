@@ -443,12 +443,12 @@ the (hash of the) denomination public key for
 ``payback-verify'' and ``deposit-verify'' operations, and the master
 public key for ``payback-master'' operations.
 
-% Table generation tested by testcase #4 in test-auditor.sh
+% Table generation tested by testcase #4/#5 in test-auditor.sh
 
 {% if data.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
 {% else %}
-  \begin{longtable}{c|r|r}
+  \begin{longtable}{l|r|r}
   \multicolumn{3}{l}{ {\bf Public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\
   \hline \hline
@@ -461,7 +461,7 @@ public key for ``payback-master'' operations.
   {\bf Operation type} & Database row & {\bf Loss amount} \\
 \endfoot
   \hline
-  {\bf Total losses}  & & 
+  \multicolumn{2}{l}{ {\bf Total losses} } & 
   {\bf {{ data.total_bad_sig_loss}} } \\
   \caption{Losses from operations performed on coins without proper signatures.}
   \label{table:bad_signature_losses}

@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 1 4`
+ALL_TESTS=`seq 0 4`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -37,7 +37,9 @@ function exit_fail() {
 }
 
 # Run audit process on current database, including report
-# generation.
+# generation.  Pass "aggregator" as $1 to run
+# $ taler-exchange-aggregator
+# before auditor (to trigger pending wire transfers).
 function run_audit () {
     # Launch bank
     echo "Launching bank"
@@ -50,14 +52,20 @@ function run_audit () {
     done
     echo "OK"
 
+    if test ${1:-no} = "aggregator"
+    then
+        echo "Running exchange aggregator"
+        taler-exchange-aggregator -t -c test-auditor.conf
+    fi
+
     # Run the auditor!
     echo "Running audit(s)"
-    taler-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-audit.json || exit_fail "auditor failed"
+    taler-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
 
-    taler-wire-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json || exit_fail "wire auditor failed"
+    taler-wire-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
 
     echo "Shutting down services"
-    kill `jobs -p`
+    kill `jobs -p` || true
 
     echo "TeXing"
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
@@ -67,28 +75,20 @@ function run_audit () {
 }
 
 
-# test required commands exist
-echo "Testing for jq"
-jq -h > /dev/null || exit_skip "jq required"
-echo "Testing for taler-bank-manage"
-taler-bank-manage -h >/dev/null </dev/null || exit_skip "taler-bank-manage required"
-echo "Testing for pdflatex"
-which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
-
-echo "Database setup"
-DB=taler-auditor-test
-dropdb $DB 2> /dev/null || true
-createdb -T template0 $DB || exit_skip "could not create database"
-
-# Import pre-generated database, -q(ietly) using single (-1) transaction
-psql $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
-MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
+# Do a full reload of the (original) database
+full_reload()
+{
+    dropdb $DB 2> /dev/null || true
+    createdb -T template0 $DB || exit_skip "could not create database"
+    # Import pre-generated database, -q(ietly) using single (-1) transaction
+    psql -Aqt $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
+}
 
 
-test_1() {
+test_0() {
 
-echo "===========1: normal run==========="
-run_audit
+echo "===========0: normal run with aggregator==========="
+run_audit aggregator
 
 echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
@@ -137,14 +137,81 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
 fi
+
+# FIXME: check NO lag reported
+
+# cannot easily undo aggregator, hence full reload
+full_reload
 echo "OK"
 }
 
 
+# Run without aggregator, hence auditor should detect wire
+# transfer lag!
+test_1() {
+
+echo "===========1: normal run==========="
+run_audit
+
+echo "Checking output"
+# if an emergency was detected, that is a bug and we should fail
+echo -n "Test for emergencies... "
+jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
+
+jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo OK
+
+echo -n "Test for wire inconsistencies... "
+jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+jq -e .reserve_in_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+jq -e .missattribution_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
+jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+
+# FIXME: check operation balances are correct (once we have more transaction types)
+# FIXME: check revenue summaries are correct (once we have more transaction types)
+
+echo OK
+
+# FIXME: check wire transfer lag reported (no aggregator!)
+
+echo -n "Test for wire amounts... "
+WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta plus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta minus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta plus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta minus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_missattribution_in < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total missattribution in wrong, got $WIRED"
+fi
+# Database was unmodified, no need to undo
+echo "OK"
+}
+
+
+# Change amount of wire transfer reported by exchange
 test_2() {
 
 echo "===========2: reserves_in inconsitency==========="
-echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql $DB
+echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 run_audit
 
@@ -178,7 +245,7 @@ fi
 echo OK
 
 # Undo database modification
-echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql $DB
+echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -188,7 +255,7 @@ echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql 
 test_3() {
 
 echo "===========3: reserves_in inconsitency==========="
-echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql $DB
+echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 run_audit
 
@@ -241,7 +308,7 @@ then
 fi
 
 # Undo database modification
-echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql $DB
+echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -252,7 +319,7 @@ test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql $DB
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 run_audit
 
@@ -281,16 +348,102 @@ then
 fi
 
 # Undo:
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/43\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql $DB
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/43\",\"salt\":\"test-salt (must be constant for aggregation tests)\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
+
+}
+
+
+
+# Test where h_contract_terms in the deposit table is wrong
+# (=> bad signature)
+test_5() {
+echo "===========5: deposit contract hash wrong================="
+# Modify h_wire hash, so it is inconsistent with 'wire'
+OLD_H=`echo 'SELECT h_contract_terms FROM deposits WHERE deposit_serial_id=1;'  | psql taler-auditor-test -Aqt`
+echo "UPDATE deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=1" | psql -Aqt $DB
+
+run_audit
+
+ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+if test $ROW != 1
+then
+    exit_fail "Row wrong, got $ROW"
+fi
+
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:0.1"
+then
+    exit_fail "Wrong deposit bad signature loss, got $LOSS"
+fi
+
+OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+if test $OP != "deposit"
+then
+    exit_fail "Wrong operation, got $OP"
+fi
+
+LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:0.1"
+then
+    exit_fail "Wrong total bad sig loss, got $LOSS"
+fi
+
+# Undo:
+echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 }
 
 
 
 
+# Test where h_wire in the deposit table is wrong
+test_99() {
+echo "===========99: deposit wire hash wrong================="
+# Modify h_wire hash, so it is inconsistent with 'wire'
+echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
+# The auditor checks h_wire consistency only for
+# coins where the wire transfer has happened, hence
+# run aggregator first to get this test to work.
+#
+# FIXME: current test database has transfers still
+# in the *distant* future, test cannot yet work.
+# patch up once DB was re-generated!
+run_audit aggregator
+
+# FIXME: check for the respective inconsistency in the report!
+
+# Undo:
+# echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b852' WHERE deposit_serial_id=1" | psql -Aqt $DB
+
+}
+
+
+
+
+# **************************************************
 # Add more tests here! :-)
+# **************************************************
 
+
+# *************** Main logic starts here **************
+
+# Setup globals
+DB=taler-auditor-test
+MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
+
+# test required commands exist
+echo "Testing for jq"
+jq -h > /dev/null || exit_skip "jq required"
+echo "Testing for taler-bank-manage"
+taler-bank-manage -h >/dev/null </dev/null || exit_skip "taler-bank-manage required"
+echo "Testing for pdflatex"
+which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
+
+echo "Database setup"
+full_reload
+
+# Run test suite
 fail=0
 for i in $TESTS
 do
@@ -303,6 +456,7 @@ done
 
 
 echo "Cleanup"
-#$ dropdb $DB
+# dropdb $DB
+# rm -f test-audit.log test-wire-audit.log
 
 exit $fail
