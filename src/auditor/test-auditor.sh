@@ -640,17 +640,22 @@ echo -n "Test for inconsistency detection... "
 AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
-    exit_fail "Reported amount wrong: $AMOUNT"
+    exit_fail "Reported wired amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
-    exit_fail "Reported amount wrong: $AMOUNT"
+    exit_fail "Reported total plus amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:0"
+then
+    exit_fail "Reported total minus amount wrong: $AMOUNT"
 fi
 AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
 if test "x$AMOUNT" != "xTESTKUDOS:0"
 then
-    exit_fail "Reported amount wrong: $AMOUNT"
+    exit_fail "Reported justified amount wrong: $AMOUNT"
 fi
 DIAG=`jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-wire-audit.json`
 if test "x$DIAG" != "xjustification for wire transfer not found"
