@@ -439,7 +439,7 @@ do_shutdown (void *cls)
                         "wire_format_inconsistencies",
                         report_wire_format_inconsistencies,
                         "total_amount_lag",
-                        TALER_JSON_from_amount (&total_bad_amount_in_minus),
+                        TALER_JSON_from_amount (&total_amount_lag),
                         "lag_details",
                         report_lags);
     GNUNET_break (NULL != report);
