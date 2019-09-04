@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 10`
+ALL_TESTS=`seq 0 11`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
