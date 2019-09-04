@@ -5222,8 +5222,10 @@ run (void *cls,
                       /* block */
                       "reserve_balance_insufficient_inconsistencies",
                       report_reserve_balance_insufficient_inconsistencies,
+                      /* Tested in test-auditor.sh #3 */
                       "total_loss_balance_insufficient",
                       TALER_JSON_from_amount (&total_balance_insufficient_loss),
+                      /* Tested in test-auditor.sh #3 */
                       "reserve_balance_summary_wrong_inconsistencies",
                       report_reserve_balance_summary_wrong_inconsistencies,
                       "total_balance_summary_delta_plus",
@@ -5264,9 +5266,11 @@ run (void *cls,
                       TALER_JSON_from_amount (&total_wire_out_delta_plus),
                       "total_wire_out_delta_minus",
                       TALER_JSON_from_amount (&total_wire_out_delta_minus),
+                      /* Tested in test-auditor.sh #4/#5/#6/#7 */
                       "bad_sig_losses",
                       report_bad_sig_losses,
                       /* block */
+                      /* Tested in test-auditor.sh #4/#5/#6/#7 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
                       "row_inconsistencies",

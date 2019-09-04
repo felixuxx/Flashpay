@@ -1,5 +1,5 @@
 % This file is part of TALER
-% Copyright (C) 2016, 2017 Taler Systems SA
+% Copyright (C) 2016--2019 Taler Systems SA
 %
 % TALER is free software; you can redistribute it and/or modify it under the
 % terms of the GNU Affero General Public License as published by the Free Software
@@ -483,7 +483,7 @@ public key for ``payback-master'' operations.
 This section highlights cases where the exchange's record about
 incoming wire transfers does not match with that of the bank.
 
-% Table generation tested by testcase #3 in test-auditor.sh
+% Table generation tested by testcase #3 and #8 in test-auditor.sh
 
 {% if wire.reserve_in_amount_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer amounts and subjects matched up.}
@@ -547,11 +547,12 @@ This will cause funds to be sent to the wrong account when the reserve
 is closed and the remaining balance is refunded to the original
 account.
 
+% Table generation tested by testcase #9 in test-auditor.sh
 
 {% if wire.missattribution_in_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer sender accounts matched up.}
 {% else %}
-  \begin{longtable}{p{6.5cm}|r}
+  \begin{longtable}{p{8.5cm}|r}
   {\bf Wire transfer identifier} & {\bf Amount} \\
   \hline \hline
 \endfirsthead
@@ -563,13 +564,13 @@ account.
 \endfoot
   \hline
   {\bf Total amount}  &
-  {{ wire.total_missattribution_in_plus}} \\
+  {{ wire.total_missattribution_in}} \\
   \caption{Incoming wire transfer sender accounts not matching up.}
   \label{table:wire_in:sender_account_inconsistencies}
 \endlastfoot
 {% for item in wire.missattribution_in_inconsistencies %}
-  {\tt {{ item.wtid }} } &
-  {{ item.amount }} \\ hline
+  {\tt \small \truncate{8.3cm}{ {{ item.wtid }} } } &
+  {{ item.amount }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -585,8 +586,8 @@ with respect to outgoing wire transfers.
 {% if wire.wire_out_amount_inconsistencies|length() == 0 %}
   {\bf All outgoing wire transfers matched up.}
 {% else %}
-  \begin{longtable}{p{6.5cm}|r|r}
-  {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}}  \\
+  \begin{longtable}{p{5.5cm}|r|r}
+  {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
   {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
   \hline \hline
 \endfirsthead
@@ -596,24 +597,23 @@ with respect to outgoing wire transfers.
 \endhead
   \hline \hline
   {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
-  {\bf Diagnostic}               & {\bf Row}} & {\bf Timestamp}  \\
+  {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
 \endfoot
   \hline
-  {\bf Total deltas}  & &
+  {\bf Total deltas}  & 
   {{ wire.total_wire_out_delta_plus }} &
   - {{ wire.total_wire_out_delta_minus }} \\
   \caption{Outgoing wire transfer amounts not matching up.}
   \label{table:wire_out:transfer_amount_inconsistencies}
 \endlastfoot
 {% for item in wire.wire_out_amount_inconsistencies %}
-  {\tt \small {{ item.wtid }} } &
+  {\tt \small \truncate{5.2cm}{ {{ item.wtid }} } } &
   {{ item.amount_wired }} &
-  {{ item.amount_justified }} \\ \hline
+  {{ item.amount_justified }} \\ 
 \nopagebreak
-  &
   {{ item.diagnostic }} &
   {{ item.row }} &
-  {{ item.timestmap }} \\ \hline
+  {\tiny {{ item.timestamp }} } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -934,22 +934,23 @@ implications.
 
 This section lists issues with wire transfers related to timestamps.
 
+% Table generation tested by testcase #10 in test-auditor.sh
 
 {% if wire.row_minor_inconsistencies|length() == 0 %}
   {\bf No timestamp issues detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|r|p{5.5}}
-  {\bf Table} & {\bf Table row} & {\bf Diagnostic}
+  \begin{longtable}{p{3cm}|r|p{5cm}}
+  {\bf Table} & {\bf Row} & {\bf Diagnostic}
   \\ \hline \hline
 \endfirsthead
-  {\bf Table} & {\bf Table row} & {\bf Diagnostic}
+  {\bf Table} & {\bf Row} & {\bf Diagnostic}
   \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Table} & {\bf Table row} & {\bf Diagnostic} \\
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
 \endfoot
   \hline \hline
-  {\bf Table} & {\bf Table row} & {\bf Diagnostic} \\
+  {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \caption{Execution times not matching in wire transfers.}
   \label{table:wire:bad_time}
 \endlastfoot

@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 7`
+ALL_TESTS=`seq 0 10`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -32,7 +32,7 @@ function exit_skip() {
 # Exit, with error message (hard failure)
 function exit_fail() {
     echo $1
-    kill `jobs -p`
+    kill `jobs -p` >/dev/null 2>/dev/null || true
     exit 1
 }
 
@@ -54,7 +54,7 @@ function run_audit () {
 
     if test ${1:-no} = "aggregator"
     then
-        echo -e "Running exchange aggregator ..."
+        echo -n "Running exchange aggregator ..."
         taler-exchange-aggregator -t -c test-auditor.conf
         echo " DONE"
     fi
@@ -65,7 +65,7 @@ function run_audit () {
 
     taler-wire-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     echo " DONE"
-    
+
     kill `jobs -p` || true
 
     echo -n "TeXing ..."
@@ -245,7 +245,7 @@ fi
 DELTA=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
 if test $DELTA != "TESTKUDOS:5"
 then
-    exit_fail "Expected total wire delta plus wrong"
+    exit_fail "Expected total wire delta plus wrong, got $DELTA"
 fi
 echo OK
 
@@ -324,7 +324,7 @@ test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
-OLD_WIRE=`echo 'SELECT wire FROM deposits WHERE deposit_serial_id=1;' | psql taler-auditor-test -Aqt`
+OLD_WIRE=`echo 'SELECT wire FROM deposits WHERE deposit_serial_id=1;' | psql $DB -Aqt`
 echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 run_audit
@@ -365,7 +365,7 @@ echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=1" | psql -Aq
 test_5() {
 echo "===========5: deposit contract hash wrong================="
 # Modify h_wire hash, so it is inconsistent with 'wire'
-OLD_H=`echo 'SELECT h_contract_terms FROM deposits WHERE deposit_serial_id=1;'  | psql taler-auditor-test -Aqt`
+OLD_H=`echo 'SELECT h_contract_terms FROM deposits WHERE deposit_serial_id=1;'  | psql $DB -Aqt`
 echo "UPDATE deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 run_audit
@@ -405,8 +405,8 @@ echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=1"
 test_6() {
 echo "===========6: known_coins signature wrong================="
 # Modify denom_sig, so it is wrong
-OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql taler-auditor-test -Aqt`
-COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql taler-auditor-test -Aqt`
+OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
+COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
 echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 run_audit
@@ -446,10 +446,10 @@ echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | 
 test_7() {
 echo "===========7: reserves_out signature wrong================="
 # Modify reserve_sig, so it is bogus
-HBE=`echo 'SELECT h_blind_ev FROM reserves_out LIMIT 1;' | psql taler-auditor-test -Aqt`
-OLD_SIG=`echo "SELECT reserve_sig FROM reserves_out WHERE h_blind_ev='$HBE';" | psql taler-auditor-test -Aqt`
-A_VAL=`echo "SELECT amount_with_fee_val FROM reserves_out WHERE h_blind_ev='$HBE';" | psql taler-auditor-test -Aqt`
-A_FRAC=`echo "SELECT amount_with_fee_frac FROM reserves_out WHERE h_blind_ev='$HBE';" | psql taler-auditor-test -Aqt`
+HBE=`echo 'SELECT h_blind_ev FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT reserve_sig FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+A_VAL=`echo "SELECT amount_with_fee_val FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+A_FRAC=`echo "SELECT amount_with_fee_frac FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
 # Normalize, we only deal with cents in this test-case
 A_FRAC=`expr $A_FRAC / 1000000`
 echo "UPDATE reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
@@ -493,12 +493,202 @@ echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | 
 }
 
 
-# NEXT: wire transfer subject disagreement! (for wire-auditor!)
+# Test wire transfer subject disagreement!
+test_8() {
 
-# NEXT: wire fee disagreement! (for wire-auditor!)
+echo "===========8: wire-transfer-subject disagreement==========="
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_WTID=`echo "SELECT subject FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
+NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
+echo "UPDATE app_banktransaction SET subject='$NEW_WTID' WHERE id='$OLD_ID';" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Test for inconsistency detection... "
+DIAG=`jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-wire-audit.json`
+if test "x$DIAG" != "xwire subject does not match"
+then
+    exit_fail "Diagnostic wrong: $DIAG (0)"
+fi
+WTID=`jq -r .reserve_in_amount_inconsistencies[0].wtid < test-wire-audit.json`
+if test x$WTID != x"$OLD_WTID" -a x$WTID != x"$NEW_WTID"
+then
+    exit_fail "WTID reported wrong: $WTID"
+fi
+EX_A=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-wire-audit.json`
+if test x$WTID = x$OLD_WTID -a x$EX_A != x"TESTKUDOS:10"
+then
+    exit_fail "Amount reported wrong: $EX_A"
+fi
+if test x$WTID = x$NEW_WTID -a x$EX_A != x"TESTKUDOS:0"
+then
+    exit_fail "Amount reported wrong: $EX_A"
+fi
+DIAG=`jq -r .reserve_in_amount_inconsistencies[1].diagnostic < test-wire-audit.json`
+if test "x$DIAG" != "xwire subject does not match"
+then
+    exit_fail "Diagnostic wrong: $DIAG (1)"
+fi
+WTID=`jq -r .reserve_in_amount_inconsistencies[1].wtid < test-wire-audit.json`
+if test $WTID != "$OLD_WTID" -a $WTID != "$NEW_WTID"
+then
+    exit_fail "WTID reported wrong: $WTID"
+fi
+EX_A=`jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-wire-audit.json`
+if test $WTID = "$OLD_WTID" -a $EX_A != "TESTKUDOS:10"
+then
+    exit_fail "Amount reported wrong: $EX_A"
+fi
+if test $WTID = "$NEW_WTID" -a $EX_A != "TESTKUDOS:0"
+then
+    exit_fail "Amount reported wrong: $EX_A"
+fi
+
+WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+if test $WIRED != "TESTKUDOS:10"
+then
+    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
+fi
+DELTA=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+if test $DELTA != "TESTKUDOS:10"
+then
+    exit_fail "Expected total wire delta plus wrong, got $DELTA"
+fi
+echo OK
+
+# Undo database modification
+echo "UPDATE app_banktransaction SET subject='$OLD_WTID' WHERE id='$OLD_ID';" | psql -Aqt $DB
+
+}
 
 
-# Test where h_wire in the deposit table is wrong
+
+# Test wire origin disagreement!
+test_9() {
+
+echo "===========9: wire-origin disagreement==========="
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
+echo "UPDATE app_banktransaction SET debit_account_id=1;" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Test for inconsistency detection... "
+AMOUNT=`jq -r .missattribution_in_inconsistencies[0].amount < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:10"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .total_missattribution_in < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:10"
+then
+    exit_fail "Reported total amount wrong: $AMOUNT"
+fi
+echo OK
+
+# Undo database modification
+echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC;" | psql -Aqt $DB
+
+}
+
+
+# Test wire_in timestamp disagreement!
+test_10() {
+
+echo "===========10: wire-timestamp disagreement==========="
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
+echo "UPDATE app_banktransaction SET date=NOW() WHERE id=$OLD_ID;" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Test for inconsistency detection... "
+DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
+if test "x$DIAG" != "xexecution date missmatch"
+then
+    exit_fail "Reported diagnostic wrong: $DIAG"
+fi
+TABLE=`jq -r .row_minor_inconsistencies[0].table < test-wire-audit.json`
+if test "x$TABLE" != "xreserves_in"
+then
+    exit_fail "Reported table wrong: $TABLE"
+fi
+echo OK
+
+# Undo database modification
+echo "UPDATE app_banktransaction SET date='$OLD_DATE' WHERE id=$OLD_ID;" | psql -Aqt $DB
+
+}
+
+
+# Test for extra outgoing wire transfer.
+test_11() {
+
+echo "===========11: spurious outgoing transfer ==========="
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id=$OLD_ID;" | psql $DB -Aqt`
+# Change wire transfer to be FROM the exchange (#2) to elsewhere!
+# (Note: this change also causes a missing incoming wire transfer, but
+#  this test is only concerned about the outgoing wire transfer
+#  being detected as such, and we simply ignore the other
+#  errors being reported.)
+echo "UPDATE app_banktransaction SET debit_account_id=2,credit_account_id=1 WHERE id=$OLD_ID;" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Test for inconsistency detection... "
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:10"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:10"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:0"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+DIAG=`jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-wire-audit.json`
+if test "x$DIAG" != "xjustification for wire transfer not found"
+then
+    exit_fail "Reported diagnostic wrong: $DIAG"
+fi
+echo OK
+
+# Undo database modification (exchange always has account #2)
+echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2 WHERE id=$OLD_ID;" | psql -Aqt $DB
+
+}
+
+
+# FIXME: Test for wire fee disagreement
+test_98() {
+
+echo "===========11: wire-fee disagreement==========="
+echo "UPDATE wire_fee SET wire_fee_frac='100';" | psql -Aqt $DB
+
+# Wire fees are only checked/generated once there are
+# actual outgoing wire transfers, so we need to run the
+# aggregator here.
+run_audit aggregator
+
+# FIXME: needs new DB where aggregator does stuff!
+# FIXME: check report generation!
+
+# cannot easily undo aggregator, hence full reload
+echo -n "Reloading database ..."
+full_reload
+echo "DONE"
+
+}
+
+
+
+# FIXME: Test where h_wire in the deposit table is wrong
 test_99() {
 echo "===========99: deposit wire hash wrong================="
 # Modify h_wire hash, so it is inconsistent with 'wire'
@@ -515,9 +705,10 @@ run_audit aggregator
 
 # FIXME: check for the respective inconsistency in the report!
 
-# Undo:
-# echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b852' WHERE deposit_serial_id=1" | psql -Aqt $DB
-
+# cannot easily undo aggregator, hence full reload
+echo -n "Reloading database ..."
+full_reload
+echo "DONE"
 }
 
 

@@ -320,6 +320,20 @@ struct ReserveOutInfo
 
 
 /**
+ * Convert absolute time to human-readable JSON string.
+ *
+ * @param at time to convert
+ * @return human-readable string representing the time
+ */
+static json_t *
+json_from_time_abs (struct GNUNET_TIME_Absolute at)
+{
+  return json_string
+           (GNUNET_STRINGS_absolute_time_to_string (at));
+}
+
+
+/**
  * Free entry in #in_map.
  *
  * @param cls NULL
@@ -390,25 +404,33 @@ do_shutdown (void *cls)
                         " s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o }",
                         /* blocks of 5 */
+                        /* Tested in test-auditor.sh #11 */
                         "wire_out_amount_inconsistencies",
                         report_wire_out_inconsistencies,
                         "total_wire_out_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_out_plus),
+                        /* Tested in test-auditor.sh #11 */
                         "total_wire_out_delta_minus",
                         TALER_JSON_from_amount (&total_bad_amount_out_minus),
+                        /* Tested in test-auditor.sh #2 */
                         "reserve_in_amount_inconsistencies",
                         report_reserve_in_inconsistencies,
+                        /* Tested in test-auditor.sh #2 */
                         "total_wire_in_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_in_plus),
                         /* block */
+                        /* Tested in test-auditor.sh #3 */
                         "total_wire_in_delta_minus",
                         TALER_JSON_from_amount (&total_bad_amount_in_minus),
+                        /* Tested in test-auditor.sh #9 */
                         "missattribution_in_inconsistencies",
                         report_missattribution_in_inconsistencies,
+                        /* Tested in test-auditor.sh #9 */
                         "total_missattribution_in",
                         TALER_JSON_from_amount (&total_missattribution_in),
                         "row_inconsistencies",
                         report_row_inconsistencies,
+                        /* Tested in test-auditor.sh #10 */
                         "row_minor_inconsistencies",
                         report_row_minor_inconsistencies,
                         /* block */
@@ -649,11 +671,10 @@ wire_missing_cb (void *cls,
                               &tiny_amount)) )
     return; /* acceptable, amount was tiny */
   report (report_lags,
-          json_pack ("{s:I, s:o, s:s, s:s, s:o, s:O}",
+          json_pack ("{s:I, s:o, s:o, s:s, s:o, s:O}",
                      "row", (json_int_t) rowid,
                      "amount", TALER_JSON_from_amount (amount),
-                     "deadline", GNUNET_STRINGS_absolute_time_to_string (
-                       deadline),
+                     "deadline", json_from_time_abs (deadline),
                      "claimed_done", (done) ? "yes" : "no",
                      "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                      "account", wire));
@@ -757,13 +778,12 @@ wire_out_cb (void *cls,
        This is moderately harmless, it might just be that the aggreator
        has not yet fully caught up with the transfers it should do. */
     report (report_wire_out_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rowid,
                        "amount_wired", TALER_JSON_from_amount (&zero),
                        "amount_justified", TALER_JSON_from_amount (amount),
                        "wtid", GNUNET_JSON_from_data_auto (wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (
-                         date),
+                       "timestamp", json_from_time_abs (date),
                        "diagnostic", "wire transfer not made (yet?)"));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_bad_amount_out_minus,
@@ -782,27 +802,25 @@ wire_out_cb (void *cls,
          we should count the wire transfer as entirely spurious, and
          additionally consider the justified wire transfer as missing. */
       report (report_wire_out_inconsistencies,
-              json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+              json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
                          "row", (json_int_t) rowid,
                          "amount_wired", TALER_JSON_from_amount (
                            &roi->details.amount),
                          "amount_justified", TALER_JSON_from_amount (&zero),
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
-                         "timestamp", GNUNET_STRINGS_absolute_time_to_string (
-                           date),
+                         "timestamp", json_from_time_abs (date),
                          "diagnostic", "recevier account missmatch"));
       GNUNET_break (GNUNET_OK ==
                     TALER_amount_add (&total_bad_amount_out_plus,
                                       &total_bad_amount_out_plus,
                                       &roi->details.amount));
       report (report_wire_out_inconsistencies,
-              json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+              json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
                          "row", (json_int_t) rowid,
                          "amount_wired", TALER_JSON_from_amount (&zero),
                          "amount_justified", TALER_JSON_from_amount (amount),
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
-                         "timestamp", GNUNET_STRINGS_absolute_time_to_string (
-                           date),
+                         "timestamp", json_from_time_abs (date),
                          "diagnostic", "receiver account missmatch"));
       GNUNET_break (GNUNET_OK ==
                     TALER_amount_add (&total_bad_amount_out_minus,
@@ -817,14 +835,13 @@ wire_out_cb (void *cls,
                              amount))
   {
     report (report_wire_out_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rowid,
                        "amount_justified", TALER_JSON_from_amount (amount),
                        "amount_wired", TALER_JSON_from_amount (
                          &roi->details.amount),
                        "wtid", GNUNET_JSON_from_data_auto (wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (
-                         date),
+                       "timestamp", json_from_time_abs (date),
                        "diagnostic", "wire amount does not match"));
     if (0 < TALER_amount_cmp (amount,
                               &roi->details.amount))
@@ -899,7 +916,7 @@ complain_out_not_found (void *cls,
 
   (void) wa; // FIXME: log which account is affected...
   report (report_wire_out_inconsistencies,
-          json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s}",
+          json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
                      "row", (json_int_t) 0,
                      "amount_wired", TALER_JSON_from_amount (
                        &roi->details.amount),
@@ -907,7 +924,7 @@ complain_out_not_found (void *cls,
                      "wtid", (NULL == roi->details.wtid_s)
                      ? GNUNET_JSON_from_data_auto (&roi->details.wtid)
                      : json_string (roi->details.wtid_s),
-                     "timestamp", GNUNET_STRINGS_absolute_time_to_string (
+                     "timestamp", json_from_time_abs (
                        roi->details.execution_date),
                      "diagnostic",
                      "justification for wire transfer not found"));
@@ -1258,13 +1275,13 @@ complain_in_not_found (void *cls,
   struct ReserveInInfo *rii = value;
 
   report (report_reserve_in_inconsistencies,
-          json_pack ("{s:I, s:o, s:o, s:o, s:s, s:s, s:s}",
+          json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                      "row", (json_int_t) rii->rowid,
-                     "amount_expected", TALER_JSON_from_amount (
+                     "amount_exchange_expected", TALER_JSON_from_amount (
                        &rii->details.amount),
                      "amount_wired", TALER_JSON_from_amount (&zero),
                      "wtid", GNUNET_JSON_from_data_auto (&rii->details.wtid),
-                     "timestamp", GNUNET_STRINGS_absolute_time_to_string (
+                     "timestamp", json_from_time_abs (
                        rii->details.execution_date),
                      "account", wa->section_name,
                      "diagnostic",
@@ -1393,7 +1410,7 @@ history_credit_cb (void *cls,
                           &rii->details.wtid))
   {
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rii->rowid,
                        "raw_bank_row", GNUNET_JSON_from_data (row_off,
                                                               row_off_size),
@@ -1401,7 +1418,7 @@ history_credit_cb (void *cls,
                          &rii->details.amount),
                        "amount_wired", TALER_JSON_from_amount (&zero),
                        "wtid", GNUNET_JSON_from_data_auto (&rii->details.wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (
+                       "timestamp", json_from_time_abs (
                          rii->details.execution_date),
                        "diagnostic", "wire subject does not match"));
     GNUNET_break (GNUNET_OK ==
@@ -1409,7 +1426,7 @@ history_credit_cb (void *cls,
                                     &total_bad_amount_in_minus,
                                     &rii->details.amount));
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rii->rowid,
                        "raw_bank_row", GNUNET_JSON_from_data (row_off,
                                                               row_off_size),
@@ -1418,7 +1435,7 @@ history_credit_cb (void *cls,
                        "amount_wired", TALER_JSON_from_amount (
                          &details->amount),
                        "wtid", GNUNET_JSON_from_data_auto (&details->wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (
+                       "timestamp", json_from_time_abs (
                          details->execution_date),
                        "diagnostic", "wire subject does not match"));
 
@@ -1432,7 +1449,7 @@ history_credit_cb (void *cls,
                              &details->amount))
   {
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rii->rowid,
                        "raw_bank_row", GNUNET_JSON_from_data (row_off,
                                                               row_off_size),
@@ -1441,7 +1458,7 @@ history_credit_cb (void *cls,
                        "amount_wired", TALER_JSON_from_amount (
                          &details->amount),
                        "wtid", GNUNET_JSON_from_data_auto (&details->wtid),
-                       "timestamp", GNUNET_STRINGS_absolute_time_to_string (
+                       "timestamp", json_from_time_abs (
                          details->execution_date),
                        "diagnostic", "wire amount does not match"));
     if (0 < TALER_amount_cmp (&details->amount,
@@ -1479,7 +1496,7 @@ history_credit_cb (void *cls,
                        rii->details.account_url))
   {
     report (report_missattribution_in_inconsistencies,
-            json_pack ("{s:s, s:I, s:o, s:o}",
+            json_pack ("{s:o, s:I, s:o, s:o}",
                        "amount", TALER_JSON_from_amount (&rii->details.amount),
                        "row", (json_int_t) rii->rowid,
                        "raw_bank_row", GNUNET_JSON_from_data (row_off,
