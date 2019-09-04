@@ -2,17 +2,21 @@
   This file is part of TALER
   (C) 2015-2018 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+  TALER is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 3, or
+  (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not,
+  see <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file wire/test_wire_plugin_legacy_taler-bank.c
  * @brief Tests legacy history-range API against the Fakebank.
@@ -87,7 +91,14 @@ static struct TALER_WireTransferIdentifierRawP wtid;
 /**
  * Number of total transaction to make it happen in the test.
  */
+static int Ntransactions = NTRANSACTIONS;
 static int ntransactions = NTRANSACTIONS;
+static int ztransactions = 0;
+
+/**
+ * Timestamp used as the oldest extreme in the query range.
+ */
+static struct GNUNET_TIME_Absolute first_timestamp;
 
 /**
  * Function called on shutdown (regular, error or CTRL-C).
@@ -119,7 +130,6 @@ do_shutdown (void *cls)
     hhr = NULL;
   }
 
-
   TALER_WIRE_plugin_unload (plugin);
 }
 
@@ -141,12 +151,13 @@ do_shutdown (void *cls)
 static int
 history_result_cb
   (void *cls,
-  enum TALER_ErrorCode ec,
-  enum TALER_BANK_Direction dir,
-  const void *row_off,
-  size_t row_off_size,
-  const struct TALER_WIRE_TransferDetails *details)
+   enum TALER_ErrorCode ec,
+   enum TALER_BANK_Direction dir,
+   const void *row_off,
+   size_t row_off_size,
+   const struct TALER_WIRE_TransferDetails *details)
 {
+  int *expected_number = cls;
   static int accumulator = 0;
 
   if ( (TALER_BANK_DIRECTION_NONE == dir) &&
@@ -155,15 +166,41 @@ history_result_cb
     /* End-of-list, check all the transactions got accounted
      * into the history.  */
     
-    if (NTRANSACTIONS != accumulator)
+    if (*expected_number != accumulator)
     {
       GNUNET_break (0); 
       TALER_LOG_ERROR
         ("Unexpected # of transactions: %d, %d were expected.\n",
          accumulator,
-         NTRANSACTIONS);
+         *expected_number);
       global_ret = GNUNET_NO; 
     }
+
+   if (ztransactions != *expected_number)
+   {
+     /* Call the second test, under the assumption that after
+      * running the test with ztransactions expected entries,
+      * we shut the test down.  */
+
+     accumulator = 0;
+     GNUNET_assert
+       (NULL != (hhr = plugin->get_history_range
+         (plugin->cls,
+          my_account,
+          TALER_BANK_DIRECTION_BOTH,
+          GNUNET_TIME_UNIT_ZERO_ABS,
+          GNUNET_TIME_absolute_subtract
+            (first_timestamp,
+             GNUNET_TIME_UNIT_HOURS),
+          &history_result_cb,
+
+          /**
+           * Zero results are expected from 1970 up to 1 hour ago.
+           */
+          &ztransactions)));
+
+     return GNUNET_OK;
+   }
 
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_OK;
@@ -190,7 +227,6 @@ confirmation_cb (void *cls,
                  const void *row_id,
                  size_t row_id_size,
                  const char *emsg);
-
 
 /**
  * Callback with prepared transaction.
@@ -247,7 +283,7 @@ confirmation_cb (void *cls,
     return;
   }
 
-  if (0 >= --ntransactions)
+  if (0 >= --Ntransactions)
   {
     GNUNET_assert
       (NULL != (hhr = plugin->get_history_range
@@ -257,14 +293,15 @@ confirmation_cb (void *cls,
           GNUNET_TIME_UNIT_ZERO_ABS,
           GNUNET_TIME_UNIT_FOREVER_ABS,
           &history_result_cb,
-          NULL)));
+          &ntransactions)));
     return;
   }
 
   /* Issue a new wire transfer!  */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("KUDOS:5.01",
-                                         &amount));
+  GNUNET_assert
+    (GNUNET_OK == TALER_string_to_amount ("KUDOS:5.01",
+                                          &amount));
+
   ph = plugin->prepare_wire_transfer (plugin->cls,
                                       my_account,
                                       dest_account,
@@ -291,11 +328,13 @@ run (void *cls)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &wtid,
                               sizeof (wtid));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("KUDOS:5.01",
-                                         &amount));
+  GNUNET_assert
+    (GNUNET_OK == TALER_string_to_amount ("KUDOS:5.01",
+                                          &amount));
   fb = TALER_FAKEBANK_start (8088);
 
+
+  first_timestamp = GNUNET_TIME_absolute_get ();
   ph = plugin->prepare_wire_transfer (plugin->cls,
                                       my_account,
                                       dest_account,
@@ -311,14 +350,14 @@ int
 main (int argc,
       const char *const argv[])
 {
-
   GNUNET_log_setup ("test-wire-plugin-legacy-test",
                     "WARNING",
                     NULL);
   cfg = GNUNET_CONFIGURATION_create ();
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONFIGURATION_load (cfg,
-                                            "test_wire_plugin_legacy_taler-bank.conf"));
+  GNUNET_assert
+    (GNUNET_OK == GNUNET_CONFIGURATION_load
+      (cfg,
+       "test_wire_plugin_legacy_taler-bank.conf"));
   global_ret = GNUNET_OK;
   plugin = TALER_WIRE_plugin_load (cfg,
                                    "taler_bank");
