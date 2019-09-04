@@ -920,8 +920,6 @@ bhist_cb (void *cls,
     break;
   }
   whh->hh = NULL;
-  taler_bank_get_history_cancel (NULL,
-                                 whh);
 }
 
 

@@ -28,13 +28,11 @@
 #include "taler_fakebank_lib.h"
 #include <gnunet/gnunet_json_lib.h>
 
-
 /**
- * When does the test timeout? Right now, we expect this to be very
- * fast.
+ * How many wire transfers this test should accomplish, before
+ * delving into actual checks.
  */
-#define TIMEOUT GNUNET_TIME_UNIT_SECONDS
-
+#define NTRANSACTIONS 5
 
 /**
  * Destination account to use.
@@ -77,24 +75,9 @@ static struct TALER_WIRE_ExecuteHandle *eh;
 static struct TALER_FAKEBANK_Handle *fb;
 
 /**
- * Handle to the history request.
- */
-static struct TALER_WIRE_HistoryHandle *hh;
-
-/**
  * Handle to the history-range request (the "legacy" bank API).
  */
 static struct TALER_WIRE_HistoryHandle *hhr;
-
-/**
- * Handle for the timeout task.
- */
-static struct GNUNET_SCHEDULER_Task *tt;
-
-/**
- * Which serial ID do we expect to get from /history?
- */
-static uint64_t serial_target;
 
 /**
  * Wire transfer identifier we are using.
@@ -104,7 +87,7 @@ static struct TALER_WireTransferIdentifierRawP wtid;
 /**
  * Number of total transaction to make it happen in the test.
  */
-static int ntransactions = 5;
+static int ntransactions = NTRANSACTIONS;
 
 /**
  * Function called on shutdown (regular, error or CTRL-C).
@@ -128,12 +111,6 @@ do_shutdown (void *cls)
                                           ph);
     ph = NULL;
   }
-  if (NULL != hh)
-  {
-    plugin->get_history_cancel (plugin->cls,
-                                hh);
-    hh = NULL;
-  }
 
   if (NULL != hhr)
   {
@@ -142,27 +119,8 @@ do_shutdown (void *cls)
     hhr = NULL;
   }
 
-  if (NULL != tt)
-  {
-    GNUNET_SCHEDULER_cancel (tt);
-    tt = NULL;
-  }
+
   TALER_WIRE_plugin_unload (plugin);
-}
-
-
-/**
- * Function called on timeout.
- *
- * @param cls NULL
- */
-static void
-timeout_cb (void *cls)
-{
-  tt = NULL;
-  GNUNET_break (0);
-  global_ret = GNUNET_SYSERR;
-  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -189,53 +147,29 @@ history_result_cb
   size_t row_off_size,
   const struct TALER_WIRE_TransferDetails *details)
 {
-  uint64_t *serialp;
-  uint64_t serialh;
-  struct TALER_Amount amount;
+  static int accumulator = 0;
 
-  hh = NULL;
   if ( (TALER_BANK_DIRECTION_NONE == dir) &&
        (GNUNET_OK == global_ret) )
   {
+    /* End-of-list, check all the transactions got accounted
+     * into the history.  */
+    
+    if (NTRANSACTIONS != accumulator)
+    {
+      GNUNET_break (0); 
+      TALER_LOG_ERROR
+        ("Unexpected # of transactions: %d, %d were expected.\n",
+         accumulator,
+         NTRANSACTIONS);
+      global_ret = GNUNET_NO; 
+    }
+
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_OK;
   }
-  if (sizeof (uint64_t) != row_off_size)
-  {
-    GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_SYSERR;
-  }
-  serialp = (uint64_t *) row_off;
-  serialh = GNUNET_ntohll (*serialp);
-  if (serialh != serial_target)
-  {
-    GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_SYSERR;
-  }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount ("KUDOS:5.01",
-                                         &amount));
-  if (0 != TALER_amount_cmp (&amount,
-                             &details->amount))
-  {
-    GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_SYSERR;
-  }
-  if (0 != GNUNET_memcmp (&wtid,
-                          &details->wtid))
-  {
-    GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_SYSERR;
-  }
-  global_ret = GNUNET_OK;
+
+  accumulator++;
   return GNUNET_OK;
 }
 
@@ -255,11 +189,54 @@ confirmation_cb (void *cls,
                  int success,
                  const void *row_id,
                  size_t row_id_size,
+                 const char *emsg);
+
+
+/**
+ * Callback with prepared transaction.
+ *
+ * @param cls closure
+ * @param buf transaction data to persist, NULL on error
+ * @param buf_size number of bytes in @a buf, 0 on error
+ */
+static void
+prepare_cb (void *cls,
+            const char *buf,
+            size_t buf_size)
+{
+  ph = NULL;
+  if (NULL == buf)
+  {
+    GNUNET_break (0);
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  plugin->execute_wire_transfer (plugin->cls,
+                                 buf,
+                                 buf_size,
+                                 &confirmation_cb,
+                                 NULL);
+}
+
+/**
+ * Function called with the result from the execute step.
+ *
+ * @param cls closure
+ * @param success #GNUNET_OK on success,
+ *        #GNUNET_SYSERR on failure
+ * @param row_id ID of the fresh transaction,
+ *        in _network_ byte order.
+ * @param emsg NULL on success, otherwise an error message
+ */
+static void
+confirmation_cb (void *cls,
+                 int success,
+                 const void *row_id,
+                 size_t row_id_size,
                  const char *emsg)
 {
-  uint64_t tmp;
   struct TALER_Amount amount;
-
 
   eh = NULL;
   if (GNUNET_OK != success)
@@ -270,21 +247,17 @@ confirmation_cb (void *cls,
     return;
   }
 
-  if (0 => --ntransactions)
+  if (0 >= --ntransactions)
   {
-    /* Done, check all is correct here.  */ 
-    
-    if (GNUNET_YES)
-    {
-      /* Something went wrong.  */
-      GNUNET_break (0);
-      global_ret = GNUNET_SYSERR;
-      GNUNET_SCHEDULER_shutdown ();
-      return;
-    }
-    
-    /* All correct, ending the test.  */
-    GNUNET_SCHEDULER_shutdown ();
+    GNUNET_assert
+      (NULL != (hhr = plugin->get_history_range
+         (plugin->cls,
+          my_account,
+          TALER_BANK_DIRECTION_BOTH,
+          GNUNET_TIME_UNIT_ZERO_ABS,
+          GNUNET_TIME_UNIT_FOREVER_ABS,
+          &history_result_cb,
+          NULL)));
     return;
   }
 
@@ -304,35 +277,6 @@ confirmation_cb (void *cls,
 
 
 /**
- * Callback with prepared transaction.
- *
- * @param cls closure
- * @param buf transaction data to persist, NULL on error
- * @param buf_size number of bytes in @a buf, 0 on error
- */
-static void
-prepare_cb (void *cls,
-            const char *buf,
-            size_t buf_size)
-{
-
-  ph = NULL;
-  if (NULL == buf)
-  {
-    GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  plugin->execute_wire_transfer (plugin->cls,
-                                 buf,
-                                 buf_size,
-                                 &confirmation_cb,
-                                 NULL);
-}
-
-
-/**
  * Run the test.
  *
  * @param cls NULL
@@ -341,13 +285,9 @@ static void
 run (void *cls)
 {
   struct TALER_Amount amount;
-  
-  ntransactions = 5;
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
-  tt = GNUNET_SCHEDULER_add_delayed (TIMEOUT,
-                                     &timeout_cb,
-                                     NULL);
+
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &wtid,
                               sizeof (wtid));

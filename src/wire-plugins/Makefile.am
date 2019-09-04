@@ -77,11 +77,7 @@ TESTS = \
  test_wire_plugin_transactions_taler_bank \
  test_wire_plugin_legacy_taler_bank
 
-check_PROGRAMS= \
- test_ebics_wireformat \
- test_wire_plugin \
- test_wire_plugin_transactions_taler_bank
-
+check_PROGRAMS= $(TESTS)
 
 test_ebics_wireformat_SOURCES = \
   test_ebics_wireformat.c
