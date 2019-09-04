@@ -808,19 +808,23 @@ taler_bank_get_history_cancel (void *cls,
 
 
 /**
- * Function called with results from the bank about the transaction history.
+ * Function called with results from the bank
+ * about the transaction history.
  *
  * @param cls the `struct TALER_WIRE_HistoryHandle`
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol),
- *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
- *                    last callback is always of this status (even if `abs(num_results)` were
- *                    already returned).
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200)
+ *        for successful status request 0 if the bank's reply
+ *        is bogus (fails to follow the protocol),
+ *        #MHD_HTTP_NO_CONTENT if there are no more results; on
+ *        success the last callback is always of this status
+ *        (even if `abs(num_results)` were already returned).
  * @param ec taler error code
  * @param dir direction of the transfer
- * @param serial_id monotonically increasing counter corresponding to the transaction
+ * @param serial_id monotonically increasing
+ *        counter corresponding to the transaction
  * @param details details about the wire transfer
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ * @param json detailed response from the HTTPD,
+ *        or NULL if reply was not in JSON
  */
 static void
 bhist_cb (void *cls,
@@ -849,12 +853,14 @@ bhist_cb (void *cls,
                       (unsigned char) ' ');
       if (NULL != space)
       {
-        /* Space separates the actual wire transfer subject from the
-           exchange base URL (if present, expected only for outgoing
-           transactions).  So we cut the string off at the space. */
+        /* Space separates the actual wire transfer subject
+           from the exchange base URL (if present, expected
+           only for outgoing transactions).  So we cut the
+           string off at the space. */
         *space = '\0';
       }
-      /* NOTE: For a real bank, the subject should include a checksum! */
+      /* NOTE: For a real bank, the subject should include a
+         checksum! */
       if (GNUNET_OK !=
           GNUNET_STRINGS_string_to_data (subject,
                                          strlen (subject),
@@ -1069,18 +1075,13 @@ taler_bank_get_history (void *cls,
 static struct TALER_WIRE_HistoryHandle *
 taler_bank_get_history_range
   (void *cls,
-  const char *account_section,
-  enum TALER_BANK_Direction direction,
-  struct GNUNET_TIME_Absolute start_date,
-  struct GNUNET_TIME_Absolute end_date,
-  TALER_WIRE_HistoryResultCallback hres_cb,
-  void *hres_cb_cls)
+   const char *account_section,
+   enum TALER_BANK_Direction direction,
+   struct GNUNET_TIME_Absolute start_date,
+   struct GNUNET_TIME_Absolute end_date,
+   TALER_WIRE_HistoryResultCallback hres_cb,
+   void *hres_cb_cls)
 {
-
-  /* FIXME: remove the following lines when addressing #5746*/
-  GNUNET_break (0);
-  return NULL;
-
   struct TALER_Account account;
   struct TalerBankClosure *tc = cls;
   struct TALER_WIRE_HistoryHandle *whh;
@@ -1111,8 +1112,6 @@ taler_bank_get_history_range
     GNUNET_free (whh);
     return NULL;
   }
-
-
   whh->hh = TALER_BANK_history_range (tc->ctx,
                                       account.details.x_taler_bank.bank_base_url,
                                       &whh->auth,

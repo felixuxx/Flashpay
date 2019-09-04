@@ -79,6 +79,11 @@ static struct TALER_FAKEBANK_Handle *fb;
 static struct TALER_WIRE_HistoryHandle *hh;
 
 /**
+ * Handle to the history-range request (the "legacy" bank API).
+ */
+static struct TALER_WIRE_HistoryHandle *hhr;
+
+/**
  * Handle for the timeout task.
  */
 static struct GNUNET_SCHEDULER_Task *tt;
@@ -122,6 +127,14 @@ do_shutdown (void *cls)
                                 hh);
     hh = NULL;
   }
+
+  if (NULL != hhr)
+  {
+    plugin->get_history_cancel (plugin->cls,
+                                hhr);
+    hhr = NULL;
+  }
+
   if (NULL != tt)
   {
     GNUNET_SCHEDULER_cancel (tt);
@@ -256,10 +269,21 @@ confirmation_cb (void *cls,
   hh = plugin->get_history (plugin->cls,
                             my_account,
                             TALER_BANK_DIRECTION_BOTH,
-                            NULL, 0,
+                            NULL,
+                            0,
                             5,
                             &history_result_cb,
                             NULL);
+
+  GNUNET_assert
+    (NULL != (hhr = plugin->get_history_range
+       (plugin->cls,
+        my_account,
+        TALER_BANK_DIRECTION_BOTH,
+        GNUNET_TIME_UNIT_ZERO_ABS,
+        GNUNET_TIME_UNIT_FOREVER_ABS,
+        &history_result_cb,
+        NULL)));
 }
 
 
@@ -328,6 +352,7 @@ int
 main (int argc,
       const char *const argv[])
 {
+
   GNUNET_log_setup ("test-wire-plugin-transactions-test",
                     "WARNING",
                     NULL);
