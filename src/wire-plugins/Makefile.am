@@ -74,7 +74,8 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 TESTS = \
  test_ebics_wireformat \
  test_wire_plugin \
- test_wire_plugin_transactions_taler_bank
+ test_wire_plugin_transactions_taler_bank \
+ test_wire_plugin_legacy_taler_bank
 
 check_PROGRAMS= \
  test_ebics_wireformat \
@@ -97,6 +98,17 @@ test_wire_plugin_LDADD = \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la
 
+
+test_wire_plugin_legacy_taler_bank_SOURCES = \
+  test_wire_plugin_legacy_taler-bank.c
+test_wire_plugin_legacy_taler_bank_LDADD = \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
+  $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/util/libtalerutil.la
 
 test_wire_plugin_transactions_taler_bank_SOURCES = \
   test_wire_plugin_transactions_taler-bank.c
