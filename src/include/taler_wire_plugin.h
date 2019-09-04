@@ -90,7 +90,9 @@ struct TALER_WIRE_TransferDetails
 
 /**
  * Callbacks of this type are used to serve the result of asking
- * the bank for the transaction history.
+ * the bank for the transaction history.  NOTE: this function will
+ * NOT get the list of history elements, but rather get (iteratively)
+ * called for each (parsed) history element.
  *
  * @param cls closure
  * @param ec taler error code
