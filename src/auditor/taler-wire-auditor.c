@@ -769,7 +769,7 @@ wire_out_cb (void *cls,
   GNUNET_CRYPTO_hash (wtid,
                       sizeof (struct TALER_WireTransferIdentifierRawP),
                       &key);
-  roi = GNUNET_CONTAINER_multihashmap_get (in_map,
+  roi = GNUNET_CONTAINER_multihashmap_get (out_map,
                                            &key);
   if (NULL == roi)
   {
@@ -884,10 +884,6 @@ wire_out_cb (void *cls,
                        "diagnostic", "execution date missmatch"));
   }
   cleanup:
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multihashmap_remove (out_map,
-                                                       &key,
-                                                       roi));
   GNUNET_assert (GNUNET_OK ==
                  free_roi (NULL,
                            &key,
