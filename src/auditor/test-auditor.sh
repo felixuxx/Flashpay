@@ -944,6 +944,7 @@ then
     exit_fail "Reported table wrong: $TABLE"
 fi
 DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
+DIAG=`echo "$DIAG" | awk '{print $1 " " $2 " " $3}'`
 if test "x$DIAG" != "xexecution date missmatch"
 then
     exit_fail "Reported diagnostic wrong: $DIAG"
