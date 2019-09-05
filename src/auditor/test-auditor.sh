@@ -46,7 +46,7 @@ function pre_audit () {
     do
         echo -n "."
         wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null && break
-        sleep 1
+        sleep 0.1
     done
     echo " DONE"
 
@@ -63,7 +63,7 @@ function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
     taler-auditor -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
-
+    echo -n "."
     taler-wire-auditor -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     echo " DONE"
 }
@@ -73,12 +73,14 @@ function audit_only () {
 function post_audit () {
     kill `jobs -p` || true
 
-    echo -n "TeXing ..."
+    echo -n "TeXing ."
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
+    echo -n "."
     timeout 10 pdflatex test-report.tex >/dev/null || exit_fail "pdflatex failed"
+    echo -n "."
     timeout 10 pdflatex test-report.tex >/dev/null
-    echo "DONE"
+    echo " DONE"
 }
 
 
@@ -711,7 +713,7 @@ run_audit
 echo -n "Testing hung refresh detection... "
 
 HANG=`jq -er .refresh_hanging[0].amount < test-audit.json`
-TOTAL_HANG=`jq -e .total_refresh_hanging < test-audit.json`
+TOTAL_HANG=`jq -er .total_refresh_hanging < test-audit.json`
 if test x$HANG != x$TOTAL_HANG
 then
     exit_fail "Hanging amount inconsistent, got $HANG and $TOTAL_HANG"

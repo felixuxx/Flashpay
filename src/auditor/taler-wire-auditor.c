@@ -40,6 +40,14 @@
  */
 #define GRACE_PERIOD GNUNET_TIME_UNIT_HOURS
 
+/**
+ * How much do we allow the bank and the exchange to disagree about
+ * timestamps? Should be sufficiently large to avoid bogus reports from deltas
+ * created by imperfect clock synchronization and network delay.
+ */
+#define TIME_TOLERANCE GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, \
+                                                      15)
+
 
 /**
  * Information we keep for each supported account.
@@ -874,15 +882,34 @@ wire_out_cb (void *cls,
     }
     goto cleanup;
   }
-  if (roi->details.execution_date.abs_value_us !=
-      date.abs_value_us)
+
   {
-    report (report_row_minor_inconsistencies,
-            json_pack ("{s:s, s:I, s:s}",
-                       "table", "wire_out",
-                       "row", (json_int_t) rowid,
-                       "diagnostic", "execution date missmatch"));
+    struct GNUNET_TIME_Relative delta;
+
+    if (roi->details.execution_date.abs_value_us >
+        date.abs_value_us)
+      delta = GNUNET_TIME_absolute_get_difference (date,
+                                                   roi->details.execution_date);
+    else
+      delta = GNUNET_TIME_absolute_get_difference (roi->details.execution_date,
+                                                   date);
+    if (delta.rel_value_us > TIME_TOLERANCE.rel_value_us)
+    {
+      char *details;
+
+      GNUNET_asprintf (&details,
+                       "execution date missmatch (%s)",
+                       GNUNET_STRINGS_relative_time_to_string (delta,
+                                                               GNUNET_YES));
+      report (report_row_minor_inconsistencies,
+              json_pack ("{s:s, s:I, s:s}",
+                         "table", "wire_out",
+                         "row", (json_int_t) rowid,
+                         "diagnostic", details));
+      GNUNET_free (details);
+    }
   }
+
   cleanup:
   GNUNET_assert (GNUNET_OK ==
                  free_roi (NULL,
