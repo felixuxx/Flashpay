@@ -115,6 +115,7 @@ set_amount (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
 {
   struct TALER_Amount *amount = scls;
 
+  (void) ctx;
   if (GNUNET_OK !=
       TALER_string_to_amount (value,
                               amount))

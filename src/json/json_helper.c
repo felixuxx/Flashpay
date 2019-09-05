@@ -83,6 +83,7 @@ parse_amount (void *cls,
   json_int_t fraction;
   const char *currency;
 
+  (void) cls;
   if (json_is_string (root))
   {
     if (GNUNET_OK !=
@@ -122,7 +123,7 @@ parse_amount (void *cls,
   }
   if ( (value < 0) ||
        (fraction < 0) ||
-       (value > UINT64_MAX) ||
+       (((uint64_t) value) > UINT64_MAX) ||
        (fraction > UINT32_MAX) )
   {
     GNUNET_break_op (0);
@@ -183,6 +184,7 @@ parse_amount_nbo (void *cls,
   json_int_t fraction;
   const char *currency;
 
+  (void) cls;
   if (json_is_string (root))
   {
     if (GNUNET_OK !=

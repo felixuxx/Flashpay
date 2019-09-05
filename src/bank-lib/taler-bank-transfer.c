@@ -89,6 +89,7 @@ static struct GNUNET_CURL_RescheduleContext *rc;
 static void
 do_shutdown (void *cls)
 {
+  (void) cls;
   if (NULL != op)
   {
     TALER_BANK_admin_add_incoming_cancel (op);
@@ -126,6 +127,8 @@ res_cb (void *cls,
         struct GNUNET_TIME_Absolute timestamp,
         const json_t *json)
 {
+  (void) cls;
+  (void) timestamp;
   op = NULL;
   switch (ec)
   {
@@ -166,6 +169,10 @@ run (void *cls,
 {
   struct TALER_BANK_AuthenticationData auth;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
+  (void) cfg;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   GNUNET_assert (NULL != ctx);

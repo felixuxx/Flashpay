@@ -134,6 +134,11 @@ extract_amount_nbo (void *cls,
   char *frac_name;
   int ret;
 
+  if (sizeof (struct TALER_AmountNBO) != *dst_size)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_asprintf (&val_name,
                    "%s_val",
                    fname);
@@ -205,6 +210,11 @@ extract_amount (void *cls,
   struct TALER_AmountNBO amount_nbo;
   int ret;
 
+  if (sizeof (struct TALER_AmountNBO) != *dst_size)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_asprintf (&val_name,
                    "%s_val",
                    fname);
@@ -278,6 +288,8 @@ extract_json (void *cls,
   json_error_t json_error;
   size_t slen;
 
+  (void) cls;
+  (void) dst_size;
   fnum = PQfnumber (result,
                     fname);
   if (fnum < 0)
@@ -327,6 +339,7 @@ clean_json (void *cls,
 {
   json_t **dst = rd;
 
+  (void) cls;
   if (NULL != *dst)
   {
     json_decref (*dst);
@@ -383,6 +396,7 @@ extract_round_time (void *cls,
   struct GNUNET_TIME_Absolute tmp;
   int fnum;
 
+  (void) cls;
   fnum = PQfnumber (result,
                     fname);
   if (fnum < 0)
@@ -465,6 +479,7 @@ extract_round_time_nbo (void *cls,
   struct GNUNET_TIME_Absolute tmp;
   int fnum;
 
+  (void) cls;
   fnum = PQfnumber (result,
                     fname);
   if (fnum < 0)
