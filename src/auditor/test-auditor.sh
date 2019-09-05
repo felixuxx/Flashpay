@@ -188,7 +188,6 @@ jq -e .reserve_in_amount_inconsistencies[0] < test-wire-audit.json > /dev/null &
 jq -e .missattribution_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
 jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
 jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
 jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
 # FIXME: check operation balances are correct (once we have more transaction types)
@@ -196,7 +195,20 @@ jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit
 
 echo PASS
 
-# FIXME: check wire transfer lag reported (no aggregator!)
+echo -n "Check for lag detection... "
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+jq -e .lag_details[0] < test-wire-audit.json > /dev/null || exit_fail "Lag not detected in run without aggregator"
+
+LAG=`jq -r .total_amount_lag < test-wire-audit.json`
+if test $LAG = "TESTKUDOS:0"
+then
+    exit_fail "Expected total lag to be non-zero"
+fi
+echo "PASS"
 
 echo -n "Test for wire amounts... "
 WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`

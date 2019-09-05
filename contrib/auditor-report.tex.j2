@@ -19,6 +19,24 @@
 % linking to them from the report. (This file _is_ source code,
 % the generated PDF is the service under definition of the AGPL.)
 %
+%
+% NOTE WELL:
+%
+% When modifying this document, please verify that the output
+% still looks good. For this, we have noted which testcases
+% trigger the respective table being generated using comments
+% of the form:
+%
+% "Table generation tested by testcase #XX in test-auditor.sh"
+%
+% Thus, whenever modifying such a table, please verify that the
+% output still looks OK by manually inspecting the generated
+% PDF from running
+%
+% $ test-auditor.sh XX
+%
+% in the src/auditor/ directory.
+
 \documentclass{article} % {acmart}
 \usepackage{url}
 \usepackage[T1]{fontenc}
@@ -94,40 +112,41 @@ Note that some lag is perfectly normal, as tiny amounts that are too small to be
 are deferred beyond the due date, hoping that additional transfers will push them above
 the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagging behind.
 
+% Table generation tested by testcase #1 in test-auditor.sh
+
 {% if wire.lag_details|length() == 0 %}
   {\bf No non-tiny wire transfers that are lagging behind detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|r|c|rl}
-  \multicolumn{4}{l}{\bf Coin} \\
+  \begin{longtable}{l|r|r|c}
   {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Coin} \\
   \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
 \endfirsthead
-  \multicolumn{4}{l}{\bf Coin} \\
   {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Coin} \\
   \multicolumn{4}{l}{\bf Target account} \\ \hline \hline
 \endhead
   \hline \hline
-  \multicolumn{4}{l}{\bf Coin} \\
   {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Coin} \\
   \multicolumn{4}{l}{\bf Target account} \\
 \endfoot
   \hline \hline
-  \multicolumn{4}{l}{\bf Coin} \\
   {\bf Deadline} & {\bf Amount} & {\bf Row} & {\bf Claimed done} \\
+  \multicolumn{4}{l}{\bf Coin} \\
   \multicolumn{4}{l}{\bf Target account} \\
     \caption{Lagging non-tiny transactions.}
     \label{table:lag}
 \endlastfoot
 {% for item in wire.lag_details %}
-  \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
-\nopagebreak
-  &
   {{ item.deadline }} &
   {{ item.amount }} &
   {{ item.row }} &
   {{ item.claimed_done }} \\
 \nopagebreak
-  \multicolumn{4}{l}{ {\tt {{ item.account }} } } \\ \hline
+  \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
+\nopagebreak
+  \multicolumn{4}{l}{ {\tt {{ item.account.url }} } } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
