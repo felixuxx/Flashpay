@@ -361,29 +361,33 @@ violations do not imply that the wire transfer was actually made (as
 that is a separate check).  Note that not making the wire transfer
 would be reported separately in Section~\ref{sec:wire_check_out}.
 
+% Table generation tested by testcase #XX in test-auditor.sh
 
 {% if data.wire_out_inconsistencies|length() == 0 %}
   {\bf All aggregations matched up.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|l|r|r}
-  {\bf Destination account} & {\bf Database row} & {\bf Expected} & {\bf Claimed} \\ \hline \hline
+  \begin{longtable}{r|r|r}
+  \multicolumn{3}{c}{ {\bf Destination account} } \\
+  {\bf Row} & {\bf Expected} & {\bf Claimed} \\ \hline \hline
 \endfirsthead
-  {\bf Destination account} & {\bf Database row} & {\bf Expected} & {\bf Claimed} \\ \hline \hline
+  \multicolumn{3}{c}{ {\bf Destination account} } \\
+  {\bf Row} & {\bf Expected} & {\bf Claimed} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Destination account} & {\bf Database row} & {\bf Expected} & {\bf Claimed} \\
+  \multicolumn{3}{c}{ {\bf Destination account} } \\
+  {\bf Row} & {\bf Expected} & {\bf Claimed} \\
 \endfoot
   \hline
-  {\bf Total deltas}  & &
+  {\bf Total deltas}  & 
   {{ data.total_wire_out_delta_plus}} &
   - {{ data.total_wire_out_delta_minus}} \\
   \caption{Claimed wire out aggregate totals not matching up.}
   \label{table:reserve:wire_out_balance_inconsistencies}
 \endlastfoot
 {% for item in data.wire_out_inconsistencies %}
-  \multicolumn{6}{l}{ {\tt {{ item.destination_account }} } } \\
+  \multicolumn{3}{l}{ {\tt \truncate{0.95\textwidth}{ {{ item.destination_account.url }} } } } \\
 \nopagebreak
-  & {{ item.rowid }} &
+  {{ item.rowid }} &
   {{ item.expected }} &
   {{ item.claimed }} \\ \hline
 {% endfor %}
@@ -443,7 +447,7 @@ the (hash of the) denomination public key for
 ``payback-verify'' and ``deposit-verify'' operations, and the master
 public key for ``payback-master'' operations.
 
-% Table generation tested by testcase #4/#5 in test-auditor.sh
+% Table generation tested by testcase #4/#5/#6/#7/#13 in test-auditor.sh
 
 {% if data.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
@@ -583,6 +587,8 @@ account.
 This section highlights cases where the exchange missbehaved
 with respect to outgoing wire transfers.
 
+% Table generation tested by testcase #11 in test-auditor.sh
+
 {% if wire.wire_out_amount_inconsistencies|length() == 0 %}
   {\bf All outgoing wire transfers matched up.}
 {% else %}
@@ -683,6 +689,8 @@ have created follow-up errors in this table.
 This section describes issues found by the wire auditor that do not
 have a clear financial impact.
 
+% Table generation tested by testcase #17 in test-auditor.sh
+
 {% if wire.row_inconsistencies|length() == 0 %}
   {\bf No wire row inconsistencies found.}
 {% else %}
@@ -757,10 +765,12 @@ with duplicate or malformed wire transfer subjects.
 This section lists cases where the exchange's database may be ambiguous
 with respect to what wire fee it charges at what time.
 
+% Table generation tested by testcase #14 in test-auditor.sh
+
 {% if data.wire_fee_time_inconsistencies|length() == 0 %}
   {\bf No wire fee timing issues detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|r|p{5.5}}
+  \begin{longtable}{p{1.5cm}|r|p{6}}
   {\bf Wire format} & {\bf Timestamp} & {\bf Diagnostic}
   \\ \hline \hline
 \endfirsthead
@@ -788,10 +798,12 @@ with respect to what wire fee it charges at what time.
 This section describes issues found that do not have a clear financial
 impact.
 
+% Table generation tested by testcase #13/#15 in test-auditor.sh
+
 {% if data.row_inconsistencies|length() == 0 %}
   {\bf No row inconsistencies found.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|l|p{6cm}}
+  \begin{longtable}{p{2.5cm}|l|p{7cm}}
   {\bf Table} & {\bf Row} & {\bf Diagnostic} \\
   \hline \hline
 \endfirsthead
@@ -933,7 +945,7 @@ implications.
 
 This section lists issues with wire transfers related to timestamps.
 
-% Table generation tested by testcase #10 in test-auditor.sh
+% Table generation tested by testcase #10/#17 in test-auditor.sh
 
 {% if wire.row_minor_inconsistencies|length() == 0 %}
   {\bf No timestamp issues detected.}

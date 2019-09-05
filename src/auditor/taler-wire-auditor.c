@@ -404,12 +404,12 @@ do_shutdown (void *cls)
                         " s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o }",
                         /* blocks of 5 */
-                        /* Tested in test-auditor.sh #11 */
+                        /* Tested in test-auditor.sh #11, #15 */
                         "wire_out_amount_inconsistencies",
                         report_wire_out_inconsistencies,
                         "total_wire_out_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_out_plus),
-                        /* Tested in test-auditor.sh #11 */
+                        /* Tested in test-auditor.sh #11, #15 */
                         "total_wire_out_delta_minus",
                         TALER_JSON_from_amount (&total_bad_amount_out_minus),
                         /* Tested in test-auditor.sh #2 */
@@ -430,7 +430,7 @@ do_shutdown (void *cls)
                         TALER_JSON_from_amount (&total_missattribution_in),
                         "row_inconsistencies",
                         report_row_inconsistencies,
-                        /* Tested in test-auditor.sh #10 */
+                        /* Tested in test-auditor.sh #10/#17 */
                         "row_minor_inconsistencies",
                         report_row_minor_inconsistencies,
                         /* block */

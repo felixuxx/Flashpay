@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 13`
+ALL_TESTS=`seq 0 17`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -788,29 +788,31 @@ echo PASS
 
 # cannot easily undo aggregator, hence full reload
 echo -n "Reloading database ..."
-# full_reload
+full_reload
 echo "DONE"
 
 }
 
 
 
-# FIXME: Test where h_wire in the deposit table is wrong
-test_99() {
-echo "===========99: deposit wire hash wrong================="
+# Test where h_wire in the deposit table is wrong
+function test_15() {
+echo "===========15: deposit wire hash wrong================="
 # Modify h_wire hash, so it is inconsistent with 'wire'
 echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
 # The auditor checks h_wire consistency only for
 # coins where the wire transfer has happened, hence
 # run aggregator first to get this test to work.
-#
-# FIXME: current test database has transfers still
-# in the *distant* future, test cannot yet work.
-# patch up once DB was re-generated!
 run_audit aggregator
 
-# FIXME: check for the respective inconsistency in the report!
+echo -n "Testing inconsistency detection... "
+TABLE=`jq -r .row_inconsistencies[0].table < test-audit.json`
+if test "x$TABLE" != "xaggregation" -a "x$TABLE" != "xdeposits"
+then
+    exit_fail "Reported table wrong: $TABLE"
+fi
+echo PASS
 
 # cannot easily undo aggregator, hence full reload
 echo -n "Reloading database ..."
@@ -819,11 +821,140 @@ echo "DONE"
 }
 
 
+# Test where wired amount (wire out) is wrong
+function test_16() {
+echo "===========16: incorrect wire_out amount================="
+
+# First, we need to run the aggregator so we even
+# have a wire_out to modify.
+pre_audit aggregator
+
+# Modify wire amount, such that it is inconsistent with 'aggregation'
+# (exchange account is #2, so the logic below should select the outgoing
+# wire transfer):
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_AMOUNT=`echo "SELECT amount FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
+NEW_AMOUNT="TESTKUDOS:50"
+echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+
+audit_only
+
+echo -n "Testing inconsistency detection... "
+
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+if test "x$AMOUNT" != "x$OLD_AMOUNT"
+then
+    exit_fail "Reported justified amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+if test "x$AMOUNT" != "x$NEW_AMOUNT"
+then
+    exit_fail "Reported wired amount wrong: $AMOUNT"
+fi
+TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
+then
+    exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT"
+fi
+TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+if test "x$TOTAL_AMOUNT" = "xTESTKUDOS:0"
+then
+    exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
+fi
+echo PASS
+
+echo "Second modification: wire nothing"
+NEW_AMOUNT="TESTKUDOS:0"
+echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+
+audit_only
+
+echo -n "Testing inconsistency detection... "
+
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+if test "x$AMOUNT" != "x$OLD_AMOUNT"
+then
+    exit_fail "Reported justified amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+if test "x$AMOUNT" != "x$NEW_AMOUNT"
+then
+    exit_fail "Reported wired amount wrong: $AMOUNT"
+fi
+TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+if test "x$TOTAL_AMOUNT" != "x$OLD_AMOUNT"
+then
+    exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT (wanted $OLD_AMOUNT)"
+fi
+TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
+then
+    exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
+fi
+echo PASS
+
+post_audit
+
+
+# Undo
+echo "UPDATE app_banktransaction SET amount='${OLD_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+}
+
+
+
+
+# Test where wire-out timestamp is wrong
+function test_17() {
+echo "===========17: incorrect wire_out timestamp================="
+
+# First, we need to run the aggregator so we even
+# have a wire_out to modify.
+pre_audit aggregator
+
+# Modify wire amount, such that it is inconsistent with 'aggregation'
+# (exchange account is #2, so the logic below should select the outgoing
+# wire transfer):
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
+# Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
+# (due to rounding, if this machine is fast...)
+echo "UPDATE app_banktransaction SET date=NOW()- interval '1 hour' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+
+audit_only
+post_audit
+
+echo -n "Testing inconsistency detection... "
+TABLE=`jq -r .row_minor_inconsistencies[0].table < test-wire-audit.json`
+if test "x$TABLE" != "xwire_out"
+then
+    exit_fail "Reported table wrong: $TABLE"
+fi
+DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
+if test "x$DIAG" != "xexecution date missmatch"
+then
+    exit_fail "Reported diagnostic wrong: $DIAG"
+fi
+echo PASS
+
+# Undo
+echo "UPDATE app_banktransaction SET date='${OLD_DATE}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+}
+
+
 
 
 # **************************************************
-# Add more tests here! :-)
+# FIXME: Add more tests here! :-)
+# Specifically:
+# - emergencies (detection)
+# - revocation (payback, accepting
+#   of coins despite denomination revocation)
+# - refunds
+# - reserve closure (or lack thereof)
+# - arithmetic problems
+# - wire.row_inconsistencies (i.e. duplicate wire offset)
 # **************************************************
+
 
 
 # *************** Main logic starts here **************

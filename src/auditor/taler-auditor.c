@@ -2088,7 +2088,7 @@ check_transaction_history_for_deposit (const struct
         {
           report_row_inconsistency ("deposits",
                                     tl->serial_id,
-                                    "h_wire does not match wire");
+                                    "h(wire) does not match wire");
         }
       }
       amount_with_fee = &tl->details.deposit->amount_with_fee;
@@ -2368,21 +2368,17 @@ wire_transfer_information_cb (void *cls,
       TALER_JSON_merchant_wire_signature_hash (account_details,
                                                &hw))
   {
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
                               rowid,
                               "failed to compute hash of given wire data");
-    return;
   }
-  if (0 !=
-      GNUNET_memcmp (&hw,
-                     h_wire))
+  else if (0 !=
+           GNUNET_memcmp (&hw,
+                          h_wire))
   {
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
                               rowid,
                               "database contains wrong hash code for wire details");
-    return;
   }
 
   /* Obtain coin's transaction history */
@@ -2514,16 +2510,7 @@ wire_transfer_information_cb (void *cls,
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
                               rowid,
-                              "wire method of aggregate do not match wire transfer");
-  }
-  if (0 != GNUNET_memcmp (h_wire,
-                          &wcc->h_wire))
-  {
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "account details of aggregate do not match account details of wire transfer");
-    return;
+                              "target of outgoing wire transfer do not match hash of wire from deposit");
   }
   if (exec_time.abs_value_us != wcc->date.abs_value_us)
   {
@@ -2533,18 +2520,22 @@ wire_transfer_information_cb (void *cls,
     report_row_inconsistency ("aggregation",
                               rowid,
                               "date given in aggregate does not match wire transfer date");
-    return;
   }
 
   /* Add coin's contribution to total aggregate value */
-  if (GNUNET_OK !=
-      TALER_amount_add (&wcc->total_deposits,
-                        &wcc->total_deposits,
-                        &coin_value_without_fee))
   {
-    GNUNET_break (0);
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return;
+    struct TALER_Amount res;
+
+    if (GNUNET_OK !=
+        TALER_amount_add (&res,
+                          &wcc->total_deposits,
+                          &coin_value_without_fee))
+    {
+      GNUNET_break (0);
+      wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      return;
+    }
+    wcc->total_deposits = res;
   }
 }
 
@@ -2732,16 +2723,17 @@ check_wire_out_cb
     GNUNET_free (method);
     return GNUNET_SYSERR;
   }
-
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != wcc.qs)
   {
-    /* FIXME: can we provide a more detailed error report? */
-    report_row_inconsistency ("wire_out",
-                              rowid,
-                              "audit of associated transactions failed");
-    GNUNET_free (method);
-    return GNUNET_OK;
+    /* Note: detailed information was already logged
+       in #wire_transfer_information_cb, so here we
+       only log for debugging */
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Inconsitency for wire_out %llu (WTID %s) detected\n",
+                (unsigned long long) rowid,
+                TALER_B2S (wtid));
   }
+
 
   /* Subtract aggregation fee from total (if possible) */
   {
@@ -5276,6 +5268,7 @@ run (void *cls,
                       /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
+                      /* Tested in test-auditor.sh #14/#15 */
                       "row_inconsistencies",
                       report_row_inconsistencies,
                       "denomination_key_validity_withdraw_inconsistencies",
