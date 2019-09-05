@@ -99,7 +99,6 @@ CREATE TABLE public.app_bankaccount (
 --
 
 CREATE SEQUENCE public.app_bankaccount_account_no_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -134,7 +133,6 @@ CREATE TABLE public.app_banktransaction (
 --
 
 CREATE SEQUENCE public.app_banktransaction_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -431,7 +429,6 @@ CREATE TABLE public.auth_group (
 --
 
 CREATE SEQUENCE public.auth_group_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -462,7 +459,6 @@ CREATE TABLE public.auth_group_permissions (
 --
 
 CREATE SEQUENCE public.auth_group_permissions_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -494,7 +490,6 @@ CREATE TABLE public.auth_permission (
 --
 
 CREATE SEQUENCE public.auth_permission_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -544,7 +539,6 @@ CREATE TABLE public.auth_user_groups (
 --
 
 CREATE SEQUENCE public.auth_user_groups_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -564,7 +558,6 @@ ALTER SEQUENCE public.auth_user_groups_id_seq OWNED BY public.auth_user_groups.i
 --
 
 CREATE SEQUENCE public.auth_user_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -595,7 +588,6 @@ CREATE TABLE public.auth_user_user_permissions (
 --
 
 CREATE SEQUENCE public.auth_user_user_permissions_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -630,7 +622,6 @@ CREATE TABLE public.channels (
 --
 
 CREATE SEQUENCE public.channels_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -815,7 +806,6 @@ CREATE TABLE public.django_content_type (
 --
 
 CREATE SEQUENCE public.django_content_type_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -847,7 +837,6 @@ CREATE TABLE public.django_migrations (
 --
 
 CREATE SEQUENCE public.django_migrations_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1500,7 +1489,6 @@ CREATE TABLE public.slaves (
 --
 
 CREATE SEQUENCE public.slaves_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
