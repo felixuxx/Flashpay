@@ -80,7 +80,7 @@ kill `jobs -p`
 
 # Dump database
 echo "Dumping database"
-pg_dump -O $TARGET_DB > auditor-basedb.sql
+pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > auditor-basedb.sql
 
 echo $MASTER_PUB > auditor-basedb.mpub
 
