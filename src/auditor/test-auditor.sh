@@ -36,11 +36,9 @@ function exit_fail() {
     exit 1
 }
 
-# Run audit process on current database, including report
-# generation.  Pass "aggregator" as $1 to run
-# $ taler-exchange-aggregator
-# before auditor (to trigger pending wire transfers).
-function run_audit () {
+
+# Operations to run before the actual audit
+function pre_audit () {
     # Launch bank
     echo -n "Launching bank "
     taler-bank-manage -c $CONF serve-http 2>bank.err >bank.log &
@@ -58,14 +56,21 @@ function run_audit () {
         taler-exchange-aggregator -t -c $CONF 2> aggregator.log
         echo " DONE"
     fi
+}
 
+# actual audit run
+function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
     taler-auditor -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
 
     taler-wire-auditor -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     echo " DONE"
+}
 
+
+# Cleanup to run after the auditor
+function post_audit () {
     kill `jobs -p` || true
 
     echo -n "TeXing ..."
@@ -74,6 +79,18 @@ function run_audit () {
     timeout 10 pdflatex test-report.tex >/dev/null || exit_fail "pdflatex failed"
     timeout 10 pdflatex test-report.tex >/dev/null
     echo "DONE"
+}
+
+
+# Run audit process on current database, including report
+# generation.  Pass "aggregator" as $1 to run
+# $ taler-exchange-aggregator
+# before auditor (to trigger pending wire transfers).
+function run_audit () {
+    pre_audit ${1:-no}
+    audit_only
+    post_audit
+
 }
 
 
@@ -87,7 +104,7 @@ full_reload()
 }
 
 
-test_0() {
+function test_0() {
 
 echo "===========0: normal run with aggregator==========="
 run_audit aggregator
@@ -153,7 +170,7 @@ echo "DONE"
 
 # Run without aggregator, hence auditor should detect wire
 # transfer lag!
-test_1() {
+function test_1() {
 
 echo "===========1: normal run==========="
 run_audit
@@ -213,7 +230,7 @@ echo "OK"
 
 
 # Change amount of wire transfer reported by exchange
-test_2() {
+function test_2() {
 
 echo "===========2: reserves_in inconsitency==========="
 echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
@@ -257,7 +274,7 @@ echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql 
 
 # Check for incoming wire transfer amount given being
 # lower than what exchange claims to have received.
-test_3() {
+function test_3() {
 
 echo "===========3: reserves_in inconsitency==========="
 echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
@@ -320,7 +337,7 @@ echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql 
 
 # Check for incoming wire transfer amount given being
 # lower than what exchange claims to have received.
-test_4() {
+function test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
@@ -362,7 +379,7 @@ echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=1" | psql -Aq
 
 # Test where h_contract_terms in the deposit table is wrong
 # (=> bad signature)
-test_5() {
+function test_5() {
 echo "===========5: deposit contract hash wrong================="
 # Modify h_wire hash, so it is inconsistent with 'wire'
 OLD_H=`echo 'SELECT h_contract_terms FROM deposits WHERE deposit_serial_id=1;'  | psql $DB -Aqt`
@@ -402,7 +419,7 @@ echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=1"
 
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature)
-test_6() {
+function test_6() {
 echo "===========6: known_coins signature wrong================="
 # Modify denom_sig, so it is wrong
 OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
@@ -443,7 +460,7 @@ echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | 
 
 
 # Test where h_wire in the deposit table is wrong
-test_7() {
+function test_7() {
 echo "===========7: reserves_out signature wrong================="
 # Modify reserve_sig, so it is bogus
 HBE=`echo 'SELECT h_blind_ev FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
@@ -494,7 +511,7 @@ echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | 
 
 
 # Test wire transfer subject disagreement!
-test_8() {
+function test_8() {
 
 echo "===========8: wire-transfer-subject disagreement==========="
 OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
@@ -564,7 +581,7 @@ echo "UPDATE app_banktransaction SET subject='$OLD_WTID' WHERE id='$OLD_ID';" | 
 
 
 # Test wire origin disagreement!
-test_9() {
+function test_9() {
 
 echo "===========9: wire-origin disagreement==========="
 OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
@@ -593,7 +610,7 @@ echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC;" | psql -Aqt $DB
 
 
 # Test wire_in timestamp disagreement!
-test_10() {
+function test_10() {
 
 echo "===========10: wire-timestamp disagreement==========="
 OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
@@ -622,7 +639,7 @@ echo "UPDATE app_banktransaction SET date='$OLD_DATE' WHERE id=$OLD_ID;" | psql 
 
 
 # Test for extra outgoing wire transfer.
-test_11() {
+function test_11() {
 
 echo "===========11: spurious outgoing transfer ==========="
 OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
@@ -672,7 +689,7 @@ echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id
 
 
 # Test for hanging/pending refresh.
-test_12() {
+function test_12() {
 
 echo "===========12: incomplete refresh ==========="
 OLD_ACC=`echo "DELETE FROM refresh_revealed_coins;" | psql $DB -Aqt`
@@ -703,7 +720,7 @@ echo "DONE"
 
 
 # Test for wrong signature on refresh.
-test_13() {
+function test_13() {
 
 echo "===========13: wrong melt signature ==========="
 # Modify denom_sig, so it is wrong
@@ -742,23 +759,36 @@ echo "DONE"
 }
 
 
-# FIXME: Test for wire fee disagreement
-test_98() {
+# Test for wire fee disagreement
+function test_14() {
 
-echo "===========11: wire-fee disagreement==========="
-echo "UPDATE wire_fee SET wire_fee_frac='100';" | psql -Aqt $DB
+echo "===========14: wire-fee disagreement==========="
+
 
 # Wire fees are only checked/generated once there are
 # actual outgoing wire transfers, so we need to run the
 # aggregator here.
-run_audit aggregator
+pre_audit aggregator
+echo "UPDATE wire_fee SET wire_fee_frac=100;" | psql -Aqt $DB
+audit_only
+post_audit
 
-# FIXME: needs new DB where aggregator does stuff!
-# FIXME: check report generation!
+echo -n "Testing inconsistency detection... "
+TABLE=`jq -r .row_inconsistencies[0].table < test-audit.json`
+if test "x$TABLE" != "xwire-fee"
+then
+    exit_fail "Reported table wrong: $TABLE"
+fi
+DIAG=`jq -r .row_inconsistencies[0].diagnostic < test-audit.json`
+if test "x$DIAG" != "xwire fee signature invalid at given time"
+then
+    exit_fail "Reported diagnostic wrong: $DIAG"
+fi
+echo PASS
 
 # cannot easily undo aggregator, hence full reload
 echo -n "Reloading database ..."
-full_reload
+# full_reload
 echo "DONE"
 
 }
