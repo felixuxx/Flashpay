@@ -274,16 +274,6 @@ confirmation_cb (void *cls,
                             5,
                             &history_result_cb,
                             NULL);
-
-  GNUNET_assert
-    (NULL != (hhr = plugin->get_history_range
-       (plugin->cls,
-        my_account,
-        TALER_BANK_DIRECTION_BOTH,
-        GNUNET_TIME_UNIT_ZERO_ABS,
-        GNUNET_TIME_UNIT_FOREVER_ABS,
-        &history_result_cb,
-        NULL)));
 }
 
 
