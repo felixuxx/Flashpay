@@ -54,6 +54,10 @@ qconv_amount_nbo (void *cls,
   const struct TALER_AmountNBO *amount = data;
   unsigned int off = 0;
 
+  (void) cls;
+  (void) scratch;
+  (void) scratch_length;
+  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
   GNUNET_assert (2 == param_length);
   param_values[off] = (void *) &amount->value;
   param_lengths[off] = sizeof (amount->value);
@@ -112,6 +116,11 @@ qconv_amount (void *cls,
   const struct TALER_Amount *amount_hbo = data;
   struct TALER_AmountNBO *amount;
 
+  (void) cls;
+  (void) scratch;
+  (void) scratch_length;
+  GNUNET_assert (2 == param_length);
+  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
   amount = GNUNET_new (struct TALER_AmountNBO);
   scratch[0] = amount;
   TALER_amount_hton (amount,
@@ -175,6 +184,10 @@ qconv_json (void *cls,
   const json_t *json = data;
   char *str;
 
+  (void) cls;
+  (void) data_len;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (scratch_length > 0);
   str = json_dumps (json, JSON_COMPACT);
   if (NULL == str)
     return -1;
@@ -230,6 +243,10 @@ qconv_round_time (void *cls,
   struct GNUNET_TIME_Absolute tmp;
   struct GNUNET_TIME_AbsoluteNBO *buf;
 
+  (void) cls;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
+  GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
   if (1 != param_length)
     return -1;
@@ -293,6 +310,11 @@ qconv_round_time_abs (void *cls,
   const struct GNUNET_TIME_AbsoluteNBO *at = data;
   struct GNUNET_TIME_Absolute tmp;
 
+  (void) cls;
+  (void) scratch;
+  (void) scratch_length;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
   GNUNET_break (NULL == cls);
   if (1 != param_length)
     return -1;

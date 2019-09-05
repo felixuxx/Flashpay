@@ -45,6 +45,8 @@ fatal_error_handler (void *cls,
                      int wtf,
                      const char *msg)
 {
+  (void) cls;
+  (void) wtf;
   fprintf (stderr,
            "Fatal error in libgcrypt: %s\n",
            msg);
