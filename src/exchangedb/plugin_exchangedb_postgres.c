@@ -7743,6 +7743,7 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
   struct PostgresClosure *pg = plugin->cls;
 
   GNUNET_free (pg->connection_cfg_str);
+  GNUNET_free (pg->currency);
   GNUNET_free (pg);
   GNUNET_free (plugin);
   return NULL;
