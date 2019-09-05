@@ -43,7 +43,7 @@ function exit_fail() {
 function run_audit () {
     # Launch bank
     echo -n "Launching bank "
-    taler-bank-manage -c test-auditor.conf serve-http 2>bank.err >bank.log &
+    taler-bank-manage -c $CONF serve-http 2>bank.err >bank.log &
     while true
     do
         echo -n "."
@@ -55,15 +55,15 @@ function run_audit () {
     if test ${1:-no} = "aggregator"
     then
         echo -n "Running exchange aggregator ..."
-        taler-exchange-aggregator -t -c test-auditor.conf
+        taler-exchange-aggregator -t -c $CONF 2> aggregator.log
         echo " DONE"
     fi
 
     # Run the auditor!
     echo -n "Running audit(s) ..."
-    taler-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
+    taler-auditor -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
 
-    taler-wire-auditor -r -c test-auditor.conf -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
+    taler-wire-auditor -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     echo " DONE"
 
     kill `jobs -p` || true
@@ -83,7 +83,7 @@ full_reload()
     dropdb $DB 2> /dev/null || true
     createdb -T template0 $DB || exit_skip "could not create database"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
-    psql -Aqt $DB -q -1 -f ../benchmark/auditor-basedb.sql > /dev/null
+    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null
 }
 
 
@@ -726,9 +726,20 @@ echo "DONE"
 
 # *************** Main logic starts here **************
 
-# Setup globals
+# ####### Setup globals ######
+# Postgres database to use
 DB=taler-auditor-test
-MASTER_PUB=`cat ../benchmark/auditor-basedb.mpub`
+# Prefix for the data resources to use
+BASEDB="../benchmark/auditor-basedb"
+MASTER_PUB=`cat ${BASEDB}.mpub`
+# Configuration file to use
+CONF=test-auditor.conf
+
+# Where to store wire fee details for aggregator
+WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
+mkdir -p $WIRE_FEE_DIR
+cp ${BASEDB}.fees $WIRE_FEE_DIR/x-taler-bank.fee
+
 
 # test required commands exist
 echo "Testing for jq"
@@ -754,8 +765,9 @@ do
 done
 
 
-echo "Cleanup"
+echo "Cleanup (disabled)"
 # dropdb $DB
+# rm -r $WIRE_FEE_DIR
 # rm -f test-audit.log test-wire-audit.log
 
 exit $fail
