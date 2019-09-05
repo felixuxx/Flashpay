@@ -53,21 +53,21 @@ taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
 # setup exchange
 echo "Setting up exchange"
 taler-exchange-dbinit -c $CONF
-taler-exchange-wire -c $CONF
-taler-exchange-keyup -c $CONF -o e2a.dat
+taler-exchange-wire -c $CONF 2> taler-exchange-wire.log
+taler-exchange-keyup -c $CONF -o e2a.dat 2> taler-exchange-keyup.log
 
 # setup auditor
 echo "Setting up auditor"
 taler-auditor-dbinit -c $CONF
-taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
+taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL 
 taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a.dat -o a2e.dat -m $MASTER_PUB
 
 # Launch services
 echo "Launching services"
 taler-bank-manage -c $CONF serve-http &
-taler-exchange-httpd -c $CONF &
-taler-merchant-httpd -c $CONF &
-taler-exchange-wirewatch -c $CONF &
+taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
+taler-merchant-httpd -c $CONF 2> taler-merchant-httpd.log &
+taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 
 sleep 10
 
@@ -83,6 +83,9 @@ echo "Dumping database"
 pg_dump $TARGET_DB > auditor-basedb.sql
 
 echo $MASTER_PUB > auditor-basedb.mpub
+
+WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
+cp $WIRE_FEE_DIR/x-taler-bank.fee auditor-basedb.fees
 
 # clean up
 echo "Final clean up"

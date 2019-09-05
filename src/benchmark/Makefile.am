@@ -41,4 +41,5 @@ EXTRA_DIST = \
   generate-auditor-basedb.conf \
   generate-auditor-basedb-template.conf \
   auditor-basedb.sql \
+  auditor-basedb.fees \
   auditor-basedb.mpub
