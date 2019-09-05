@@ -80,7 +80,7 @@ kill `jobs -p`
 
 # Dump database
 echo "Dumping database"
-pg_dump $TARGET_DB > auditor-basedb.sql
+pg_dump -O $TARGET_DB > auditor-basedb.sql
 
 echo $MASTER_PUB > auditor-basedb.mpub
 
