@@ -42,12 +42,18 @@ function pre_audit () {
     # Launch bank
     echo -n "Launching bank "
     taler-bank-manage -c $CONF serve-http 2>bank.err >bank.log &
-    while true
+    for n in `seq 1 20`
     do
         echo -n "."
-        wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null && break
         sleep 0.1
+        OK=1
+        wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null && break
+        OK=0
     done
+    if [ 1 != $OK ]
+    then
+        exit_skip "Failed to launch bank"
+    fi
     echo " DONE"
 
     if test ${1:-no} = "aggregator"
