@@ -1537,6 +1537,7 @@ verify_reserve_balance (void *cls,
   }
 
   /* Check that reserve is being closed if it is past its expiration date */
+  /* FIXME: need to consider closing_fee here! */
   if ( (CLOSING_GRACE_PERIOD.rel_value_us >
         GNUNET_TIME_absolute_get_duration (
           rs->a_expiration_date).rel_value_us) &&

@@ -754,7 +754,7 @@ then
 fi
 
 LOSS=`jq -er .bad_sig_losses[0].loss < test-audit.json`
-TOTAL_LOSS=`jq -e .total_bad_sig_loss < test-audit.json`
+TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit.json`
 if test x$LOSS != x$TOTAL_LOSS
 then
     exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
