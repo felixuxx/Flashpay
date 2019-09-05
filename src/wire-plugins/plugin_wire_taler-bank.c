@@ -1254,7 +1254,6 @@ libtaler_plugin_wire_taler_bank_init (void *cls)
   plugin->execute_wire_transfer_cancel =
     &taler_bank_execute_wire_transfer_cancel;
   plugin->get_history = &taler_bank_get_history;
-  plugin->get_history_range = &taler_bank_get_history_range;
   plugin->get_history_cancel = &taler_bank_get_history_cancel;
   plugin->reject_transfer = &taler_bank_reject_transfer;
   plugin->reject_transfer_cancel = &taler_bank_reject_transfer_cancel;
