@@ -861,11 +861,12 @@ coin as spent from {\tt /refresh/melt} but where the
 wallet did not yet complete {\tt /refresh/reveal}.  This
 may happen even if the exchange is correct.
 
+% Table generation tested by testcase #12 in test-auditor.sh
 
 {% if data.refresh_hanging|length() == 0 %}
   {\bf All melted coins were refreshed.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|c|r}
+  \begin{longtable}{p{6.5cm}|c|r}
   {\bf Key} & {\bf row} & {\bf Amount} \\
   \hline \hline
 \endfirsthead
@@ -882,9 +883,7 @@ may happen even if the exchange is correct.
   \label{table:refresh:hanging}
 \endlastfoot
 {% for item in data.refresh_hanging %}
-  \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
-\nopagebreak
-  &
+  \truncate{6.2cm}{ {\tt \small {{ item.coin_pub }} } } &
   {{ item.row }} &
   {{ item.amount }} \\ \hline
 {% endfor %}

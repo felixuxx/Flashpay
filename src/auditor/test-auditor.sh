@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 11`
+ALL_TESTS=`seq 0 13`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -95,9 +95,9 @@ run_audit aggregator
 echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
+jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
 echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo OK
+jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
 echo -n "Test for wire inconsistencies... "
 jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
@@ -111,7 +111,7 @@ jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit
 # FIXME: check operation balances are correct (once we have more transaction types)
 # FIXME: check revenue summaries are correct (once we have more transaction types)
 
-echo OK
+echo PASS
 
 echo -n "Test for wire amounts... "
 WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
@@ -161,9 +161,9 @@ run_audit
 echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo OK
+jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
 echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo OK
+jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
 echo -n "Test for wire inconsistencies... "
 jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
@@ -177,7 +177,7 @@ jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit
 # FIXME: check operation balances are correct (once we have more transaction types)
 # FIXME: check revenue summaries are correct (once we have more transaction types)
 
-echo OK
+echo PASS
 
 # FIXME: check wire transfer lag reported (no aggregator!)
 
@@ -220,7 +220,7 @@ echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -
 
 run_audit
 
-echo -n "Test for inconsistency detection... "
+echo -n "Testing inconsistency detection... "
 ROW=`jq .reserve_in_amount_inconsistencies[0].row < test-wire-audit.json`
 if test $ROW != 1
 then
@@ -247,7 +247,7 @@ if test $DELTA != "TESTKUDOS:5"
 then
     exit_fail "Expected total wire delta plus wrong, got $DELTA"
 fi
-echo OK
+echo PASS
 
 # Undo database modification
 echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
@@ -504,7 +504,7 @@ echo "UPDATE app_banktransaction SET subject='$NEW_WTID' WHERE id='$OLD_ID';" | 
 
 run_audit
 
-echo -n "Test for inconsistency detection... "
+echo -n "Testing inconsistency detection... "
 DIAG=`jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-wire-audit.json`
 if test "x$DIAG" != "xwire subject does not match"
 then
@@ -554,7 +554,7 @@ if test $DELTA != "TESTKUDOS:10"
 then
     exit_fail "Expected total wire delta plus wrong, got $DELTA"
 fi
-echo OK
+echo PASS
 
 # Undo database modification
 echo "UPDATE app_banktransaction SET subject='$OLD_WTID' WHERE id='$OLD_ID';" | psql -Aqt $DB
@@ -573,7 +573,7 @@ echo "UPDATE app_banktransaction SET debit_account_id=1;" | psql -Aqt $DB
 
 run_audit
 
-echo -n "Test for inconsistency detection... "
+echo -n "Testing inconsistency detection... "
 AMOUNT=`jq -r .missattribution_in_inconsistencies[0].amount < test-wire-audit.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
@@ -584,7 +584,7 @@ if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported total amount wrong: $AMOUNT"
 fi
-echo OK
+echo PASS
 
 # Undo database modification
 echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC;" | psql -Aqt $DB
@@ -602,7 +602,7 @@ echo "UPDATE app_banktransaction SET date=NOW() WHERE id=$OLD_ID;" | psql -Aqt $
 
 run_audit
 
-echo -n "Test for inconsistency detection... "
+echo -n "Testing inconsistency detection... "
 DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
 if test "x$DIAG" != "xexecution date missmatch"
 then
@@ -613,7 +613,7 @@ if test "x$TABLE" != "xreserves_in"
 then
     exit_fail "Reported table wrong: $TABLE"
 fi
-echo OK
+echo PASS
 
 # Undo database modification
 echo "UPDATE app_banktransaction SET date='$OLD_DATE' WHERE id=$OLD_ID;" | psql -Aqt $DB
@@ -636,7 +636,7 @@ echo "UPDATE app_banktransaction SET debit_account_id=2,credit_account_id=1 WHER
 
 run_audit
 
-echo -n "Test for inconsistency detection... "
+echo -n "Testing inconsistency detection... "
 AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
@@ -662,11 +662,83 @@ if test "x$DIAG" != "xjustification for wire transfer not found"
 then
     exit_fail "Reported diagnostic wrong: $DIAG"
 fi
-echo OK
+echo PASS
 
 # Undo database modification (exchange always has account #2)
 echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2 WHERE id=$OLD_ID;" | psql -Aqt $DB
 
+}
+
+
+
+# Test for hanging/pending refresh.
+test_12() {
+
+echo "===========12: incomplete refresh ==========="
+OLD_ACC=`echo "DELETE FROM refresh_revealed_coins;" | psql $DB -Aqt`
+
+run_audit
+
+echo -n "Testing hung refresh detection... "
+
+HANG=`jq -er .refresh_hanging[0].amount < test-audit.json`
+TOTAL_HANG=`jq -e .total_refresh_hanging < test-audit.json`
+if test x$HANG != x$TOTAL_HANG
+then
+    exit_fail "Hanging amount inconsistent, got $HANG and $TOTAL_HANG"
+fi
+if test x$TOTAL_HANG = TESTKUDOS:0
+then
+    exit_fail "Hanging amount zero"
+fi
+
+echo PASS
+
+
+# cannot easily undo DELETE, hence full reload
+echo -n "Reloading database ..."
+full_reload
+echo "DONE"
+}
+
+
+# Test for wrong signature on refresh.
+test_13() {
+
+echo "===========13: wrong melt signature ==========="
+# Modify denom_sig, so it is wrong
+COIN_PUB=`echo "SELECT old_coin_pub FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
+NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
+echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Testing inconsistency detection... "
+
+OP=`jq -er .bad_sig_losses[0].operation < test-audit.json`
+if test x$OP != xmelt
+then
+    exit_fail "Operation wrong, got $OP"
+fi
+
+LOSS=`jq -er .bad_sig_losses[0].loss < test-audit.json`
+TOTAL_LOSS=`jq -e .total_bad_sig_loss < test-audit.json`
+if test x$LOSS != x$TOTAL_LOSS
+then
+    exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
+fi
+if test x$TOTAL_LOSS = TESTKUDOS:0
+then
+    exit_fail "Loss zero"
+fi
+
+echo PASS
+
+# cannot easily undo DELETE, hence full reload
+echo -n "Reloading database ..."
+full_reload
+echo "DONE"
 }
 
 

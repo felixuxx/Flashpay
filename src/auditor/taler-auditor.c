@@ -5269,11 +5269,11 @@ run (void *cls,
                       TALER_JSON_from_amount (&total_wire_out_delta_plus),
                       "total_wire_out_delta_minus",
                       TALER_JSON_from_amount (&total_wire_out_delta_minus),
-                      /* Tested in test-auditor.sh #4/#5/#6/#7 */
+                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
                       "bad_sig_losses",
                       report_bad_sig_losses,
                       /* block */
-                      /* Tested in test-auditor.sh #4/#5/#6/#7 */
+                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
                       "row_inconsistencies",
@@ -5298,8 +5298,10 @@ run (void *cls,
                       /* block */
                       "wire_fee_time_inconsistencies",
                       report_fee_time_inconsistencies,
+                      /* Tested in test-auditor.sh #12 */
                       "total_refresh_hanging",
                       TALER_JSON_from_amount (&total_refresh_hanging),
+                      /* Tested in test-auditor.sh #12 */
                       "refresh_hanging",
                       report_refreshs_hanging,
                       "deposit_confirmation_inconsistencies",
