@@ -3554,7 +3554,9 @@ check_known_coin (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   TALER_amount_add (&total_bad_sig_loss,
                                     &total_bad_sig_loss,
                                     loss_potential));
+
   }
+  GNUNET_CRYPTO_rsa_signature_free (ci.denom_sig.rsa_signature);
   return qs;
 }
 
