@@ -2553,13 +2553,13 @@ wire_transfer_information_cb (void *cls,
  * Lookup the wire fee that the exchange charges at @a timestamp.
  *
  * @param ac context for caching the result
- * @param type type of the wire plugin
+ * @param method method of the wire plugin
  * @param timestamp time for which we need the fee
  * @return NULL on error (fee unknown)
  */
 static const struct TALER_Amount *
 get_wire_fee (struct AggregationContext *ac,
-              const char *type,
+              const char *method,
               struct GNUNET_TIME_Absolute timestamp)
 {
   struct WireFeeInfo *wfi;
@@ -2581,7 +2581,7 @@ get_wire_fee (struct AggregationContext *ac,
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       edb->get_wire_fee (edb->cls,
                          esession,
-                         type,
+                         method,
                          timestamp,
                          &wfi->start_date,
                          &wfi->end_date,
@@ -2594,33 +2594,32 @@ get_wire_fee (struct AggregationContext *ac,
     return NULL;
   }
 
-  /* Check signature (not terribly meaningful as the exchange can
-     easily make this one up, but it means that we have proof that
-     the master key was used for inconsistent wire fees if a
-     merchant complains. */
+  /* Check signature. (This is not terribly meaningful as the exchange can
+     easily make this one up, but it means that we have proof that the master
+     key was used for inconsistent wire fees if a merchant complains.) */
   {
-    struct TALER_MasterWireFeePS wp;
+    struct TALER_MasterWireFeePS wf;
 
-    wp.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES);
-    wp.purpose.size = htonl (sizeof (wp));
-    GNUNET_CRYPTO_hash (type,
-                        strlen (type) + 1,
-                        &wp.h_wire_method);
-    wp.start_date = GNUNET_TIME_absolute_hton (wfi->start_date);
-    wp.end_date = GNUNET_TIME_absolute_hton (wfi->end_date);
-    TALER_amount_hton (&wp.wire_fee,
+    wf.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES);
+    wf.purpose.size = htonl (sizeof (wf));
+    GNUNET_CRYPTO_hash (method,
+                        strlen (method) + 1,
+                        &wf.h_wire_method);
+    wf.start_date = GNUNET_TIME_absolute_hton (wfi->start_date);
+    wf.end_date = GNUNET_TIME_absolute_hton (wfi->end_date);
+    TALER_amount_hton (&wf.wire_fee,
                        &wfi->wire_fee);
-    TALER_amount_hton (&wp.closing_fee,
+    TALER_amount_hton (&wf.closing_fee,
                        &wfi->closing_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
-                                    &wp.purpose,
+                                    &wf.purpose,
                                     &master_sig.eddsa_signature,
                                     &master_pub.eddsa_pub))
     {
-      GNUNET_break (0);
-      GNUNET_free (wfi);
-      return NULL;
+      report_row_inconsistency ("wire-fee",
+                                timestamp.abs_value_us,
+                                "wire fee signature invalid at given time");
     }
   }
 
@@ -2645,7 +2644,7 @@ get_wire_fee (struct AggregationContext *ac,
   {
     report (report_fee_time_inconsistencies,
             json_pack ("{s:s, s:s, s:o}",
-                       "type", type,
+                       "type", method,
                        "diagnostic", "start date before previous end date",
                        "time", json_from_time_abs (wfi->start_date)));
   }
@@ -2654,7 +2653,7 @@ get_wire_fee (struct AggregationContext *ac,
   {
     report (report_fee_time_inconsistencies,
             json_pack ("{s:s, s:s, s:o}",
-                       "type", type,
+                       "type", method,
                        "diagnostic", "end date date after next start date",
                        "time", json_from_time_abs (wfi->end_date)));
   }
@@ -2686,7 +2685,6 @@ check_wire_out_cb
   struct AggregationContext *ac = cls;
   struct WireCheckContext wcc;
   struct TALER_WIRE_Plugin *plugin;
-  const struct TALER_Amount *wire_fee;
   struct TALER_Amount final_amount;
   struct TALER_Amount exchange_gain;
   enum GNUNET_DB_QueryStatus qs;
@@ -2745,32 +2743,35 @@ check_wire_out_cb
     return GNUNET_OK;
   }
 
-  /* Subtract aggregation fee from total */
-  wire_fee = get_wire_fee (ac,
-                           method,
-                           date);
-  if (NULL == wire_fee)
+  /* Subtract aggregation fee from total (if possible) */
   {
-    GNUNET_break (0);
-    ac->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    GNUNET_free (method);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&final_amount,
-                             &wcc.total_deposits,
-                             wire_fee))
-  {
+    const struct TALER_Amount *wire_fee;
 
-    report_amount_arithmetic_inconsistency
-      ("wire out (fee structure)",
-      rowid,
-      &wcc.total_deposits,
-      wire_fee,
-      -1);
-
-    GNUNET_free (method);
-    return GNUNET_OK;
+    wire_fee = get_wire_fee (ac,
+                             method,
+                             date);
+    if (NULL == wire_fee)
+    {
+      report_row_inconsistency ("wire-fee",
+                                date.abs_value_us,
+                                "wire fee unavailable for given time");
+      /* If fee is unknown, we just assume the fee is zero */
+      final_amount = wcc.total_deposits;
+    }
+    else if (GNUNET_SYSERR ==
+             TALER_amount_subtract (&final_amount,
+                                    &wcc.total_deposits,
+                                    wire_fee))
+    {
+      report_amount_arithmetic_inconsistency
+        ("wire out (fee structure)",
+        rowid,
+        &wcc.total_deposits,
+        wire_fee,
+        -1);
+      /* If fee arithmetic fails, we just assume the fee is zero */
+      final_amount = wcc.total_deposits;
+    }
   }
 
   /* Round down to amount supported by wire method */
