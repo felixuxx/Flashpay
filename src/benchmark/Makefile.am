@@ -36,10 +36,5 @@ EXTRA_DIST = \
   merchant_details.json \
   test_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_benchmark_home/.config/taler/test.json \
-  test_benchmark_home/.config/taler/sepa.json \
-  generate-auditor-basedb.sh \
-  generate-auditor-basedb.conf \
-  generate-auditor-basedb-template.conf \
-  auditor-basedb.sql \
-  auditor-basedb.fees \
-  auditor-basedb.mpub
+  test_benchmark_home/.config/taler/sepa.json 
+

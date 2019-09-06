@@ -70,7 +70,13 @@ function audit_only () {
     echo -n "Running audit(s) ..."
     taler-auditor -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
     echo -n "."
+    # Also do incremental run
+    taler-auditor -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
+    echo -n "."
     taler-wire-auditor -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
+    # Also do incremental run
+    echo -n "."
+    taler-wire-auditor -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
     echo " DONE"
 }
 
@@ -210,7 +216,7 @@ echo -n "Check for lag detection... "
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
 # taler-wire-auditor.c)
-AGE=`stat -c %Y ../benchmark/auditor-basedb.fees`
+AGE=`stat -c %Y ${BASEDB}.fees`
 NOW=`date +%s`
 DELTA=`expr $NOW - $AGE`
 if [ $DELTA -gt 3600 ]
@@ -994,7 +1000,7 @@ echo "UPDATE app_banktransaction SET date='${OLD_DATE}' WHERE id='${OLD_ID}';" |
 # Postgres database to use
 DB=taler-auditor-test
 # Prefix for the data resources to use
-BASEDB="../benchmark/auditor-basedb"
+BASEDB="auditor-basedb"
 MASTER_PUB=`cat ${BASEDB}.mpub`
 # Configuration file to use
 CONF=test-auditor.conf
