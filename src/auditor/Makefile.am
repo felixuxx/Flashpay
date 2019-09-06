@@ -105,4 +105,10 @@ TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \
   auditor.conf \
-  $(check_SCRIPTS)
+  generate-auditor-basedb.sh \
+  generate-auditor-basedb.conf \
+  generate-auditor-basedb-template.conf \
+  $(check_SCRIPTS) \
+  auditor-basedb.sql \
+  auditor-basedb.fees \
+  auditor-basedb.mpub
