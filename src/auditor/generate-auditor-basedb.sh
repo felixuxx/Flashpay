@@ -11,15 +11,38 @@
 #
 set -eu
 
-# Configuation file will be edited, so we create one
-# from the template.
-CONF=generate-auditor-basedb-prod.conf
-cp generate-auditor-basedb-template.conf $CONF
+# Exit, with status code "skip" (no 'real' failure)
+function exit_skip() {
+    echo $1
+    exit 77
+}
+
+# Where do we write the result?
+BASEDB=${1:-"auditor-basedb"}
 
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
 TARGET_DB=taler-auditor-basedb
+
+# FIXME: try to generate DB from scratch, fall back
+# to pre-generated DB if generate-auditor-basedb.sh
+# fails with status code 77!
+
+# Configuation file will be edited, so we create one
+# from the template.
+CONF=generate-auditor-basedb-prod.conf
+cp generate-auditor-basedb-template.conf $CONF
+
+
+echo -n "Testing for taler-bank-manage"
+taler-bank-manage -h >/dev/null </dev/null || exit_skip " MISSING"
+echo " FOUND"
+echo "Testing for taler-wallet-cli"
+taler-wallet-cli -h >/dev/null </dev/null || exit_skip " MISSING"
+echo " FOUND"
+
+
 
 # Clean up
 DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
@@ -27,7 +50,7 @@ rm -rf $DATA_DIR || true
 
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
-createdb $TARGET_DB
+createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
 # obtain key configuration data
 MASTER_PRIV_FILE=`taler-config -f -c $CONF -s EXCHANGE -o MASTER_PRIV_FILE`
@@ -69,6 +92,10 @@ taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 
+
+# FIXME: also launch taler-auditor-httpd!
+
+# FIXME: interactive test here instead of waiting!
 sleep 10
 
 # run wallet CLI
@@ -80,12 +107,12 @@ kill `jobs -p`
 
 # Dump database
 echo "Dumping database"
-pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > auditor-basedb.sql
+pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
 
-echo $MASTER_PUB > auditor-basedb.mpub
+echo $MASTER_PUB > ${BASEDB}.mpub
 
 WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
-cp $WIRE_FEE_DIR/x-taler-bank.fee auditor-basedb.fees
+cp $WIRE_FEE_DIR/x-taler-bank.fee ${BASEDB}.fees
 
 # clean up
 echo "Final clean up"
