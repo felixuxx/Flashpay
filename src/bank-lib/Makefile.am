@@ -172,8 +172,18 @@ test_bank_api_with_fakebank_LDADD = \
   -lgnunetutil \
   -ljansson
 
+test_bank_api_new2_SOURCES = \
+  test_bank_api_new2.c
+
+test_bank_api_new2_LDADD = \
+  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalerbanktesting.la \
+  -ltalerexchange \
+  -lgnunetutil \
+  libtalerbank.la
+
 test_bank_api_with_fakebank_new_SOURCES = \
-  test_bank_api_with_fakebank_new.c
+  test_bank_api_new2.c
 
 test_bank_api_with_fakebank_new_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
