@@ -98,7 +98,8 @@ check_PROGRAMS = \
   test_bank_api \
   test_bank_api_new \
   test_bank_api_with_fakebank \
-  test_bank_api_with_fakebank_new
+  test_bank_api_with_fakebank_new \
+  test_bank_api_with_pybank_new
 
 if HAVE_TWISTER
 check_PROGRAMS += \
@@ -172,10 +173,10 @@ test_bank_api_with_fakebank_LDADD = \
   -lgnunetutil \
   -ljansson
 
-test_bank_api_new2_SOURCES = \
-  test_bank_api_new2.c
+test_bank_api_with_pybank_new_SOURCES = \
+  test_bank_api_NEW.c
 
-test_bank_api_new2_LDADD = \
+test_bank_api_with_pybank_new_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbanktesting.la \
   -ltalerexchange \
@@ -183,7 +184,7 @@ test_bank_api_new2_LDADD = \
   libtalerbank.la
 
 test_bank_api_with_fakebank_new_SOURCES = \
-  test_bank_api_new2.c
+  test_bank_api_NEW.c
 
 test_bank_api_with_fakebank_new_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
