@@ -83,6 +83,36 @@ TALER_TESTING_run_fakebank (const char *bank_url)
   return fakebankd;
 }
 
+
+/**
+ * Look for substring in a programs' name.
+ *
+ * @param prog program's name to look into
+ * @param marker chunk to find in @a prog
+ */
+int
+TALER_TESTING_has_in_name (const char *prog_name,
+                           const char *marker)
+{
+  size_t name_pos;
+  size_t pos;
+
+  if (!prog_name || !marker)
+    return GNUNET_NO;
+
+  pos = 0;
+  name_pos = 0;
+  while (prog_name[pos])
+  {
+    if ('/' == prog_name[pos])
+      name_pos = pos + 1;
+    pos++;
+  }
+  if (name_pos == pos)
+    return GNUNET_YES;
+  return strstr(prog_name + name_pos, marker) != NULL;
+}
+
 /**
  * Start the (Python) bank process.  Assume the port
  * is available and the database is clean.  Use the "prepare

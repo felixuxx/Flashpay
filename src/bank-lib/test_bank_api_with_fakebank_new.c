@@ -40,11 +40,21 @@
 
 #define CONFIG_FILE "bank.conf"
 
-
 /**
  * Fakebank URL.
  */
-char *fakebank_url;
+static char *bank_url;
+
+/**
+ * Handle to the Py-bank daemon.
+ */
+static struct GNUNET_OS_Process *bankd;
+
+/**
+ * Flag indicating whether the test is running against the
+ * Fakebank.  Set up at runtime.
+ */
+static int WITH_FAKEBANK;
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -57,14 +67,14 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Fakebank serves at `%s'\n",
-              fakebank_url);
+              "Bank serves at `%s'\n",
+              bank_url);
   extern struct TALER_BANK_AuthenticationData AUTHS[];
 
   struct TALER_TESTING_Command commands[] = {
 
     TALER_TESTING_cmd_bank_history ("history-0",
-                                    fakebank_url,
+                                    bank_url,
                                     BANK_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_YES,
@@ -76,17 +86,17 @@ run (void *cls,
      * the parameters, although it was always set as '200 OK' */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("debit-1",
-      "KUDOS:5.01",
-      fakebank_url,
-      EXCHANGE_ACCOUNT_NUMBER,
-      BANK_ACCOUNT_NUMBER,
-      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
-      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
-      "subject 1",
-      "http://exchange.com/"),
+       "KUDOS:5.01",
+       bank_url,
+       EXCHANGE_ACCOUNT_NUMBER,
+       BANK_ACCOUNT_NUMBER,
+       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
+       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
+       "subject 1",
+       "http://exchange.com/"),
 
     TALER_TESTING_cmd_bank_history ("history-1c",
-                                    fakebank_url,
+                                    bank_url,
                                     BANK_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_CREDIT,
                                     GNUNET_YES,
@@ -94,7 +104,7 @@ run (void *cls,
                                     5),
 
     TALER_TESTING_cmd_bank_history ("history-1d",
-                                    fakebank_url,
+                                    bank_url,
                                     BANK_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_DEBIT,
                                     GNUNET_YES,
@@ -103,28 +113,28 @@ run (void *cls,
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("debit-2",
-      "KUDOS:3.21",
-      fakebank_url,
-      EXCHANGE_ACCOUNT_NUMBER,  // debit account.
-      USER_ACCOUNT_NUMBER,
-      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
-      AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
-      "subject 2",
-      "http://exchange.org/"),
+       "KUDOS:3.21",
+       bank_url,
+       EXCHANGE_ACCOUNT_NUMBER,  // debit account.
+       USER_ACCOUNT_NUMBER,
+       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
+       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
+       "subject 2",
+       "http://exchange.org/"),
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("credit-2",
-      "KUDOS:3.22",
-      fakebank_url,
-      USER_ACCOUNT_NUMBER,  // debit account.
-      EXCHANGE_ACCOUNT_NUMBER,
-      AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.username,
-      AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.password,
-      "credit 2",
-      "http://exchange.org/"),
+       "KUDOS:3.22",
+       bank_url,
+       USER_ACCOUNT_NUMBER,  // debit account.
+       EXCHANGE_ACCOUNT_NUMBER,
+       AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.username,
+       AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.password,
+       "credit 2",
+       "http://exchange.org/"),
 
     TALER_TESTING_cmd_bank_history ("history-2b",
-                                    fakebank_url,
+                                    bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_YES,
@@ -132,7 +142,7 @@ run (void *cls,
                                     5),
 
     TALER_TESTING_cmd_bank_history ("history-2bi",
-                                    fakebank_url,
+                                    bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_YES,
@@ -152,21 +162,21 @@ run (void *cls,
 
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("credit-for-reject-1",
-      "KUDOS:5.01",
-      fakebank_url,
-      BANK_ACCOUNT_NUMBER,
-      EXCHANGE_ACCOUNT_NUMBER,
-      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.username,
-      AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.password,
-      "subject 3",
-      "http://exchange.net/"),
+       "KUDOS:5.01",
+       bank_url,
+       BANK_ACCOUNT_NUMBER,
+       EXCHANGE_ACCOUNT_NUMBER,
+       AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.username,
+       AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.password,
+       "subject 3",
+       "http://exchange.net/"),
 
     TALER_TESTING_cmd_bank_reject ("reject-1",
-                                   fakebank_url,
+                                   bank_url,
                                    "credit-for-reject-1"),
 
     TALER_TESTING_cmd_bank_history ("history-r1",
-                                    fakebank_url,
+                                    bank_url,
                                     BANK_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH,
                                     GNUNET_YES,
@@ -174,7 +184,7 @@ run (void *cls,
                                     5),
 
     TALER_TESTING_cmd_bank_history ("history-r1c",
-                                    fakebank_url,
+                                    bank_url,
                                     BANK_ACCOUNT_NUMBER,
                                     TALER_BANK_DIRECTION_BOTH
                                     | TALER_BANK_DIRECTION_CANCEL,
@@ -184,7 +194,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_check_bank_transfer_with_ref
       ("expect-credit-reject-1",
-      "credit-for-reject-1"),
+       "credit-for-reject-1"),
 
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-2"),
 
@@ -195,31 +205,76 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  TALER_TESTING_run_with_fakebank (is,
-                                   commands,
-                                   fakebank_url);
+  if (GNUNET_YES == WITH_FAKEBANK)
+    TALER_TESTING_run_with_fakebank (is,
+                                     commands,
+                                     bank_url);
+  else
+    TALER_TESTING_run (is,
+                       commands);
 }
 
 int
 main (int argc,
       char *const *argv)
 {
+  int rv;
+
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-bank-api-with-fakebank-new",
                     "DEBUG",
                     NULL);
-  if (NULL ==
-      (fakebank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                                      "account-1")))
-    return 77;
 
-  return (GNUNET_OK == TALER_TESTING_setup (&run,
-                                            NULL,
-                                            CONFIG_FILE,
-                                            NULL,
-                                            GNUNET_NO)) ? 0 : 1;
+  WITH_FAKEBANK = TALER_TESTING_has_in_name (argv[0],
+                                             "_with_fakebank");
+
+  if (GNUNET_YES == WITH_FAKEBANK)
+  {
+    TALER_LOG_DEBUG ("Running against the Fakebank.\n");
+    if (NULL == (bank_url = TALER_TESTING_prepare_fakebank
+        (CONFIG_FILE,
+         "account-1")))
+    {
+      GNUNET_break (0);
+      return 77;
+    }
+  }
+  else
+  {
+    if (NULL == (bank_url = TALER_TESTING_prepare_bank
+        (CONFIG_FILE)))
+    {
+      GNUNET_break (0);
+      return 77;
+    }
+
+    if (NULL == (bankd = TALER_TESTING_run_bank
+        (CONFIG_FILE,
+         bank_url)))
+    {
+      GNUNET_break (0);
+      return 77;
+    }
+  }
+
+  rv = (GNUNET_OK == TALER_TESTING_setup (&run,
+                                          NULL,
+                                          CONFIG_FILE,
+                                          NULL,
+                                          GNUNET_NO)) ? 0 : 1;
+  if (GNUNET_NO == WITH_FAKEBANK)
+  {
+
+    GNUNET_OS_process_kill (bankd,
+                            SIGKILL);
+    GNUNET_OS_process_wait (bankd);
+    GNUNET_OS_process_destroy (bankd);
+    GNUNET_free (bank_url);
+  }
+  
+  return rv;
 }
 
 

@@ -91,6 +91,16 @@ char *
 TALER_TESTING_prepare_bank (const char *config_filename);
 
 
+/**
+ * Look for substring in a programs' name.
+ *
+ * @param prog program's name to look into
+ * @param marker chunk to find in @a prog
+ */
+int
+TALER_TESTING_has_in_name (const char *prog,
+                           const char *marker);
+
 /* ************** Specific interpreter commands ************ */
 
 /**
