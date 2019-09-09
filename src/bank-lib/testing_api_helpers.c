@@ -26,6 +26,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_testing_bank_lib.h"
+#include "taler_fakebank_lib.h"
 
 /* Keep each bank account credentials at index:
  * bank account number - 1 */
@@ -46,6 +47,41 @@ struct TALER_BANK_AuthenticationData AUTHS[] = {
    .details.basic.username = USER_USERNAME,
    .details.basic.password = USER_PASSWORD }
 };
+
+
+/**
+ * Runs the Fakebank by guessing / extracting the portnumber
+ * from the base URL.
+ *
+ * @param bank_url bank's base URL.
+ * @return the fakebank process handle, or NULL if any
+ *         error occurs.
+ */
+struct TALER_FAKEBANK_Handle *
+TALER_TESTING_run_fakebank (const char *bank_url)
+{
+  const char *port;
+  long pnum;
+  struct TALER_FAKEBANK_Handle *fakebankd;
+
+  port = strrchr (bank_url,
+                  (unsigned char) ':');
+  if (NULL == port)
+    pnum = 80;
+  else
+    pnum = strtol (port + 1, NULL, 10);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting Fakebank on port %u (%s)\n",
+              (unsigned int) pnum,
+              bank_url);
+  fakebankd = TALER_FAKEBANK_start ((uint16_t) pnum);
+  if (NULL == fakebankd)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  return fakebankd;
+}
 
 /**
  * Start the (Python) bank process.  Assume the port

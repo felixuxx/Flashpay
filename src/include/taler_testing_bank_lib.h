@@ -68,6 +68,17 @@ TALER_TESTING_run_bank (const char *config_filename,
                         const char *bank_url);
 
 /**
+ * Runs the Fakebank by guessing / extracting the portnumber
+ * from the base URL.
+ *
+ * @param bank_url bank's base URL.
+ * @return the fakebank process handle, or NULL if any
+ *         error occurs.
+ */
+struct TALER_FAKEBANK_Handle *
+TALER_TESTING_run_fakebank (const char *bank_url);
+
+/**
  * Prepare the bank execution.  Check if the port is available
  * and reset database.
  *
