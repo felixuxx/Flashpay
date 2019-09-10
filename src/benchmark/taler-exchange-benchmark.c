@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014-2018 Taler Systems SA
+  (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU Affero General Public License as
@@ -250,6 +250,7 @@ run (void *cls,
   char *AMOUNT_4;
   char *AMOUNT_1;
 
+  (void) cls;
   GNUNET_asprintf (&AMOUNT_5, "%s:5", currency);
   GNUNET_asprintf (&AMOUNT_4, "%s:4", currency);
   GNUNET_asprintf (&AMOUNT_1, "%s:1", currency);
@@ -602,8 +603,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                           logfile);
 
         result = TALER_TESTING_setup
-                   (run,
-                   NULL,
+                   (main_cb,
+                   main_cb_cls,
                    cfg_filename,
                    exchanged,
                    GNUNET_YES);
