@@ -43,6 +43,11 @@
 #define CONFIG_FILE "bank_twisted.conf"
 
 /**
+ * True when the test runs against Fakebank.
+ */
+static int WITH_FAKEBANK;
+
+/**
  * (real) Twister URL.  Used at startup time to check if it runs.
  */
 static char *twister_url;
@@ -56,12 +61,17 @@ static char *twister_url;
 /**
  * URL of the bank.
  */
-static char *fakebank_url;
+static char *bank_url;
 
 /**
  * Twister process.
  */
 static struct GNUNET_OS_Process *twisterd;
+
+/**
+ * Python bank process handle.
+ */
+static struct GNUNET_OS_Process *bankd;
 
 /**
  * Main function that will tell
@@ -93,9 +103,13 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  TALER_TESTING_run_with_fakebank (is,
-                                   commands,
-                                   fakebank_url);
+  if (GNUNET_YES == WITH_FAKEBANK)
+    TALER_TESTING_run_with_fakebank (is,
+                                     commands,
+                                     bank_url);
+  else
+    TALER_TESTING_run (is,
+                       commands);
 }
 
 
@@ -123,35 +137,78 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
 
-  GNUNET_log_setup ("test-bank-api-with-fakebank-twisted",
+  GNUNET_log_setup ("test-bank-api-with-(fake)bank-twisted",
                     "DEBUG",
                     NULL);
-
-  if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
-                                (CONFIG_FILE,
-                                "account-1")))
-    return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
                                (CONFIG_FILE)))
   {
-    GNUNET_free (fakebank_url);
+    GNUNET_break (0);
     return 77;
   }
   if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
   {
+    GNUNET_break (0);
     GNUNET_free (twister_url);
-    GNUNET_free (fakebank_url);
     return 77;
   }
+
+  WITH_FAKEBANK = TALER_TESTING_has_in_name (argv[0],
+                                             "_with_fakebank");
+
+  if (GNUNET_YES == WITH_FAKEBANK)
+  {
+    TALER_LOG_DEBUG ("Running against the Fakebank.\n");
+    if (NULL == (bank_url = TALER_TESTING_prepare_fakebank
+        (CONFIG_FILE,
+         "account-1")))
+    {
+      GNUNET_break (0);
+      GNUNET_free (twister_url);
+      return 77;
+    }
+  }
+  else
+  {
+    TALER_LOG_DEBUG ("Running against the Pybank.\n");
+    if (NULL == (bank_url = TALER_TESTING_prepare_bank
+        (CONFIG_FILE)))
+    {
+      GNUNET_break (0);
+      GNUNET_free (twister_url);
+      return 77;
+    }
+
+    if (NULL == (bankd = TALER_TESTING_run_bank
+        (CONFIG_FILE,
+         bank_url)))
+    {
+      GNUNET_break (0);
+      GNUNET_free (twister_url);
+      GNUNET_free (bank_url);
+      return 77;
+    }
+  }
+
   ret = TALER_TESTING_setup (&run,
                              NULL,
                              CONFIG_FILE,
                              NULL,
                              GNUNET_NO);
   purge_process (twisterd);
+
+  if (GNUNET_NO == WITH_FAKEBANK)
+  {
+    GNUNET_OS_process_kill (bankd,
+                            SIGKILL);
+    GNUNET_OS_process_wait (bankd);
+    GNUNET_OS_process_destroy (bankd);
+    GNUNET_free (bank_url);
+  }
+
   GNUNET_free (twister_url);
-  GNUNET_free (fakebank_url);
+  GNUNET_free (bank_url);
 
   if (GNUNET_OK == ret)
     return 0;

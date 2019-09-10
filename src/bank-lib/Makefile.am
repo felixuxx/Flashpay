@@ -103,11 +103,28 @@ check_PROGRAMS = \
 
 if HAVE_TWISTER
 check_PROGRAMS += \
-  test_bank_api_twisted \
+  test_bank_api_with_pybank_twisted \
   test_bank_api_with_fakebank_twisted
 
+
+test_bank_api_with_pybank_twisted_SOURCES = \
+  test_bank_api_twisted_NEW.c
+test_bank_api_with_pybank_twisted_LDADD = \
+  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalerbank.la \
+  libtalerbanktesting.la \
+  libtalerfakebank.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  -ltalertwistertesting \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+
 test_bank_api_with_fakebank_twisted_SOURCES = \
-  test_bank_api_with_fakebank_twisted.c
+  test_bank_api_twisted_NEW.c
 test_bank_api_with_fakebank_twisted_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbank.la \
@@ -121,21 +138,6 @@ test_bank_api_with_fakebank_twisted_LDADD = \
   -lgnunetutil \
   -ljansson
 endif
-
-test_bank_api_twisted_SOURCES = \
-  test_bank_api_twisted.c
-test_bank_api_twisted_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
-  libtalerbank.la \
-  libtalerbanktesting.la \
-  libtalerfakebank.la \
-  $(top_builddir)/src/lib/libtalerexchange.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  -ltalertwistertesting \
-  -lgnunetjson \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
 
 TESTS = \
   $(check_PROGRAMS)
