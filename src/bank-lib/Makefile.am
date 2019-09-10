@@ -96,7 +96,6 @@ endif
 
 check_PROGRAMS = \
   test_bank_api \
-  test_bank_api_new \
   test_bank_api_with_fakebank \
   test_bank_api_with_fakebank_new \
   test_bank_api_with_pybank_new
@@ -108,7 +107,7 @@ check_PROGRAMS += \
 
 
 test_bank_api_with_pybank_twisted_SOURCES = \
-  test_bank_api_twisted_new.c
+  test_bank_api_twisted.c
 test_bank_api_with_pybank_twisted_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbank.la \
@@ -124,7 +123,7 @@ test_bank_api_with_pybank_twisted_LDADD = \
 
 
 test_bank_api_with_fakebank_twisted_SOURCES = \
-  test_bank_api_twisted_new.c
+  test_bank_api_twisted.c
 test_bank_api_with_fakebank_twisted_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbank.la \
