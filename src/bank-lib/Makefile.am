@@ -108,7 +108,7 @@ check_PROGRAMS += \
 
 
 test_bank_api_with_pybank_twisted_SOURCES = \
-  test_bank_api_twisted_NEW.c
+  test_bank_api_twisted_new.c
 test_bank_api_with_pybank_twisted_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbank.la \
@@ -124,7 +124,7 @@ test_bank_api_with_pybank_twisted_LDADD = \
 
 
 test_bank_api_with_fakebank_twisted_SOURCES = \
-  test_bank_api_twisted_NEW.c
+  test_bank_api_twisted_new.c
 test_bank_api_with_fakebank_twisted_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbank.la \
@@ -153,17 +153,6 @@ test_bank_api_LDADD = \
   -lgnunetutil \
   -ljansson
 
-test_bank_api_new_SOURCES = \
-  test_bank_api_new.c
-
-test_bank_api_new_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  libtalerbanktesting.la \
-  -ltalerexchange \
-  -lgnunetutil \
-  libtalerbank.la
-
 test_bank_api_with_fakebank_SOURCES = \
   test_bank_interpreter.c test_bank_interpreter.h \
   test_bank_api_with_fakebank.c
@@ -176,7 +165,7 @@ test_bank_api_with_fakebank_LDADD = \
   -ljansson
 
 test_bank_api_with_pybank_new_SOURCES = \
-  test_bank_api_NEW.c
+  test_bank_api_new.c
 
 test_bank_api_with_pybank_new_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
@@ -186,7 +175,7 @@ test_bank_api_with_pybank_new_LDADD = \
   libtalerbank.la
 
 test_bank_api_with_fakebank_new_SOURCES = \
-  test_bank_api_NEW.c
+  test_bank_api_new.c
 
 test_bank_api_with_fakebank_new_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
