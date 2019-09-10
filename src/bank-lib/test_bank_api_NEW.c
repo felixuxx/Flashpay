@@ -81,7 +81,6 @@ run (void *cls,
                                     NULL,
                                     1),
 
-
     /* WARNING: old API has expected http response code among
      * the parameters, although it was always set as '200 OK' */
     TALER_TESTING_cmd_fakebank_transfer_with_subject
@@ -149,20 +148,9 @@ run (void *cls,
                                     "debit-1",
                                     5),
 
-    TALER_TESTING_cmd_check_bank_transfer_with_ref ("expect-2d",
-                                                    "credit-2"),
-
-    TALER_TESTING_cmd_check_bank_transfer_with_ref ("expect-2c",
-                                                    "debit-2"),
-
-    TALER_TESTING_cmd_check_bank_transfer_with_ref ("expect-1",
-                                                    "debit-1"),
-
-    TALER_TESTING_cmd_check_bank_empty ("expect-empty"),
-
     TALER_TESTING_cmd_fakebank_transfer_with_subject
       ("credit-for-reject-1",
-       "KUDOS:5.01",
+       "KUDOS:1.01",
        bank_url,
        BANK_ACCOUNT_NUMBER,
        EXCHANGE_ACCOUNT_NUMBER,
@@ -192,12 +180,6 @@ run (void *cls,
                                     NULL,
                                     5),
 
-    TALER_TESTING_cmd_check_bank_transfer_with_ref
-      ("expect-credit-reject-1",
-       "credit-for-reject-1"),
-
-    TALER_TESTING_cmd_check_bank_empty ("expect-empty-2"),
-
     /**
      * End the suite.  Fixme: better to have a label for this
      * too, as it shows a "(null)" token on logs.
@@ -219,17 +201,15 @@ main (int argc,
       char *const *argv)
 {
   int rv;
-
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-bank-api-with-fakebank-new",
+  GNUNET_log_setup ("test-bank-api-with-(fake)bank-new",
                     "DEBUG",
                     NULL);
 
   WITH_FAKEBANK = TALER_TESTING_has_in_name (argv[0],
                                              "_with_fakebank");
-
   if (GNUNET_YES == WITH_FAKEBANK)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
@@ -243,6 +223,7 @@ main (int argc,
   }
   else
   {
+    TALER_LOG_DEBUG ("Running against the Pybank.\n");
     if (NULL == (bank_url = TALER_TESTING_prepare_bank
         (CONFIG_FILE)))
     {

@@ -42,8 +42,8 @@
 #define EXCHANGE_USERNAME "Exchange"
 #define EXCHANGE_PASSWORD "x"
 #define USER_ACCOUNT_NUMBER 3
-#define USER_USERNAME "user3"
-#define USER_PASSWORD "pass3"
+#define USER_USERNAME "Tor"
+#define USER_PASSWORD "x"
 
 
 /* ********************* Helper functions ********************* */
