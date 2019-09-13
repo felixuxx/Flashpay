@@ -120,7 +120,7 @@ set_amount (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
       TALER_string_to_amount (value,
                               amount))
   {
-    FPRINTF (stderr,
+    fprintf (stderr,
              _ ("Failed to parse amount in option `%s'\n"),
              option);
     return GNUNET_SYSERR;

@@ -120,7 +120,7 @@ main (int argc,
   {
     if (NULL == exchange_url)
     {
-      FPRINTF (stderr,
+      fprintf (stderr,
                _ ("Missing either `%s' or `%s'.\n"),
                "-u URL",
                "--remove");
