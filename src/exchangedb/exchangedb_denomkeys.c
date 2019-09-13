@@ -164,7 +164,7 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
         (GNUNET_TIME_absolute_ntoh (
           dki->issue.properties.expire_withdraw)).rel_value_us)
   {
-    if (0 != UNLINK (filename))
+    if (0 != unlink (filename))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                                 "unlink",

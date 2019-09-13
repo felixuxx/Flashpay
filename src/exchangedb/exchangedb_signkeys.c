@@ -78,7 +78,7 @@ signkeys_iterate_dir_iter (void *cls,
   if (0 == GNUNET_TIME_absolute_get_remaining
         (GNUNET_TIME_absolute_ntoh (issue.issue.expire)).rel_value_us)
   {
-    if (0 != UNLINK (filename))
+    if (0 != unlink (filename))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                                 "unlink",
