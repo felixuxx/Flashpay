@@ -882,7 +882,7 @@ exchange_keys_update_cointype (void *cls,
       fprintf (stderr,
                "Failed to write denomination key information to %s: %s\n",
                auditorrequestfile,
-               STRERROR (errno));
+               strerror (errno));
       *ret = GNUNET_SYSERR;
       GNUNET_CRYPTO_rsa_private_key_free (
         denomkey_issue.denom_priv.rsa_private_key);
@@ -1321,14 +1321,14 @@ run (void *cls,
   }
   if (NULL != auditorrequestfile)
   {
-    auditor_output_file = FOPEN (auditorrequestfile,
+    auditor_output_file = fopen (auditorrequestfile,
                                  "w");
     if (NULL == auditor_output_file)
     {
       fprintf (stderr,
                "Failed to open `%s' for writing: %s\n",
                auditorrequestfile,
-               STRERROR (errno));
+               strerror (errno));
       global_ret = 1;
       return;
     }
@@ -1477,7 +1477,7 @@ main (int argc,
     return 1;
   if (NULL != auditor_output_file)
   {
-    FCLOSE (auditor_output_file);
+    fclose (auditor_output_file);
     auditor_output_file = NULL;
   }
   return global_ret;

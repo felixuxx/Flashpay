@@ -258,7 +258,7 @@ main (int argc,
     fprintf (stderr,
              "Failed to open file `%s': %s\n",
              exchange_request_file,
-             STRERROR (errno));
+             strerror (errno));
     GNUNET_free (eddsa_priv);
     return 1;
   }
@@ -269,7 +269,7 @@ main (int argc,
     fprintf (stderr,
              "Failed to obtain input file size `%s': %s\n",
              exchange_request_file,
-             STRERROR (errno));
+             strerror (errno));
     GNUNET_DISK_file_close (fh);
     GNUNET_free (eddsa_priv);
     return 1;
@@ -320,7 +320,7 @@ main (int argc,
     fprintf (stderr,
              "Failed to read input file `%s': %s\n",
              exchange_request_file,
-             STRERROR (errno));
+             strerror (errno));
     TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_DISK_file_close (fh);
     GNUNET_free (sigs);
@@ -428,7 +428,7 @@ main (int argc,
     fprintf (stderr,
              "Failed to write to file `%s': %s\n",
              output_file,
-             STRERROR (errno));
+             strerror (errno));
     GNUNET_free (sigs);
     GNUNET_free (dks);
     return 1;
