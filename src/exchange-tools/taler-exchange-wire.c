@@ -113,7 +113,7 @@ sign_account_data (void *cls,
     fprintf (stderr,
              "Failure creating wire account file `%s': %s\n",
              ai->wire_response_filename,
-             STRERROR (errno));
+             strerror (errno));
   free (json_out);
 }
 
