@@ -447,6 +447,12 @@ AC_ARG_ENABLE(linker-hardening,
   [AS_IF([test x$enableval = xyes],[LDFLAGS="$LDFLAGS -z relro -z now"])])
 
 
+AC_ARG_ENABLE(sanitizer,
+  AS_HELP_STRING(--enable-sanitizer, enable Address Sanitizer and Undefined Behavior Sanitizer),
+[AS_IF([test x$enableval = xyes],[
+   LDFLAGS="$CFLAGS -fsanitize=address,undefined -fno-omit-frame-pointer"
+ ])])
+
 # logging
 extra_logging=0
 AC_ARG_ENABLE([logging],
