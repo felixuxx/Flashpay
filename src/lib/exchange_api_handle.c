@@ -1028,6 +1028,7 @@ decode_keys_json (const json_t *resp_obj,
         GNUNET_array_grow (ai.denom_keys,
                            ai.num_denom_keys,
                            0);
+        GNUNET_free (ai.auditor_url);
         continue; /* we are done */
       }
       if (key_data->auditors_size == key_data->num_auditors)
