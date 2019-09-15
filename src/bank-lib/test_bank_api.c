@@ -1,21 +1,21 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2016, 2017 GNUnet e.V.
+   This file is part of TALER
+   Copyright (C) 2016, 2017, 2019 GNUnet e.V.
 
-  TALER is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 3,
-  or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as
+   published by the Free Software Foundation; either version 3,
+   or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty
-  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
-  the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty
+   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+   the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public
-  License along with TALER; see the file COPYING.  If not, see
-  <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public
+   License along with TALER; see the file COPYING.  If not, see
+   <http://www.gnu.org/licenses/>
+ */
 /**
  * @file bank/test_bank_api.c
  * @brief testcase to test bank's HTTP API interface
@@ -156,15 +156,20 @@ main (int argc,
 
   if (NULL == (dbconn = getenv ("TALER_EXCHANGEDB_POSTGRES_CONFIG")))
     dbconn = defaultdb;
-  char *purgedb_cmd;
-  GNUNET_asprintf (&purgedb_cmd,
-                   "taler-bank-manage -c bank.conf --with-db=%s django flush --no-input",
-                   dbconn);
-  if (0 != system (purgedb_cmd))
   {
-    fprintf (stderr,
-             "Could not purge database\n");
-    return 77;
+    char *purgedb_cmd;
+
+    GNUNET_asprintf (&purgedb_cmd,
+                     "taler-bank-manage -c bank.conf --with-db=%s django flush --no-input",
+                     dbconn);
+    if (0 != system (purgedb_cmd))
+    {
+      fprintf (stderr,
+               "Could not purge database\n");
+      GNUNET_free (purgedb_cmd);
+      return 77;
+    }
+    GNUNET_free (purgedb_cmd);
   }
 
   bankd = GNUNET_OS_start_process (GNUNET_NO,
@@ -182,7 +187,7 @@ main (int argc,
   {
     fprintf (stderr,
              "Failed to launch taler-bank-manage, skipping test\n");
-    return 77; /* report 'skip' */
+    return 77;   /* report 'skip' */
   }
   /* give child time to start and bind against the socket */
   fprintf (stderr,

@@ -48,9 +48,6 @@
 
 /* ********************* Helper functions ********************* */
 
-#define BANK_FAIL() \
-  do {GNUNET_break (0); return NULL; } while (0)
-
 /**
  * Start the (Python) bank process.  Assume the port
  * is available and the database is clean.  Use the "prepare

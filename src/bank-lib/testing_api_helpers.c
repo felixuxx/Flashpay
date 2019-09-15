@@ -28,8 +28,15 @@
 #include "taler_testing_bank_lib.h"
 #include "taler_fakebank_lib.h"
 
-/* Keep each bank account credentials at index:
- * bank account number - 1 */
+
+#define BANK_FAIL() \
+  do {GNUNET_break (0); return NULL; } while (0)
+
+
+/**
+ * Keep each bank account credentials at index:
+ * bank account number - 1
+ */
 struct TALER_BANK_AuthenticationData AUTHS[] = {
 
   /* Bank credentials */
@@ -97,7 +104,7 @@ TALER_TESTING_has_in_name (const char *prog_name,
   size_t name_pos;
   size_t pos;
 
-  if (!prog_name || !marker)
+  if (! prog_name || ! marker)
     return GNUNET_NO;
 
   pos = 0;
@@ -110,7 +117,7 @@ TALER_TESTING_has_in_name (const char *prog_name,
   }
   if (name_pos == pos)
     return GNUNET_YES;
-  return strstr(prog_name + name_pos, marker) != NULL;
+  return strstr (prog_name + name_pos, marker) != NULL;
 }
 
 /**
@@ -136,7 +143,6 @@ TALER_TESTING_run_bank (const char *config_filename,
   char *serve_cfg;
   char *serve_arg;
   struct GNUNET_CONFIGURATION_Handle *cfg;
-
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
@@ -173,13 +179,15 @@ TALER_TESTING_run_bank (const char *config_filename,
                                "serve");
     GNUNET_break (0);
     GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (database);
     exit (77);
   }
+  GNUNET_CONFIGURATION_destroy (cfg);
 
   serve_arg = "serve-http";
   if (0 != strcmp ("http", serve_cfg))
     serve_arg = "serve-uwsgi";
-
+  GNUNET_free (serve_cfg);
   bank_proc = GNUNET_OS_start_process
                 (GNUNET_NO,
                 GNUNET_OS_INHERIT_STD_ALL,
@@ -189,8 +197,11 @@ TALER_TESTING_run_bank (const char *config_filename,
                 "-c", config_filename,
                 "--with-db", database,
                 serve_arg, NULL);
+  GNUNET_free (database);
   if (NULL == bank_proc)
+  {
     BANK_FAIL ();
+  }
 
   GNUNET_asprintf (&wget_cmd,
                    "wget -q -t 1 -T 1 %s"
@@ -212,6 +223,7 @@ TALER_TESTING_run_bank (const char *config_filename,
                               SIGTERM);
       GNUNET_OS_process_wait (bank_proc);
       GNUNET_OS_process_destroy (bank_proc);
+      GNUNET_free (wget_cmd);
       BANK_FAIL ();
     }
     fprintf (stderr, ".");
@@ -219,6 +231,7 @@ TALER_TESTING_run_bank (const char *config_filename,
     iter++;
   }
   while (0 != system (wget_cmd));
+  GNUNET_free (wget_cmd);
   fprintf (stderr, "\n");
 
   return bank_proc;
@@ -248,12 +261,17 @@ TALER_TESTING_prepare_bank (const char *config_filename)
 
   cfg = GNUNET_CONFIGURATION_create ();
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_load
-        (cfg, config_filename))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg, config_filename))
+  {
+    GNUNET_CONFIGURATION_destroy (cfg);
     BANK_FAIL ();
-
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string
-        (cfg, "bank", "DATABASE", &database))
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "bank",
+                                             "DATABASE",
+                                             &database))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "bank",
@@ -262,13 +280,17 @@ TALER_TESTING_prepare_bank (const char *config_filename)
     BANK_FAIL ();
   }
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_number
-        (cfg, "bank", "HTTP_PORT", &port))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "bank",
+                                             "HTTP_PORT",
+                                             &port))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "bank",
                                "HTTP_PORT");
     GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (database);
     BANK_FAIL ();
   }
   GNUNET_CONFIGURATION_destroy (cfg);
@@ -298,8 +320,10 @@ TALER_TESTING_prepare_bank (const char *config_filename)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to flush the bank db.\n");
+    GNUNET_free (database);
     BANK_FAIL ();
   }
+  GNUNET_free (database);
 
   if (GNUNET_SYSERR ==
       GNUNET_OS_process_wait_status (dbreset_proc,

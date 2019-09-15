@@ -23,7 +23,7 @@
 ;; drop requirements and this file into a directory in your `load-path',
 ;; and put these lines into your .emacs file.
 
-;; (require 'uncrusfify-mode)
+;; (require 'uncrustify-mode)
 ;; (add-hook 'c-mode-common-hook
 ;;    '(lambda ()
 ;;        (uncrustify-mode 1)))
