@@ -1024,7 +1024,12 @@ decode_keys_json (const json_t *resp_obj,
         }
       }
       if (GNUNET_YES == found)
+      {
+        GNUNET_array_grow (ai.denom_keys,
+                           ai.num_denom_keys,
+                           0);
         continue; /* we are done */
+      }
       if (key_data->auditors_size == key_data->num_auditors)
         GNUNET_array_grow (key_data->auditors,
                            key_data->auditors_size,
@@ -1564,11 +1569,15 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
     return;
   }
   if (0 != version)
+  {
+    GNUNET_JSON_parse_free (spec);
     return; /* unsupported version */
+  }
   if (0 != strcmp (url,
                    exchange->url))
   {
     GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
     return;
   }
   memset (&key_data,
@@ -1581,6 +1590,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
                         &vc))
   {
     GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
     return;
   }
   /* decode successful, initialize with the result */
@@ -1594,6 +1604,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
                      vc);
+  GNUNET_JSON_parse_free (spec);
 }
 
 

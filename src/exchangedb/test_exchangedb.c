@@ -562,19 +562,14 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
           GNUNET_memcmp (&refresh_session.rc, &ret_refresh_session.session.rc));
   FAILIF (0 != GNUNET_memcmp (&refresh_session.coin_sig,
                               &ret_refresh_session.session.coin_sig));
-  FAILIF (0 !=
-          GNUNET_CRYPTO_rsa_signature_cmp (
-            refresh_session.coin.denom_sig.rsa_signature,
-            ret_refresh_session.session.coin.
-            denom_sig.rsa_signature));
+  FAILIF (NULL !=
+          ret_refresh_session.session.coin.denom_sig.rsa_signature);
   FAILIF (0 != memcmp (&refresh_session.coin.coin_pub,
                        &ret_refresh_session.session.coin.coin_pub,
                        sizeof (refresh_session.coin.coin_pub)));
   FAILIF (0 !=
           GNUNET_memcmp (&refresh_session.coin.denom_pub_hash,
                          &ret_refresh_session.session.coin.denom_pub_hash));
-  GNUNET_CRYPTO_rsa_signature_free (
-    ret_refresh_session.session.coin.denom_sig.rsa_signature);
 
   /* test 'select_refreshs_above_serial_id' */
   auditor_row_cnt = 0;

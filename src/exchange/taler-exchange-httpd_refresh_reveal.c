@@ -273,20 +273,6 @@ refresh_reveal_preflight (void *cls,
 
 
 /**
- * Helper function for #refresh_reveal_transaction() to free internal
- * state of @a refresh_melt (but not the pointer itself!).
- *
- * @param refresh_melt memory to clean up
- */
-static void
-free_refresh_melt (struct TALER_EXCHANGEDB_RefreshMelt *refresh_melt)
-{
-  GNUNET_CRYPTO_rsa_signature_free (
-    refresh_melt->session.coin.denom_sig.rsa_signature);
-}
-
-
-/**
  * Execute a "/refresh/reveal".  The client is revealing to us the
  * transfer keys for @a #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins.
@@ -335,8 +321,6 @@ refresh_reveal_transaction (void *cls,
     GNUNET_break (0);
     *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
                                                      TALER_EC_REFRESH_REVEAL_DB_FETCH_SESSION_ERROR);
-    if (refresh_melt.session.noreveal_index >= TALER_CNC_KAPPA)
-      free_refresh_melt (&refresh_melt);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -424,7 +408,6 @@ refresh_reveal_transaction (void *cls,
       GNUNET_break_op (0);
       *mhd_ret = reply_refresh_reveal_missmatch (connection,
                                                  &rc_expected);
-      free_refresh_melt (&refresh_melt);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   } /* end of checking "rc_expected" */
@@ -457,7 +440,6 @@ refresh_reveal_transaction (void *cls,
         *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
                                                       TALER_EC_REFRESH_REVEAL_COST_CALCULATION_OVERFLOW,
                                                       "failed to add up refresh costs");
-        free_refresh_melt (&refresh_melt);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
@@ -468,11 +450,9 @@ refresh_reveal_transaction (void *cls,
       *mhd_ret = TEH_RESPONSE_reply_external_error (connection,
                                                     TALER_EC_REFRESH_REVEAL_AMOUNT_INSUFFICIENT,
                                                     "melted coin value is insufficient to cover cost of operation");
-      free_refresh_melt (&refresh_melt);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
-  free_refresh_melt (&refresh_melt);
   return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
 

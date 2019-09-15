@@ -1827,7 +1827,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database handle to use
    * @param rc commitment to use for the lookup
-   * @param[out] refresh_melt where to store the result
+   * @param[out] refresh_melt where to store the result; note that
+   *             refresh_melt->session.coin.denom_sig will be set to NULL
+   *             and is not fetched by this routine (as it is not needed by the client)
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus

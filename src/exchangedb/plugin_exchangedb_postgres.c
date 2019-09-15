@@ -887,7 +887,6 @@ postgres_prepare (PGconn *db_conn)
                             " kc.denom_pub_hash"
                             ",denom.fee_refresh_val"
                             ",denom.fee_refresh_frac"
-                            ",kc.denom_sig"
                             ",old_coin_pub"
                             ",old_coin_sig"
                             ",amount_with_fee_val"
@@ -3729,7 +3728,9 @@ postgres_select_refunds_by_coin (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use, NULL if not run in any transaction
  * @param rc commitment hash to use to locate the operation
- * @param[out] refresh_melt where to store the result
+ * @param[out] refresh_melt where to store the result; note that
+   *             refresh_melt->session.coin.denom_sig will be set to NULL
+   *             and is not fetched by this routine (as it is not needed by the client)
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -3749,9 +3750,6 @@ postgres_get_melt (void *cls,
                                           denom_pub_hash),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
                                  &refresh_melt->melt_fee),
-    GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                         &refresh_melt->session.coin.denom_sig.
-                                         rsa_signature),
     GNUNET_PQ_result_spec_uint32 ("noreveal_index",
                                   &refresh_melt->session.noreveal_index),
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
@@ -3764,6 +3762,7 @@ postgres_get_melt (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  refresh_melt->session.coin.denom_sig.rsa_signature = NULL;
   if (NULL == session)
     session = postgres_get_session (pg);
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
