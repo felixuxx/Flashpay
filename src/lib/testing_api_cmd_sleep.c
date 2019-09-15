@@ -40,6 +40,7 @@ struct SleepState
   unsigned int duration;
 };
 
+
 /**
  * No traits to offer, just provide a stub to be called when
  * some CMDs iterates through the list of all the commands.
@@ -59,6 +60,7 @@ sleep_traits (void *cls,
 {
   return GNUNET_NO;
 }
+
 
 /**
  * Run the command.
@@ -111,17 +113,19 @@ TALER_TESTING_cmd_sleep (const char *label,
   ss = GNUNET_new (struct SleepState);
   ss->duration = duration_s;
 
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ss,
+      .label = label,
+      .run = &sleep_run,
+      .cleanup = &sleep_cleanup,
+      .traits = &sleep_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ss,
-    .label = label,
-    .run = &sleep_run,
-    .cleanup = &sleep_cleanup,
-    .traits = &sleep_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
+
 
 /**
  * Cleanup the state from a "wait service" CMD.
@@ -136,6 +140,7 @@ wait_service_cleanup (void *cls,
   /* nothing to clean.  */
   return;
 }
+
 
 /**
  * No traits to offer, just provide a stub to be called when
@@ -157,6 +162,7 @@ wait_service_traits (void *cls,
   return GNUNET_NO;
 }
 
+
 /**
  * Run a "wait service" CMD.
  *
@@ -174,7 +180,7 @@ wait_service_run (void *cls,
   char *wget_cmd;
 
   GNUNET_asprintf (&wget_cmd,
-                   "wget -q -t 1 -T 1 %s\n",
+                   "wget -q -t 1 -T 1 %s -o /dev/null -O /dev/null",
                    url);
   do
   {
