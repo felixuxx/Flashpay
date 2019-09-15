@@ -208,5 +208,7 @@ main (int argc,
     GNUNET_CRYPTO_rsa_public_key_free (dki.denom_pub.rsa_public_key);
   if (NULL != dki_read.denom_priv.rsa_private_key)
     GNUNET_CRYPTO_rsa_private_key_free (dki_read.denom_priv.rsa_private_key);
+  if (NULL != dki_read.denom_pub.rsa_public_key)
+    GNUNET_CRYPTO_rsa_public_key_free (dki_read.denom_pub.rsa_public_key);
   return ret;
 }

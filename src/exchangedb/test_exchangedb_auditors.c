@@ -119,7 +119,6 @@ main (int argc,
   GNUNET_log_setup ("test-exchangedb-auditors",
                     "WARNING",
                     NULL);
-  EXITIF (NULL == (tmpdir = GNUNET_DISK_mkdtemp ("test_exchangedb_auditors")));
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &want_apub,
                               sizeof (want_apub));
