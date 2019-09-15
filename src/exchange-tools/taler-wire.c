@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014--2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -29,62 +29,67 @@
 #include "taler_wire_lib.h"
 
 /**
- * If set to GNUNET_YES, then we'll ask the bank for a list
+ * If set to #GNUNET_YES, then we'll ask the bank for a list
  * of transactions from the account mentioned in the config
  * section.
  */
-int history;
+static int history;
 
 /**
  * If set to GNUNET_YES, then we'll ask the bank to execute a
  * wire transfer.
  */
-int transfer;
+static int transfer;
 
 /**
  * Name of the wire plugin to use with the bank.
  */
-char *plugin_name;
+static char *plugin_name;
 
 /**
  * Global return code.
  */
-unsigned int global_ret = 1;
+static unsigned int global_ret = 1;
 
 /**
  * When a wire transfer is being performed, this value
  * specifies the amount to wire-transfer.  It's given in
  * the usual CURRENCY:X[.Y] format.
  */
-char *amount;
+static char *amount;
 
 /**
  * Base32 encoding of a transaction ID.  When asking the
  * bank for a transaction history, all the results will
  * have a transaction ID settled *after* this one.
  */
-char *since_when;
+static char *since_when;
 
 /**
  * Which config section has the credentials to access the bank.
  */
-char *account_section;
+static char *account_section;
 
 /**
  * URL identifying the account that is going to receive the
  * wire transfer.
  */
-char *destination_account_url;
+static char *destination_account_url;
 
 /**
  * Handle for the wire transfer preparation task.
  */
-struct TALER_WIRE_PrepareHandle *ph;
+static struct TALER_WIRE_PrepareHandle *ph;
 
 /**
  * Wire plugin handle.
  */
-struct TALER_WIRE_Plugin *plugin_handle;
+static struct TALER_WIRE_Plugin *plugin_handle;
+
+/**
+ * Handle to ongoing history operation.
+ */
+static struct TALER_WIRE_HistoryHandle *hh;
 
 
 /**
@@ -274,15 +279,14 @@ execute_history ()
         bin_len));
   }
 
-  if (NULL == plugin_handle->get_history
-        (plugin_handle->cls,
-        account_section,
-        TALER_BANK_DIRECTION_BOTH,
-        since_when_bin,
-        bin_len,
-        -10,
-        history_cb,
-        NULL))
+  if (NULL == (hh = plugin_handle->get_history (plugin_handle->cls,
+                                                account_section,
+                                                TALER_BANK_DIRECTION_BOTH,
+                                                since_when_bin,
+                                                bin_len,
+                                                -10,
+                                                &history_cb,
+                                                NULL)))
   {
     fprintf (stderr,
              "Could not request the transaction history.\n");
@@ -297,9 +301,21 @@ execute_history ()
  *
  * @param cls closure.
  */
-void
+static void
 do_shutdown (void *cls)
 {
+  if (NULL != hh)
+  {
+    plugin_handle->get_history_cancel (plugin_handle->cls,
+                                       hh);
+    hh = NULL;
+  }
+  if (NULL != ph)
+  {
+    plugin_handle->prepare_wire_transfer_cancel (plugin_handle->cls,
+                                                 ph);
+    ph = NULL;
+  }
   TALER_WIRE_plugin_unload (plugin_handle);
 }
 
@@ -377,8 +393,7 @@ main (int argc,
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('H',
                                "history",
-                               "Ask to get a list of 10"
-                               " transactions.",
+                               "Ask to get a list of 10 transactions.",
                                &history),
     GNUNET_GETOPT_option_flag ('t',
                                "transfer",
@@ -398,9 +413,7 @@ main (int argc,
     GNUNET_GETOPT_option_string ('s',
                                  "section",
                                  "ACCOUNT-SECTION",
-                                 "Which config section has the"
-                                 " credentials to access the"
-                                 " bank.  Mandatory.\n",
+                                 "Which config section has the credentials to access the bank.  Mandatory.\n",
                                  &account_section),
     GNUNET_GETOPT_option_string ('a',
                                  "amount",
@@ -410,8 +423,7 @@ main (int argc,
     GNUNET_GETOPT_option_string ('d',
                                  "destination",
                                  "PAYTO-URL",
-                                 "Destination account for the"
-                                 " wire transfer.",
+                                 "Destination account for the wire transfer.",
                                  &destination_account_url),
     GNUNET_GETOPT_OPTION_END
   };

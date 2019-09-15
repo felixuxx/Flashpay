@@ -96,7 +96,8 @@ struct TALER_WIRE_TransferDetails
  *
  * @param cls closure
  * @param ec taler error code
- * @param dir direction of the transfer
+ * @param dir direction of the transfer, #TALER_BANK_DIRECTION_NONE when
+ *            the iteration is complete
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
@@ -368,53 +369,6 @@ struct TALER_WIRE_Plugin
   (*reject_transfer_cancel)(void *cls,
                             struct TALER_WIRE_RejectHandle *rh);
 
-
-  /**
-   * Ask the plugin which data is needed to register the merchant
-   * into the banking institution.
-   *
-   * @param enc[out] where to store the JSON formatted list of
-   *        needed values.  The merchant will use this list to
-   *        show a HTML form to the business in order to collect that data.
-   *        This value will have to be freed by the caller.
-   * @param private_person GNUNET_OK if the merchant to be registered
-   *        has a legal status of "person", for example they are freelance
-   *        journalists.
-   * @param business GNUNET_OK if the merchant has the legal status
-   *        of "business", so to say a "ordinary" shop.  Cannot be
-   *        both private and business though.
-   * @return GNUNET_OK upon successful `enc' allocation and definition,
-   *         GNUNET_NO if _no_ data is needed at all, GNUNET_SYSERR
-   *         for all the other cases.
-   */
-  int
-  (*merchant_data)(char **out,
-                   unsigned int private_person,
-                   unsigned int business);
-
-  /**
-   * Send data to the banking institution in order to get the
-   * merchant registered.
-   *
-   * @param cls closure
-   * @param body subset of information to be sent to the bank.
-   *        The plugin implementation is free to modify this value.
-   * @param mrcb Callback to process the outcome.
-   */
-  struct TALER_WIRE_MerchantRegisterHandle *
-  (*merchant_register)(void *cls,
-                       const char *body,
-                       TALER_WIRE_MerchantRegisterCallback mrcb);
-
-  /**
-   * Cancel pending operation of merchant registering.
-   *
-   * @param cls closure
-   * @param mrh handle to the pending operation to be cancelled.
-   */
-  void
-  (*merchant_register_cancel)(void *cls,
-                              struct TALER_WIRE_MerchantRegisterHandle *mrh);
 };
 
 

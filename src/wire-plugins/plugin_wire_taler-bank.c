@@ -765,7 +765,8 @@ struct TALER_WIRE_HistoryHandle
 {
 
   /**
-   * Function to call with results.
+   * Function to call with results, can become NULL if the
+   * application cancels the iteration.
    */
   TALER_WIRE_HistoryResultCallback hres_cb;
 
@@ -797,6 +798,7 @@ static void
 taler_bank_get_history_cancel (void *cls,
                                struct TALER_WIRE_HistoryHandle *whh)
 {
+  (void) cls;
   if (NULL != whh->hh)
   {
     TALER_BANK_history_cancel (whh->hh);
@@ -893,7 +895,11 @@ bhist_cb (void *cls,
       GNUNET_break (NULL != whh->hh);
       /* Once we get the sentinel element, the handle becomes invalid. */
       if (TALER_BANK_DIRECTION_NONE == dir)
+      {
         whh->hh = NULL;
+        taler_bank_get_history_cancel (NULL,
+                                       whh);
+      }
       return;
     }
   case MHD_HTTP_NO_CONTENT:
@@ -904,6 +910,9 @@ bhist_cb (void *cls,
                            NULL,
                            0,
                            NULL);
+    whh->hh = NULL;
+    taler_bank_get_history_cancel (NULL,
+                                   whh);
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -917,6 +926,9 @@ bhist_cb (void *cls,
                            NULL,
                            0,
                            NULL);
+    whh->hh = NULL;
+    taler_bank_get_history_cancel (NULL,
+                                   whh);
     break;
   }
   whh->hh = NULL;
@@ -962,6 +974,7 @@ taler_bank_get_history (void *cls,
   uint64_t start_row;
   struct TALER_Account account;
 
+  GNUNET_assert (NULL != hres_cb);
   if (0 == num_results)
   {
     GNUNET_break (0);
@@ -1019,13 +1032,12 @@ taler_bank_get_history (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not parse the auth values from '%s'\n",
                 account_section);
+    TALER_WIRE_account_free (&account);
     GNUNET_free (whh);
     return NULL;
   }
-
   whh->hres_cb = hres_cb;
   whh->hres_cb_cls = hres_cb_cls;
-
   whh->hh = TALER_BANK_history (tc->ctx,
                                 account.details.x_taler_bank.bank_base_url,
                                 &whh->auth,
@@ -1040,15 +1052,15 @@ taler_bank_get_history (void *cls,
   if (NULL == whh->hh)
   {
     GNUNET_break (0);
-    taler_bank_get_history_cancel (NULL,
+    taler_bank_get_history_cancel (tc,
                                    whh);
     TALER_WIRE_account_free (&account);
     return NULL;
   }
   TALER_WIRE_account_free (&account);
-  GNUNET_assert (NULL != whh);
   return whh;
 }
+
 
 /**
  * Context for a rejection operation.

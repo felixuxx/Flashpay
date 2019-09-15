@@ -107,6 +107,7 @@ static struct TALER_WireTransferIdentifierRawP wtid;
 static void
 do_shutdown (void *cls)
 {
+  (void) cls;
   TALER_FAKEBANK_stop (fb);
   fb = NULL;
   if (NULL != eh)
@@ -186,11 +187,11 @@ history_result_cb
   uint64_t serialh;
   struct TALER_Amount amount;
 
-  hh = NULL;
   if ( (TALER_BANK_DIRECTION_NONE == dir) &&
        (GNUNET_OK == global_ret) )
   {
     GNUNET_SCHEDULER_shutdown ();
+    hh = NULL;
     return GNUNET_OK;
   }
   if (sizeof (uint64_t) != row_off_size)
@@ -251,6 +252,7 @@ confirmation_cb (void *cls,
                  const char *emsg)
 {
   uint64_t tmp;
+
   eh = NULL;
   if (GNUNET_OK != success)
   {
@@ -259,13 +261,10 @@ confirmation_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-
   memcpy (&tmp,
           row_id,
           row_id_size);
-
   serial_target = GNUNET_ntohll (tmp);
-
   hh = plugin->get_history (plugin->cls,
                             my_account,
                             TALER_BANK_DIRECTION_BOTH,
