@@ -83,7 +83,7 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
-    kill -9 `jobs -p` || true
+    kill -9 `jobs -p` >/dev/null 2>/dev/null || true
 
     echo -n "TeXing ."
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
