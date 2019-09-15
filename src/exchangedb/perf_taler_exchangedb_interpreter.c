@@ -898,17 +898,13 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
 static int
 cmd_clean (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
 {
-  unsigned int i;
-
-  for (i = 0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
+  for (unsigned int i = 0; PERF_TALER_EXCHANGEDB_CMD_END != cmd[i].command; i++)
   {
     switch (cmd[i].command)
     {
     case PERF_TALER_EXCHANGEDB_CMD_SAVE_ARRAY:
       {
-        unsigned int j;
-
-        for (j = 0; j < cmd[i].details.save_array.nb_saved; j++)
+        for (unsigned int j = 0; j < cmd[i].details.save_array.nb_saved; j++)
         {
           data_free (&cmd[i].details.save_array.data_saved[j]);
         }
@@ -921,7 +917,9 @@ cmd_clean (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
       GNUNET_free (cmd[i].details.load_array.permutation);
       cmd[i].details.load_array.permutation = NULL;
       break;
-
+    case PERF_TALER_EXCHANGEDB_CMD_CREATE_WITHDRAW:
+      PERF_TALER_EXCHANGEDB_coin_free (cmd[i].exposed.data.coin);
+      break;
     default:
       break;
     }
@@ -1578,7 +1576,10 @@ PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
     return ret;
   state.session = db_plugin->get_session (db_plugin->cls);
   if (NULL == state.session)
+  {
+    cmd_clean (cmd);
     return GNUNET_SYSERR;
+  }
   GNUNET_assert (NULL != state.session);
   ret = interpret (&state);
   cmd_clean (cmd);
