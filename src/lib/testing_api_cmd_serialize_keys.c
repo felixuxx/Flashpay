@@ -198,9 +198,15 @@ connect_with_state_run (void *cls,
       0,
       &serialized_keys));
 
-  TALER_LOG_DEBUG ("Serialized key-state: %s\n",
-                   json_dumps (serialized_keys,
-                               JSON_INDENT (1)));
+  {
+    char *dump;
+
+    dump = json_dumps (serialized_keys,
+                       JSON_INDENT (1));
+    TALER_LOG_DEBUG ("Serialized key-state: %s\n",
+                     dump);
+    free (dump);
+  }
 
   GNUNET_assert
     (GNUNET_OK == TALER_TESTING_get_trait_url
