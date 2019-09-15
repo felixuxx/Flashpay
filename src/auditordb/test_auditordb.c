@@ -159,10 +159,13 @@ run (void *cls)
   struct TALER_DenominationPrivateKey denom_priv;
   struct TALER_DenominationPublicKey denom_pub;
   struct GNUNET_HashCode denom_pub_hash;
+
   denom_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
   denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
     denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key, &denom_pub_hash);
+  GNUNET_CRYPTO_rsa_private_key_free (denom_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
 
   struct GNUNET_TIME_Absolute now, past, future, date;
   now = GNUNET_TIME_absolute_get ();
