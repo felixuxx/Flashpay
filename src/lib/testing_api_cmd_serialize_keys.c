@@ -44,7 +44,7 @@ struct SerializeKeysState
    * from, after keys serialization.  This value is then needed by
    * subsequent commands that have to reconnect to the exchagne.
    */
-  const char *exchange_url;
+  char *exchange_url;
 };
 
 
@@ -120,7 +120,7 @@ serialize_keys_cleanup (void *cls,
   {
     json_decref (sks->keys);
   }
-  GNUNET_free ((char *) sks->exchange_url);
+  GNUNET_free (sks->exchange_url);
   GNUNET_free (sks);
 }
 

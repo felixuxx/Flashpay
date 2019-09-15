@@ -961,6 +961,7 @@ decode_keys_json (const json_t *resp_obj,
         /* Okay, but why breaking here? It could be that the
          * user redownloaded all the keys in a forced way. */
         GNUNET_break_op (0 == current);
+        GNUNET_CRYPTO_rsa_public_key_free (dk.key.rsa_public_key);
         continue;
       }
       if (key_data->denom_keys_size == key_data->num_denom_keys)
