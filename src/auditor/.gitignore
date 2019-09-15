@@ -8,3 +8,6 @@ test-report.pdf
 test-report.tex
 test-wire-audit.json
 texput.aux
+test-audit-inc.json
+test-wire-audit-inc.json
+wirefees/
