@@ -913,7 +913,7 @@ bhist_cb (void *cls,
     whh->hh = NULL;
     taler_bank_get_history_cancel (NULL,
                                    whh);
-    break;
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Bank failed with HTTP status %u (EC: %u)\n",
@@ -929,9 +929,8 @@ bhist_cb (void *cls,
     whh->hh = NULL;
     taler_bank_get_history_cancel (NULL,
                                    whh);
-    break;
+    return;
   }
-  whh->hh = NULL;
 }
 
 
