@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2019 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -454,8 +454,8 @@ handle_mhd_request (void *cls,
   for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
     rh = &handlers[i];
-    if ( (0 == strcasecmp (url,
-                           rh->url)) &&
+    if ( (0 == strcmp (url,
+                       rh->url)) &&
          ( (NULL == rh->method) ||
            (0 == strcasecmp (method,
                              rh->method)) ) )
@@ -515,7 +515,7 @@ parse_port_config (const char *section,
     return GNUNET_SYSERR;
   }
 
-  if (0 == strcmp (serve_type, "tcp"))
+  if (0 == strcasecmp (serve_type, "tcp"))
   {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
