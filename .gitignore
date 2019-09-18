@@ -101,6 +101,7 @@ doc/manual/manual.pg
 doc/manual/manual.toc
 doc/manual/manual.tp
 doc/manual/manual.vr
+doc/prebuilt/*
 contrib/taler-exchange.tag
 doxygen-doc/
 src/lib/test_exchange_api_keys_cherry_picking

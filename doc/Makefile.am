@@ -3,21 +3,23 @@
 SUBDIRS = .
 
 man_MANS = \
-  taler-auditor.1 \
-  taler-auditor-exchange.1 \
-  taler-auditor-sign.1 \
-  taler-bank-transfer.1 \
-  taler-config-generate.1 \
-  taler-exchange-aggregator.1 \
-  taler-exchange-dbinit.1 \
-  taler-exchange-httpd.1 \
-  taler-exchange-keyup.1 \
-  taler-exchange-keycheck.1 \
-  taler-exchange-wire.1 \
-  taler-exchange-wirewatch.1 \
-  taler-exchange-benchmark.1 \
-  taler.conf.5
+  prebuilt/man/taler-auditor.1 \
+  prebuilt/man/taler-auditor-exchange.1 \
+  prebuilt/man/taler-auditor-sign.1 \
+  prebuilt/man/taler-bank-transfer.1 \
+  prebuilt/man/taler-config-generate.1 \
+  prebuilt/man/taler-exchange-aggregator.1 \
+  prebuilt/man/taler-exchange-dbinit.1 \
+  prebuilt/man/taler-exchange-httpd.1 \
+  prebuilt/man/taler-exchange-keyup.1 \
+  prebuilt/man/taler-exchange-keycheck.1 \
+  prebuilt/man/taler-exchange-wire.1 \
+  prebuilt/man/taler-exchange-wirewatch.1 \
+  prebuilt/man/taler-exchange-benchmark.1 \
+  prebuilt/man/taler.conf.5
+
+info_TEXINFOS = \
+  prebuilt/texinfo/taler-exchange.texi
 
 EXTRA_DIST = \
-  coding-style.txt \
   $(man_MANS)
