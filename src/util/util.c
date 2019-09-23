@@ -300,6 +300,15 @@ TALER_url_join (const char *base_url,
   va_list args;
 
   GNUNET_assert (NULL != res);
+  GNUNET_assert (NULL != base_url);
+  GNUNET_assert (NULL != path);
+  GNUNET_assert (strlen (base_url) > 0);
+
+  // Must be an actual base URL!
+  GNUNET_assert ('/' == base_url[strlen (base_url) - 1]);
+
+  // Path must be relative to existing path of base URL
+  GNUNET_assert ('/' != path[0]);
 
   grow_string (&res, base_url, &n);
 

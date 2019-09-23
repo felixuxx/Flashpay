@@ -51,12 +51,8 @@ main (int argc,
 
   cf (TALER_url_join ("https://taler.net/", "foo", NULL),
       "https://taler.net/foo");
-  cf (TALER_url_join ("https://taler.net", "foo", NULL),
+  cf (TALER_url_join ("https://taler.net/", "foo", NULL),
       "https://taler.net/foo");
-  cf (TALER_url_join ("https://taler.net/", "/foo", NULL),
-      "https://taler.net/foo");
-  cf (TALER_url_join ("https://taler.net/", "/foo/", NULL),
-      "https://taler.net/foo/");
 
   cf (TALER_url_join ("https://taler.net/", "foo", "x", "42", NULL),
       "https://taler.net/foo?x=42");
@@ -67,11 +63,11 @@ main (int argc,
   cf (TALER_url_join ("https://taler.net/", "foo", "x", "", "y", "1", NULL),
       "https://taler.net/foo?x=&y=1");
 
-  cf (TALER_url_join ("https://taler.net", "foo/bar", "x", "a&b", NULL),
+  cf (TALER_url_join ("https://taler.net/", "foo/bar", "x", "a&b", NULL),
       "https://taler.net/foo/bar?x=a%26b");
 
   /* Path component is not encoded! */
-  cf (TALER_url_join ("https://taler.net", "foo/bar?spam=eggs&quux=", NULL),
+  cf (TALER_url_join ("https://taler.net/", "foo/bar?spam=eggs&quux=", NULL),
       "https://taler.net/foo/bar?spam=eggs&quux=");
 
   cf (TALER_url_absolute_raw ("https", "taler.net", "foo/bar", "baz",
