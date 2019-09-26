@@ -948,6 +948,12 @@ enum TALER_ErrorCode
   TALER_EC_CONTRACT_INSTANCE_INCONSISTENT = 2001,
 
   /**
+   * The backend lacks a wire transfer method configuration option
+   * for the given instance.
+   */
+  TALER_EC_PROPOSAL_INSTANCE_CONFIGURATION_LACKS_WIRE = 2002,
+
+  /**
    * The exchange failed to provide a meaningful response
    * to a /deposit request.  This response is provided
    * with HTTP status code MHD_HTTP_SERVICE_UNAVAILABLE.
