@@ -937,12 +937,13 @@ enum TALER_ErrorCode
    * in the request.   This response is
    * provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_CONTRACT_INSTANCE_UNKNOWN = 2000,
+  TALER_EC_INSTANCE_UNKNOWN = 2000,
 
   /**
    * The frontend specified two different instances within
    * the same order: one in the top level, and the other one
    * within the 'merchant' object.
+   * FIXME: hopefully this one is now obsolete?
    */
   TALER_EC_CONTRACT_INSTANCE_INCONSISTENT = 2001,
 
@@ -1024,13 +1025,6 @@ enum TALER_ErrorCode
    * with HTTP status code MHD_HTTP_SERVICE_UNAVAILABLE.
    */
   TALER_EC_PAY_EXCHANGE_TIMEOUT = 2111,
-
-  /**
-   * The backend could not find the merchant instance specified
-   * in the request.   This response is
-   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
-   */
-  TALER_EC_PAY_INSTANCE_UNKNOWN = 2112,
 
   /**
    * The signature over the contract of the merchant
@@ -1149,24 +1143,11 @@ enum TALER_ErrorCode
   TALER_EC_HISTORY_DB_FETCH_ERROR = 2201,
 
   /**
-   * Instance used to retrieve history is unknown to the
-   * merchant.
-   */
-  TALER_EC_HISTORY_INSTANCE_UNKNOWN = 2202,
-
-  /**
    * We failed to contact the exchange for the /track/transaction
    * request.  This response is provided with HTTP status code
    * MHD_HTTP_SERVICE_UNAVAILABLE.
    */
   TALER_EC_TRACK_TRANSACTION_EXCHANGE_TIMEOUT = 2300,
-
-  /**
-   * The backend could not find the merchant instance specified
-   * in the request.   This response is
-   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
-   */
-  TALER_EC_TRACK_TRANSACTION_INSTANCE_UNKNOWN = 2301,
 
   /**
    * The backend could not find the transaction specified
@@ -1232,13 +1213,6 @@ enum TALER_ErrorCode
    * MHD_HTTP_SERVICE_UNAVAILABLE.
    */
   TALER_EC_TRACK_TRANSFER_EXCHANGE_TIMEOUT = 2400,
-
-  /**
-   * The backend could not find the merchant instance specified
-   * in the request.   This response is
-   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
-   */
-  TALER_EC_TRACK_TRANSFER_INSTANCE_UNKNOWN = 2401,
 
   /**
    * We failed to persist coin wire transfer information in
@@ -1366,11 +1340,6 @@ enum TALER_ErrorCode
 
 
   /**
-   * The client specified an unknown instance for any of the /refund operations
-   */
-  TALER_EC_REFUND_INSTANCE_UNKNOWN = 2600,
-
-  /**
    * The frontend gave an unknown order id to issue the refund to.
    */
   TALER_EC_REFUND_ORDER_ID_UNKNOWN = 2601,
@@ -1407,13 +1376,6 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAY_REFUND_SIGNATURE_FAILED = 2606,
 
-
-  /**
-   * The backend does not know the instance that was supposed to support
-   * the tip.  Likely to be a configuration error. Returned with an
-   * HTTP status code of "NOT FOUND".
-   */
-  TALER_EC_TIP_AUTHORIZE_INSTANCE_UNKNOWN = 2700,
 
   /**
    * The backend knows the instance that was supposed to support the
@@ -1594,19 +1556,6 @@ enum TALER_ErrorCode
    * tip id is wrong or the tip authorization expired.
    */
   TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2810,
-
-  /**
-   * The backend could not find the merchant instance specified
-   * in the request.   This response is
-   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
-   */
-  TALER_EC_TIP_INSTANCE_UNKNOWN = 2811,
-
-  /**
-   * The instance for check-payment is unknown, likely
-   * a buggy frontend or misconfigured instances.
-   */
-  TALER_EC_CHECK_PAYMENT_INSTANCE_UNKNOWN = 2910,
 
   /**
    * We failed to contract terms from our merchant database.
