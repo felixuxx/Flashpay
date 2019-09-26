@@ -198,6 +198,10 @@ main (int argc,
     if (0 == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  (remove_flag)
+                  ?
+                  "Could not remove exchange from auditor database: entry already absent\n"
+                  :
                   "Could not add exchange to auditor database: entry already existed\n");
       TALER_AUDITORDB_plugin_unload (adb);
       return 4;
