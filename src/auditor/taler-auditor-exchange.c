@@ -154,8 +154,8 @@ main (int argc,
   if (GNUNET_OK !=
       adb->create_tables (adb->cls))
   {
-    fprintf (stderr,
-             "Failed to create tables in auditor's database\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to create tables in auditor's database\n");
     TALER_AUDITORDB_plugin_unload (adb);
     return 3;
   }
@@ -168,8 +168,8 @@ main (int argc,
     session = adb->get_session (adb->cls);
     if (NULL == session)
     {
-      fprintf (stderr,
-               "Failed to initialize database session\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to initialize database session\n");
       TALER_AUDITORDB_plugin_unload (adb);
       return 3;
     }
@@ -189,16 +189,16 @@ main (int argc,
     }
     if (0 > qs)
     {
-      fprintf (stderr,
-               "Failed to update auditor DB (%d)\n",
-               qs);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to update auditor database (status code: %d)\n",
+                  qs);
       TALER_AUDITORDB_plugin_unload (adb);
       return 3;
     }
     if (0 == qs)
     {
-      fprintf (stderr,
-               "Did not update auditor DB: value existed\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Could not add exchange to auditor database: entry already existed\n");
       TALER_AUDITORDB_plugin_unload (adb);
       return 4;
     }
