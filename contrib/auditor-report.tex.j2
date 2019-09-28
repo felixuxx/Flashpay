@@ -224,14 +224,24 @@ exposure} is the amount of coins in circulation for a particular
 denomination and the maximum loss for the exchange from this type of
 compromise.
 
-{% if (data.emergencies|length() != 0)
-   or (data.emergencies_by_count|length() != 0) %}
-The total risk from emergencies is
-{\bf {{ data.emergencies_risk_total }} }
+{% if (data.emergencies|length() != 0) %}
+The total risk from emergencies detected by amount is
+{\bf {{ data.emergencies_risk_by_amount }} }.
+The total loss from emergencies detected by amount is
+{\bf {{ data.emergencies_loss }} }.
+{% endif %}
+
+{% if (data.emergencies_by_count|length() != 0) %}
+The total risk from emergencies detected by counting coins is
+{\bf {{ data.emergencies_risk_by_count }} }
+The total loss from emergencies detected by counting coins could be up to
+{\bf {{ data.emergencies_loss_by_count }} }.
 {% endif %}
 
 
 \subsubsection{Emergencies by counting coins}
+
+% Table generation tested by testcase #18 in test-auditor.sh
 
 {% if data.emergencies_by_count|length() == 0 %}
   {\bf No emergencies detected by counting coins.}
@@ -251,7 +261,7 @@ The total risk from emergencies is
     \label{table:emergencies_coin_counting}
 \endlastfoot
 {% for item in data.emergencies_by_count %}
-  \multicolumn{4}{l}{ {\tt \truncate{\textwidth}{ {{ item.denompub_hash }} } } } \\
+  \multicolumn{4}{l}{ {\tt \truncate{0.95\textwidth}{ {{ item.denompub_hash }} } } } \\
 \nopagebreak
   {{ item.value }} &
   {\tiny \begin{tabular}{c}
@@ -264,7 +274,10 @@ The total risk from emergencies is
   \end{longtable}
 {% endif %}
 
+
 \subsubsection{Emergencies by value deposited}
+
+% Table generation tested by testcase #18 in test-auditor.sh
 
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies by value detected.}
@@ -284,7 +297,7 @@ The total risk from emergencies is
     \label{table:emergencies}
 \endlastfoot
 {% for item in data.emergencies %}
-  \multicolumn{4}{l}{ {\tt \truncate{\textwidth}{ {{ item.denompub_hash }} } } } \\
+  \multicolumn{4}{l}{ {\tt \truncate{0.95\textwidth}{ {{ item.denompub_hash }} } } } \\
 \nopagebreak
   {{ item.value }} &
   {\tiny \begin{tabular}{c}
@@ -306,32 +319,40 @@ Disagreements imply that either the exchange made a loss (sending out
 too much money), or screwed a customer (and thus at least needs to fix
 the financial damage done to the customer).
 
+% Table generation tested by testcase #18 in test-auditor.sh
+
 {% if data.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
 {% else %}
-  \begin{longtable}{p{3.5cm}|l|r|r}
-  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
+  \begin{longtable}{p{3.5cm}|r|r|r|c}
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\ \hline \hline
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\ \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Table row} & \multicolumn{2}{|c|}{ {\bf Exchange}} & \multicolumn{2}{|c}{ {\bf Auditor}} \\
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\
 \endfoot
   \hline \hline
   \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
   + {{ data.total_arithmetic_delta_plus }} &
-  - {{ data.total_arithmetic_delta_minus }} \\
+  - {{ data.total_arithmetic_delta_minus }} & \\
     \caption{Arithmetic inconsistencies.}
     \label{table:amount:arithmetic:inconsistencies}
 \endlastfoot
 {% for item in data.amount_arithmetic_inconsistencies %}
-  {{ item.operation }} &
+  \truncate{3.3cm}{ {\tiny {{ item.operation }} } } &
   {{ item.rowid }} &
   {{ item.exchange }} &
-  {{ item.auditor }} \\ \hline
+  {{ item.auditor }} &
+  {{ item.profitable }} \\ \hline
 {% endfor %}
   \end{longtable}
+
+The {\bf P} colum is set to "1" if the arithmetic problem was be determined to be
+profitable for the exchange, "-1" if the problem resulted in a net loss for
+the exchange, and "0" if this is unclear or at least the gain/loss is not
+easily determined from the amounts and thus not included in the totals.
 {% endif %}
 
 
@@ -397,7 +418,7 @@ would be reported separately in Section~\ref{sec:wire_check_out}.
   {\bf Row} & {\bf Expected} & {\bf Claimed} \\
 \endfoot
   \hline
-  {\bf Total deltas}  & 
+  {\bf Total deltas}  &
   {{ data.total_wire_out_delta_plus}} &
   - {{ data.total_wire_out_delta_minus}} \\
   \caption{Claimed wire out aggregate totals not matching up.}
@@ -484,7 +505,7 @@ public key for ``payback-master'' operations.
   {\bf Operation type} & Database row & {\bf Loss amount} \\
 \endfoot
   \hline
-  \multicolumn{2}{l}{ {\bf Total losses} } & 
+  \multicolumn{2}{l}{ {\bf Total losses} } &
   {\bf {{ data.total_bad_sig_loss}} } \\
   \caption{Losses from operations performed on coins without proper signatures.}
   \label{table:bad_signature_losses}
@@ -625,7 +646,7 @@ with respect to outgoing wire transfers.
   {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
 \endfoot
   \hline
-  {\bf Total deltas}  & 
+  {\bf Total deltas}  &
   {{ wire.total_wire_out_delta_plus }} &
   - {{ wire.total_wire_out_delta_minus }} \\
   \caption{Outgoing wire transfer amounts not matching up.}
@@ -634,7 +655,7 @@ with respect to outgoing wire transfers.
 {% for item in wire.wire_out_amount_inconsistencies %}
   {\tt \small \truncate{5.2cm}{ {{ item.wtid }} } } &
   {{ item.amount_wired }} &
-  {{ item.amount_justified }} \\ 
+  {{ item.amount_justified }} \\
 \nopagebreak
   {{ item.diagnostic }} &
   {{ item.row }} &
@@ -667,7 +688,7 @@ translate into a financial loss (yet).
   {\bf Reserve} & {\bf Auditor} & {\bf Exchange}
 \endfoot
   \hline
-  {\bf Total deltas}  & 
+  {\bf Total deltas}  &
   {{ data.total_balance_summary_delta_plus}} &
   - {{ data.total_balance_summary_delta_minus}} \\
   \caption{Reserves balances not matching up.}

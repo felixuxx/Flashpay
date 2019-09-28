@@ -269,9 +269,24 @@ static json_int_t number_missed_deposit_confirmations;
 static struct TALER_Amount total_missed_deposit_confirmations;
 
 /**
+ * Total amount reported in all calls to #report_emergency_by_count().
+ */
+static struct TALER_Amount reported_emergency_risk_by_count;
+
+/**
  * Total amount reported in all calls to #report_emergency().
  */
-static struct TALER_Amount reported_emergency_sum;
+static struct TALER_Amount reported_emergency_risk_by_amount;
+
+/**
+ * Total amount in losses reported in all calls to #report_emergency().
+ */
+static struct TALER_Amount reported_emergency_loss;
+
+/**
+ * Total amount in losses reported in all calls to #report_emergency_by_count().
+ */
+static struct TALER_Amount reported_emergency_loss_by_count;
 
 /**
  * Expected balance in the escrow account.
@@ -419,9 +434,13 @@ report_emergency_by_amount (const struct
                      "value",
                      TALER_JSON_from_amount_nbo (&dki->properties.value)));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&reported_emergency_sum,
-                                   &reported_emergency_sum,
+                 TALER_amount_add (&reported_emergency_risk_by_amount,
+                                   &reported_emergency_risk_by_amount,
                                    risk));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&reported_emergency_loss,
+                                   &reported_emergency_loss,
+                                   loss));
 }
 
 
@@ -446,6 +465,8 @@ report_emergency_by_count (const struct
                            uint64_t num_known,
                            const struct TALER_Amount *risk)
 {
+  struct TALER_Amount denom_value;
+
   report (report_emergencies_by_count,
           json_pack ("{s:o, s:I, s:I, s:o, s:o, s:o, s:o}",
                      "denompub_hash",
@@ -463,9 +484,17 @@ report_emergency_by_count (const struct
                      "value",
                      TALER_JSON_from_amount_nbo (&dki->properties.value)));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&reported_emergency_sum,
-                                   &reported_emergency_sum,
+                 TALER_amount_add (&reported_emergency_risk_by_count,
+                                   &reported_emergency_risk_by_count,
                                    risk));
+  TALER_amount_ntoh (&denom_value,
+                     &dki->properties.value);
+  for (uint64_t i = num_issued; i<num_known; i++)
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&reported_emergency_loss_by_count,
+                                     &reported_emergency_loss_by_count,
+                                     &denom_value));
+
 }
 
 
@@ -1650,7 +1679,7 @@ verify_reserve_balance (void *cls,
     ret = GNUNET_SYSERR;
     rc->qs = qs;
   }
-  cleanup:
+cleanup:
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (rc->reserves,
                                                        key,
@@ -3859,16 +3888,28 @@ refresh_session_cb (void *cls,
   {
     dso->denom_balance = tmp;
   }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&total_escrow_balance,
-                             &total_escrow_balance,
-                             amount_with_fee))
+  if (-1 == TALER_amount_cmp (&total_escrow_balance,
+                              amount_with_fee))
   {
-    /* This should not be possible, unless the AUDITOR
-       has a bug in tracking total balance. */
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
+    /* This can theoretically happen if for example the exchange
+       never issued any coins (i.e. escrow balance is zero), but
+       accepted a forged coin (i.e. emergency situation after
+       private key compromise). In that case, we cannot even
+       subtract the profit we make from the fee from the escrow
+       balance. Tested as part of test-auditor.sh, case #18 */
+    report_amount_arithmetic_inconsistency (
+      "subtracting refresh fee from escrow balance",
+      rowid,
+      &total_escrow_balance,
+      amount_with_fee,
+      0);
+  }
+  else
+  {
+    GNUNET_assert (GNUNET_SYSERR !=
+                   TALER_amount_subtract (&total_escrow_balance,
+                                          &total_escrow_balance,
+                                          amount_with_fee));
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -4030,16 +4071,29 @@ deposit_cb (void *cls,
   {
     ds->denom_balance = tmp;
   }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&total_escrow_balance,
-                             &total_escrow_balance,
-                             amount_with_fee))
+
+  if (-1 == TALER_amount_cmp (&total_escrow_balance,
+                              amount_with_fee))
   {
-    /* This should not be possible, unless the AUDITOR
-       has a bug in tracking total balance. */
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
+    /* This can theoretically happen if for example the exchange
+       never issued any coins (i.e. escrow balance is zero), but
+       accepted a forged coin (i.e. emergency situation after
+       private key compromise). In that case, we cannot even
+       subtract the profit we make from the fee from the escrow
+       balance. Tested as part of test-auditor.sh, case #18 */
+    report_amount_arithmetic_inconsistency (
+      "subtracting deposit fee from escrow balance",
+      rowid,
+      &total_escrow_balance,
+      amount_with_fee,
+      0);
+  }
+  else
+  {
+    GNUNET_assert (GNUNET_SYSERR !=
+                   TALER_amount_subtract (&total_escrow_balance,
+                                          &total_escrow_balance,
+                                          amount_with_fee));
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -5094,7 +5148,16 @@ run (void *cls,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
-                                        &reported_emergency_sum));
+                                        &reported_emergency_loss));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &reported_emergency_risk_by_amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &reported_emergency_risk_by_count));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &reported_emergency_loss_by_count));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_escrow_balance));
@@ -5213,7 +5276,8 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:I,"
-                      " s:o, s:o, s:o }",
+                      " s:o, s:o, s:o, s:o, s:o,"
+                      " s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
                       "reserve_balance_insufficient_inconsistencies",
@@ -5248,8 +5312,9 @@ run (void *cls,
                       TALER_JSON_from_amount (&income_fee_total),
                       "emergencies",
                       report_emergencies,
-                      "emergencies_risk_total",
-                      TALER_JSON_from_amount (&reported_emergency_sum),
+                      "emergencies_risk_by_amount",
+                      TALER_JSON_from_amount (
+                        &reported_emergency_risk_by_amount),
                       "reserve_not_closed_inconsistencies",
                       report_reserve_not_closed_inconsistencies,
                       /* block */
@@ -5309,7 +5374,15 @@ run (void *cls,
                       "total_payback_loss",
                       TALER_JSON_from_amount (&total_payback_loss),
                       "emergencies_by_count",
-                      report_emergencies_by_count
+                      report_emergencies_by_count,
+                      "emergencies_risk_by_count",
+                      TALER_JSON_from_amount (
+                        &reported_emergency_risk_by_count),
+                      "emergencies_loss",
+                      TALER_JSON_from_amount (&reported_emergency_loss),
+                      /* block */
+                      "emergencies_loss_by_count",
+                      TALER_JSON_from_amount (&reported_emergency_loss_by_count)
                       );
   GNUNET_break (NULL != report);
   json_dumpf (report,

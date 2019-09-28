@@ -83,7 +83,7 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
-    kill -9 `jobs -p` >/dev/null 2>/dev/null || true
+    kill -TERM `jobs -p` >/dev/null 2>/dev/null || true
 
     echo -n "TeXing ."
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
@@ -977,6 +977,58 @@ echo PASS
 echo "UPDATE app_banktransaction SET date='${OLD_DATE}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
 }
 
+
+
+
+# Test where we trigger an emergency.
+function test_18() {
+echo "===========18: emergency================="
+
+echo "DELETE FROM reserves_out;" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Testing emergency detection... "
+
+jq -e .reserve_balance_summary_wrong_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Reserve balance inconsistency not detected"
+
+jq -e .emergencies[0] < test-audit.json > /dev/null || exit_fail "Emergency not detected"
+jq -e .emergencies_by_count[0] < test-audit.json > /dev/null || exit_fail "Emergency by count not detected"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Escrow balance calculation impossibility not detected"
+
+echo PASS
+
+echo -n "Testing risk/loss calculation... "
+
+AMOUNT=`jq -r .emergencies_risk_by_amount < test-audit.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .emergencies_risk_by_count < test-audit.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .emergencies_loss < test-audit.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .emergencies_loss_by_count < test-audit.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported amount wrong: $AMOUNT"
+fi
+
+echo  PASS
+
+
+# cannot easily undo broad DELETE operation, hence full reload
+echo -n "Reloading database ..."
+full_reload
+echo "DONE"
+}
 
 
 
