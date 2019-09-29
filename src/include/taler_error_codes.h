@@ -13,6 +13,7 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file taler_error_codes.h
  * @brief error codes returned by GNU Taler
@@ -1681,104 +1682,70 @@ enum TALER_ErrorCode
 
   /* *************** Taler BANK/FAKEBANK error codes *************** */
 
+  /**
+   * Wire tranfer attempted with credit and debit party being
+   * the same bank account.
+   */
+  TALER_EC_BANK_SAME_ACCOUNT = 5102,
+
+  /**
+   * Wire transfer impossible, due to financial limitation of
+   * the party that attempted the payment.
+   */
+  TALER_EC_BANK_UNALLOWED_DEBIT = 5103,
+
+  /**
+   * Arithmetic operation between two amounts of different
+   * currency was attempted.
+   */
+  TALER_EC_BANK_CURRENCY_MISMATCH = 5104,
+
+  /**
+   * At least one GET parameter was either missing or invalid for
+   * the requested operation.
+   */
+  TALER_EC_BANK_PARAMETER_MISSING_OR_INVALID = 5105,
+
+  /**
+   * JSON body sent was invalid for the requested operation.
+   */
+  TALER_EC_BANK_JSON_INVALID = 5106,
 
   /**
    * Negative number was used (as value and/or fraction) to initiate
    * a Amount object.
    */
-  TALER_EC_BANK_NEGATIVE_NUMBER_AMOUNT = 5400,
+  TALER_EC_BANK_NEGATIVE_NUMBER_AMOUNT = 5107,
 
   /**
    * A number too big was used (as value and/or fraction) to initiate
    * a amount object.
    */
-  TALER_EC_BANK_NUMBER_TOO_BIG = 5401,
+  TALER_EC_BANK_NUMBER_TOO_BIG = 5108,
 
   /**
-   * The request cannot be served because the client failed to
-   * login.  To be returned along HTTP 401 Unauthorized.
+   * Could not login for the requested operation.
    */
-  TALER_EC_BANK_REJECT_LOGIN_FAILED = 5312,
+  TALER_EC_BANK_LOGIN_FAILED = 5109,
 
   /**
-   * The transaction cannot be rejected becasue it does not exist
-   * at the bank.  To be returned along HTTP 404 Not Found.
+   * The bank account referenced in the requested operation
+   * was not found.  Returned along "400 Not found".
    */
-  TALER_EC_BANK_REJECT_TRANSACTION_NOT_FOUND = 5301,
+  TALER_EC_BANK_UNKNOWN_ACCOUNT = 5110,
+
+  /**
+   * The transaction referenced in the requested operation (typically
+   * a reject operation), was not found.
+   */
+  TALER_EC_BANK_TRANSACTION_NOT_FOUND = 5111,
 
   /**
    * The client does not own the account credited by the transaction
    * which is to be rejected, so it has no rights do reject it.  To be
    * returned along HTTP 403 Forbidden.
    */
-  TALER_EC_BANK_REJECT_NO_RIGHTS = 5313,
-
-  /**
-   * The POSTed JSON at /reject was invalid.  To be returned along
-   * HTTP 400 Bad Request.
-   */
-  TALER_EC_BANK_REJECT_JSON_INVALID = 5306,
-
-  /**
-   * A URL parameter for /history was missing.  To be returned along
-   * HTTP 400 Bad Request.
-   */
-  TALER_EC_BANK_HISTORY_PARAMETER_MISSING = 5208,
-
-  /**
-   * A URL parameter for /history was malformed.  To be returned along
-   * HTTP 400 Bad Request.
-   */
-  TALER_EC_BANK_HISTORY_PARAMETER_MALFORMED = 5209,
-
-  /**
-   * The client failed to login for /history.  To be returned along
-   * HTTP 401 Unauthorized.
-   */
-  TALER_EC_BANK_HISTORY_LOGIN_FAILED = 5212,
-
-  /**
-   * The bank had trouble obtaining a valid HTTP response.  To be returned
-   * along status code 0.
-   */
-  TALER_EC_BANK_HISTORY_HTTP_FAILURE = 5213,
-
-  /**
-   * The debit account for /admin/add/incoming is not known to the
-   * bank.  To be returned along HTTP 404 Not Found.
-   */
-  TALER_EC_BANK_ADD_INCOMING_UNKNOWN_ACCOUNT = 5100,
-
-  /**
-   * The client specified the same bank account for both the credit
-   * and the debit account.  The bank will not accomplish this operation.
-   * To be returned along HTTP 403 Forbidden.
-   */
-  TALER_EC_BANK_ADD_INCOMING_SAME_ACCOUNT = 5102,
-
-  /**
-   * The operation would put the client in a debit situation which is
-   * forbidden to them.  To return along HTTP 403 Forbidden.
-   */
-  TALER_EC_BANK_ADD_INCOMING_UNALLOWED_DEBIT = 5103,
-
-  /**
-   * The client POSTed an invalid JSON.  To be returned along HTTP
-   * 400 Bad Request.
-   */
-  TALER_EC_BANK_ADD_INCOMING_JSON_INVALID = 5106,
-
-  /**
-   * The client tried a /admin/add/incoming request by using
-   * a currency different from the one the bank operates with.
-   */
-  TALER_EC_BANK_ADD_INCOMING_CURRENCY_MISMATCH = 5111,
-
-  /**
-   * The client failed to login for /admin/add/incoming.  To be returned
-   * along HTTP 401 Unauthorized.
-   */
-  TALER_EC_BANK_ADD_INCOMING_LOGIN_FAILED = 5112,
+  TALER_EC_BANK_REJECT_NO_RIGHTS = 5200,
 
   /**
    * End of error code range.
