@@ -417,7 +417,7 @@ do_shutdown (void *cls)
                         report_wire_out_inconsistencies,
                         "total_wire_out_delta_plus",
                         TALER_JSON_from_amount (&total_bad_amount_out_plus),
-                        /* Tested in test-auditor.sh #11, #15 */
+                        /* Tested in test-auditor.sh #11, #15, #19 */
                         "total_wire_out_delta_minus",
                         TALER_JSON_from_amount (&total_bad_amount_out_minus),
                         /* Tested in test-auditor.sh #2 */
@@ -442,8 +442,10 @@ do_shutdown (void *cls)
                         "row_minor_inconsistencies",
                         report_row_minor_inconsistencies,
                         /* block */
+                        /* Tested in test-auditor.sh #19 */
                         "total_wire_format_amount",
                         TALER_JSON_from_amount (&total_wire_format_amount),
+                        /* Tested in test-auditor.sh #19 */
                         "wire_format_inconsistencies",
                         report_wire_format_inconsistencies,
                         "total_amount_lag",
@@ -910,7 +912,7 @@ wire_out_cb (void *cls,
     }
   }
 
-  cleanup:
+cleanup:
   GNUNET_assert (GNUNET_OK ==
                  free_roi (NULL,
                            &key,
@@ -1032,7 +1034,6 @@ history_debit_cb (void *cls,
 {
   struct WireAccount *wa = cls;
   struct ReserveOutInfo *roi;
-  struct GNUNET_HashCode rowh;
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
@@ -1056,11 +1057,8 @@ history_debit_cb (void *cls,
   {
     char *diagnostic;
 
-    GNUNET_CRYPTO_hash (row_off,
-                        row_off_size,
-                        &rowh);
     GNUNET_asprintf (&diagnostic,
-                     "malformed subject `%8s...'",
+                     "malformed subject `%s'",
                      details->wtid_s);
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_wire_format_amount,
@@ -1069,7 +1067,8 @@ history_debit_cb (void *cls,
     report (report_wire_format_inconsistencies,
             json_pack ("{s:o, s:o, s:s}",
                        "amount", TALER_JSON_from_amount (&details->amount),
-                       "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
+                       "wire_offset", GNUNET_JSON_from_data (row_off,
+                                                             row_off_size),
                        "diagnostic", diagnostic));
     GNUNET_free (diagnostic);
     return GNUNET_OK;
@@ -1109,11 +1108,8 @@ history_debit_cb (void *cls,
   {
     char *diagnostic;
 
-    GNUNET_CRYPTO_hash (row_off,
-                        row_off_size,
-                        &rowh);
     GNUNET_asprintf (&diagnostic,
-                     "duplicate subject hash `%8s...'",
+                     "duplicate subject hash `%s'",
                      TALER_B2S (&roi->subject_hash));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_wire_format_amount,
@@ -1122,7 +1118,8 @@ history_debit_cb (void *cls,
     report (report_wire_format_inconsistencies,
             json_pack ("{s:o, s:o, s:s}",
                        "amount", TALER_JSON_from_amount (&details->amount),
-                       "wire_offset_hash", GNUNET_JSON_from_data_auto (&rowh),
+                       "wire_offset", GNUNET_JSON_from_data (row_off,
+                                                             row_off_size),
                        "diagnostic", diagnostic));
     GNUNET_free (diagnostic);
     return GNUNET_OK;
@@ -1542,7 +1539,7 @@ history_credit_cb (void *cls,
                                                               row_off_size),
                        "diagnostic", "execution date missmatch"));
   }
-  cleanup:
+cleanup:
   GNUNET_assert (GNUNET_OK ==
                  free_rii (NULL,
                            &key,

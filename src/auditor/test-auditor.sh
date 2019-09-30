@@ -1023,12 +1023,58 @@ fi
 
 echo  PASS
 
-
 # cannot easily undo broad DELETE operation, hence full reload
 echo -n "Reloading database ..."
 full_reload
 echo "DONE"
 }
+
+
+
+# Test where outgoing wire transfer subject is malformed
+function test_19() {
+echo "===========19: outgoing wire subject malformed================="
+
+# Need to first run the aggregator so the outgoing transfer exists
+pre_audit aggregator
+
+# Generate mal-formed wire transfer subject
+SUBJECT=YDVD2XBQT62553Z2TX8MM
+# Account #2 = exchange, pick outgoing transfer
+OLD_SUBJECT=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2;" | psql $DB -Aqt`
+echo "UPDATE app_banktransaction SET subject='${SUBJECT}' WHERE debit_account_id=2;" | psql -Aqt $DB
+
+audit_only
+post_audit
+
+
+echo -n "Testing wire transfer subject malformed detection... "
+
+DIAGNOSTIC=`jq -r .wire_format_inconsistencies[0].diagnostic < test-wire-audit.json`
+WANT="malformed subject \`${SUBJECT}'"
+if test "x$DIAGNOSTIC" != "x$WANT"
+then
+    exit_fail "Reported diagnostic: $DIAGNOSTIC, wanted $WANT"
+fi
+jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null || exit_fail "Falsly claimed wire transfer not detected"
+
+DELTA=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+if test $DELTA == "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta minus wrong, got $DELTA"
+fi
+DELTA=`jq -r .total_wire_format_amount < test-wire-audit.json`
+if test $DELTA == "TESTKUDOS:0"
+then
+    exit_fail "Expected total format amount wrong, got $DELTA"
+fi
+
+echo "PASS"
+
+# Undo
+echo "UPDATE app_banktransaction SET subject='${OLD_SUBJECT}' WHERE debit_account_id=2;" | psql -Aqt $DB
+}
+
 
 
 

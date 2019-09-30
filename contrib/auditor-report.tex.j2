@@ -688,6 +688,7 @@ translate into a financial loss (yet).
   {\bf Reserve} & {\bf Auditor} & {\bf Exchange}
 \endfoot
   \hline
+  \hline
   {\bf Total deltas}  &
   {{ data.total_balance_summary_delta_plus}} &
   - {{ data.total_balance_summary_delta_minus}} \\
@@ -767,21 +768,23 @@ relate to outgoing wire transfers being malformed.
 This happens if the exchange somehow creates wire transfers
 with duplicate or malformed wire transfer subjects.
 
+% Table generation tested by testcase #19 in test-auditor.sh
+
 {% if wire.wire_format_inconsistencies|length() == 0 %}
   {\bf No wire format inconsistencies found.}
 {% else %}
-  \begin{longtable}{p{4.5cm}|r}
-  \multicolumn{3}{c}{ {\bf Row hash} } \\
-  {\bf Diagnostic} & {\bf Amount} \\
+  \begin{longtable}{p{6.5cm}|r}
+  \multicolumn{2}{c}{ {\bf Diagnostic} } \\
+  {\bf Row (base32)}  & {\bf Amount} \\
   \hline \hline
 \endfirsthead
-  \multicolumn{3}{c}{ {\bf Row hash} } \\
-  {\bf Diagnostic} & {\bf Amount} \\
+  \multicolumn{2}{c}{ {\bf Diagnostic} } \\
+    {\bf Row (base32)}  & {\bf Amount} \\
   \hline \hline
 \endhead
   \hline
-  \multicolumn{3}{c}{ {\bf Row hash} } \\
-  {\bf Diagnostic} & {\bf Amount} \\
+  \multicolumn{2}{c}{ {\bf Row (base32)} } \\
+  {\bf Row (base32)}  & {\bf Amount} \\
 \endfoot
   \hline
   \hline
@@ -791,10 +794,9 @@ with duplicate or malformed wire transfer subjects.
   \label{table:outgoing:wtid}
 \endlastfoot
 {% for item in wire.wire_format_inconsistencies %}
-  \multicolumn{3}{l}{ \tt \small \truncate{\textwidth}{ {{ item.wire_offset_hash }} } } \\
+  \multicolumn{2}{l}{ \small \truncate{0.95\textwidth}{ {{ item.diagnostic }} } } \\
 \nopagebreak
-  {{ item.diagnostic }} &
-  {{ item.amount }} \\
+  { \tt \small \truncate{0.95\textwidth}{ {{ item.wire_offset }} } } & {{ item.amount }} \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
