@@ -1087,7 +1087,6 @@ echo "UPDATE app_banktransaction SET subject='${OLD_SUBJECT}' WHERE debit_accoun
 # - refunds
 # - reserve closure (or lack thereof)
 # - arithmetic problems
-# - wire.row_inconsistencies (i.e. duplicate wire offset)
 # **************************************************
 
 
