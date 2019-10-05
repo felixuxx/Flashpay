@@ -291,6 +291,7 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":23.456789",
                                          &withdraw_fee_balance));
 
+
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_info (plugin->cls,
                                        session,
@@ -298,7 +299,8 @@ run (void *cls)
                                        &master_pub,
                                        &reserve_balance,
                                        &withdraw_fee_balance,
-                                       past));
+                                       past,
+                                       "payto://bla/blub"));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_reserve_info\n");
@@ -315,6 +317,8 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_reserve_info\n");
 
+  char *payto;
+
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_info (plugin->cls,
                                     session,
@@ -323,8 +327,11 @@ run (void *cls)
                                     &rowid,
                                     &reserve_balance2,
                                     &withdraw_fee_balance2,
-                                    &date));
-
+                                    &date,
+                                    &payto));
+  FAILIF (0 != strcmp (payto,
+                       "payto://bla/blub"));
+  GNUNET_free (payto);
   FAILIF (0 != GNUNET_memcmp (&date, &future)
           || 0 != GNUNET_memcmp (&reserve_balance2, &reserve_balance)
           || 0 != GNUNET_memcmp (&withdraw_fee_balance2,
@@ -725,7 +732,7 @@ run (void *cls)
 
   result = 0;
 
-  drop:
+drop:
   if (NULL != session)
   {
     plugin->rollback (plugin->cls,
@@ -746,7 +753,7 @@ run (void *cls)
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls,
                                      GNUNET_YES));
-  unload:
+unload:
   TALER_AUDITORDB_plugin_unload (plugin);
   plugin = NULL;
 }

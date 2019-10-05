@@ -1007,6 +1007,7 @@ struct TALER_AUDITORDB_Plugin
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param expiration_date expiration date of the reserve
+   * @param origin_account where did the money in the reserve originally come from
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1016,7 +1017,8 @@ struct TALER_AUDITORDB_Plugin
                          const struct TALER_MasterPublicKeyP *master_pub,
                          const struct TALER_Amount *reserve_balance,
                          const struct TALER_Amount *withdraw_fee_balance,
-                         struct GNUNET_TIME_Absolute expiration_date);
+                         struct GNUNET_TIME_Absolute expiration_date,
+                         const char *origin_account);
 
 
   /**
@@ -1055,6 +1057,7 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param[out] expiration_date expiration date of the reserve
+   * @param[out] sender_account from where did the money in the reserve originally come from
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1065,7 +1068,8 @@ struct TALER_AUDITORDB_Plugin
                       uint64_t *rowid,
                       struct TALER_Amount *reserve_balance,
                       struct TALER_Amount *withdraw_fee_balance,
-                      struct GNUNET_TIME_Absolute *expiration_date);
+                      struct GNUNET_TIME_Absolute *expiration_date,
+                      char **sender_account);
 
 
   /**

@@ -329,6 +329,7 @@ postgres_create_tables (void *cls)
                             ",withdraw_fee_balance_frac INT4 NOT NULL"
                             ",expiration_date INT8 NOT NULL"
                             ",auditor_reserves_rowid BIGSERIAL UNIQUE"
+                            ",origin_account TEXT"
                             ")"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX auditor_reserves_by_reserve_pub "
                                 "ON auditor_reserves(reserve_pub)"),
@@ -777,8 +778,9 @@ postgres_prepare (PGconn *db_conn)
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
                             ",expiration_date"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
-                            7),
+                            ",origin_account"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
+                            8),
     /* Used in #postgres_update_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_update",
                             "UPDATE auditor_reserves SET"
@@ -798,6 +800,7 @@ postgres_prepare (PGconn *db_conn)
                             ",withdraw_fee_balance_frac"
                             ",expiration_date"
                             ",auditor_reserves_rowid"
+                            ",origin_account"
                             " FROM auditor_reserves"
                             " WHERE reserve_pub=$1 AND master_pub=$2;",
                             2),
@@ -2475,6 +2478,7 @@ postgres_get_wire_auditor_progress (void *cls,
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
  * @param expiration_date expiration date of the reserve
+ * @param origin_account where did the money in the reserve originally come from
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2484,7 +2488,8 @@ postgres_insert_reserve_info (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
                               const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Absolute expiration_date)
+                              struct GNUNET_TIME_Absolute expiration_date,
+                              const char *origin_account)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
@@ -2492,6 +2497,7 @@ postgres_insert_reserve_info (void *cls,
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
     TALER_PQ_query_param_absolute_time (&expiration_date),
+    GNUNET_PQ_query_param_string (origin_account),
     GNUNET_PQ_query_param_end
   };
 
@@ -2586,6 +2592,7 @@ postgres_del_reserve_info (void *cls,
  * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
  * @param[out] expiration_date expiration date of the reserve
+ * @param[out] sender_account from where did the money in the reserve originally come from
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2596,7 +2603,8 @@ postgres_get_reserve_info (void *cls,
                            uint64_t *rowid,
                            struct TALER_Amount *reserve_balance,
                            struct TALER_Amount *withdraw_fee_balance,
-                           struct GNUNET_TIME_Absolute *expiration_date)
+                           struct GNUNET_TIME_Absolute *expiration_date,
+                           char **sender_account)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2609,6 +2617,7 @@ postgres_get_reserve_info (void *cls,
     TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
     TALER_PQ_result_spec_absolute_time ("expiration_date", expiration_date),
     GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid", rowid),
+    GNUNET_PQ_result_spec_string ("origin_account", sender_account),
     GNUNET_PQ_result_spec_end
   };
 

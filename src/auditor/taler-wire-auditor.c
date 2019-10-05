@@ -695,9 +695,6 @@ wire_missing_cb (void *cls,
 /**
  * Checks that all wire transfers that should have happened
  * (based on deposits) have indeed happened.
- *
- * FIXME: this check _might_ rather belong with the
- * taler-auditor logic.
  */
 static void
 check_for_required_transfers ()
@@ -712,7 +709,8 @@ check_for_required_transfers ()
   next_timestamp = GNUNET_TIME_absolute_subtract (next_timestamp,
                                                   GRACE_PERIOD);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Analyzing exchange's unfinished deposits\n");
+              "Analyzing exchange's unfinished deposits (deadline: %s)\n",
+              GNUNET_STRINGS_absolute_time_to_string (next_timestamp));
   qs = edb->select_deposits_missing_wire (edb->cls,
                                           esession,
                                           pp.last_timestamp,

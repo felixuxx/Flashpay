@@ -839,6 +839,11 @@ struct ReserveSummary
   struct GNUNET_TIME_Absolute a_expiration_date;
 
   /**
+   * Which account did originally put money into the reserve?
+   */
+  char *sender_account;
+
+  /**
    * Did we have a previous reserve info?  Used to decide between
    * UPDATE and INSERT later.  Initialized in
    * #load_auditor_reserve_summary() together with the a-* values
@@ -870,7 +875,8 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
                               &rowid,
                               &rs->a_balance,
                               &rs->a_withdraw_fee_balance,
-                              &rs->a_expiration_date);
+                              &rs->a_expiration_date,
+                              &rs->sender_account);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -977,6 +983,7 @@ handle_reserve_in (void *cls,
   if (NULL == rs)
   {
     rs = GNUNET_new (struct ReserveSummary);
+    rs->sender_account = GNUNET_strdup (sender_account_details);
     rs->reserve_pub = *reserve_pub;
     rs->total_in = *credit;
     GNUNET_assert (GNUNET_OK ==
@@ -1363,6 +1370,52 @@ handle_payback_by_reserve (void *cls,
 
 
 /**
+ * Obtain the closing fee for a transfer at @a time for target
+ * @a receiver_account.
+ *
+ * @param receiver_account payto:// URI of the target account
+ * @param atime when was the transfer made
+ * @param fee[out] set to the closing fee
+ * @return #GNUNET_OK on success
+ */
+static int
+get_closing_fee (const char *receiver_account,
+                 struct GNUNET_TIME_Absolute atime,
+                 struct TALER_Amount *fee)
+{
+  struct TALER_MasterSignatureP master_sig;
+  struct GNUNET_TIME_Absolute start_date;
+  struct GNUNET_TIME_Absolute end_date;
+  struct TALER_Amount wire_fee;
+  char *method;
+
+  method = TALER_WIRE_payto_get_method (receiver_account);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Method is `%s'\n",
+              method);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+      edb->get_wire_fee (edb->cls,
+                         esession,
+                         method,
+                         atime,
+                         &start_date,
+                         &end_date,
+                         &wire_fee,
+                         fee,
+                         &master_sig))
+  {
+    report_row_inconsistency ("closing-fee",
+                              atime.abs_value_us,
+                              "closing fee unavailable at given time");
+    GNUNET_free (method);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (method);
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called about reserve closing operations
  * the aggregator triggered.
  *
@@ -1426,6 +1479,8 @@ handle_reserve_closed (void *cls,
   }
   else
   {
+    struct TALER_Amount expected_fee;
+
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_add (&rs->total_out,
                                      &rs->total_out,
@@ -1434,6 +1489,30 @@ handle_reserve_closed (void *cls,
                    TALER_amount_add (&rs->total_fee,
                                      &rs->total_fee,
                                      closing_fee));
+    /* verify closing_fee is correct! */
+    if (GNUNET_OK !=
+        get_closing_fee (receiver_account,
+                         execution_date,
+                         &expected_fee))
+    {
+      GNUNET_break (0);
+    }
+    else if (0 != TALER_amount_cmp (&expected_fee,
+                                    closing_fee))
+    {
+      report_amount_arithmetic_inconsistency ("closing aggregation fee",
+                                              rowid,
+                                              closing_fee,
+                                              &expected_fee,
+                                              1);
+    }
+  }
+  if (0 != strcmp (rs->sender_account,
+                   receiver_account))
+  {
+    report_row_inconsistency ("reserves_close",
+                              rowid,
+                              "target account does not match origin account");
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional closing operation for reserve `%s' of %s\n",
@@ -1464,6 +1543,7 @@ verify_reserve_balance (void *cls,
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
   struct TALER_Amount nbalance;
+  struct TALER_Amount cfee;
   enum GNUNET_DB_QueryStatus qs;
   int ret;
 
@@ -1566,25 +1646,46 @@ verify_reserve_balance (void *cls,
   }
 
   /* Check that reserve is being closed if it is past its expiration date */
-  /* FIXME: need to consider closing_fee here! */
-  if ( (CLOSING_GRACE_PERIOD.rel_value_us >
-        GNUNET_TIME_absolute_get_duration (
-          rs->a_expiration_date).rel_value_us) &&
-       ( (0 != nbalance.value) ||
-         (0 != nbalance.fraction) ) )
+
+  if (CLOSING_GRACE_PERIOD.rel_value_us <
+      GNUNET_TIME_absolute_get_duration (rs->a_expiration_date).rel_value_us)
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_balance_reserve_not_closed,
-                                     &total_balance_reserve_not_closed,
-                                     &nbalance));
-    report (report_reserve_not_closed_inconsistencies,
-            json_pack ("{s:o, s:o, s:o}",
-                       "reserve_pub",
-                       GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                       "balance",
-                       TALER_JSON_from_amount (&nbalance),
-                       "expiration_time",
-                       json_from_time_abs (rs->a_expiration_date)));
+    if ( (NULL != rs->sender_account) &&
+         (GNUNET_OK ==
+          get_closing_fee (rs->sender_account,
+                           rs->a_expiration_date,
+                           &cfee)) )
+    {
+      if (1 == TALER_amount_cmp (&nbalance,
+                                 &cfee))
+      {
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_balance_reserve_not_closed,
+                                         &total_balance_reserve_not_closed,
+                                         &nbalance));
+        report (report_reserve_not_closed_inconsistencies,
+                json_pack ("{s:o, s:o, s:o}",
+                           "reserve_pub",
+                           GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                           "balance",
+                           TALER_JSON_from_amount (&nbalance),
+                           "expiration_time",
+                           json_from_time_abs (rs->a_expiration_date)));
+      }
+    }
+    else
+    {
+      report (report_reserve_not_closed_inconsistencies,
+              json_pack ("{s:o, s:o, s:o, s:s}",
+                         "reserve_pub",
+                         GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                         "balance",
+                         TALER_JSON_from_amount (&nbalance),
+                         "expiration_time",
+                         json_from_time_abs (rs->a_expiration_date),
+                         "diagnostic",
+                         "could not determine closing fee"));
+    }
   }
 
   /* Add withdraw fees we encountered to totals */
@@ -1672,7 +1773,8 @@ verify_reserve_balance (void *cls,
                                    &master_pub,
                                    &nbalance,
                                    &rs->a_withdraw_fee_balance,
-                                   rs->a_expiration_date);
+                                   rs->a_expiration_date,
+                                   rs->sender_account);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1684,6 +1786,7 @@ cleanup:
                  GNUNET_CONTAINER_multihashmap_remove (rc->reserves,
                                                        key,
                                                        rs));
+  GNUNET_free_non_null (rs->sender_account);
   GNUNET_free (rs);
   return ret;
 }

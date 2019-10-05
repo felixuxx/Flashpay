@@ -68,15 +68,15 @@ function pre_audit () {
 function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
-    taler-auditor -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
+    taler-auditor -L INFO -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
     echo -n "."
     # Also do incremental run
-    taler-auditor -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
+    taler-auditor -L INFO -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
     echo -n "."
-    taler-wire-auditor -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
+    taler-wire-auditor -L INFO -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     # Also do incremental run
     echo -n "."
-    taler-wire-auditor -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
+    taler-wire-auditor -L INFO -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
     echo " DONE"
 }
 
@@ -382,6 +382,10 @@ echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/4
 
 run_audit
 
+echo -n "Testing inconsistency detection... "
+
+jq -e .bad_sig_losses[0] < test-audit.json > /dev/null || exit_fail "Bad signature not detected"
+
 ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
 if test $ROW != 1
 then
@@ -406,6 +410,7 @@ then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi
 
+echo PASS
 # Undo:
 echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=1" | psql -Aqt $DB
 
@@ -1076,16 +1081,62 @@ echo "UPDATE app_banktransaction SET subject='${OLD_SUBJECT}' WHERE debit_accoun
 }
 
 
+# Test where reserve closure was done properly
+function test_20() {
+echo "===========20: reserve closure done properly ================="
 
+OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
+NEW_CREDIT=`expr $OLD_VAL + 100`
+echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+
+# Need to run with the aggregator so the reserve closure happens
+run_audit aggregator
+
+echo -n "Testing reserve closure was done correctly... "
+
+jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected reserve not closed inconsistency detected"
+
+echo "PASS"
+
+# Undo
+echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+}
+
+
+# Test where reserve closure was not done properly
+function test_21() {
+echo "===========21: reserve closure missing ================="
+
+OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
+NEW_CREDIT=`expr $OLD_VAL + 100`
+echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+
+# This time, run without the aggregator so the reserve closure is skipped!
+run_audit
+
+echo -n "Testing reserve closure missing detected... "
+jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
+echo "PASS"
+
+# Undo
+echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+}
 
 # **************************************************
 # FIXME: Add more tests here! :-)
 # Specifically:
-# - emergencies (detection)
+# - reserve closure (or lack thereof)
 # - revocation (payback, accepting
 #   of coins despite denomination revocation)
 # - refunds
-# - reserve closure (or lack thereof)
 # - arithmetic problems
 # **************************************************
 
