@@ -117,3 +117,4 @@ src/lib/test_auditor_api
 src/lib/test_exchange_api_overlapping_keys_bug
 src/lib/test_exchange_api_home/.local/share/taler/exchange/revocations/
 src/wire-plugins/test_wire_plugin_legacy_taler_bank
+uncrustify.cfg
