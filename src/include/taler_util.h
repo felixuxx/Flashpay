@@ -156,6 +156,19 @@ TALER_urlencode (const char *s);
 
 
 /**
+ * Find out if an MHD connection is using HTTPS (either
+ * directly or via proxy).
+ *
+ * @param connection MHD connection
+ * @returns GNUNET_YES if the MHD connection is using https,
+ *          GNUNET_NO if the MHD connection is using http,
+ *          GNUNET_SYSERR if the connection type couldn't be determined
+ */
+int
+TALER_mhd_is_https (struct MHD_Connection *connection);
+
+
+/**
  * Make an absolute URL with query parameters.
  *
  * @param base_url absolute base URL to use

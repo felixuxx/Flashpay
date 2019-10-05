@@ -424,6 +424,53 @@ TALER_url_absolute_raw (const char *proto,
 
 
 /**
+ * Find out if an MHD connection is using HTTPS (either
+ * directly or via proxy).
+ *
+ * @param connection MHD connection
+ * @returns GNUNET_YES if the MHD connection is using https,
+ *          GNUNET_NO if the MHD connection is using http,
+ *          GNUNET_SYSERR if the connection type couldn't be determined
+ */
+int
+TALER_mhd_is_https (struct MHD_Connection *connection)
+{
+  const union MHD_ConnectionInfo *ci;
+  const union MHD_DaemonInfo *di;
+  const char *forwarded_proto = MHD_lookup_connection_value (connection,
+                                                             MHD_HEADER_KIND,
+                                                             "X-Forwarded-Proto");
+
+  if (NULL != forwarded_proto)
+  {
+    if (0 == strcmp (forwarded_proto, "https"))
+      return GNUNET_YES;
+    if (0 == strcmp (forwarded_proto, "http"))
+      return GNUNET_NO;
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* likely not reverse proxy, figure out if we are
+     http by asking MHD */
+  ci = MHD_get_connection_info (connection, MHD_CONNECTION_INFO_DAEMON);
+  if (NULL == ci)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  di = MHD_get_daemon_info (ci->daemon, MHD_DAEMON_INFO_FLAGS);
+  if (NULL == di)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 != (di->flags & MHD_USE_TLS))
+    return GNUNET_YES;
+  return GNUNET_NO;
+}
+
+
+/**
  * Make an absolute URL for a given MHD connection.
  *
  * @param path path of the url
@@ -437,42 +484,18 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
                         ...)
 {
   /* By default we assume we're running under HTTPS */
-  const char *proto = "https";
-  const char *forwarded_proto = MHD_lookup_connection_value (connection,
-                                                             MHD_HEADER_KIND,
-                                                             "X-Forwarded-Proto");
+  const char *proto;
   const char *host;
   const char *forwarded_host;
   const char *prefix;
   va_list args;
   char *result;
 
-
-  if (NULL != forwarded_proto)
-  {
-    proto = forwarded_proto;
-  }
+  if (GNUNET_YES == TALER_mhd_is_https (connection))
+    proto = "https";
   else
-  {
-    /* likely not reverse proxy, figure out if we are
-       http by asking MHD */
-    const union MHD_ConnectionInfo *ci;
+    proto = "http";
 
-    ci = MHD_get_connection_info (connection,
-                                  MHD_CONNECTION_INFO_DAEMON);
-    if (NULL != ci)
-    {
-      const union MHD_DaemonInfo *di;
-
-      di = MHD_get_daemon_info (ci->daemon,
-                                MHD_DAEMON_INFO_FLAGS);
-      if (NULL != di)
-      {
-        if (0 == (di->flags & MHD_USE_TLS))
-          proto = "http";
-      }
-    }
-  }
   host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "Host");
   forwarded_host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND,
                                                 "X-Forwarded-Host");
