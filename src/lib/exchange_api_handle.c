@@ -519,7 +519,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                                    sizeof (struct GNUNET_HashCode));
   return GNUNET_OK;
 
-  EXITIF_exit:
+EXITIF_exit:
   GNUNET_JSON_parse_free (spec);
   return GNUNET_SYSERR;
 }
@@ -1061,7 +1061,7 @@ decode_keys_json (const json_t *resp_obj,
                                         &pub.eddsa_pub));
   }
   return GNUNET_OK;
-  EXITIF_exit:
+EXITIF_exit:
 
   *vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
   if (NULL != hash_context)

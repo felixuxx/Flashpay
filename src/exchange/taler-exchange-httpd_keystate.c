@@ -2150,7 +2150,7 @@ TEH_KS_loop (void)
       ret = GNUNET_SYSERR;
       break;
     }
-    read_again:
+read_again:
     errno = 0;
     res = read (reload_pipe[0],
                 &c,

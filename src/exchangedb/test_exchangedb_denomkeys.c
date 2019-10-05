@@ -193,7 +193,7 @@ main (int argc,
                        enc_size));
   ret = 0;
 
-  EXITIF_exit:
+EXITIF_exit:
   GNUNET_free_non_null (enc);
   GNUNET_free_non_null (tmpfile);
   if (NULL != tmpdir)

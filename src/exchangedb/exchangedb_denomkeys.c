@@ -227,7 +227,7 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
   if (wrote != priv_enc_size)
     goto cleanup;
   ret = GNUNET_OK;
-  cleanup:
+cleanup:
   GNUNET_free_non_null (priv_enc);
   if (NULL != fh)
     (void) GNUNET_DISK_file_close (fh);

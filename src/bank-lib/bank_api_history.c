@@ -369,17 +369,16 @@ conv_cancel (enum TALER_BANK_Direction direction)
  *         called.
  */
 struct TALER_BANK_HistoryHandle *
-TALER_BANK_history_range
-  (struct GNUNET_CURL_Context *ctx,
-   const char *bank_base_url,
-   const struct TALER_BANK_AuthenticationData *auth,
-   uint64_t account_number,
-   enum TALER_BANK_Direction direction,
-   unsigned int ascending,
-   struct GNUNET_TIME_Absolute start_date,
-   struct GNUNET_TIME_Absolute end_date,
-   TALER_BANK_HistoryResultCallback hres_cb,
-   void *hres_cb_cls)
+TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
+                          const char *bank_base_url,
+                          const struct TALER_BANK_AuthenticationData *auth,
+                          uint64_t account_number,
+                          enum TALER_BANK_Direction direction,
+                          unsigned int ascending,
+                          struct GNUNET_TIME_Absolute start_date,
+                          struct GNUNET_TIME_Absolute end_date,
+                          TALER_BANK_HistoryResultCallback hres_cb,
+                          void *hres_cb_cls)
 {
   struct TALER_BANK_HistoryHandle *hh;
   char *url;

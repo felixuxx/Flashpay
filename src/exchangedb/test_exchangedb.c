@@ -136,7 +136,7 @@ test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
                                          &dead_prepare_cb,
                                          NULL));
   return GNUNET_OK;
-  drop:
+drop:
   return GNUNET_SYSERR;
 }
 
@@ -171,7 +171,7 @@ check_reserve (struct TALER_EXCHANGEDB_Session *session,
   FAILIF (0 != strcmp (currency, reserve.balance.currency));
 
   return GNUNET_OK;
-  drop:
+drop:
   return GNUNET_SYSERR;
 }
 
@@ -668,7 +668,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
 
 
   ret = GNUNET_OK;
-  drop:
+drop:
   if (NULL != revealed_coins)
   {
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
@@ -1306,7 +1306,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   FAILIF (1 != auditor_row_cnt);
 
   return GNUNET_OK;
-  drop:
+drop:
   return GNUNET_SYSERR;
 }
 
@@ -1340,7 +1340,7 @@ payback_cb (void *cls,
   FAILIF (0 != GNUNET_memcmp (cb,
                               coin_blind));
   return GNUNET_OK;
-  drop:
+drop:
   return GNUNET_SYSERR;
 }
 
@@ -2190,7 +2190,7 @@ run (void *cls)
 
   result = 0;
 
-  drop:
+drop:
   if ( (0 != result) &&
        (NULL != session) )
     plugin->rollback (plugin->cls,

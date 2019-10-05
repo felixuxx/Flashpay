@@ -4103,7 +4103,7 @@ postgres_get_refresh_reveal (void *cls,
       &tp);
   GNUNET_PQ_cleanup_result (rs);
 
-  cleanup:
+cleanup:
   for (unsigned int i = 0; i < grctx.rrcs_len; i++)
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &grctx.rrcs[i];

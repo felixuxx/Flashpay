@@ -57,6 +57,26 @@ static struct GNUNET_OS_Process *bankd;
 static int WITH_FAKEBANK;
 
 /**
+ * Transfer @a amount from @a src account to @a dst using
+ * @a subject and the @a label for the command.
+ */
+#define TRANSFER(label,amount,src,dst,subject)          \
+  TALER_TESTING_cmd_fakebank_transfer_with_subject (label, \
+                                                    amount,   \
+                                                    bank_url, \
+                                                    src,                \
+                                                    dst, \
+                                                    AUTHS[src \
+                                                          - 1].details.basic. \
+                                                    username, \
+                                                    AUTHS[src \
+                                                          - 1].details.basic. \
+                                                    password, \
+                                                    subject, \
+                                                    "http://exchange.net/")
+
+
+/**
  * Main function that will tell the interpreter what commands to
  * run.
  *
@@ -70,9 +90,7 @@ run (void *cls,
               "Bank serves at `%s'\n",
               bank_url);
   extern struct TALER_BANK_AuthenticationData AUTHS[];
-
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_bank_history ("history-0",
                                     bank_url,
                                     BANK_ACCOUNT_NUMBER,
@@ -80,20 +98,13 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     1),
-
     /* WARNING: old API has expected http response code among
      * the parameters, although it was always set as '200 OK' */
-    TALER_TESTING_cmd_fakebank_transfer_with_subject
-      ("debit-1",
-       "KUDOS:5.01",
-       bank_url,
-       EXCHANGE_ACCOUNT_NUMBER,
-       BANK_ACCOUNT_NUMBER,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
-       "subject 1",
-       "http://exchange.com/"),
-
+    TRANSFER ("debit-1",
+              "KUDOS:5.01",
+              EXCHANGE_ACCOUNT_NUMBER,
+              BANK_ACCOUNT_NUMBER,
+              "subject 1"),
     TALER_TESTING_cmd_bank_history ("history-1c",
                                     bank_url,
                                     BANK_ACCOUNT_NUMBER,
@@ -101,7 +112,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
     TALER_TESTING_cmd_bank_history ("history-1d",
                                     bank_url,
                                     BANK_ACCOUNT_NUMBER,
@@ -109,29 +119,16 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
-    TALER_TESTING_cmd_fakebank_transfer_with_subject
-      ("debit-2",
-       "KUDOS:3.21",
-       bank_url,
-       EXCHANGE_ACCOUNT_NUMBER,  // debit account.
-       USER_ACCOUNT_NUMBER,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.username,
-       AUTHS[EXCHANGE_ACCOUNT_NUMBER - 1].details.basic.password,
-       "subject 2",
-       "http://exchange.org/"),
-
-    TALER_TESTING_cmd_fakebank_transfer_with_subject
-      ("credit-2",
-       "KUDOS:3.22",
-       bank_url,
-       USER_ACCOUNT_NUMBER,  // debit account.
-       EXCHANGE_ACCOUNT_NUMBER,
-       AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.username,
-       AUTHS[USER_ACCOUNT_NUMBER - 1].details.basic.password,
-       "credit 2",
-       "http://exchange.org/"),
-
+    TRANSFER ("debit-2",
+              "KUDOS:3.21",
+              EXCHANGE_ACCOUNT_NUMBER,
+              USER_ACCOUNT_NUMBER,
+              "subject 2"),
+    TRANSFER ("credit-2",
+              "KUDOS:3.22",
+              USER_ACCOUNT_NUMBER,
+              EXCHANGE_ACCOUNT_NUMBER,
+              "credit 2"),
     TALER_TESTING_cmd_bank_history ("history-2b",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -139,7 +136,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
     TALER_TESTING_cmd_bank_history ("history-2bi",
                                     bank_url,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -147,22 +143,14 @@ run (void *cls,
                                     GNUNET_YES,
                                     "debit-1",
                                     5),
-
-    TALER_TESTING_cmd_fakebank_transfer_with_subject
-      ("credit-for-reject-1",
-       "KUDOS:1.01",
-       bank_url,
-       BANK_ACCOUNT_NUMBER,
-       EXCHANGE_ACCOUNT_NUMBER,
-       AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.username,
-       AUTHS[BANK_ACCOUNT_NUMBER - 1].details.basic.password,
-       "subject 3",
-       "http://exchange.net/"),
-
+    TRANSFER ("credit-for-reject-1",
+              "KUDOS:1.01",
+              BANK_ACCOUNT_NUMBER,
+              EXCHANGE_ACCOUNT_NUMBER,
+              "subject 3"),
     TALER_TESTING_cmd_bank_reject ("reject-1",
                                    bank_url,
                                    "credit-for-reject-1"),
-
     TALER_TESTING_cmd_bank_history ("history-r1",
                                     bank_url,
                                     BANK_ACCOUNT_NUMBER,
@@ -170,7 +158,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
     TALER_TESTING_cmd_bank_history ("history-r1c",
                                     bank_url,
                                     BANK_ACCOUNT_NUMBER,
@@ -179,11 +166,6 @@ run (void *cls,
                                     GNUNET_YES,
                                     NULL,
                                     5),
-
-    /**
-     * End the suite.  Fixme: better to have a label for this
-     * too, as it shows a "(null)" token on logs.
-     */
     TALER_TESTING_cmd_end ()
   };
 
@@ -213,9 +195,8 @@ main (int argc,
   if (GNUNET_YES == WITH_FAKEBANK)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
-    if (NULL == (bank_url = TALER_TESTING_prepare_fakebank
-        (CONFIG_FILE,
-         "account-1")))
+    if (NULL == (bank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                                            "account-1")))
     {
       GNUNET_break (0);
       return 77;
@@ -224,16 +205,14 @@ main (int argc,
   else
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
-    if (NULL == (bank_url = TALER_TESTING_prepare_bank
-        (CONFIG_FILE)))
+    if (NULL == (bank_url = TALER_TESTING_prepare_bank (CONFIG_FILE)))
     {
       GNUNET_break (0);
       return 77;
     }
 
-    if (NULL == (bankd = TALER_TESTING_run_bank
-        (CONFIG_FILE,
-         bank_url)))
+    if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE,
+                                                 bank_url)))
     {
       GNUNET_break (0);
       return 77;
@@ -254,7 +233,7 @@ main (int argc,
     GNUNET_OS_process_destroy (bankd);
     GNUNET_free (bank_url);
   }
-  
+
   return rv;
 }
 

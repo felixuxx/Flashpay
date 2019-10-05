@@ -294,7 +294,7 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
                               auditor_url,
                               wsize))
     ret = GNUNET_OK;
-  cleanup:
+cleanup:
   eno = errno;
   if (NULL != fh)
     (void) GNUNET_DISK_file_close (fh);

@@ -816,7 +816,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     } /* end for (retries...) */
     GNUNET_break (MHD_NO != res);
 
-    cleanup:
+cleanup:
     GNUNET_break (MHD_NO != res);
     /* free resources */
     if (NULL != rctx->ev_sigs)

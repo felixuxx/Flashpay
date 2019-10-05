@@ -161,8 +161,8 @@ main (int argc,
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     if (NULL == (bank_url = TALER_TESTING_prepare_fakebank
-        (CONFIG_FILE,
-         "account-1")))
+                              (CONFIG_FILE,
+                              "account-1")))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);
@@ -173,16 +173,15 @@ main (int argc,
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
     if (NULL == (bank_url = TALER_TESTING_prepare_bank
-        (CONFIG_FILE)))
+                              (CONFIG_FILE)))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);
       return 77;
     }
 
-    if (NULL == (bankd = TALER_TESTING_run_bank
-        (CONFIG_FILE,
-         bank_url)))
+    if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE,
+                                                 bank_url)))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);

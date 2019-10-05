@@ -86,7 +86,7 @@ main (int argc,
                                                  &ski_iter,
                                                  &ski));
   ret = 0;
-  EXITIF_exit:
+EXITIF_exit:
   if (NULL != tmpfile)
   {
     (void) GNUNET_DISK_directory_remove (tmpfile);

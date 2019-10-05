@@ -155,7 +155,7 @@ main (int argc,
                                             &auditor_cb,
                                             NULL));
   ret = 0;
-  EXITIF_exit:
+EXITIF_exit:
   if (NULL != tmpdir)
   {
     (void) GNUNET_DISK_directory_remove (tmpdir);

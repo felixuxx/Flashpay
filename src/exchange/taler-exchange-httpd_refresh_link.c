@@ -115,7 +115,7 @@ handle_link_data (void *cls,
                              root))
     goto fail;
   return;
-  fail:
+fail:
   ctx->ec = TALER_EC_JSON_ALLOCATION_FAILURE;
   json_decref (ctx->mlist);
   ctx->mlist = NULL;

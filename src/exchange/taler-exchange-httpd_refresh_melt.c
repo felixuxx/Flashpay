@@ -597,7 +597,7 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                              &rmc);
 
 
-  cleanup:
+cleanup:
   if (NULL != key_state)
   {
     TEH_KS_release (key_state);

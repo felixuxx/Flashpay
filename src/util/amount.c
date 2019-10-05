@@ -164,7 +164,7 @@ TALER_string_to_amount (const char *str,
   }
   return GNUNET_OK;
 
-  fail:
+fail:
   /* set currency to 'invalid' to prevent accidental use */
   memset (denom->currency,
           0,
