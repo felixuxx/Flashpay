@@ -101,7 +101,7 @@ taler_auditor_exchange_LDADD = \
 check_SCRIPTS = \
   test-auditor.sh
 
-# TESTS = $(check_SCRIPTS)
+TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \
   auditor.conf \
