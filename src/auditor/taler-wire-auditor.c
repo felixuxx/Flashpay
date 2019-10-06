@@ -21,7 +21,7 @@
  * - First, this auditor verifies that 'reserves_in' actually matches
  *   the incoming wire transfers from the bank.
  * - Second, we check that the outgoing wire transfers match those
- *   given in the 'wire_out' table
+ *   given in the 'wire_out' and 'reserve_closures' tables
  * - Finally, we check that all wire transfers that should have been made,
  *   were actually made
  */
@@ -111,6 +111,43 @@ struct WireAccount
 
 };
 
+
+/**
+ * Information we track for a reserve being closed.
+ */
+struct ReserveClosure
+{
+  /**
+   * Row in the reserves_closed table for this action.
+   */
+  uint64_t rowid;
+
+  /**
+   * When was the reserve closed?
+   */
+  struct GNUNET_TIME_Absolute execution_date;
+
+  /**
+   * Amount transferred (amount remaining minus fee).
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Target account where the money was sent.
+   */
+  char *receiver_account;
+
+  /**
+   * Wire transfer subject used.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+};
+
+
+/**
+ * Map from H(wtid,receiver_account) to `struct ReserveClosure` entries.
+ */
+static struct GNUNET_CONTAINER_MultiHashMap *reserve_closures;
 
 /**
  * Return value from main().
@@ -223,9 +260,14 @@ static json_t *report_wire_format_inconsistencies;
 static json_t *report_row_minor_inconsistencies;
 
 /**
- * Array of reports about lagging transactions.
+ * Array of reports about lagging transactions from deposits.
  */
 static json_t *report_lags;
+
+/**
+ * Array of reports about lagging transactions from reserve closures.
+ */
+static json_t *report_closure_lags;
 
 /**
  * Amount that is considered "tiny"
@@ -263,6 +305,11 @@ static struct TALER_Amount total_missattribution_in;
  * Total amount which the exchange did not transfer in time.
  */
 static struct TALER_Amount total_amount_lag;
+
+/**
+ * Total amount of reserve closures which the exchange did not transfer in time.
+ */
+static struct TALER_Amount total_closure_amount_lag;
 
 /**
  * Total amount affected by wire format trouble.s
@@ -394,6 +441,31 @@ free_roi (void *cls,
 
 
 /**
+ * Free entry in #reserve_closures.
+ *
+ * @param cls NULL
+ * @param key unused key
+ * @param value the `struct ReserveClosure` to free
+ * @return #GNUNET_OK
+ */
+static int
+free_rc (void *cls,
+         const struct GNUNET_HashCode *key,
+         void *value)
+{
+  struct ReserveClosure *rc = value;
+
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CONTAINER_multihashmap_remove (reserve_closures,
+                                                       key,
+                                                       rc));
+  GNUNET_free (rc->receiver_account);
+  GNUNET_free (rc);
+  return GNUNET_OK;
+}
+
+
+/**
  * Task run on shutdown.
  *
  * @param cls NULL
@@ -410,9 +482,10 @@ do_shutdown (void *cls)
     GNUNET_assert (NULL != report_row_minor_inconsistencies);
     report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o, s:o,"
-                        " s:o, s:o, s:o, s:o }",
+                        " s:o, s:o, s:o, s:o, s:o,"
+                        " s:o }",
                         /* blocks of 5 */
-                        /* Tested in test-auditor.sh #11, #15 */
+                        /* Tested in test-auditor.sh #11, #15, #20 */
                         "wire_out_amount_inconsistencies",
                         report_wire_out_inconsistencies,
                         "total_wire_out_delta_plus",
@@ -451,7 +524,12 @@ do_shutdown (void *cls)
                         "total_amount_lag",
                         TALER_JSON_from_amount (&total_amount_lag),
                         "lag_details",
-                        report_lags);
+                        report_lags,
+                        "total_closure_amount_lag",
+                        TALER_JSON_from_amount (&total_closure_amount_lag),
+                        /* blocks of 5 */
+                        "reserve_lag_details",
+                        report_closure_lags);
     GNUNET_break (NULL != report);
     json_dumpf (report,
                 stdout,
@@ -463,7 +541,16 @@ do_shutdown (void *cls)
     report_row_minor_inconsistencies = NULL;
     report_missattribution_in_inconsistencies = NULL;
     report_lags = NULL;
+    report_closure_lags = NULL;
     report_wire_format_inconsistencies = NULL;
+  }
+  if (NULL != reserve_closures)
+  {
+    GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
+                                           &free_rc,
+                                           NULL);
+    GNUNET_CONTAINER_multihashmap_destroy (reserve_closures);
+    reserve_closures = NULL;
   }
   if (NULL != in_map)
   {
@@ -533,6 +620,70 @@ report (json_t *array,
 }
 
 
+
+/**
+ * Detect any entries in #reserve_closures that were not yet
+ * observed on the wire transfer side and update the progress
+ * point accordingly.
+ *
+ * @param cls NULL
+ * @param key unused key
+ * @param value the `struct ReserveClosure` to free
+ * @return #GNUNET_OK
+ */
+static int
+check_pending_rc (void *cls,
+                  const struct GNUNET_HashCode *key,
+                  void *value)
+{
+  struct ReserveClosure *rc = value;
+
+  GNUNET_break (GNUNET_OK ==
+                TALER_amount_add (&total_closure_amount_lag,
+                                  &total_closure_amount_lag,
+                                  &rc->amount));
+  report (report_closure_lags,
+          json_pack ("{s:I, s:o, s:o, s:o, s:s}",
+                     "row", (json_int_t) rc->rowid,
+                     "amount", TALER_JSON_from_amount (&rc->amount),
+                     "deadline", json_from_time_abs (rc->execution_date),
+                     "wtid", GNUNET_JSON_from_data_auto (&rc->wtid),
+                     "account", rc->receiver_account));
+  pp.last_reserve_close_uuid
+    = GNUNET_MIN (pp.last_reserve_close_uuid,
+                  rc->rowid);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Compute the key under which a reserve closure for a given
+ * @a receiver_account and @a wtid would be stored.
+ *
+ * @param receiver_account payto://-URI of the account
+ * @param wtid wire transfer identifier used
+ * @param key[out] set to the key
+ */
+static void
+hash_rc (const char *receiver_account,
+         const struct TALER_WireTransferIdentifierRawP *wtid,
+         struct GNUNET_HashCode *key)
+{
+  size_t slen = strlen (receiver_account);
+  char buf[sizeof (struct TALER_WireTransferIdentifierRawP) + slen];
+
+  memcpy (buf,
+          wtid,
+          sizeof (*wtid));
+  memcpy (&buf[sizeof (*wtid)],
+          receiver_account,
+          slen);
+  GNUNET_CRYPTO_hash (buf,
+                      sizeof (buf),
+                      key);
+}
+
+
 /* *************************** General transaction logic ****************** */
 
 /**
@@ -589,6 +740,9 @@ commit (enum GNUNET_DB_QueryStatus qs)
       return qs;
     }
   }
+  GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
+                                         &check_pending_rc,
+                                         NULL);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx)
     qs = adb->update_wire_auditor_progress (adb->cls,
                                             asession,
@@ -746,6 +900,46 @@ conclude_wire_out ()
 
 
 /**
+ * Check that @a want is within #TIME_TOLERANCE of @a have.
+ * Otherwise report an inconsistency in row @a rowid of @a table.
+ *
+ * @param table where is the inconsistency (if any)
+ * @param rowid what is the row
+ * @param want what is the expected time
+ * @param have what is the time we got
+ */
+static void
+check_time_difference (const char *table,
+                       uint64_t rowid,
+                       struct GNUNET_TIME_Absolute want,
+                       struct GNUNET_TIME_Absolute have)
+{
+  struct GNUNET_TIME_Relative delta;
+  char *details;
+
+  if (have.abs_value_us > want.abs_value_us)
+    delta = GNUNET_TIME_absolute_get_difference (want,
+                                                 have);
+  else
+    delta = GNUNET_TIME_absolute_get_difference (have,
+                                                 want);
+  if (delta.rel_value_us <= TIME_TOLERANCE.rel_value_us)
+    return;
+
+  GNUNET_asprintf (&details,
+                   "execution date missmatch (%s)",
+                   GNUNET_STRINGS_relative_time_to_string (delta,
+                                                           GNUNET_YES));
+  report (report_row_minor_inconsistencies,
+          json_pack ("{s:s, s:I, s:s}",
+                     "table", table,
+                     "row", (json_int_t) rowid,
+                     "diagnostic", details));
+  GNUNET_free (details);
+}
+
+
+/**
  * Function called with details about outgoing wire transfers
  * as claimed by the exchange DB.
  *
@@ -883,33 +1077,10 @@ wire_out_cb (void *cls,
     goto cleanup;
   }
 
-  {
-    struct GNUNET_TIME_Relative delta;
-
-    if (roi->details.execution_date.abs_value_us >
-        date.abs_value_us)
-      delta = GNUNET_TIME_absolute_get_difference (date,
-                                                   roi->details.execution_date);
-    else
-      delta = GNUNET_TIME_absolute_get_difference (roi->details.execution_date,
-                                                   date);
-    if (delta.rel_value_us > TIME_TOLERANCE.rel_value_us)
-    {
-      char *details;
-
-      GNUNET_asprintf (&details,
-                       "execution date missmatch (%s)",
-                       GNUNET_STRINGS_relative_time_to_string (delta,
-                                                               GNUNET_YES));
-      report (report_row_minor_inconsistencies,
-              json_pack ("{s:s, s:I, s:s}",
-                         "table", "wire_out",
-                         "row", (json_int_t) rowid,
-                         "diagnostic", details));
-      GNUNET_free (details);
-    }
-  }
-
+  check_time_difference ("wire_out",
+                         rowid,
+                         date,
+                         roi->details.execution_date);
 cleanup:
   GNUNET_assert (GNUNET_OK ==
                  free_roi (NULL,
@@ -921,8 +1092,63 @@ cleanup:
 
 
 /**
- * Complain that we failed to match an entry from #out_map.  This
- * means a wire transfer was made without proper justification.
+ * Closure for #check_rc_matches
+ */
+struct CheckMatchContext
+{
+
+  /**
+   * Reserve operation looking for a match
+   */
+  const struct ReserveOutInfo *roi;
+
+  /**
+   * Set to #GNUNET_YES if we found a match.
+   */
+  int found;
+};
+
+
+/**
+ * Check if any of the reserve closures match the given wire transfer.
+ *
+ * @param cls a `struct CheckMatchContext`
+ * @param key key of @a value in #reserve_closures
+ * @param value a `struct ReserveClosure`
+ */
+static int
+check_rc_matches (void *cls,
+                  const struct GNUNET_HashCode *key,
+                  void *value)
+{
+  struct CheckMatchContext *ctx = cls;
+  struct ReserveClosure *rc = value;
+
+  if ( (0 == GNUNET_memcmp (&ctx->roi->details.wtid,
+                            &rc->wtid)) &&
+       (0 == strcasecmp (rc->receiver_account,
+                         ctx->roi->details.account_url)) &&
+       (0 == TALER_amount_cmp (&rc->amount,
+                               &ctx->roi->details.amount)) )
+  {
+    check_time_difference ("reserves_closures",
+                           rc->rowid,
+                           rc->execution_date,
+                           ctx->roi->details.execution_date);
+    ctx->found = GNUNET_YES;
+    free_rc (NULL,
+             key,
+             rc);
+    return GNUNET_NO;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Check whether the given transfer was justified by a reserve closure. If
+ * not, complain that we failed to match an entry from #out_map.  This means a
+ * wire transfer was made without proper justification.
  *
  * @param cls a `struct WireAccount`
  * @param key unused key
@@ -936,8 +1162,22 @@ complain_out_not_found (void *cls,
 {
   struct WireAccount *wa = cls;
   struct ReserveOutInfo *roi = value;
+  struct GNUNET_HashCode rkey;
+  struct CheckMatchContext ctx = {
+    .roi = roi,
+    .found = GNUNET_NO
+  };
 
   (void) wa; // FIXME: log which account is affected...
+  hash_rc (roi->details.account_url,
+           &roi->details.wtid,
+           &rkey);
+  GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
+                                              &rkey,
+                                              &check_rc_matches,
+                                              &ctx);
+  if (GNUNET_YES == ctx.found)
+    return GNUNET_OK;
   report (report_wire_out_inconsistencies,
           json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
                      "row", (json_int_t) 0,
@@ -1628,6 +1868,70 @@ begin_credit_audit ()
 
 
 /**
+ * Function called about reserve closing operations
+ * the aggregator triggered.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the reserve closing operation
+ * @param execution_date when did we execute the close operation
+ * @param amount_with_fee how much did we debit the reserve
+ * @param closing_fee how much did we charge for closing the reserve
+ * @param reserve_pub public key of the reserve
+ * @param receiver_account where did we send the funds, in payto://-format
+ * @param wtid identifier used for the wire transfer
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+reserve_closed_cb (void *cls,
+                   uint64_t rowid,
+                   struct GNUNET_TIME_Absolute execution_date,
+                   const struct TALER_Amount *amount_with_fee,
+                   const struct TALER_Amount *closing_fee,
+                   const struct TALER_ReservePublicKeyP *reserve_pub,
+                   const char *receiver_account,
+                   const struct TALER_WireTransferIdentifierRawP *wtid)
+{
+  struct ReserveClosure *rc;
+  struct GNUNET_HashCode key;
+
+  (void) cls;
+  rc = GNUNET_new (struct ReserveClosure);
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&rc->amount,
+                             amount_with_fee,
+                             closing_fee))
+  {
+    report (report_row_inconsistencies,
+            json_pack ("{s:s, s:I, s:o, s:o, s:o, s:s}",
+                       "table", "reserves_closures",
+                       "row", (json_int_t) rowid,
+                       "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
+                       "amount_with_fee", TALER_JSON_from_amount (
+                         amount_with_fee),
+                       "closing_fee", TALER_JSON_from_amount (closing_fee),
+                       "diagnostic", "closing fee above total amount"));
+    GNUNET_free (rc);
+    return GNUNET_OK;
+  }
+  pp.last_reserve_close_uuid
+    = GNUNET_MAX (pp.last_reserve_close_uuid,
+                  rowid + 1);
+  rc->receiver_account = GNUNET_strdup (receiver_account);
+  rc->wtid = *wtid;
+  rc->execution_date = execution_date;
+  rc->rowid = rowid;
+  hash_rc (receiver_account,
+           wtid,
+           &key);
+  (void) GNUNET_CONTAINER_multihashmap_put (reserve_closures,
+                                            &key,
+                                            rc,
+                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_MULTIPLE);
+  return GNUNET_OK;
+}
+
+
+/**
  * Start the database transactions and begin the audit.
  */
 static void
@@ -1697,9 +2001,16 @@ begin_transaction ()
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Resuming audit at %s\n",
-                GNUNET_STRINGS_absolute_time_to_string (pp.last_timestamp));
+                "Resuming audit at %s / %llu\n",
+                GNUNET_STRINGS_absolute_time_to_string (pp.last_timestamp),
+                (unsigned long long) pp.last_reserve_close_uuid);
   }
+  edb->select_reserve_closed_above_serial_id (edb->cls,
+                                              esession,
+                                              pp.
+                                              last_reserve_close_uuid,
+                                              &reserve_closed_cb,
+                                              NULL);
   begin_credit_audit ();
 }
 
@@ -1896,6 +2207,8 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  reserve_closures = GNUNET_CONTAINER_multihashmap_create (1024,
+                                                           GNUNET_NO);
   GNUNET_assert (NULL !=
                  (report_wire_out_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
@@ -1910,6 +2223,8 @@ run (void *cls,
                  (report_missattribution_in_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
                  (report_lags = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_closure_lags = json_array ()));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_bad_amount_out_plus));
@@ -1928,6 +2243,9 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_amount_lag));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &total_closure_amount_lag));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_wire_format_amount));

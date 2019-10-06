@@ -102,10 +102,16 @@ This section analyzes the income of the exchange operator from fees.
 
 \section{Lag}
 
-This section analyzes the lag, which is by how much the exchange's aggregator is behind in
-making wire transfers that have been due.
+This section analyzes lag, which can be due to some component being behind in
+executing transactions.  This is usually either the exchange's aggregator, the
+bank's wire transfer logic, or the synchronization of databases between
+exchange and auditor. Significant lag may be indicative of fraud, while
+moderate lag is indicative that the systems may be too slow to handle the
+load. Small amounts of lag can occur in normal operation.
 
-The total amount the exchange currently lags behind is
+\subsection{Deposit lag}
+
+The total amount the exchange currently lags behind in deposits is
 {\bf {{ wire.total_amount_lag }}}.
 
 Note that some lag is perfectly normal, as tiny amounts that are too small to be wired
@@ -152,8 +158,51 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
 {% endif %}
 
 
+\subsection{Reserve closure lag}
 
-\section{Deposit confirmation lag}
+The total amount the exchange currently lags behind in reserve closures is
+{\bf {{ wire.total_closure_amount_lag }}}.
+
+Note that some minimal lag may be normal as transactions may be in-flight.
+
+{% if wire.reserve_lag_details|length() == 0 %}
+  {\bf No closure transfers that are lagging behind detected.}
+{% else %}
+  \begin{longtable}{l|r|r}
+  {\bf Deadline} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf WTID} \\
+  \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
+\endfirsthead
+  {\bf Deadline} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Coin} \\
+  \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Deadline} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Coin} \\
+  \multicolumn{3}{l}{\bf Target account} \\
+\endfoot
+  \hline \hline
+  {\bf Deadline} & {\bf Amount} & {\bf Row} \\
+  \multicolumn{3}{l}{\bf Coin} \\
+  \multicolumn{3}{l}{\bf Target account} \\
+    \caption{Lagging reserve closure transactions.}
+    \label{table:lag}
+\endlastfoot
+{% for item in wire.reserve_lag_details %}
+  {{ item.deadline }} &
+  {{ item.amount }} &
+  {{ item.row }} \\
+\nopagebreak
+  \multicolumn{3}{l}{ {\tt \small {{ item.wtid }} } } \\
+\nopagebreak
+  \multicolumn{3}{l}{ {\tt {{ item.account }} } } \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+
+\subsection{Deposit confirmation lag}
 
 This section analyzes the lag, which is by how much the exchange's
 database reporting is behind in providing us with information about

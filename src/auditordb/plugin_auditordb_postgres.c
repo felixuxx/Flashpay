@@ -313,6 +313,7 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",last_timestamp INT8 NOT NULL"
+                            ",last_reserve_close_uuid INT8 NOT NULL"
                             ")"),
     /* Table with all of the customer reserves and their respective
        balances that the auditor is aware of.
@@ -753,18 +754,21 @@ postgres_prepare (PGconn *db_conn)
                             "INSERT INTO wire_auditor_progress "
                             "(master_pub"
                             ",last_timestamp"
-                            ") VALUES ($1,$2);",
-                            2),
+                            ",last_reserve_close_uuid"
+                            ") VALUES ($1,$2,$3);",
+                            3),
     /* Used in #postgres_update_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
                             "UPDATE wire_auditor_progress SET "
                             " last_timestamp=$1"
-                            " WHERE master_pub=$2",
-                            2),
+                            ",last_reserve_close_uuid=$2"
+                            " WHERE master_pub=$3",
+                            3),
     /* Used in #postgres_get_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
                             "SELECT"
                             " last_timestamp"
+                            ",last_reserve_close_uuid"
                             " FROM wire_auditor_progress"
                             " WHERE master_pub=$1;",
                             1),
@@ -2394,6 +2398,7 @@ postgres_insert_wire_auditor_progress (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_uuid),
     GNUNET_PQ_query_param_end
   };
 
@@ -2423,6 +2428,7 @@ postgres_update_wire_auditor_progress (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_uuid),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2456,6 +2462,8 @@ postgres_get_wire_auditor_progress (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_absolute_time ("last_timestamp",
                                         &pp->last_timestamp),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_close_uuid",
+                                  &pp->last_reserve_close_uuid),
     GNUNET_PQ_result_spec_end
   };
 

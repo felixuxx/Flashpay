@@ -131,6 +131,12 @@ struct TALER_AUDITORDB_WireProgressPoint
    * that the exchange should do, have indeed been done.
    */
   struct GNUNET_TIME_Absolute last_timestamp;
+
+  /**
+   * reserves_close uuid until which we have checked
+   * reserve closures.
+   */
+  uint64_t last_reserve_close_uuid;
 };
 
 

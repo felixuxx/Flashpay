@@ -1105,6 +1105,11 @@ jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null && ex
 
 echo "PASS"
 
+echo -n "Testing no bogus transfers detected... "
+jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in run with reserve closure"
+
+echo "PASS"
+
 # Undo
 echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
 echo "UPDATE reserves SET expiration_date='${OLD_EXP}',current_balance_val=current_balance_val-${VAL_DELTA} WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
@@ -1129,6 +1134,12 @@ run_audit
 echo -n "Testing reserve closure missing detected... "
 jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
 echo "PASS"
+
+AMOUNT=`jq -r .total_balance_reserve_not_closed < test-audit.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported total amount wrong: $AMOUNT"
+fi
 
 # Undo
 echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
