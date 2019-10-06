@@ -1675,6 +1675,10 @@ verify_reserve_balance (void *cls,
     }
     else
     {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_balance_reserve_not_closed,
+                                       &total_balance_reserve_not_closed,
+                                       &nbalance));
       report (report_reserve_not_closed_inconsistencies,
               json_pack ("{s:o, s:o, s:o, s:s}",
                          "reserve_pub",
@@ -5413,14 +5417,18 @@ run (void *cls,
                       TALER_JSON_from_amount (&total_refund_fee_income),
                       "income_fee_total",
                       TALER_JSON_from_amount (&income_fee_total),
+                      /* Tested in test-auditor.sh #18 */
                       "emergencies",
                       report_emergencies,
+                      /* Tested in test-auditor.sh #18 */
                       "emergencies_risk_by_amount",
                       TALER_JSON_from_amount (
                         &reported_emergency_risk_by_amount),
+                      /* Tested in test-auditor.sh #21 */
                       "reserve_not_closed_inconsistencies",
                       report_reserve_not_closed_inconsistencies,
                       /* block */
+                      /* Tested in test-auditor.sh #21 */
                       "total_balance_reserve_not_closed",
                       TALER_JSON_from_amount (
                         &total_balance_reserve_not_closed),
@@ -5476,14 +5484,18 @@ run (void *cls,
                         &total_missed_deposit_confirmations),
                       "total_payback_loss",
                       TALER_JSON_from_amount (&total_payback_loss),
+                      /* Tested in test-auditor.sh #18 */
                       "emergencies_by_count",
                       report_emergencies_by_count,
+                      /* Tested in test-auditor.sh #18 */
                       "emergencies_risk_by_count",
                       TALER_JSON_from_amount (
                         &reported_emergency_risk_by_count),
+                      /* Tested in test-auditor.sh #18 */
                       "emergencies_loss",
                       TALER_JSON_from_amount (&reported_emergency_loss),
                       /* block */
+                      /* Tested in test-auditor.sh #18 */
                       "emergencies_loss_by_count",
                       TALER_JSON_from_amount (&reported_emergency_loss_by_count)
                       );
