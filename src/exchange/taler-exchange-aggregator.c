@@ -1223,8 +1223,6 @@ run_reserve_closures (void *cls)
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Checking for reserves to close\n");
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1250,6 +1248,9 @@ run_reserve_closures (void *cls)
   erc.async_cont = GNUNET_NO;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking for reserves to close by date %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (now));
   qs = db_plugin->get_expired_reserves (db_plugin->cls,
                                         session,
                                         now,
