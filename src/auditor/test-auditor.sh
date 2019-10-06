@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 21`
+ALL_TESTS=`seq 0 22`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -1144,6 +1144,56 @@ fi
 # Undo
 echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
 }
+
+
+# Test reserve closure reported but wire transfer missing detection
+function test_22() {
+echo "===========22: reserve closure missreported ================="
+
+OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
+VAL_DELTA=1
+NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
+NEW_EXP=`expr $OLD_EXP - 3024000000000`  # 5 weeks
+NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA`
+echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+
+# Need to first run the aggregator so the transfer is marked as done exists
+pre_audit aggregator
+
+
+# remove transaction from bank DB
+echo "DELETE FROM app_banktransaction WHERE debit_account_id=2 AND amount='TESTKUDOS:${VAL_DELTA}.00';" | psql -Aqt $DB
+
+audit_only
+post_audit
+
+echo -n "Testing lack of reserve closure transaction detected... "
+
+jq -e .reserve_lag_details[0] < test-wire-audit.json > /dev/null || exit_fail "Reserve closure lag not detected"
+
+AMOUNT=`jq -r .reserve_lag_details[0].amount < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:${VAL_DELTA}"
+then
+    exit_fail "Reported total amount wrong: $AMOUNT"
+fi
+AMOUNT=`jq -r .total_closure_amount_lag < test-wire-audit.json`
+if test "x$AMOUNT" != "xTESTKUDOS:${VAL_DELTA}"
+then
+    exit_fail "Reported total amount wrong: $AMOUNT"
+fi
+
+echo "PASS"
+
+# Undo
+echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE reserves SET expiration_date='${OLD_EXP}',current_balance_val=current_balance_val-${VAL_DELTA} WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+}
+
+
 
 # **************************************************
 # FIXME: Add more tests here! :-)

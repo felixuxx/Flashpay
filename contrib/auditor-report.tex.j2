@@ -165,6 +165,8 @@ The total amount the exchange currently lags behind in reserve closures is
 
 Note that some minimal lag may be normal as transactions may be in-flight.
 
+% Table generation tested by testcase #22 in test-auditor.sh
+
 {% if wire.reserve_lag_details|length() == 0 %}
   {\bf No closure transfers that are lagging behind detected.}
 {% else %}
@@ -174,17 +176,17 @@ Note that some minimal lag may be normal as transactions may be in-flight.
   \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
 \endfirsthead
   {\bf Deadline} & {\bf Amount} & {\bf Row} \\
-  \multicolumn{3}{l}{\bf Coin} \\
+  \multicolumn{3}{l}{\bf WTID} \\
   \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
 \endhead
   \hline \hline
   {\bf Deadline} & {\bf Amount} & {\bf Row} \\
-  \multicolumn{3}{l}{\bf Coin} \\
+  \multicolumn{3}{l}{\bf WTID} \\
   \multicolumn{3}{l}{\bf Target account} \\
 \endfoot
   \hline \hline
   {\bf Deadline} & {\bf Amount} & {\bf Row} \\
-  \multicolumn{3}{l}{\bf Coin} \\
+  \multicolumn{3}{l}{\bf WTID} \\
   \multicolumn{3}{l}{\bf Target account} \\
     \caption{Lagging reserve closure transactions.}
     \label{table:lag}

@@ -521,13 +521,17 @@ do_shutdown (void *cls)
                         /* Tested in test-auditor.sh #19 */
                         "wire_format_inconsistencies",
                         report_wire_format_inconsistencies,
+                        /* Tested in test-auditor.sh #1 */
                         "total_amount_lag",
                         TALER_JSON_from_amount (&total_amount_lag),
+                        /* Tested in test-auditor.sh #1 */
                         "lag_details",
                         report_lags,
+                        /* Tested in test-auditor.sh #22 */
                         "total_closure_amount_lag",
                         TALER_JSON_from_amount (&total_closure_amount_lag),
                         /* blocks of 5 */
+                        /* Tested in test-auditor.sh #22 */
                         "reserve_lag_details",
                         report_closure_lags);
     GNUNET_break (NULL != report);
