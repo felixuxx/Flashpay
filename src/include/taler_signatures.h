@@ -235,6 +235,20 @@
 #define TALER_SIGNATURE_EXCHANGE_TEST_EDDSA 1303
 
 
+/************************/
+/* Anastasis signatures */
+/************************/
+
+/**
+ * EdDSA signature for a policy upload.
+ */
+#define TALER_SIGNATURE_ANASTASIS_POLICY_UPLOAD 1400
+
+/**
+ * EdDSA signature for a policy download.
+ */
+#define TALER_SIGNATURE_ANASTASIS_POLICY_DOWNLOAD 1401
+
 
 GNUNET_NETWORK_STRUCT_BEGIN
 

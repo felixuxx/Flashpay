@@ -1,7 +1,10 @@
 #!/bin/bash
 # Script to generate the basic database for auditor
 # testing from a 'correct' interaction between exchange,
-# wallet and merchant.  Creates 'auditor-basedb.sql'.
+# wallet and merchant.
+#
+# Creates $BASEDB.sql, $BASEDB.fees and $BASEDB.mpub.
+# Default $BASEDB is "auditor-basedb", override via $1.
 #
 # Currently must be run online as it interacts with
 # bank.test.taler.net; also requires the wallet CLI
