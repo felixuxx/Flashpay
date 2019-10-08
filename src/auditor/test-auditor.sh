@@ -802,16 +802,6 @@ function test_14() {
 
 echo "===========14: wire-fee disagreement==========="
 
-
-# Wire fees are only checked/generated once there are
-# actual outgoing wire transfers, so we need to run the
-# aggregator here.
-pre_audit aggregator
-echo "UPDATE wire_fee SET wire_fee_frac=100;" | psql -Aqt $DB
-audit_only
-post_audit
-
-
 # Check wire transfer lag reported (no aggregator!)
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
@@ -819,6 +809,15 @@ post_audit
 # taler-wire-auditor.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
+
+    # Wire fees are only checked/generated once there are
+    # actual outgoing wire transfers, so we need to run the
+    # aggregator here.
+    pre_audit aggregator
+    echo "UPDATE wire_fee SET wire_fee_frac=100;" | psql -Aqt $DB
+    audit_only
+    post_audit
+
     echo -n "Testing inconsistency detection... "
     TABLE=`jq -r .row_inconsistencies[0].table < test-audit.json`
     if test "x$TABLE" != "xwire-fee"
@@ -831,14 +830,15 @@ then
         exit_fail "Reported diagnostic wrong: $DIAG"
     fi
     echo PASS
-else
-    echo "Inconsistency detection: SKIP (database too new)"
-fi
 
-# cannot easily undo aggregator, hence full reload
-echo -n "Reloading database ..."
-full_reload
-echo "DONE"
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
+
+else
+    echo "Test skipped (database too new)"
+fi
 
 }
 
@@ -847,21 +847,24 @@ echo "DONE"
 # Test where h_wire in the deposit table is wrong
 function test_15() {
 echo "===========15: deposit wire hash wrong================="
-# Modify h_wire hash, so it is inconsistent with 'wire'
-echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE deposit_serial_id=1" | psql -Aqt $DB
-
-# The auditor checks h_wire consistency only for
-# coins where the wire transfer has happened, hence
-# run aggregator first to get this test to work.
-run_audit aggregator
 
 # Check wire transfer lag reported (no aggregator!)
+
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
 # taler-wire-auditor.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
+
+    # Modify h_wire hash, so it is inconsistent with 'wire'
+    echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE deposit_serial_id=1" | psql -Aqt $DB
+
+    # The auditor checks h_wire consistency only for
+    # coins where the wire transfer has happened, hence
+    # run aggregator first to get this test to work.
+    run_audit aggregator
+
     echo -n "Testing inconsistency detection... "
     TABLE=`jq -r .row_inconsistencies[0].table < test-audit.json`
     if test "x$TABLE" != "xaggregation" -a "x$TABLE" != "xdeposits"
@@ -869,34 +872,21 @@ then
         exit_fail "Reported table wrong: $TABLE"
     fi
     echo PASS
-else
-    echo "Inconsistency detection: SKIP (database too new)"
-fi
 
-# cannot easily undo aggregator, hence full reload
-echo -n "Reloading database ..."
-full_reload
-echo "DONE"
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
+
+else
+    echo "Test skipped (database too new)"
+fi
 }
 
 
 # Test where wired amount (wire out) is wrong
 function test_16() {
 echo "===========16: incorrect wire_out amount================="
-
-# First, we need to run the aggregator so we even
-# have a wire_out to modify.
-pre_audit aggregator
-
-# Modify wire amount, such that it is inconsistent with 'aggregation'
-# (exchange account is #2, so the logic below should select the outgoing
-# wire transfer):
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-OLD_AMOUNT=`echo "SELECT amount FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
-NEW_AMOUNT="TESTKUDOS:50"
-echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
-
-audit_only
 
 # Check wire transfer lag reported (no aggregator!)
 # NOTE: This test is EXPECTED to fail for ~1h after
@@ -905,6 +895,21 @@ audit_only
 # taler-wire-auditor.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
+
+    # First, we need to run the aggregator so we even
+    # have a wire_out to modify.
+    pre_audit aggregator
+
+    # Modify wire amount, such that it is inconsistent with 'aggregation'
+    # (exchange account is #2, so the logic below should select the outgoing
+    # wire transfer):
+    OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+    OLD_AMOUNT=`echo "SELECT amount FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
+    NEW_AMOUNT="TESTKUDOS:50"
+    echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+
+    audit_only
+
     echo -n "Testing inconsistency detection... "
 
     AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
@@ -928,46 +933,47 @@ then
         exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
     fi
     echo PASS
+
+    echo "Second modification: wire nothing"
+    NEW_AMOUNT="TESTKUDOS:0"
+    echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+
+    audit_only
+
+    echo -n "Testing inconsistency detection... "
+
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+    if test "x$AMOUNT" != "x$OLD_AMOUNT"
+    then
+        exit_fail "Reported justified amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+    if test "x$AMOUNT" != "x$NEW_AMOUNT"
+    then
+        exit_fail "Reported wired amount wrong: $AMOUNT"
+    fi
+    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+    if test "x$TOTAL_AMOUNT" != "x$OLD_AMOUNT"
+    then
+        exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT (wanted $OLD_AMOUNT)"
+    fi
+    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+    if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
+    fi
+    echo PASS
+
+    post_audit
+
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
 else
-    echo "Inconsistency detection: SKIP (database too new)"
+    echo "Test skipped (database too new)"
 fi
 
-
-echo "Second modification: wire nothing"
-NEW_AMOUNT="TESTKUDOS:0"
-echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
-
-audit_only
-
-echo -n "Testing inconsistency detection... "
-
-AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
-if test "x$AMOUNT" != "x$OLD_AMOUNT"
-then
-    exit_fail "Reported justified amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
-if test "x$AMOUNT" != "x$NEW_AMOUNT"
-then
-    exit_fail "Reported wired amount wrong: $AMOUNT"
-fi
-TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
-if test "x$TOTAL_AMOUNT" != "x$OLD_AMOUNT"
-then
-    exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT (wanted $OLD_AMOUNT)"
-fi
-TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
-if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
-then
-    exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
-fi
-echo PASS
-
-post_audit
-
-
-# Undo
-echo "UPDATE app_banktransaction SET amount='${OLD_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
 }
 
 
@@ -977,38 +983,53 @@ echo "UPDATE app_banktransaction SET amount='${OLD_AMOUNT}' WHERE id='${OLD_ID}'
 function test_17() {
 echo "===========17: incorrect wire_out timestamp================="
 
-# First, we need to run the aggregator so we even
-# have a wire_out to modify.
-pre_audit aggregator
-
-# Modify wire amount, such that it is inconsistent with 'aggregation'
-# (exchange account is #2, so the logic below should select the outgoing
-# wire transfer):
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
-# Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
-# (due to rounding, if this machine is fast...)
-echo "UPDATE app_banktransaction SET date=NOW()- interval '1 hour' WHERE id='${OLD_ID}';" | psql -Aqt $DB
-
-audit_only
-post_audit
-
-echo -n "Testing inconsistency detection... "
-TABLE=`jq -r .row_minor_inconsistencies[0].table < test-wire-audit.json`
-if test "x$TABLE" != "xwire_out"
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+if [ $DATABASE_AGE -gt 3600 ]
 then
-    exit_fail "Reported table wrong: $TABLE"
-fi
-DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
-DIAG=`echo "$DIAG" | awk '{print $1 " " $2 " " $3}'`
-if test "x$DIAG" != "xexecution date missmatch"
-then
-    exit_fail "Reported diagnostic wrong: $DIAG"
-fi
-echo PASS
 
-# Undo
-echo "UPDATE app_banktransaction SET date='${OLD_DATE}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+    # First, we need to run the aggregator so we even
+    # have a wire_out to modify.
+    pre_audit aggregator
+
+    # Modify wire amount, such that it is inconsistent with 'aggregation'
+    # (exchange account is #2, so the logic below should select the outgoing
+    # wire transfer):
+    OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+    OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
+    # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
+    # (due to rounding, if this machine is fast...)
+    echo "UPDATE app_banktransaction SET date=NOW()- interval '1 hour' WHERE id='${OLD_ID}';" | psql -Aqt $DB
+
+    audit_only
+    post_audit
+
+    echo -n "Testing inconsistency detection... "
+    TABLE=`jq -r .row_minor_inconsistencies[0].table < test-wire-audit.json`
+    if test "x$TABLE" != "xwire_out"
+    then
+        exit_fail "Reported table wrong: $TABLE"
+    fi
+    DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
+    DIAG=`echo "$DIAG" | awk '{print $1 " " $2 " " $3}'`
+    if test "x$DIAG" != "xexecution date missmatch"
+    then
+        exit_fail "Reported diagnostic wrong: $DIAG"
+    fi
+    echo PASS
+
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
+
+else
+    echo "Test skipped (database too new)"
+fi
+
 }
 
 
@@ -1069,44 +1090,57 @@ echo "DONE"
 function test_19() {
 echo "===========19: outgoing wire subject malformed================="
 
-# Need to first run the aggregator so the outgoing transfer exists
-pre_audit aggregator
-
-# Generate mal-formed wire transfer subject
-SUBJECT=YDVD2XBQT62553Z2TX8MM
-# Account #2 = exchange, pick outgoing transfer
-OLD_SUBJECT=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2;" | psql $DB -Aqt`
-echo "UPDATE app_banktransaction SET subject='${SUBJECT}' WHERE debit_account_id=2;" | psql -Aqt $DB
-
-audit_only
-post_audit
-
-
-echo -n "Testing wire transfer subject malformed detection... "
-
-DIAGNOSTIC=`jq -r .wire_format_inconsistencies[0].diagnostic < test-wire-audit.json`
-WANT="malformed subject \`${SUBJECT}'"
-if test "x$DIAGNOSTIC" != "x$WANT"
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+if [ $DATABASE_AGE -gt 3600 ]
 then
-    exit_fail "Reported diagnostic: $DIAGNOSTIC, wanted $WANT"
-fi
-jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null || exit_fail "Falsly claimed wire transfer not detected"
 
-DELTA=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
-if test $DELTA == "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $DELTA"
-fi
-DELTA=`jq -r .total_wire_format_amount < test-wire-audit.json`
-if test $DELTA == "TESTKUDOS:0"
-then
-    exit_fail "Expected total format amount wrong, got $DELTA"
-fi
+    # Need to first run the aggregator so the outgoing transfer exists
+    pre_audit aggregator
 
-echo "PASS"
+    # Generate mal-formed wire transfer subject
+    SUBJECT=YDVD2XBQT62553Z2TX8MM
+    # Account #2 = exchange, pick outgoing transfer
+    OLD_SUBJECT=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2;" | psql $DB -Aqt`
+    echo "UPDATE app_banktransaction SET subject='${SUBJECT}' WHERE debit_account_id=2;" | psql -Aqt $DB
 
-# Undo
-echo "UPDATE app_banktransaction SET subject='${OLD_SUBJECT}' WHERE debit_account_id=2;" | psql -Aqt $DB
+    audit_only
+    post_audit
+
+
+    echo -n "Testing wire transfer subject malformed detection... "
+
+    DIAGNOSTIC=`jq -r .wire_format_inconsistencies[0].diagnostic < test-wire-audit.json`
+    WANT="malformed subject \`${SUBJECT}'"
+    if test "x$DIAGNOSTIC" != "x$WANT"
+    then
+        exit_fail "Reported diagnostic: $DIAGNOSTIC, wanted $WANT"
+    fi
+    jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null || exit_fail "Falsly claimed wire transfer not detected"
+
+    DELTA=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+    if test $DELTA == "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $DELTA"
+    fi
+    DELTA=`jq -r .total_wire_format_amount < test-wire-audit.json`
+    if test $DELTA == "TESTKUDOS:0"
+    then
+        exit_fail "Expected total format amount wrong, got $DELTA"
+    fi
+
+    echo "PASS"
+
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
+else
+    echo "Test skipped (database too new)"
+fi
 }
 
 
@@ -1114,34 +1148,46 @@ echo "UPDATE app_banktransaction SET subject='${OLD_SUBJECT}' WHERE debit_accoun
 function test_20() {
 echo "===========20: reserve closure done properly ================="
 
-OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
-VAL_DELTA=1
-NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
-NEW_EXP=`expr $OLD_EXP - 3024000000000`  # 5 weeks
-NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA`
-echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
 
-# Need to run with the aggregator so the reserve closure happens
-run_audit aggregator
+    OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
+    VAL_DELTA=1
+    NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
+    NEW_EXP=`expr $OLD_EXP - 3024000000000`  # 5 weeks
+    NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA`
+    echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
-echo -n "Testing reserve closure was done correctly... "
+    # Need to run with the aggregator so the reserve closure happens
+    run_audit aggregator
 
-jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected reserve not closed inconsistency detected"
+    echo -n "Testing reserve closure was done correctly... "
 
-echo "PASS"
+    jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected reserve not closed inconsistency detected"
 
-echo -n "Testing no bogus transfers detected... "
-jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in run with reserve closure"
+    echo "PASS"
 
-echo "PASS"
+    echo -n "Testing no bogus transfers detected... "
+    jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in run with reserve closure"
 
-# Undo
-echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET expiration_date='${OLD_EXP}',current_balance_val=current_balance_val-${VAL_DELTA} WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    echo "PASS"
+
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
+
+else
+    echo "Test skipped (database too new)"
+fi
 }
 
 
@@ -1225,9 +1271,10 @@ then
 
     echo "PASS"
 
-    # Undo
-    echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET expiration_date='${OLD_EXP}',current_balance_val=current_balance_val-${VAL_DELTA} WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
 else
     echo "Test skipped (database too new)"
 fi
@@ -1249,6 +1296,8 @@ fi
 # *************** Main test loop starts here **************
 
 
+# Run all the tests against the database given in $1.
+# Sets $fail to 0 on success, non-zero on failure.
 check_with_database()
 {
     BASEDB=$1
@@ -1283,18 +1332,11 @@ check_with_database()
             break
         fi
     done
+    echo "Cleanup (disabled)"
+    # dropdb $DB
+    # rm -r $WIRE_FEE_DIR
+    # rm -f test-audit.log test-wire-audit.log
 }
-
-
-echo "Cleanup (disabled)"
-# dropdb $DB
-# rm -r $WIRE_FEE_DIR
-# rm -f test-audit.log test-wire-audit.log
-
-# if test -n "${MYDIR:-}"
-# then
-#    rm -rf $MYDIR
-# fi
 
 
 
@@ -1320,21 +1362,26 @@ if test -n "${1:-}"
 then
     echo "Custom run, will only run on existing DB."
 else
-    echo "Testing for taler-wallet-cli"
+    echo -n "Testing for taler-wallet-cli"
     if taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null
     then
         MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
         echo " FOUND. Generating fresh database at $MYDIR"
         if ./generate-auditor-basedb.sh $MYDIR/basedb
         then
-            check_with_database $MYDIR
+            check_with_database $MYDIR/basedb
             if test x$fail != x0
             then
                 exit $fail
+            else
+                echo "Cleaning up $MYDIR..."
+                rm -rf $MYDIR || echo "Removing $MYDIR failed"
             fi
         else
             echo "Generation failed, running only on existing DB"
         fi
+    else
+        echo " NOT FOUND, running only on existing DB"
     fi
 fi
 

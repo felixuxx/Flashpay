@@ -41,7 +41,7 @@ cp generate-auditor-basedb-template.conf $CONF
 echo -n "Testing for taler-bank-manage"
 taler-bank-manage -h >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
-echo "Testing for taler-wallet-cli"
+echo -n "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
@@ -94,12 +94,32 @@ taler-bank-manage -c $CONF serve-http &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
+taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
 
+# Wait for all services to be available
+for n in `seq 1 20`
+do
+    echo -n "."
+    sleep 0.1
+    OK=0
+    # exchange
+    wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null || continue
+    # merchant
+    wget http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
+    # bank
+    wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null || continue
+    # Auditor
+    wget http://localhost:8083/ -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
 
-# FIXME: also launch taler-auditor-httpd!
-
-# FIXME: interactive test here instead of waiting!
-sleep 10
+if [ 1 != $OK ]
+then
+    kill `jobs -p`
+    exit_skip "Failed to launch services"
+fi
+echo " DONE"
 
 # run wallet CLI
 echo "Running wallet"
@@ -123,3 +143,9 @@ dropdb $TARGET_DB
 rm -f e2a.dat a2e.dat
 rm -rf $DATA_DIR || true
 rm $CONF
+
+echo "====================================="
+echo "  Finished generation of $BASEDB"
+echo "====================================="
+
+exit 0
