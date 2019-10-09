@@ -224,6 +224,8 @@ The total amount the exchange currently lags behind is
 Note that some lag is perfectly normal.
 Below, we report {\em all} deposit confirmations that are lagging behind.
 
+% Table generation tested by testcase #XX in test-auditor.sh
+
 {% if data.deposit_confirmation_inconsistencies|length() == 0 %}
   {\bf No deposit confirmations that are lagging behind detected.}
 {% else %}
@@ -493,6 +495,8 @@ looking at the transaction history of a coin.  The totals sum up the differences
 in amounts that matter for profit/loss calculations of the exchange. When an
 exchange merely shifted money from customers to merchants (or vice versa) without
 any effects on its own balance, those entries are excluded from the total.
+
+% Table generation tested by testcase #XX in test-auditor.sh
 
 {% if data.coin_inconsistencies|length() == 0 %}
   {\bf All coin histories were unproblematic.}
