@@ -59,7 +59,7 @@ function pre_audit () {
     if test ${1:-no} = "aggregator"
     then
         echo -n "Running exchange aggregator ..."
-        taler-exchange-aggregator -L INFO -t -c $CONF 2> aggregator.log
+        taler-exchange-aggregator -L INFO -t -c $CONF 2> aggregator.log || exit_fail "FAIL"
         echo " DONE"
     fi
 }
@@ -84,7 +84,18 @@ function audit_only () {
 # Cleanup to run after the auditor
 function post_audit () {
     kill -TERM `jobs -p` >/dev/null 2>/dev/null || true
-    sleep 1
+    echo -n "Waiting for servers to die ..."
+    for n in `seq 1 20`
+    do
+        echo -n "."
+        sleep 0.1
+        OK=0
+        # bank
+        wget --timeout=0.1 http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null && continue
+        OK=1
+        break
+    done
+    echo "DONE"
     echo -n "TeXing ."
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
@@ -135,6 +146,7 @@ jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && 
 jq -e .reserve_in_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
 jq -e .missattribution_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
 jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
 jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
 jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
 jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
@@ -1218,6 +1230,8 @@ fi
 
 # Undo
 echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+
 }
 
 
@@ -1280,6 +1294,35 @@ else
 fi
 }
 
+
+
+
+# Test use of withdraw-expired denomination key
+function test_23() {
+echo "===========23: denomination key expired ================="
+
+H_DENOM=`echo 'SELECT denom_pub_hash FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
+
+OLD_START=`echo "SELECT valid_from FROM auditor_denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
+OLD_WEXP=`echo "SELECT expire_withdraw FROM auditor_denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
+# Basically expires 'immediately', so that the withdraw must have been 'invalid'
+NEW_WEXP=`expr $OLD_START + 1`
+
+echo "UPDATE auditor_denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
+
+
+run_audit
+
+echo -n "Testing inconsistency detection... "
+# FIXME
+jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Denomination key withdraw inconsistency not detected"
+
+echo PASS
+
+# Undo modification
+echo "UPDATE auditor_denominations SET expire_withdraw=${OLD_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
+
+}
 
 
 # **************************************************

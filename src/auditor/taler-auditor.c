@@ -5487,6 +5487,7 @@ run (void *cls,
                       /* Tested in test-auditor.sh #14/#15 */
                       "row_inconsistencies",
                       report_row_inconsistencies,
+                      /* Tested in test-auditor.sh #23 */
                       "denomination_key_validity_withdraw_inconsistencies",
                       denomination_key_validity_withdraw_inconsistencies,
                       "coin_inconsistencies",

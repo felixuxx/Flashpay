@@ -1004,11 +1004,12 @@ withdrawal at the time when the exchange claims to have signed a coin
 with it.  This would be irregular, but has no obvious financial
 implications.
 
+% Table generation tested by testcase #23 in test-auditor.sh
 
 {% if data.denomination_key_validity_withdraw_inconsistencies|length() == 0 %}
   {\bf All denomination keys were valid at the time of withdrawals.}
 {% else %}
-  \begin{longtable}{p{7.5cm}|c}
+  \begin{longtable}{p{7.5cm}|r}
   {\bf Reserve} & {\bf Table row} \\
   {\bf Denomination key hash} & {\bf Execution time} \\ \hline \hline
 \endfirsthead
@@ -1028,7 +1029,6 @@ implications.
 {% for item in data.denomination_key_validity_withdraw_inconsistencies %}
   {\tt \small \truncate{0.6\textwidth}{ {{ item.reserve_pub }} } } & {{ item.row }} \\
 \nopagebreak
-  &
   {\tt \small \truncate{0.6\textwidth}{ {{ item.denompub_h }} } } & {{ item.execution_date }} \\ \hline
 {% endfor %}
   \end{longtable}
