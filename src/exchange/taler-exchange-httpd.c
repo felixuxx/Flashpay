@@ -457,8 +457,8 @@ handle_mhd_request (void *cls,
     if ( (0 == strcmp (url,
                        rh->url)) &&
          ( (NULL == rh->method) ||
-           (0 == strcasecmp (method,
-                             rh->method)) ) )
+           (0 == strcmp (method,
+                         rh->method)) ) )
     {
       /* FIXME: consider caching 'rh' in '**connection_cls' to
          avoid repeated lookup! */
