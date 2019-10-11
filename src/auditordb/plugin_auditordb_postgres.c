@@ -61,7 +61,7 @@ struct TALER_AUDITORDB_Session
   /**
    * Postgres connection handle.
    */
-  PGconn *conn;
+  struct GNUNET_PQ_Context *conn;
 };
 
 
@@ -89,71 +89,6 @@ struct PostgresClosure
    */
   char *currency;
 };
-
-
-/**
- * Function called by libpq whenever it wants to log something.
- * We already log whenever we care, so this function does nothing
- * and merely exists to silence the libpq logging.
- *
- * @param arg NULL
- * @param res information about some libpq event
- */
-static void
-pq_notice_receiver_cb (void *arg,
-                       const PGresult *res)
-{
-  /* do nothing, intentionally */
-}
-
-
-/**
- * Function called by libpq whenever it wants to log something.
- * We log those using the Taler logger.
- *
- * @param arg NULL
- * @param message information about some libpq event
- */
-static void
-pq_notice_processor_cb (void *arg,
-                        const char *message)
-{
-  LOG (GNUNET_ERROR_TYPE_INFO,
-       "%s",
-       message);
-}
-
-
-/**
- * Establish connection to the Postgres database
- * and initialize callbacks for logging.
- *
- * @param pc configuration to use
- * @return NULL on error
- */
-static PGconn *
-connect_to_postgres (struct PostgresClosure *pc)
-{
-  PGconn *conn;
-
-  conn = PQconnectdb (pc->connection_cfg_str);
-  if (CONNECTION_OK !=
-      PQstatus (conn))
-  {
-    TALER_LOG_ERROR ("Database connection failed: %s\n",
-                     PQerrorMessage (conn));
-    GNUNET_break (0);
-    PQfinish (conn);
-    return NULL;
-  }
-  PQsetNoticeReceiver (conn,
-                       &pq_notice_receiver_cb,
-                       NULL);
-  PQsetNoticeProcessor (conn,
-                        &pq_notice_processor_cb,
-                        NULL);
-  return conn;
-}
 
 
 /**
@@ -198,25 +133,23 @@ postgres_drop_tables (void *cls,
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
-  PGconn *conn;
+  struct GNUNET_PQ_Context *conn;
   int ret;
 
-  conn = connect_to_postgres (pc);
+  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            es,
+                            NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  LOG (GNUNET_ERROR_TYPE_INFO,
-       "Dropping ALL tables\n");
-  ret = GNUNET_PQ_exec_statements (conn,
-                                   es);
-  if ( (ret >= 0) &&
-       (drop_exchangelist) )
+  ret = GNUNET_OK;
+  if (drop_exchangelist)
     ret = GNUNET_PQ_exec_statements (conn,
                                      esx);
   /* TODO: we probably need a bit more fine-grained control
      over drops for the '-r' option of taler-auditor; also,
      for the testcase, we currently fail to drop the
      auditor_denominations table... */
-  PQfinish (conn);
+  GNUNET_PQ_disconnect (conn);
   return ret;
 }
 
@@ -479,28 +412,52 @@ postgres_create_tables (void *cls)
       ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
-  PGconn *conn;
-  int ret;
+  struct GNUNET_PQ_Context *conn;
 
-  conn = connect_to_postgres (pc);
+  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            es,
+                            NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  ret = GNUNET_PQ_exec_statements (conn,
-                                   es);
-  PQfinish (conn);
-  return ret;
+  GNUNET_PQ_disconnect (conn);
+  return GNUNET_OK;
 }
 
 
 /**
- * Setup prepared statements.
+ * Close thread-local database connection when a thread is destroyed.
  *
- * @param db_conn connection handle to initialize
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ * @param cls closure we get from pthreads (the db handle)
  */
-static int
-postgres_prepare (PGconn *db_conn)
+static void
+db_conn_destroy (void *cls)
 {
+  struct TALER_AUDITORDB_Session *session = cls;
+  struct GNUNET_PQ_Context *db_conn;
+
+  if (NULL == session)
+    return;
+  db_conn = session->conn;
+  session->conn = NULL;
+  if (NULL != db_conn)
+    GNUNET_PQ_disconnect (db_conn);
+  GNUNET_free (session);
+}
+
+
+/**
+ * Get the thread-local database-handle.
+ * Connect to the db if the connection does not exist yet.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @return the database connection, or NULL on error
+ */
+static struct TALER_AUDITORDB_Session *
+postgres_get_session (void *cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_Context *db_conn;
+  struct TALER_AUDITORDB_Session *session;
   struct GNUNET_PQ_PreparedStatement ps[] = {
     /* used in #postgres_commit */
     GNUNET_PQ_make_prepare ("do_commit",
@@ -1036,80 +993,23 @@ postgres_prepare (PGconn *db_conn)
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
-  return GNUNET_PQ_prepare_statements (db_conn,
-                                       ps);
-}
-
-
-/**
- * Close thread-local database connection when a thread is destroyed.
- *
- * @param cls closure we get from pthreads (the db handle)
- */
-static void
-db_conn_destroy (void *cls)
-{
-  struct TALER_AUDITORDB_Session *session = cls;
-  PGconn *db_conn;
-
-  if (NULL == session)
-    return;
-  db_conn = session->conn;
-  if (NULL != db_conn)
-    PQfinish (db_conn);
-  GNUNET_free (session);
-}
-
-
-/**
- * Get the thread-local database-handle.
- * Connect to the db if the connection does not exist yet.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return the database connection, or NULL on error
- */
-static struct TALER_AUDITORDB_Session *
-postgres_get_session (void *cls)
-{
-  struct PostgresClosure *pc = cls;
-  PGconn *db_conn;
-  struct TALER_AUDITORDB_Session *session;
-
   if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
   {
-    if (CONNECTION_BAD == PQstatus (session->conn))
-    {
-      /**
-       * Reset the thread-local database-handle.  Disconnects from the
-       * DB.  Needed after the database server restarts as we need to
-       * properly reconnect. */
-      GNUNET_assert (0 == pthread_setspecific (pc->db_conn_threadlocal,
-                                               NULL));
-      PQfinish (session->conn);
-      GNUNET_free (session);
-    }
-    else
-    {
-      return session;
-    }
+    GNUNET_PQ_reconnect_if_down (session->conn);
+    return session;
   }
-  db_conn = connect_to_postgres (pc);
+  db_conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                               NULL,
+                               ps);
   if (NULL == db_conn)
     return NULL;
-  if (GNUNET_OK !=
-      postgres_prepare (db_conn))
-  {
-    GNUNET_break (0);
-    PQfinish (db_conn);
-    return NULL;
-  }
   session = GNUNET_new (struct TALER_AUDITORDB_Session);
   session->conn = db_conn;
   if (0 != pthread_setspecific (pc->db_conn_threadlocal,
                                 session))
   {
     GNUNET_break (0);
-    PQfinish (db_conn);
+    GNUNET_PQ_disconnect (db_conn);
     GNUNET_free (session);
     return NULL;
   }
@@ -1128,20 +1028,19 @@ static int
 postgres_start (void *cls,
                 struct TALER_AUDITORDB_Session *session)
 {
-  PGresult *result;
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL SERIALIZABLE"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
 
-  result = PQexec (session->conn,
-                   "START TRANSACTION ISOLATION LEVEL SERIALIZABLE");
-  if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
+  if (GNUNET_OK !=
+      GNUNET_PQ_exec_statements (session->conn,
+                                 es))
   {
-    TALER_LOG_ERROR ("Failed to start transaction: %s\n",
-                     PQresultErrorMessage (result));
+    TALER_LOG_ERROR ("Failed to start transaction\n");
     GNUNET_break (0);
-    PQclear (result);
     return GNUNET_SYSERR;
   }
-  PQclear (result);
   return GNUNET_OK;
 }
 
@@ -1157,13 +1056,14 @@ static void
 postgres_rollback (void *cls,
                    struct TALER_AUDITORDB_Session *session)
 {
-  PGresult *result;
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("ROLLBACK"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
 
-  result = PQexec (session->conn,
-                   "ROLLBACK");
-  GNUNET_break (PGRES_COMMAND_OK ==
-                PQresultStatus (result));
-  PQclear (result);
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_PQ_exec_statements (session->conn,
+                                           es));
 }
 
 
@@ -1205,30 +1105,31 @@ postgres_gc (void *cls)
     TALER_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
-  PGconn *conn;
+  struct GNUNET_PQ_Context *conn;
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_PreparedStatement ps[] = {
+    /* FIXME: this is obviously not going to be this easy... */
+    GNUNET_PQ_make_prepare ("gc_auditor",
+                            "FIXME",
+                            0),
+    GNUNET_PQ_PREPARED_STATEMENT_END
+  };
 
   now = GNUNET_TIME_absolute_get ();
-  conn = connect_to_postgres (pc);
+  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            NULL,
+                            ps);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  if (GNUNET_OK !=
-      postgres_prepare (conn))
-  {
-    PQfinish (conn);
-    return GNUNET_SYSERR;
-  }
-  /* FIXME: this is obviously not going to be this easy... */
   qs = GNUNET_PQ_eval_prepared_non_select (conn,
                                            "gc_auditor",
                                            params_time);
+  GNUNET_PQ_disconnect (conn);
   if (0 > qs)
   {
     GNUNET_break (0);
-    PQfinish (conn);
     return GNUNET_SYSERR;
   }
-  PQfinish (conn);
   return GNUNET_OK;
 }
 

@@ -26,47 +26,37 @@
 /**
  * Setup prepared statements.
  *
- * @param db_conn connection handle to initialize
+ * @param db database handle to initialize
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
 static int
-postgres_prepare (PGconn *db_conn)
+postgres_prepare (struct GNUNET_PQ_Context *db)
 {
-  PGresult *result;
+  struct GNUNET_PQ_PreparedStatement ps[] = {
+    GNUNET_PQ_make_prepare ("test_insert",
+                            "INSERT INTO test_pq ("
+                            " hamount_val"
+                            ",hamount_frac"
+                            ",namount_val"
+                            ",namount_frac"
+                            ",json"
+                            ") VALUES "
+                            "($1, $2, $3, $4, $5);",
+                            5),
+    GNUNET_PQ_make_prepare ("test_select",
+                            "SELECT"
+                            " hamount_val"
+                            ",hamount_frac"
+                            ",namount_val"
+                            ",namount_frac"
+                            ",json"
+                            " FROM test_pq;",
+                            0),
+    GNUNET_PQ_PREPARED_STATEMENT_END
+  };
 
-#define PREPARE(name, sql, ...)                                 \
-  do {                                                          \
-    result = PQprepare (db_conn, name, sql, __VA_ARGS__);       \
-    if (PGRES_COMMAND_OK != PQresultStatus (result))            \
-    {                                                           \
-      GNUNET_break (0);                                         \
-      PQclear (result); result = NULL;                          \
-      return GNUNET_SYSERR;                                     \
-    }                                                           \
-    PQclear (result); result = NULL;                            \
-  } while (0);
-
-  PREPARE ("test_insert",
-           "INSERT INTO test_pq ("
-           " hamount_val"
-           ",hamount_frac"
-           ",namount_val"
-           ",namount_frac"
-           ",json"
-           ") VALUES "
-           "($1, $2, $3, $4, $5);",
-           5, NULL);
-  PREPARE ("test_select",
-           "SELECT"
-           " hamount_val"
-           ",hamount_frac"
-           ",namount_val"
-           ",namount_frac"
-           ",json"
-           " FROM test_pq;",
-           0, NULL);
-  return GNUNET_OK;
-#undef PREPARE
+  return GNUNET_PQ_prepare_statements (db,
+                                       ps);
 }
 
 
@@ -76,7 +66,7 @@ postgres_prepare (PGconn *db_conn)
  * @return 0 on success
  */
 static int
-run_queries (PGconn *conn)
+run_queries (struct GNUNET_PQ_Context *conn)
 {
   struct TALER_Amount hamount;
   struct TALER_Amount hamount2;
@@ -176,63 +166,51 @@ int
 main (int argc,
       const char *const argv[])
 {
-  PGconn *conn;
-  PGresult *result;
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
+                            " hamount_val INT8 NOT NULL"
+                            ",hamount_frac INT4 NOT NULL"
+                            ",namount_val INT8 NOT NULL"
+                            ",namount_frac INT4 NOT NULL"
+                            ",json VARCHAR NOT NULL"
+                            ")"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+
+  struct GNUNET_PQ_Context *conn;
   int ret;
 
   GNUNET_log_setup ("test-pq",
                     "WARNING",
                     NULL);
-  conn = PQconnectdb ("postgres:///talercheck");
-  if (CONNECTION_OK != PQstatus (conn))
-  {
-    fprintf (stderr,
-             "Cannot run test, database connection failed: %s\n",
-             PQerrorMessage (conn));
-    GNUNET_break (0);
-    PQfinish (conn);
-    return 0; /* We ignore this type of error... */
-  }
-
-  result = PQexec (conn,
-                   "CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
-                   " hamount_val INT8 NOT NULL"
-                   ",hamount_frac INT4 NOT NULL"
-                   ",namount_val INT8 NOT NULL"
-                   ",namount_frac INT4 NOT NULL"
-                   ",json VARCHAR NOT NULL"
-                   ")");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    fprintf (stderr,
-             "Failed to create table: %s\n",
-             PQerrorMessage (conn));
-    PQclear (result);
-    PQfinish (conn);
-    return 1;
-  }
-  PQclear (result);
+  conn = GNUNET_PQ_connect ("postgres:///talercheck",
+                            es,
+                            NULL);
   if (GNUNET_OK !=
       postgres_prepare (conn))
   {
     GNUNET_break (0);
-    PQfinish (conn);
+    GNUNET_PQ_disconnect (conn);
     return 1;
   }
   ret = run_queries (conn);
-  result = PQexec (conn,
-                   "DROP TABLE test_pq");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    fprintf (stderr,
-             "Failed to create table: %s\n",
-             PQerrorMessage (conn));
-    PQclear (result);
-    PQfinish (conn);
-    return 1;
+    struct GNUNET_PQ_ExecuteStatement ds[] = {
+      GNUNET_PQ_make_execute ("DROP TABLE test_pq"),
+      GNUNET_PQ_EXECUTE_STATEMENT_END
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_exec_statements (conn,
+                                   ds))
+    {
+      fprintf (stderr,
+               "Failed to drop table\n");
+      GNUNET_PQ_disconnect (conn);
+      return 1;
+    }
   }
-  PQclear (result);
-  PQfinish (conn);
+  GNUNET_PQ_disconnect (conn);
   return ret;
 }
 
