@@ -665,7 +665,7 @@ add_denomination (void *cls,
   if (NULL !=
       GNUNET_CONTAINER_multihashmap_get (denominations,
                                          &issue->denom_hash))
-    return; /* value already known */
+    return GNUNET_OK; /* value already known */
   {
     struct TALER_Amount value;
 
@@ -714,11 +714,10 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                                TALER_DenominationKeyValidityPS **issue)
 {
   const struct TALER_DenominationKeyValidityPS *i;
+  enum GNUNET_DB_QueryStatus qs;
 
   if (NULL == denominations)
   {
-    enum GNUNET_DB_QueryStatus qs;
-
     denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                           GNUNET_NO);
     qs = adb->select_denomination_info (adb->cls,
