@@ -1134,6 +1134,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAY_ABORT_REFUND_REFUSED_PAYMENT_COMPLETE = 2126,
 
+  /**
+   * A unknown merchant public key was included in the payment.  That
+   * happens typically when the wallet sends the payment to the wrong
+   * merchant instance.
+   */
+  TALER_EC_PAY_WRONG_INSTANCE = 2126,
 
   /**
    * Integer overflow with sepcified timestamp argument detected.
