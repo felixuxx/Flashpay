@@ -75,6 +75,151 @@
 
 
 /**
+ * Dynamically growing buffer.  Can be used to construct
+ * strings and other objects with dynamic size.
+ *
+ * This structure should, in most cases, be stack-allocated and
+ * zero-initialized, like:
+ *
+ *   struct TALER_Buffer my_buffer = { 0 };
+ */
+struct TALER_Buffer
+{
+  /**
+   * Capacity of the buffer.
+   */
+  size_t capacity;
+
+  /**
+   * Current write position.
+   */
+  size_t position;
+
+  /**
+   * Backing memory.
+   */
+  char *mem;
+
+  /**
+   * Log a warning if the buffer is grown over its initially allocated capacity.
+   */
+  int warn_grow;
+};
+
+
+/**
+ * Initialize a buffer with the given capacity.
+ *
+ * When a buffer is allocated with this function, a warning is logged
+ * when the buffer exceeds the initial capacity.
+ *
+ * @param buf the buffer to initialize
+ * @param capacity the capacity (in bytes) to allocate for @a buf
+ */
+void
+TALER_buffer_prealloc (struct TALER_Buffer *buf, size_t capacity);
+
+
+/**
+ * Make sure that at least @a n bytes remaining in the buffer.
+ *
+ * @param buf buffer to potentially grow
+ * @param n number of bytes that should be available to write
+ */
+void
+TALER_buffer_ensure_remaining (struct TALER_Buffer *buf, size_t n);
+
+
+/**
+ * Write bytes to the buffer.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf buffer to write to
+ * @param data data to read from
+ * @param len number of bytes to copy from @a data to @a buf
+ *
+ */
+void
+TALER_buffer_write (struct TALER_Buffer *buf, const char *data, size_t len);
+
+
+/**
+ * Write a 0-terminated string to a buffer, excluding the 0-terminator.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf the buffer to write to
+ * @param str the string to write to @a buf
+ */
+void
+TALER_buffer_write_str (struct TALER_Buffer *buf, const char *str);
+
+
+/**
+ * Write a path component to a buffer, ensuring that
+ * there is exactly one slash between the previous contents
+ * of the buffer and the new string.
+ *
+ * @param buf buffer to write to
+ * @param str string containing the new path component
+ */
+void
+TALER_buffer_write_path (struct TALER_Buffer *buf, const char *str);
+
+
+/**
+ * Write a 0-terminated formatted string to a buffer, excluding the
+ * 0-terminator.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf the buffer to write to
+ * @param fmt format string
+ * @param ... format arguments
+ */
+void
+TALER_buffer_write_fstr (struct TALER_Buffer *buf, const char *fmt, ...);
+
+
+/**
+ * Write a 0-terminated formatted string to a buffer, excluding the
+ * 0-terminator.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf the buffer to write to
+ * @param fmt format string
+ * @param args format argument list
+ */
+void
+TALER_buffer_write_vfstr (struct TALER_Buffer *buf, const char *fmt, va_list args);
+
+
+/**
+ * Clear the buffer and return the string it contained.
+ * The caller is responsible to eventually #GNUNET_free
+ * the returned string.
+ *
+ * The returned string is always 0-terminated.
+ *
+ * @param buf the buffer to reap the string from
+ * @returns the buffer contained in the string
+ */
+char *
+TALER_buffer_reap_str (struct TALER_Buffer *buf);
+
+
+/**
+ * Free the backing memory of the given buffer.
+ * Does not free the memory of the buffer control structure,
+ * which is typically stack-allocated.
+ */
+void
+TALER_buffer_clear (struct TALER_Buffer *buf);
+
+
+/**
  * Initialize Gcrypt library.
  */
 void
@@ -200,6 +345,25 @@ TALER_url_absolute_raw (const char *proto,
                         const char *prefix,
                         const char *path,
                         ...);
+
+
+/**
+ * Make an absolute URL for the given parameters.
+ *
+ * @param proto protocol for the URL (typically https)
+ * @param host hostname for the URL
+ * @param prefix prefix for the URL
+ * @param path path for the URL
+ * @param args NULL-terminated key-value pairs (char *) for query parameters,
+ *        the value will be url-encoded
+ * @returns the URL, must be freed with #GNUNET_free
+ */
+char *
+TALER_url_absolute_raw_va (const char *proto,
+                     const char *host,
+                     const char *prefix,
+                     const char *path,
+                     va_list args);
 
 
 /**

@@ -32,7 +32,11 @@
 static void
 cf (char *input, char *expected)
 {
-  GNUNET_assert (0 == strcmp (input, expected));
+  if (0 != strcmp (input, expected))
+  {
+    printf ("got '%s' but expected '%s'\n", input, expected);
+    GNUNET_assert (0);
+  }
   GNUNET_free (input);
 }
 

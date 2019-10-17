@@ -193,6 +193,43 @@ is_reserved (char c)
   return GNUNET_YES;
 }
 
+/**
+ * Get the length of a string after it has been
+ * urlencoded.
+ *
+ * @param s the string
+ * @returns the size of the urlencoded @a s
+ */
+static size_t
+urlencode_len (const char *s)
+{
+  size_t len = 0;
+  for (; *s != '\0'; len++, s++)
+    if (GNUNET_YES == is_reserved (*s))
+      len += 2;
+  return len;
+}
+
+/**
+ * URL-encode a string according to rfc3986.
+ *
+ * @param buf buffer to write the result to
+ * @param s string to encode
+ */
+static void
+buffer_write_urlencode (struct TALER_Buffer *buf, const char *s)
+{
+  TALER_buffer_ensure_remaining (buf, urlencode_len (s) + 1);
+
+  for (size_t i = 0; i < strlen (s); i++)
+  {
+    if (GNUNET_YES == is_reserved (s[i]))
+      TALER_buffer_write_fstr (buf, "%%%02X", s[i]);
+    else
+      buf->mem[buf->position++] = s[i];
+  }
+}
+
 
 /**
  * URL-encode a string according to rfc3986.
@@ -203,79 +240,10 @@ is_reserved (char c)
 char *
 TALER_urlencode (const char *s)
 {
-  unsigned int new_size;
-  unsigned int i;
-  unsigned int t;
-  char *out;
+  struct TALER_Buffer buf = { 0 };
 
-  new_size = strlen (s);
-  for (i = 0; i < strlen (s); i++)
-    if (GNUNET_YES == is_reserved (s[i]))
-      new_size += 2;
-  out = GNUNET_malloc (new_size + 1);
-  for (i = 0, t = 0; i < strlen (s); i++, t++)
-  {
-    if (GNUNET_YES == is_reserved (s[i]))
-    {
-      snprintf (&out[t], 4, "%%%02X", s[i]);
-      t += 2;
-      continue;
-    }
-    out[t] = s[i];
-  }
-  return out;
-}
-
-
-/**
- * Grow a string in a buffer with the given size.
- * The buffer is re-allocated if necessary.
- *
- * @param s pointer to string buffer
- * @param p the string to append
- * @param n pointer to the allocated size of n
- * @returns pointer to the resulting buffer,
- *          might differ from @a s (!!)
- */
-static char *
-grow_string (char **s, const char *p, size_t *n)
-{
-  for (; strlen (*s) + strlen (p) >= *n; *n *= 2);
-  *s = GNUNET_realloc (*s, *n);
-  GNUNET_assert (NULL != s);
-  strncat (*s, p, *n);
-  return *s;
-}
-
-
-/**
- * Grow a string in a buffer with the given size.
- * The buffer is re-allocated if necessary.
- *
- * Ensures that slashes are removed or added when joining paths.
- *
- * @param s pointer to string buffer
- * @param p the string to append
- * @param n pointer to the allocated size of n
- * @returns pointer to the resulting buffer,
- *          might differ from @a s (!!)
- */
-static char *
-grow_string_path (char **s, const char *p, size_t *n)
-{
-  char a = (0 == strlen (*s)) ? '\0' : (*s)[strlen (*s) - 1];
-  char b = (0 == strlen (p)) ? '\0' : p[0];
-
-  if ( (a == '/') && (b == '/'))
-  {
-    p++;
-  }
-  else if ( (a != '/') && (b != '/'))
-  {
-    if (NULL == (*s = grow_string (s, "/", n)))
-      return NULL;
-  }
-  return grow_string (s, p, n);
+  buffer_write_urlencode (&buf, s);
+  return TALER_buffer_reap_str (&buf);
 }
 
 
@@ -286,36 +254,53 @@ grow_string_path (char **s, const char *p, size_t *n)
  * @param path path of the url
  * @param ... NULL-terminated key-value pairs (char *) for query parameters,
  *        the value will be url-encoded
- * @returns the URL, must be freed with #GNUNET_free
+ * @returns the URL (must be freed with #GNUNET_free) or
+ *          NULL if an error occured.
  */
 char *
 TALER_url_join (const char *base_url,
                 const char *path,
                 ...)
 {
-  size_t n = 256;
-  char *res = GNUNET_malloc (n);
   unsigned int iparam = 0;
-  char *enc;
   va_list args;
+  struct TALER_Buffer buf = { 0 };
+  size_t len = 0;
 
-  GNUNET_assert (NULL != res);
   GNUNET_assert (NULL != base_url);
   GNUNET_assert (NULL != path);
-  GNUNET_assert (strlen (base_url) > 0);
 
-  // Must be an actual base URL!
-  GNUNET_assert ('/' == base_url[strlen (base_url) - 1]);
+  if (strlen (base_url) == 0)
+  {
+    /* base URL can't be empty */
+    GNUNET_break (0);
+    return NULL;
+  }
 
-  // Path must be relative to existing path of base URL
-  GNUNET_assert ('/' != path[0]);
+  if ('/' != base_url[strlen (base_url) - 1])
+  {
+    /* Must be an actual base URL! */
+    GNUNET_break (0);
+    return NULL;
+  }
 
-  grow_string (&res, base_url, &n);
+  if ('/' == path[0])
+  {
+    /* The path must be relative. */
+    GNUNET_break (0);
+    return NULL;
+  }
 
-  grow_string_path (&res, path, &n);
+  // Path should be relative to existing path of base URL
+  GNUNET_break ('/' != path[0]);
+
+  if ('/' == path[0])
+    GNUNET_break (0);
+
+  /* 1st pass: compute length */
+  len += strlen (base_url) + strlen (path);
 
   va_start (args, path);
-
   while (1)
   {
     char *key;
@@ -326,18 +311,35 @@ TALER_url_join (const char *base_url,
     value = va_arg (args, char *);
     if (NULL == value)
       continue;
-    grow_string (&res, (0 == iparam) ? "?" : "&", &n);
-    iparam++;
-    grow_string (&res, key, &n);
-    grow_string (&res, "=", &n);
-    enc = TALER_urlencode (value);
-    grow_string (&res, enc, &n);
-    GNUNET_free (enc);
+    len += urlencode_len (value) + strlen (key) + 2;
   }
-
   va_end (args);
 
-  return res;
+  TALER_buffer_prealloc (&buf, len);
+
+  TALER_buffer_write_str (&buf, base_url);
+  TALER_buffer_write_str (&buf, path);
+
+  va_start (args, path);
+  while (1)
+  {
+    char *key;
+    char *value;
+    key = va_arg (args, char *);
+    if (NULL == key)
+      break;
+    value = va_arg (args, char *);
+    if (NULL == value)
+      continue;
+    TALER_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
+    iparam++;
+    TALER_buffer_write_str (&buf, key);
+    TALER_buffer_write_str (&buf, "=");
+    buffer_write_urlencode (&buf, value);
+  }
+  va_end (args);
+
+  return TALER_buffer_reap_str (&buf);
 }
 
 
@@ -353,25 +355,45 @@ TALER_url_join (const char *base_url,
  * @returns the URL, must be freed with #GNUNET_free
  */
 char *
-url_absolute_raw_va (const char *proto,
+TALER_url_absolute_raw_va (const char *proto,
                      const char *host,
                      const char *prefix,
                      const char *path,
                      va_list args)
 {
-  size_t n = 256;
-  char *res = GNUNET_malloc (n);
-  char *enc;
+  struct TALER_Buffer buf = { 0 };
   unsigned int iparam = 0;
+  size_t len = 0;
+  va_list args2;
 
-  grow_string (&res, proto, &n);
-  grow_string (&res, "://", &n);
-  grow_string (&res, host, &n);
+  len += strlen (proto) + strlen( "://") + strlen (host);
+  len += strlen (prefix) + strlen (path);
 
-  grow_string_path (&res, prefix, &n);
+  va_copy (args2, args);
+  while (1)
+  {
+    char *key;
+    char *value;
+    key = va_arg (args2, char *);
+    if (NULL == key)
+      break;
+    value = va_arg (args2, char *);
+    if (NULL == value)
+      continue;
+    len += urlencode_len (value) + strlen (key) + 2;
+  }
+  va_end (args2);
 
-  grow_string_path (&res, path, &n);
+  TALER_buffer_prealloc (&buf, len);
 
+  TALER_buffer_write_str (&buf, proto);
+  TALER_buffer_write_str (&buf, "://");
+  TALER_buffer_write_str (&buf, host);
+
+  TALER_buffer_write_path (&buf, prefix);
+  TALER_buffer_write_path (&buf, path);
+
+  va_copy (args2, args);
   while (1)
   {
     char *key;
@@ -382,16 +404,15 @@ url_absolute_raw_va (const char *proto,
     value = va_arg (args, char *);
     if (NULL == value)
       continue;
-    grow_string (&res, (0 == iparam) ? "?" : "&", &n);
+    TALER_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
     iparam++;
-    grow_string (&res, key, &n);
-    grow_string (&res, "=", &n);
-    enc = TALER_urlencode (value);
-    grow_string (&res, enc, &n);
-    GNUNET_free (enc);
+    TALER_buffer_write_str (&buf, key);
+    TALER_buffer_write_str (&buf, "=");
+    buffer_write_urlencode (&buf, value);
   }
+  va_end (args2);
 
-  return res;
+  return TALER_buffer_reap_str (&buf);
 }
 
 
@@ -417,7 +438,7 @@ TALER_url_absolute_raw (const char *proto,
   va_list args;
 
   va_start (args, path);
-  result = url_absolute_raw_va (proto, host, prefix, path, args);
+  result = TALER_url_absolute_raw_va (proto, host, prefix, path, args);
   va_end (args);
   return result;
 }
@@ -516,10 +537,213 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
   }
 
   va_start (args, path);
-  result = url_absolute_raw_va (proto, host, prefix, path, args);
+  result = TALER_url_absolute_raw_va (proto, host, prefix, path, args);
   va_end (args);
   return result;
 }
 
+
+/**
+ * Initialize a buffer with the given capacity.
+ *
+ * When a buffer is allocated with this function, a warning is logged
+ * when the buffer exceeds the initial capacity.
+ *
+ * @param buf the buffer to initialize
+ * @param capacity the capacity (in bytes) to allocate for @a buf
+ */
+void
+TALER_buffer_prealloc (struct TALER_Buffer *buf, size_t capacity)
+{
+  /* Buffer should be zero-initialized */
+  GNUNET_assert (0 == buf->mem);
+  GNUNET_assert (0 == buf->capacity);
+  GNUNET_assert (0 == buf->position);
+  buf->mem = GNUNET_malloc (capacity);
+  buf->capacity = capacity;
+  buf->warn_grow = GNUNET_YES;
+}
+
+
+/**
+ * Make sure that at least @a n bytes remaining in the buffer.
+ *
+ * @param buf buffer to potentially grow
+ * @param n number of bytes that should be available to write
+ */
+void
+TALER_buffer_ensure_remaining (struct TALER_Buffer *buf, size_t n)
+{
+  size_t new_capacity = buf->position + n;
+
+  if (new_capacity <= buf->capacity)
+    return;
+  /* warn if calculation of expected size was wrong */
+  GNUNET_break (GNUNET_YES != buf->warn_grow);
+  if (new_capacity < buf->capacity * 2)
+    new_capacity = buf->capacity * 2;
+  buf->capacity = new_capacity;
+  if (NULL != buf->mem)
+    buf->mem = GNUNET_realloc (buf->mem, new_capacity);
+  else
+    buf->mem = GNUNET_malloc (new_capacity);
+}
+
+
+/**
+ * Write bytes to the buffer.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf buffer to write to
+ * @param data data to read from
+ * @param len number of bytes to copy from @a data to @a buf
+ *
+ */
+void
+TALER_buffer_write (struct TALER_Buffer *buf, const char *data, size_t len)
+{
+  TALER_buffer_ensure_remaining (buf, len);
+  memcpy (buf->mem + buf->position, data, len);
+  buf->position += len;
+}
+
+
+/**
+ * Write a 0-terminated string to a buffer, excluding the 0-terminator.
+ *
+ * @param buf the buffer to write to
+ * @param str the string to write to @a buf
+ */
+void
+TALER_buffer_write_str (struct TALER_Buffer *buf, const char *str)
+{
+  size_t len = strlen (str);
+
+  TALER_buffer_write (buf, str, len);
+}
+
+
+/**
+ * Clear the buffer and return the string it contained.
+ * The caller is responsible to eventually #GNUNET_free
+ * the returned string.
+ *
+ * The returned string is always 0-terminated.
+ *
+ * @param buf the buffer to reap the string from
+ * @returns the buffer contained in the string
+ */
+char *
+TALER_buffer_reap_str (struct TALER_Buffer *buf)
+{
+  char *res;
+
+  /* ensure 0-termination */
+  if ( (0 == buf->position) || ('\0' != buf->mem[buf->position - 1]))
+  {
+    TALER_buffer_ensure_remaining (buf, 1);
+    buf->mem[buf->position++] = '\0';
+  }
+  res = buf->mem;
+  *buf = (struct TALER_Buffer) { 0 };
+  return res;
+}
+
+
+/**
+ * Free the backing memory of the given buffer.
+ * Does not free the memory of the buffer control structure,
+ * which is typically stack-allocated.
+ */
+void
+TALER_buffer_clear (struct TALER_Buffer *buf)
+{
+  GNUNET_free_non_null (buf->mem);
+  *buf = (struct TALER_Buffer) { 0 };
+}
+
+
+/**
+ * Write a path component to a buffer, ensuring that
+ * there is exactly one slash between the previous contents
+ * of the buffer and the new string.
+ *
+ * @param buf buffer to write to
+ * @param str string containing the new path component
+ */
+void
+TALER_buffer_write_path (struct TALER_Buffer *buf, const char *str)
+{
+  size_t len = strlen (str);
+
+  if (0 == len)
+    return;
+  if ('/' == str[0])
+  {
+    str++;
+    len--;
+  }
+  if ( (0 == buf->position) || ('/' != buf->mem[buf->position]) )
+  {
+    TALER_buffer_ensure_remaining (buf, 1);
+    buf->mem[buf->position++] = '/';
+  }
+  TALER_buffer_write (buf, str, len);
+}
+
+
+/**
+ * Write a 0-terminated formatted string to a buffer, excluding the
+ * 0-terminator.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf the buffer to write to
+ * @param fmt format string
+ * @param ... format arguments
+ */
+void
+TALER_buffer_write_fstr (struct TALER_Buffer *buf, const char *fmt, ...)
+{
+  va_list args;
+
+  va_start (args, fmt);
+  TALER_buffer_write_vfstr (buf, fmt, args);
+  va_end (args);
+}
+
+
+/**
+ * Write a 0-terminated formatted string to a buffer, excluding the
+ * 0-terminator.
+ *
+ * Grows the buffer if necessary.
+ *
+ * @param buf the buffer to write to
+ * @param fmt format string
+ * @param args format argument list
+ */
+void
+TALER_buffer_write_vfstr (struct TALER_Buffer *buf, const char *fmt, va_list args)
+{
+  size_t res;
+  va_list args2;
+
+  va_copy (args2, args);
+  res = vsnprintf (NULL, 0, fmt, args2);
+  va_end (args2);
+
+  GNUNET_assert (res >= 0);
+  TALER_buffer_ensure_remaining (buf, res + 1);
+
+  va_copy (args2, args);
+  res = vsnprintf (buf->mem + buf->position, res + 1, fmt, args2);
+  va_end (args2);
+
+  GNUNET_assert (res >= 0);
+  buf->position += res;
+  GNUNET_assert (buf->position <= buf->capacity);
+}
 
 /* end of util.c */
