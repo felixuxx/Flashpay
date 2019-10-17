@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 22`
+ALL_TESTS=`seq 0 24`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -1295,8 +1295,6 @@ fi
 }
 
 
-
-
 # Test use of withdraw-expired denomination key
 function test_23() {
 echo "===========23: denomination key expired ================="
@@ -1325,10 +1323,92 @@ echo "UPDATE auditor_denominations SET expire_withdraw=${OLD_WEXP} WHERE denom_p
 }
 
 
+
+# Test calculation of wire-out amounts
+function test_24() {
+echo "===========24: wire out calculations ================="
+
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
+
+    # Need to first run the aggregator so the transfer is marked as done exists
+    pre_audit aggregator
+
+    OLD_AMOUNT=`echo "SELECT amount_frac FROM wire_out WHERE wireout_uuid=1;" | psql $DB -Aqt`
+    NEW_AMOUNT=`expr $OLD_AMOUNT - 1000000`
+    echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
+
+    audit_only
+    post_audit
+
+    echo -n "Testing inconsistency detection... "
+
+    jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Wire out inconsistency not detected"
+
+    ROW=`jq .wire_out_inconsistencies[0].rowid < test-audit.json`
+    if test $ROW != 1
+    then
+        exit_fail "Row wrong"
+    fi
+    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:0"
+    then
+        exit_fail "Reported amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:0.01"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
+    echo PASS
+
+    # Second pass, this time accounting is wrong in the OTHER direction
+    NEW_AMOUNT=`expr $OLD_AMOUNT + 1000000`
+    echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
+
+    audit_only
+    post_audit
+
+    echo -n "Testing inconsistency detection... "
+
+    jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Wire out inconsistency not detected"
+
+    ROW=`jq .wire_out_inconsistencies[0].rowid < test-audit.json`
+    if test $ROW != 1
+    then
+        exit_fail "Row wrong"
+    fi
+    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:0"
+    then
+        exit_fail "Reported amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:0.01"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
+    echo PASS
+
+
+    # cannot easily undo aggregator, hence full reload
+    echo -n "Reloading database ..."
+    full_reload
+    echo "DONE"
+else
+    echo "Test skipped (database too new)"
+fi
+}
+
+
 # **************************************************
 # FIXME: Add more tests here! :-)
 # Specifically:
-# - reserve closure (or lack thereof)
 # - revocation (payback, accepting
 #   of coins despite denomination revocation)
 # - refunds
