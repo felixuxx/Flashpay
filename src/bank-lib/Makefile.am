@@ -36,7 +36,6 @@ lib_LTLIBRARIES = \
 libtalerbank_la_LDFLAGS = \
   -version-info 1:0:0 \
   -no-undefined
-
 libtalerbank_la_SOURCES = \
   bank_api_admin.c \
   bank_api_common.c bank_api_common.h \
@@ -44,7 +43,6 @@ libtalerbank_la_SOURCES = \
   bank_api_reject.c \
   bank_api_parse.c \
   ../lib/teah_common.c # FIXME: ugly hack!!
-
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetcurl \
@@ -56,11 +54,9 @@ libtalerbank_la_LIBADD = \
 libtalerfakebank_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
-
 libtalerfakebank_la_SOURCES = \
   fakebank_history.c \
   fakebank.c
-
 libtalerfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \
@@ -72,12 +68,10 @@ libtalerfakebank_la_LIBADD = \
 libtalerbanktesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
-
 libtalerbanktesting_la_SOURCES = \
   testing_api_cmd_history.c \
   testing_api_cmd_reject.c \
   testing_api_helpers.c
-
 libtalerbanktesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \

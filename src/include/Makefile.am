@@ -18,6 +18,7 @@ talerinclude_HEADERS = \
   taler_auditordb_plugin.h \
   taler_bank_service.h \
   taler_crypto_lib.h \
+  taler_curl_lib.h \
   taler_error_codes.h \
   taler_exchange_service.h \
   taler_exchangedb_lib.h \
@@ -30,8 +31,7 @@ talerinclude_HEADERS = \
   taler_signatures.h \
   taler_wire_lib.h \
   taler_wire_plugin.h \
-  taler_testing_bank_lib.h \
-  taler_curl_lib.h
+  taler_testing_bank_lib.h 
 
 endif
 
