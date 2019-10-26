@@ -771,6 +771,16 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
+ * Change the chance that our deposit confirmation will be given to the
+ * auditor to 100%.
+ *
+ * @param deposit the deposit permission request handle
+ */
+void
+TALER_EXCHANGE_deposit_force_dc (struct TALER_EXCHANGE_DepositHandle *deposit);
+
+
+/**
  * Cancel a deposit permission request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *

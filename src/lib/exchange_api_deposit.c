@@ -105,6 +105,12 @@ struct TALER_EXCHANGE_DepositHandle
    */
   struct TALER_Amount coin_value;
 
+  /**
+   * Chance that we will inform the auditor about the deposit
+   * is 1:n, where the value of this field is "n".
+   */
+  unsigned int auditor_chance;
+
 };
 
 
@@ -129,7 +135,7 @@ auditor_cb (void *cls,
   struct TEAH_AuditorInteractionEntry *aie;
 
   if (0 != GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                     AUDITOR_CHANCE))
+                                     dh->auditor_chance))
     return NULL;
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
   spk = TALER_EXCHANGE_get_signing_key_details (key_state,
@@ -573,6 +579,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);
+  dh->auditor_chance = AUDITOR_CHANCE;
   dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
@@ -616,6 +623,19 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                   &handle_deposit_finished,
                                   dh);
   return dh;
+}
+
+
+/**
+ * Change the chance that our deposit confirmation will be given to the
+ * auditor to 100%.
+ *
+ * @param deposit the deposit permission request handle
+ */
+void
+TALER_EXCHANGE_deposit_force_dc (struct TALER_EXCHANGE_DepositHandle *deposit)
+{
+  deposit->auditor_chance = 1;
 }
 
 
