@@ -27,11 +27,11 @@ libtalerexchange_la_SOURCES = \
   exchange_api_reserve.c \
   exchange_api_track_transaction.c \
   exchange_api_track_transfer.c \
-  exchange_api_wire.c \
-  teah_common.c
+  exchange_api_wire.c
 libtalerexchange_la_LIBADD = \
   libtalerauditor.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetjson \
@@ -47,9 +47,9 @@ libtalerauditor_la_SOURCES = \
   auditor_api_curl_defaults.c auditor_api_curl_defaults.h \
   auditor_api_handle.c auditor_api_handle.h \
   auditor_api_deposit_confirmation.c \
-  auditor_api_exchanges.c \
-  teah_common.c
+  auditor_api_exchanges.c
 libtalerauditor_la_LIBADD = \
+  $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \

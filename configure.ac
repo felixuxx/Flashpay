@@ -542,6 +542,7 @@ AC_CONFIG_FILES([Makefile
                  src/auditor/Makefile
                  src/auditordb/Makefile
                  src/bank-lib/Makefile
+                 src/curl/Makefile
                  src/exchange/Makefile
                  src/exchangedb/Makefile
                  src/exchange-tools/Makefile
