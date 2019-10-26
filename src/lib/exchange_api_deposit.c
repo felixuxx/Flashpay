@@ -136,7 +136,14 @@ auditor_cb (void *cls,
 
   if (0 != GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                      dh->auditor_chance))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Not providing deposit confirmation to auditor\n");
     return NULL;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Will provide deposit confirmation to auditor `%s'\n",
+              TALER_B2S (auditor_pub));
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
   spk = TALER_EXCHANGE_get_signing_key_details (key_state,
                                                 &dh->exchange_pub);
