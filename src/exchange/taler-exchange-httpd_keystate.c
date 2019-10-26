@@ -38,6 +38,10 @@
  * precisely.  Note that this version has NOTHING to do with the
  * release version, and the format is NOT the same that semantic
  * versioning uses either.
+ *
+ * When changing this version, you likely want to also update
+ * #TALER_PROTOCOL_CURRENT and #TALER_PROTOCOL_AGE in
+ * exchange_api_handle.c!
  */
 #define TALER_PROTOCOL_VERSION "5:0:1"
 
