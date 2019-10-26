@@ -542,7 +542,7 @@ db_conn_destroy (void *cls)
   db_conn = session->conn;
   session->conn = NULL;
   if (NULL != db_conn)
-    GNUNET_PQ_disconnect (session->conn);
+    GNUNET_PQ_disconnect (db_conn);
   GNUNET_free (session);
 }
 
