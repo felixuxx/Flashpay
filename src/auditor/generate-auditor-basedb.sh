@@ -66,7 +66,7 @@ MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
 BANK_URL=http://localhost:${BANK_PORT}/
-AUDITOR_URL=http://localhost:8888/
+AUDITOR_URL=http://localhost:8083/
 
 # patch configuration
 taler-config -c $CONF -s EXCHANGE -o MASTER_PUBLIC_KEY -V $MASTER_PUB
@@ -87,12 +87,18 @@ echo "Setting up auditor"
 taler-auditor-dbinit -r -c $CONF
 taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
 taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a.dat -o a2e.dat -m $MASTER_PUB
+rm -f e2a.dat
+
+# provide auditor's signature to exchange
+ABD=`taler-config -c $CONF -s EXCHANGEDB -o AUDITOR_BASE_DIR -f`
+mkdir -p $ABD
+mv a2e.dat $ABD
 
 # Launch services
 echo "Launching services"
 taler-bank-manage -c $CONF serve-http &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
-taler-merchant-httpd -c $CONF 2> taler-merchant-httpd.log &
+taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
 
@@ -140,7 +146,7 @@ cp $WIRE_FEE_DIR/x-taler-bank.fee ${BASEDB}.fees
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
-rm -f e2a.dat a2e.dat
+
 rm -rf $DATA_DIR || true
 rm $CONF
 
