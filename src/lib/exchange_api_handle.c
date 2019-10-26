@@ -754,6 +754,7 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
   }
 }
 
+
 /**
  * Compare two denomination keys.
  *
@@ -1148,6 +1149,7 @@ TALER_EXCHANGE_unset_now (struct TALER_EXCHANGE_Handle *exchange)
   exchange->with_now = GNUNET_NO;
 }
 
+
 /**
  * Let the user set the last valid denomination time manually.
  *
@@ -1160,6 +1162,7 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
 {
   exchange->key_data.last_denom_issue_date = last_denom_new;
 }
+
 
 /**
  * Check if our current response for /keys is valid, and if
