@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 24`
+ALL_TESTS=`seq 0 25`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -138,6 +138,7 @@ echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
 echo -n "Test for emergencies by count... "
 jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
@@ -1406,6 +1407,48 @@ fi
 }
 
 
+
+# Test for missing deposits in exchange database.
+function test_25() {
+
+echo "===========25: deposits missing ==========="
+# Modify denom_sig, so it is wrong
+echo "DELETE FROM deposits;" | psql -Aqt $DB
+echo "DELETE FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Testing inconsistency detection... "
+
+jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
+
+#OP=`jq -er .bad_sig_losses[0].operation < test-audit.json`
+#if test x$OP != xmelt
+#then
+#    exit_fail "Operation wrong, got $OP"
+#fi
+
+#LOSS=`jq -er .bad_sig_losses[0].loss < test-audit.json`
+#TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit.json`
+#if test x$LOSS != x$TOTAL_LOSS
+#then
+#    exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
+#fi
+#if test x$TOTAL_LOSS = TESTKUDOS:0
+#then
+#    exit_fail "Loss zero"
+#fi
+
+echo PASS
+
+# cannot easily undo DELETE, hence full reload
+echo -n "Reloading database ..."
+full_reload
+echo "DONE"
+}
+
+
+
 # **************************************************
 # FIXME: Add more tests here! :-)
 # Specifically:
@@ -1460,6 +1503,9 @@ check_with_database()
     # rm -r $WIRE_FEE_DIR
     # rm -f test-audit.log test-wire-audit.log
 }
+
+
+
 
 
 
