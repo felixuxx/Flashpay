@@ -95,7 +95,7 @@ struct PostgresClosure
  * Drop all Taler tables.  This should only be used by testcases.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param drop_exchangelist should we also drop the exchange table?
+ * @param drop_exchangelist should we also drop the exchange and deposit_confirmations table?
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
@@ -124,12 +124,12 @@ postgres_drop_tables (void *cls,
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS wire_auditor_account_progress;"),
     GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
-    GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS auditor_historic_reserve_summary CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement esx[] = {
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
