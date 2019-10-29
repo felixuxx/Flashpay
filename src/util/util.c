@@ -356,17 +356,17 @@ TALER_url_join (const char *base_url,
  */
 char *
 TALER_url_absolute_raw_va (const char *proto,
-                     const char *host,
-                     const char *prefix,
-                     const char *path,
-                     va_list args)
+                           const char *host,
+                           const char *prefix,
+                           const char *path,
+                           va_list args)
 {
   struct TALER_Buffer buf = { 0 };
   unsigned int iparam = 0;
   size_t len = 0;
   va_list args2;
 
-  len += strlen (proto) + strlen( "://") + strlen (host);
+  len += strlen (proto) + strlen ("://") + strlen (host);
   len += strlen (prefix) + strlen (path);
 
   va_copy (args2, args);
@@ -725,9 +725,11 @@ TALER_buffer_write_fstr (struct TALER_Buffer *buf, const char *fmt, ...)
  * @param args format argument list
  */
 void
-TALER_buffer_write_vfstr (struct TALER_Buffer *buf, const char *fmt, va_list args)
+TALER_buffer_write_vfstr (struct TALER_Buffer *buf,
+                          const char *fmt,
+                          va_list args)
 {
-  size_t res;
+  int res;
   va_list args2;
 
   va_copy (args2, args);
