@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 24`
+ALL_TESTS=`seq 0 25`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -68,15 +68,15 @@ function pre_audit () {
 function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
-    taler-auditor -L INFO -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
+    taler-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
     echo -n "."
     # Also do incremental run
-    taler-auditor -L INFO -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
+    taler-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
     echo -n "."
-    taler-wire-auditor -L INFO -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
+    taler-wire-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     # Also do incremental run
     echo -n "."
-    taler-wire-auditor -L INFO -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
+    taler-wire-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
     echo " DONE"
 }
 
@@ -1422,22 +1422,16 @@ echo -n "Testing inconsistency detection... "
 
 jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
 
-#OP=`jq -er .bad_sig_losses[0].operation < test-audit.json`
-#if test x$OP != xmelt
-#then
-#    exit_fail "Operation wrong, got $OP"
-#fi
-
-#LOSS=`jq -er .bad_sig_losses[0].loss < test-audit.json`
-#TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit.json`
-#if test x$LOSS != x$TOTAL_LOSS
-#then
-#    exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
-#fi
-#if test x$TOTAL_LOSS = TESTKUDOS:0
-#then
-#    exit_fail "Loss zero"
-#fi
+AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit.json`
+if test x$AMOUNT = xTESTKUDOS:0
+then
+    exit_fail "Expected non-zero total missing deposit confirmation amount"
+fi
+COUNT=`jq -er .missing_deposit_confirmation_count < test-audit.json`
+if test x$AMOUNT = x0
+then
+    exit_fail "Expected non-zero total missing deposit confirmation count"
+fi
 
 echo PASS
 
