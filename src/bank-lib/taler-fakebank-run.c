@@ -43,11 +43,13 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
+  (void) cfg;
   if (NULL == TALER_FAKEBANK_start (8082))
     ret = 1;
   ret = 0;
-
 }
 
 
@@ -74,6 +76,5 @@ main (int argc,
                           &run,
                           NULL))
     return 1;
-
   return ret;
 }

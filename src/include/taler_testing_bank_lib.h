@@ -108,13 +108,12 @@ TALER_TESTING_has_in_name (const char *prog,
  *        operation.
  * @param account_no bank account number to ask the history for.
  * @param direction which direction this operation is interested
- * @param ascending if GNUNET_YES, it ask the bank to return results
+ * @param ascending if #GNUNET_YES, it ask the bank to return results
  *        in chronological order.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
- * @param num_result how many rows we want in the result.
- *
+ * @param num_results how many rows we want in the result.
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -124,7 +123,7 @@ TALER_TESTING_cmd_bank_history (const char *label,
                                 enum TALER_BANK_Direction direction,
                                 unsigned int ascending,
                                 const char *start_row_reference,
-                                long long num_results);
+                                unsigned long long num_results);
 
 
 /**

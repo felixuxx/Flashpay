@@ -119,7 +119,7 @@ auditor_iter (void *cls,
     return GNUNET_OK;
   }
   af = GNUNET_malloc (size);
-  if (size !=
+  if (((ssize_t) size) !=
       GNUNET_DISK_fn_read (filename,
                            af,
                            size))
@@ -274,22 +274,22 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
                                                         &af,
                                                         wsize)))
     goto cleanup;
-  if (wrote != wsize)
+  if (wrote != (ssize_t) wsize)
     goto cleanup;
   wsize = dki_len * sizeof (struct TALER_AuditorSignatureP);
-  if (wsize ==
+  if (((ssize_t) wsize) ==
       GNUNET_DISK_file_write (fh,
                               asigs,
                               wsize))
     ret = GNUNET_OK;
   wsize = dki_len * sizeof (struct TALER_DenominationKeyValidityPS);
-  if (wsize ==
+  if (((ssize_t) wsize) ==
       GNUNET_DISK_file_write (fh,
                               dki,
                               wsize))
     ret = GNUNET_OK;
   wsize = strlen (auditor_url) + 1;
-  if (wsize ==
+  if (((ssize_t) wsize) ==
       GNUNET_DISK_file_write (fh,
                               auditor_url,
                               wsize))

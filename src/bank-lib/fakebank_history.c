@@ -130,6 +130,7 @@ struct Transaction *
 TFH_handle_history_range_skip (const struct HistoryArgs *ha,
                                const struct Transaction *pos)
 {
+  (void) ha;
   /* Transactions
    * are stored from "head"/older to "tail"/younger.  */
   return pos->next;

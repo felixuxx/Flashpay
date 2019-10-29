@@ -1735,6 +1735,7 @@ postgres_start (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting transaction on %p\n",
               session->conn);
@@ -1767,6 +1768,7 @@ postgres_rollback (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Rolling back transaction on %p\n",
               session->conn);
@@ -1793,6 +1795,7 @@ postgres_commit (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                            "do_commit",
                                            params);
@@ -1818,6 +1821,7 @@ postgres_preflight (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  (void) cls;
   if (NULL == session->transaction_name)
     return; /* all good */
   if (GNUNET_OK ==
@@ -1874,6 +1878,7 @@ postgres_insert_denomination_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   /* check fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
@@ -2137,6 +2142,7 @@ reserves_update (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "reserve_update",
                                              params);
@@ -2335,6 +2341,7 @@ postgres_get_latest_reserve_in_reference (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "reserves_in_get_latest_wire_reference",
                                                    params,
@@ -2957,6 +2964,7 @@ postgres_mark_deposit_tiny (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "mark_deposit_tiny",
                                              params);
@@ -2994,6 +3002,7 @@ postgres_test_deposit_done (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "test_deposit_done",
                                                  params,
@@ -3028,6 +3037,7 @@ postgres_mark_deposit_done (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "mark_deposit_done",
                                              params);
@@ -3346,6 +3356,7 @@ insert_known_coin (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating known coin %s\n",
               TALER_B2S (&coin_info->coin_pub));
@@ -3380,6 +3391,7 @@ postgres_count_known_coins (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "count_known_coins",
                                                  params,
@@ -3473,14 +3485,7 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-#if 0
-  enum GNUNET_DB_QueryStatus qs;
-
-  if (0 > (qs = postgres_ensure_coin_known (cls,
-                                            session,
-                                            &deposit->coin)))
-    return qs;
-#endif
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Inserting deposit to be executed at %s (%llu/%llu)\n",
               GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
@@ -3515,6 +3520,7 @@ postgres_insert_refund (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&refund->refund_amount,
                                             &refund->refund_fee));
@@ -3733,6 +3739,7 @@ postgres_get_melt_index (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_melt_index",
                                                    params,
@@ -3762,14 +3769,8 @@ postgres_insert_melt (void *cls,
     GNUNET_PQ_query_param_uint32 (&refresh_session->noreveal_index),
     GNUNET_PQ_query_param_end
   };
-#if 0
-  enum GNUNET_DB_QueryStatus qs;
 
-  if (0 > (qs = postgres_ensure_coin_known (cls,
-                                            session,
-                                            &refresh_session->coin)))
-    return qs;
-#endif
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_melt",
                                              params);
@@ -3803,6 +3804,7 @@ postgres_insert_refresh_reveal (void *cls,
                                 const struct TALER_TransferPrivateKeyP *tprivs,
                                 const struct TALER_TransferPublicKeyP *tp)
 {
+  (void) cls;
   if (TALER_CNC_KAPPA != num_tprivs + 1)
   {
     GNUNET_break (0);
@@ -3972,6 +3974,7 @@ postgres_get_refresh_reveal (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   /* First get the coins */
   memset (&grctx,
           0,
@@ -4098,6 +4101,7 @@ free_link_data_list (void *cls,
 {
   struct TALER_EXCHANGEDB_LinkDataList *next;
 
+  (void) cls;
   while (NULL != ldl)
   {
     next = ldl->next;
@@ -5090,6 +5094,7 @@ postgres_insert_aggregation_tracking (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_aggregation_tracking",
                                              params);
@@ -5456,6 +5461,7 @@ postgres_wire_prepare_data_insert (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_prepare_data_insert",
                                              params);
@@ -5481,6 +5487,7 @@ postgres_wire_prepare_data_mark_finished (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_prepare_data_mark_done",
                                              params);
@@ -5522,6 +5529,7 @@ postgres_wire_prepare_data_get (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "wire_prepare_data_get",
                                                  params,
@@ -5610,6 +5618,7 @@ postgres_store_wire_transfer_out (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_wire_out",
                                              params);
@@ -7231,6 +7240,7 @@ postgres_insert_payback_refresh_request (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   /* now store actual payback information */
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                            "payback_refresh_insert",
@@ -7270,6 +7280,7 @@ postgres_get_reserve_by_h_blind (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "reserve_by_h_blind",
                                                    params,
@@ -7303,6 +7314,7 @@ postgres_get_old_coin_by_h_blind (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "old_coin_by_h_blind",
                                                    params,
@@ -7335,6 +7347,7 @@ postgres_insert_denomination_revocation (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "denomination_revocation_insert",
                                              params);
@@ -7370,6 +7383,7 @@ postgres_get_denomination_revocation (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "denomination_revocation_get",
                                                    params,

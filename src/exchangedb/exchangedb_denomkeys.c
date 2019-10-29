@@ -134,7 +134,7 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
     return GNUNET_SYSERR;
   }
   data = GNUNET_malloc (size);
-  if (size !=
+  if (((ssize_t) size) !=
       GNUNET_DISK_fn_read (filename,
                            data,
                            size))
@@ -217,14 +217,14 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
                                                         &dki->issue,
                                                         wsize)))
     goto cleanup;
-  if (wrote != wsize)
+  if (wrote != (ssize_t) wsize)
     goto cleanup;
   if (GNUNET_SYSERR ==
       (wrote = GNUNET_DISK_file_write (fh,
                                        priv_enc,
                                        priv_enc_size)))
     goto cleanup;
-  if (wrote != priv_enc_size)
+  if (wrote != (ssize_t) priv_enc_size)
     goto cleanup;
   ret = GNUNET_OK;
 cleanup:

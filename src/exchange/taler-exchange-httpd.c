@@ -167,8 +167,11 @@ handle_mhd_completion_callback (void *cls,
 {
   struct ExchangeHttpRequestClosure *ecls = *con_cls;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Request completed\n");
-
+  (void) cls;
+  (void) connection;
+  (void) toe;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Request completed\n");
   if (NULL == ecls)
     return;
   TEH_PARSE_post_cleanup_callback (ecls->opaque_post_parsing_context);
@@ -186,14 +189,14 @@ handle_mhd_completion_callback (void *cls,
  * Return GNUNET_YES if given a valid correlation ID and
  * GNUNET_NO otherwise.
  *
- * @returns GNUNET_YES iff given a valid correlation ID
+ * @returns #GNUNET_YES iff given a valid correlation ID
  */
 static int
 is_valid_correlation_id (const char *correlation_id)
 {
   if (strlen (correlation_id) >= 64)
     return GNUNET_NO;
-  for (int i = 0; i < strlen (correlation_id); i++)
+  for (size_t i = 0; i < strlen (correlation_id); i++)
     if (! (isalnum (correlation_id[i]) || (correlation_id[i] == '-')))
       return GNUNET_NO;
   return GNUNET_YES;
@@ -401,7 +404,7 @@ handle_mhd_request (void *cls,
       "Only POST is allowed", 0,
       &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 #endif
-    { NULL, NULL, NULL, NULL, 0, 0 }
+    { NULL, NULL, NULL, NULL, 0, NULL, 0 }
   };
   static struct TEH_RequestHandler h404 = {
     "", NULL, "text/html",
@@ -415,6 +418,8 @@ handle_mhd_request (void *cls,
   struct GNUNET_AsyncScopeSave old_scope;
   const char *correlation_id = NULL;
 
+  (void) cls;
+  (void) version;
   if (NULL == ecls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Handling new request\n");
@@ -817,6 +822,9 @@ connection_done (void *cls,
                  void **socket_context,
                  enum MHD_ConnectionNotificationCode toe)
 {
+  (void) cls;
+  (void) connection;
+  (void) socket_context;
   /* We only act if the connection is closed. */
   if (MHD_CONNECTION_NOTIFY_CLOSED != toe)
     return;
@@ -849,6 +857,7 @@ handle_mhd_logs (void *cls,
   static int cache;
   char buf[2048];
 
+  (void) cls;
   if (-1 == cache)
     return;
   if (0 == cache)

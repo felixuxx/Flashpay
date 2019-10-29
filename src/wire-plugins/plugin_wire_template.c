@@ -84,6 +84,8 @@ static enum TALER_ErrorCode
 template_wire_validate (void *cls,
                         const char *account_url)
 {
+  (void) cls;
+  (void) account_url;
   GNUNET_break (0);
   return TALER_EC_NOT_IMPLEMENTED;
 }
@@ -114,6 +116,14 @@ template_prepare_wire_transfer (void *cls,
                                 TALER_WIRE_PrepareTransactionCallback ptc,
                                 void *ptc_cls)
 {
+  (void) cls;
+  (void) origin_account_section;
+  (void) destination_account_url;
+  (void) amount;
+  (void) exchange_base_url;
+  (void) wtid;
+  (void) ptc;
+  (void) ptc_cls;
   GNUNET_break (0);
   return NULL;
 }
@@ -130,6 +140,8 @@ static void
 template_prepare_wire_transfer_cancel (void *cls,
                                        struct TALER_WIRE_PrepareHandle *pth)
 {
+  (void) cls;
+  (void) pth;
   GNUNET_break (0);
 }
 
@@ -151,6 +163,11 @@ template_execute_wire_transfer (void *cls,
                                 TALER_WIRE_ConfirmationCallback cc,
                                 void *cc_cls)
 {
+  (void) cls;
+  (void) buf;
+  (void) buf_size;
+  (void) cc;
+  (void) cc_cls;
   GNUNET_break (0);
   return NULL;
 }
@@ -172,6 +189,8 @@ static void
 template_execute_wire_transfer_cancel (void *cls,
                                        struct TALER_WIRE_ExecuteHandle *eh)
 {
+  (void) cls;
+  (void) eh;
   GNUNET_break (0);
 }
 
@@ -208,6 +227,14 @@ template_get_history (void *cls,
                       TALER_WIRE_HistoryResultCallback hres_cb,
                       void *hres_cb_cls)
 {
+  (void) cls;
+  (void) account_section;
+  (void) direction;
+  (void) start_off;
+  (void) start_off_len;
+  (void) num_results;
+  (void) hres_cb;
+  (void) hres_cb_cls;
   GNUNET_break (0);
   return NULL;
 }
@@ -223,6 +250,8 @@ static void
 template_get_history_cancel (void *cls,
                              struct TALER_WIRE_HistoryHandle *whh)
 {
+  (void) cls;
+  (void) whh;
   GNUNET_break (0);
 }
 
@@ -254,6 +283,12 @@ template_reject_transfer (void *cls,
                           TALER_WIRE_RejectTransferCallback rej_cb,
                           void *rej_cb_cls)
 {
+  (void) cls;
+  (void) account_section;
+  (void) start_off;
+  (void) start_off_len;
+  (void) rej_cb;
+  (void) rej_cb_cls;
   GNUNET_break (0);
   return NULL;
 }
@@ -275,6 +310,8 @@ static void *
 template_reject_transfer_cancel (void *cls,
                                  struct TALER_WIRE_RejectHandle *rh)
 {
+  (void) cls;
+  (void) rh;
   GNUNET_break (0);
   return NULL;
 }

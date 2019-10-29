@@ -79,13 +79,15 @@ reject_cb (void *cls,
   {
     GNUNET_break (0);
     fprintf (stderr,
-             "Unexpected response code %u:\n",
-             http_status);
+             "Unexpected response code %u/%d\n",
+             http_status,
+             (int) ec);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
   TALER_TESTING_interpreter_next (is);
 }
+
 
 /**
  * Cleanup the state of a "reject" CMD, and possibly
@@ -95,20 +97,20 @@ reject_cb (void *cls,
  * @param cmd the command.
  */
 static void
-reject_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+reject_cleanup (void *cls,
+                const struct TALER_TESTING_Command *cmd)
 {
   struct RejectState *rs = cls;
 
+  (void) cmd;
   if (NULL != rs->rh)
   {
     TALER_LOG_WARNING ("/reject did not complete\n");
     TALER_BANK_reject_cancel (rs->rh);
   }
-
   GNUNET_free (rs);
 }
+
 
 /**
  * Run the command.
@@ -128,19 +130,18 @@ reject_run (void *cls,
   const uint64_t *row_id;
   extern struct TALER_BANK_AuthenticationData AUTHS[];
 
-  deposit_cmd = TALER_TESTING_interpreter_lookup_command
-                  (is, rs->deposit_reference);
-
+  (void) cmd;
+  deposit_cmd
+    = TALER_TESTING_interpreter_lookup_command (is,
+                                                rs->deposit_reference);
   if (NULL == deposit_cmd)
     TALER_TESTING_FAIL (is);
-
-  GNUNET_assert
-    (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-      (deposit_cmd, &credit_account));
-
-  GNUNET_assert
-    (GNUNET_OK == TALER_TESTING_GET_TRAIT_ROW_ID
-      (deposit_cmd, &row_id));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT (deposit_cmd,
+                                                         &credit_account));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_GET_TRAIT_ROW_ID (deposit_cmd,
+                                                 &row_id));
   TALER_LOG_INFO ("Account %llu rejects deposit\n",
                   (unsigned long long) *credit_account);
   rs->rh = TALER_BANK_reject (is->ctx,
@@ -191,7 +192,6 @@ reject_traits (void *cls,
  * @param deposit_reference reference to a command that will
  *        provide a "row id" and credit (bank) account to craft
  *        the "reject" request.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -205,16 +205,17 @@ TALER_TESTING_cmd_bank_reject (const char *label,
   rs->bank_url = bank_url;
   rs->deposit_reference = deposit_reference;
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = rs,
-    .run = &reject_run,
-    .cleanup = &reject_cleanup,
-    .label = label,
-    .traits = &reject_traits
-  };
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = rs,
+      .run = &reject_run,
+      .cleanup = &reject_cleanup,
+      .label = label,
+      .traits = &reject_traits
+    };
 
-  return cmd;
-
+    return cmd;
+  }
 }
 
 

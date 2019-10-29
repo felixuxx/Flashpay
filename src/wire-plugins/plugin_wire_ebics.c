@@ -132,6 +132,14 @@ ebics_prepare_wire_transfer (void *cls,
                              TALER_WIRE_PrepareTransactionCallback psc,
                              void *psc_cls)
 {
+  (void) cls;
+  (void) origin_account_section;
+  (void) destination_account_url;
+  (void) amount;
+  (void) exchange_base_url;
+  (void) wtid;
+  (void) psc;
+  (void) psc_cls;
   GNUNET_break (0); // FIXME: not implemented
   return NULL;
 }
@@ -148,6 +156,8 @@ static void
 ebics_prepare_wire_transfer_cancel (void *cls,
                                     struct TALER_WIRE_PrepareHandle *pth)
 {
+  (void) cls;
+  (void) pth;
   GNUNET_break (0); // FIXME: not implemented
 }
 
@@ -169,6 +179,11 @@ ebics_execute_wire_transfer (void *cls,
                              TALER_WIRE_ConfirmationCallback cc,
                              void *cc_cls)
 {
+  (void) cls;
+  (void) buf;
+  (void) buf_size;
+  (void) cc;
+  (void) cc_cls;
   GNUNET_break (0); // FIXME: not implemented
   return NULL;
 }
@@ -190,6 +205,8 @@ static void
 ebics_execute_wire_transfer_cancel (void *cls,
                                     struct TALER_WIRE_ExecuteHandle *eh)
 {
+  (void) cls;
+  (void) eh;
   GNUNET_break (0); // FIXME: not implemented
 }
 
@@ -226,6 +243,14 @@ ebics_get_history (void *cls,
                    TALER_WIRE_HistoryResultCallback hres_cb,
                    void *hres_cb_cls)
 {
+  (void) cls;
+  (void) account_section;
+  (void) direction;
+  (void) start_off;
+  (void) start_off_len;
+  (void) num_results;
+  (void) hres_cb;
+  (void) hres_cb_cls;
   GNUNET_break (0);
   return NULL;
 }
@@ -241,6 +266,8 @@ static void
 ebics_get_history_cancel (void *cls,
                           struct TALER_WIRE_HistoryHandle *whh)
 {
+  (void) cls;
+  (void) whh;
   GNUNET_break (0);
 }
 
@@ -315,6 +342,11 @@ ebics_reject_transfer (void *cls,
 {
   struct TALER_WIRE_RejectHandle *rh;
 
+  (void) account_section;
+  (void) start_off;
+  (void) start_off_len;
+  (void) rej_cb;
+  (void) rej_cb_cls;
   GNUNET_break (0); /* not implemented, just a stub! */
   rh = GNUNET_new (struct TALER_WIRE_RejectHandle);
   rh->rej_cb = rej_cb;
@@ -343,6 +375,7 @@ ebics_reject_transfer_cancel (void *cls,
 {
   void *ret = rh->rej_cb_cls;
 
+  (void) cls;
   GNUNET_SCHEDULER_cancel (rh->timeout_task);
   GNUNET_free (rh);
   return ret;

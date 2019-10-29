@@ -367,7 +367,9 @@ handle_mhd_completion_callback (void *cls,
                                 enum MHD_RequestTerminationCode toe)
 {
   /*  struct TALER_FAKEBANK_Handle *h = cls; */
-
+  (void) cls;
+  (void) connection;
+  (void) toe;
   GNUNET_JSON_post_parser_cleanup (*con_cls);
   *con_cls = NULL;
 }
@@ -607,6 +609,8 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
   struct MHD_Response *resp;
 #define HELLOMSG "Hello, Fakebank!"
 
+  (void) h;
+  (void) con_cls;
   resp = MHD_create_response_from_buffer
            (strlen (HELLOMSG),
            HELLOMSG,
@@ -640,8 +644,10 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   const char *delta;
   struct Transaction *pos;
 
-  if (GNUNET_OK != TFH_parse_history_common_args (connection,
-                                                  &ha))
+  (void) con_cls;
+  if (GNUNET_OK !=
+      TFH_parse_history_common_args (connection,
+                                     &ha))
   {
     GNUNET_break (0);
     return MHD_NO;
@@ -666,9 +672,10 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   ha.range = &hri;
 
   if (NULL == start)
+  {
     pos = 0 > hri.count ?
           h->transactions_tail : h->transactions_head;
-
+  }
   else if (NULL != h->transactions_head)
   {
     for (pos = h->transactions_head;
@@ -727,8 +734,10 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
   long long unsigned int end_stamp;
   struct Transaction *pos;
 
-  if (GNUNET_OK != TFH_parse_history_common_args (connection,
-                                                  &ha))
+  (void) con_cls;
+  if (GNUNET_OK !=
+      TFH_parse_history_common_args (connection,
+                                     &ha))
   {
     GNUNET_break (0);
     return MHD_NO;
@@ -771,6 +780,7 @@ handle_history_range (struct TALER_FAKEBANK_Handle *h,
                                      &TFH_handle_history_range_advance);
 }
 
+
 /**
  * Handle incoming HTTP request.
  *
@@ -796,11 +806,10 @@ handle_mhd_request (void *cls,
 {
   struct TALER_FAKEBANK_Handle *h = cls;
 
+  (void) version;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Fakebank, serving: %s\n",
               url);
-
-
   if ( (0 == strcasecmp (url,
                          "/")) &&
        (0 == strcasecmp (method,

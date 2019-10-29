@@ -423,6 +423,8 @@ free_denom_key (void *cls,
 {
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
 
+  (void) cls;
+  (void) key;
   if (NULL != dki->denom_priv.rsa_private_key)
     GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
@@ -698,7 +700,7 @@ TALER_EXCHANGE_conf_duration_provide ()
  * @param cls closure with the `struct AddRevocationContext *`
  * @param connection NULL
  * @param session database session to use
- * @param[out] mhd_ret NULL
+ * @param[out] mhd_ret not used
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -712,6 +714,8 @@ add_revocations_transaction (void *cls,
   struct TALER_MasterSignatureP master_sig;
   uint64_t rowid;
 
+  (void) connection;
+  (void) mhd_ret;
   qs = TEH_plugin->get_denomination_revocation (TEH_plugin->cls,
                                                 session,
                                                 &arc->dki->issue.properties.
@@ -736,7 +740,7 @@ add_revocations_transaction (void *cls,
  * @param cls closure with the `const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *`
  * @param connection NULL
  * @param session database session to use
- * @param[out] mhd_ret NULL
+ * @param[out] mhd_ret not used
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -749,6 +753,8 @@ add_denomination_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue_exists;
 
+  (void) connection;
+  (void) mhd_ret;
   qs = TEH_plugin->get_denomination_info (TEH_plugin->cls,
                                           session,
                                           &dki->issue.properties.denom_hash,
@@ -1314,6 +1320,7 @@ add_auditor_entry (void *cls,
   struct AuditorEntry *ae = value;
   json_t *ao;
 
+  (void) key;
   ao = json_pack ("{s:o, s:s, s:o}",
                   "denomination_keys", ae->ar,
                   "auditor_url", ae->auditor_url,
@@ -2310,6 +2317,9 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   struct GNUNET_TIME_Absolute now;
   const struct KeysResponseData *krd;
 
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   have_cherrypick = MHD_lookup_connection_value (connection,
                                                  MHD_GET_ARGUMENT_KIND,
                                                  "last_issue_date");

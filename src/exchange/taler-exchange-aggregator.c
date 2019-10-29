@@ -476,6 +476,7 @@ cleanup_au (void)
 static void
 shutdown_task (void *cls)
 {
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Running shutdown\n");
   if (NULL != task)
@@ -626,8 +627,11 @@ refund_by_coin_cb (void *cls,
 {
   struct AggregationUnit *aux = cls;
 
+  (void) merchant_sig;
+  (void) rtransaction_id;
+  (void) refund_fee;
   /* TODO: potential optimization: include these conditions
-     in the SELECT! */
+     in the SELECT, and avoid fetching the values we do not need! */
   if (0 != GNUNET_memcmp (merchant_pub,
                           &aux->merchant_pub))
     return GNUNET_OK; /* different merchant */
@@ -675,6 +679,10 @@ deposit_cb (void *cls,
 {
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
+  /* NOTE: potential optimization: use custom SQL API to not
+     fetch this one: */
+  (void) wire_deadline; /* already checked by SQL query */
   au->merchant_pub = *merchant_pub;
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&au->total_amount,
@@ -688,7 +696,6 @@ deposit_cb (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   au->row_id = row_id;
-
   au->h_contract = h_contract_terms;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           au->session,
@@ -804,6 +811,11 @@ aggregate_cb (void *cls,
   struct TALER_Amount delta;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
+  /* NOTE: potential optimization: use custom SQL API to not
+     fetch these: */
+  (void) wire_deadline; /* checked by SQL */
+  (void) wire; /* must match */
   GNUNET_break (0 == GNUNET_memcmp (&au->merchant_pub,
                                     merchant_pub));
   /* compute contribution of this coin after fees */
@@ -1078,6 +1090,9 @@ expired_reserve_cb (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct WireAccount *wa;
 
+  /* NOTE: potential optimization: use custom SQL API to not
+     fetch this: */
+  (void) expiration_date; /* we know it expired */
   GNUNET_assert (NULL == ctc);
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -1218,6 +1233,7 @@ run_reserve_closures (void *cls)
   struct ExpiredReserveContext erc;
   struct GNUNET_TIME_Absolute now;
 
+  (void) cls;
   task = NULL;
   reserves_idle = GNUNET_NO;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -1305,6 +1321,7 @@ run_aggregation (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
+  (void) cls;
   task = NULL;
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
@@ -1554,6 +1571,7 @@ prepare_cb (void *cls,
   struct TALER_EXCHANGEDB_Session *session = au->session;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   GNUNET_free_non_null (au->additional_rows);
   au->additional_rows = NULL;
   if (NULL == buf)
@@ -1663,6 +1681,9 @@ wire_confirm_cb (void *cls,
   struct TALER_EXCHANGEDB_Session *session = wpd->session;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
+  (void) row_id;
+  (void) row_id_size;
   wpd->eh = NULL;
   if (GNUNET_SYSERR == success)
   {
@@ -1747,6 +1768,7 @@ wire_prepare_cb (void *cls,
                  const char *buf,
                  size_t buf_size)
 {
+  (void) cls;
   wpd->row_id = rowid;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting wire transfer %llu\n",
@@ -1798,6 +1820,7 @@ run_transfers (void *cls)
   struct TALER_EXCHANGEDB_Session *session;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
+  (void) cls;
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for pending wire transfers\n");
@@ -1877,6 +1900,9 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (c,
                                              "exchange",

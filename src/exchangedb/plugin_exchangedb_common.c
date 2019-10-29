@@ -36,6 +36,7 @@ common_free_reserve_history (void *cls,
   struct TALER_EXCHANGEDB_ReserveHistory *backref;
   struct TALER_EXCHANGEDB_ClosingTransfer *closing;
 
+  (void) cls;
   while (NULL != rh)
   {
     switch (rh->type)
@@ -81,6 +82,7 @@ common_free_coin_transaction_list (void *cls,
 {
   struct TALER_EXCHANGEDB_TransactionList *next;
 
+  (void) cls;
   while (NULL != list)
   {
     next = list->next;
