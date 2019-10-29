@@ -4876,7 +4876,12 @@ test_dc (void *cls,
                           &dep,
                           GNUNET_NO /* do not check refund deadline */);
   if (qs > 0)
-    return; /* found, all good */
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Found deposit %s in exchange database\n",
+                GNUNET_h2s (&dc->h_contract_terms));
+    return;   /* found, all good */
+  }
   if (qs < 0)
   {
     GNUNET_break (0); /* DB error, complain */
@@ -4920,7 +4925,7 @@ analyze_deposit_confirmations (void *cls)
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qsp;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing deposit confirmations\n");
   ppdc.last_deposit_confirmation_serial_id = 0;
   qsp = adb->get_auditor_progress_deposit_confirmation (adb->cls,
@@ -4963,6 +4968,10 @@ analyze_deposit_confirmations (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
     return qsx;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Analyzed %d deposit confirmations (above serial ID %llu)\n",
+              (int) qsx,
+              (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
   if (0 > dcc.qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == dcc.qs);
