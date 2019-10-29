@@ -64,9 +64,9 @@ struct HistoryState
   /**
    * How many rows we want in the result, _at most_.  In
    * the case of /history-range, we fake this value with
-   * INT64_MAX.
+   * UINT64_MAX.
    */
-  long long num_results;
+  unsigned long long num_results;
 
   /**
    * Handle to a pending "history" operation.
@@ -159,6 +159,10 @@ history_traits (void *cls,
                 const char *trait,
                 unsigned int index)
 {
+  (void) cls;
+  (void) ret;
+  (void) trait;
+  (void) index;
   /* Must define this function because some callbacks
    * look for certain traits on _all_ the commands. */
   return GNUNET_SYSERR;
@@ -184,7 +188,7 @@ test_cancelled (struct TALER_TESTING_Interpreter *is,
   current_cmd = &is->commands[off];
   TALER_LOG_INFO ("Is `%s' rejected?\n",
                   current_cmd->label);
-  for (unsigned int i = 0; i<is->ip; i++)
+  for (int i = 0; i<is->ip; i++)
   {
     const struct TALER_TESTING_Command *c = &is->commands[i];
 
@@ -290,13 +294,10 @@ build_history_hit_limit (uint64_t total,
                    TALER_TESTING_get_trait_absolute_time (pos,
                                                           0,
                                                           &timestamp));
-
     GNUNET_assert (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
                    hs->end_date.abs_value_us);
-
     return timestamp->abs_value_us >= hs->end_date.abs_value_us;
   }
-
   return total >= hs->num_results;
 }
 
@@ -714,6 +715,7 @@ compute_result_count (struct TALER_TESTING_Interpreter *is)
   return total;
 }
 
+
 /**
  * Check that the "/history" response matches the
  * CMD whose offset in the list of CMDs is @a off.
@@ -1017,9 +1019,8 @@ history_range_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-history_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+history_cleanup (void *cls,
+                 const struct TALER_TESTING_Command *cmd)
 {
   struct HistoryState *hs = cls;
 
@@ -1028,7 +1029,6 @@ history_cleanup
     TALER_LOG_WARNING ("/history did not complete\n");
     TALER_BANK_history_cancel (hs->hh);
   }
-
   GNUNET_free (hs);
 }
 
@@ -1041,13 +1041,12 @@ history_cleanup
  *        operation.
  * @param account_no bank account number to ask the history for.
  * @param direction which direction this operation is interested.
- * @param ascending if GNUNET_YES, the bank will return the rows
+ * @param ascending if #GNUNET_YES, the bank will return the rows
  *        in ascending (= chronological) order.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
- * @param num_result how many rows we want in the result.
- *
+ * @param num_results how many rows we want in the result.
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1058,7 +1057,7 @@ TALER_TESTING_cmd_bank_history
   enum TALER_BANK_Direction direction,
   unsigned int ascending,
   const char *start_row_reference,
-  long long num_results)
+  unsigned long long num_results)
 {
   struct HistoryState *hs;
 
@@ -1072,15 +1071,17 @@ TALER_TESTING_cmd_bank_history
   hs->start_date = GNUNET_TIME_UNIT_FOREVER_ABS;
   hs->end_date = GNUNET_TIME_UNIT_FOREVER_ABS;
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .cls = hs,
-    .run = &history_run,
-    .cleanup = &history_cleanup,
-    .traits = &history_traits
-  };
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .cls = hs,
+      .run = &history_run,
+      .cleanup = &history_cleanup,
+      .traits = &history_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -1124,15 +1125,17 @@ TALER_TESTING_cmd_bank_history_range
   hs->start_date = GNUNET_TIME_UNIT_FOREVER_ABS;
   hs->end_date = GNUNET_TIME_UNIT_FOREVER_ABS;
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .cls = hs,
-    .run = &history_range_run,
-    .cleanup = &history_cleanup,
-    .traits = &history_traits
-  };
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .cls = hs,
+      .run = &history_range_run,
+      .cleanup = &history_cleanup,
+      .traits = &history_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -1173,15 +1176,17 @@ TALER_TESTING_cmd_bank_history_range_with_dates
   hs->start_date = start_date;
   hs->end_date = end_date;
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .cls = hs,
-    .run = &history_range_run,
-    .cleanup = &history_cleanup,
-    .traits = &history_traits
-  };
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .cls = hs,
+      .run = &history_range_run,
+      .cleanup = &history_cleanup,
+      .traits = &history_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 /* end of testing_api_cmd_history.c */
