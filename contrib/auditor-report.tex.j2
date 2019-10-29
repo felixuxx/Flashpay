@@ -218,7 +218,7 @@ and should be answered by revoking the exchange's online siging keys.
 % FIXME: reference PhD thesis?
 
 The total amount the exchange currently lags behind is
-{\bf {{ data.missing_deposit_confirmation_total }} } or
+{\bf {{ data.missing_deposit_confirmation_total }} } from a total number of
 {\bf {{ data.missing_deposit_confirmation_count }} } deposit confirmations.
 
 Note that some lag is perfectly normal.
@@ -229,7 +229,7 @@ Below, we report {\em all} deposit confirmations that are lagging behind.
 {% if data.deposit_confirmation_inconsistencies|length() == 0 %}
   {\bf No deposit confirmations that are lagging behind detected.}
 {% else %}
-  \begin{longtable}{p{1.5cm}|r|c|r}
+  \begin{longtable}{r|r|r}
   {\bf Timestamp} & {\bf Amount} & {\bf Row} \\
   \multicolumn{3}{l}{\bf Target account} \\ \hline \hline
 \endfirsthead
@@ -247,12 +247,11 @@ Below, we report {\em all} deposit confirmations that are lagging behind.
     \label{table:missing_dc}
 \endlastfoot
 {% for item in data.deposit_confirmation_inconsistencies %}
-  &
   {{ item.timestamp }} &
   {{ item.amount }} &
-  {{ item.row }} \\
+  {{ item.rowid }} \\
 \nopagebreak
-  \multicolumn{3}{l}{ {\tt {{ item.account }} } } \\ \hline
+  \multicolumn{3}{l}{ {\tt \truncate{0.95\textwidth}{ {{ item.account }} } } } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
