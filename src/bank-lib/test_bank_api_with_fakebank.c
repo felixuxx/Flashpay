@@ -171,4 +171,5 @@ main (int argc,
   return (GNUNET_OK == result) ? 0 : 1;
 }
 
+
 /* end of test_bank_api_with_fakebank.c */

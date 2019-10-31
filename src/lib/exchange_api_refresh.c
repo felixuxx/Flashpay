@@ -617,14 +617,14 @@ deserialize_melt_data (const char *buf,
                                   &buf[off],
                                   buf_size - off,
                                   &ok);
-  for (unsigned int i = 0; (i<md->num_fresh_coins)&&(GNUNET_YES == ok); i++)
+  for (unsigned int i = 0; (i<md->num_fresh_coins) && (GNUNET_YES == ok); i++)
     off += deserialize_denomination_key (&md->fresh_pks[i],
                                          &buf[off],
                                          buf_size - off,
                                          &ok);
 
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-    for (unsigned int j = 0; (j<md->num_fresh_coins)&&(GNUNET_YES == ok); j++)
+    for (unsigned int j = 0; (j<md->num_fresh_coins) && (GNUNET_YES == ok); j++)
       off += deserialize_fresh_coin (&md->fresh_coins[i][j],
                                      &buf[off],
                                      buf_size - off,

@@ -126,9 +126,7 @@ reserve_status_cb
  * "reserve history update trait" which returns information about
  * how the command changes the history (provided only by commands
  * that change reserve balances)?
- */
-
-  TALER_TESTING_interpreter_next (ss->is);
+ */TALER_TESTING_interpreter_next (ss->is);
 }
 
 

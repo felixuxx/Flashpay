@@ -84,5 +84,4 @@ TALER_AUDITORDB_plugin_unload (struct TALER_AUDITORDB_Plugin *plugin)
 }
 
 
-
 /* end of auditordb_plugin.c */

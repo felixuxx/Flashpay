@@ -160,4 +160,5 @@ main (int argc,
   return global_ret;
 }
 
+
 /* end of test_auditor_api_version.c */

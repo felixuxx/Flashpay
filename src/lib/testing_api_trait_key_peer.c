@@ -54,6 +54,7 @@ TALER_TESTING_get_trait_peer_key
                       index);
 }
 
+
 /**
  * Offer private key, typically done when CMD_1 needs it to
  * sign a request.
@@ -99,6 +100,7 @@ TALER_TESTING_get_trait_peer_key_pub
                       TALER_TESTING_TRAIT_KEY_PEER_PUB,
                       index);
 }
+
 
 /**
  * Offer public key.

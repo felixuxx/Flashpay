@@ -237,7 +237,6 @@ struct TALER_MasterSignatureP
 };
 
 
-
 /**
  * @brief Type of public keys for Taler coins.  The same key material is used
  * for EdDSA and ECDHE operations.

@@ -286,4 +286,5 @@ main (int argc, char *const *argv)
 
 }
 
+
 /* end of taler-exchange-keycheck.c */

@@ -269,7 +269,6 @@ signal_loop (void)
 }
 
 
-
 /**
  * Function called whenever MHD is done with a request.  If the
  * request was a POST, we may have stored a `struct Buffer *` in the
@@ -979,5 +978,6 @@ main (int argc,
   TALER_AUDITORDB_plugin_unload (TAH_plugin);
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
+
 
 /* end of taler-auditor-httpd.c */

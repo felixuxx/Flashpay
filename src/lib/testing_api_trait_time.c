@@ -52,6 +52,7 @@ TALER_TESTING_get_trait_absolute_time
                       index);
 }
 
+
 /**
  * Offer a absolute time.
  *
@@ -71,5 +72,6 @@ TALER_TESTING_make_trait_absolute_time
   };
   return ret;
 }
+
 
 /* end of testing_api_trait_time.c */

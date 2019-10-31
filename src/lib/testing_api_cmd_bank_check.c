@@ -172,6 +172,7 @@ check_bank_transfer_run (void *cls,
   TALER_TESTING_interpreter_next (is);
 }
 
+
 /**
  * Free the state of a "bank check" CMD.
  *
@@ -188,6 +189,7 @@ check_bank_transfer_cleanup
   GNUNET_free_non_null (bcs->subject);
   GNUNET_free (bcs);
 }
+
 
 /**
  * Offer internal data from a "bank check" CMD state.
@@ -228,7 +230,6 @@ check_bank_transfer_traits (void *cls,
                                   trait,
                                   index);
 }
-
 
 
 /**
@@ -273,6 +274,7 @@ TALER_TESTING_cmd_check_bank_transfer
   return cmd;
 }
 
+
 /**
  * Cleanup the state, only defined to respect the API.
  *
@@ -286,6 +288,7 @@ check_bank_empty_cleanup
 {
   return;
 }
+
 
 /**
  * Run the command.

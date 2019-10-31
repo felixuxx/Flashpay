@@ -74,4 +74,5 @@ TALER_TESTING_make_trait_exchange_sig
   return ret;
 }
 
+
 /* end of testing_api_trait_exchange_sig.c */

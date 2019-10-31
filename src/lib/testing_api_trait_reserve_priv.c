@@ -73,4 +73,5 @@ TALER_TESTING_make_trait_reserve_priv
   return ret;
 }
 
+
 /* end of testing_api_trait_reserve_priv.c */

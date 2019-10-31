@@ -999,8 +999,7 @@ taler_bank_get_history (void *cls,
      * Probably something is wrong with the DB, some
      * other component wrote a wrong value to it.  Instead
      * of completely stopping to work, we just scan from the
-     * beginning. */
-    start_off = NULL;
+     * beginning. */start_off = NULL;
   }
   if (NULL == start_off)
   {
@@ -1299,5 +1298,6 @@ libtaler_plugin_wire_taler_bank_done (void *cls)
   GNUNET_free (plugin);
   return NULL;
 }
+
 
 /* end of plugin_wire_taler-bank.c */

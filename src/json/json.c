@@ -53,7 +53,6 @@ TALER_JSON_hash (const json_t *json,
 }
 
 
-
 /**
  * Extract the Taler error code from the given @a json object.
  * Note that #TALER_EC_NONE is returned if no "code" is present.
@@ -79,5 +78,6 @@ TALER_JSON_get_error_code (const json_t *json)
   GNUNET_break_op (0);
   return TALER_EC_INVALID;
 }
+
 
 /* End of json/json.c */

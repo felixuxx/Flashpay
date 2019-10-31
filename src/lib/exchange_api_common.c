@@ -224,10 +224,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
          for the exchange to lie here, so not checking is probably OK
          (an auditor ought to check, though). Then again, we similarly
          had no reason to check the merchant's signature (other than a
-         well-formendess check). */
-      /* TODO: check that deposit fee and coin value match
-   our expectations from /keys! */
-      add = GNUNET_NO;
+         well-formendess check). *//* TODO: check that deposit fee and coin value match
+   our expectations from /keys! */add = GNUNET_NO;
     }
     else if (0 == strcasecmp (type,
                               "PAYBACK"))
@@ -297,8 +295,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
          However, for the implementation, we first *add* up all of
          these negative amounts, as we might get refunds before
          deposits from a semi-evil exchange.  Then, at the end, we do
-         the subtraction by calculating "total = total - rtotal" */
-      GNUNET_assert (GNUNET_NO == add);
+         the subtraction by calculating "total = total - rtotal" */GNUNET_assert (GNUNET_NO == add);
       if (GNUNET_OK !=
           TALER_amount_add (&rtotal,
                             &rtotal,
@@ -352,5 +349,6 @@ TALER_EXCHANGE_get_exchange_signing_key_info (const struct
   }
   return NULL;
 }
+
 
 /* end of exchange_api_common.c */

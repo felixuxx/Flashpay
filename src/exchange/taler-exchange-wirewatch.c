@@ -735,4 +735,5 @@ main (int argc,
   return global_ret;
 }
 
+
 /* end of taler-exchange-wirewatch.c */

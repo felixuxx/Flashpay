@@ -299,6 +299,7 @@ TFH_build_history_response (struct MHD_Connection *connection,
   return ret;
 }
 
+
 /**
  * Parse URL history arguments, of _both_ APIs:
  * /history and /history-range.

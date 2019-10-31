@@ -1047,4 +1047,5 @@ TBI_run_interpreter (int *resultp,
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
 }
 
+
 /* end of test_bank_interpeter.c */

@@ -956,7 +956,6 @@ struct TALER_MasterWireDetailsPS
 };
 
 
-
 /**
  * @brief Information signed by the exchange's master
  * key stating the wire fee to be paid per wire transfer.

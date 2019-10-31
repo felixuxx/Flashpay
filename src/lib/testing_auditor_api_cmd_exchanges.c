@@ -335,6 +335,7 @@ TALER_TESTING_cmd_exchanges_with_url
   return cmd;
 }
 
+
 /**
  * Modify an exchanges command to enable retries when we get
  * transient errors from the auditor.

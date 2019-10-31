@@ -839,6 +839,7 @@ connection_done (void *cls,
                          "kill");
 }
 
+
 /* end of HAVE_DEVELOPER */
 #endif
 
@@ -1024,7 +1025,6 @@ write_stats ()
 
   GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_close (fh));
 }
-
 
 
 /**
@@ -1260,5 +1260,6 @@ main (int argc,
   TEH_VALIDATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
+
 
 /* end of taler-exchange-httpd.c */

@@ -230,8 +230,7 @@ postgres_create_tables (void *cls)
        funds are added and existing funds are withdrawn.  The 'expiration_date'
        can be used to eventually get rid of reserves that have not been used
        for a very long time (either by refunding the owner or by greedily
-       grabbing the money, depending on the Exchange's terms of service) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves"
+       grabbing the money, depending on the Exchange's terms of service) */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves"
                             "(reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)"
                             ",account_details TEXT NOT NULL "
                             ",current_balance_val INT8 NOT NULL"
@@ -292,8 +291,7 @@ postgres_create_tables (void *cls)
        The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
        key, as (broken) clients that use a non-random coin and blinding factor
        should fail to even withdraw, as otherwise the coins will fail to deposit
-       (as they really must be unique). */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves_out"
+       (as they really must be unique). */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves_out"
                             "(reserve_out_serial_id BIGSERIAL UNIQUE"
                             ",h_blind_ev BYTEA PRIMARY KEY CHECK (LENGTH(h_blind_ev)=64)"
                             ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash)"                                         /* do NOT CASCADE on DELETE, we may keep the denomination key alive! */
@@ -341,8 +339,7 @@ postgres_create_tables (void *cls)
        index and the index of the new coin, and the envelope of the new
        coin to be signed, as well as the encrypted information about the
        private key and the blinding factor for the coin (for verification
-       in case this newcoin_index is chosen to be revealed) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS refresh_revealed_coins "
+       in case this newcoin_index is chosen to be revealed) */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS refresh_revealed_coins "
                             "(rc BYTEA NOT NULL REFERENCES refresh_commitments (rc) ON DELETE CASCADE"
                             ",newcoin_index INT4 NOT NULL"
                             ",link_sig BYTEA NOT NULL CHECK(LENGTH(link_sig)=64)"
@@ -797,8 +794,7 @@ postgres_get_session (void *cls)
          the coin's denomination information (public key, signature)
          and the blinded message as well as the reserve that the coin
          is being withdrawn from and the signature of the message
-         authorizing the withdrawal. */
-      GNUNET_PQ_make_prepare ("insert_withdraw_info",
+         authorizing the withdrawal. */GNUNET_PQ_make_prepare ("insert_withdraw_info",
                               "INSERT INTO reserves_out "
                               "(h_blind_ev"
                               ",denom_pub_hash"
@@ -2207,8 +2203,7 @@ postgres_reserves_in_insert (void *cls,
        Note that for a non-drained reserve we should not switch,
        as that opens an attack vector for an adversary who can see
        the wire transfer subjects (i.e. when using Bitcoin).
-    */
-  }
+    */}
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating reserve %s with expiration in %s\n",
@@ -2225,8 +2220,7 @@ postgres_reserves_in_insert (void *cls,
        before adding the actual transaction to "reserves_in", as
        for a new reserve it can't be a duplicate 'add' operation,
        and as the 'add' operation may need the reserve entry
-       as a foreign key. */
-    struct GNUNET_PQ_QueryParam params[] = {
+       as a foreign key. */struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
       GNUNET_PQ_query_param_string (sender_account_details),
       TALER_PQ_query_param_amount (balance),
@@ -2283,8 +2277,7 @@ postgres_reserves_in_insert (void *cls,
        balance; we do this after checking for duplication, as
        otherwise we might have to actually pay the cost to roll this
        back for duplicate transactions; like this, we should virtually
-       never actually have to rollback anything. */
-    struct TALER_EXCHANGEDB_Reserve updated_reserve;
+       never actually have to rollback anything. */struct TALER_EXCHANGEDB_Reserve updated_reserve;
 
     updated_reserve.pub = reserve.pub;
     if (GNUNET_OK !=
@@ -5711,8 +5704,7 @@ postgres_gc (void *cls)
      payback and reserves_out tables to known_coins; these
      are NOT using 'ON DROP CASCADE' and might keep denomination
      keys alive for a bit longer, thus causing this statement
-     to fail. */
-  (void) GNUNET_PQ_eval_prepared_non_select (conn,
+     to fail. */(void) GNUNET_PQ_eval_prepared_non_select (conn,
                                              "gc_denominations",
                                              params_time);
   GNUNET_PQ_disconnect (conn);
@@ -7716,5 +7708,6 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
   GNUNET_free (plugin);
   return NULL;
 }
+
 
 /* end of plugin_exchangedb_postgres.c */

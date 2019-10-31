@@ -141,8 +141,7 @@ check_keys_run (void *cls,
    * a "maybe" basis, so it can get quite hard to track /keys
    * request.  Rather, this CMD should just check if /keys was
    * requested AT LEAST n times before going ahead with checks.
-   */
-  if (is->key_generation > cks->generation)
+   */if (is->key_generation > cks->generation)
   {
     /* We got /keys too often, strange. Fatal. May theoretically
        happen if somehow we were really unlucky and /keys expired
@@ -237,6 +236,7 @@ TALER_TESTING_cmd_check_keys_with_last_denom
   return cmd;
 }
 
+
 /**
  * Make a "check keys" command.  This type of command
  * checks whether the number of denomination keys from
@@ -319,7 +319,6 @@ TALER_TESTING_cmd_check_keys_with_now
 
   return cmd;
 }
-
 
 
 /**

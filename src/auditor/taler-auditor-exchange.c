@@ -132,7 +132,7 @@ main (int argc,
                               strlen ("http://"))) &&
            (0 != strncasecmp ("https://",
                               exchange_url,
-                              strlen ("https://"))) )  ||
+                              strlen ("https://"))) ) ||
          ('/' != exchange_url[strlen (exchange_url) - 1]) )
     {
       fprintf (stderr,
@@ -210,5 +210,6 @@ main (int argc,
   TALER_AUDITORDB_plugin_unload (adb);
   return 0;
 }
+
 
 /* end of taler-auditor-exchange.c */

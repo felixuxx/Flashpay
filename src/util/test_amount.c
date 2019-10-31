@@ -238,4 +238,5 @@ main (int argc,
   return 0;
 }
 
+
 /* end of test_amount.c */

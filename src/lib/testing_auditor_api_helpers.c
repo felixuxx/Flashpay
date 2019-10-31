@@ -70,6 +70,7 @@ cleanup_auditor (void *cls)
   GNUNET_free (cc);
 }
 
+
 /**
  * Closure for #auditor_main_wrapper()
  */
@@ -121,6 +122,7 @@ auditor_version_cb
 
   is->auditor_working = GNUNET_YES;
 }
+
 
 /**
  * Setup the @a is 'auditor' member before running the main test loop.
@@ -225,7 +227,6 @@ TALER_TESTING_AUDITOR_setup (TALER_TESTING_Main main_cb,
                                              &setup_with_cfg,
                                              &mwc);
 }
-
 
 
 /* end of testing_auditor_api_helpers.c */

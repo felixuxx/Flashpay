@@ -624,7 +624,6 @@ report (json_t *array,
 }
 
 
-
 /**
  * Detect any entries in #reserve_closures that were not yet
  * observed on the wire transfer side and update the progress

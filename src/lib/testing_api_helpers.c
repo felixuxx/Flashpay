@@ -1077,4 +1077,5 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   return fakebank_url;
 }
 
+
 /* end of testing_api_helpers.c */

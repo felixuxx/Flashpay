@@ -884,7 +884,8 @@ refresh_melt_run (void *cls,
   rms->noreveal_index = UINT16_MAX;
   for (num_fresh_coins = 0;
        NULL != melt_fresh_amounts[num_fresh_coins];
-       num_fresh_coins++);
+       num_fresh_coins++)
+    ;
   rms->num_fresh_coins = num_fresh_coins;
   rms->fresh_pks = GNUNET_new_array
                      (num_fresh_coins,

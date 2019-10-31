@@ -199,4 +199,5 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_reject (const char *label,
                                const char *bank_url,
                                const char *deposit_reference);
+
 #endif

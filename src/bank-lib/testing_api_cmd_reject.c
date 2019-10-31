@@ -183,6 +183,7 @@ reject_traits (void *cls,
                                   index);
 }
 
+
 /**
  * Create a "reject" CMD.
  *

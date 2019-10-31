@@ -224,4 +224,5 @@ TALER_TESTING_cmd_wait_service (const char *label,
   return cmd;
 }
 
+
 /* end of testing_api_cmd_sleep.c  */

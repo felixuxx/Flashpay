@@ -248,8 +248,7 @@ run (void *cls,
      * contract terms' hashes.  So since the contract terms are
      * exactly the same as the previous command,
      * how can a different id be generated?
-     */
-    TALER_TESTING_cmd_deposit
+     */TALER_TESTING_cmd_deposit
       ("deposit-double-1", "withdraw-coin-1", 0,
       TALER_TESTING_make_wire_details (43,
                                        fakebank_url),
@@ -277,8 +276,7 @@ run (void *cls,
      * test-suite gave a account number of _424_ to the user at
      * this step; to type less, here the _42_ number is reused.
      * Does this change the tests semantics?
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
+     */CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),
 
     /**
@@ -298,8 +296,7 @@ run (void *cls,
      * Try to partially spend (deposit) 1 EUR of the 5 EUR coin
      * (in full) (merchant would receive EUR:0.99 due to 1 ct
      * deposit fee)
-     */
-    TALER_TESTING_cmd_deposit
+     */TALER_TESTING_cmd_deposit
       ("refresh-deposit-partial",
       "refresh-withdraw-coin-1", 0,
       TALER_TESTING_make_wire_details (42,
@@ -381,8 +378,7 @@ run (void *cls,
      * Try resolving a deposit's WTID, as we never triggered
      * execution of transactions, the answer should be that
      * the exchange knows about the deposit, but has no WTID yet.
-     */
-    TALER_TESTING_cmd_track_transaction
+     */TALER_TESTING_cmd_track_transaction
       ("deposit-wtid-found",
       "deposit-simple", 0, MHD_HTTP_ACCEPTED, NULL),
 
@@ -390,8 +386,7 @@ run (void *cls,
      * Try resolving a deposit's WTID for a failed deposit.
      * As the deposit failed, the answer should be that the
      * exchange does NOT know about the deposit.
-     */
-    TALER_TESTING_cmd_track_transaction
+     */TALER_TESTING_cmd_track_transaction
       ("deposit-wtid-failing",
       "deposit-double-2", 0, MHD_HTTP_NOT_FOUND, NULL),
 
@@ -399,8 +394,7 @@ run (void *cls,
      * Try resolving an undefined (all zeros) WTID; this
      * should fail as obviously the exchange didn't use that
      * WTID value for any transaction.
-     */
-    TALER_TESTING_cmd_track_transfer_empty
+     */TALER_TESTING_cmd_track_transfer_empty
       ("wire-deposit-failing",
       NULL, 0, MHD_HTTP_NOT_FOUND),
 
@@ -410,8 +404,7 @@ run (void *cls,
      * fresh merchant public key! NOTE: this comment comes
      * "verbatim" from the old test-suite, and IMO does not explain
      * a lot!
-     */
-    CMD_EXEC_AGGREGATOR ("run-aggregator"),
+     */CMD_EXEC_AGGREGATOR ("run-aggregator"),
 
     /**
      * Check all the transfers took place.
@@ -560,9 +553,7 @@ run (void *cls,
      * the preliminary transfer (used to withdraw) from the
      * fakebank and the second to actually check there are not
      * other transfers around.
-     */
-
-    TALER_TESTING_cmd_check_bank_transfer
+     */TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pre-refund", exchange_url,
       "EUR:5.01", 42, 2),
 
@@ -657,8 +648,7 @@ run (void *cls,
      * Run transfers. This will do the transfer as refund deadline
      * was 0, except of course because the refund succeeded, the
      * transfer should no longer be done.
-     */
-    CMD_EXEC_AGGREGATOR ("run-aggregator-3b"),
+     */CMD_EXEC_AGGREGATOR ("run-aggregator-3b"),
 
     /* check that aggregator didn't do anything, as expected */
     TALER_TESTING_cmd_check_bank_empty
@@ -729,8 +719,7 @@ run (void *cls,
      * These commands should close the reserve because
      * the aggregator is given a config file that ovverrides
      * the reserve expiration time (making it now-ish)
-     */
-    CMD_TRANSFER_TO_EXCHANGE
+     */CMD_TRANSFER_TO_EXCHANGE
       ("short-lived-reserve",
       "EUR:5.01"),
 
@@ -773,8 +762,7 @@ run (void *cls,
      * then have the rest paid back.  Check deposit of other coin
      * fails.  (Do not use EUR:5 here as the EUR:5 coin was
      * revoked and we did not bother to create a new one...)
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
+     */CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
                               "EUR:2.02"),
 
     /* Make previous command effective. */
@@ -1007,5 +995,6 @@ main (int argc,
   }
   return 0;
 }
+
 
 /* end of test_exchange_api.c */

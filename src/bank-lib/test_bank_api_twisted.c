@@ -215,4 +215,5 @@ main (int argc,
   return 1;
 }
 
+
 /* end of test_bank_api_twisted.c */

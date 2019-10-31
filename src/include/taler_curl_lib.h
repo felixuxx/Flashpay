@@ -74,5 +74,4 @@ void
 TALER_curl_easy_post_finished (struct TEAH_PostContext *ctx);
 
 
-
 #endif

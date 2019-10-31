@@ -188,7 +188,6 @@ struct HistoryArgs
 };
 
 
-
 /**
  * Type for a function that decides whether or not
  * the history-building loop should iterate once again.

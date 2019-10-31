@@ -31,7 +31,6 @@
 #include "taler_testing_lib.h"
 
 
-
 /**
  * State for a "wirewatch" CMD.
  */
@@ -164,5 +163,6 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 
   return cmd;
 }
+
 
 /* end of testing_api_cmd_exec_wirewatch.c */

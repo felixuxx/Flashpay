@@ -28,7 +28,6 @@
 #include "taler_fakebank_lib.h"
 
 
-
 /**
  * Commands for the interpreter.
  */
@@ -350,6 +349,7 @@ maint_child_death (void *cls)
 
   interpreter (state);
 }
+
 
 /**
  * Setup (fake) information about a coin used in deposit.
@@ -1332,5 +1332,6 @@ main (int argc,
   GNUNET_free (testname);
   return result;
 }
+
 
 /* end of test_taler_exchange_aggregator.c */

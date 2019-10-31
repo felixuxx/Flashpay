@@ -75,4 +75,5 @@ TALER_TESTING_make_trait_denom_pub
   return ret;
 }
 
+
 /* end of testing_api_trait_denom_pub.c */

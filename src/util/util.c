@@ -93,8 +93,6 @@ TALER_config_get_denom (const struct GNUNET_CONFIGURATION_Handle *cfg,
 }
 
 
-
-
 /**
  * Set an option with an amount from the command line.  A pointer to
  * this function should be passed as part of the 'struct
@@ -193,6 +191,7 @@ is_reserved (char c)
   return GNUNET_YES;
 }
 
+
 /**
  * Get the length of a string after it has been
  * urlencoded.
@@ -209,6 +208,7 @@ urlencode_len (const char *s)
       len += 2;
   return len;
 }
+
 
 /**
  * URL-encode a string according to rfc3986.
@@ -747,5 +747,6 @@ TALER_buffer_write_vfstr (struct TALER_Buffer *buf,
   buf->position += res;
   GNUNET_assert (buf->position <= buf->capacity);
 }
+
 
 /* end of util.c */

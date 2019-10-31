@@ -645,8 +645,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   if (MODE_EXCHANGE == mode)
     (void) getchar ();
 
-  if ( (GNUNET_YES == linger) && ( ((mode == MODE_BOTH)|| (mode ==
-                                                           MODE_CLIENT) ) ) )
+  if ( (GNUNET_YES == linger) && ( ((mode == MODE_BOTH) || (mode ==
+                                                            MODE_CLIENT) ) ) )
   {
     printf ("press ENTER to stop\n");
     (void) getchar ();

@@ -73,6 +73,7 @@ TALER_TESTING_make_trait_uint
   return ret;
 }
 
+
 /**
  * Obtain a "number" value from @a cmd, 64-bit version.
  *
@@ -94,6 +95,7 @@ TALER_TESTING_get_trait_uint64
                       index);
 }
 
+
 /**
  * Offer number trait, 64-bit version.
  *
@@ -112,5 +114,6 @@ TALER_TESTING_make_trait_uint64
   };
   return ret;
 }
+
 
 /* end of testing_api_trait_number.c */

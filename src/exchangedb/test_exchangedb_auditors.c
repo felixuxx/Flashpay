@@ -42,7 +42,6 @@ static struct TALER_MasterPublicKeyP want_mpub;
 static struct TALER_DenominationKeyValidityPS want_dki;
 
 
-
 /**
  * @brief Function called with auditor information.
  *

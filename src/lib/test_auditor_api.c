@@ -203,8 +203,7 @@ run (void *cls,
      * test-suite gave a account number of _424_ to the user at
      * this step; to type less, here the _42_ number is reused.
      * Does this change the tests semantics?
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
+     */CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),
     /**
      * Make previous command effective.
@@ -265,8 +264,7 @@ run (void *cls,
      * fresh merchant public key! NOTE: this comment comes
      * "verbatim" from the old test-suite, and IMO does not explain
      * a lot!
-     */
-    CMD_EXEC_AGGREGATOR ("run-aggregator"),
+     */CMD_EXEC_AGGREGATOR ("run-aggregator"),
 
     /**
      * Check all the transfers took place.
@@ -490,8 +488,7 @@ run (void *cls,
      * These commands should close the reserve because the aggregator
      * is given a config file that ovverrides the reserve expiration
      * time (making it now-ish)
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
+     */CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
                               "EUR:5.01"),
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
@@ -503,8 +500,7 @@ run (void *cls,
      * then have the rest paid back.  Check deposit of other coin
      * fails.  (Do not use EUR:5 here as the EUR:5 coin was
      * revoked and we did not bother to create a new one...)
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
+     */CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
                               "EUR:2.02"),
     /**
      * Make previous command effective.
@@ -794,5 +790,6 @@ main (int argc,
   }
   return 0;
 }
+
 
 /* end of test_auditor_api.c */

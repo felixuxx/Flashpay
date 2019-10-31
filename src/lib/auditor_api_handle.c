@@ -258,6 +258,7 @@ decode_version_json (const json_t *resp_obj,
   return GNUNET_OK;
 }
 
+
 /**
  * Initiate download of /version from the auditor.
  *

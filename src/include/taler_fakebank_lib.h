@@ -81,7 +81,6 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                               const char *exchange_base_url);
 
 
-
 /**
  * Check that the @a want_amount was transferred from the @a
  * want_debit to the @a want_credit account.  If so, set the @a subject

@@ -485,6 +485,7 @@ deposit_traits (void *cls,
                                   index);
 }
 
+
 /**
  * Create a "deposit" command.
  *

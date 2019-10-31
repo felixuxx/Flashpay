@@ -201,6 +201,7 @@ TALER_TESTING_cmd_exec_keyup_with_now
   return cmd;
 }
 
+
 /**
  * Make the "keyup" CMD.
  *
@@ -228,5 +229,6 @@ TALER_TESTING_cmd_exec_keyup (const char *label,
 
   return cmd;
 }
+
 
 /* end of testing_api_cmd_exec_keyup.c */

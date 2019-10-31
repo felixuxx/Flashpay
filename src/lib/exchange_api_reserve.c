@@ -233,8 +233,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
          isn't listed twice by the exchange. We use the
          "uuid" array to remember the hashes of all
          purposes, and compare the hashes to find
-         duplicates. */
-      GNUNET_CRYPTO_hash (&withdraw_purpose,
+         duplicates. */GNUNET_CRYPTO_hash (&withdraw_purpose,
                           ntohl (withdraw_purpose.purpose.size),
                           &uuid[uuid_off]);
       for (i = 0; i<uuid_off; i++)

@@ -4041,8 +4041,7 @@ refresh_session_cb (void *cls,
        accepted a forged coin (i.e. emergency situation after
        private key compromise). In that case, we cannot even
        subtract the profit we make from the fee from the escrow
-       balance. Tested as part of test-auditor.sh, case #18 */
-    report_amount_arithmetic_inconsistency (
+       balance. Tested as part of test-auditor.sh, case #18 */report_amount_arithmetic_inconsistency (
       "subtracting refresh fee from escrow balance",
       rowid,
       &total_escrow_balance,
@@ -4225,8 +4224,7 @@ deposit_cb (void *cls,
        accepted a forged coin (i.e. emergency situation after
        private key compromise). In that case, we cannot even
        subtract the profit we make from the fee from the escrow
-       balance. Tested as part of test-auditor.sh, case #18 */
-    report_amount_arithmetic_inconsistency (
+       balance. Tested as part of test-auditor.sh, case #18 */report_amount_arithmetic_inconsistency (
       "subtracting deposit fee from escrow balance",
       rowid,
       &total_escrow_balance,
@@ -5008,7 +5006,6 @@ analyze_deposit_confirmations (void *cls)
               (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
   return qs;
 }
-
 
 
 /* *************************** General transaction logic ****************** */

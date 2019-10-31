@@ -291,7 +291,6 @@ static unsigned int aggregation_limit =
   TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT;
 
 
-
 /**
  * Advance the "af" pointer in @a wp to point to the
  * currently valid record.
@@ -1967,5 +1966,6 @@ main (int argc,
   GNUNET_free ((void*) argv);
   return global_ret;
 }
+
 
 /* end of taler-exchange-aggregator.c */

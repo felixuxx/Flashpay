@@ -76,4 +76,5 @@ TALER_TESTING_make_trait_fresh_coins
   return ret;
 }
 
+
 /* end of testing_api_trait_fresh_coin.c */

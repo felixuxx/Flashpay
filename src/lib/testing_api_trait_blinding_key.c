@@ -54,7 +54,6 @@ TALER_TESTING_get_trait_blinding_key
 }
 
 
-
 /**
  * Offer blinding key.
  *
@@ -76,5 +75,6 @@ TALER_TESTING_make_trait_blinding_key
 
   return ret;
 }
+
 
 /* end of testing_api_trait_blinding_key.c */

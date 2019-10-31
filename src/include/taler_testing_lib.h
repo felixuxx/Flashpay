@@ -388,8 +388,6 @@ struct TALER_TESTING_Interpreter
 };
 
 
-
-
 /**
  * A command to be run by the interpreter.
  */
@@ -484,7 +482,6 @@ TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is);
 const char *
 TALER_TESTING_interpreter_get_current_label (struct
                                              TALER_TESTING_Interpreter *is);
-
 
 
 /**
@@ -1275,7 +1272,6 @@ TALER_TESTING_cmd_check_bank_transfer (const char *label,
                                        uint64_t credit_account);
 
 
-
 /**
  * Define a "bank check" CMD that takes the input
  * data from another CMD that offers it.
@@ -1583,7 +1579,6 @@ struct TALER_TESTING_Trait
    */
   const void *ptr;
 };
-
 
 
 /**
@@ -2077,6 +2072,7 @@ TALER_TESTING_get_trait_peer_key (const struct TALER_TESTING_Command *cmd,
                                   unsigned int index,
                                   const struct
                                   GNUNET_CRYPTO_EddsaPrivateKey **priv);
+
 // FIXME: private get_trait_merchant_priv instead, rather have
 // more traits with precise types than this!
 
@@ -2094,6 +2090,7 @@ struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_peer_key (unsigned int index,
                                    const struct
                                    GNUNET_CRYPTO_EddsaPrivateKey *priv);
+
 // FIXME: private get_trait_merchant_priv instead, rather have
 // more traits with precise types than this!
 

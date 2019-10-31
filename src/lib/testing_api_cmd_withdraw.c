@@ -32,7 +32,6 @@
 #include "backoff.h"
 
 
-
 /**
  * State for a "withdraw" CMD.
  */

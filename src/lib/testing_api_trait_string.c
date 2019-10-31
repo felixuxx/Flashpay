@@ -57,6 +57,7 @@ TALER_TESTING_get_trait_contract_terms
                       index);
 }
 
+
 /**
  * Offer contract terms.
  *
@@ -99,6 +100,7 @@ TALER_TESTING_get_trait_transfer_subject
                       TALER_TESTING_TRAIT_TRANSFER_SUBJECT,
                       index);
 }
+
 
 /**
  * Offer transfer subject.
@@ -145,6 +147,7 @@ TALER_TESTING_get_trait_amount
                       index);
 }
 
+
 /**
  * Offer amount in a trait.
  *
@@ -189,6 +192,7 @@ TALER_TESTING_get_trait_url
                       TALER_TESTING_TRAIT_URL,
                       index);
 }
+
 
 /**
  * Offer url in a trait.
@@ -235,6 +239,7 @@ TALER_TESTING_get_trait_order_id
                       index);
 }
 
+
 /**
  * Offer order id in a trait.
  *
@@ -256,6 +261,7 @@ TALER_TESTING_make_trait_order_id
   };
   return ret;
 }
+
 
 /**
  * Obtain the reference to a "reject" CMD.  Usually offered
@@ -280,6 +286,7 @@ TALER_TESTING_get_trait_rejected
                       index);
 }
 
+
 /**
  * Offer a "reject" CMD reference.
  *
@@ -301,5 +308,6 @@ TALER_TESTING_make_trait_rejected
   };
   return ret;
 }
+
 
 /* end of testing_api_trait_string.c */

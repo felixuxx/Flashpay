@@ -80,4 +80,5 @@ TALER_TESTING_make_trait_process
   return ret;
 }
 
+
 /* end of testing_api_trait_process.c */

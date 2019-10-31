@@ -136,6 +136,7 @@ batch_traits (void *cls,
                                   index);
 }
 
+
 /**
  * Create a "batch" command.  Such command takes a
  * end_CMD-terminated array of CMDs and executed them.
@@ -179,6 +180,7 @@ TALER_TESTING_cmd_batch (const char *label,
   return cmd;
 }
 
+
 /**
  * Advance internal pointer to next command.
  *
@@ -198,7 +200,6 @@ TALER_TESTING_cmd_batch_next
 
   bs->batch_ip++;
 }
-
 
 
 /**

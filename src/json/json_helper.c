@@ -47,7 +47,6 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount)
 }
 
 
-
 /**
  * Convert a TALER amount to a JSON object.
  *

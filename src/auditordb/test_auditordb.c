@@ -581,6 +581,7 @@ run (void *cls)
     return GNUNET_OK;
   }
 
+
   FAILIF (0 >=
           plugin->select_historic_denom_revenue (plugin->cls,
                                                  session,
@@ -643,6 +644,7 @@ run (void *cls)
     }
     return GNUNET_OK;
   }
+
 
   FAILIF (0 >=
           plugin->select_historic_reserve_revenue (plugin->cls,

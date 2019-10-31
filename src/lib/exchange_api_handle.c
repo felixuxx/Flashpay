@@ -1138,6 +1138,7 @@ TALER_EXCHANGE_set_now (struct TALER_EXCHANGE_Handle *exchange,
   exchange->now = now;
 }
 
+
 /**
  * Unset the fake now to be used when requesting "/keys".
  *
@@ -1388,6 +1389,7 @@ TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h)
 {
   h->state = MHS_INIT;
 }
+
 
 /**
  * Check if the handle is ready to process requests.
@@ -1924,7 +1926,6 @@ TALER_EXCHANGE_connect
   va_end (ap);
   return exchange;
 }
-
 
 
 /**

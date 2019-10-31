@@ -439,4 +439,5 @@ main (int argc,
   return 0;
 }
 
+
 /* end of taler-auditor-sign.c */

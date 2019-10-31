@@ -75,4 +75,5 @@ TALER_TESTING_make_trait_coin_priv
   return ret;
 }
 
+
 /* end of testing_api_trait_coin_priv.c */

@@ -491,7 +491,8 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
     is->timeout_task = NULL;
   }
   /* get the number of commands */
-  for (i = 0; NULL != commands[i].label; i++);
+  for (i = 0; NULL != commands[i].label; i++)
+    ;
   is->commands = GNUNET_new_array (i + 1,
                                    struct TALER_TESTING_Command);
   memcpy (is->commands,
@@ -830,5 +831,6 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   sigpipe = NULL;
   return is.result;
 }
+
 
 /* end of testing_api_loop.c */

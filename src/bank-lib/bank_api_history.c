@@ -251,7 +251,6 @@ handle_history_finished (void *cls,
 }
 
 
-
 /**
  * Backend of both the /history[-range] requests.
  *
@@ -405,7 +404,6 @@ TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
   GNUNET_free (url);
   return hh;
 }
-
 
 
 /**

@@ -36,7 +36,6 @@
 #define REQUEST_BUFFER_MAX (1024 * 1024)
 
 
-
 /**
  * Process a POST request containing a JSON object.  This function
  * realizes an MHD POST processor that will (incrementally) process

@@ -201,6 +201,7 @@ wire_cleanup (void *cls,
   GNUNET_free (ws);
 }
 
+
 /**
  * Create a "wire" command.
  *

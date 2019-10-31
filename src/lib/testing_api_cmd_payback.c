@@ -485,6 +485,7 @@ revoke_traits (void *cls,
                                   index);
 }
 
+
 /**
  * Run the "revoke" command.  The core of the function
  * is to call the "keyup" utility passing it the base32

@@ -213,8 +213,7 @@ patch_private_key (struct GNUNET_CRYPTO_EddsaPrivateKey *pk)
    * Is it worth also adding a test case that runs gcry_pk_testkey on
    * this key after first parsing it into libgcrypt's s-expression mess
    * ala decode_private_eddsa_key from gnunet/src/util/crypto_ecc.c?
-   * It'd run check_secret_key but not test_keys from libgcrypt/cipher/ecc.c */
-}
+   * It'd run check_secret_key but not test_keys from libgcrypt/cipher/ecc.c */}
 
 
 /**

@@ -134,8 +134,7 @@ run (void *cls,
      * Try to partially spend (deposit) 1 EUR of the 5 EUR coin
      * (in full) (merchant would receive EUR:0.99 due to 1 ct
      * deposit fee)
-     */
-    TALER_TESTING_cmd_deposit
+     */TALER_TESTING_cmd_deposit
       ("deposit-partial",
       "withdraw-coin-1", 0,
       TALER_TESTING_make_wire_details (42,
@@ -277,5 +276,6 @@ main (int argc,
   }
   return 0;
 }
+
 
 /* end of test_exchange_api_revocation.c */

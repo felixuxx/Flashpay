@@ -176,5 +176,4 @@ TEH_wire_cleanup ()
 }
 
 
-
 /* end of taler-exchange-httpd_wire.c */

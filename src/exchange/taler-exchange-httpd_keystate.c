@@ -262,7 +262,6 @@ struct ResponseFactoryContext
 };
 
 
-
 /**
  * Snapshot of the (coin and signing) keys (including private keys) of
  * the exchange.  There can be multiple instances of this struct, as it is
@@ -327,7 +326,6 @@ struct TEH_KS_StateHandle
 };
 
 
-
 /**
  * Exchange key state.  This is the long-term, read-only internal global state,
  * which the various threads "lock" to use in read-only ways.  We eventually
@@ -344,7 +342,6 @@ static struct TEH_KS_StateHandle *internal_key_state;
  * Mutex protecting access to #internal_key_state.
  */
 static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 
 
 /* ************************** Clean up logic *********************** */

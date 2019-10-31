@@ -213,8 +213,7 @@ run (void *cls,
    * NOTE: not all CMDs actually need the twister,
    * so it may be better to move those into the "main"
    * lib test suite.
-   */
-  struct TALER_TESTING_Command refund[] = {
+   */struct TALER_TESTING_Command refund[] = {
 
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-r1",
@@ -328,6 +327,7 @@ run (void *cls,
                                    fakebank_url);
 }
 
+
 /**
  * Kill, wait, and destroy convenience function.
  *
@@ -340,6 +340,7 @@ purge_process (struct GNUNET_OS_Process *process)
   GNUNET_OS_process_wait (process);
   GNUNET_OS_process_destroy (process);
 }
+
 
 int
 main (int argc,
@@ -394,5 +395,6 @@ main (int argc,
   }
   return 0;
 }
+
 
 /* end of test_exchange_api_twisted.c */

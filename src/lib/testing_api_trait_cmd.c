@@ -79,4 +79,5 @@ TALER_TESTING_make_trait_cmd
   return ret;
 }
 
+
 /* end of testing_api_trait_cmd.c */

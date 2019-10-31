@@ -83,5 +83,4 @@ TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin)
 }
 
 
-
 /* end of exchangedb_plugin.c */

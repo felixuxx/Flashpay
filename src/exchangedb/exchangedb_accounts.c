@@ -139,4 +139,5 @@ TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                          &ctx);
 }
 
+
 /* end of exchangedb_accounts.c */

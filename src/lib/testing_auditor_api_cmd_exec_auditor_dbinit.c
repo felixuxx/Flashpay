@@ -160,4 +160,5 @@ TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
   return cmd;
 }
 
+
 /* end of testing_auditor_api_cmd_exec_auditor_dbinit.c */

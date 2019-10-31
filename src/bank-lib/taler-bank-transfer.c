@@ -270,4 +270,5 @@ main (int argc, char *const *argv)
   return global_ret;
 }
 
+
 /* end taler-bank-transfer.c */

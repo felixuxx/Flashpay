@@ -857,4 +857,5 @@ main (int argc,
   return result;
 }
 
+
 /* end of test_taler_exchange_wirewatch.c */

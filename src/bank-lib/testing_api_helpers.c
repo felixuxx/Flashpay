@@ -120,6 +120,7 @@ TALER_TESTING_has_in_name (const char *prog_name,
   return strstr (prog_name + name_pos, marker) != NULL;
 }
 
+
 /**
  * Start the (Python) bank process.  Assume the port
  * is available and the database is clean.  Use the "prepare

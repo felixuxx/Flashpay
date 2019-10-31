@@ -194,4 +194,5 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
   return GNUNET_OK;
 }
 
+
 /* end of exchangedb_signkeys.c */

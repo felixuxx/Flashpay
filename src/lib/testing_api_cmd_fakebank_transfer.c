@@ -417,6 +417,7 @@ fakebank_transfer_cleanup (void *cls,
   GNUNET_free (fts);
 }
 
+
 /**
  * Offer internal data from a "fakebank transfer" CMD to other
  * commands.
@@ -765,5 +766,6 @@ TALER_TESTING_cmd_fakebank_transfer_retry (struct TALER_TESTING_Command cmd)
   fts->do_retry = GNUNET_YES;
   return cmd;
 }
+
 
 /* end of testing_api_cmd_fakebank_transfer.c */

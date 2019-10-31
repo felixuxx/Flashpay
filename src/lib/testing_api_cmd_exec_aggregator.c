@@ -163,4 +163,5 @@ TALER_TESTING_cmd_exec_aggregator (const char *label,
   return cmd;
 }
 
+
 /* end of testing_api_cmd_exec_aggregator.c */

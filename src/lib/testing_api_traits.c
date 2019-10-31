@@ -46,6 +46,7 @@ TALER_TESTING_trait_end ()
   return end;
 }
 
+
 /**
  * Pick the chosen trait from the traits array.
  *
@@ -76,5 +77,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 
   return GNUNET_SYSERR;
 }
+
 
 /* end of testing_api_traits.c */

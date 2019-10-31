@@ -1462,7 +1462,6 @@ struct TALER_AUDITORDB_Plugin
                                      void *cb_cls);
 
 
-
   /**
    * Insert information about the predicted exchange's bank
    * account balance.

@@ -2173,7 +2173,6 @@ struct TALER_EXCHANGEDB_Plugin
                               struct TALER_EXCHANGEDB_Session *session);
 
 
-
   /**
    * Store information about an outgoing wire transfer that was executed.
    *

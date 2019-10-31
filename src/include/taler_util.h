@@ -193,7 +193,8 @@ TALER_buffer_write_fstr (struct TALER_Buffer *buf, const char *fmt, ...);
  * @param args format argument list
  */
 void
-TALER_buffer_write_vfstr (struct TALER_Buffer *buf, const char *fmt, va_list args);
+TALER_buffer_write_vfstr (struct TALER_Buffer *buf, const char *fmt, va_list
+                          args);
 
 
 /**
@@ -360,10 +361,10 @@ TALER_url_absolute_raw (const char *proto,
  */
 char *
 TALER_url_absolute_raw_va (const char *proto,
-                     const char *host,
-                     const char *prefix,
-                     const char *path,
-                     va_list args);
+                           const char *host,
+                           const char *prefix,
+                           const char *path,
+                           va_list args);
 
 
 /**

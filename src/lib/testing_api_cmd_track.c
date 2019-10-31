@@ -589,9 +589,7 @@ track_transfer_cb
      * or any operation that could provide wire-details.  (2)
      * Total amount for this transfer matches the one from any
      * referenced command that could provide one.
-     */
-
-    if (NULL != tts->wire_details_reference)
+     */if (NULL != tts->wire_details_reference)
     {
       const struct TALER_TESTING_Command *wire_details_cmd;
       const json_t *wire_details;
@@ -674,6 +672,7 @@ track_transfer_cb
   TALER_TESTING_interpreter_next (is);
 }
 
+
 /**
  * Run the command.
  *
@@ -727,6 +726,7 @@ track_transfer_run (void *cls,
   GNUNET_assert (NULL != tts->tth);
 }
 
+
 /**
  * Make a "track transfer" CMD where no "expected"-arguments,
  * except the HTTP response code, are given.  The best use case
@@ -768,6 +768,7 @@ TALER_TESTING_cmd_track_transfer_empty
 
   return cmd;
 }
+
 
 /**
  * Make a "track transfer" command, specifying which amount and
@@ -813,5 +814,6 @@ TALER_TESTING_cmd_track_transfer
 
   return cmd;
 }
+
 
 /* end of testing_api_cmd_track.c */

@@ -159,4 +159,5 @@ TALER_TESTING_cmd_exec_auditor (const char *label,
   return cmd;
 }
 
+
 /* end of testing_auditor_api_cmd_exec_auditor.c */

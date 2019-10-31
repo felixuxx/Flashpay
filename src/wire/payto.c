@@ -526,4 +526,5 @@ TALER_WIRE_payto_to_account (const char *payto_url,
   return TALER_EC_PAYTO_WRONG_METHOD;
 }
 
+
 /* end of payto.c */

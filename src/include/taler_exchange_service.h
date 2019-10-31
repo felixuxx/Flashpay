@@ -1681,7 +1681,6 @@ TALER_EXCHANGE_track_transaction_cancel (struct
                                          dwh);
 
 
-
 /**
  * Convenience function.  Verifies a coin's transaction history as
  * returned by the exchange.
@@ -1775,7 +1774,6 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
  */
 void
 TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph);
-
 
 
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

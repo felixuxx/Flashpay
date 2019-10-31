@@ -206,8 +206,7 @@ postgres_create_tables (void *cls)
        serial ID from the respective tables that we have
        processed. Thus, we need to select those table entries that are
        strictly larger (and process in monotonically increasing
-       order). */
-    GNUNET_PQ_make_execute (
+       order). */GNUNET_PQ_make_execute (
       "CREATE TABLE IF NOT EXISTS auditor_progress_reserve"
       "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
       ",last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
@@ -253,8 +252,7 @@ postgres_create_tables (void *cls)
        "last_reserve_out_serial_id" marks the last withdrawal from
        "reserves_out" about this reserve that the auditor is aware of,
        and "last_reserve_in_serial_id" is the last "reserve_in"
-       operation about this reserve that the auditor is aware of. */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_reserves"
+       operation about this reserve that the auditor is aware of. */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_reserves"
                             "(reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)"
                             ",master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",reserve_balance_val INT8 NOT NULL"
@@ -289,8 +287,7 @@ postgres_create_tables (void *cls)
        (outstanding as well as issued overall which implies the
        maximum value at risk).  We also count the number of coins
        issued (withdraw, refresh-reveal) and the number of coins seen
-       at the exchange (refresh-commit, deposit), not just the amounts. */
-    GNUNET_PQ_make_execute (
+       at the exchange (refresh-commit, deposit), not just the amounts. */GNUNET_PQ_make_execute (
       "CREATE TABLE IF NOT EXISTS auditor_denomination_pending"
       "(denom_pub_hash BYTEA PRIMARY KEY"
       " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
@@ -309,8 +306,7 @@ postgres_create_tables (void *cls)
        respective's exchange's master public key); it represents the
        auditor_balance_summary of the exchange at this point (modulo
        unexpected historic_loss-style events where denomination keys are
-       compromised) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_balance_summary"
+       compromised) */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_balance_summary"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",denom_balance_val INT8 NOT NULL"
                             ",denom_balance_frac INT4 NOT NULL"
@@ -333,8 +329,7 @@ postgres_create_tables (void *cls)
        coin except for withdraw fees (which are in
        historic_reserve_revenue); the deposit, melt and refund fees are given
        individually; the delta to the revenue_balance is from coins that
-       were withdrawn but never deposited prior to expiration. */
-    GNUNET_PQ_make_execute (
+       were withdrawn but never deposited prior to expiration. */GNUNET_PQ_make_execute (
       "CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue"
       "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
       ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
@@ -389,8 +384,7 @@ postgres_create_tables (void *cls)
        the tables overall, we'll need a command-line tool to insert rows
        into this table and update "auditor_predicted_result" accordingly.
        (So this table for now just exists as a reminder of what we'll
-       need in the long term.) */
-    GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_ledger"
+       need in the long term.) */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_ledger"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
                             ",purpose VARCHAR NOT NULL"
                             ",timestamp INT8 NOT NULL"
@@ -1500,7 +1494,6 @@ postgres_get_deposit_confirmations (void *cls,
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
   return qs;
 }
-
 
 
 /**
@@ -3585,5 +3578,6 @@ libtaler_plugin_auditordb_postgres_done (void *cls)
   GNUNET_free (plugin);
   return NULL;
 }
+
 
 /* end of plugin_auditordb_postgres.c */

@@ -272,7 +272,6 @@ ebics_get_history_cancel (void *cls,
 }
 
 
-
 /**
  * Context for a rejection operation.
  */
@@ -443,5 +442,6 @@ libtaler_plugin_wire_ebics_done (void *cls)
   GNUNET_free (plugin);
   return NULL;
 }
+
 
 /* end of plugin_wire_ebics.c */

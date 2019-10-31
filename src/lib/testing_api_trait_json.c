@@ -74,6 +74,7 @@ TALER_TESTING_make_trait_exchange_keys
   return ret;
 }
 
+
 /**
  * Obtain wire details from @a cmd.
  *
@@ -118,5 +119,6 @@ TALER_TESTING_make_trait_wire_details
   };
   return ret;
 }
+
 
 /* end of testing_api_trait_json.c */

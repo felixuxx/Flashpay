@@ -380,4 +380,5 @@ libtaler_plugin_wire_template_done (void *cls)
   return NULL;
 }
 
+
 /* end of plugin_wire_template.c */

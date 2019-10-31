@@ -361,4 +361,5 @@ main (int argc,
   return 0;
 }
 
+
 /* end of test_wire_plugin_transactions_taler-bank.c */

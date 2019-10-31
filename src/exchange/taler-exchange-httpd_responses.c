@@ -698,8 +698,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
            the denomination key's RSA signature over coin_pub, but as the
            wallet should really already have this information (and cannot
            check or do anything with it anyway if it doesn't), it seems
-           strictly unnecessary. */
-        if (0 !=
+           strictly unnecessary. */if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                                               "type", "OLD-COIN-PAYBACK",
@@ -801,8 +800,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
            hash and the denomination key's RSA signature over coin_pub, but as
            the wallet should really already have this information (and cannot
            check or do anything with it anyway if it doesn't), it seems
-           strictly unnecessary. */
-        if (0 !=
+           strictly unnecessary. */if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                                               "type", "PAYBACK-REFRESH",
@@ -1171,5 +1169,6 @@ TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
                                        "error", "Deposit unknown",
                                        "code", (json_int_t) ec);
 }
+
 
 /* end of taler-exchange-httpd_responses.c */

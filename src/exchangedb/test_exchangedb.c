@@ -292,6 +292,7 @@ create_denom_key_pair (unsigned int size,
   return dkp;
 }
 
+
 static struct TALER_Amount value;
 static struct TALER_Amount fee_withdraw;
 static struct TALER_Amount fee_deposit;
@@ -2256,5 +2257,6 @@ main (int argc,
   GNUNET_free (testname);
   return result;
 }
+
 
 /* end of test_exchangedb.c */

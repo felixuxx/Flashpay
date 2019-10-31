@@ -34,7 +34,6 @@
 #include "taler_fakebank_lib.h"
 
 
-
 /**
  * State for a "history" CMD.
  */
@@ -267,7 +266,6 @@ print_expected (struct History *h,
 }
 
 
-
 /**
  * Tell if the current item is beyond the allowed limit.
  *
@@ -338,8 +336,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
    * @var turns GNUNET_YES whenever either no 'start' value was
    *      given for the history query, or the given value is found
    *      in the list of all the CMDs.
-   */
-  int ok;
+   */int ok;
   const uint64_t *row_id_start = NULL;
 
   if (NULL != hs->start_row_reference)
@@ -399,8 +396,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
      * The following command allows us to skip over those CMDs
      * that do not offer a "row_id" trait.  Such skipped CMDs are
      * not interesting for building a history.
-     */
-    if (GNUNET_OK != TALER_TESTING_get_trait_uint64 (pos,
+     */if (GNUNET_OK != TALER_TESTING_get_trait_uint64 (pos,
                                                      0,
                                                      &row_id))
       continue;
@@ -533,8 +529,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
          * Warning: this zeroing is superfluous, as
          * total doesn't get incremented if 'start'
          * was given and couldn't be found.
-         */
-        total = 0;
+         */total = 0;
         ok = GNUNET_YES;
         continue;
       }
@@ -598,8 +593,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
      * _both_ the credit and the debit roles, but _only if_
      * the audit goes on both directions..  This needs more
      * explaination!
-     */
-    if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
+     */if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
            (hs->account_no == *credit_account_no)) &&
          ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
            (hs->account_no == *debit_account_no)) )
@@ -774,6 +768,7 @@ check_result (struct TALER_TESTING_Interpreter *is,
                 total);
   return GNUNET_OK;
 }
+
 
 /**
  * This callback will (1) check that the HTTP response code
@@ -1190,5 +1185,6 @@ TALER_TESTING_cmd_bank_history_range_with_dates
     return cmd;
   }
 }
+
 
 /* end of testing_api_cmd_history.c */

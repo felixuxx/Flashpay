@@ -103,4 +103,5 @@ TALER_WIRE_get_plugin_from_method (const char *method)
   return NULL;
 }
 
+
 /* end of wire_helper.c */

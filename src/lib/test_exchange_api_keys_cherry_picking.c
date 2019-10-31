@@ -166,8 +166,7 @@ run (void *cls,
      * key set.  The new KS will have only one key, because the
      * current lookahead_sign == 60 seconds and the key's withdraw
      * duration is 80 seconds.
-     */
-    TALER_TESTING_cmd_exec_keyup_with_now
+     */TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-1",
       CONFIG_FILE,
       TTH_parse_time (JAN2030)),
@@ -175,8 +174,7 @@ run (void *cls,
     * Should return 1 new key, + the original one.  NOTE: the
     * original DK will never be 'cancelled' as for the current
     * libtalerexchange logic, so it must always be counted.
-    */
-    TALER_TESTING_cmd_check_keys_with_now
+    */TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-2",
       2,  /* generation */
       2,
@@ -204,9 +202,7 @@ run (void *cls,
      *       very initial setup, and 1 from the 'keyup-1' CMD)
      * ----
      *   46
-     */
-
-    TALER_TESTING_cmd_check_keys_with_now
+     */TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-3",
       3,
       NDKS_RIGHT_BEFORE_SERIALIZATION,
@@ -268,5 +264,6 @@ main (int argc,
   }
   return 0;
 }
+
 
 /* end of test_exchange_api_keys_cherry_picking.c */

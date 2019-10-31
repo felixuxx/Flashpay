@@ -713,6 +713,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                                      &TFH_handle_history_advance);
 }
 
+
 /**
  * Handle incoming HTTP request for /history-range.
  *
@@ -897,6 +898,8 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
                                    &run_mhd,
                                    h);
 }
+
+
 #else
 /**
  * Schedule MHD.  This function should be called initially when an
@@ -957,6 +960,8 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   if (NULL != wws)
     GNUNET_NETWORK_fdset_destroy (wws);
 }
+
+
 #endif
 
 
