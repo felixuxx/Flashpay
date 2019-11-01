@@ -429,6 +429,8 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   struct GNUNET_HashCode c_hash;
   char *coin_ev;
   size_t coin_ev_size;
+  enum TALER_ErrorCode ec;
+  unsigned int hc;
 
   /* check denomination exists and is in payback mode */
   key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
@@ -441,15 +443,17 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                 &coin->denom_pub_hash,
-                                                TEH_KS_DKU_PAYBACK);
+                                                TEH_KS_DKU_PAYBACK,
+                                                &ec,
+                                                &hc);
   if (NULL == dki)
   {
     TEH_KS_release (key_state);
     TALER_LOG_WARNING (
       "Denomination key in /payback request not in payback mode\n");
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-                                           TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN,
-                                           "denom_pub");
+    return TEH_RESPONSE_reply_with_error (connection,
+                                          ec,
+                                          hc);
   }
   TALER_amount_ntoh (&pc.value,
                      &dki->issue.properties.value);

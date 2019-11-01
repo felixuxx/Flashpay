@@ -298,6 +298,29 @@ enum TALER_ErrorCode
   TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE = 1113,
 
   /**
+   * Validity period of the coin to be withdrawn
+   * is in the future.  Returned with an HTTP
+   * status of #MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_WITHDRAW_VALIDITY_IN_FUTURE = 1114,
+
+  /**
+   * Withdraw period of the coin to be withdrawn
+   * is in the past.  Returned with an HTTP
+   * status of #MHD_HTTP_GONE.
+   */
+  TALER_EC_WITHDRAW_VALIDITY_IN_PAST = 1115,
+
+  /**
+   * The private key associated with the denomination
+   * key is unknown to the server, possibly because
+   * the key was revoked.  Returned with an HTTP
+   * status of #MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_DENOMINATION_KEY_LOST = 1116,
+
+
+  /**
    * The exchange failed to obtain the transaction history of the
    * given reserve from the database.
    * This response is provided with HTTP status code
@@ -453,6 +476,20 @@ enum TALER_ErrorCode
    */
   TALER_EC_DEPOSIT_INVALID_TIMESTAMP = 1218,
 
+  /**
+   * Validity period of the denomination key
+   * is in the future.  Returned with an HTTP
+   * status of #MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_DEPOSIT_DENOMINATION_VALIDITY_IN_FUTURE = 1219,
+
+  /**
+   * Denomination key of the coin is past the
+   * deposit deadline.  Returned with an HTTP
+   * status of #MHD_HTTP_GONE.
+   */
+  TALER_EC_DEPOSIT_DENOMINATION_EXPIRED = 1220,
+
 
   /**
    * The respective coin did not have sufficient residual value
@@ -530,6 +567,35 @@ enum TALER_ErrorCode
    * being subjected to payback).
    */
   TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE = 1309,
+
+  /**
+   * The exchange is unaware of the denomination key that was
+   * used to sign the melted zombie coin.  This response is provided
+   * with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_REFRESH_PAYBACK_DENOMINATION_KEY_NOT_FOUND = 1301,
+
+  /**
+   * Validity period of the denomination key
+   * is in the future.  Returned with an HTTP
+   * status of #MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_REFRESH_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE = 1301,
+
+  /**
+   * Denomination key of the coin is past the
+   * deposit deadline.  Returned with an HTTP
+   * status of #MHD_HTTP_GONE.
+   */
+  TALER_EC_REFRESH_PAYBACK_DENOMINATION_EXPIRED = 1302,
+
+  /**
+   * Denomination key of the coin is past the
+   * deposit deadline.  Returned with an HTTP
+   * status of #MHD_HTTP_GONE.
+   */
+  TALER_EC_REFRESH_ZOMBIE_DENOMINATION_EXPIRED = 1303,
+
 
   /**
    * The provided transfer keys do not match up with the
@@ -921,7 +987,15 @@ enum TALER_ErrorCode
    * This response is provided with an HTTP status code of
    * MHD_HTTP_INTERNAL_SERVER_ERROR
    */
-  TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE = 1857,
+  TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE = 1859,
+
+  /**
+   * Validity period of the denomination key
+   * is in the future.  Returned with an HTTP
+   * status of #MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE = 1860,
+
 
   /**
    * The "have" parameter was not a natural number.

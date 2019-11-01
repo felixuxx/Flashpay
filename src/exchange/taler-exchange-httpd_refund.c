@@ -161,6 +161,8 @@ refund_transaction (void *cls,
   int deposit_found;
   int refund_found;
   int fee_cmp;
+  unsigned int hc;
+  enum TALER_ErrorCode ec;
 
   dep = NULL;
   ref = NULL;
@@ -354,7 +356,9 @@ refund_transaction (void *cls,
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (mks,
                                                 &dep->coin.denom_pub_hash,
-                                                TEH_KS_DKU_DEPOSIT);
+                                                TEH_KS_DKU_DEPOSIT,
+                                                &ec,
+                                                &hc);
   if (NULL == dki)
   {
     /* DKI not found, but we do have a coin with this DK in our database;
@@ -363,9 +367,9 @@ refund_transaction (void *cls,
     TEH_KS_release (mks);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
-                                                  TALER_EC_REFUND_DENOMINATION_KEY_NOT_FOUND,
-                                                  "denomination key not found");
+    *mhd_ret = TEH_RESPONSE_reply_with_error (connection,
+                                              ec,
+                                              hc);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TALER_amount_ntoh (&expect_fee,

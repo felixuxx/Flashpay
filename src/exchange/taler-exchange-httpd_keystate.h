@@ -129,6 +129,8 @@ enum TEH_KS_DenominationKeyUse
  * @param key_state state to look in
  * @param denom_pub_hash hash of denomination public key
  * @param use purpose for which the key is being located
+ * @param ec[out] set to the error code, in case the operation failed
+ * @param hc[out] set to the HTTP status code to use
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
@@ -137,7 +139,9 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
                                         TEH_KS_StateHandle *key_state,
                                         const struct
                                         GNUNET_HashCode *denom_pub_hash,
-                                        enum TEH_KS_DenominationKeyUse use);
+                                        enum TEH_KS_DenominationKeyUse use,
+                                        enum TALER_ErrorCode *ec,
+                                        unsigned int *hc);
 
 
 /**

@@ -250,6 +250,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   struct DepositContext dc;
   struct TEH_KS_StateHandle *mks;
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  enum TALER_ErrorCode ec;
+  unsigned int hc;
 
   /* check signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
@@ -287,12 +289,15 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (mks,
                                                 &deposit->coin.denom_pub_hash,
-                                                TEH_KS_DKU_DEPOSIT);
+                                                TEH_KS_DKU_DEPOSIT,
+                                                &ec,
+                                                &hc);
   if (NULL == dki)
   {
     TEH_KS_release (mks);
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-                                                 TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
+    return TEH_RESPONSE_reply_with_error (connection,
+                                          ec,
+                                          hc);
   }
   TALER_amount_ntoh (&dc.value,
                      &dki->issue.properties.value);
@@ -388,6 +393,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   json_t *wire;
   char *emsg;
   enum TALER_ErrorCode ec;
+  unsigned int hc;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TEH_KS_StateHandle *key_state;
@@ -497,16 +503,17 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                 &deposit.coin.denom_pub_hash,
-                                                TEH_KS_DKU_DEPOSIT);
+                                                TEH_KS_DKU_DEPOSIT,
+                                                &ec,
+                                                &hc);
   if (NULL == dki)
   {
-    /* FIXME: #3887: if DK was revoked, we might want to give a 403 and not a 404! */
     TEH_KS_release (key_state);
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-                                           TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN,
-                                           "denom_pub");
+    return TEH_RESPONSE_reply_with_error (connection,
+                                          ec,
+                                          hc);
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
                      &dki->issue.properties.fee_deposit);

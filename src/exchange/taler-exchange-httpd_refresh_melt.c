@@ -447,6 +447,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   json_t *root;
   struct RefreshMeltContext rmc;
   int res;
+  unsigned int hc;
+  enum TALER_ErrorCode ec;
   struct TEH_KS_StateHandle *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
@@ -501,7 +503,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   rmc.dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                     &rmc.refresh_session.coin.
                                                     denom_pub_hash,
-                                                    TEH_KS_DKU_DEPOSIT);
+                                                    TEH_KS_DKU_DEPOSIT,
+                                                    &ec,
+                                                    &hc);
   /* Consider case that denomination was revoked but
      this coin was already seen and thus refresh is OK. */
   if (NULL == rmc.dki)
@@ -511,7 +515,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                   &rmc.refresh_session.coin.
                                                   denom_pub_hash,
-                                                  TEH_KS_DKU_PAYBACK);
+                                                  TEH_KS_DKU_PAYBACK,
+                                                  &ec,
+                                                  &hc);
     if (NULL != dki)
     {
       struct TALER_CoinPublicInfo coin_info;
@@ -547,7 +553,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                   &rmc.refresh_session.coin.
                                                   denom_pub_hash,
-                                                  TEH_KS_DKU_ZOMBIE);
+                                                  TEH_KS_DKU_ZOMBIE,
+                                                  &ec,
+                                                  &hc);
     if (NULL != dki)
     {
       rmc.dki = dki;
@@ -558,9 +566,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   if (NULL == rmc.dki)
   {
     TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
-    res = TEH_RESPONSE_reply_arg_unknown (connection,
-                                          TALER_EC_REFRESH_MELT_DENOMINATION_KEY_NOT_FOUND,
-                                          "denom_pub");
+    res = TEH_RESPONSE_reply_with_error (connection,
+                                         ec,
+                                         hc);
     goto cleanup;
   }
 

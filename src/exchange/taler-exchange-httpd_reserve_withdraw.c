@@ -365,6 +365,8 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   json_t *root;
   int res;
   int mhd_ret;
+  unsigned int hc;
+  enum TALER_ErrorCode ec;
   struct TALER_Amount amount;
   struct TALER_Amount fee_withdraw;
   struct GNUNET_JSON_Specification spec[] = {
@@ -407,14 +409,16 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   }
   wc.dki = TEH_KS_denomination_key_lookup_by_hash (wc.key_state,
                                                    &wc.denom_pub_hash,
-                                                   TEH_KS_DKU_WITHDRAW);
+                                                   TEH_KS_DKU_WITHDRAW,
+                                                   &ec,
+                                                   &hc);
   if (NULL == wc.dki)
   {
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-                                           TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND,
-                                           "denom_pub");
+    return TEH_RESPONSE_reply_with_error (connection,
+                                          ec,
+                                          hc);
   }
   GNUNET_assert (NULL != wc.dki->denom_priv.rsa_private_key);
   TALER_amount_ntoh (&amount,

@@ -1954,6 +1954,8 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
  * @param key_state state to look in
  * @param denom_pub_hash hash of denomination public key
  * @param use purpose for which the key is being located
+ * @param ec[out] set to the error code, in case the operation failed
+ * @param hc[out] set to the HTTP status code to use
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
@@ -1962,7 +1964,9 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
                                         TEH_KS_StateHandle *key_state,
                                         const struct
                                         GNUNET_HashCode *denom_pub_hash,
-                                        enum TEH_KS_DenominationKeyUse use)
+                                        enum TEH_KS_DenominationKeyUse use,
+                                        enum TALER_ErrorCode *ec,
+                                        unsigned int *hc)
 {
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct GNUNET_TIME_Absolute now;
@@ -1976,7 +1980,25 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
     dki = GNUNET_CONTAINER_multihashmap_get (key_state->revoked_map,
                                              denom_pub_hash);
   if (NULL == dki)
+  {
+    *hc = MHD_HTTP_NOT_FOUND;
+    switch (use)
+    {
+    case TEH_KS_DKU_PAYBACK:
+      *ec = TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN;
+      break;
+    case TEH_KS_DKU_ZOMBIE:
+      *ec = TALER_EC_REFRESH_PAYBACK_DENOMINATION_KEY_NOT_FOUND;
+      break;
+    case TEH_KS_DKU_WITHDRAW:
+      *ec = TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND;
+      break;
+    case TEH_KS_DKU_DEPOSIT:
+      *ec = TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN;
+      break;
+    }
     return NULL;
+  }
   now = GNUNET_TIME_absolute_get ();
   if (now.abs_value_us <
       GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us)
@@ -1984,6 +2006,22 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Not returning DKI for %s, as start time is in the future\n",
                 GNUNET_h2s (denom_pub_hash));
+    *hc = MHD_HTTP_PRECONDITION_FAILED;
+    switch (use)
+    {
+    case TEH_KS_DKU_PAYBACK:
+      *ec = TALER_EC_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE;
+      break;
+    case TEH_KS_DKU_ZOMBIE:
+      *ec = TALER_EC_REFRESH_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE;
+      break;
+    case TEH_KS_DKU_WITHDRAW:
+      *ec = TALER_EC_WITHDRAW_VALIDITY_IN_FUTURE;
+      break;
+    case TEH_KS_DKU_DEPOSIT:
+      *ec = TALER_EC_DEPOSIT_DENOMINATION_VALIDITY_IN_FUTURE;
+      break;
+    }
     return NULL;
   }
   now = GNUNET_TIME_absolute_get ();
@@ -1997,6 +2035,8 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to create coins has passed\n",
                   GNUNET_h2s (denom_pub_hash));
+      *ec = TALER_EC_WITHDRAW_VALIDITY_IN_PAST;
+      *hc = MHD_HTTP_GONE;
       return NULL;
     }
     if (NULL == dki->denom_priv.rsa_private_key)
@@ -2004,6 +2044,8 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Not returning DKI of %s for WITHDRAW operation as we lack the private key, even though the withdraw period did not yet expire!\n",
                   GNUNET_h2s (denom_pub_hash));
+      *ec = TALER_EC_DENOMINATION_KEY_LOST;
+      *hc = MHD_HTTP_SERVICE_UNAVAILABLE;
       return NULL;
     }
     break;
@@ -2015,6 +2057,8 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to spend coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
+      *ec = TALER_EC_DEPOSIT_DENOMINATION_EXPIRED;
+      *hc = MHD_HTTP_GONE;
       return NULL;
     }
     break;
@@ -2026,6 +2070,8 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to payback coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
+      *ec = TALER_EC_REFRESH_PAYBACK_DENOMINATION_EXPIRED;
+      *hc = MHD_HTTP_GONE;
       return NULL;
     }
     break;
@@ -2037,6 +2083,8 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as legal expiration of coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
+      *ec = TALER_EC_REFRESH_ZOMBIE_DENOMINATION_EXPIRED;
+      *hc = MHD_HTTP_GONE;
       return NULL;
     }
     break;

@@ -171,6 +171,20 @@ TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating an error.
+ *
+ * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
+ * @param http_status HTTP status code to use
+ * @return a MHD result code
+ */
+int
+TEH_RESPONSE_reply_with_error (struct MHD_Connection *connection,
+                               enum TALER_ErrorCode ec,
+                               unsigned int http_status);
+
+
+/**
  * Send a response indicating an external error.
  *
  * @param connection the MHD connection to use

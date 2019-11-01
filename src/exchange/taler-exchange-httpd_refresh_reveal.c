@@ -610,6 +610,8 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
                                      &dki_h[i]),
         GNUNET_JSON_spec_end ()
       };
+      unsigned int hc;
+      enum TALER_ErrorCode ec;
 
       res = TEH_PARSE_json_array (connection,
                                   new_denoms_h_json,
@@ -623,13 +625,15 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       }
       dkis[i] = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                         &dki_h[i],
-                                                        TEH_KS_DKU_WITHDRAW);
+                                                        TEH_KS_DKU_WITHDRAW,
+                                                        &ec,
+                                                        &hc);
       if (NULL == dkis[i])
       {
         TEH_KS_release (key_state);
-        return TEH_RESPONSE_reply_arg_invalid (connection,
-                                               TALER_EC_REFRESH_REVEAL_FRESH_DENOMINATION_KEY_NOT_FOUND,
-                                               "new_denoms_h");
+        return TEH_RESPONSE_reply_with_error (connection,
+                                              ec,
+                                              hc);
       }
       GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
     }
