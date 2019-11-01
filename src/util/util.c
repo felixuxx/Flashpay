@@ -677,14 +677,12 @@ TALER_buffer_write_path (struct TALER_Buffer *buf, const char *str)
 {
   size_t len = strlen (str);
 
-  if (0 == len)
-    return;
-  if ('/' == str[0])
+  while ( (0 != len) && ('/' == str[0]) )
   {
     str++;
     len--;
   }
-  if ( (0 == buf->position) || ('/' != buf->mem[buf->position]) )
+  if ( (0 == buf->position) || ('/' != buf->mem[buf->position - 1]) )
   {
     TALER_buffer_ensure_remaining (buf, 1);
     buf->mem[buf->position++] = '/';
