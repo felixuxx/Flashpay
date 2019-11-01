@@ -180,8 +180,9 @@ denomkeys_iter (void *cls,
              alias);
     return GNUNET_SYSERR;
   }
-  printf ("Denomination key `%s' is valid\n",
-          alias);
+  printf ("Denomination key `%s' (%s) is valid\n",
+          alias,
+          GNUNET_h2s (&hc));
 
   return GNUNET_OK;
 }
