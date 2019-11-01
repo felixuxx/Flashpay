@@ -54,6 +54,9 @@ run (void *cls,
 {
   struct TALER_EXCHANGEDB_Plugin *plugin;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {

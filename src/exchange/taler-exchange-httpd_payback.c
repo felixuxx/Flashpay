@@ -598,6 +598,7 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
+  (void) rh;
   res = TEH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,

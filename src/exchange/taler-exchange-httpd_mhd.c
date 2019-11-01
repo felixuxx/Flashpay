@@ -53,6 +53,9 @@ TEH_MHD_handler_static_response (struct TEH_RequestHandler *rh,
   struct MHD_Response *response;
   int ret;
 
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   if (0 == rh->data_size)
     rh->data_size = strlen ((const char *) rh->data);
   response = MHD_create_response_from_buffer (rh->data_size,
@@ -99,6 +102,9 @@ TEH_MHD_handler_agpl_redirect (struct TEH_RequestHandler *rh,
   struct MHD_Response *response;
   int ret;
 
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   response = MHD_create_response_from_buffer (strlen (agpl),
                                               (void *) agpl,
                                               MHD_RESPMEM_PERSISTENT);
@@ -147,6 +153,9 @@ TEH_MHD_handler_send_json_pack_error (struct TEH_RequestHandler *rh,
                                       const char *upload_data,
                                       size_t *upload_data_size)
 {
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   return TEH_RESPONSE_reply_json_pack (connection,
                                        rh->response_code,
                                        "{s:s}",

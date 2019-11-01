@@ -1201,6 +1201,9 @@ run (void *cls,
   struct GNUNET_TIME_Relative lookahead_sign;
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   kcfg = cfg;
 
   if (now.abs_value_us != now_tmp.abs_value_us)

@@ -201,6 +201,7 @@ shutdown_task (void *cls)
 {
   struct WireAccount *wa;
 
+  (void) cls;
   if (NULL != task)
   {
     GNUNET_SCHEDULER_cancel (task);
@@ -583,6 +584,7 @@ find_transfers (void *cls)
   struct TALER_EXCHANGEDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for incoming wire transfers\n");
@@ -677,6 +679,9 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   cfg = c;
   if (GNUNET_OK !=
       exchange_serve_process_config ())

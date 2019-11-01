@@ -61,6 +61,7 @@ sign_account_data (void *cls,
   FILE *out;
   int ret;
 
+  (void) cls;
   if (GNUNET_NO == ai->credit_enabled)
     return;
   if (NULL == ai->wire_response_filename)
@@ -137,6 +138,9 @@ run (void *cls,
   struct GNUNET_CRYPTO_EddsaPublicKey mpub;
   struct GNUNET_CRYPTO_EddsaPublicKey mpub_cfg;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   if ( (NULL == masterkeyfile) &&
        (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_filename (cfg,

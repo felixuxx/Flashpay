@@ -194,6 +194,10 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
   int res;
   struct HTD_Context ctx;
 
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   memset (&ctx,
           0,
           sizeof (ctx));

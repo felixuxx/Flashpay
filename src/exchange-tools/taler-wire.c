@@ -116,6 +116,7 @@ history_cb (void *cls,
 {
   char *row_off_enc;
 
+  (void) cls;
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     fprintf (stdout,

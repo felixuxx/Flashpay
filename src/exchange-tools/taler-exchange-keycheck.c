@@ -57,6 +57,7 @@ signkeys_iter (void *cls,
                const char *filename,
                const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
 {
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Iterating over key `%s' for start time %s\n",
               filename,
@@ -135,6 +136,7 @@ denomkeys_iter (void *cls,
 {
   struct GNUNET_HashCode hc;
 
+  (void) cls;
   if (ntohl (dki->issue.properties.purpose.size) !=
       sizeof (struct TALER_DenominationKeyValidityPS))
   {
@@ -235,6 +237,9 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   kcfg = cfg;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,

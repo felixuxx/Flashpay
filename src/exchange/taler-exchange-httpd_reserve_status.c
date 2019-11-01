@@ -91,7 +91,7 @@ struct ReserveStatusContext
  * @param connection MHD request which triggered the transaction
  * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
+ *             if transaction failed (!); unused
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -102,6 +102,8 @@ reserve_status_transaction (void *cls,
 {
   struct ReserveStatusContext *rsc = cls;
 
+  (void) connection;
+  (void) mhd_ret;
   return TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                           session,
                                           &rsc->reserve_pub,

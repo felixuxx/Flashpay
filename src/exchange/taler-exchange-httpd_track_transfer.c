@@ -280,6 +280,7 @@ handle_transaction_data (void *cls,
   struct TEH_TrackTransferDetail *wdd;
   char *wire_method;
 
+  (void) rowid;
   (void) denom_pub;
   if (GNUNET_SYSERR == ctx->is_valid)
     return;

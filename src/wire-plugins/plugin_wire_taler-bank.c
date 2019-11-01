@@ -253,6 +253,7 @@ static void
 taler_bank_prepare_wire_transfer_cancel (void *cls,
                                          struct TALER_WIRE_PrepareHandle *pth)
 {
+  (void) cls;
   if (NULL != pth->task)
     GNUNET_SCHEDULER_cancel (pth->task);
   TALER_BANK_auth_free (&pth->auth);
@@ -547,6 +548,7 @@ execute_cb (void *cls,
   char *s;
   uint64_t serial_id_nbo;
 
+  (void) timestamp;
   eh->aaih = NULL;
   emsg = NULL;
   if (NULL != json)
@@ -567,15 +569,12 @@ execute_cb (void *cls,
                      "%u/%u",
                      http_status,
                      (unsigned int) ec);
-
   serial_id_nbo = GNUNET_htonll (serial_id);
-
   eh->cc (eh->cc_cls,
           (MHD_HTTP_OK == http_status) ? GNUNET_OK : GNUNET_SYSERR,
           &serial_id_nbo,
           sizeof (uint64_t),
           (MHD_HTTP_OK == http_status) ? NULL : s);
-
   GNUNET_free (s);
   GNUNET_free (eh);
 }
@@ -753,6 +752,7 @@ static void
 taler_bank_execute_wire_transfer_cancel (void *cls,
                                          struct TALER_WIRE_ExecuteHandle *eh)
 {
+  (void) cls;
   TALER_BANK_admin_add_incoming_cancel (eh->aaih);
   GNUNET_free (eh);
 }
@@ -841,6 +841,7 @@ bhist_cb (void *cls,
   uint64_t bserial_id = GNUNET_htonll (serial_id);
   struct TALER_WIRE_TransferDetails wd;
 
+  (void) json;
   switch (http_status)
   {
   case MHD_HTTP_OK:
@@ -1104,6 +1105,7 @@ reject_cb (void *cls,
 {
   struct TALER_WIRE_RejectHandle *rh = cls;
 
+  (void) http_status;
   rh->brh = NULL;
   rh->rej_cb (rh->rej_cb_cls,
               ec);
@@ -1129,6 +1131,7 @@ taler_bank_reject_transfer_cancel (void *cls,
 {
   void *ret = rh->rej_cb_cls;
 
+  (void) cls;
   if (NULL != rh->brh)
     TALER_BANK_reject_cancel (rh->brh);
   TALER_BANK_auth_free (&rh->auth);

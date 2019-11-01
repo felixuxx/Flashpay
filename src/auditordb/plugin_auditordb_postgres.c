@@ -1027,6 +1027,7 @@ postgres_start (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  (void) cls;
   if (GNUNET_OK !=
       GNUNET_PQ_exec_statements (session->conn,
                                  es))
