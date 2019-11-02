@@ -1230,6 +1230,13 @@ enum TALER_ErrorCode
   TALER_EC_HISTORY_DB_FETCH_ERROR = 2201,
 
   /**
+   * The backend could not find the contract specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_POLL_PAYMENT_CONTRACT_NOT_FOUND = 2250,
+
+  /**
    * We failed to contact the exchange for the /track/transaction
    * request.  This response is provided with HTTP status code
    * MHD_HTTP_SERVICE_UNAVAILABLE.
