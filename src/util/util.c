@@ -265,25 +265,22 @@ TALER_url_join (const char *base_url,
   unsigned int iparam = 0;
   va_list args;
   struct TALER_Buffer buf = { 0 };
-  size_t len = 0;
+  size_t len;
 
   GNUNET_assert (NULL != base_url);
   GNUNET_assert (NULL != path);
-
-  if (strlen (base_url) == 0)
+  if (0 == strlen (base_url))
   {
     /* base URL can't be empty */
     GNUNET_break (0);
     return NULL;
   }
-
   if ('/' != base_url[strlen (base_url) - 1])
   {
     /* Must be an actual base URL! */
     GNUNET_break (0);
     return NULL;
   }
-
   if ('/' == path[0])
   {
     /* The path must be relative. */
@@ -291,14 +288,14 @@ TALER_url_join (const char *base_url,
     return NULL;
   }
 
-  // Path should be relative to existing path of base URL
+  /* Path should be relative to existing path of base URL */
   GNUNET_break ('/' != path[0]);
 
   if ('/' == path[0])
     GNUNET_break (0);
 
   /* 1st pass: compute length */
-  len += strlen (base_url) + strlen (path);
+  len = strlen (base_url) + strlen (path) + 1;
 
   va_start (args, path);
   while (1)
@@ -316,7 +313,6 @@ TALER_url_join (const char *base_url,
   va_end (args);
 
   TALER_buffer_prealloc (&buf, len);
-
   TALER_buffer_write_str (&buf, base_url);
   TALER_buffer_write_str (&buf, path);
 
@@ -325,6 +321,7 @@ TALER_url_join (const char *base_url,
   {
     char *key;
     char *value;
+
     key = va_arg (args, char *);
     if (NULL == key)
       break;
