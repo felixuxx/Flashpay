@@ -1834,6 +1834,37 @@ enum TALER_ErrorCode
    */
   TALER_EC_BANK_REJECT_NO_RIGHTS = 5200,
 
+
+  /**
+   * The sync service failed to access its database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_ERROR.
+   */
+  TALER_EC_SYNC_DB_FETCH_ERROR = 6000,
+
+  /**
+   * The sync service failed find the record in its database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_SYNC_BACKUP_UNKNOWN = 6001,
+
+  /**
+   * The sync service failed find the account in its database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_SYNC_ACCOUNT_UNKNOWN = 6002,
+
+  /**
+   * The Etag provided in the If-None-Match header is
+   * malformed.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_SYNC_BAD_ETAG = 6003,
+
+
   /**
    * End of error code range.
    */
