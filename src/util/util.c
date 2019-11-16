@@ -270,7 +270,7 @@ TALER_url_join (const char *base_url,
   GNUNET_assert (NULL != base_url);
   GNUNET_assert (NULL != path);
 
-  if (strlen (base_url) == 0)
+  if (0 == strlen (base_url))
   {
     /* base URL can't be empty */
     GNUNET_break (0);
