@@ -1827,12 +1827,25 @@ enum TALER_ErrorCode
    */
   TALER_EC_BANK_TRANSACTION_NOT_FOUND = 5111,
 
+
+  /**
+   * Bank received a malformed amount string.
+   */
+  TALER_EC_BANK_BAD_FORMAT_AMOUNT = 5112,
+
   /**
    * The client does not own the account credited by the transaction
    * which is to be rejected, so it has no rights do reject it.  To be
    * returned along HTTP 403 Forbidden.
    */
   TALER_EC_BANK_REJECT_NO_RIGHTS = 5200,
+
+
+  /**
+   * This error code is returned when no known exception types
+   * captured the exception.
+   */
+  TALER_EC_BANK_UNMANAGED_EXCEPTION = 5300,
 
 
   /**
