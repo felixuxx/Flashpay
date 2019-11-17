@@ -250,6 +250,17 @@
 #define TALER_SIGNATURE_ANASTASIS_POLICY_DOWNLOAD 1401
 
 
+/*******************/
+/* Sync signatures */
+/*******************/
+
+
+/**
+ * EdDSA signature for a backup upload.
+ */
+#define TALER_SIGNATURE_SYNC_BACKUP_UPLOAD 1450
+
+
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
@@ -1409,6 +1420,7 @@ struct TALER_MerchantPaySessionSigPS
   struct GNUNET_HashCode h_session_id GNUNET_PACKED;
 
 };
+
 
 GNUNET_NETWORK_STRUCT_END
 

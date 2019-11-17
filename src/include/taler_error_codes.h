@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 Taler Systems SA
+  Copyright (C) 2016, 2017, 2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1875,7 +1875,107 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_SYNC_BAD_ETAG = 6003,
+  TALER_EC_SYNC_BAD_IF_NONE_MATCH = 6003,
+
+  /**
+   * The Etag provided in the If-Match header is
+   * malformed.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_SYNC_BAD_IF_MATCH = 6004,
+
+  /**
+   * The signature provided in the "Sync-Signature" header is
+   * malformed.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_SYNC_BAD_SYNC_SIGNATURE = 6005,
+
+  /**
+   * The Etag provided in the "Etag" header is
+   * malformed.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_SYNC_BAD_ETAG = 6006,
+
+  /**
+   * The signature provided in the "Sync-Signature" header
+   * does not match the account, old or new Etags.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_UNAUTHORIZED.
+   */
+  TALER_EC_SYNC_INVALID_SIGNATURE = 6007,
+
+  /**
+   * The "Content-length" field for the upload is either
+   * not a number, or too big, or missing.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_SYNC_BAD_CONTENT_LENGTH = 6008,
+
+  /**
+   * The "Content-length" field for the upload is
+   * too big based on the server's terms of service.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_PAYLOAD_TOO_LARGE.
+   */
+  TALER_EC_SYNC_EXCESSIVE_CONTENT_LENGTH = 6009,
+
+  /**
+   * The server is out of memory to handle the upload.
+   * Trying again later may succeed.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_PAYLOAD_TOO_LARGE.
+   */
+  TALER_EC_SYNC_OUT_OF_MEMORY_ON_CONTENT_LENGTH = 6010,
+
+  /**
+   * The uploaded data does not match the Etag.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_SYNC_INVALID_UPLOAD = 6011,
+
+  /**
+   * We failed to check for existing upload data in the database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_SYNC_DATABASE_FETCH_ERROR = 6012,
+
+  /**
+   * HTTP server was being shutdown while this operation was
+   * pending.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_SYNC_SHUTDOWN = 6013,
+
+  /**
+   * HTTP server experienced a timeout while awaiting
+   * promised payment.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_REQUEST_TIMEOUT.
+   */
+  TALER_EC_SYNC_PAYMENT_TIMEOUT = 6014,
+
+  /**
+   * Sync could not store order data in its own database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_ERROR.
+   */
+  TALER_EC_SYNC_PAYMENT_CREATE_DB_ERROR = 6015,
+
+  /**
+   * Sync could not store payment confirmation in its own database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_ERROR.
+   */
+  TALER_EC_SYNC_PAYMENT_CONFIRM_DB_ERROR = 6016,
 
 
   /**
