@@ -1243,7 +1243,7 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
 {
   char dat[128];
 
-  TEH_RESPONSE_add_global_headers (response);
+  TALER_MHD_add_global_headers (response);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -1546,8 +1546,8 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
   }
 
   /* Also compute compressed version of /keys response */
-  comp = TEH_RESPONSE_body_compress (&keys_jsonz,
-                                     &keys_jsonz_size);
+  comp = TALER_MHD_body_compress (&keys_jsonz,
+                                  &keys_jsonz_size);
   krd->response_compressed
     = MHD_create_response_from_buffer (keys_jsonz_size,
                                        keys_jsonz,
