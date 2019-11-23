@@ -27,6 +27,7 @@
 #include "taler-exchange-httpd_responses.h"
 #include "taler_util.h"
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_keystate.h"
 
 /**
@@ -874,15 +875,16 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
 
   history = TEH_RESPONSE_compile_transaction_history (tl);
   if (NULL == history)
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
-                                              "failed to convert transaction history to JSON");
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:I, s:o}",
-                                       "error", "insufficient funds",
-                                       "code", (json_int_t) ec,
-                                       "history", history);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
+                                       "failed to convert transaction history to JSON");
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_FORBIDDEN,
+                                    "{s:s, s:I, s:o}",
+                                    "error", "insufficient funds",
+                                    "code", (json_int_t) ec,
+                                    "history", history);
 }
 
 

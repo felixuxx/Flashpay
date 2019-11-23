@@ -737,7 +737,6 @@ connection_done (void *cls,
 static void
 write_stats ()
 {
-
   struct GNUNET_DISK_FileHandle *fh;
   pid_t pid = getpid ();
   char *benchmark_dir;

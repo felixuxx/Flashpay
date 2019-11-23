@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_responses.c
+ * @file taler-auditor-httpd_responses.c
  * @brief API for generating genric replies of the exchange; these
  *        functions are called TAH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
@@ -24,6 +24,7 @@
  */
 #include "platform.h"
 #include <zlib.h>
+#include "taler_mhd_lib.h"
 #include "taler-auditor-httpd_responses.h"
 #include "taler_util.h"
 #include "taler_json_lib.h"

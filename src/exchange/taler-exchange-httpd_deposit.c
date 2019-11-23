@@ -29,6 +29,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_responses.h"
@@ -83,17 +84,17 @@ reply_deposit_success (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:s, s:o, s:o}",
-                                       "status", "DEPOSIT_OK",
-                                       "sig", GNUNET_JSON_from_data_auto (&sig),
-                                       "pub", GNUNET_JSON_from_data_auto (
-                                         &pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:s, s:o, s:o}",
+                                    "status", "DEPOSIT_OK",
+                                    "sig", GNUNET_JSON_from_data_auto (&sig),
+                                    "pub", GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -149,8 +150,10 @@ deposit_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
+                                             "Could not check for existing identical deposit");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     return qs;
@@ -197,8 +200,10 @@ deposit_transaction (void *cls,
   {
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_DEPOSIT_HISTORY_DB_ERROR);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
+                                           "could not access coin history");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* Check that cost of all transactions is smaller than
@@ -223,8 +228,10 @@ deposit_transaction (void *cls,
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_DEPOSIT_STORE_DB_ERROR);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_DEPOSIT_STORE_DB_ERROR,
+                                           "Could not persist /deposit data");
   }
   return qs;
 }
@@ -273,9 +280,10 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                   &deposit->coin.coin_pub.eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_DEPOSIT_COIN_SIGNATURE_INVALID,
-                                                 "coin_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       TALER_EC_DEPOSIT_COIN_SIGNATURE_INVALID,
+                                       "coin_sig");
   }
 
   /* check denomination */
@@ -295,9 +303,10 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   if (NULL == dki)
   {
     TEH_KS_release (mks);
-    return TEH_RESPONSE_reply_with_error (connection,
-                                          ec,
-                                          hc);
+    return TALER_MHD_reply_with_error (connection,
+                                       ec,
+                                       hc,
+                                       "Could not find denomination key used in deposit");
   }
   TALER_amount_ntoh (&dc.value,
                      &dki->issue.properties.value);
@@ -445,9 +454,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-                                           TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
-                                           "refund_deadline");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
+                                       "refund_deadline");
   }
 
   if (TALER_EC_NONE !=
@@ -466,9 +476,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-                                           TALER_EC_DEPOSIT_INVALID_TIMESTAMP,
-                                           "timestamp");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSIT_INVALID_TIMESTAMP,
+                                       "timestamp");
   }
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire,
@@ -477,18 +488,20 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING (
       "Failed to parse JSON wire format specification for /deposit request\n");
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-                                           TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
-                                           "wire");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
+                                       "wire");
   }
   if (0 != GNUNET_memcmp (&deposit.h_wire,
                           &my_h_wire))
   {
     /* Client hashed contract differently than we did, reject */
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-                                           TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
-                                           "H_wire");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
+                                       "H_wire");
   }
 
   /* check denomination exists and is valid */
@@ -497,9 +510,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                 &deposit.coin.denom_pub_hash,
@@ -511,9 +525,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TEH_KS_release (key_state);
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_with_error (connection,
-                                          ec,
-                                          hc);
+    return TALER_MHD_reply_with_error (connection,
+                                       ec,
+                                       hc,
+                                       "Could not find denomination key used in deposit");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
                      &dki->issue.properties.fee_deposit);
@@ -525,9 +540,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
     TEH_KS_release (key_state);
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
-                                                 "ub_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
+                                       "ub_sig");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
                      &dki->issue.properties.fee_deposit);
@@ -538,9 +554,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_external_error (connection,
-                                              TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
-                                              "deposited amount smaller than depositing fee");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
+                                       "deposited amount smaller than depositing fee");
   }
 
   /* make sure coin is 'known' in database */

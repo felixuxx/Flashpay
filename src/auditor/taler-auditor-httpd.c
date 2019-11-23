@@ -385,18 +385,13 @@ handle_mhd_request (void *cls,
       &TAH_MHD_handler_static_response, MHD_HTTP_OK },
     /* AGPL licensing page, redirect to source. As per the AGPL-license,
        every deployment is required to offer the user a download of the
-       source. We make this easy by including a redirect to the source
+       source. We make this easy by including a redirect t the source
        here. */
     { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
       NULL, 0,
       &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
 
     { NULL, NULL, NULL, NULL, 0, 0 }
-  };
-  static struct TAH_RequestHandler h404 = {
-    "", NULL, "text/html",
-    "<html><title>404: not found</title></html>", 0,
-    &TAH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
   };
   struct TAH_RequestHandler *rh;
 
@@ -420,11 +415,13 @@ handle_mhd_request (void *cls,
                           upload_data,
                           upload_data_size);
   }
-  return TAH_MHD_handler_static_response (&h404,
-                                          connection,
-                                          con_cls,
-                                          upload_data,
-                                          upload_data_size);
+#define NOT_FOUND "<html><title>404: not found</title></html>"
+  return TALER_MHD_reply_static (connection,
+                                 MHD_HTTP_NOT_FOUND,
+                                 "text/html",
+                                 NOT_FOUND,
+                                 strlen (NOT_FOUND));
+#undef NOT_FOUND
 }
 
 

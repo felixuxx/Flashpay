@@ -23,7 +23,6 @@ taler_auditor_dbinit_SOURCES = \
   taler-auditor-dbinit.c
 taler_auditor_dbinit_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
@@ -58,6 +57,7 @@ taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd_responses.c taler-auditor-httpd_responses.h
 taler_auditor_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/wire/libtalerwire.la \
