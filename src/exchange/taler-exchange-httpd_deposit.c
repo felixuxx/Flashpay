@@ -304,8 +304,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   {
     TEH_KS_release (mks);
     return TALER_MHD_reply_with_error (connection,
-                                       ec,
                                        hc,
+                                       ec,
                                        "Could not find denomination key used in deposit");
   }
   TALER_amount_ntoh (&dc.value,
@@ -527,8 +527,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
-                                       ec,
                                        hc,
+                                       ec,
                                        "Could not find denomination key used in deposit");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,

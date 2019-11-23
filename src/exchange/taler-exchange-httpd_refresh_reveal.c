@@ -645,8 +645,8 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       {
         TEH_KS_release (key_state);
         return TALER_MHD_reply_with_error (connection,
-                                           ec,
                                            hc,
+                                           ec,
                                            "failed to find denomination key");
       }
       GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);

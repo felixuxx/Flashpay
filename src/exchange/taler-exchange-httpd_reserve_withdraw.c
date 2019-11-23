@@ -429,8 +429,8 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
     return TALER_MHD_reply_with_error (connection,
-                                       ec,
                                        hc,
+                                       ec,
                                        "could not find denomination key");
   }
   GNUNET_assert (NULL != wc.dki->denom_priv.rsa_private_key);

@@ -585,8 +585,8 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   {
     TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
     res = TALER_MHD_reply_with_error (connection,
-                                      ec,
                                       hc,
+                                      ec,
                                       "unknown denomination");
     goto cleanup;
   }

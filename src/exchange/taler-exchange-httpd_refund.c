@@ -372,8 +372,8 @@ refund_transaction (void *cls,
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           ec,
                                            hc,
+                                           ec,
                                            "denomination not found, but coin known");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

@@ -449,8 +449,8 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     TALER_LOG_WARNING (
       "Denomination key in /payback request not in payback mode\n");
     return TALER_MHD_reply_with_error (connection,
-                                       ec,
                                        hc,
+                                       ec,
                                        "denomination not allowing payback");
   }
   TALER_amount_ntoh (&pc.value,
