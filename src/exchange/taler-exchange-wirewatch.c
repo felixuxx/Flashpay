@@ -733,10 +733,10 @@ main (int argc,
                           options,
                           &run, NULL))
   {
-    GNUNET_free ((void*) argv);
+    GNUNET_free ((void *) argv);
     return 1;
   }
-  GNUNET_free ((void*) argv);
+  GNUNET_free ((void *) argv);
   return global_ret;
 }
 
