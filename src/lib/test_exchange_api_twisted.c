@@ -16,9 +16,8 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file exchange/test_exchange_api_twister.c
+ * @file exchange/test_exchange_api_twisted.c
  * @brief testcase to test exchange's HTTP API interface
  * @author Marcello Stanisci
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
@@ -262,7 +261,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_refund
       ("refund-bad-sig",
-      MHD_HTTP_UNAUTHORIZED,
+      MHD_HTTP_FORBIDDEN,
       "EUR:5",
       "EUR:0.01",
       "deposit-refund-1"),

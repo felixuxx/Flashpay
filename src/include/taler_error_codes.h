@@ -929,7 +929,7 @@ enum TALER_ErrorCode
   /**
    * The given coin signature is invalid for the request.
    * This response is provided with an
-   * HTTP status code of MHD_HTTP_UNAUTHORIZED.
+   * HTTP status code of MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_PAYBACK_SIGNATURE_INVALID = 1851,
 
@@ -1905,7 +1905,7 @@ enum TALER_ErrorCode
    * The signature provided in the "Sync-Signature" header
    * does not match the account, old or new Etags.
    * This response is provided with HTTP status code
-   * MHD_HTTP_UNAUTHORIZED.
+   * MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_SYNC_INVALID_SIGNATURE = 6007,
 
