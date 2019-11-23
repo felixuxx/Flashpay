@@ -284,7 +284,7 @@ run (void *cls,
       "\"value\":\"EUR:5\"}]}",
       GNUNET_TIME_UNIT_MINUTES,
       "EUR:5",
-      MHD_HTTP_FORBIDDEN),
+      MHD_HTTP_CONFLICT),
 
     TALER_TESTING_cmd_refund
       ("refund-deposit-not-found",
@@ -349,7 +349,7 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-new-twisted",
+  GNUNET_log_setup ("test-exchange-api-twisted",
                     "DEBUG", NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
