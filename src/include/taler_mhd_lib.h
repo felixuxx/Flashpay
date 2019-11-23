@@ -24,6 +24,7 @@
 #ifndef TALER_MHD_LIB_H
 #define TALER_MHD_LIB_H
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_error_codes.h"
@@ -151,6 +152,113 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
  */
 int
 TALER_MHD_reply_request_too_large (struct MHD_Connection *connection);
+
+
+/**
+ * Process a POST request containing a JSON object.  This
+ * function realizes an MHD POST processor that will
+ * (incrementally) process JSON data uploaded to the HTTP
+ * server.  It will store the required state in the
+ * "connection_cls", which must be cleaned up using
+ * #TALER_MHD_post_cleanup_callback().
+ *
+ * @param connection the MHD connection
+ * @param con_cls the closure (points to a `struct Buffer *`)
+ * @param upload_data the POST data
+ * @param upload_data_size number of bytes in @a upload_data
+ * @param json the JSON object for a completed request
+ * @return
+ *    #GNUNET_YES if json object was parsed or at least
+ *               may be parsed in the future (call again);
+ *               `*json` will be NULL if we need to be called again,
+ *                and non-NULL if we are done.
+ *    #GNUNET_NO is request incomplete or invalid
+ *               (error message was generated)
+ *    #GNUNET_SYSERR on internal error
+ *               (we could not even queue an error message,
+ *                close HTTP session with MHD_NO)
+ */
+int
+TALER_MHD_parse_post_json (struct MHD_Connection *connection,
+                           void **con_cls,
+                           const char *upload_data,
+                           size_t *upload_data_size,
+                           json_t **json);
+
+
+/**
+ * Function called whenever we are done with a request
+ * to clean up our state.
+ *
+ * @param con_cls value as it was left by
+ *        #TALER_MHD_post_json(), to be cleaned up
+ */
+void
+TALER_MHD_parse_post_cleanup_callback (void *con_cls);
+
+
+/**
+ * Parse JSON object into components based on the given field
+ * specification.
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param spec field specification for the parser
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                GNUNET_JSON_parse_free() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MHD_parse_json_data (struct MHD_Connection *connection,
+                           const json_t *root,
+                           struct GNUNET_JSON_Specification *spec);
+
+
+/**
+ * Parse JSON array into components based on the given field
+ * specification.  Generates error response on parse errors.
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param[in,out] spec field specification for the parser
+ * @param ... -1-terminated list of array offsets of type 'int'
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                GNUNET_JSON_parse_free() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MHD_parse_json_array (struct MHD_Connection *connection,
+                            const json_t *root,
+                            struct GNUNET_JSON_Specification *spec,
+                            ...);
+
+
+/**
+ * Extraxt fixed-size base32crockford encoded data from request.
+ *
+ * Queues an error response to the connection if the parameter is missing or
+ * invalid.
+ *
+ * @param connection the MHD connection
+ * @param param_name the name of the parameter with the key
+ * @param[out] out_data pointer to store the result
+ * @param out_size expected size of @a out_data
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+int
+TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
+                                  const char *param_name,
+                                  void *out_data,
+                                  size_t out_size);
 
 
 #endif

@@ -10,7 +10,8 @@ lib_LTLIBRARIES = \
   libtalermhd.la
 
 libtalermhd_la_SOURCES = \
-  mhd_responses.c
+  mhd_parsing.c \
+  mhd_responses.c 
 libtalermhd_la_LDFLAGS = \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
