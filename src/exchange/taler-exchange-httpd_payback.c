@@ -27,6 +27,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_payback.h"
 #include "taler-exchange-httpd_responses.h"
@@ -68,24 +69,25 @@ reply_payback_refresh_success (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o}",
-                                       "old_coin_pub",
-                                       GNUNET_JSON_from_data_auto (
-                                         old_coin_pub),
-                                       "timestamp", GNUNET_JSON_from_time_abs (
-                                         timestamp),
-                                       "amount", TALER_JSON_from_amount (
-                                         amount),
-                                       "exchange_sig",
-                                       GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o, s:o, s:o, s:o}",
+                                    "old_coin_pub",
+                                    GNUNET_JSON_from_data_auto (
+                                      old_coin_pub),
+                                    "timestamp", GNUNET_JSON_from_time_abs (
+                                      timestamp),
+                                    "amount", TALER_JSON_from_amount (
+                                      amount),
+                                    "exchange_sig",
+                                    GNUNET_JSON_from_data_auto (&sig),
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -122,23 +124,24 @@ reply_payback_success (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o}",
-                                       "reserve_pub",
-                                       GNUNET_JSON_from_data_auto (reserve_pub),
-                                       "timestamp", GNUNET_JSON_from_time_abs (
-                                         timestamp),
-                                       "amount", TALER_JSON_from_amount (
-                                         amount),
-                                       "exchange_sig",
-                                       GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o, s:o, s:o, s:o}",
+                                    "reserve_pub",
+                                    GNUNET_JSON_from_data_auto (reserve_pub),
+                                    "timestamp", GNUNET_JSON_from_time_abs (
+                                      timestamp),
+                                    "amount", TALER_JSON_from_amount (
+                                      amount),
+                                    "exchange_sig",
+                                    GNUNET_JSON_from_data_auto (&sig),
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
