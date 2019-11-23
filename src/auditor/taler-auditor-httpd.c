@@ -31,7 +31,6 @@
 #include "taler_auditordb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_exchanges.h"
-#include "taler-auditor-httpd_responses.h"
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
 
@@ -332,9 +331,9 @@ handle_version (struct TAH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  return TAH_RESPONSE_reply_json (connection,
-                                  ver,
-                                  MHD_HTTP_OK);
+  return TALER_MHD_reply_json (connection,
+                               ver,
+                               MHD_HTTP_OK);
 }
 
 

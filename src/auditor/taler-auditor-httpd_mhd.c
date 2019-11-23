@@ -29,8 +29,6 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_mhd_lib.h"
-#include "taler-auditor-httpd_responses.h"
-#include "taler-auditor-httpd_responses.h"
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_mhd.h"
 
@@ -65,7 +63,7 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  TAH_RESPONSE_add_global_headers (response);
+  TALER_MHD_add_global_headers (response);
   if (NULL != rh->mime_type)
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -123,11 +121,11 @@ TAH_MHD_handler_send_json_pack_error (struct TAH_RequestHandler *rh,
                                       const char *upload_data,
                                       size_t *upload_data_size)
 {
-  return TAH_RESPONSE_reply_json_pack (connection,
-                                       rh->response_code,
-                                       "{s:s}",
-                                       "error",
-                                       rh->data);
+  return TALER_MHD_reply_json_pack (connection,
+                                    rh->response_code,
+                                    "{s:s}",
+                                    "error",
+                                    rh->data);
 }
 
 

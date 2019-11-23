@@ -31,7 +31,6 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_db.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
-#include "taler-auditor-httpd_responses.h"
 
 
 /**

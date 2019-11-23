@@ -29,7 +29,6 @@
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_db.h"
 #include "taler-auditor-httpd_exchanges.h"
-#include "taler-auditor-httpd_responses.h"
 
 
 /**

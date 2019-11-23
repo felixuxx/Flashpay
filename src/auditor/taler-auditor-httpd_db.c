@@ -23,8 +23,9 @@
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-auditor-httpd_db.h"
-#include "taler-auditor-httpd_responses.h"
+#include "taler-auditor-httpd.h"
 
 
 /**
@@ -63,8 +64,10 @@ TAH_DB_run_transaction (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     if (NULL != mhd_ret)
-      *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_DB_SETUP_FAILED);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_DB_SETUP_FAILED,
+                                             "failed to establish session with database");
     return GNUNET_SYSERR;
   }
   //  TAH_plugin->preflight (TAH_plugin->cls, session); // FIXME: needed?
@@ -79,8 +82,10 @@ TAH_DB_run_transaction (struct MHD_Connection *connection,
     {
       GNUNET_break (0);
       if (NULL != mhd_ret)
-        *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-                                                         TALER_EC_DB_START_FAILED);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_DB_START_FAILED,
+                                               "failed to begin transaction");
       return GNUNET_SYSERR;
     }
     qs = cb (cb_cls,
@@ -98,8 +103,10 @@ TAH_DB_run_transaction (struct MHD_Connection *connection,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       if (NULL != mhd_ret)
-        *mhd_ret = TAH_RESPONSE_reply_commit_error (connection,
-                                                    TALER_EC_DB_COMMIT_FAILED_HARD);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_DB_COMMIT_FAILED_HARD,
+                                               "failed to commit transaction");
       return GNUNET_SYSERR;
     }
     /* make sure callback did not violate invariants! */
@@ -112,8 +119,10 @@ TAH_DB_run_transaction (struct MHD_Connection *connection,
                    name,
                    MAX_TRANSACTION_COMMIT_RETRIES);
   if (NULL != mhd_ret)
-    *mhd_ret = TAH_RESPONSE_reply_commit_error (connection,
-                                                TALER_EC_DB_COMMIT_FAILED_ON_RETRY);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_DB_COMMIT_FAILED_ON_RETRY,
+                                           "transaction repeatedly failed to serialize");
   return GNUNET_SYSERR;
 }
 
