@@ -27,10 +27,10 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_db.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
-#include "taler-auditor-httpd_parsing.h"
 #include "taler-auditor-httpd_responses.h"
 
 
@@ -43,10 +43,10 @@
 static int
 reply_deposit_confirmation_success (struct MHD_Connection *connection)
 {
-  return TAH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:s}",
-                                       "status", "DEPOSIT_CONFIRMATION_OK");
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:s}",
+                                    "status", "DEPOSIT_CONFIRMATION_OK");
 }
 
 
@@ -74,8 +74,10 @@ store_exchange_signing_key_transaction (void *cls,
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
-    *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
+                                           "failed to persist exchange signing key");
   }
   return qs;
 }
@@ -111,8 +113,10 @@ deposit_confirmation_transaction (void *cls,
   {
     TALER_LOG_WARNING (
       "Failed to store /deposit-confirmation information in database\n");
-    *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR,
+                                           "failed to persist deposit-confirmation data");
   }
   return qs;
 }
@@ -155,9 +159,10 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                   &es->master_public_key.eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
-    return TAH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                                 "master_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                       "master_sig");
   }
 
   /* execute transaction */
@@ -187,9 +192,10 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                   &dc->exchange_pub.eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit-confirmation request\n");
-    return TAH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                                 "exchange_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                       "exchange_sig");
   }
 
   /* execute transaction */
@@ -248,19 +254,19 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TAH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) ||
        (NULL == json) )
     return MHD_YES;
-  res = TAH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   es.exchange_pub = dc.exchange_pub; /* used twice! */
   dc.master_public_key = es.master_public_key;

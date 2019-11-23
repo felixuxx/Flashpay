@@ -31,7 +31,6 @@
 #include "taler_auditordb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_exchanges.h"
-#include "taler-auditor-httpd_parsing.h"
 #include "taler-auditor-httpd_responses.h"
 #include "taler-auditor-httpd_mhd.h"
 #include "taler-auditor-httpd.h"
@@ -292,7 +291,7 @@ handle_mhd_completion_callback (void *cls,
 {
   if (NULL == *con_cls)
     return;
-  TAH_PARSE_post_cleanup_callback (*con_cls);
+  TALER_MHD_parse_post_cleanup_callback (*con_cls);
   *con_cls = NULL;
 }
 
@@ -559,12 +558,17 @@ main (int argc,
   const char *listen_pid;
   const char *listen_fds;
   int fh = -1;
+  enum TALER_MHD_GlobalOptions go;
 
   if (0 >=
       GNUNET_GETOPT_run ("taler-auditor-httpd",
                          options,
                          argc, argv))
     return 1;
+  go = TALER_MHD_GO_NONE;
+  if (TAH_auditor_connection_close)
+    go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
+  TALER_MHD_setup (go);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-auditor-httpd",
                                    (NULL == loglev) ? "INFO" : loglev,

@@ -66,7 +66,7 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
                                        TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                        "Failed to compile transaction history");
   return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_FORBIDDEN,
+                                    MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
                                     "error",
                                     "insufficient funds",

@@ -188,7 +188,7 @@ enum TALER_ErrorCode
    * requested withdraw operation at this time.  The response includes
    * the current "balance" of the reserve as well as the transaction
    * "history" that lead to this balance.  This response is provided
-   * with HTTP status code MHD_HTTP_FORBIDDEN.
+   * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS = 1100,
 
@@ -340,7 +340,7 @@ enum TALER_ErrorCode
    * for the /deposit operation (i.e. due to double spending).
    * The "history" in the respose provides the transaction history
    * of the coin proving this fact.  This response is provided
-   * with HTTP status code MHD_HTTP_FORBIDDEN.
+   * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS = 1200,
 
@@ -496,7 +496,7 @@ enum TALER_ErrorCode
    * for the /refresh/melt operation.  The "history" in this
    * response provdes the "residual_value" of the coin, which may
    * be less than its "original_value".  This response is provided
-   * with HTTP status code MHD_HTTP_FORBIDDEN.
+   * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS = 1300,
 

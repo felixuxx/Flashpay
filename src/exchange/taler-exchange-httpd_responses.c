@@ -880,7 +880,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
                                        TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                        "failed to convert transaction history to JSON");
   return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_FORBIDDEN,
+                                    MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o}",
                                     "error", "insufficient funds",
                                     "code", (json_int_t) ec,
