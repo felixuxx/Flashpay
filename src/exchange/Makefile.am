@@ -63,6 +63,7 @@ taler_exchange_httpd_SOURCES = \
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/util/libtalerutil.la \
