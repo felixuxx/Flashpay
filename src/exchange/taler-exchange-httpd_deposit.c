@@ -291,9 +291,10 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   if (NULL == mks)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (mks,
                                                 &deposit->coin.denom_pub_hash,
@@ -465,9 +466,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                           &emsg)))
   {
     GNUNET_JSON_parse_free (spec);
-    res = TEH_RESPONSE_reply_external_error (connection,
-                                             ec,
-                                             emsg);
+    res = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      ec,
+                                      emsg);
     GNUNET_free (emsg);
     return res;
   }

@@ -67,7 +67,7 @@ TEH_MHD_handler_static_response (struct TEH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  TEH_RESPONSE_add_global_headers (response);
+  TALER_MHD_add_global_headers (response);
   if (NULL != rh->mime_type)
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -128,11 +128,11 @@ TEH_MHD_handler_send_json_pack_error (struct TEH_RequestHandler *rh,
   (void) connection_cls;
   (void) upload_data;
   (void) upload_data_size;
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       rh->response_code,
-                                       "{s:s}",
-                                       "error",
-                                       rh->data);
+  return TALER_MHD_reply_json_pack (connection,
+                                    rh->response_code,
+                                    "{s:s}",
+                                    "error",
+                                    rh->data);
 }
 
 

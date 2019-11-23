@@ -26,6 +26,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"
+#include "taler_error_codes.h"
 #include "taler_exchangedb_lib.h"
 
 

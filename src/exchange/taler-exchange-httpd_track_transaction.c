@@ -23,6 +23,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_mhd_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_keystate.h"
@@ -42,12 +43,12 @@ static int
 reply_transfer_pending (struct MHD_Connection *connection,
                         struct GNUNET_TIME_Absolute planned_exec_time)
 {
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_ACCEPTED,
-                                       "{s:o}",
-                                       "execution_time",
-                                       GNUNET_JSON_from_time_abs (
-                                         planned_exec_time));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_ACCEPTED,
+                                    "{s:o}",
+                                    "execution_time",
+                                    GNUNET_JSON_from_time_abs (
+                                      planned_exec_time));
 }
 
 
@@ -92,24 +93,25 @@ reply_track_transaction (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o}",
-                                       "wtid", GNUNET_JSON_from_data_auto (
-                                         wtid),
-                                       "execution_time",
-                                       GNUNET_JSON_from_time_abs (exec_time),
-                                       "coin_contribution",
-                                       TALER_JSON_from_amount (
-                                         coin_contribution),
-                                       "exchange_sig",
-                                       GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o, s:o, s:o, s:o}",
+                                    "wtid", GNUNET_JSON_from_data_auto (
+                                      wtid),
+                                    "execution_time",
+                                    GNUNET_JSON_from_time_abs (exec_time),
+                                    "coin_contribution",
+                                    TALER_JSON_from_amount (
+                                      coin_contribution),
+                                    "exchange_sig",
+                                    GNUNET_JSON_from_data_auto (&sig),
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -249,15 +251,19 @@ track_transaction_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_TRACK_TRANSACTION_DB_FETCH_FAILED);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_TRACK_TRANSACTION_DB_FETCH_FAILED,
+                                             "failed to fetch transaction data");
     }
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    *mhd_ret = TEH_RESPONSE_reply_transaction_unknown (connection,
-                                                       TALER_EC_TRACK_TRANSACTION_NOT_FOUND);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_TRACK_TRANSACTION_NOT_FOUND,
+                                           "transaction unknown");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -295,9 +301,10 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
                                   &merchant_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID,
-                                                 "merchant_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID,
+                                       "merchant_sig");
   }
   ctx.pending = GNUNET_NO;
   ctx.tps = tps;
@@ -314,8 +321,10 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
     return reply_transfer_pending (connection,
                                    ctx.execution_time);
   if (GNUNET_SYSERR == ctx.pending)
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-                                                 TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT,
+                                       "fees are inconsistent");
   return reply_track_transaction (connection,
                                   &tps->h_contract_terms,
                                   &tps->h_wire,
