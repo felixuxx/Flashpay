@@ -228,7 +228,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",
                                        "create-reserve-1",
                                        "EUR:5",
-                                       MHD_HTTP_FORBIDDEN),
+                                       MHD_HTTP_CONFLICT),
 
     /**
      * Try to double spend using different wire details.
@@ -238,7 +238,7 @@ run (void *cls,
       TALER_TESTING_make_wire_details (43,
                                        fakebank_url),
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_CONFLICT),
 
     /**
      * Try to double spend using a different transaction id.
@@ -253,7 +253,7 @@ run (void *cls,
       TALER_TESTING_make_wire_details (43,
                                        fakebank_url),
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_CONFLICT),
 
     /**
      * Try to double spend with different proposal.
@@ -263,7 +263,7 @@ run (void *cls,
       TALER_TESTING_make_wire_details (43,
                                        fakebank_url),
       "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
-      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_FORBIDDEN),
+      GNUNET_TIME_UNIT_ZERO, "EUR:5", MHD_HTTP_CONFLICT),
 
     TALER_TESTING_cmd_end ()
   };
@@ -364,7 +364,7 @@ run (void *cls,
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt-failing",
       "refresh-withdraw-coin-1",
-      MHD_HTTP_FORBIDDEN,
+      MHD_HTTP_CONFLICT,
       NULL),
 
     /* FIXME: also test with coin that was already melted
@@ -708,7 +708,7 @@ run (void *cls,
       ("payback-withdraw-coin-2-over",
       "payback-create-reserve-1",
       "EUR:10",
-      MHD_HTTP_FORBIDDEN),
+      MHD_HTTP_CONFLICT),
 
     TALER_TESTING_cmd_status ("payback-reserve-status-2",
                               "payback-create-reserve-1",
@@ -740,7 +740,7 @@ run (void *cls,
       ("expired-withdraw",
       "short-lived-reserve",
       "EUR:1",
-      MHD_HTTP_FORBIDDEN),
+      MHD_HTTP_CONFLICT),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_short-lived_transfer",
@@ -798,7 +798,7 @@ run (void *cls,
                                "EUR:0.5",
                                NULL),
 
-    TALER_TESTING_cmd_payback ("payback-2b", MHD_HTTP_FORBIDDEN,
+    TALER_TESTING_cmd_payback ("payback-2b", MHD_HTTP_CONFLICT,
                                "payback-withdraw-coin-2a",
                                "EUR:0.5",
                                NULL),
