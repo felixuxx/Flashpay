@@ -27,6 +27,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include <sys/resource.h>
+#include "taler_mhd_lib.h"
 #include "taler_auditordb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_exchanges.h"
@@ -428,122 +429,6 @@ handle_mhd_request (void *cls,
 
 
 /**
- * Parse the configuration to determine on which port
- * or UNIX domain path we should run an HTTP service.
- *
- * @param section section of the configuration to parse ("auditor" or "auditor-admin")
- * @param[out] rport set to the port number, or 0 for none
- * @param[out] unix_path set to the UNIX path, or NULL for none
- * @param[out] unix_mode set to the mode to be used for @a unix_path
- * @return #GNUNET_OK on success
- */
-static int
-parse_port_config (const char *section,
-                   uint16_t *rport,
-                   char **unix_path,
-                   mode_t *unix_mode)
-{
-  const char *choices[] = {"tcp", "unix"};
-  const char *serve_type;
-  unsigned long long port;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_choice (cfg,
-                                             section,
-                                             "serve",
-                                             choices,
-                                             &serve_type))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "serve",
-                               "serve type required");
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == strcmp (serve_type, "tcp"))
-  {
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_number (cfg,
-                                               section,
-                                               "port",
-                                               &port))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 "port",
-                                 "port number required");
-      return GNUNET_SYSERR;
-    }
-
-    if ( (0 == port) ||
-         (port > UINT16_MAX) )
-    {
-      fprintf (stderr,
-               "Invalid configuration (value out of range): %llu is not a valid port\n",
-               port);
-      return GNUNET_SYSERR;
-    }
-    *rport = (uint16_t) port;
-    *unix_path = NULL;
-    return GNUNET_OK;
-  }
-  if (0 == strcmp (serve_type, "unix"))
-  {
-    struct sockaddr_un s_un;
-    char *modestring;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                 section,
-                                                 "unixpath",
-                                                 unix_path))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 "unixpath",
-                                 "unixpath required");
-      return GNUNET_SYSERR;
-    }
-    if (strlen (*unix_path) >= sizeof (s_un.sun_path))
-    {
-      fprintf (stderr,
-               "Invalid configuration: unix path too long\n");
-      return GNUNET_SYSERR;
-    }
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               section,
-                                               "UNIXPATH_MODE",
-                                               &modestring))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 "UNIXPATH_MODE");
-      return GNUNET_SYSERR;
-    }
-    errno = 0;
-    *unix_mode = (mode_t) strtoul (modestring, NULL, 8);
-    if (0 != errno)
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 "UNIXPATH_MODE",
-                                 "must be octal number");
-      GNUNET_free (modestring);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_free (modestring);
-    return GNUNET_OK;
-  }
-  /* not reached */
-  GNUNET_assert (0);
-  return GNUNET_SYSERR;
-}
-
-
-/**
  * Load configuration parameters for the auditor
  * server into the corresponding global variables.
  *
@@ -562,10 +447,11 @@ auditor_serve_process_config ()
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      parse_port_config ("auditor",
-                         &serve_port,
-                         &serve_unixpath,
-                         &unixpath_mode))
+      TALER_MHD_parse_config (cfg,
+                              "auditor",
+                              &serve_port,
+                              &serve_unixpath,
+                              &unixpath_mode))
   {
     return GNUNET_SYSERR;
   }
@@ -637,141 +523,6 @@ auditor_serve_process_config ()
     GNUNET_free (pub);
   }
   return GNUNET_OK;
-}
-
-
-/**
- * Function called for logging by MHD.
- *
- * @param cls closure, NULL
- * @param fm format string (`printf()`-style)
- * @param ap arguments to @a fm
- */
-static void
-handle_mhd_logs (void *cls,
-                 const char *fm,
-                 va_list ap)
-{
-  static int cache;
-  char buf[2048];
-
-  if (-1 == cache)
-    return;
-  if (0 == cache)
-  {
-    if (0 ==
-        GNUNET_get_log_call_status (GNUNET_ERROR_TYPE_INFO,
-                                    "auditor-httpd",
-                                    __FILE__,
-                                    __FUNCTION__,
-                                    __LINE__))
-    {
-      cache = -1;
-      return;
-    }
-  }
-  cache = 1;
-  vsnprintf (buf,
-             sizeof (buf),
-             fm,
-             ap);
-  GNUNET_log_from_nocheck (GNUNET_ERROR_TYPE_INFO,
-                           "auditor-httpd",
-                           "%s",
-                           buf);
-}
-
-
-/**
- * Open UNIX domain socket for listining at @a unix_path with
- * permissions @a unix_mode.
- *
- * @param unix_path where to listen
- * @param unix_mode access permissions to set
- * @return -1 on error, otherwise the listen socket
- */
-static int
-open_unix_path (const char *unix_path,
-                mode_t unix_mode)
-{
-  struct GNUNET_NETWORK_Handle *nh;
-  struct sockaddr_un *un;
-  int fd;
-
-  if (sizeof (un->sun_path) <= strlen (unix_path))
-  {
-    fprintf (stderr,
-             "unixpath `%s' too long\n",
-             unix_path);
-    return -1;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Creating listen socket '%s' with mode %o\n",
-              unix_path,
-              unix_mode);
-
-  if (GNUNET_OK !=
-      GNUNET_DISK_directory_create_for_file (unix_path))
-  {
-    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
-                              "mkdir",
-                              unix_path);
-  }
-
-  un = GNUNET_new (struct sockaddr_un);
-  un->sun_family = AF_UNIX;
-  strncpy (un->sun_path,
-           unix_path,
-           sizeof (un->sun_path) - 1);
-  GNUNET_NETWORK_unix_precheck (un);
-
-  if (NULL == (nh = GNUNET_NETWORK_socket_create (AF_UNIX,
-                                                  SOCK_STREAM,
-                                                  0)))
-  {
-    fprintf (stderr,
-             "create failed for AF_UNIX\n");
-    GNUNET_free (un);
-    return -1;
-  }
-  if (GNUNET_OK !=
-      GNUNET_NETWORK_socket_bind (nh,
-                                  (void *) un,
-                                  sizeof (struct sockaddr_un)))
-  {
-    fprintf (stderr,
-             "bind failed for AF_UNIX\n");
-    GNUNET_free (un);
-    GNUNET_NETWORK_socket_close (nh);
-    return -1;
-  }
-  GNUNET_free (un);
-  if (GNUNET_OK !=
-      GNUNET_NETWORK_socket_listen (nh,
-                                    UNIX_BACKLOG))
-  {
-    fprintf (stderr,
-             "listen failed for AF_UNIX\n");
-    GNUNET_NETWORK_socket_close (nh);
-    return -1;
-  }
-
-  if (0 != chmod (unix_path,
-                  unix_mode))
-  {
-    fprintf (stderr,
-             "chmod failed: %s\n",
-             strerror (errno));
-    GNUNET_NETWORK_socket_close (nh);
-    return -1;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "set socket '%s' to mode %o\n",
-              unix_path,
-              unix_mode);
-  fd = GNUNET_NETWORK_get_fd (nh);
-  GNUNET_NETWORK_socket_free_memory_only_ (nh);
-  return fd;
 }
 
 
@@ -877,8 +628,8 @@ main (int argc,
   if ( (-1 == fh) &&
        (NULL != serve_unixpath) )
   {
-    fh = open_unix_path (serve_unixpath,
-                         unixpath_mode);
+    fh = TALER_MHD_open_unix_path (serve_unixpath,
+                                   unixpath_mode);
     if (-1 == fh)
       return 1;
   }
@@ -894,7 +645,8 @@ main (int argc,
                         MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
                         MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
                         MHD_OPTION_LISTEN_SOCKET, fh,
-                        MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
+                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
+                        NULL,
                         MHD_OPTION_NOTIFY_COMPLETED,
                         &handle_mhd_completion_callback, NULL,
                         MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,

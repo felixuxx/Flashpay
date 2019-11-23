@@ -23,6 +23,7 @@ taler_auditor_dbinit_SOURCES = \
   taler-auditor-dbinit.c
 taler_auditor_dbinit_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
