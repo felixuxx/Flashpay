@@ -47,7 +47,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \
   taler-exchange-httpd_keystate.c taler-exchange-httpd_keystate.h \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
-  taler-exchange-httpd_parsing.c taler-exchange-httpd_parsing.h \
   taler-exchange-httpd_payback.c taler-exchange-httpd_payback.h \
   taler-exchange-httpd_refresh_link.c taler-exchange-httpd_refresh_link.h \
   taler-exchange-httpd_refresh_melt.c taler-exchange-httpd_refresh_melt.h \

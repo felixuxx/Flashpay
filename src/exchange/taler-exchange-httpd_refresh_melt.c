@@ -24,8 +24,8 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
+#include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_refresh_melt.h"
 #include "taler-exchange-httpd_responses.h"
@@ -482,11 +482,11 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &root);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &root);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) ||
@@ -496,9 +496,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   memset (&rmc,
           0,
           sizeof (rmc));
-  res = TEH_PARSE_json_data (connection,
-                             root,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   root,
+                                   spec);
   json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;

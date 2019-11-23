@@ -27,7 +27,6 @@
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_test.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_responses.h"
 
 
@@ -70,18 +69,18 @@ TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   GNUNET_CRYPTO_hash (in_ptr,
@@ -135,18 +134,18 @@ TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
   };
   char *out;
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -215,18 +214,18 @@ TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -278,18 +277,18 @@ TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -347,18 +346,18 @@ TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -482,18 +481,18 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -563,18 +562,18 @@ TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
   };
   struct TALER_TransferSecretP secret;
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -609,11 +608,11 @@ TEH_TEST_handler_test (struct TEH_RequestHandler *rh,
   json_t *json;
   int res;
 
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )

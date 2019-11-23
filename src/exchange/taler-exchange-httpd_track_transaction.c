@@ -23,9 +23,9 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_track_transaction.h"
 #include "taler-exchange-httpd_responses.h"
@@ -366,18 +366,18 @@ TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   if (GNUNET_OK != res)
   {
     json_decref (json);

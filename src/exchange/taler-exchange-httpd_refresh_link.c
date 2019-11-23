@@ -25,7 +25,6 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_refresh_link.h"
 #include "taler-exchange-httpd_responses.h"
@@ -204,11 +203,11 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
   memset (&ctx,
           0,
           sizeof (ctx));
-  res = TEH_PARSE_mhd_request_arg_data (connection,
-                                        "coin_pub",
-                                        &ctx.coin_pub,
-                                        sizeof (struct
-                                                TALER_CoinSpendPublicKeyP));
+  res = TALER_MHD_parse_request_arg_data (connection,
+                                          "coin_pub",
+                                          &ctx.coin_pub,
+                                          sizeof (struct
+                                                  TALER_CoinSpendPublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if (GNUNET_OK != res)

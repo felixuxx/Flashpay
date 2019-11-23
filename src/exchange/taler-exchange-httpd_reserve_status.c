@@ -24,8 +24,8 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include "taler_mhd_lib.h"
+#include "taler_json_lib.h"
 #include "taler-exchange-httpd_reserve_status.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -137,11 +137,11 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
   int res;
   int mhd_ret;
 
-  res = TEH_PARSE_mhd_request_arg_data (connection,
-                                        "reserve_pub",
-                                        &rsc.reserve_pub,
-                                        sizeof (struct
-                                                TALER_ReservePublicKeyP));
+  res = TALER_MHD_parse_request_arg_data (connection,
+                                          "reserve_pub",
+                                          &rsc.reserve_pub,
+                                          sizeof (struct
+                                                  TALER_ReservePublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)

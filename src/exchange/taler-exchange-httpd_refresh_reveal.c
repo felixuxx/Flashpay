@@ -25,7 +25,6 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_refresh_reveal.h"
 #include "taler-exchange-httpd_responses.h"
@@ -586,11 +585,11 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     };
     int res;
 
-    res = TEH_PARSE_json_array (connection,
-                                tp_json,
-                                trans_spec,
-                                i,
-                                -1);
+    res = TALER_MHD_parse_json_array (connection,
+                                      tp_json,
+                                      trans_spec,
+                                      i,
+                                      -1);
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
@@ -627,11 +626,11 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       unsigned int hc;
       enum TALER_ErrorCode ec;
 
-      res = TEH_PARSE_json_array (connection,
-                                  new_denoms_h_json,
-                                  spec,
-                                  i,
-                                  -1);
+      res = TALER_MHD_parse_json_array (connection,
+                                        new_denoms_h_json,
+                                        spec,
+                                        i,
+                                        -1);
       if (GNUNET_OK != res)
       {
         TEH_KS_release (key_state);
@@ -664,11 +663,11 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
         GNUNET_JSON_spec_end ()
       };
 
-      res = TEH_PARSE_json_array (connection,
-                                  coin_evs,
-                                  spec,
-                                  i,
-                                  -1);
+      res = TALER_MHD_parse_json_array (connection,
+                                        coin_evs,
+                                        spec,
+                                        i,
+                                        -1);
       if (GNUNET_OK != res)
       {
         for (unsigned int j = 0; j<i; j++)
@@ -724,11 +723,11 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       };
       int res;
 
-      res = TEH_PARSE_json_array (connection,
-                                  link_sigs_json,
-                                  link_spec,
-                                  i,
-                                  -1);
+      res = TALER_MHD_parse_json_array (connection,
+                                        link_sigs_json,
+                                        link_spec,
+                                        i,
+                                        -1);
       if (GNUNET_OK != res)
         return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
       /* Check link_sigs[i] signature */
@@ -902,11 +901,11 @@ TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &root);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &root);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) ||
@@ -916,9 +915,9 @@ TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
   memset (&rctx,
           0,
           sizeof (rctx));
-  res = TEH_PARSE_json_data (connection,
-                             root,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   root,
+                                   spec);
   json_decref (root);
   if (GNUNET_OK != res)
   {

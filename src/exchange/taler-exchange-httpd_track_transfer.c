@@ -24,10 +24,10 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_signatures.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_track_transfer.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_wire_lib.h"
 
@@ -503,11 +503,11 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
   int mhd_ret;
 
   memset (&ctx, 0, sizeof (ctx));
-  res = TEH_PARSE_mhd_request_arg_data (connection,
-                                        "wtid",
-                                        &ctx.wtid,
-                                        sizeof (struct
-                                                TALER_WireTransferIdentifierRawP));
+  res = TALER_MHD_parse_request_arg_data (connection,
+                                          "wtid",
+                                          &ctx.wtid,
+                                          sizeof (struct
+                                                  TALER_WireTransferIdentifierRawP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)

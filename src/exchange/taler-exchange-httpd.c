@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include <sys/resource.h>
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_refund.h"
@@ -175,7 +174,7 @@ handle_mhd_completion_callback (void *cls,
               "Request completed\n");
   if (NULL == ecls)
     return;
-  TEH_PARSE_post_cleanup_callback (ecls->opaque_post_parsing_context);
+  TALER_MHD_parse_post_cleanup_callback (ecls->opaque_post_parsing_context);
   GNUNET_free (ecls);
   *con_cls = NULL;
   /* check that we didn't leave any transactions hanging */
