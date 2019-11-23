@@ -13,7 +13,6 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler_mhd_lib.h
  * @brief API for generating MHD replies
@@ -155,6 +154,39 @@ TALER_MHD_reply_request_too_large (struct MHD_Connection *connection);
 
 
 /**
+ * Function to call to handle the request by sending
+ * back a redirect to the AGPL source code.
+ *
+ * @param connection the MHD connection to handle
+ * @param url where to redirect for the sources
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_agpl (struct MHD_Connection *connection,
+                      const char *url);
+
+
+/**
+ * Function to call to handle the request by sending
+ * back static data.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param http_status status code to return
+ * @param mime_type content-type to use
+ * @param body response payload
+ * @param body_size number of bytes in @a body
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_static (struct MHD_Connection *connection,
+                        unsigned int http_status,
+                        const char *mime_type,
+                        const char *body,
+                        size_t *body_size);
+
+
+/**
  * Process a POST request containing a JSON object.  This
  * function realizes an MHD POST processor that will
  * (incrementally) process JSON data uploaded to the HTTP
@@ -259,6 +291,51 @@ TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
                                   const char *param_name,
                                   void *out_data,
                                   size_t out_size);
+
+
+/**
+ * Parse the configuration to determine on which port
+ * or UNIX domain path we should run an HTTP service.
+ *
+ * @param cfg configuration to parse
+ * @param section section of the configuration to parse (usually "exchange")
+ * @param[out] rport set to the port number, or 0 for none
+ * @param[out] unix_path set to the UNIX path, or NULL for none
+ * @param[out] unix_mode set to the mode to be used for @a unix_path
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                        const char *section,
+                        uint16_t *rport,
+                        char **unix_path,
+                        mode_t *unix_mode);
+
+
+/**
+ * Function called for logging by MHD.
+ *
+ * @param cls closure, NULL
+ * @param fm format string (`printf()`-style)
+ * @param ap arguments to @a fm
+ */
+void
+TALER_MHD_handle_logs (void *cls,
+                       const char *fm,
+                       va_list ap);
+
+
+/**
+ * Open UNIX domain socket for listining at @a unix_path with
+ * permissions @a unix_mode.
+ *
+ * @param unix_path where to listen
+ * @param unix_mode access permissions to set
+ * @return -1 on error, otherwise the listen socket
+ */
+int
+TALER_MHD_open_unix_path (const char *unix_path,
+                          mode_t unix_mode);
 
 
 #endif

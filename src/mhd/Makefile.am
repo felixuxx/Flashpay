@@ -10,6 +10,7 @@ lib_LTLIBRARIES = \
   libtalermhd.la
 
 libtalermhd_la_SOURCES = \
+  mhd_config.c \
   mhd_parsing.c \
   mhd_responses.c 
 libtalermhd_la_LDFLAGS = \

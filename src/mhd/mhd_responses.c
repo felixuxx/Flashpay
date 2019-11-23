@@ -316,4 +316,95 @@ TALER_MHD_reply_request_too_large (struct MHD_Connection *connection)
 }
 
 
+/**
+ * Function to call to handle the request by sending
+ * back a redirect to the AGPL source code.
+ *
+ * @param connection the MHD connection to handle
+ * @param url where to redirect for the sources
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_agpl (struct MHD_Connection *connection,
+                      const char *url)
+{
+  const char *agpl =
+    "This server is licensed under the Affero GPL. You will now be redirected to the source code.";
+  struct MHD_Response *response;
+  int ret;
+
+  response = MHD_create_response_from_buffer (strlen (agpl),
+                                              (void *) agpl,
+                                              MHD_RESPMEM_PERSISTENT);
+  if (NULL == response)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  TALER_MHD_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         "text/plain"));
+  if (MHD_NO ==
+      MHD_add_response_header (response,
+                               MHD_HTTP_HEADER_LOCATION,
+                               url))
+  {
+    GNUNET_break (0);
+    MHD_destroy_response (response);
+    return MHD_NO;
+  }
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_FOUND,
+                            response);
+  MHD_destroy_response (response);
+  return ret;
+}
+
+
+/**
+ * Function to call to handle the request by sending
+ * back static data.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param http_status status code to return
+ * @param mime_type content-type to use
+ * @param body response payload
+ * @param body_size number of bytes in @a body
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_static (struct MHD_Connection *connection,
+                        unsigned int http_status,
+                        const char *mime_type,
+                        const char *body,
+                        size_t *body_size)
+{
+  struct MHD_Response *response;
+  int ret;
+
+  response = MHD_create_response_from_buffer (body_size,
+                                              (void *) body,
+                                              MHD_RESPMEM_PERSISTENT);
+  if (NULL == response)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  TEH_RESPONSE_add_global_headers (response);
+  if (NULL != mime_type)
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (response,
+                                           MHD_HTTP_HEADER_CONTENT_TYPE,
+                                           mime_type));
+  ret = MHD_queue_response (connection,
+                            http_status,
+                            response);
+  MHD_destroy_response (response);
+  return ret;
+}
+
+
 /* end of mhd_responses.c */
