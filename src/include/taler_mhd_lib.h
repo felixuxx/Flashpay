@@ -183,7 +183,7 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
                         unsigned int http_status,
                         const char *mime_type,
                         const char *body,
-                        size_t *body_size);
+                        size_t body_size);
 
 
 /**

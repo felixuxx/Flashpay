@@ -380,7 +380,7 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
                         unsigned int http_status,
                         const char *mime_type,
                         const char *body,
-                        size_t *body_size)
+                        size_t body_size)
 {
   struct MHD_Response *response;
   int ret;
@@ -393,7 +393,7 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
     GNUNET_break (0);
     return MHD_NO;
   }
-  TEH_RESPONSE_add_global_headers (response);
+  TALER_MHD_add_global_headers (response);
   if (NULL != mime_type)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (response,
