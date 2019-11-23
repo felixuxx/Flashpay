@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -53,6 +53,9 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
   struct MHD_Response *response;
   int ret;
 
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   if (0 == rh->data_size)
     rh->data_size = strlen ((const char *) rh->data);
   response = MHD_create_response_from_buffer (rh->data_size,
