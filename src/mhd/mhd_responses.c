@@ -152,6 +152,43 @@ TALER_MHD_body_compress (void **buf,
 
 
 /**
+ * Make JSON response object.
+ *
+ * @param json the json object
+ * @return MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_json (const json_t *json)
+{
+  struct MHD_Response *resp;
+  char *json_str;
+
+  json_str = json_dumps (json,
+                         JSON_INDENT (2));
+  if (NULL == json_str)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  resp = MHD_create_response_from_buffer (strlen (json_str),
+                                          json_str,
+                                          MHD_RESPMEM_MUST_FREE);
+  if (NULL == resp)
+  {
+    free (json_str);
+    GNUNET_break (0);
+    return NULL;
+  }
+  TALER_MHD_add_global_headers (resp);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         "application/json"));
+  return resp;
+}
+
+
+/**
  * Send JSON object as response.
  *
  * @param connection the MHD connection
@@ -264,6 +301,60 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
                               response_code);
   json_decref (json);
   return ret;
+}
+
+
+/**
+ * Make JSON response object.
+ *
+ * @param fmt format string for pack
+ * @param ... varargs
+ * @return MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_json_pack (const char *fmt,
+                          ...)
+{
+  json_t *json;
+  va_list argp;
+  struct MHD_Response *ret;
+  json_error_t jerror;
+
+  va_start (argp, fmt);
+  json = json_vpack_ex (&jerror,
+                        0,
+                        fmt,
+                        argp);
+  va_end (argp);
+  if (NULL == json)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to pack JSON with format `%s': %s\n",
+                fmt,
+                jerror.text);
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  ret = TALER_MHD_make_json (json);
+  json_decref (json);
+  return ret;
+}
+
+
+/**
+ * Create a response indicating an internal error.
+ *
+ * @param ec error code to return
+ * @param hint hint about the internal error's nature
+ * @return a MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_error (enum TALER_ErrorCode ec,
+                      const char *hint)
+{
+  return TALER_MHD_make_json_pack ("{s:I, s:s}",
+                                   "code", (json_int_t) ec,
+                                   "hint", hint);
 }
 
 

@@ -285,3 +285,112 @@ TALER_MHD_open_unix_path (const char *unix_path,
   GNUNET_NETWORK_socket_free_memory_only_ (nh);
   return fd;
 }
+
+
+/**
+ * Bind a listen socket to the UNIX domain path
+ * or the TCP port and IP address as specified
+ * in @a cfg in section @a section.  IF only a
+ * port was specified, set @a port and return -1.
+ * Otherwise, return the bound file descriptor.
+ *
+ * @param cfg configuration to parse
+ * @param section configuration section to use
+ * @param port[out] port to set, if TCP without BINDTO
+ * @return -1 and a port of zero on error, otherwise
+ *    either -1 and a port, or a bound stream socket
+ */
+int
+TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                const char *section,
+                uint16_t *port)
+{
+  char *bind_to;
+  char *serve_unixpath;
+  mode_t unixpath_mode;
+  int fh;
+  char port_str[6];
+  struct addrinfo hints;
+  struct addrinfo *res;
+  int ec;
+  struct GNUNET_NETWORK_Handle *nh;
+
+  *port = 0;
+  if (GNUNET_OK !=
+      TALER_MHD_parse_config (cfg,
+                              section,
+                              port,
+                              &serve_unixpath,
+                              &unixpath_mode))
+    return -1;
+  if (NULL != serve_unixpath)
+    return TALER_MHD_open_unix_path (serve_unixpath,
+                                     unixpath_mode);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "BIND_TO",
+                                             &bind_to))
+    return -1; /* only set port */
+  /* let's have fun binding... */
+  GNUNET_snprintf (port_str,
+                   sizeof (port_str),
+                   "%u",
+                   (unsigned int) *port);
+  *port = 0; /* do NOT return port in case of errors */
+  memset (&hints, 0, sizeof (hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  hints.ai_flags = AI_PASSIVE
+#ifdef AI_IDN
+                   | AI_IDN
+#endif
+  ;
+  if (0 !=
+      (ec = getaddrinfo (bind_to,
+                         port_str,
+                         &hints,
+                         &res)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to resolve BIND_TO address `%s': %s\n",
+                bind_to,                  gai_strerror (ec));
+    GNUNET_free (bind_to);
+    return -1;
+  }
+  GNUNET_free (bind_to);
+
+  if (NULL == (nh = GNUNET_NETWORK_socket_create (res->ai_family,
+                                                  res->ai_socktype,
+                                                  res->ai_protocol)))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "socket");
+    freeaddrinfo (res);
+    return -1;
+  }
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_socket_bind (nh,
+                                  res->ai_addr,
+                                  res->ai_addrlen))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "bind");
+    freeaddrinfo (res);
+    return -1;
+  }
+  freeaddrinfo (res);
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_socket_listen (nh,
+                                    UNIX_BACKLOG))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "listen");
+    GNUNET_SCHEDULER_shutdown ();
+    return -1;
+  }
+  fh = GNUNET_NETWORK_get_fd (nh);
+  GNUNET_NETWORK_socket_free_memory_only_ (nh);
+  return fh;
+}

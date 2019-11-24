@@ -144,6 +144,40 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
 
 
 /**
+ * Make JSON response object.
+ *
+ * @param json the json object
+ * @return MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_json (const json_t *json);
+
+
+/**
+ * Make JSON response object.
+ *
+ * @param fmt format string for pack
+ * @param ... varargs
+ * @return MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_json_pack (const char *fmt,
+                          ...);
+
+
+/**
+ * Create a response indicating an internal error.
+ *
+ * @param ec error code to return
+ * @param hint hint about the internal error's nature
+ * @return a MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_error (enum TALER_ErrorCode ec,
+                      const char *hint);
+
+
+/**
  * Send a response indicating that the request was too big.
  *
  * @param connection the MHD connection to use
@@ -337,5 +371,23 @@ int
 TALER_MHD_open_unix_path (const char *unix_path,
                           mode_t unix_mode);
 
+
+/**
+ * Bind a listen socket to the UNIX domain path
+ * or the TCP port and IP address as specified
+ * in @a cfg in section @a section.  IF only a
+ * port was specified, set @a port and return -1.
+ * Otherwise, return the bound file descriptor.
+ *
+ * @param cfg configuration to parse
+ * @param section configuration section to use
+ * @param port[out] port to set, if TCP without BINDTO
+ * @return -1 and a port of zero on error, otherwise
+ *    either -1 and a port, or a bound stream socket
+ */
+int
+TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                const char *section,
+                uint16_t *port);
 
 #endif

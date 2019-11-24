@@ -1442,6 +1442,7 @@ enum TALER_ErrorCode
    * The amount to be refunded is inconsistent: either is lower than
    * the previous amount being awarded, or it is too big to be paid back.
    * In this second case, the fault stays on the business dept. side.
+   * Returned with an HTTP status of #MHD_HTTP_CONFLICT.
    */
   TALER_EC_REFUND_INCONSISTENT_AMOUNT = 2602,
 
