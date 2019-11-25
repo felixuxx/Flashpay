@@ -80,8 +80,8 @@ run (void *cls,
                                             GNUNET_CRYPTO_EcdhePrivateKey));
     display_data ("  pub1", &pub1, sizeof (struct
                                            GNUNET_CRYPTO_EcdhePublicKey));
-    display_data ("  priv2", &priv2, sizeof (struct
-                                             GNUNET_CRYPTO_EcdhePublicKey));
+    display_data ("  priv2", priv2, sizeof (struct
+                                            GNUNET_CRYPTO_EcdhePrivateKey));
     display_data ("  skm", &skm, sizeof (struct GNUNET_HashCode));
     GNUNET_free (priv1);
     GNUNET_free (priv2);
