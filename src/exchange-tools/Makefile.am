@@ -16,6 +16,7 @@ bin_PROGRAMS = \
   taler-exchange-keycheck \
   taler-exchange-wire \
   taler-exchange-dbinit \
+  taler-exchange-tvg \
   taler-wire
 
 taler_wire_SOURCES = \
@@ -58,6 +59,13 @@ taler_exchange_keycheck_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil  $(XLIB)
 taler_exchange_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+taler_exchange_tvg_SOURCES = \
+  taler-exchange-tvg.c
+taler_exchange_tvg_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil  $(XLIB)
 
 taler_exchange_dbinit_SOURCES = \
   taler-exchange-dbinit.c
