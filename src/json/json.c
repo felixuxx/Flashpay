@@ -80,4 +80,33 @@ TALER_JSON_get_error_code (const json_t *json)
 }
 
 
+/**
+ * Extract the Taler error code from the given @a data object, which is expected to be in JSON.
+ * Note that #TALER_EC_INVALID is returned if no "code" is present or if @a data is not in JSON.
+ *
+ * @param data response to extract the error code from
+ * @param data_size number of bytes in @a data
+ * @return the "code" value from @a json
+ */
+enum TALER_ErrorCode
+TALER_JSON_get_error_code2 (const void *data,
+                            size_t data_size)
+{
+  json_t *json;
+  enum TALER_ErrorCode ec;
+  json_error_t err;
+
+  json = json_loads (data,
+                     data_size,
+                     &err);
+  if (NULL == json)
+    return TALER_EC_INVALID;
+  ec = TALER_JSON_get_error_code (json);
+  json_decref (json);
+  if (ec == TALER_EC_NONE)
+    return TALER_EC_INVALID;
+  return ec;
+}
+
+
 /* End of json/json.c */
