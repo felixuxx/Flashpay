@@ -109,6 +109,10 @@ run (void *cls,
     data.purpose.size = htonl (sizeof (struct TALER_ProposalDataPS));
     GNUNET_assert (GNUNET_OK == GNUNET_CRYPTO_eddsa_sign (priv, &data.purpose,
                                                           &sig));
+    GNUNET_assert (GNUNET_OK == GNUNET_CRYPTO_eddsa_verify (0,
+                                                            &data.purpose,
+                                                            &sig,
+                                                            &pub));
 
     printf ("eddsa sig:\n");
     display_data ("  priv", priv, sizeof (struct
@@ -140,6 +144,7 @@ run (void *cls,
     display_data ("  salt", salt, strlen (salt));
     display_data ("  ikm", ikm, strlen (ikm));
     display_data ("  ctx", ctx, strlen (ctx));
+    printf ("  out_len %u\n", (unsigned int) out_len);
     display_data ("  out", out, out_len);
   }
   {
@@ -159,10 +164,10 @@ run (void *cls,
                                                       GNUNET_CRYPTO_EcdhePrivateKey));
     display_data ("  pub_ecdhe", &pub_ecdhe, sizeof (struct
                                                      GNUNET_CRYPTO_EcdhePublicKey));
-    display_data ("  priv_ecdhe", priv_ecdhe, sizeof (struct
+    display_data ("  priv_eddsa", priv_eddsa, sizeof (struct
                                                       GNUNET_CRYPTO_EddsaPrivateKey));
-    display_data ("  pub_ecdhe", &pub_ecdhe, sizeof (struct
-                                                     GNUNET_CRYPTO_EcdhePublicKey));
+    display_data ("  pub_eddsa", &pub_eddsa, sizeof (struct
+                                                     GNUNET_CRYPTO_EddsaPublicKey));
     display_data ("  key_material", &key_material, sizeof (struct
                                                            GNUNET_HashCode));
   }
