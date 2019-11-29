@@ -188,7 +188,7 @@ enum TALER_ErrorCode
    * requested withdraw operation at this time.  The response includes
    * the current "balance" of the reserve as well as the transaction
    * "history" that lead to this balance.  This response is provided
-   * with HTTP status code MHD_HTTP_FORBIDDEN.
+   * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS = 1100,
 
@@ -340,7 +340,7 @@ enum TALER_ErrorCode
    * for the /deposit operation (i.e. due to double spending).
    * The "history" in the respose provides the transaction history
    * of the coin proving this fact.  This response is provided
-   * with HTTP status code MHD_HTTP_FORBIDDEN.
+   * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS = 1200,
 
@@ -496,7 +496,7 @@ enum TALER_ErrorCode
    * for the /refresh/melt operation.  The "history" in this
    * response provdes the "residual_value" of the coin, which may
    * be less than its "original_value".  This response is provided
-   * with HTTP status code MHD_HTTP_FORBIDDEN.
+   * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS = 1300,
 
@@ -929,7 +929,7 @@ enum TALER_ErrorCode
   /**
    * The given coin signature is invalid for the request.
    * This response is provided with an
-   * HTTP status code of MHD_HTTP_UNAUTHORIZED.
+   * HTTP status code of MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_PAYBACK_SIGNATURE_INVALID = 1851,
 
@@ -1442,6 +1442,7 @@ enum TALER_ErrorCode
    * The amount to be refunded is inconsistent: either is lower than
    * the previous amount being awarded, or it is too big to be paid back.
    * In this second case, the fault stays on the business dept. side.
+   * Returned with an HTTP status of #MHD_HTTP_CONFLICT.
    */
   TALER_EC_REFUND_INCONSISTENT_AMOUNT = 2602,
 
@@ -1851,7 +1852,7 @@ enum TALER_ErrorCode
   /**
    * The sync service failed to access its database.
    * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_SYNC_DB_FETCH_ERROR = 6000,
 
@@ -1905,7 +1906,7 @@ enum TALER_ErrorCode
    * The signature provided in the "Sync-Signature" header
    * does not match the account, old or new Etags.
    * This response is provided with HTTP status code
-   * MHD_HTTP_UNAUTHORIZED.
+   * MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_SYNC_INVALID_SIGNATURE = 6007,
 
@@ -1984,7 +1985,6 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_SYNC_PAYMENT_CHECK_ORDER_DB_ERROR = 6017,
-
 
   /**
    * End of error code range.

@@ -35,7 +35,6 @@ TEL_curl_easy_get (const char *url)
   CURL *eh;
 
   eh = curl_easy_init ();
-
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,

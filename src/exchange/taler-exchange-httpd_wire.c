@@ -25,6 +25,7 @@
 #include "taler-exchange-httpd_validation.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include <jansson.h>
 
 /**
@@ -140,9 +141,9 @@ TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
   (void) upload_data;
   (void) upload_data_size;
   GNUNET_assert (NULL != wire_methods);
-  return TEH_RESPONSE_reply_json (connection,
-                                  wire_methods,
-                                  MHD_HTTP_OK);
+  return TALER_MHD_reply_json (connection,
+                               wire_methods,
+                               MHD_HTTP_OK);
 }
 
 

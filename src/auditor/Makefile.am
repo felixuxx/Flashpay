@@ -52,11 +52,10 @@ taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd_db.c taler-auditor-httpd_db.h \
   taler-auditor-httpd_deposit-confirmation.c taler-auditor-httpd_deposit-confirmation.h \
   taler-auditor-httpd_exchanges.c taler-auditor-httpd_exchanges.h \
-  taler-auditor-httpd_mhd.c taler-auditor-httpd_mhd.h \
-  taler-auditor-httpd_parsing.c taler-auditor-httpd_parsing.h \
-  taler-auditor-httpd_responses.c taler-auditor-httpd_responses.h
+  taler-auditor-httpd_mhd.c taler-auditor-httpd_mhd.h
 taler_auditor_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/wire/libtalerwire.la \

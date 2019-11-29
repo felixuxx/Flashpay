@@ -35,7 +35,7 @@
         __gauger_v[7] = "-c"; \
         __gauger_v[8] = (char *) category;  \
         __gauger_v[9] = (char *) NULL; \
-        execvp ("gauger", (char*const*) __gauger_v); \
+        execvp ("gauger", (char *const *) __gauger_v); \
         perror ("gauger"); \
         _exit (1); \
       }else{ \

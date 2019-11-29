@@ -24,7 +24,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include "taler-exchange-httpd_parsing.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_refresh_link.h"
 #include "taler-exchange-httpd_responses.h"
@@ -156,16 +156,18 @@ refresh_link_transaction (void *cls,
                                   ctx);
   if (NULL == ctx->mlist)
   {
-    *mhd_ret = TEH_RESPONSE_reply_internal_error (connection,
-                                                  ctx->ec,
-                                                  "coin_pub");
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           ctx->ec,
+                                           "coin_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
-                                               TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
-                                               "coin_pub");
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
+                                           "coin_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -201,11 +203,11 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
   memset (&ctx,
           0,
           sizeof (ctx));
-  res = TEH_PARSE_mhd_request_arg_data (connection,
-                                        "coin_pub",
-                                        &ctx.coin_pub,
-                                        sizeof (struct
-                                                TALER_CoinSpendPublicKeyP));
+  res = TALER_MHD_parse_request_arg_data (connection,
+                                          "coin_pub",
+                                          &ctx.coin_pub,
+                                          sizeof (struct
+                                                  TALER_CoinSpendPublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if (GNUNET_OK != res)
@@ -222,9 +224,9 @@ TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
       json_decref (ctx.mlist);
     return mhd_ret;
   }
-  mhd_ret = TEH_RESPONSE_reply_json (connection,
-                                     ctx.mlist,
-                                     MHD_HTTP_OK);
+  mhd_ret = TALER_MHD_reply_json (connection,
+                                  ctx.mlist,
+                                  MHD_HTTP_OK);
   json_decref (ctx.mlist);
   return mhd_ret;
 }

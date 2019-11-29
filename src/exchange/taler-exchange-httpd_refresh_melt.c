@@ -24,7 +24,8 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include "taler-exchange-httpd_parsing.h"
+#include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_refresh_melt.h"
 #include "taler-exchange-httpd_responses.h"
@@ -60,26 +61,28 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
 
   history = TEH_RESPONSE_compile_transaction_history (tl);
   if (NULL == history)
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-                                                 TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
-                                       "error",
-                                       "insufficient funds",
-                                       "code",
-                                       (json_int_t)
-                                       TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
-                                       "coin_pub",
-                                       GNUNET_JSON_from_data_auto (coin_pub),
-                                       "original_value",
-                                       TALER_JSON_from_amount (&coin_value),
-                                       "residual_value",
-                                       TALER_JSON_from_amount (residual),
-                                       "requested_value",
-                                       TALER_JSON_from_amount (requested),
-                                       "history",
-                                       history);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
+                                       "Failed to compile transaction history");
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_CONFLICT,
+                                    "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
+                                    "error",
+                                    "insufficient funds",
+                                    "code",
+                                    (json_int_t)
+                                    TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
+                                    "coin_pub",
+                                    GNUNET_JSON_from_data_auto (coin_pub),
+                                    "original_value",
+                                    TALER_JSON_from_amount (&coin_value),
+                                    "residual_value",
+                                    TALER_JSON_from_amount (residual),
+                                    "requested_value",
+                                    TALER_JSON_from_amount (requested),
+                                    "history",
+                                    history);
 }
 
 
@@ -110,19 +113,20 @@ reply_refresh_melt_success (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
   sig_json = GNUNET_JSON_from_data_auto (&sig);
   GNUNET_assert (NULL != sig_json);
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:i, s:o, s:o}",
-                                       "noreveal_index", (int) noreveal_index,
-                                       "exchange_sig", sig_json,
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:i, s:o, s:o}",
+                                    "noreveal_index", (int) noreveal_index,
+                                    "exchange_sig", sig_json,
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -189,8 +193,10 @@ refresh_check_melt (struct MHD_Connection *connection,
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_REFRESH_MELT_DB_FETCH_ERROR,
+                                             "failed to fetch old coin history");
     return qs;
   }
   if (rmc->zombie_required)
@@ -211,9 +217,10 @@ refresh_check_melt (struct MHD_Connection *connection,
       GNUNET_break (0);
       TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                               tl);
-      *mhd_ret = TEH_RESPONSE_reply_external_error (connection,
-                                                    TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE,
-                                                    "denomination expired");
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE,
+                                             "denomination expired");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -225,8 +232,10 @@ refresh_check_melt (struct MHD_Connection *connection,
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_REFRESH_MELT_COIN_HISTORY_COMPUTATION_FAILED);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_REFRESH_MELT_COIN_HISTORY_COMPUTATION_FAILED,
+                                           "failed to compute coin transaction history");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -310,8 +319,10 @@ refresh_melt_transaction (void *cls,
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_REFRESH_MELT_DB_FETCH_ERROR,
+                                             "failed to fetch melt index");
     return qs;
   }
 
@@ -335,8 +346,10 @@ refresh_melt_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
     {
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_REFRESH_MELT_DB_STORE_SESSION_ERROR);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_REFRESH_MELT_DB_STORE_SESSION_ERROR,
+                                             "failed to persist melt data");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     return qs;
@@ -370,9 +383,10 @@ handle_refresh_melt (struct MHD_Connection *connection,
                           &rmc->refresh_session.amount_with_fee) > 0)
     {
       GNUNET_break_op (0);
-      return TEH_RESPONSE_reply_external_error (connection,
-                                                TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION,
-                                                "melt amount smaller than melting fee");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION,
+                                         "melt amount smaller than melting fee");
     }
   }
 
@@ -398,9 +412,10 @@ handle_refresh_melt (struct MHD_Connection *connection,
                                     eddsa_pub))
     {
       GNUNET_break_op (0);
-      return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                   TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID,
-                                                   "confirm_sig");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID,
+                                         "confirm_sig");
     }
   }
 
@@ -467,11 +482,11 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &root);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &root);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) ||
@@ -481,9 +496,9 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   memset (&rmc,
           0,
           sizeof (rmc));
-  res = TEH_PARSE_json_data (connection,
-                             root,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   root,
+                                   spec);
   json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
@@ -492,9 +507,10 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");
-    res = TEH_RESPONSE_reply_internal_error (connection,
-                                             TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                             "no keys");
+    res = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                      "no keys");
     goto cleanup;
   }
 
@@ -530,8 +546,10 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
       if (0 > qs)
       {
         GNUNET_break (0);
-        res = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                    TALER_EC_REFRESH_MELT_DB_FETCH_ERROR);
+        res = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_REFRESH_MELT_DB_FETCH_ERROR,
+                                          "failed to find information about old coin");
         goto cleanup;
       }
       if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
@@ -566,9 +584,10 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
   if (NULL == rmc.dki)
   {
     TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
-    res = TEH_RESPONSE_reply_with_error (connection,
-                                         ec,
-                                         hc);
+    res = TALER_MHD_reply_with_error (connection,
+                                      hc,
+                                      ec,
+                                      "unknown denomination");
     goto cleanup;
   }
 
@@ -579,9 +598,10 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (key_state);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID,
-                                                 "denom_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID,
+                                       "denom_sig");
   }
 
   /* run actual logic, now that the request was parsed */

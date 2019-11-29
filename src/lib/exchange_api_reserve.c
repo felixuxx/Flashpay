@@ -797,7 +797,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
 
 
 /**
- * We got a 403 FORBIDDEN response for the /reserve/withdraw operation.
+ * We got a 409 CONFLICT response for the /reserve/withdraw operation.
  * Check the signatures on the withdraw transactions in the provided
  * history and that the balances add up.  We don't do anything directly
  * with the information, as the JSON will be returned to the application.
@@ -941,7 +941,7 @@ handle_reserve_withdraw_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
-  case MHD_HTTP_FORBIDDEN:
+  case MHD_HTTP_CONFLICT:
     /* The exchange says that the reserve has insufficient funds;
        check the signatures in the history... */
     if (GNUNET_OK !=
@@ -952,7 +952,7 @@ handle_reserve_withdraw_finished (void *cls,
       response_code = 0;
     }
     break;
-  case MHD_HTTP_UNAUTHORIZED:
+  case MHD_HTTP_FORBIDDEN:
     GNUNET_break (0);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we

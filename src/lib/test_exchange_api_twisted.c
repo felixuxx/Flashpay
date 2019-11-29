@@ -16,9 +16,8 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file exchange/test_exchange_api_twister.c
+ * @file exchange/test_exchange_api_twisted.c
  * @brief testcase to test exchange's HTTP API interface
  * @author Marcello Stanisci
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
@@ -262,7 +261,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_refund
       ("refund-bad-sig",
-      MHD_HTTP_UNAUTHORIZED,
+      MHD_HTTP_FORBIDDEN,
       "EUR:5",
       "EUR:0.01",
       "deposit-refund-1"),
@@ -285,7 +284,7 @@ run (void *cls,
       "\"value\":\"EUR:5\"}]}",
       GNUNET_TIME_UNIT_MINUTES,
       "EUR:5",
-      MHD_HTTP_FORBIDDEN),
+      MHD_HTTP_CONFLICT),
 
     TALER_TESTING_cmd_refund
       ("refund-deposit-not-found",
@@ -350,7 +349,7 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-new-twisted",
+  GNUNET_log_setup ("test-exchange-api-twisted",
                     "DEBUG", NULL);
 
   if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank

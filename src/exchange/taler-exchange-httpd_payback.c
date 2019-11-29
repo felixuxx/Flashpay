@@ -27,31 +27,11 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
-#include "taler-exchange-httpd_parsing.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_payback.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_validation.h"
-
-
-/**
- * A wallet asked for /payback, but we do not know anything about the
- * original withdraw operation specified. Generates a 404 reply.
- *
- * @param connection connection to the client
- * @param ec Taler error code
- * @return MHD result code
- */
-static int
-reply_payback_unknown (struct MHD_Connection *connection,
-                       enum TALER_ErrorCode ec)
-{
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s, s:I}",
-                                       "error", "blinded coin unknown",
-                                       "code", (json_int_t) ec);
-}
 
 
 /**
@@ -88,24 +68,25 @@ reply_payback_refresh_success (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o}",
-                                       "old_coin_pub",
-                                       GNUNET_JSON_from_data_auto (
-                                         old_coin_pub),
-                                       "timestamp", GNUNET_JSON_from_time_abs (
-                                         timestamp),
-                                       "amount", TALER_JSON_from_amount (
-                                         amount),
-                                       "exchange_sig",
-                                       GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o, s:o, s:o, s:o}",
+                                    "old_coin_pub",
+                                    GNUNET_JSON_from_data_auto (
+                                      old_coin_pub),
+                                    "timestamp", GNUNET_JSON_from_time_abs (
+                                      timestamp),
+                                    "amount", TALER_JSON_from_amount (
+                                      amount),
+                                    "exchange_sig",
+                                    GNUNET_JSON_from_data_auto (&sig),
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -142,23 +123,24 @@ reply_payback_success (struct MHD_Connection *connection,
                    &pub,
                    &sig))
   {
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o}",
-                                       "reserve_pub",
-                                       GNUNET_JSON_from_data_auto (reserve_pub),
-                                       "timestamp", GNUNET_JSON_from_time_abs (
-                                         timestamp),
-                                       "amount", TALER_JSON_from_amount (
-                                         amount),
-                                       "exchange_sig",
-                                       GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o, s:o, s:o, s:o}",
+                                    "reserve_pub",
+                                    GNUNET_JSON_from_data_auto (reserve_pub),
+                                    "timestamp", GNUNET_JSON_from_time_abs (
+                                      timestamp),
+                                    "amount", TALER_JSON_from_amount (
+                                      amount),
+                                    "exchange_sig",
+                                    GNUNET_JSON_from_data_auto (&sig),
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -268,8 +250,10 @@ payback_transaction (void *cls,
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       {
         GNUNET_break (0);
-        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                         TALER_EC_PAYBACK_DB_FETCH_FAILED);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_PAYBACK_DB_FETCH_FAILED,
+                                               "failed to fetch old coin of blind coin");
       }
       return qs;
     }
@@ -285,8 +269,10 @@ payback_transaction (void *cls,
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       {
         GNUNET_break (0);
-        *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                         TALER_EC_PAYBACK_DB_FETCH_FAILED);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_PAYBACK_DB_FETCH_FAILED,
+                                               "failed to fetch reserve of blinded coin");
       }
       return qs;
     }
@@ -296,8 +282,10 @@ payback_transaction (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Payback requested for unknown envelope %s\n",
                 GNUNET_h2s (&pc->h_blind));
-    *mhd_ret = reply_payback_unknown (connection,
-                                      TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND,
+                                           "blind coin unknown");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -312,8 +300,10 @@ payback_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_PAYBACK_DB_FETCH_FAILED);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_PAYBACK_DB_FETCH_FAILED,
+                                             "failed to fetch old coin transaction history");
     }
     return qs;
   }
@@ -329,8 +319,10 @@ payback_transaction (void *cls,
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_PAYBACK_HISTORY_DB_ERROR);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_PAYBACK_HISTORY_DB_ERROR,
+                                           "failed to calculate old coin transaction history");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_SYSERR ==
@@ -341,8 +333,10 @@ payback_transaction (void *cls,
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE,
+                                           "calculated negative old coin balance");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if ( (0 == pc->amount.fraction) &&
@@ -391,8 +385,10 @@ payback_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       TALER_LOG_WARNING ("Failed to store /payback information in database\n");
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_PAYBACK_DB_PUT_FAILED);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_PAYBACK_DB_PUT_FAILED,
+                                             "failed to persist payback data");
     }
     return qs;
   }
@@ -437,9 +433,10 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
   dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                 &coin->denom_pub_hash,
@@ -451,9 +448,10 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     TEH_KS_release (key_state);
     TALER_LOG_WARNING (
       "Denomination key in /payback request not in payback mode\n");
-    return TEH_RESPONSE_reply_with_error (connection,
-                                          ec,
-                                          hc);
+    return TALER_MHD_reply_with_error (connection,
+                                       hc,
+                                       ec,
+                                       "denomination not allowing payback");
   }
   TALER_amount_ntoh (&pc.value,
                      &dki->issue.properties.value);
@@ -465,9 +463,10 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid coin passed for /payback\n");
     TEH_KS_release (key_state);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
-                                                 "denom_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
+                                       "denom_sig");
   }
 
   /* check payback request signature */
@@ -485,9 +484,10 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on /payback request\n");
     TEH_KS_release (key_state);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 TALER_EC_PAYBACK_SIGNATURE_INVALID,
-                                                 "coin_sig");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_PAYBACK_SIGNATURE_INVALID,
+                                       "coin_sig");
   }
 
   GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
@@ -503,9 +503,10 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     GNUNET_break (0);
     TEH_KS_release (key_state);
 
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_PAYBACK_BLINDING_FAILED,
-                                              "coin_bks");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_PAYBACK_BLINDING_FAILED,
+                                       "coin_bks");
   }
   TEH_KS_release (key_state);
   GNUNET_CRYPTO_hash (coin_ev,
@@ -603,18 +604,18 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TEH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
+  res = TALER_MHD_parse_post_json (connection,
+                                   connection_cls,
+                                   upload_data,
+                                   upload_data_size,
+                                   &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TEH_PARSE_json_data (connection,
-                             json,
-                             spec);
+  res = TALER_MHD_parse_json_data (connection,
+                                   json,
+                                   spec);
   json_decref (json);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* hard failure */

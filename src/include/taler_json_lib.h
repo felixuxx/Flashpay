@@ -126,6 +126,19 @@ enum TALER_ErrorCode
 TALER_JSON_get_error_code (const json_t *json);
 
 
+/**
+ * Extract the Taler error code from the given @a data object, which is expected to be in JSON.
+ * Note that #TALER_EC_INVALID is returned if no "code" is present or if @a data is not in JSON.
+ *
+ * @param data response to extract the error code from
+ * @param data_size number of bytes in @a data
+ * @return the "code" value from @a json
+ */
+enum TALER_ErrorCode
+TALER_JSON_get_error_code2 (const void *data,
+                            size_t data_size);
+
+
 /* **************** /wire account offline signing **************** */
 
 /**

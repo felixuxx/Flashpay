@@ -191,32 +191,6 @@ TALER_link_recover_transfer_secret (const struct
 
 
 /**
- * Set the bits in the private EdDSA key so that they match
- * the specification.
- *
- * @param[in,out] pk private key to patch
- */
-static void
-patch_private_key (struct GNUNET_CRYPTO_EddsaPrivateKey *pk)
-{
-  uint8_t *p = (uint8_t *) pk;
-
-  /* Taken from like 170-172 of libgcrypt/cipher/ecc.c
-   * We note that libgcrypt stores the private key in the reverse order
-   * from many Ed25519 implementatons. */
-  p[0] &= 0x7f;  /* Clear bit 255. */
-  p[0] |= 0x40;  /* Set bit 254.   */
-  p[31] &= 0xf8; /* Clear bits 2..0 so that d mod 8 == 0  */
-
-  /* FIXME: Run GNUNET_CRYPTO_ecdhe_key_create several times and inspect
-   * the output to verify that the same bits are set and cleared.
-   * Is it worth also adding a test case that runs gcry_pk_testkey on
-   * this key after first parsing it into libgcrypt's s-expression mess
-   * ala decode_private_eddsa_key from gnunet/src/util/crypto_ecc.c?
-   * It'd run check_secret_key but not test_keys from libgcrypt/cipher/ecc.c */}
-
-
-/**
  * Setup information for a fresh coin.
  *
  * @param secret_seed seed to use for KDF to derive coin keys
@@ -240,7 +214,6 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                                     "taler-coin-derivation",
                                     strlen ("taler-coin-derivation"),
                                     NULL, 0));
-  patch_private_key (&ps->coin_priv.eddsa_priv);
 }
 
 
@@ -255,7 +228,6 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               ps,
                               sizeof (*ps));
-  patch_private_key (&ps->coin_priv.eddsa_priv);
 }
 
 

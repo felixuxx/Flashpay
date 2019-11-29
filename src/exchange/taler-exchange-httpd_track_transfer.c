@@ -24,10 +24,11 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_signatures.h"
-#include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_track_transfer.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler_wire_lib.h"
 
 
@@ -148,29 +149,30 @@ reply_track_transfer_details (struct MHD_Connection *connection,
                    &sig))
   {
     json_decref (deposits);
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
 
-  return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
-                                       "total", TALER_JSON_from_amount (total),
-                                       "wire_fee", TALER_JSON_from_amount (
-                                         wire_fee),
-                                       "merchant_pub",
-                                       GNUNET_JSON_from_data_auto (
-                                         merchant_pub),
-                                       "H_wire", GNUNET_JSON_from_data_auto (
-                                         h_wire),
-                                       "execution_time",
-                                       GNUNET_JSON_from_time_abs (exec_time),
-                                       "deposits", deposits,
-                                       "exchange_sig",
-                                       GNUNET_JSON_from_data_auto (&sig),
-                                       "exchange_pub",
-                                       GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+                                    "total", TALER_JSON_from_amount (total),
+                                    "wire_fee", TALER_JSON_from_amount (
+                                      wire_fee),
+                                    "merchant_pub",
+                                    GNUNET_JSON_from_data_auto (
+                                      merchant_pub),
+                                    "H_wire", GNUNET_JSON_from_data_auto (
+                                      h_wire),
+                                    "execution_time",
+                                    GNUNET_JSON_from_time_abs (exec_time),
+                                    "deposits", deposits,
+                                    "exchange_sig",
+                                    GNUNET_JSON_from_data_auto (&sig),
+                                    "exchange_pub",
+                                    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -396,23 +398,28 @@ track_transfer_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED,
+                                             "failed to fetch transaction data");
     }
     return qs;
   }
   if (GNUNET_SYSERR == ctx->is_valid)
   {
     GNUNET_break (0);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT,
+                                           "exchange database internally inconsistent");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_NO == ctx->is_valid)
   {
-    *mhd_ret = TEH_RESPONSE_reply_arg_unknown (connection,
-                                               TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
-                                               "wtid");
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
+                                           "wtid");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
@@ -430,8 +437,10 @@ track_transfer_transaction (void *cls,
          (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS) )
     {
       GNUNET_break (0);
-      *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                       TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND,
+                                             "did not find wire fee");
     }
     return qs;
   }
@@ -441,8 +450,10 @@ track_transfer_transaction (void *cls,
                              &ctx->wire_fee))
   {
     GNUNET_break (0);
-    *mhd_ret = TEH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT,
+                                           "could not subtract wire fee");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
@@ -492,11 +503,11 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
   int mhd_ret;
 
   memset (&ctx, 0, sizeof (ctx));
-  res = TEH_PARSE_mhd_request_arg_data (connection,
-                                        "wtid",
-                                        &ctx.wtid,
-                                        sizeof (struct
-                                                TALER_WireTransferIdentifierRawP));
+  res = TALER_MHD_parse_request_arg_data (connection,
+                                          "wtid",
+                                          &ctx.wtid,
+                                          sizeof (struct
+                                                  TALER_WireTransferIdentifierRawP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)

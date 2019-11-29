@@ -325,7 +325,7 @@ handle_deposit_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
-  case MHD_HTTP_FORBIDDEN:
+  case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
     if (GNUNET_OK !=
         verify_deposit_signature_forbidden (dh,
@@ -335,7 +335,7 @@ handle_deposit_finished (void *cls,
       response_code = 0;
     }
     break;
-  case MHD_HTTP_UNAUTHORIZED:
+  case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */

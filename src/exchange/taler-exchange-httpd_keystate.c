@@ -23,6 +23,7 @@
 #include "platform.h"
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_plugin.h"
@@ -1242,7 +1243,7 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
 {
   char dat[128];
 
-  TEH_RESPONSE_add_global_headers (response);
+  TALER_MHD_add_global_headers (response);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -1545,8 +1546,8 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
   }
 
   /* Also compute compressed version of /keys response */
-  comp = TEH_RESPONSE_body_compress (&keys_jsonz,
-                                     &keys_jsonz_size);
+  comp = TALER_MHD_body_compress (&keys_jsonz,
+                                  &keys_jsonz_size);
   krd->response_compressed
     = MHD_create_response_from_buffer (keys_jsonz_size,
                                        keys_jsonz,
@@ -2378,9 +2379,10 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                 &cherrypickn))
     {
       GNUNET_break_op (0);
-      return TEH_RESPONSE_reply_arg_invalid (connection,
-                                             TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-                                             "last_issue_date");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+                                         "last_issue_date");
     }
     last_issue_date.abs_value_us = (uint64_t) cherrypickn * 1000000LLU;
   }
@@ -2402,9 +2404,10 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                 &fakenown))
     {
       GNUNET_break_op (0);
-      return TEH_RESPONSE_reply_arg_invalid (connection,
-                                             TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-                                             "now");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+                                         "now");
     }
     now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
   }
@@ -2413,9 +2416,10 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   if (NULL == key_state)
   {
     TALER_LOG_ERROR ("Lacking keys to operate\n");
-    return TEH_RESPONSE_reply_internal_error (connection,
-                                              TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                              "no keys");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       "no keys");
   }
   krd = bsearch (&last_issue_date,
                  key_state->krd_array,
@@ -2444,7 +2448,7 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   }
   ret = MHD_queue_response (connection,
                             rh->response_code,
-                            (MHD_YES == TEH_RESPONSE_can_compress (connection))
+                            (MHD_YES == TALER_MHD_can_compress (connection))
                             ? krd->response_compressed
                             : krd->response_uncompressed);
   TEH_KS_release (key_state);

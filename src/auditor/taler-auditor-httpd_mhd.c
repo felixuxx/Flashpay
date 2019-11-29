@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014-2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,7 +28,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
-#include "taler-auditor-httpd_responses.h"
+#include "taler_mhd_lib.h"
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_mhd.h"
 
@@ -53,6 +53,9 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
   struct MHD_Response *response;
   int ret;
 
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   if (0 == rh->data_size)
     rh->data_size = strlen ((const char *) rh->data);
   response = MHD_create_response_from_buffer (rh->data_size,
@@ -63,7 +66,7 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  TAH_RESPONSE_add_global_headers (response);
+  TALER_MHD_add_global_headers (response);
   if (NULL != rh->mime_type)
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -94,38 +97,12 @@ TAH_MHD_handler_agpl_redirect (struct TAH_RequestHandler *rh,
                                const char *upload_data,
                                size_t *upload_data_size)
 {
-  const char *agpl =
-    "This server is licensed under the Affero GPL. You will now be redirected to the source code.";
-  struct MHD_Response *response;
-  int ret;
-
-  response = MHD_create_response_from_buffer (strlen (agpl),
-                                              (void *) agpl,
-                                              MHD_RESPMEM_PERSISTENT);
-  if (NULL == response)
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-  TAH_RESPONSE_add_global_headers (response);
-  if (NULL != rh->mime_type)
-    (void) MHD_add_response_header (response,
-                                    MHD_HTTP_HEADER_CONTENT_TYPE,
-                                    rh->mime_type);
-  if (MHD_NO ==
-      MHD_add_response_header (response,
-                               MHD_HTTP_HEADER_LOCATION,
-                               "http://www.git.taler.net/?p=auditor.git"))
-  {
-    GNUNET_break (0);
-    MHD_destroy_response (response);
-    return MHD_NO;
-  }
-  ret = MHD_queue_response (connection,
-                            rh->response_code,
-                            response);
-  MHD_destroy_response (response);
-  return ret;
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
+  return TALER_MHD_reply_agpl (connection,
+                               "http://www.git.taler.net/?p=exchange.git");
 }
 
 
@@ -147,11 +124,11 @@ TAH_MHD_handler_send_json_pack_error (struct TAH_RequestHandler *rh,
                                       const char *upload_data,
                                       size_t *upload_data_size)
 {
-  return TAH_RESPONSE_reply_json_pack (connection,
-                                       rh->response_code,
-                                       "{s:s}",
-                                       "error",
-                                       rh->data);
+  return TALER_MHD_reply_json_pack (connection,
+                                    rh->response_code,
+                                    "{s:s}",
+                                    "error",
+                                    rh->data);
 }
 
 

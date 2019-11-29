@@ -550,6 +550,7 @@ AC_CONFIG_FILES([Makefile
                  src/benchmark/Makefile
                  src/include/Makefile
                  src/json/Makefile
+                 src/mhd/Makefile
                  src/pq/Makefile
                  src/util/Makefile
                  src/util/taler-config

@@ -25,11 +25,10 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
 #include "taler-auditor-httpd.h"
 #include "taler-auditor-httpd_db.h"
 #include "taler-auditor-httpd_exchanges.h"
-#include "taler-auditor-httpd_parsing.h"
-#include "taler-auditor-httpd_responses.h"
 
 
 /**
@@ -43,10 +42,10 @@ static int
 reply_exchanges_success (struct MHD_Connection *connection,
                          json_t *ja)
 {
-  return TAH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_OK,
-                                       "{s:o}",
-                                       "exchanges", ja);
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o}",
+                                    "exchanges", ja);
 }
 
 
@@ -108,8 +107,10 @@ list_exchanges (void *cls,
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     TALER_LOG_WARNING ("Failed to handle /exchanges in database\n");
-    *mhd_ret = TAH_RESPONSE_reply_internal_db_error (connection,
-                                                     TALER_EC_LIST_EXCHANGES_DB_ERROR);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_LIST_EXCHANGES_DB_ERROR,
+                                           "Could not fetch exchange list from database");
   }
   return qs;
 }
@@ -148,4 +149,4 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
 }
 
 
-/* end of taler-auditor-httpd_deposit-confirmation.c */
+/* end of taler-auditor-httpd_exchanges.c */

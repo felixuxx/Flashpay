@@ -939,7 +939,7 @@ verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
 
 
 /**
- * Verify that the signatures on the "403 FORBIDDEN" response from the
+ * Verify that the signatures on the "409 CONFLICT" response from the
  * exchange demonstrating customer double-spending are valid.
  *
  * @param rmh melt handle
@@ -947,9 +947,9 @@ verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_refresh_melt_signature_forbidden (struct
-                                         TALER_EXCHANGE_RefreshMeltHandle *rmh,
-                                         const json_t *json)
+verify_refresh_melt_signature_conflict (struct
+                                        TALER_EXCHANGE_RefreshMeltHandle *rmh,
+                                        const json_t *json)
 {
   json_t *history;
   struct TALER_Amount original_value;
@@ -1083,17 +1083,17 @@ handle_refresh_melt_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
-  case MHD_HTTP_FORBIDDEN:
+  case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
     if (GNUNET_OK !=
-        verify_refresh_melt_signature_forbidden (rmh,
-                                                 j))
+        verify_refresh_melt_signature_conflict (rmh,
+                                                j))
     {
       GNUNET_break_op (0);
       response_code = 0;
     }
     break;
-  case MHD_HTTP_UNAUTHORIZED:
+  case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; assuming we checked them, this should never happen, we
        should pass the JSON reply to the application */

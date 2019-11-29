@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014--2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -13,21 +13,18 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file taler-auditor-httpd_parsing.c
+ * @file mhd_parsing.c
  * @brief functions to parse incoming requests (MHD arguments and JSON snippets)
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
-#include "taler-auditor-httpd_parsing.h"
-#include "taler-auditor-httpd_responses.h"
+#include "taler_mhd_lib.h"
 
 
 /**
@@ -41,7 +38,7 @@
  * realizes an MHD POST processor that will (incrementally) process
  * JSON data uploaded to the HTTP server.  It will store the required
  * state in the @a con_cls, which must be cleaned up using
- * #TAH_PARSE_post_cleanup_callback().
+ * #TALER_MHD_post_cleanup_callback().
  *
  * @param connection the MHD connection
  * @param con_cls the closure (points to a `struct Buffer *`)
@@ -60,11 +57,11 @@
  *                close HTTP session with MHD_NO)
  */
 int
-TAH_PARSE_post_json (struct MHD_Connection *connection,
-                     void **con_cls,
-                     const char *upload_data,
-                     size_t *upload_data_size,
-                     json_t **json)
+TALER_MHD_parse_post_json (struct MHD_Connection *connection,
+                           void **con_cls,
+                           const char *upload_data,
+                           size_t *upload_data_size,
+                           json_t **json)
 {
   enum GNUNET_JSON_PostResult pr;
 
@@ -78,19 +75,24 @@ TAH_PARSE_post_json (struct MHD_Connection *connection,
   {
   case GNUNET_JSON_PR_OUT_OF_MEMORY:
     return (MHD_NO ==
-            TAH_RESPONSE_reply_internal_error (connection,
-                                               TALER_EC_PARSER_OUT_OF_MEMORY,
-                                               "out of memory"))
-           ? GNUNET_SYSERR : GNUNET_NO;
+            TALER_MHD_reply_with_error
+              (connection,
+              MHD_HTTP_INTERNAL_SERVER_ERROR,
+              TALER_EC_PARSER_OUT_OF_MEMORY,
+              "out of memory")) ? GNUNET_SYSERR : GNUNET_NO;
+
   case GNUNET_JSON_PR_CONTINUE:
     return GNUNET_YES;
   case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
     return (MHD_NO ==
-            TAH_RESPONSE_reply_request_too_large (connection))
-           ? GNUNET_SYSERR : GNUNET_NO;
+            TALER_MHD_reply_request_too_large
+              (connection)) ? GNUNET_SYSERR : GNUNET_NO;
   case GNUNET_JSON_PR_JSON_INVALID:
     return (MHD_YES ==
-            TAH_RESPONSE_reply_invalid_json (connection))
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        TALER_EC_JSON_INVALID,
+                                        "invalid JSON uploaded"))
            ? GNUNET_NO : GNUNET_SYSERR;
   case GNUNET_JSON_PR_SUCCESS:
     GNUNET_break (NULL != *json);
@@ -107,11 +109,12 @@ TAH_PARSE_post_json (struct MHD_Connection *connection,
  * to clean up our state.
  *
  * @param con_cls value as it was left by
- *        #TAH_PARSE_post_json(), to be cleaned up
+ *        #TALER_MHD_post_json(), to be cleaned up
  */
 void
-TAH_PARSE_post_cleanup_callback (void *con_cls)
+TALER_MHD_parse_post_cleanup_callback (void *con_cls)
 {
+  // FIXME: this should probably NOT be done with a 'void *' like this!
   GNUNET_JSON_post_parser_cleanup (con_cls);
 }
 
@@ -132,10 +135,10 @@ TAH_PARSE_post_cleanup_callback (void *con_cls)
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 int
-TAH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
-                                const char *param_name,
-                                void *out_data,
-                                size_t out_size)
+TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
+                                  const char *param_name,
+                                  void *out_data,
+                                  size_t out_size)
 {
   const char *str;
 
@@ -145,9 +148,10 @@ TAH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
   if (NULL == str)
   {
     return (MHD_NO ==
-            TAH_RESPONSE_reply_arg_missing (connection,
-                                            TALER_EC_PARAMETER_MISSING,
-                                            param_name))
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        TALER_EC_PARAMETER_MISSING,
+                                        param_name))
            ? GNUNET_SYSERR : GNUNET_NO;
   }
   if (GNUNET_OK !=
@@ -156,9 +160,10 @@ TAH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
                                      out_data,
                                      out_size))
     return (MHD_NO ==
-            TAH_RESPONSE_reply_arg_invalid (connection,
-                                            TALER_EC_PARAMETER_MALFORMED,
-                                            param_name))
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        TALER_EC_PARAMETER_MALFORMED,
+                                        param_name))
            ? GNUNET_SYSERR : GNUNET_NO;
   return GNUNET_OK;
 }
@@ -179,9 +184,9 @@ TAH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
  *    #GNUNET_SYSERR on internal error
  */
 int
-TAH_PARSE_json_data (struct MHD_Connection *connection,
-                     const json_t *root,
-                     struct GNUNET_JSON_Specification *spec)
+TALER_MHD_parse_json_data (struct MHD_Connection *connection,
+                           const json_t *root,
+                           struct GNUNET_JSON_Specification *spec)
 {
   int ret;
   const char *error_json_name;
@@ -196,15 +201,15 @@ TAH_PARSE_json_data (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TAH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         "{s:s, s:I, s:s, s:I}",
-                                         "error", "parse error",
-                                         "code",
-                                         (json_int_t)
-                                         TALER_EC_JSON_INVALID_WITH_DETAILS,
-                                         "field", error_json_name,
-                                         "line", (json_int_t) error_line))
+           TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:I, s:s, s:I}",
+                                      "hint", "JSON parse error",
+                                      "code",
+                                      (json_int_t)
+                                      TALER_EC_JSON_INVALID_WITH_DETAILS,
+                                      "field", error_json_name,
+                                      "line", (json_int_t) error_line))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -228,10 +233,10 @@ TAH_PARSE_json_data (struct MHD_Connection *connection,
  *    #GNUNET_SYSERR on internal error
  */
 int
-TAH_PARSE_json_array (struct MHD_Connection *connection,
-                      const json_t *root,
-                      struct GNUNET_JSON_Specification *spec,
-                      ...)
+TALER_MHD_parse_json_array (struct MHD_Connection *connection,
+                            const json_t *root,
+                            struct GNUNET_JSON_Specification *spec,
+                            ...)
 {
   int ret;
   const char *error_json_name;
@@ -251,11 +256,14 @@ TAH_PARSE_json_array (struct MHD_Connection *connection,
   if (NULL == root)
   {
     ret = (MHD_YES ==
-           TAH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         "{s:s, s:I}",
-                                         "error", "parse error",
-                                         "dimension", dim))
+           TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:I, s:I}",
+                                      "hint", "expected array",
+                                      "code",
+                                      (json_int_t)
+                                      TALER_EC_JSON_INVALID_WITH_DETAILS,
+                                      "dimension", dim))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -268,12 +276,14 @@ TAH_PARSE_json_array (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TAH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         "{s:s, s:s, s:I}",
-                                         "error", "parse error",
-                                         "field", error_json_name,
-                                         "line", (json_int_t) error_line))
+           TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:I, s:I}",
+                                      "hint", error_json_name,
+                                      "code",
+                                      (json_int_t)
+                                      TALER_EC_JSON_INVALID_WITH_DETAILS,
+                                      "line", (json_int_t) error_line))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -281,4 +291,4 @@ TAH_PARSE_json_array (struct MHD_Connection *connection,
 }
 
 
-/* end of taler-auditor-httpd_parsing.c */
+/* end of mhd_parsing.c */
