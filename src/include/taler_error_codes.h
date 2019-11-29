@@ -1994,6 +1994,13 @@ enum TALER_ErrorCode
   TALER_EC_SYNC_PAYMENT_CREATE_BACKEND_ERROR = 6018,
 
   /**
+   * The sync service failed find the backup to be updated in its database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_SYNC_PREVIOUS_BACKUP_UNKNOWN = 6019,
+
+  /**
    * End of error code range.
    */
   TALER_EC_END = 9999
