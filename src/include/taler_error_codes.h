@@ -1859,7 +1859,7 @@ enum TALER_ErrorCode
    * Used for example when a client is trying to register
    * with a unavailable username.
    */
-  TALER_EC_BANK_SOFT_EXCEPTION = 5300,
+  TALER_EC_BANK_SOFT_EXCEPTION = 5400,
 
 
   /**
