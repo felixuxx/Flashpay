@@ -1966,16 +1966,24 @@ enum TALER_ErrorCode
   /**
    * Sync could not store order data in its own database.
    * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_SYNC_PAYMENT_CREATE_DB_ERROR = 6015,
 
   /**
    * Sync could not store payment confirmation in its own database.
    * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_ERROR.
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_SYNC_PAYMENT_CONFIRM_DB_ERROR = 6016,
+
+  /**
+   * Sync could not fetch information about possible existing
+   * orders from its own database.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_SYNC_PAYMENT_CHECK_ORDER_DB_ERROR = 6017,
 
 
   /**
