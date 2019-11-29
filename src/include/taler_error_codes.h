@@ -1987,6 +1987,13 @@ enum TALER_ErrorCode
   TALER_EC_SYNC_PAYMENT_CHECK_ORDER_DB_ERROR = 6017,
 
   /**
+   * Sync could not setup the payment request with its own backend.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_SYNC_PAYMENT_CREATE_BACKEND_ERROR = 6018,
+
+  /**
    * End of error code range.
    */
   TALER_EC_END = 9999
