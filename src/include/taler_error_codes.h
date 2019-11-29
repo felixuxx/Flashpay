@@ -1844,9 +1844,22 @@ enum TALER_ErrorCode
 
   /**
    * This error code is returned when no known exception types
-   * captured the exception.
+   * captured the exception, and comes along with a 500 Internal
+   * Server Error.
    */
   TALER_EC_BANK_UNMANAGED_EXCEPTION = 5300,
+
+
+  /**
+   * This error code is used for all those exceptions that
+   * do not really need a specific error code to return to
+   * the client, but need to signal the middleware that the
+   * bank is not responding with 500 Internal Server Error.
+   *
+   * Used for example when a client is trying to register
+   * with a unavailable username.
+   */
+  TALER_EC_BANK_SOFT_EXCEPTION = 5300,
 
 
   /**
