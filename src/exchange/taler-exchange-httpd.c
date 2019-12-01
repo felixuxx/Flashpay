@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2019 Inria and GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2019 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -13,7 +13,6 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-exchange-httpd.c
  * @brief Serve the HTTP interface of the exchange
@@ -143,6 +142,16 @@ static char *serve_unixpath;
  * File mode for unix-domain socket.
  */
 static mode_t unixpath_mode;
+
+/**
+ * Counter for the number of requests this HTTP has processed so far.
+ */
+static unsigned long long req_count;
+
+/**
+ * Limit for the number of requests this HTTP may process before restarting.
+ */
+static unsigned long long req_max;
 
 
 /**
@@ -422,7 +431,19 @@ handle_mhd_request (void *cls,
   (void) version;
   if (NULL == ecls)
   {
+    unsigned long long cnt;
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Handling new request\n");
+    cnt = __sync_add_and_fetch (&req_count, 1LLU);
+    if (req_max == cnt)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Restarting exchange service after %llu requests\n",
+                  cnt);
+      (void) kill (getpid (),
+                   SIGHUP);
+    }
+
     /* We're in a new async scope! */
     ecls = *con_cls = GNUNET_new (struct ExchangeHttpRequestClosure);
     GNUNET_async_scope_fresh (&ecls->async_scope_id);
@@ -497,6 +518,14 @@ exchange_serve_process_config ()
 {
   char *TEH_master_public_key_str;
 
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "exchange",
+                                             "MAX_REQUESTS",
+                                             &req_max))
+  {
+    req_max = ULONG_LONG_MAX;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
                                            "exchange",
