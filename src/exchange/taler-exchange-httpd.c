@@ -36,6 +36,7 @@
 #include "taler-exchange-httpd_refresh_link.h"
 #include "taler-exchange-httpd_refresh_melt.h"
 #include "taler-exchange-httpd_refresh_reveal.h"
+#include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_track_transfer.h"
 #include "taler-exchange-httpd_track_transaction.h"
 #include "taler-exchange-httpd_keystate.h"
@@ -883,6 +884,7 @@ main (int argc,
   if (GNUNET_OK !=
       exchange_serve_process_config ())
     return 1;
+  TEH_load_terms (cfg);
 
   /* check for systemd-style FD passing */
   listen_pid = getenv ("LISTEN_PID");

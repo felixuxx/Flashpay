@@ -55,6 +55,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_reserve_status.c taler-exchange-httpd_reserve_status.h \
   taler-exchange-httpd_reserve_withdraw.c taler-exchange-httpd_reserve_withdraw.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
+  taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
   taler-exchange-httpd_track_transaction.c taler-exchange-httpd_track_transaction.h \
   taler-exchange-httpd_track_transfer.c taler-exchange-httpd_track_transfer.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
