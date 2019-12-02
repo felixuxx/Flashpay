@@ -46,4 +46,13 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
                    const char *upload_data,
                    size_t *upload_data_size);
 
+/**
+ * Load our terms of service as per configuration.
+ *
+ * @param cfg configuration to process
+ */
+void
+TEH_load_terms (const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
 #endif

@@ -311,6 +311,13 @@ load_terms (const char *path,
     const char *mime;
   } mm[] = {
     { .ext = "html", .mime = "text/html" },
+    { .ext = "htm", .mime = "text/html" },
+    { .ext = "txt", .mime = "text/plain" },
+    { .ext = "pdf", .mime = "application/pdf" },
+    { .ext = "jpg", .mime = "image/jpeg" },
+    { .ext = "jpeg", .mime = "image/jpeg" },
+    { .ext = "png", .mime = "image/png" },
+    { .ext = "gif", .mime = "image/gif" },
     { .ext = NULL, .mime = NULL }
   };
   const char *ext = strrchr (name, '.');
@@ -321,6 +328,18 @@ load_terms (const char *path,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Unsupported file `%s' in directory `%s/%s': lacks extension\n",
                 name,
+                path,
+                lang);
+    return;
+  }
+  if (0 != strncmp (terms_etag,
+                    name,
+                    ext - name - 1))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Filename `%s' does not match Etag `%s' in directory `%s/%s'. Ignoring it.\n",
+                name,
+                terms_etag,
                 path,
                 lang);
     return;
@@ -477,14 +496,25 @@ TEH_load_terms (const struct GNUNET_CONFIGURATION_Handle *cfg)
   DIR *d;
 
   if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange",
+                                             "TERMS_ETAG",
+                                             &terms_etag))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchange",
+                               "TERMS_ETAG");
+    return;
+  }
+  if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchange",
-                                               "terms",
+                                               "TERMS_DIR",
                                                &path))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                "exchange",
-                               "TERMS");
+                               "TERMS_DIR");
 
     return;
   }
