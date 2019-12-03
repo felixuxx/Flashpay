@@ -537,6 +537,8 @@ AM_CONDITIONAL([HAVE_TWISTER], [false])
 ])
 
 AC_CONFIG_FILES([Makefile
+                 contrib/Makefile
+                 contrib/tos/Makefile
                  doc/Makefile
                  src/Makefile
                  src/auditor/Makefile

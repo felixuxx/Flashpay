@@ -3,15 +3,15 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
 if DOC_ONLY
 if ENABLE_DOC
-  SUBDIRS = . doc
+  SUBDIRS = . contrib doc
 else
-  SUBDIRS = .
+  SUBDIRS = . contrib
 endif
 else
 if ENABLE_DOC
-  SUBDIRS = . src doc
+  SUBDIRS = . contrib src doc
 else
-  SUBDIRS = . src doc
+  SUBDIRS = . contrib src
 endif
 endif
 
@@ -20,7 +20,4 @@ endif
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = \
   AUTHORS \
-  contrib/coverage.sh \
-  contrib/gnunet.tag \
-  contrib/microhttpd.tag \
   Doxyfile
