@@ -85,6 +85,11 @@ struct WireAccount
   struct TALER_AUDITORDB_WireAccountProgressPoint pp;
 
   /**
+   * Initial progress point for this account.
+   */
+  struct TALER_AUDITORDB_WireAccountProgressPoint start_pp;
+
+  /**
    * Where we are in the inbound (CREDIT) transaction history.
    */
   void *in_wire_off;
@@ -160,6 +165,11 @@ static int global_ret;
 static int restart;
 
 /**
+ * Time when we started the wire audit.
+ */
+static struct GNUNET_TIME_Absolute start_time;
+
+/**
  * Handle to access the exchange's database.
  */
 static struct TALER_EXCHANGEDB_Plugin *edb;
@@ -228,6 +238,11 @@ static enum GNUNET_DB_QueryStatus qsx;
 static struct TALER_AUDITORDB_WireProgressPoint pp;
 
 /**
+ * Last reserve_in / wire_out serial IDs seen.
+ */
+static struct TALER_AUDITORDB_WireProgressPoint start_pp;
+
+/**
  * Array of reports about row inconsitencies in wire_out table.
  */
 static json_t *report_wire_out_inconsistencies;
@@ -268,6 +283,11 @@ static json_t *report_lags;
  * Array of reports about lagging transactions from reserve closures.
  */
 static json_t *report_closure_lags;
+
+/**
+ * Array of per-account progress data.
+ */
+static json_t *report_account_progress;
 
 /**
  * Amount that is considered "tiny"
@@ -483,7 +503,8 @@ do_shutdown (void *cls)
     report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o, s:o,"
-                        " s:o }",
+                        " s:o, s:o, s:o, s:I, s:I,"
+                        " s:s, s:s, s:o }",
                         /* blocks of 5 */
                         /* Tested in test-auditor.sh #11, #15, #20 */
                         "wire_out_amount_inconsistencies",
@@ -533,7 +554,28 @@ do_shutdown (void *cls)
                         /* blocks of 5 */
                         /* Tested in test-auditor.sh #22 */
                         "reserve_lag_details",
-                        report_closure_lags);
+                        report_closure_lags,
+                        "wire_auditor_start_time", json_string (
+                          GNUNET_STRINGS_absolute_time_to_string (start_time)),
+                        "wire_auditor_end_time", json_string (
+                          GNUNET_STRINGS_absolute_time_to_string (
+                            GNUNET_TIME_absolute_get ())),
+                        "start_pp_reserve_close_uuid",
+                        (json_int_t) start_pp.last_reserve_close_uuid,
+                        "end_pp_reserve_close_uuid",
+                        (json_int_t) pp.last_reserve_close_uuid,
+                        /* blocks of 5 */
+                        "start_pp_last_timestamp",
+                        json_string (
+                          GNUNET_STRINGS_absolute_time_to_string (
+                            start_pp.last_timestamp)),
+                        "end_pp_last_timestamp",
+                        json_string (
+                          GNUNET_STRINGS_absolute_time_to_string (
+                            pp.last_timestamp)),
+                        "account_progress",
+                        report_account_progress
+                        );
     GNUNET_break (NULL != report);
     json_dumpf (report,
                 stdout,
@@ -546,6 +588,7 @@ do_shutdown (void *cls)
     report_missattribution_in_inconsistencies = NULL;
     report_lags = NULL;
     report_closure_lags = NULL;
+    report_account_progress = NULL;
     report_wire_format_inconsistencies = NULL;
   }
   if (NULL != reserve_closures)
@@ -717,6 +760,26 @@ commit (enum GNUNET_DB_QueryStatus qs)
        NULL != wa;
        wa = wa->next)
   {
+    GNUNET_assert (0 ==
+                   json_array_append_new (report_account_progress,
+                                          json_pack (
+                                            "{s:s, s:I, s:I, s:I, s:I}",
+                                            "account",
+                                            wa->section_name,
+                                            "start_reserve_in",
+                                            (json_int_t) wa->start_pp.
+                                            last_reserve_in_serial_id,
+                                            "end_reserve_in",
+                                            (json_int_t) wa->pp.
+                                            last_reserve_in_serial_id,
+                                            "start_wire_out",
+                                            (json_int_t) wa->start_pp.
+                                            last_wire_out_serial_id,
+                                            "end_wire_out",
+                                            (json_int_t) wa->pp.
+                                            last_wire_out_serial_id
+                                            ))
+                   );
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx)
       qs = adb->update_wire_auditor_account_progress (adb->cls,
                                                       asession,
@@ -1983,6 +2046,7 @@ begin_transaction ()
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
+    wa->start_pp = wa->pp;
   }
   qsx = adb->get_wire_auditor_progress (adb->cls,
                                         asession,
@@ -2003,6 +2067,7 @@ begin_transaction ()
   }
   else
   {
+    start_pp = pp;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Resuming audit at %s / %llu\n",
                 GNUNET_STRINGS_absolute_time_to_string (pp.last_timestamp),
@@ -2228,6 +2293,8 @@ run (void *cls,
                  (report_lags = json_array ()));
   GNUNET_assert (NULL !=
                  (report_closure_lags = json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_account_progress = json_array ()));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &total_bad_amount_out_plus));

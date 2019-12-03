@@ -136,6 +136,21 @@ static struct TALER_AUDITORDB_ProgressPointAggregation ppa;
 static struct TALER_AUDITORDB_ProgressPointCoin ppc;
 
 /**
+ * Checkpointing our progress for reserves.
+ */
+static struct TALER_AUDITORDB_ProgressPointReserve ppr_start;
+
+/**
+ * Checkpointing our progress for aggregations.
+ */
+static struct TALER_AUDITORDB_ProgressPointAggregation ppa_start;
+
+/**
+ * Checkpointing our progress for coins.
+ */
+static struct TALER_AUDITORDB_ProgressPointCoin ppc_start;
+
+/**
  * Array of reports about denomination keys with an
  * emergency (more value deposited than withdrawn)
  */
@@ -348,6 +363,11 @@ static json_t *report_refreshs_hanging;
  * Total amount lost by operations for which signatures were invalid.
  */
 static struct TALER_Amount total_refresh_hanging;
+
+/**
+ * At what time did the auditor process start?
+ */
+static struct GNUNET_TIME_Absolute start_time;
 
 
 /* ********************************* helpers *************************** */
@@ -1870,6 +1890,7 @@ analyze_reserves (void *cls)
   }
   else
   {
+    ppr_start = ppr;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 _ ("Resuming reserve audit at %llu/%llu/%llu/%llu\n"),
                 (unsigned long long) ppr.last_reserve_in_serial_id,
@@ -3064,6 +3085,7 @@ analyze_aggregations (void *cls)
   }
   else
   {
+    ppa_start = ppa;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 _ ("Resuming aggregation audit at %llu\n"),
                 (unsigned long long) ppa.last_wire_out_serial_id);
@@ -4638,6 +4660,7 @@ analyze_coins (void *cls)
   }
   else
   {
+    ppc_start = ppc;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 _ ("Resuming coin audit at %llu/%llu/%llu/%llu/%llu\n"),
                 (unsigned long long) ppc.last_deposit_serial_id,
@@ -5173,6 +5196,7 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
+  start_time = GNUNET_TIME_absolute_get ();
   if (0 == GNUNET_memcmp (&zeromp,
                           &master_pub))
   {
@@ -5428,7 +5452,11 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:I,"
                       " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o }",
+                      " s:o, s:I, s:I, s:I, s:I,"
+                      " s:I, s:I, s:I, s:I, s:I,"
+                      " s:I, s:I, s:I, s:I, s:I,"
+                      " s:I, s:I, s:I, s:I, s:I,"
+                      " s:I, s:I, s:I, s:o, s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
                       "reserve_balance_insufficient_inconsistencies",
@@ -5542,7 +5570,61 @@ run (void *cls,
                       /* block */
                       /* Tested in test-auditor.sh #18 */
                       "emergencies_loss_by_count",
-                      TALER_JSON_from_amount (&reported_emergency_loss_by_count)
+                      TALER_JSON_from_amount (
+                        &reported_emergency_loss_by_count),
+                      "start_ppr_reserve_in_serial_id",
+                      (json_int_t) ppr_start.last_reserve_in_serial_id,
+                      "start_ppr_reserve_out_serial_id",
+                      (json_int_t) ppr_start.last_reserve_out_serial_id,
+                      "start_ppr_reserve_payback_serial_id",
+                      (json_int_t) ppr_start.last_reserve_payback_serial_id,
+                      "start_ppr_reserve_close_serial_id",
+                      (json_int_t) ppr_start.last_reserve_close_serial_id,
+                      /* block */
+                      "end_ppr_reserve_in_serial_id",
+                      (json_int_t) ppr.last_reserve_in_serial_id,
+                      "end_ppr_reserve_out_serial_id",
+                      (json_int_t) ppr.last_reserve_out_serial_id,
+                      "end_ppr_reserve_payback_serial_id",
+                      (json_int_t) ppr.last_reserve_payback_serial_id,
+                      "end_ppr_reserve_close_serial_id",
+                      (json_int_t) ppr.last_reserve_close_serial_id,
+                      "start_ppa_wire_out_serial_id",
+                      (json_int_t) ppa_start.last_wire_out_serial_id,
+                      /* block */
+                      "end_ppa_wire_out_serial_id",
+                      (json_int_t) ppa.last_wire_out_serial_id,
+                      "start_ppc_withdraw_serial_id",
+                      (json_int_t) ppc_start.last_withdraw_serial_id,
+                      "start_ppc_deposit_serial_id",
+                      (json_int_t) ppc_start.last_deposit_serial_id,
+                      "start_ppc_melt_serial_id",
+                      (json_int_t) ppc_start.last_melt_serial_id,
+                      "start_ppc_refund_serial_id",
+                      (json_int_t) ppc_start.last_refund_serial_id,
+                      /* block */
+                      "start_ppc_payback_serial_id",
+                      (json_int_t) ppc_start.last_payback_serial_id,
+                      "start_ppc_payback_refresh_serial_id",
+                      (json_int_t) ppc_start.last_payback_refresh_serial_id,
+                      "end_ppc_withdraw_serial_id",
+                      (json_int_t) ppc.last_withdraw_serial_id,
+                      "end_ppc_deposit_serial_id",
+                      (json_int_t) ppc.last_deposit_serial_id,
+                      "end_ppc_melt_serial_id",
+                      (json_int_t) ppc.last_melt_serial_id,
+                      /* block */
+                      "end_ppc_refund_serial_id",
+                      (json_int_t) ppc.last_refund_serial_id,
+                      "end_ppc_payback_serial_id",
+                      (json_int_t) ppc.last_payback_serial_id,
+                      "end_ppc_payback_refresh_serial_id",
+                      (json_int_t) ppc.last_payback_refresh_serial_id,
+                      "auditor_start_time", json_string (
+                        GNUNET_STRINGS_absolute_time_to_string (start_time)),
+                      "auditor_end_time", json_string (
+                        GNUNET_STRINGS_absolute_time_to_string (
+                          GNUNET_TIME_absolute_get ()))
                       );
   GNUNET_break (NULL != report);
   json_dumpf (report,
