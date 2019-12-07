@@ -162,7 +162,7 @@ jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit
 echo PASS
 
 LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.0"
+if test $LOSS != "TESTKUDOS:0"
 then
     exit_fail "Wrong total bad sig loss, got unexpected loss of $LOSS"
 fi

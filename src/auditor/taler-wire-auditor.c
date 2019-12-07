@@ -2145,6 +2145,7 @@ run (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
+  start_time = GNUNET_TIME_absolute_get ();
   cfg = c;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,

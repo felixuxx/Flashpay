@@ -111,20 +111,22 @@ In that time, the auditor processed NO accounts at all.
 In that time, the auditor processed the following table ranges:
 \begin{center}
 \begin{longtable}{l|c|r|r}
-  Account & Table         & Start    & End \\ \hline \hline
+  Account & Table         & Start    & End \\ \hline
 \endfirsthead
-  Account & Table         & Start    & End \\ \hline \hline
+  Account & Table         & Start    & End \\ \hline
 \endhead
 \endfoot
   \caption{Range of account data processed by the wire auditor.}
   \label{table:account_range}
 \endlastfoot
 {% for item in wire.account_progress %}
+  \hline
   {{ item.account }} &
   Reserves Incoming       & {{ item.start_reserve_in }}
                           & {{ item.end_reserve_in }} \\ \hline
+  &
   Outgoing wire transfers & {{ item.start_wire_out }}
-                          & {{ item.end_wire_out }} \\ \hline
+                          & {{ item.end_wire_out }} \\
 {% endfor %}
 \end{longtable}
 {% endif %}
