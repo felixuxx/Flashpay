@@ -1116,6 +1116,8 @@ handle_reserve_out (void *cls,
   struct GNUNET_TIME_Absolute expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) denom_sig; /* FIXME: checked elsewhere? If so, potential for
+                       optimization to simply not fetch this value from DB! */
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_out_serial_id);
   ppr.last_reserve_out_serial_id = rowid + 1;
