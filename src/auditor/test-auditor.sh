@@ -23,6 +23,10 @@ ALL_TESTS=`seq 0 25`
 #
 TESTS=${1:-$ALL_TESTS}
 
+# Global variable to run the auditor processes under valgrind
+# VALGRIND=valgrind
+VALGRIND=""
+
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
     echo $1
@@ -68,15 +72,15 @@ function pre_audit () {
 function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
-    taler-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
+    $VALGRIND taler-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
     echo -n "."
     # Also do incremental run
-    taler-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
+    $VALGRIND taler-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
     echo -n "."
-    taler-wire-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
+    $VALGRIND taler-wire-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     # Also do incremental run
     echo -n "."
-    taler-wire-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
+    $VALGRIND taler-wire-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
     echo " DONE"
 }
 
