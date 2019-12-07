@@ -1601,6 +1601,7 @@ reload_public_denoms_cb (void *cls,
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
+  int ret;
 
   if (rfc->now.abs_value_us > GNUNET_TIME_absolute_ntoh
         (issue->properties.expire_legal).abs_value_us)
@@ -1625,9 +1626,17 @@ reload_public_denoms_cb (void *cls,
   dki.denom_pub.rsa_public_key   = denom_pub->rsa_public_key;
   dki.issue = *issue;
   /* we can assert here as we checked for duplicates just above */
-  GNUNET_assert (GNUNET_OK ==
-                 store_in_map (rfc->key_state->denomkey_map,
-                               &dki /* makes a deep copy of dki */));
+  ret = store_in_map (rfc->key_state->denomkey_map,
+                      &dki /* makes a deep copy of dki */);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Signature wrong on denomination key `%s' (skipping)!\n",
+                GNUNET_h2s (&issue->properties.denom_hash));
+    return;
+  }
+  GNUNET_assert (GNUNET_OK == ret);
 }
 
 
