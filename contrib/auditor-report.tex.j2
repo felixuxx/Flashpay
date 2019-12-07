@@ -439,6 +439,9 @@ Disagreements imply that either the exchange made a loss (sending out
 too much money), or screwed a customer (and thus at least needs to fix
 the financial damage done to the customer).
 
+Note that the deltas only sum up the issues where $P \not= 0$ as only
+then we can tell if the problem lead to a profit or loss.
+
 % Table generation tested by testcase #18 in test-auditor.sh
 
 {% if data.amount_arithmetic_inconsistencies|length() == 0 %}
