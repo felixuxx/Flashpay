@@ -631,7 +631,7 @@ public key for ``payback-master'' operations.
   \label{table:bad_signature_losses}
 \endlastfoot
 {% for item in data.bad_sig_losses %}
-  \multicolumn{3}{l}{ {\tt \small {{ item.key_pub }} } } \\
+  \multicolumn{3}{l}{ {\tt \small \truncate{0.9\textwidth}{ {{ item.key_pub }} } } } \\
 \nopagebreak
   {{ item.operation }} &
   {{ item.row }} &
