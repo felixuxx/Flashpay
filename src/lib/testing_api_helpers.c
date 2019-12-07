@@ -674,7 +674,6 @@ TALER_TESTING_wait_auditor_ready (const char *base_url)
  * @param main_cb routine containing all the commands to run.
  * @param main_cb_cls closure for @a main_cb, typically NULL.
  * @param config_file configuration file for the test-suite.
- *
  * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
  *         non-#GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         time.
@@ -691,11 +690,11 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
   };
   int result;
 
-  if (GNUNET_OK !=
-      (result = GNUNET_CONFIGURATION_parse_and_run (config_filename,
-                                                    &
-                                                    TALER_TESTING_setup_with_exchange_cfg,
-                                                    &setup_ctx)))
+  result =
+    GNUNET_CONFIGURATION_parse_and_run (config_filename,
+                                        &TALER_TESTING_setup_with_exchange_cfg,
+                                        &setup_ctx);
+  if (GNUNET_OK != result)
     return result;
   return GNUNET_OK;
 }

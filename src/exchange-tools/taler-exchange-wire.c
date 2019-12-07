@@ -198,8 +198,9 @@ run (void *cls,
                           &mpub_cfg))
   {
     fprintf (stderr,
-             "Master public key `%s' in configuration does not match our master private key!\n",
-             masters);
+             "Master public key `%s' in configuration does not match our master private key from `%s'!\n",
+             masters,
+             masterkeyfile);
     GNUNET_free (masters);
     global_ret = 1;
     return;
