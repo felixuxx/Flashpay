@@ -74,27 +74,27 @@ In that time, the auditor processed the following table ranges:
 \begin{tabular}{l|r|r}
   Table                   & Start    & End \\ \hline \hline
   Reserves Incoming       & {{ data.start_ppr_reserve_in_serial_id }}
-                          & {{ data.ppr_reserve_in_serial_id }} \\ \hline
+                          & {{ data.end_ppr_reserve_in_serial_id }} \\ \hline
   Reserves Out (withdraw) & {{ data.start_ppr_reserve_out_serial_id }}
-                          & {{ data.ppr_reserve_out_serial_id }} \\ \hline
+                          & {{ data.end_ppr_reserve_out_serial_id }} \\ \hline
   Reserves Payback        & {{ data.start_ppr_reserve_payback_serial_id }}
-                          & {{ data.ppr_reserve_payback_serial_id }} \\ \hline
+                          & {{ data.end_ppr_reserve_payback_serial_id }} \\ \hline
   Reserves Close          & {{ data.start_ppr_reserve_close_serial_id }}
-                          & {{ data.ppr_reserve_close_serial_id }} \\ \hline
+                          & {{ data.end_ppr_reserve_close_serial_id }} \\ \hline
   Aggregation             & {{ data.start_ppa_wire_out_serial_id }}
-                          & {{ data.ppa_wire_out_serial_id }} \\ \hline
+                          & {{ data.end_ppa_wire_out_serial_id }} \\ \hline
   Coin withdraw           & {{ data.start_ppc_withdraw_serial_id }}
-                          & {{ data.ppc_withdraw_serial_id }} \\ \hline
+                          & {{ data.end_ppc_withdraw_serial_id }} \\ \hline
   Coin deposit            & {{ data.start_ppc_deposit_serial_id }}
-                          & {{ data.ppc_deposit_serial_id }} \\ \hline
+                          & {{ data.end_ppc_deposit_serial_id }} \\ \hline
   Coin melt               & {{ data.start_ppc_melt_serial_id }}
-                          & {{ data.ppc_melt_serial_id }} \\ \hline
+                          & {{ data.end_ppc_melt_serial_id }} \\ \hline
   Coin refund             & {{ data.start_ppc_refund_serial_id }}
-                          & {{ data.ppc_refund_serial_id }} \\ \hline
+                          & {{ data.end_ppc_refund_serial_id }} \\ \hline
   Coin payback            & {{ data.start_ppc_payback_serial_id }}
-                          & {{ data.ppc_payback_serial_id }} \\ \hline
+                          & {{ data.end_ppc_payback_serial_id }} \\ \hline
   Coin payback refresh    & {{ data.start_ppc_payback_refresh_serial_id }}
-                          & {{ data.ppc_payback_refresh_serial_id }} \\
+                          & {{ data.end_ppc_payback_refresh_serial_id }} \\
 \end{tabular}
 \caption{Serial number ranges of the tables processed by the audit.}
 \label{table:auditor_range}

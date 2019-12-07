@@ -1884,7 +1884,7 @@ enum TALER_ErrorCode
   TALER_EC_SYNC_ACCOUNT_UNKNOWN = 6002,
 
   /**
-   * The Etag provided in the If-None-Match header is
+   * The SHA-512 hash provided in the If-None-Match header is
    * malformed.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
@@ -1892,8 +1892,8 @@ enum TALER_ErrorCode
   TALER_EC_SYNC_BAD_IF_NONE_MATCH = 6003,
 
   /**
-   * The Etag provided in the If-Match header is
-   * malformed.
+   * The SHA-512 hash provided in the If-Match header is
+   * malformed or missing.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
@@ -1901,19 +1901,11 @@ enum TALER_ErrorCode
 
   /**
    * The signature provided in the "Sync-Signature" header is
-   * malformed.
+   * malformed or missing.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_SYNC_BAD_SYNC_SIGNATURE = 6005,
-
-  /**
-   * The Etag provided in the "Etag" header is
-   * malformed.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_SYNC_BAD_ETAG = 6006,
 
   /**
    * The signature provided in the "Sync-Signature" header
