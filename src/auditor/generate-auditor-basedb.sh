@@ -42,7 +42,7 @@ echo -n "Testing for taler-bank-manage"
 taler-bank-manage -h >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 echo -n "Testing for taler-wallet-cli"
-taler-wallet-cli -h >/dev/null </dev/null || exit_skip " MISSING"
+taler-wallet-cli -v >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
 
@@ -129,7 +129,7 @@ echo " DONE"
 
 # run wallet CLI
 echo "Running wallet"
-taler-wallet-cli integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL -b $BANK_URL
+taler-wallet-cli testing integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL -b $BANK_URL
 
 echo "Shutting down services"
 kill `jobs -p`
