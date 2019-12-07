@@ -1625,7 +1625,6 @@ reload_public_denoms_cb (void *cls,
   dki.denom_priv.rsa_private_key = NULL; /* not available! */
   dki.denom_pub.rsa_public_key   = denom_pub->rsa_public_key;
   dki.issue = *issue;
-  /* we can assert here as we checked for duplicates just above */
   ret = store_in_map (rfc->key_state->denomkey_map,
                       &dki /* makes a deep copy of dki */);
   if (GNUNET_SYSERR == ret)
@@ -1636,6 +1635,7 @@ reload_public_denoms_cb (void *cls,
                 GNUNET_h2s (&issue->properties.denom_hash));
     return;
   }
+  /* we can assert here as we checked for duplicates just above */
   GNUNET_assert (GNUNET_OK == ret);
 }
 
