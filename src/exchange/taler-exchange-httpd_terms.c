@@ -231,7 +231,7 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
       .mime_type = "text/plain",
       .terms = "Terms of service not configured",
       .language = "en",
-      .terms_size = sizeof ("Terms of service not configured")
+      .terms_size = strlen ("Terms of service not configured")
     };
     t = &none;
   }
