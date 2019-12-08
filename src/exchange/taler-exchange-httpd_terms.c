@@ -45,7 +45,7 @@ struct Terms
   /**
    * The desired language.
    */
-  const char *language;
+  char *language;
 
   /**
    * Number of bytes in @e terms.
@@ -215,13 +215,21 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
                           p->mime_type)) )
       {
         if ( (NULL == t) ||
+             (! mime_matches (mime,
+                              t->mime_type)) ||
              (language_matches (lang,
-                                p->mime_type) >
+                                p->language) >
               language_matches (lang,
-                                t->mime_type) ) )
+                                t->language) ) )
           t = p;
       }
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Best match for %s/%s: %s / %s\n",
+                lang,
+                mime,
+                (NULL != t) ? t->mime_type : "<none>",
+                (NULL != t) ? t->language : "<none>");
   }
 
   if (NULL == t)
@@ -440,7 +448,7 @@ load_terms (const char *path,
         struct Terms t = {
           .mime_type = mime,
           .terms = buf,
-          .language = lang,
+          .language = GNUNET_strdup (lang),
           .terms_size = bsize
         };
 
