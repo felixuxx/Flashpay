@@ -311,14 +311,14 @@ load_terms (const char *path,
     const char *ext;
     const char *mime;
   } mm[] = {
-    { .ext = "html", .mime = "text/html" },
-    { .ext = "htm", .mime = "text/html" },
-    { .ext = "txt", .mime = "text/plain" },
-    { .ext = "pdf", .mime = "application/pdf" },
-    { .ext = "jpg", .mime = "image/jpeg" },
-    { .ext = "jpeg", .mime = "image/jpeg" },
-    { .ext = "png", .mime = "image/png" },
-    { .ext = "gif", .mime = "image/gif" },
+    { .ext = ".html", .mime = "text/html" },
+    { .ext = ".htm", .mime = "text/html" },
+    { .ext = ".txt", .mime = "text/plain" },
+    { .ext = ".pdf", .mime = "application/pdf" },
+    { .ext = ".jpg", .mime = "image/jpeg" },
+    { .ext = ".jpeg", .mime = "image/jpeg" },
+    { .ext = ".png", .mime = "image/png" },
+    { .ext = ".gif", .mime = "image/gif" },
     { .ext = NULL, .mime = NULL }
   };
   const char *ext = strrchr (name, '.');
