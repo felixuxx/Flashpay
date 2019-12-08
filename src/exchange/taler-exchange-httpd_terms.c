@@ -171,6 +171,7 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
                                         MHD_HEADER_KIND,
                                         MHD_HTTP_HEADER_IF_NONE_MATCH);
     if ( (NULL != etag) &&
+         (NULL != terms_etag) &&
          (0 == strcasecmp (etag,
                            terms_etag)) )
     {
@@ -205,7 +206,7 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
       mime = "text/html";
     /* Find best match: must match mime type (if possible), and if
        mime type matches, ideally also language */
-    for (unsigned int i = 0; NULL != terms[i].terms; i++)
+    for (unsigned int i = 0; i < terms_len; i++)
     {
       struct Terms *p = &terms[i];
 
@@ -332,9 +333,10 @@ load_terms (const char *path,
                 lang);
     return;
   }
-  if (0 != strncmp (terms_etag,
-                    name,
-                    ext - name - 1))
+  if ( (NULL == terms_etag) ||
+       (0 != strncmp (terms_etag,
+                      name,
+                      ext - name - 1)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Filename `%s' does not match Etag `%s' in directory `%s/%s'. Ignoring it.\n",
