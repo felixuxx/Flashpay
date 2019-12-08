@@ -252,7 +252,10 @@ handle_mhd_request (void *cls,
     { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
       NULL, 0,
       &TEH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
-
+    /* Terms of service */
+    { "/terms", MHD_HTTP_METHOD_GET, NULL,
+      NULL, 0,
+      &TEH_handler_terms, MHD_HTTP_OK },
     /* Return key material and fundamental properties for this exchange */
     { "/keys", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
