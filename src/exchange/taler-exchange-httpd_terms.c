@@ -202,8 +202,8 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
     lang = MHD_lookup_connection_value (connection,
                                         MHD_HEADER_KIND,
                                         MHD_HTTP_HEADER_ACCEPT_LANGUAGE);
-    if (NULL == mime)
-      mime = "text/html";
+    if (NULL == lang)
+      lang = "en";
     /* Find best match: must match mime type (if possible), and if
        mime type matches, ideally also language */
     for (unsigned int i = 0; i < terms_len; i++)
