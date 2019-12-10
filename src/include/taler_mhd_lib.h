@@ -390,4 +390,55 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
                 const char *section,
                 uint16_t *port);
 
+
+/**
+ * Prepared responses for legal documents
+ * (terms of service, privacy policy).
+ */
+struct TALER_MHD_Legal;
+
+
+/**
+ * Load set of legal documents as specified in
+ * @a cfg in section @a section where the Etag
+ * is given under the @param tagoption and the
+ * directory under the @a diroption.
+ *
+ * @param cfg configuration to use
+ * @param section section to load values from
+ * @param diroption name of the option with the
+ *        path to the legal documents
+ * @param tagoption name of the files to use
+ *        for the legal documents and the Etag
+ * @return NULL on error
+ */
+struct TALER_MHD_Legal *
+TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                      const char *section,
+                      const char *diroption,
+                      const char *tagoption);
+
+
+/**
+ * Free set of legal documents
+ *
+ * @param leg legal documents to free
+ */
+void
+TALER_MHD_legal_free (struct TALER_MHD_Legal *legal);
+
+
+/**
+ * Generate a response with a legal document in
+ * the format and language of the user's choosing.
+ *
+ * @param conn HTTP connection to handle
+ * @param legal legal document to serve
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_legal (struct MHD_Connection *conn,
+                       struct TALER_MHD_Legal *legal);
+
+
 #endif
