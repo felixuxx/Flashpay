@@ -47,6 +47,24 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
                    size_t *upload_data_size);
 
 /**
+ * Handle a "/privacy" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+int
+TEH_handler_privacy (struct TEH_RequestHandler *rh,
+                     struct MHD_Connection *connection,
+                     void **connection_cls,
+                     const char *upload_data,
+                     size_t *upload_data_size);
+
+
+/**
  * Load our terms of service as per configuration.
  *
  * @param cfg configuration to process

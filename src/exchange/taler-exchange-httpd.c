@@ -256,6 +256,10 @@ handle_mhd_request (void *cls,
     { "/terms", MHD_HTTP_METHOD_GET, NULL,
       NULL, 0,
       &TEH_handler_terms, MHD_HTTP_OK },
+    /* Privacy policy */
+    { "/privacy", MHD_HTTP_METHOD_GET, NULL,
+      NULL, 0,
+      &TEH_handler_privacy, MHD_HTTP_OK },
     /* Return key material and fundamental properties for this exchange */
     { "/keys", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,

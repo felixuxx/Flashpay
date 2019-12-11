@@ -765,7 +765,7 @@ create_denomkey_issue (const struct CoinTypeParams *params,
   GNUNET_assert (NULL != dki->denom_priv.rsa_private_key);
   dki->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_private_key_get_public (
-        dki->denom_priv.rsa_private_key);
+    dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &dki->issue.properties.denom_hash);
   dki->issue.properties.master = master_public_key;
