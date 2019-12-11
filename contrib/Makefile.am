@@ -1,4 +1,4 @@
-SUBDIRS = . tos
+SUBDIRS = . tos pp
 
 EXTRA_DIST = \
   coverage.sh \
