@@ -157,8 +157,10 @@ TALER_JSON_exchange_wire_signature_make (const char *payto_url,
                                       &master_sig);
   return json_pack ("{s:s, s:o, s:o}",
                     "url", payto_url,
-                    "master_sig", GNUNET_JSON_from_data_auto (&master_sig),
-                    "master_pub", GNUNET_JSON_from_data_auto (&master_pub));
+                    "master_sig", GNUNET_JSON_from_data_auto (&master_sig)
+                    /* FIXME: #5991: remove this (and s:o above!) once wallet is updated */
+                    ,"master_pub", GNUNET_JSON_from_data_auto (&master_pub)
+                    );
 }
 
 
