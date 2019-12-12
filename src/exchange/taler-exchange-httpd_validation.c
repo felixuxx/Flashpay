@@ -356,9 +356,11 @@ TEH_VALIDATION_get_wire_response ()
   if ( (0 == json_array_size (wire_accounts_array)) ||
        (0 == json_object_size (wire_fee_object)) )
     return NULL;
-  return json_pack ("{s:O, s:O}",
+  return json_pack ("{s:O, s:O, s:o}",
                     "accounts", wire_accounts_array,
-                    "fees", wire_fee_object);
+                    "fees", wire_fee_object,
+                    "master_pub", GNUNET_JSON_from_data_auto (
+                      &TEH_master_public_key));
 }
 
 
