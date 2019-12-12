@@ -359,7 +359,7 @@ TEH_VALIDATION_get_wire_response ()
   return json_pack ("{s:O, s:O, s:o}",
                     "accounts", wire_accounts_array,
                     "fees", wire_fee_object,
-                    "master_pub", GNUNET_JSON_from_data_auto (
+                    "master_public_key", GNUNET_JSON_from_data_auto (
                       &TEH_master_public_key));
 }
 
