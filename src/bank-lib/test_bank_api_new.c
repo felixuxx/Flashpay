@@ -18,7 +18,7 @@
 */
 
 /**
- * @file bank/test_bank_api_with_fakebank.c
+ * @file bank/test_bank_api_new.c
  * @brief testcase to test bank's HTTP API
  *        interface against the fakebank
  * @author Marcello Stanisci
@@ -184,6 +184,7 @@ main (int argc,
       char *const *argv)
 {
   int rv;
+
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
@@ -239,4 +240,4 @@ main (int argc,
 }
 
 
-/* end of test_bank_api_with_fakebank_new.c */
+/* end of test_bank_api_new.c */
