@@ -33,7 +33,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
-#include "test_bank_interpreter.h"
 #include "taler_testing_lib.h"
 #include "taler_testing_bank_lib.h"
 
