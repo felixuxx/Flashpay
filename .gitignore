@@ -37,10 +37,8 @@ src/auditor/taler-auditor
 src/auditor/taler-auditor-dbinit
 src/auditor/taler-auditor-sign
 src/bank-lib/taler-fakebank-run
-src/bank-lib/test_bank_api
 src/bank-lib/test_bank_api_with_fakebank
 src/bank-lib/test_bank_api_with_fakebank_twisted
-src/bank-lib/test_bank_api_with_pybank_new
 src/bank-lib/test_bank_api_with_pybank_twisted
 src/lib/test_exchange_api
 src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/

@@ -89,8 +89,8 @@ endif
 endif
 
 check_PROGRAMS = \
-  test_bank_api_with_fakebank_new \
-  test_bank_api_with_pybank_new
+  test_bank_api_with_fakebank \
+  test_bank_api_with_pybank
 
 if HAVE_TWISTER
 check_PROGRAMS += \
@@ -133,20 +133,18 @@ endif
 TESTS = \
   $(check_PROGRAMS)
 
-test_bank_api_with_pybank_new_SOURCES = \
-  test_bank_api_new.c
-
-test_bank_api_with_pybank_new_LDADD = \
+test_bank_api_with_pybank_SOURCES = \
+  test_bank_api.c
+test_bank_api_with_pybank_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbanktesting.la \
   -ltalerexchange \
   -lgnunetutil \
   libtalerbank.la
 
-test_bank_api_with_fakebank_new_SOURCES = \
-  test_bank_api_new.c
-
-test_bank_api_with_fakebank_new_LDADD = \
+test_bank_api_with_fakebank_SOURCES = \
+  test_bank_api.c
+test_bank_api_with_fakebank_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   libtalerbanktesting.la \
   -ltalerexchange \

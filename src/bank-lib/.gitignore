@@ -1,2 +1,3 @@
-test_bank_api_new
-test_bank_api_with_fakebank_new
+test_bank_api
+test_bank_api_with_fakebank
+test_bank_api_with_pybank

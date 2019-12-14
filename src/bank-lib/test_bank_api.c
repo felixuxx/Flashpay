@@ -18,7 +18,7 @@
 */
 
 /**
- * @file bank/test_bank_api_new.c
+ * @file bank/test_bank_api.c
  * @brief testcase to test bank's HTTP API
  *        interface against the fakebank
  * @author Marcello Stanisci
@@ -239,4 +239,4 @@ main (int argc,
 }
 
 
-/* end of test_bank_api_new.c */
+/* end of test_bank_api.c */
