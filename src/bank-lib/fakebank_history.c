@@ -97,47 +97,6 @@ TFH_handle_history_step (const struct HistoryArgs *ha,
 
 
 /**
- * Decides whether the history builder will advance or not
- * to the next element.
- *
- * @param ha history args
- * @return GNUNET_YES/NO to advance/not-advance.
- */
-int
-TFH_handle_history_range_advance (const struct HistoryArgs *ha,
-                                  const struct Transaction *pos)
-{
-  const struct HistoryRangeDates *hrd = ha->range;
-
-  if ( (NULL != pos) &&
-       (pos->date.abs_value_us <= hrd->end.abs_value_us) )
-    return GNUNET_YES;
-
-  return GNUNET_NO;
-}
-
-
-/**
- * Iterates towards the "next" element to be processed.  To
- * be used when the current element does not get inserted in
- * the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-struct Transaction *
-TFH_handle_history_range_skip (const struct HistoryArgs *ha,
-                               const struct Transaction *pos)
-{
-  (void) ha;
-  /* Transactions
-   * are stored from "head"/older to "tail"/younger.  */
-  return pos->next;
-}
-
-
-/**
  * Actual history response builder.
  *
  * @param pos first (included) element in the result set, NULL if history is empty

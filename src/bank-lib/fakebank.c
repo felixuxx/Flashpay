@@ -715,74 +715,6 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Handle incoming HTTP request for /history-range.
- *
- * @param h the fakebank handle
- * @param connection the connection
- * @param con_cls place to store state, not used
- * @return MHD result code
- */
-static int
-handle_history_range (struct TALER_FAKEBANK_Handle *h,
-                      struct MHD_Connection *connection,
-                      void **con_cls)
-{
-  struct HistoryArgs ha;
-  struct HistoryRangeDates hrd;
-  const char *start;
-  const char *end;
-  long long unsigned int start_stamp;
-  long long unsigned int end_stamp;
-  struct Transaction *pos;
-
-  (void) con_cls;
-  if (GNUNET_OK !=
-      TFH_parse_history_common_args (connection,
-                                     &ha))
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-  start = MHD_lookup_connection_value (connection,
-                                       MHD_GET_ARGUMENT_KIND,
-                                       "start");
-  end = MHD_lookup_connection_value (connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "end");
-
-  if ( (NULL == start) || (1 != sscanf (start,
-                                        "%llu",
-                                        &start_stamp)) ||
-       (NULL == end) || (1 != sscanf (end,
-                                      "%lld",
-                                      &end_stamp)) )
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  hrd.start.abs_value_us = start_stamp * 1000LL * 1000LL;
-  hrd.end.abs_value_us = end_stamp * 1000LL * 1000LL;
-  ha.range = &hrd;
-
-  /* hunt for 'pos' in the Transaction(s) LL.  */
-  for (pos = h->transactions_head;
-       NULL != pos;
-       pos = pos->next)
-  {
-    if (hrd.start.abs_value_us <= pos->date.abs_value_us)
-      break;
-  }
-  return TFH_build_history_response (connection,
-                                     pos,
-                                     &ha,
-                                     &TFH_handle_history_range_skip,
-                                     &TFH_handle_history_range_skip,
-                                     &TFH_handle_history_range_advance);
-}
-
-
-/**
  * Handle incoming HTTP request.
  *
  * @param cls a `struct TALER_FAKEBANK_Handle`
@@ -836,13 +768,6 @@ handle_mhd_request (void *cls,
                           upload_data,
                           upload_data_size,
                           con_cls);
-  if ( (0 == strcasecmp (url,
-                         "/history-range")) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_GET)) )
-    return handle_history_range (h,
-                                 connection,
-                                 con_cls);
   if ( (0 == strcasecmp (url,
                          "/history")) &&
        (0 == strcasecmp (method,

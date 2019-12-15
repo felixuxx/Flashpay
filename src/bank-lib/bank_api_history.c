@@ -346,67 +346,6 @@ conv_cancel (enum TALER_BANK_Direction direction)
 
 
 /**
- * Request the wire transfer history of a bank account,
- * using time stamps to narrow the results.
- *
- * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank (used to execute this
- *        request)
- * @param auth authentication data to use
- * @param account_number which account number should we query
- * @param direction what kinds of wire transfers should be
- *        returned
- * @param ascending if GNUNET_YES, history elements will
- *        be returned in chronological order.
- * @param start_date threshold for oldest result.
- * @param end_date threshold for youngest result.
- * @param hres_cb the callback to call with the transaction
- *        history
- * @param hres_cb_cls closure for the above callback
- * @return NULL if the inputs are invalid (i.e. zero value for
- *         @e num_results). In this case, the callback is not
- *         called.
- */
-struct TALER_BANK_HistoryHandle *
-TALER_BANK_history_range (struct GNUNET_CURL_Context *ctx,
-                          const char *bank_base_url,
-                          const struct TALER_BANK_AuthenticationData *auth,
-                          uint64_t account_number,
-                          enum TALER_BANK_Direction direction,
-                          unsigned int ascending,
-                          struct GNUNET_TIME_Absolute start_date,
-                          struct GNUNET_TIME_Absolute end_date,
-                          TALER_BANK_HistoryResultCallback hres_cb,
-                          void *hres_cb_cls)
-{
-  struct TALER_BANK_HistoryHandle *hh;
-  char *url;
-
-  GNUNET_TIME_round_abs (&start_date);
-  GNUNET_TIME_round_abs (&end_date);
-
-  GNUNET_asprintf (&url,
-                   "/history-range?auth=basic&account_number=%llu&start=%llu&end=%llu&direction=%s&cancelled=%s&ordering=%s",
-                   (unsigned long long) account_number,
-                   start_date.abs_value_us / 1000LL / 1000LL,
-                   end_date.abs_value_us / 1000LL / 1000LL,
-                   conv_direction (direction),
-                   conv_cancel (direction),
-                   (GNUNET_YES == ascending) ? "ascending" : "descending");
-
-  hh = put_history_job (ctx,
-                        bank_base_url,
-                        url,
-                        auth,
-                        hres_cb,
-                        hres_cb_cls);
-
-  GNUNET_free (url);
-  return hh;
-}
-
-
-/**
  * Request the wire transfer history of a bank account.
  *
  * @param ctx curl context for the event loop
