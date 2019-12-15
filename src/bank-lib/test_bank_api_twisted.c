@@ -73,6 +73,7 @@ static struct GNUNET_OS_Process *twisterd;
  */
 static struct GNUNET_OS_Process *bankd;
 
+
 /**
  * Main function that will tell
  * the interpreter what commands to run.
@@ -83,16 +84,13 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-
   struct TALER_TESTING_Command commands[] = {
-
     /**
      * Can't use the "wait service" CMD here because the
      * fakebank runs inside the same process of the test.
      */
     TALER_TESTING_cmd_wait_service ("wait-service",
                                     TWISTED_BANK_URL),
-
     TALER_TESTING_cmd_bank_history ("history-0",
                                     TWISTED_BANK_URL,
                                     EXCHANGE_ACCOUNT_NUMBER,
@@ -136,11 +134,9 @@ main (int argc,
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-
   GNUNET_log_setup ("test-bank-api-with-(fake)bank-twisted",
                     "DEBUG",
                     NULL);
-
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
                                (CONFIG_FILE)))
   {
@@ -203,7 +199,6 @@ main (int argc,
                             SIGKILL);
     GNUNET_OS_process_wait (bankd);
     GNUNET_OS_process_destroy (bankd);
-    GNUNET_free (bank_url);
   }
 
   GNUNET_free (twister_url);
