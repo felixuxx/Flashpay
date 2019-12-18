@@ -396,7 +396,6 @@ load_terms (struct TALER_MHD_Legal *legal,
       GNUNET_free (fn);
       return;
     }
-    GNUNET_free (fn);
     if (0 != fstat (fd, &st))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
