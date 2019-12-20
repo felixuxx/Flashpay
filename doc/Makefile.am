@@ -19,7 +19,16 @@ man_MANS = \
   prebuilt/man/taler.conf.5
 
 info_TEXINFOS = \
-  prebuilt/texinfo/taler-exchange.texi
+  prebuilt/texinfo/taler-exchange.texi \
+  prebuilt/texinfo/taler-bank.texi \
+  prebuilt/texinfo/onboarding.texi
 
 EXTRA_DIST = \
-  $(man_MANS)
+  $(man_MANS) \
+  doxygen/taler.doxy \
+  $(info_TEXINFOS) \
+  prebuilt/texinfo/onboarding-figures/exchange-db.png \
+  prebuilt/texinfo/onboarding-figures/arch-api.png \
+  prebuilt/texinfo/taler-exchange-figures/exchange-db.png \
+  prebuilt/texinfo/taler-bank-figures/exchange-db.png \
+  prebuilt/texinfo/taler-bank-figures/arch-api.png

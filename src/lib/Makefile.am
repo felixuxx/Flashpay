@@ -16,6 +16,7 @@ libtalerexchange_la_LDFLAGS = \
   -version-info 4:0:0 \
   -no-undefined
 libtalerexchange_la_SOURCES = \
+  backoff.h \
   exchange_api_curl_defaults.c exchange_api_curl_defaults.h \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \

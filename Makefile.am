@@ -18,6 +18,5 @@ endif
 @DX_RULES@
 
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = \
-  AUTHORS \
-  Doxyfile
+EXTRA_DIST =  \
+  AUTHORS 

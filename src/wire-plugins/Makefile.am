@@ -10,10 +10,7 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 
 EXTRA_DIST = \
   test_wire_plugin.conf \
-  test_wire_plugin_transactions_taler-bank.conf \
-  test_wire_plugin_key.priv \
-  test_wire_plugin_test.json \
-  test_wire_plugin_sepa.json
+  test_wire_plugin_transactions_taler-bank.conf 
 
 plugindir = $(libdir)/taler
 

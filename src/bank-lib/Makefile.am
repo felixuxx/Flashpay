@@ -56,7 +56,7 @@ libtalerfakebank_la_LDFLAGS = \
   -no-undefined
 libtalerfakebank_la_SOURCES = \
   fakebank_history.c \
-  fakebank.c
+  fakebank.c fakebank.h
 libtalerfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \

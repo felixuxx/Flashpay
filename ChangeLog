@@ -1,3 +1,6 @@
+Fri 20 Dec 2019 07:39:14 PM CET
+    Releasing GNU Taler 0.6.0. -CG
+
 Sat 17 Aug 2019 10:03:38 PM CEST
     Remove "currency" field from exchange database, as we only
     support one currency per exchange anyway. -CG

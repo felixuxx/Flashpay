@@ -16,7 +16,7 @@
 */
 
 /**
- * @file exchange-lib/backoff.h
+ * @file lib/backoff.h
  * @brief backoff computation for the exchange lib
  * @author Florian Dold
  */
