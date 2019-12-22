@@ -467,10 +467,10 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     void *json_str;
     size_t json_len;
 
-    json = json_pack ("{s:I, s:s}",
+    json = json_pack ("{s:I, s:o}",
                       "row_id",
                       (json_int_t) row_id,
-                      "timestamp", "/Date(0)/"); /*dummy tmp */
+                      "timestamp", GNUNET_JSON_from_time_abs (GNUNET_TIME_UNIT_ZERO_ABS)); /*dummy tmp */
 
     json_str = json_dumps (json,
                            JSON_INDENT (2));

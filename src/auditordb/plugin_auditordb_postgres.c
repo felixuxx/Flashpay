@@ -125,6 +125,8 @@ postgres_drop_tables (void *cls,
       "DROP TABLE IF EXISTS wire_auditor_account_progress;"),
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS auditor_historic_reserve_summary CASCADE;"),
+    GNUNET_PQ_make_execute (
+      "DROP TABLE IF EXISTS auditor_denominations CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement esx[] = {
