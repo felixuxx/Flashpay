@@ -136,6 +136,7 @@ check_keys_run (void *cls,
     return;
   }
 
+#if 0
   /**
    * Not sure this check makes sense: GET /keys is performed on
    * a "maybe" basis, so it can get quite hard to track /keys
@@ -155,6 +156,7 @@ check_keys_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+#endif
   /* "/keys" was updated, let's check they were OK! */
   if (cks->num_denom_keys != is->keys->num_denom_keys)
   {
