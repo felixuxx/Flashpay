@@ -41,18 +41,18 @@ struct TALER_BANK_AuthenticationData AUTHS[] = {
 
   /* Bank credentials */
   {.method = TALER_BANK_AUTH_BASIC,
-   .details.basic.username = BANK_USERNAME,
-   .details.basic.password = BANK_PASSWORD},
+   .details.basic.username = TALER_TESTING_BANK_USERNAME,
+   .details.basic.password = TALER_TESTING_BANK_PASSWORD},
 
   /* Exchange credentials */
   {.method = TALER_BANK_AUTH_BASIC,
-   .details.basic.username = EXCHANGE_USERNAME,
-   .details.basic.password = EXCHANGE_PASSWORD },
+   .details.basic.username = TALER_TESTING_EXCHANGE_USERNAME,
+   .details.basic.password = TALER_TESTING_EXCHANGE_PASSWORD },
 
   /* User credentials */
   {.method = TALER_BANK_AUTH_BASIC,
-   .details.basic.username = USER_USERNAME,
-   .details.basic.password = USER_PASSWORD }
+   .details.basic.username = TALER_TESTING_USER_USERNAME,
+   .details.basic.password = TALER_TESTING_USER_PASSWORD }
 };
 
 
@@ -193,10 +193,10 @@ TALER_TESTING_run_bank (const char *config_filename,
                 (GNUNET_NO,
                 GNUNET_OS_INHERIT_STD_ALL,
                 NULL, NULL, NULL,
-                "taler-bank-manage",
-                "taler-bank-manage",
-                "-c", config_filename,
-                "--with-db", database,
+                "taler-bank-manage-testing",
+                "taler-bank-manage-testing",
+                config_filename,
+                database,
                 serve_arg, NULL);
   GNUNET_free (database);
   if (NULL == bank_proc)
@@ -242,6 +242,9 @@ TALER_TESTING_run_bank (const char *config_filename,
 /**
  * Prepare the bank execution.  Check if the port is available
  * and reset database.
+ *
+ * NOTE: resetting the database is now done by taler-bank-manage-testing
+ * and should be removed here (once it works...)! FIXME!
  *
  * @param config_filename configuration file name.
  *

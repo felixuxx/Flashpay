@@ -35,15 +35,17 @@
 
 /* ******** Credentials to log in at the bank ******* */
 
-#define BANK_ACCOUNT_NUMBER 1
-#define BANK_USERNAME "Bank"
-#define BANK_PASSWORD "x"
-#define EXCHANGE_ACCOUNT_NUMBER 2
-#define EXCHANGE_USERNAME "Exchange"
-#define EXCHANGE_PASSWORD "x"
-#define USER_ACCOUNT_NUMBER 3
-#define USER_USERNAME "Tor"
-#define USER_PASSWORD "x"
+/* Note that the same passwords must be set in the script in
+   contrib/taler-bank-manage-testing for the tests to work! */
+#define TALER_TESTING_BANK_ACCOUNT_NUMBER 1
+#define TALER_TESTING_BANK_USERNAME "Bank"
+#define TALER_TESTING_BANK_PASSWORD "x"
+#define TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER 2
+#define TALER_TESTING_EXCHANGE_USERNAME "Exchange"
+#define TALER_TESTING_EXCHANGE_PASSWORD "x"
+#define TALER_TESTING_USER_ACCOUNT_NUMBER 3
+#define TALER_TESTING_USER_USERNAME "Tor"
+#define TALER_TESTING_USER_PASSWORD "x"
 
 
 /* ********************* Helper functions ********************* */

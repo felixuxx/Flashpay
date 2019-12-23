@@ -1,0 +1,30 @@
+#!/bin/sh
+# This file is in the public domain
+# Wrapper around 'taler-bank-manage' to first configure the required
+# testing accounts before launching the bank properly.
+#
+# Takes 3 arguments:
+# $1: the configuration file name
+# $2: the database name
+# $3: serve-http or serve-uwsgi
+
+set -eu
+
+# Reset database, provide starting accounts
+taler-bank-manage -c $1 --with-db $2 django flush --no-input
+taler-bank-manage -c $1 --with-db $2 django provide_accounts
+
+# This is 'x' hashed by Django
+PW_HASH='pbkdf2_sha256$180000$RBYjEO0WzE1z$x2Avt35TkOL2pMHvts3B1U1NIJalXZf95WnJhGFOAUs='
+
+# hack password hash directly into the database:
+echo "UPDATE auth_user SET password='$PW_HASH'" | psql -Aqt $2
+
+# Note that calling
+# taler-bank-manage -c $1 --with-db $2 django changepassword Bank x
+# does not work: (1) it always insists on going interactive, and (2)
+# rejects 'x' as a password.
+
+
+# Now run Django for good
+exec taler-bank-manage -c $1 --with-db $2 $3

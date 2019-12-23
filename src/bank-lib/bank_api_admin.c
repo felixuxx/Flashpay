@@ -23,7 +23,6 @@
 #include "bank_api_common.h"
 #include <microhttpd.h> /* just for HTTP status codes */
 #include "taler_signatures.h"
-// FIXME(dold): temporary hack
 #include "taler_curl_lib.h"
 
 

@@ -63,7 +63,7 @@ enum BenchmarkError
  * the only requirement is that this number then matches the
  * number given when building payto URLs at deposit time.
  */
-#define USER_ACCOUNT_NUMBER 3
+#define TALER_TESTING_USER_ACCOUNT_NUMBER 3
 
 #define FIRST_INSTRUCTION -1
 
@@ -72,7 +72,7 @@ enum BenchmarkError
     (TALER_TESTING_cmd_fakebank_transfer (label, amount, \
                                           exchange_bank_account.details. \
                                           x_taler_bank.bank_base_url, \
-                                          USER_ACCOUNT_NUMBER, \
+                                          TALER_TESTING_USER_ACCOUNT_NUMBER, \
                                           exchange_bank_account.details. \
                                           x_taler_bank.no, \
                                           "dummy_user", \
@@ -321,7 +321,7 @@ run (void *cls,
             withdraw_label,
             0, /* Index of the one withdrawn coin in the traits.  */
             TALER_TESTING_make_wire_details
-              (USER_ACCOUNT_NUMBER,
+              (TALER_TESTING_USER_ACCOUNT_NUMBER,
               exchange_bank_account.details.x_taler_bank.hostname),
             order_enc,
             GNUNET_TIME_UNIT_ZERO,
