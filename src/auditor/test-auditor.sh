@@ -45,7 +45,7 @@ function exit_fail() {
 function pre_audit () {
     # Launch bank
     echo -n "Launching bank "
-    taler-bank-manage -c $CONF serve-http 2>bank.err >bank.log &
+    taler-bank-manage-testing $CONF postgres:///$DB serve-http 2>bank.err >bank.log &
     for n in `seq 1 20`
     do
         echo -n "."
