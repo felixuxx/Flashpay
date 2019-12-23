@@ -20,6 +20,7 @@ PW_HASH='pbkdf2_sha256$180000$RBYjEO0WzE1z$x2Avt35TkOL2pMHvts3B1U1NIJalXZf95WnJh
 # hack password hash directly into the database:
 echo "UPDATE auth_user SET password='$PW_HASH'" | psql -Aqt $2
 
+
 # Note that calling
 # taler-bank-manage -c $1 --with-db $2 django changepassword Bank x
 # does not work: (1) it always insists on going interactive, and (2)
