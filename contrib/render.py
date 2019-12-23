@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # This file is in the public domain.
 
 """Expand Jinja2 templates based on JSON input.
@@ -26,7 +26,7 @@ class StdinLoader(BaseLoader):
      def __init__ (self):
          self.path = '-'
      def get_source(self, environment, template):
-              source = sys.stdin.read().decode('utf-8')
+              source = sys.stdin.read()
               return source, self.path, lambda: false
 
 
