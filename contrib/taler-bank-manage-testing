@@ -10,8 +10,7 @@
 
 set -eu
 
-# Reset database, provide starting accounts
-taler-bank-manage -c $1 --with-db $2 django flush --no-input
+# Ensure starting accounts exist
 taler-bank-manage -c $1 --with-db $2 django provide_accounts
 
 # This is 'x' hashed by Django

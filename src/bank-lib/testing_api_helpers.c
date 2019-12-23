@@ -243,9 +243,6 @@ TALER_TESTING_run_bank (const char *config_filename,
  * Prepare the bank execution.  Check if the port is available
  * and reset database.
  *
- * NOTE: resetting the database is now done by taler-bank-manage-testing
- * and should be removed here (once it works...)! FIXME!
- *
  * @param config_filename configuration file name.
  *
  * @return the base url, or NULL upon errors.  Must be freed
