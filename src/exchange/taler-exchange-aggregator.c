@@ -637,6 +637,9 @@ refund_by_coin_cb (void *cls,
   if (0 != GNUNET_memcmp (h_contract,
                           aux->h_contract))
     return GNUNET_OK; /* different contract */
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Aggregator subtracts applicable refund of amount %s\n",
+              TALER_amount2s (amount_with_fee));
   if (GNUNET_OK !=
       TALER_amount_subtract (&aux->total_amount,
                              &aux->total_amount,
@@ -683,6 +686,9 @@ deposit_cb (void *cls,
      fetch this one: */
   (void) wire_deadline; /* already checked by SQL query */
   au->merchant_pub = *merchant_pub;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Discovered ready transaction, starting by subtracting deposit fee %s\n",
+              TALER_amount2s (deposit_fee));
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&au->total_amount,
                              amount_with_fee,
@@ -694,6 +700,10 @@ deposit_cb (void *cls,
                 TALER_amount2s (amount_with_fee));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Aggregator processing payment with amount %s after fee subtraction\n",
+              TALER_B2S (coin_pub),
+              TALER_amount2s (&au->total_amount));
   au->row_id = row_id;
   au->h_contract = h_contract_terms;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
@@ -759,6 +769,11 @@ deposit_cb (void *cls,
   }
   au->wire_fee = au->wa->af->wire_fee;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Aggregator starts aggregation for deposit %llu to %s with wire fee %s\n",
+              (unsigned long long) row_id,
+              TALER_B2S (&au->wtid),
+              TALER_amount2s (&au->wire_fee));
   qs = db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                                au->session,
                                                &au->wtid,
@@ -768,6 +783,9 @@ deposit_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Aggregator marks deposit %llu as done\n",
+              (unsigned long long) row_id);
   qs = db_plugin->mark_deposit_done (db_plugin->cls,
                                      au->session,
                                      row_id);
@@ -818,6 +836,9 @@ aggregate_cb (void *cls,
   GNUNET_break (0 == GNUNET_memcmp (&au->merchant_pub,
                                     merchant_pub));
   /* compute contribution of this coin after fees */
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Subtracting deposit fee %s\n",
+              TALER_amount2s (deposit_fee));
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&delta,
                              amount_with_fee,
@@ -831,8 +852,9 @@ aggregate_cb (void *cls,
   }
   /* add to total */
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Adding transaction amount %s to aggregation\n",
-              TALER_amount2s (&delta));
+              "Adding transaction amount %s from row %llu to aggregation\n",
+              TALER_amount2s (&delta),
+              (unsigned long long) row_id);
   if (GNUNET_OK !=
       TALER_amount_add (&au->total_amount,
                         &au->total_amount,
@@ -880,6 +902,9 @@ aggregate_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Aggregator marks aggregated deposit %llu as DONE\n",
+              (unsigned long long) row_id);
   qs = db_plugin->mark_deposit_done (db_plugin->cls,
                                      au->session,
                                      row_id);
