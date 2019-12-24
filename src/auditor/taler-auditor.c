@@ -3596,10 +3596,17 @@ withdraw_cb (void *cls,
   qs = get_denomination_info (denom_pub,
                               &issue,
                               &dh);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    report_row_inconsistency ("withdraw",
+                              rowid,
+                              "denomination key not found (foreign key constraint violated)");
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_OK;
+  }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
-    /* The key not existing should be prevented by foreign key constraints,
-       so must be a transient DB error. */
+    /* This really ought to be a transient DB error. */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
     return GNUNET_SYSERR;
@@ -3803,6 +3810,14 @@ refresh_session_cb (void *cls,
   qs = get_denomination_info (denom_pub,
                               &issue,
                               NULL);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    report_row_inconsistency ("refresh_melt",
+                              rowid,
+                              "denomination key not found (foreign key constraint violated)");
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_OK;
+  }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -3904,7 +3919,15 @@ refresh_session_cb (void *cls,
         qs = get_denomination_info (&reveal_ctx.new_dps[i],
                                     &new_issues[i],
                                     NULL);
-        if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+        if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+        {
+          report_row_inconsistency ("refresh_reveal",
+                                    rowid,
+                                    "denomination key not found (foreign key constraint violated)");
+          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+          err = GNUNET_YES;
+        }
+        else if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
           cc->qs = qs;
@@ -4164,6 +4187,15 @@ deposit_cb (void *cls,
   qs = get_denomination_info (denom_pub,
                               &issue,
                               NULL);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    report_row_inconsistency ("deposits",
+                              rowid,
+                              "denomination key not found (foreign key constraint violated)");
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
+  }
+
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4339,6 +4371,14 @@ refund_cb (void *cls,
   qs = get_denomination_info (denom_pub,
                               &issue,
                               NULL);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    report_row_inconsistency ("refunds",
+                              rowid,
+                              "denomination key not found (foreign key constraint violated)");
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4507,6 +4547,14 @@ check_payback (struct CoinContext *cc,
   qs = get_denomination_info (denom_pub,
                               &issue,
                               &pr.h_denom_pub);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    report_row_inconsistency ("payback",
+                              rowid,
+                              "denomination key not found (foreign key constraint violated)");
+    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     /* The key not existing should be prevented by foreign key constraints,
