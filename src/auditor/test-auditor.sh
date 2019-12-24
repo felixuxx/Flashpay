@@ -390,8 +390,9 @@ function test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
-OLD_WIRE=`echo 'SELECT wire FROM deposits WHERE deposit_serial_id=1;' | psql $DB -Aqt`
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=1" | psql -Aqt $DB
+SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=0 AND amount_with_fee_frac=10000000 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+OLD_WIRE=`echo "SELECT wire FROM deposits WHERE deposit_serial_id=${SERIAL};" | psql $DB -Aqt`
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -400,7 +401,7 @@ echo -n "Testing inconsistency detection... "
 jq -e .bad_sig_losses[0] < test-audit.json > /dev/null || exit_fail "Bad signature not detected"
 
 ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
-if test $ROW != 1
+if test $ROW != ${SERIAL}
 then
     exit_fail "Row wrong, got $ROW"
 fi
@@ -425,7 +426,7 @@ fi
 
 echo PASS
 # Undo:
-echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=1" | psql -Aqt $DB
+echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
@@ -441,6 +442,7 @@ echo "UPDATE deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d
 
 run_audit
 
+echo -n "Checking bad signature detection... "
 ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
 if test $ROW != 1
 then
@@ -464,6 +466,7 @@ if test $LOSS != "TESTKUDOS:0.1"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi
+echo PASS
 
 # Undo:
 echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=1" | psql -Aqt $DB
