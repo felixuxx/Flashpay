@@ -701,7 +701,7 @@ deposit_cb (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Aggregator processing payment with amount %s after fee subtraction\n",
+              "Aggregator processing payment %s with amount %s after fee subtraction\n",
               TALER_B2S (coin_pub),
               TALER_amount2s (&au->total_amount));
   au->row_id = row_id;
