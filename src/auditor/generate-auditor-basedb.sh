@@ -123,6 +123,7 @@ done
 if [ 1 != $OK ]
 then
     kill `jobs -p`
+    wait
     exit_skip "Failed to launch services"
 fi
 echo " DONE"
@@ -133,6 +134,7 @@ taler-wallet-cli testing integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL -b $B
 
 echo "Shutting down services"
 kill `jobs -p`
+wait
 
 # Dump database
 echo "Dumping database"
