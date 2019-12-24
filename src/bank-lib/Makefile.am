@@ -152,4 +152,5 @@ test_bank_api_with_fakebank_LDADD = \
   libtalerbank.la
 
 EXTRA_DIST = \
-  bank.conf
+  bank.conf \
+  bank_twisted.conf

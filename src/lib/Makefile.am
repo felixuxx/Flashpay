@@ -289,5 +289,6 @@ EXTRA_DIST = \
   test_exchange_api.conf \
   test_exchange_api_keys_cherry_picking.conf \
   test_exchange_api_keys_cherry_picking_extended.conf \
+  test_exchange_api_expire_reserve_now.conf \
   test_auditor_api.conf \
   test_auditor_api_expire_reserve_now.conf

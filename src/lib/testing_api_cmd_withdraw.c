@@ -213,11 +213,17 @@ reserve_withdraw_cb (void *cls,
   case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
     break;
+  case MHD_HTTP_CONFLICT:
+    /* nothing to check */
+    break;
   case MHD_HTTP_NOT_FOUND:
     /* nothing to check */
     break;
   default:
     /* Unsupported status code (by test harness) */
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Withdraw test command does not support status code %u\n",
+                http_status);
     GNUNET_break (0);
     break;
   }
