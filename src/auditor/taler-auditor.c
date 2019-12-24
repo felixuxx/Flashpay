@@ -765,6 +765,8 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                                       &master_pub,
                                       &add_denomination,
                                       NULL);
+  if (qs <= 0)
+    return qs;
   i = GNUNET_CONTAINER_multihashmap_get (denominations,
                                          dh);
   if (NULL != i)
@@ -773,7 +775,8 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
     *issue = i;
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
-  /* nope, definitively not there, hard error */
+  /* This should be impossible; hard error */
+  GNUNET_break (0);
   return GNUNET_DB_STATUS_HARD_ERROR;
 }
 
@@ -1129,6 +1132,11 @@ handle_reserve_out (void *cls,
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Hard database error trying to get denomination %s (%s) from database!\n",
+                  TALER_B2S (denom_pub),
+                  TALER_amount2s (amount_with_fee));
     rc->qs = qs;
     return GNUNET_SYSERR;
   }
