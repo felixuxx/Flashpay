@@ -1,5 +1,9 @@
 # This Makefile.am is in the public domain
-AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/bank-lib/
+AM_CPPFLAGS = \
+ -I$(top_srcdir)/src/include \
+ -I$(top_srcdir)/src/bank-lib/ \
+ $(LIBGCRYPT_CFLAGS) \
+ $(POSTGRESQL_CPPFLAGS)
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
@@ -112,6 +116,7 @@ test_taler_exchange_wirewatch_postgres_LDADD = \
   -lmicrohttpd \
   -lgnunetutil \
   -lgnunetjson \
+  -lgnunetpq \
   -ljansson \
   -lpthread
 

@@ -26,6 +26,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_pq_lib.h>
 #include "taler_json_lib.h"
 #include <microhttpd.h>
 #include "taler_fakebank_lib.h"
@@ -791,6 +792,20 @@ main (int argc,
   GNUNET_log_setup ("test_taler_exchange_wirewatch",
                     "WARNING",
                     NULL);
+  /* check database is working */
+  {
+    struct GNUNET_PQ_Context *conn;
+    struct GNUNET_PQ_ExecuteStatement es[] = {
+      GNUNET_PQ_EXECUTE_STATEMENT_END
+    };
+
+    conn = GNUNET_PQ_connect ("postgres:///talercheck",
+                              es,
+                              NULL);
+    if (NULL == conn)
+      return 77;
+    GNUNET_PQ_disconnect (conn);
+  }
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
