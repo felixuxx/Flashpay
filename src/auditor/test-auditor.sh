@@ -522,7 +522,7 @@ OLD_SIG=`echo "SELECT reserve_sig FROM reserves_out WHERE h_blind_ev='$HBE';" | 
 A_VAL=`echo "SELECT amount_with_fee_val FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
 A_FRAC=`echo "SELECT amount_with_fee_frac FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
 # Normalize, we only deal with cents in this test-case
-A_FRAC=`expr $A_FRAC / 1000000`
+A_FRAC=`expr $A_FRAC / 1000000 || true`
 echo "UPDATE reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
 
 run_audit
@@ -1161,9 +1161,9 @@ then
     RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
     VAL_DELTA=1
-    NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
-    NEW_EXP=`expr $OLD_EXP - 3024000000000`  # 5 weeks
-    NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA`
+    NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
+    NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
+    NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
     echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
     echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
@@ -1197,8 +1197,8 @@ echo "===========21: reserve closure missing ================="
 OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
-NEW_CREDIT=`expr $OLD_VAL + 100`
+NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
+NEW_CREDIT=`expr $OLD_VAL + 100 || true`
 echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
 echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
@@ -1239,9 +1239,9 @@ then
     RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
     VAL_DELTA=1
-    NEW_TIME=`expr $OLD_TIME - 3024000000000`  # 5 weeks
-    NEW_EXP=`expr $OLD_EXP - 3024000000000`  # 5 weeks
-    NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA`
+    NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
+    NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
+    NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
     echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
     echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
@@ -1289,7 +1289,7 @@ H_DENOM=`echo 'SELECT denom_pub_hash FROM reserves_out LIMIT 1;' | psql $DB -Aqt
 OLD_START=`echo "SELECT valid_from FROM auditor_denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
 OLD_WEXP=`echo "SELECT expire_withdraw FROM auditor_denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
 # Basically expires 'immediately', so that the withdraw must have been 'invalid'
-NEW_WEXP=`expr $OLD_START + 1`
+NEW_WEXP=`expr $OLD_START + 1 || true`
 
 echo "UPDATE auditor_denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
 
@@ -1325,7 +1325,7 @@ then
     pre_audit aggregator
 
     OLD_AMOUNT=`echo "SELECT amount_frac FROM wire_out WHERE wireout_uuid=1;" | psql $DB -Aqt`
-    NEW_AMOUNT=`expr $OLD_AMOUNT - 1000000`
+    NEW_AMOUNT=`expr $OLD_AMOUNT - 1000000 || true`
     echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
 
     audit_only
@@ -1353,7 +1353,7 @@ then
     echo PASS
 
     # Second pass, this time accounting is wrong in the OTHER direction
-    NEW_AMOUNT=`expr $OLD_AMOUNT + 1000000`
+    NEW_AMOUNT=`expr $OLD_AMOUNT + 1000000 || true`
     echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
 
     audit_only
