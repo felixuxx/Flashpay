@@ -37,6 +37,7 @@ function exit_skip() {
 function exit_fail() {
     echo $1
     kill `jobs -p` >/dev/null 2>/dev/null || true
+    wait
     exit 1
 }
 
@@ -89,16 +90,7 @@ function audit_only () {
 function post_audit () {
     kill -TERM `jobs -p` >/dev/null 2>/dev/null || true
     echo -n "Waiting for servers to die ..."
-    for n in `seq 1 20`
-    do
-        echo -n "."
-        sleep 0.1
-        OK=0
-        # bank
-        wget --timeout=0.1 http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null && continue
-        OK=1
-        break
-    done
+    wait
     echo "DONE"
     echo -n "TeXing ."
     ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
@@ -126,10 +118,12 @@ function run_audit () {
 # Do a full reload of the (original) database
 full_reload()
 {
+    echo "Doing full reload of the database..."
     dropdb $DB 2> /dev/null || true
     createdb -T template0 $DB || exit_skip "could not create database"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
-    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null
+    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"
+    echo "DONE"
 }
 
 
@@ -199,9 +193,7 @@ echo " OK"
 # FIXME: check NO lag reported
 
 # cannot easily undo aggregator, hence full reload
-echo -n "Reloading database ..."
 full_reload
-echo "DONE"
 
 }
 
@@ -775,9 +767,8 @@ echo PASS
 
 
 # cannot easily undo DELETE, hence full reload
-echo -n "Reloading database ..."
 full_reload
-echo "DONE"
+
 }
 
 
@@ -815,9 +806,7 @@ fi
 echo PASS
 
 # cannot easily undo DELETE, hence full reload
-echo -n "Reloading database ..."
 full_reload
-echo "DONE"
 }
 
 
@@ -856,9 +845,7 @@ then
     echo PASS
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 
 else
     echo "Test skipped (database too new)"
@@ -898,9 +885,7 @@ then
     echo PASS
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 
 else
     echo "Test skipped (database too new)"
@@ -991,9 +976,7 @@ then
     post_audit
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 else
     echo "Test skipped (database too new)"
 fi
@@ -1046,9 +1029,7 @@ then
     echo PASS
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 
 else
     echo "Test skipped (database too new)"
@@ -1103,9 +1084,7 @@ fi
 echo  PASS
 
 # cannot easily undo broad DELETE operation, hence full reload
-echo -n "Reloading database ..."
 full_reload
-echo "DONE"
 }
 
 
@@ -1159,9 +1138,7 @@ then
     echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 else
     echo "Test skipped (database too new)"
 fi
@@ -1205,9 +1182,7 @@ then
     echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 
 else
     echo "Test skipped (database too new)"
@@ -1298,9 +1273,7 @@ then
     echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 else
     echo "Test skipped (database too new)"
 fi
@@ -1409,9 +1382,7 @@ then
 
 
     # cannot easily undo aggregator, hence full reload
-    echo -n "Reloading database ..."
     full_reload
-    echo "DONE"
 else
     echo "Test skipped (database too new)"
 fi
@@ -1447,9 +1418,7 @@ fi
 echo PASS
 
 # cannot easily undo DELETE, hence full reload
-echo -n "Reloading database ..."
 full_reload
-echo "DONE"
 }
 
 
@@ -1484,16 +1453,15 @@ check_with_database()
     cp ${BASEDB}.fees $WIRE_FEE_DIR/x-taler-bank.fee
 
     # Determine database age
-    echo "Calculating database age"
+    echo "Calculating database age based on ${BASEDB}.fees"
     AGE=`stat -c %Y ${BASEDB}.fees`
     NOW=`date +%s`
-    DATABASE_AGE=`expr $NOW - $AGE`
-
+    # NOTE: expr "fails" if the result is zero.
+    DATABASE_AGE=`expr ${NOW} - ${AGE} || true`
+    echo "Database age is ${DATABASE_AGE} seconds"
 
     # Load database
-    echo -n "Running initial database setup ..."
     full_reload
-    echo " DONE"
 
     # Run test suite
     fail=0
@@ -1505,7 +1473,7 @@ check_with_database()
             break
         fi
     done
-    echo "Cleanup (disabled)"
+    echo "Cleanup (disabled, leaving database $DB behind)"
     # dropdb $DB
     # rm -r $WIRE_FEE_DIR
     # rm -f test-audit.log test-wire-audit.log
