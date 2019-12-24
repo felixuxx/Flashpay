@@ -64,8 +64,10 @@ run (void *cls,
     return;
   }
   if (reset_db)
+  {
     (void) plugin->drop_tables (plugin->cls,
                                 GNUNET_YES);
+  }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {

@@ -148,6 +148,8 @@ main (int argc,
       char *const *argv)
 {
   char *cfgfile = NULL;
+  char *loglev = NULL;
+  char *logfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_filename ('a',
                                    "auditor-key",
@@ -156,6 +158,8 @@ main (int argc,
                                    &auditor_key_file),
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
     GNUNET_GETOPT_option_help ("Sign denomination keys of an exchange"),
+    GNUNET_GETOPT_option_loglevel (&loglev),
+    GNUNET_GETOPT_option_logfile (&logfile),
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_base32_auto ('m',
                                          "exchange-key",
@@ -191,14 +195,14 @@ main (int argc,
   struct TALER_ExchangeKeyValidityPS kv;
   off_t in_size;
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-auditor-sign",
-                                   "WARNING",
-                                   NULL));
   if (GNUNET_GETOPT_run ("taler-auditor-sign",
                          options,
                          argc, argv) <= 0)
     return 1;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-auditor-sign",
+                                   loglev,
+                                   logfile));
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
@@ -377,6 +381,9 @@ main (int argc,
     return 3;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Taler auditor importing keys for exchange master public key %s\n",
+              TALER_B2S (&master_public_key));
 
   /* Update DB */
   {
@@ -398,6 +405,9 @@ main (int argc,
     {
       const struct TALER_DenominationKeyValidityPS *dk = &dks[i];
 
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Adding denomination key %s to auditor database\n",
+                  TALER_B2S (&dk->denom_hash));
       qs = adb->insert_denomination_info (adb->cls,
                                           session,
                                           dk);

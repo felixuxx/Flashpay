@@ -33,11 +33,6 @@
  *   verification to improve parallelism / speed -- we'll need to scale
  *   this eventually anyway!
  *
- * KNOWN BUGS:
- * - error handling if denomination keys are used that are not known to the
- *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
- *   violation back at the user. Great UX.
- *
  * UNDECIDED:
  * - do we care about checking the 'done' flag in deposit_cb?
  */
@@ -766,7 +761,13 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                                       &add_denomination,
                                       NULL);
   if (qs <= 0)
+  {
+    if (0 == qs)
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Denomination %s not found\n",
+                  TALER_B2S (dh));
     return qs;
+  }
   i = GNUNET_CONTAINER_multihashmap_get (denominations,
                                          dh);
   if (NULL != i)
@@ -5289,6 +5290,10 @@ run (void *cls,
     }
     GNUNET_free (master_public_key_str);
   } /* end of -m not given */
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Taler auditor running for exchange master public key %s\n",
+              TALER_B2S (&master_pub));
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
