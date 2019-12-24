@@ -284,6 +284,7 @@ EXTRA_DIST = \
   test_exchange_api_home/.config/taler/account-2.json \
   test_exchange_api_keys_cherry_picking_home/.config/taler/x-taler-bank.json \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
+  test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_exchange_api_home/.config/taler/test.json \
   test_exchange_api_home/.config/taler/sepa.json \
   test_exchange_api.conf \
