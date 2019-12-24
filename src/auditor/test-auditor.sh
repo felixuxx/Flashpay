@@ -142,6 +142,7 @@ echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
 jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+echo -n "Test for deposit confirmation emergencies... "
 jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
 echo -n "Test for emergencies by count... "
 jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
@@ -1471,17 +1472,19 @@ echo "DONE"
 check_with_database()
 {
     BASEDB=$1
-    echo "Running test suite with database $BASEDB"
+    echo "Running test suite with database $BASEDB using configuration $CONF"
 
     # Setup database-specific globals
     MASTER_PUB=`cat ${BASEDB}.mpub`
 
     # Where to store wire fee details for aggregator
+    echo "Storing wire fees"
     WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
     mkdir -p $WIRE_FEE_DIR
     cp ${BASEDB}.fees $WIRE_FEE_DIR/x-taler-bank.fee
 
     # Determine database age
+    echo "Calculating database age"
     AGE=`stat -c %Y ${BASEDB}.fees`
     NOW=`date +%s`
     DATABASE_AGE=`expr $NOW - $AGE`
