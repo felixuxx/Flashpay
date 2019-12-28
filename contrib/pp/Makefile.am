@@ -1,6 +1,6 @@
 
 # English (en)
-ppendir=$(pkgdatadir)/tos/en
+ppendir=$(pkgdatadir)/pp/en
 
 ppen_DATA = \
   en/0.txt \

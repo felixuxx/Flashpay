@@ -35,7 +35,9 @@ We do our best to not collect any Personal Information from Taler Wallet users. 
 HOW WE COLLECT AND PROCESS INFORMATION
 ======================================
 
-We may process your information for the following reasons:* to transfer money as specified by our users (Taler transactions);
+We may process your information for the following reasons:
+
+* to transfer money as specified by our users (Taler transactions);
 
 * to assist government entities in linking income to the underlying
 
