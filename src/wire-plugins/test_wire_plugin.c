@@ -59,12 +59,6 @@ struct TestBlock
  * to use for the tests.
  */
 static struct TestBlock tests[] = {
-  {
-    .plugin_name = "ebics",
-    .round_in = "EUR:0.123456",
-    .round_out = "EUR:0.12",
-    .currency = "EUR"
-  },
 #if HAVE_LIBCURL
   {
     .plugin_name = "taler_bank",

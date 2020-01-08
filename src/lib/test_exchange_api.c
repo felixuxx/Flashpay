@@ -46,14 +46,6 @@
   "test_exchange_api_expire_reserve_now.conf"
 
 /**
- * Is the configuration file is set to include wire format 'ebics'?
- * Requires that EBICS /history function is implemented, which it
- * is currently not.  Once it is, set ENABLE_CREDIT to YES in the
- * configuration and then set this option to 1.
- */
-#define WIRE_EBICS 0
-
-/**
  * URL of the fakebank.  Obtained from CONFIG_FILE's
  * "exchange-wire-test:BANK_URI" option.
  */
@@ -148,7 +140,6 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-
   /**
    * Checks made against /wire response.
    */
@@ -161,16 +152,6 @@ run (void *cls,
                             "x-taler-bank",
                             NULL,
                             MHD_HTTP_OK),
-    #if WIRE_EBICS
-    /**
-     * Check if 'ebics' wire method is offered by the exchange.
-     */
-    TALER_TESTING_cmd_wire ("wire-sepa-1",
-                            "ebics",
-                            NULL,
-                            MHD_HTTP_OK),
-    #endif
-
     TALER_TESTING_cmd_end ()
   };
 

@@ -10,19 +10,16 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 
 EXTRA_DIST = \
   test_wire_plugin.conf \
-  test_wire_plugin_transactions_taler-bank.conf 
+  test_wire_plugin_transactions_taler-bank.conf
 
 plugindir = $(libdir)/taler
 
-plugin_LTLIBRARIES = \
-  libtaler_plugin_wire_ebics.la
-
 if HAVE_LIBCURL
-plugin_LTLIBRARIES += \
+plugin_LTLIBRARIES = \
  libtaler_plugin_wire_taler_bank.la
 else
 if HAVE_LIBGNURL
-plugin_LTLIBRARIES += \
+plugin_LTLIBRARIES = \
  libtaler_plugin_wire_taler_bank.la
 endif
 endif
@@ -45,17 +42,6 @@ libtaler_plugin_wire_taler_bank_la_LDFLAGS = \
   -lgnunetutil $(XLIB)
 
 
-libtaler_plugin_wire_ebics_la_SOURCES = \
-  plugin_wire_ebics.c
-libtaler_plugin_wire_ebics_la_LIBADD = \
-  $(LTLIBINTL)
-libtaler_plugin_wire_ebics_la_LDFLAGS = \
-  $(TALER_PLUGIN_LDFLAGS) \
-  $(top_builddir)/src/wire/libtalerwire.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil $(XLIB)
-
-
 libtaler_plugin_wire_template_la_SOURCES = \
   plugin_wire_template.c
 libtaler_plugin_wire_template_la_LIBADD = \
@@ -69,18 +55,10 @@ libtaler_plugin_wire_template_la_LDFLAGS = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 TESTS = \
- test_ebics_wireformat \
  test_wire_plugin \
  test_wire_plugin_transactions_taler_bank
 
 check_PROGRAMS= $(TESTS)
-
-test_ebics_wireformat_SOURCES = \
-  test_ebics_wireformat.c
-test_ebics_wireformat_LDADD = \
-  -lgnunetutil \
-  $(top_builddir)/src/wire/libtalerwire.la \
-  $(top_builddir)/src/util/libtalerutil.la
 
 
 test_wire_plugin_SOURCES = \

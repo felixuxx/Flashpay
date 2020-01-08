@@ -44,7 +44,7 @@ struct ConversionTable
   const char *method;
 
   /**
-   * Plugin name, e.g. 'ebics', 'taler_bank', ..
+   * Plugin name, e.g. 'taler_bank', ..
    */
   const char *plugin_name;
 };
@@ -78,6 +78,10 @@ TALER_WIRE_payto_get_method (const char *payto_url)
 /**
  * Get the plugin name from the payment method.
  *
+ * FIXME: this is ugly, would be better to have
+ * a way to iterate over all plugins and interrogate
+ * them as to what wire method(s) they support!
+ *
  * @param method the method implemented by the plugin (for
  *  simplicity, we assume 1 method is implemented by 1 plugin).
  * @return the plugin name, NULL if not found.
@@ -87,7 +91,7 @@ TALER_WIRE_get_plugin_from_method (const char *method)
 {
   static const struct ConversionTable ct[] = {
     {"x-taler-bank", "taler_bank"},
-    {"iban", "ebics"},
+    {"iban", "taler_bank"},
     {NULL, NULL}
   };
 
