@@ -106,11 +106,9 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
 {
   const char *payto_url;
   struct TALER_MasterSignatureP master_sig;
-  struct TALER_MasterPublicKeyP master_pub_from_wire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("url", &payto_url),
     GNUNET_JSON_spec_fixed_auto ("master_sig", &master_sig),
-    GNUNET_JSON_spec_fixed_auto ("master_pub", &master_pub_from_wire),
     GNUNET_JSON_spec_end ()
   };
 
@@ -120,13 +118,6 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
                          NULL, NULL))
   {
     GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 != GNUNET_memcmp (&master_pub_from_wire, master_pub))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "wire signature has an unexpected master public key\n");
     return GNUNET_SYSERR;
   }
 
@@ -148,19 +139,13 @@ TALER_JSON_exchange_wire_signature_make (const char *payto_url,
                                          TALER_MasterPrivateKeyP *master_priv)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct TALER_MasterPublicKeyP master_pub;
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv->eddsa_priv,
-                                      &master_pub.eddsa_pub);
   TALER_exchange_wire_signature_make (payto_url,
                                       master_priv,
                                       &master_sig);
-  return json_pack ("{s:s, s:o, s:o}",
+  return json_pack ("{s:s, s:o}",
                     "url", payto_url,
-                    "master_sig", GNUNET_JSON_from_data_auto (&master_sig)
-                    /* FIXME: #5991: remove this (and s:o above!) once wallet is updated */
-                    ,"master_pub", GNUNET_JSON_from_data_auto (&master_pub)
-                    );
+                    "master_sig", GNUNET_JSON_from_data_auto (&master_sig));
 }
 
 
