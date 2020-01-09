@@ -205,7 +205,7 @@ TALER_TESTING_run_bank (const char *config_filename,
   }
 
   GNUNET_asprintf (&wget_cmd,
-                   "wget -q -t 1 -T 1 %s -o /dev/null -O /dev/null",
+                   "wget -q -t 2 -T 1 %s -o /dev/null -O /dev/null",
                    bank_url);
 
   /* give child time to start and bind against the socket */
