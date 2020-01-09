@@ -357,7 +357,7 @@ TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
   struct TALER_DepositTrackPS tps;
   struct TALER_MerchantSignatureP merchant_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("H_wire", &tps.h_wire),
+    GNUNET_JSON_spec_fixed_auto ("h_wire", &tps.h_wire),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &tps.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &tps.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &tps.merchant),

@@ -98,7 +98,7 @@ check_track_transfer_response_ok (struct
     TALER_JSON_spec_amount ("total", &total_amount),
     TALER_JSON_spec_amount ("wire_fee", &wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
-    GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
+    GNUNET_JSON_spec_fixed_auto ("h_wire", &h_wire),
     GNUNET_JSON_spec_absolute_time ("execution_time", &exec_time),
     GNUNET_JSON_spec_json ("deposits", &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),

@@ -312,7 +312,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   }
 
   deposit_confirmation_obj
-    = json_pack ("{s:o, s:o," /* H_wire, h_contract_terms */
+    = json_pack ("{s:o, s:o," /* h_wire, h_contract_terms */
                  " s:o, s:o," /* timestamp, refund_deadline */
                  " s:o, s:o," /* amount_without_fees, coin_pub */
                  " s:o, s:o," /* merchant_pub, exchange_sig */

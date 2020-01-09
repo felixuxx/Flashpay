@@ -164,7 +164,7 @@ reply_track_transfer_details (struct MHD_Connection *connection,
                                     "merchant_pub",
                                     GNUNET_JSON_from_data_auto (
                                       merchant_pub),
-                                    "H_wire", GNUNET_JSON_from_data_auto (
+                                    "h_wire", GNUNET_JSON_from_data_auto (
                                       h_wire),
                                     "execution_time",
                                     GNUNET_JSON_from_time_abs (exec_time),

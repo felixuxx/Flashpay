@@ -301,10 +301,10 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                                            &dtp.purpose,
                                            &merchant_sig.eddsa_sig));
-  deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, h_contract_terms */
+  deposit_wtid_obj = json_pack ("{s:o, s:o," /* h_wire, h_contract_terms */
                                 " s:o," /* coin_pub */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */
-                                "H_wire", GNUNET_JSON_from_data_auto (h_wire),
+                                "h_wire", GNUNET_JSON_from_data_auto (h_wire),
                                 "h_contract_terms", GNUNET_JSON_from_data_auto (
                                   h_contract_terms),
                                 "coin_pub", GNUNET_JSON_from_data_auto (

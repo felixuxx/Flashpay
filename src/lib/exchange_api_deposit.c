@@ -554,7 +554,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   deposit_obj = json_pack ("{s:o, s:O," /* f/wire */
-                           " s:o, s:o," /* H_wire, h_contract_terms */
+                           " s:o, s:o," /* h_wire, h_contract_terms */
                            " s:o, s:o," /* coin_pub, denom_pub */
                            " s:o, s:o," /* ub_sig, timestamp */
                            " s:o," /* merchant_pub */
@@ -562,7 +562,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            " s:o}",     /* coin_sig */
                            "contribution", TALER_JSON_from_amount (amount),
                            "wire", wire_details,
-                           "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
+                           "h_wire", GNUNET_JSON_from_data_auto (&h_wire),
                            "h_contract_terms", GNUNET_JSON_from_data_auto (
                              h_contract_terms),
                            "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),

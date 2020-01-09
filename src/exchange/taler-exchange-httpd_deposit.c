@@ -416,7 +416,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &deposit.merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &deposit.h_contract_terms),
-    GNUNET_JSON_spec_fixed_auto ("H_wire", &deposit.h_wire),
+    GNUNET_JSON_spec_fixed_auto ("h_wire", &deposit.h_wire),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",  &deposit.csig),
     GNUNET_JSON_spec_absolute_time ("timestamp", &deposit.timestamp),
     GNUNET_JSON_spec_absolute_time ("refund_deadline",
@@ -502,7 +502,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
-                                       "H_wire");
+                                       "h_wire");
   }
 
   /* check denomination exists and is valid */
