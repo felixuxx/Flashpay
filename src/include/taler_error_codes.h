@@ -1432,6 +1432,13 @@ enum TALER_ErrorCode
    */
   TALER_EC_PROPOSAL_STORE_DB_ERROR_ALREADY_EXISTS = 2508,
 
+  /**
+   * The order provided to the backend uses an amount
+   * in a currency that does not match the backend's
+   * configuration.
+   * Returned as a bad request.
+   */
+  TALER_EC_PROPOSAL_ORDER_BAD_CURRENCY = 2509,
 
   /**
    * The frontend gave an unknown order id to issue the refund to.
