@@ -59,13 +59,13 @@ enum BenchmarkError
 #define FIRST_INSTRUCTION -1
 
 #define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
-  TALER_TESTING_cmd_admin_add_incoming_retry \
-    (TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                           user_bank_account.details.                                      \
-                                           x_taler_bank.account_base_url, \
-                                           exchange_payto_url, \
-                                           "dummy_user", \
-                                           "dummy_password"))
+  TALER_TESTING_cmd_fakebank_transfer_retry \
+    (TALER_TESTING_cmd_fakebank_transfer (label, amount, \
+                                          user_bank_account.details.                                      \
+                                          x_taler_bank.account_base_url, \
+                                          exchange_payto_url, \
+                                          "dummy_user", \
+                                          "dummy_password"))
 
 
 /**

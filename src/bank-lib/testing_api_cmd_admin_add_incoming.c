@@ -120,7 +120,7 @@ struct AdminAddIncomingState
 
   /**
    * Was this command modified via
-   * #TALER_TESTING_cmd_admin_add_incoming_with_retry to
+   * #TALER_TESTING_cmd_fakebank_transfer_with_retry to
    * enable retries?
    */
   int do_retry;
@@ -435,7 +435,7 @@ fakebank_transfer_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming
+TALER_TESTING_cmd_fakebank_transfer
   (const char *label,
   const char *amount,
   const char *account_base_url,
@@ -494,7 +494,7 @@ TALER_TESTING_cmd_admin_add_incoming
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_ref
+TALER_TESTING_cmd_fakebank_transfer_with_ref
   (const char *label,
   const char *amount,
   const char *account_base_url,
@@ -561,7 +561,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_instance
+TALER_TESTING_cmd_fakebank_transfer_with_instance
   (const char *label,
   const char *amount,
   const char *account_base_url,
@@ -611,7 +611,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_instance
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd)
+TALER_TESTING_cmd_fakebank_transfer_retry (struct TALER_TESTING_Command cmd)
 {
   struct AdminAddIncomingState *fts;
 
