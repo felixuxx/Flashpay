@@ -16,10 +16,9 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_cmd_fakebank_transfer.c
- * @brief implementation of a fakebank wire transfer command
+ * @brief implementation of a bank /admin/add/incoming command
  * @author Christian Grothoff
  * @author Marcello Stanisci
  */
@@ -100,14 +99,6 @@ struct FakebankTransferState
    * Timestamp of the transaction (as returned from the bank).
    */
   struct GNUNET_TIME_Absolute timestamp;
-
-  /**
-   * Exchange URL.  This value is fed to the bank when requesting
-   * the wire transfer; note: the bank needs it because a merchant
-   * might want to know which exchange performed a wire transfer to
-   * them, just by looking at bank records.
-   */
-  const char *exchange_url;
 
   /**
    * Merchant instance.  Sometimes used to get the tip reserve
@@ -416,7 +407,6 @@ fakebank_transfer_traits (void *cls,
 {
   struct FakebankTransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_url (0, fts->exchange_url),
     TALER_TESTING_make_trait_url (1, fts->debit_url),
     TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
     TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT (fts->payto_credit_account),
@@ -450,7 +440,6 @@ fakebank_transfer_traits (void *cls,
  * @param auth_username username identifying the @a
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
- * @param exchange_url which exchange is involved in this transfer.
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -460,8 +449,7 @@ TALER_TESTING_cmd_fakebank_transfer
   const char *account_base_url,
   const char *payto_credit_account,
   const char *auth_username,
-  const char *auth_password,
-  const char *exchange_url)
+  const char *auth_password)
 {
   struct FakebankTransferState *fts;
 
@@ -470,7 +458,6 @@ TALER_TESTING_cmd_fakebank_transfer
   fts->payto_credit_account = payto_credit_account;
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
-  fts->exchange_url = exchange_url;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))
@@ -514,9 +501,6 @@ TALER_TESTING_cmd_fakebank_transfer
  * @param auth_password password for @a auth_username.
  * @param ref reference to a command that can offer a reserve
  *        private key.
- * @param exchange_url the exchage involved in the transfer,
- *        tipically receiving the money in order to fuel a reserve.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -527,8 +511,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
   const char *payto_credit_account,
   const char *auth_username,
   const char *auth_password,
-  const char *ref,
-  const char *exchange_url)
+  const char *ref)
 {
   struct FakebankTransferState *fts;
 
@@ -538,7 +521,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->reserve_reference = ref;
-  fts->exchange_url = exchange_url;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))
@@ -587,9 +569,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
  *        instance, the configuration file will provide the private
  *        key of the tipping reserve.  This data will then used to
  *        construct the wire transfer subject line.
- * @param exchange_url which exchange is involved in this transfer.
  * @param config_filename configuration file to use.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -601,7 +581,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
   const char *auth_username,
   const char *auth_password,
   const char *instance,
-  const char *exchange_url,
   const char *config_filename)
 {
   struct FakebankTransferState *fts;
@@ -612,7 +591,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->instance = instance;
-  fts->exchange_url = exchange_url;
   fts->config_filename = config_filename;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,

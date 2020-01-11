@@ -65,8 +65,7 @@ enum BenchmarkError
                                           x_taler_bank.account_base_url, \
                                           exchange_payto_url, \
                                           "dummy_user", \
-                                          "dummy_password", \
-                                          "http://example.com/"))
+                                          "dummy_password"))
 
 
 /**

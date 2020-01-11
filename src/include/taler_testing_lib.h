@@ -722,10 +722,6 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
  * @param auth_username username identifying the @a
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
- * @param exchange_url which exchange is involved in this transfer.
- *        This data is used for tracking purposes (FIXME: explain
- *        _how_).
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -734,8 +730,7 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      const char *account_base_url,
                                      const char *payto_credit_account,
                                      const char *auth_username,
-                                     const char *auth_password,
-                                     const char *exchange_url);
+                                     const char *auth_password);
 
 
 /**
@@ -754,9 +749,6 @@ TALER_TESTING_cmd_fakebank_transfer (const char *label,
  * @param auth_password password for @a auth_username.
  * @param ref reference to a command that can offer a reserve
  *        private key.
- * @param exchange_url the exchage involved in the transfer,
- *        tipically receiving the money in order to fuel a reserve.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -767,8 +759,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
 
                                               const char *auth_username,
                                               const char *auth_password,
-                                              const char *ref,
-                                              const char *exchange_url);
+                                              const char *ref);
 
 
 /**
@@ -790,11 +781,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
  *        instance, the configuration file will provide the private
  *        key of the tipping reserve.  This data will then used to
  *        construct the wire transfer subject line.
- * @param exchange_url which exchange is involved in this transfer.
- *        This data is used for tracking purposes (FIXME: explain
- *        _how_).
  * @param config_filename configuration file to use.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -806,7 +793,6 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance (const char *label,
                                                    const char *auth_username,
                                                    const char *auth_password,
                                                    const char *instance,
-                                                   const char *exchange_url,
                                                    const char *config_filename);
 
 

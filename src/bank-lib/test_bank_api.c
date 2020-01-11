@@ -42,7 +42,18 @@
 /**
  * Fakebank URL.
  */
+
 static char *bank_url;
+
+/**
+ * Account URL.
+ */
+static char *account_url;
+
+/**
+ * payto://-URL of another account.
+ */
+static char *payto_url;
 
 /**
  * Handle to the Py-bank daemon.
@@ -85,25 +96,18 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Bank serves at `%s'\n",
-              bank_url);
-  extern struct TALER_BANK_AuthenticationData AUTHS[];
   struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_bank_history ("history-0",
-                                    bank_url,
-                                    TALER_TESTING_BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH,
-                                    GNUNET_YES,
+    TALER_TESTING_cmd_bank_credits ("history-0",
+                                    account_url,
                                     NULL,
                                     1),
-    /* WARNING: old API has expected http response code among
-     * the parameters, although it was always set as '200 OK' */
-    TRANSFER ("debit-1",
-              "KUDOS:5.01",
-              TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-              TALER_TESTING_BANK_ACCOUNT_NUMBER,
-              "subject 1"),
+    TALER_TESTING_cmd_fakebank_transfer ("debit-1",
+                                         "KUDOS:5.01",
+                                         account_url,
+                                         payto_url,
+                                         NULL,
+                                         NULL,
+                                         "subject 1"),
     TALER_TESTING_cmd_bank_history ("history-1c",
                                     bank_url,
                                     TALER_TESTING_BANK_ACCOUNT_NUMBER,
@@ -168,6 +172,17 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Bank serves at `%s'\n",
+              bank_url);
+  GNUNET_asprintf (&account_url,
+                   "%s/%s",
+                   base_url,
+                   "alice");
+  GNUNET_asprintf (&payto_url,
+                   "payto://x-taler-bank/%s/%s",
+                   base_url,
+                   "bob");
   if (GNUNET_YES == WITH_FAKEBANK)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
