@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018 Taler Systems SA
+  (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -103,15 +103,31 @@ TALER_TESTING_has_in_name (const char *prog,
 /* ************** Specific interpreter commands ************ */
 
 /**
- * Make a "history" CMD.
+ * Make a credit "history" CMD.
  *
  * @param label command label.
- * @param bank_url base URL of the bank offering the "history"
+ * @param account_url base URL of the account offering the "history"
  *        operation.
- * @param account_no bank account number to ask the history for.
- * @param direction which direction this operation is interested
- * @param ascending if #GNUNET_YES, it ask the bank to return results
- *        in chronological order.
+ * @param start_row_reference reference to a command that can
+ *        offer a row identifier, to be used as the starting row
+ *        to accept in the result.
+ * @param num_results how many rows we want in the result,
+ *        and ascending/descending call
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_credits (const char *label,
+                                const char *account_url,
+                                const char *start_row_reference,
+                                long long num_results);
+
+
+/**
+ * Make a debit "history" CMD.
+ *
+ * @param label command label.
+ * @param account_url base URL of the account offering the "history"
+ *        operation.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -119,30 +135,10 @@ TALER_TESTING_has_in_name (const char *prog,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_history (const char *label,
-                                const char *bank_url,
-                                uint64_t account_no,
-                                enum TALER_BANK_Direction direction,
-                                unsigned int ascending,
-                                const char *start_row_reference,
-                                unsigned long long num_results);
+TALER_TESTING_cmd_bank_debits (const char *label,
+                               const char *account_url,
+                               const char *start_row_reference,
+                               long long num_results);
 
-
-/**
- * Create a "reject" CMD.
- *
- * @param label command label.
- * @param bank_url base URL of the bank implementing the
- *        "reject" operation.
- * @param deposit_reference reference to a command that will
- *        provide a "row id" and credit (bank) account to craft
- *        the "reject" request.
- *
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_reject (const char *label,
-                               const char *bank_url,
-                               const char *deposit_reference);
 
 #endif

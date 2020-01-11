@@ -960,8 +960,7 @@ typedef int
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account, in payto://-format
- * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
- * @param wire_reference_size number of bytes in @a wire_reference
+ * @param wire_reference unique identifier for the wire transfer
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -972,8 +971,7 @@ typedef int
                                       TALER_ReservePublicKeyP *reserve_pub,
                                       const struct TALER_Amount *credit,
                                       const char *sender_account_details,
-                                      const void *wire_reference,
-                                      size_t wire_reference_size,
+                                      uint64_t wire_reference,
                                       struct GNUNET_TIME_Absolute
                                       execution_date);
 
@@ -1500,8 +1498,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
    * @param sender_account_details information about the sender's bank account, in payto://-format
-   * @param wire_reference unique reference identifying the wire transfer (binary blob)
-   * @param wire_reference_size number of bytes in @a wire_reference
+   * @param wire_reference unique reference identifying the wire transfer
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1512,8 +1509,7 @@ struct TALER_EXCHANGEDB_Plugin
                         struct GNUNET_TIME_Absolute execution_time,
                         const char *sender_account_details,
                         const char *exchange_account_name,
-                        const void *wire_reference,
-                        size_t wire_reference_size);
+                        uint64_t wire_reference);
 
 
   /**
@@ -1521,16 +1517,14 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db the database connection handle
-   * @param[out] wire_reference set to unique reference identifying the wire transfer (binary blob)
-   * @param[out] wire_reference_size set to number of bytes in @a wire_reference
+   * @param[out] wire_ref set to unique reference identifying the wire transfer
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_latest_reserve_in_reference)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *db,
                                      const char *exchange_account_name,
-                                     void **wire_reference,
-                                     size_t *wire_reference_size);
+                                     uint64_t *wire_ref);
 
 
   /**

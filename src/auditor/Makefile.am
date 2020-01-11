@@ -73,10 +73,12 @@ taler_wire_auditor_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
   -ljansson \
   -lgnunetjson \
+  -lgnunetcurl \
   -lgnunetutil
 
 taler_auditor_sign_SOURCES = \

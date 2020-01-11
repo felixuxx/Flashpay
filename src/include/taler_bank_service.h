@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2017 Taler Systems SA
+  Copyright (C) 2015-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include <jansson.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_util.h"
+#include "taler_wire_lib.h"
 #include "taler_error_codes.h"
 
 
@@ -122,13 +123,11 @@ typedef void
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank (used to execute this request)
+ * @param account_base_url URL of the account (used to execute this request)
  * @param auth authentication data to use
- * @param exchange_base_url base URL of the exchange (for tracking)
- * @param subject wire transfer subject for the transfer
+ * @param reserve_pub wire transfer subject for the transfer
  * @param amount amount that was deposited
- * @param debit_account_no account number to withdraw from (53 bits at most)
- * @param credit_account_no account number to deposit into (53 bits at most)
+ * @param credit_account account to deposit into
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -137,13 +136,12 @@ typedef void
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const char *bank_base_url,
+                               const char *account_base_url,
                                const struct TALER_BANK_AuthenticationData *auth,
-                               const char *exchange_base_url,
-                               const char *subject,
+                               const struct
+                               TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
-                               uint64_t debit_account_no,
-                               uint64_t credit_account_no,
+                               const char *credit_account,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls);
 
@@ -159,53 +157,103 @@ TALER_BANK_admin_add_incoming_cancel (struct
                                       TALER_BANK_AdminAddIncomingHandle *aai);
 
 
+/* ********************* /taler/transfer *********************** */
+
 /**
- * Which types of transactions should be (or is being) returned?
+ * Prepare for exeuction of a wire transfer.
+ *
+ * @param destination_account_url payto:// URL identifying where to send the money
+ * @param amount amount to transfer, already rounded
+ * @param exchange_base_url base URL of this exchange (included in subject
+ *        to facilitate use of tracking API by merchant backend)
+ * @param wtid wire transfer identifier to use
+ * @param buf[out] set to transaction data to persist, NULL on error
+ * @param buf_size[out] set to number of bytes in @a buf, 0 on error
  */
-enum TALER_BANK_Direction
-{
-
-  /**
-   * Base case, used to indicate errors or end of list.
-   */
-  TALER_BANK_DIRECTION_NONE = 0,
-
-  /**
-   * Transactions where the bank account receives money.
-   */
-  TALER_BANK_DIRECTION_CREDIT = 1,
-
-  /**
-   * Transactions where the bank account looses money.
-   */
-  TALER_BANK_DIRECTION_DEBIT = 2,
-
-  /**
-   * Return both types of transactions.
-   */
-  TALER_BANK_DIRECTION_BOTH = (TALER_BANK_DIRECTION_CREDIT
-                               | TALER_BANK_DIRECTION_DEBIT),
-
-  /**
-   * Bit mask that is applied to view transactions that have been
-   * cancelled. The bit is set for cancelled transactions that are
-   * returned from /history, and must also be set in order for
-   * cancelled transactions to show up in the /history.
-   */
-  TALER_BANK_DIRECTION_CANCEL = 4
-
-};
+void
+TALER_BANK_prepare_wire_transfer (const char *destination_account_url,
+                                  const struct TALER_Amount *amount,
+                                  const char *exchange_base_url,
+                                  const struct
+                                  TALER_WireTransferIdentifierRawP *wtid,
+                                  void **buf,
+                                  size_t *buf_size);
 
 
 /**
- * Handle for querying the bank's transaction history.
+ * Handle for active wire transfer.
  */
-struct TALER_BANK_HistoryHandle;
+struct TALER_BANK_WireExecuteHandle;
+
 
 /**
- * Details about a wire transfer.
+ * Function called with the result from the execute step.
+ *
+ * @param cls closure
+ * @param response_code HTTP status code
+ * @param ec taler error code
+ * @param row_id unique ID of the wire transfer in the bank's records
+ * @param timestamp when did the transaction go into effect
  */
-struct TALER_BANK_TransferDetails
+typedef void
+(*TALER_BANK_ConfirmationCallback)(void *cls,
+                                   unsigned int response_code,
+                                   enum TALER_ErrorCode ec,
+                                   uint64_t row_id,
+                                   struct GNUNET_TIME_Absolute timestamp);
+
+
+/**
+
+ * Execute a wire transfer.
+ *
+ * @param ctx context for HTTP interaction
+ * @param bank_base_url URL of the base INCLUDING account number
+ * @param buf buffer with the prepared execution details
+ * @param buf_size number of bytes in @a buf
+ * @param cc function to call upon success
+ * @param cc_cls closure for @a cc
+ * @return NULL on error
+ */
+struct TALER_BANK_WireExecuteHandle *
+TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
+                                  const char *bank_base_url,
+                                  const struct
+                                  TALER_BANK_AuthenticationData *auth,
+                                  const void *buf,
+                                  size_t buf_size,
+                                  TALER_BANK_ConfirmationCallback cc,
+                                  void *cc_cls);
+
+
+/**
+ * Abort execution of a wire transfer. For example, because we are
+ * shutting down.  Note that if an execution is aborted, it may or
+ * may not still succeed. The caller MUST run @e
+ * execute_wire_transfer again for the same request as soon as
+ * possilbe, to ensure that the request either ultimately succeeds
+ * or ultimately fails. Until this has been done, the transaction is
+ * in limbo (i.e. may or may not have been committed).
+ *
+ * @param eh execution to cancel
+ */
+void
+TALER_BANK_execute_wire_transfer_cancel (struct
+                                         TALER_BANK_WireExecuteHandle *eh);
+
+
+/* ********************* /taler/credits *********************** */
+
+/**
+ * Handle for querying the bank for transactions
+ * made to the exchange.
+ */
+struct TALER_BANK_CreditHistoryHandle;
+
+/**
+ * Details about a wire transfer to the exchange.
+ */
+struct TALER_BANK_CreditDetails
 {
   /**
    * Amount that was transferred
@@ -218,21 +266,22 @@ struct TALER_BANK_TransferDetails
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Wire transfer subject.  Usually a reserve public key
-   * followed by the base URL of the exchange.
+   * Reserve public key encoded in the wire
+   * transfer subject.
    */
-  char *wire_transfer_subject;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * payto://-URL of the other account that was involved
+   * payto://-URL of the source account that
+   * send the funds.
    */
-  char *account_url;
+  const char *account_url;
 };
 
 
 /**
  * Callbacks of this type are used to serve the result of asking
- * the bank for the transaction history.
+ * the bank for the credit transaction history.
  *
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -241,31 +290,27 @@ struct TALER_BANK_TransferDetails
  *                    last callback is always of this status (even if `abs(num_results)` were
  *                    already returned).
  * @param ec detailed error code
- * @param dir direction of the transfer
  * @param serial_id monotonically increasing counter corresponding to the transaction
  * @param details details about the wire transfer
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-typedef void
-(*TALER_BANK_HistoryResultCallback) (void *cls,
-                                     unsigned int http_status,
-                                     enum TALER_ErrorCode ec,
-                                     enum TALER_BANK_Direction dir,
-                                     uint64_t serial_id,
-                                     const struct
-                                     TALER_BANK_TransferDetails *details,
-                                     const json_t *json);
+typedef int
+(*TALER_BANK_CreditResultCallback) (void *cls,
+                                    unsigned int http_status,
+                                    enum TALER_ErrorCode ec,
+                                    uint64_t serial_id,
+                                    const struct
+                                    TALER_BANK_CreditDetails *details,
+                                    const json_t *json);
 
 
 /**
- * Request the wire transfer history of a bank account.
+ * Request the wire credit history of an exchange's bank account.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank (used to execute this request)
+ * @param account_base_url URL of the base INCLUDING account number
  * @param auth authentication data to use
- * @param account_number which account number should we query
- * @param direction what kinds of wire transfers should be returned
- * @param ascending if GNUNET_YES, history elements will be returned in chronological order.
  * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
@@ -276,17 +321,14 @@ typedef void
  *         if the inputs are invalid (i.e. zero value for @e num_results).
  *         In this case, the callback is not called.
  */
-struct TALER_BANK_HistoryHandle *
-TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
-                    const char *bank_base_url,
-                    const struct TALER_BANK_AuthenticationData *auth,
-                    uint64_t account_number,
-                    enum TALER_BANK_Direction direction,
-                    unsigned int ascending,
-                    uint64_t start_row,
-                    int64_t num_results,
-                    TALER_BANK_HistoryResultCallback hres_cb,
-                    void *hres_cb_cls);
+struct TALER_BANK_CreditHistoryHandle *
+TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
+                           const char *account_base_url,
+                           const struct TALER_BANK_AuthenticationData *auth,
+                           uint64_t start_row,
+                           int64_t num_results,
+                           TALER_BANK_CreditResultCallback hres_cb,
+                           void *hres_cb_cls);
 
 
 /**
@@ -297,64 +339,127 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
  * @param hh the history request handle
  */
 void
-TALER_BANK_history_cancel (struct TALER_BANK_HistoryHandle *hh);
+TALER_BANK_credit_history_cancel (struct TALER_BANK_CreditHistoryHandle *hh);
 
+
+/* ********************* /taler/debits *********************** */
 
 /**
- * Handle for #TALER_BANK_reject() operation.
+ * Handle for querying the bank for transactions
+ * made from the exchange to merchants.
  */
-struct TALER_BANK_RejectHandle;
+struct TALER_BANK_DebitHistoryHandle;
+
+/**
+ * Details about a wire transfer made by the exchange
+ * to a merchant.
+ */
+struct TALER_BANK_DebitDetails
+{
+  /**
+   * Amount that was transferred
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Time of the the transfer
+   */
+  struct GNUNET_TIME_Absolute execution_date;
+
+  /**
+   * Wire transfer identifier used by the exchange.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
+   * Exchange's base URL as given in the wire transfer.
+   */
+  const char *exchange_base_url;
+
+  /**
+   * payto://-URL of the source account that
+   * send the funds.
+   */
+  const char *account_url;
+};
 
 
 /**
  * Callbacks of this type are used to serve the result of asking
- * the bank to reject an incoming wire transfer.
+ * the bank for the debit transaction history.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_NO_CONTENT (204) for successful status request;
- *                    #MHD_HTTP_NOT_FOUND if the rowid is unknown;
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol),
+ *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
+ *                    last callback is always of this status (even if `abs(num_results)` were
+ *                    already returned).
  * @param ec detailed error code
+ * @param serial_id monotonically increasing counter corresponding to the transaction
+ * @param details details about the wire transfer
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-typedef void
-(*TALER_BANK_RejectResultCallback) (void *cls,
-                                    unsigned int http_status,
-                                    enum TALER_ErrorCode ec);
+typedef int
+(*TALER_BANK_DebitResultCallback) (void *cls,
+                                   unsigned int http_status,
+                                   enum TALER_ErrorCode ec,
+                                   uint64_t serial_id,
+                                   const struct
+                                   TALER_BANK_DebitDetails *details,
+                                   const json_t *json);
 
 
 /**
- * Request rejection of a wire transfer, marking it as cancelled and voiding
- * its effects.
+ * Request the wire credit history of an exchange's bank account.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank (used to execute this request)
+ * @param bank_base_url URL of the base INCLUDING account number
  * @param auth authentication data to use
  * @param account_number which account number should we query
- * @param rowid transfer to reject
- * @param rcb the callback to call with the operation result
- * @param rcb_cls closure for @a rcb
+ * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
+ * @param num_results how many results do we want; negative numbers to go into the past,
+ *                    positive numbers to go into the future starting at @a start_row;
+ *                    must not be zero.
+ * @param hres_cb the callback to call with the transaction history
+ * @param hres_cb_cls closure for the above callback
  * @return NULL
- *         if the inputs are invalid.
+ *         if the inputs are invalid (i.e. zero value for @e num_results).
  *         In this case, the callback is not called.
  */
-struct TALER_BANK_RejectHandle *
-TALER_BANK_reject (struct GNUNET_CURL_Context *ctx,
-                   const char *bank_base_url,
-                   const struct TALER_BANK_AuthenticationData *auth,
-                   uint64_t account_number,
-                   uint64_t rowid,
-                   TALER_BANK_RejectResultCallback rcb,
-                   void *rcb_cls);
+struct TALER_BANK_DebitHistoryHandle *
+TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
+                          const char *bank_base_url,
+                          const struct TALER_BANK_AuthenticationData *auth,
+                          uint64_t start_row,
+                          int64_t num_results,
+                          TALER_BANK_DebitResultCallback hres_cb,
+                          void *hres_cb_cls);
 
 
 /**
- * Cancel an reject request.  This function cannot be used on a request
- * handle if the response was is already served for it.
+ * Cancel an history request.  This function cannot be used on a request
+ * handle if the last response (anything with a status code other than
+ * 200) is already served for it.
  *
- * @param rh the reject request handle
+ * @param hh the history request handle
  */
 void
-TALER_BANK_reject_cancel (struct TALER_BANK_RejectHandle *rh);
+TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
+
+
+/**
+ * Convenience method for parsing configuration section with bank account data.
+ *
+ * @param cfg configuration to parse
+ * @param section the section with the configuration data
+ * @param acc[out] set to the account details
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_BANK_account_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                              const char *section,
+                              struct TALER_Account *acc);
 
 
 /**

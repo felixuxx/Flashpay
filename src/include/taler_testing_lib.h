@@ -48,23 +48,24 @@
   } while (0)
 
 
-#define TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT(cmd,out) \
-  TALER_TESTING_get_trait_uint64 (cmd, 0, out)
-
-#define TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT(data) \
-  TALER_TESTING_make_trait_uint64 (0, data)
-
-#define TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT(cmd,out) \
-  TALER_TESTING_get_trait_uint64 (cmd, 1, out)
-
-#define TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT(data) \
-  TALER_TESTING_make_trait_uint64 (1, data)
-
 #define TALER_TESTING_GET_TRAIT_ROW_ID(cmd,out) \
   TALER_TESTING_get_trait_uint64 (cmd, 3, out)
 
 #define TALER_TESTING_MAKE_TRAIT_ROW_ID(data) \
   TALER_TESTING_make_trait_uint64 (3, data)
+
+
+#define TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT(cmd,out) \
+  TALER_TESTING_get_trait_string (cmd, 4, out)
+
+#define TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT(data) \
+  TALER_TESTING_make_trait_string (4, data)
+
+#define TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT(cmd,out) \
+  TALER_TESTING_get_trait_string (cmd, 5, out)
+
+#define TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT(data) \
+  TALER_TESTING_make_trait_string (5, data)
 
 
 /**
@@ -715,13 +716,9 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param bank_url base URL of the bank that implements this
- *        wire transer.  For simplicity, both credit and debit
- *        bank account exist at the same bank.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
  * @param auth_username username identifying the @a
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
@@ -734,48 +731,11 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer (const char *label,
                                      const char *amount,
-                                     const char *bank_url,
-                                     uint64_t debit_account_no,
-                                     uint64_t credit_account_no,
+                                     const char *account_base_url,
+                                     const char *payto_credit_account,
                                      const char *auth_username,
                                      const char *auth_password,
                                      const char *exchange_url);
-
-
-/**
- * Create "fakebank transfer" CMD, letting the caller specifying
- * the subject line.
- *
- * @param label command label.
- * @param amount amount to transfer.
- * @param bank_url base URL of the bank that implements this
- *        wire transer.  For simplicity, both credit and debit
- *        bank account exist at the same bank.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
- *
- * @param auth_username username identifying the @a
- *        debit_account_no at the bank.
- * @param auth_password password for @a auth_username.
- * @param subject wire transfer's subject line.
- * @param exchange_url which exchange is involved in this transfer.
- *        This data is used for tracking purposes (FIXME: explain
- *        _how_).
- *
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
-                                                  const char *amount,
-                                                  const char *bank_url,
-                                                  uint64_t debit_account_no,
-                                                  uint64_t credit_account_no,
-                                                  const char *auth_username,
-                                                  const char *auth_password,
-                                                  const char *subject,
-                                                  const char *exchange_url);
 
 
 /**
@@ -786,11 +746,9 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
  *
  * @param label command label.
  * @param amount the amount to transfer.
- * @param bank_url base URL of the bank running the transfer.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
  * @param auth_username username identifying the @a
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
@@ -804,9 +762,9 @@ TALER_TESTING_cmd_fakebank_transfer_with_subject (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
                                               const char *amount,
-                                              const char *bank_url,
-                                              uint64_t debit_account_no,
-                                              uint64_t credit_account_no,
+                                              const char *account_base_url,
+                                              const char *payto_credit_account,
+
                                               const char *auth_username,
                                               const char *auth_password,
                                               const char *ref,
@@ -822,14 +780,9 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param bank_url base URL of the bank that implements this
- *        wire transer.  For simplicity, both credit and debit
- *        bank account exist at the same bank.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
- *
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
  * @param auth_username username identifying the @a
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
@@ -847,9 +800,9 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_instance (const char *label,
                                                    const char *amount,
-                                                   const char *bank_url,
-                                                   uint64_t debit_account_no,
-                                                   uint64_t credit_account_no,
+                                                   const char *account_base_url,
+                                                   const char *
+                                                   payto_credit_account,
                                                    const char *auth_username,
                                                    const char *auth_password,
                                                    const char *instance,
@@ -1268,8 +1221,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer (const char *label,
                                        const char *exchange_base_url,
                                        const char *amount,
-                                       uint64_t debit_account,
-                                       uint64_t credit_account);
+                                       const char *debit_account,
+                                       const char *credit_account);
 
 
 /**
@@ -1617,7 +1570,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  *
  * @return the trait.
  */
-
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_reserve_priv (unsigned int index,
                                        const struct
@@ -1638,6 +1590,34 @@ TALER_TESTING_get_trait_reserve_priv (const struct TALER_TESTING_Command *cmd,
                                       unsigned int index,
                                       const struct
                                       TALER_ReservePrivateKeyP **reserve_priv);
+
+
+/**
+ * Offer a reserve public key.
+ *
+ * @param index reserve pubs's index number.
+ * @param reserve_priv reserve public key to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_reserve_pub (unsigned int index,
+                                      const struct
+                                      TALER_ReservePublicKeyP *reserve_pub);
+
+
+/**
+ * Obtain a reserve public key from a @a cmd.
+ *
+ * @param cmd command to extract the reserve pub from.
+ * @param index reserve pub's index number.
+ * @param reserve_pub[out] set to the reserve pub.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_reserve_pub (const struct TALER_TESTING_Command *cmd,
+                                     unsigned int index,
+                                     const struct
+                                     TALER_ReservePublicKeyP **reserve_pub);
 
 
 /**
@@ -2129,34 +2109,34 @@ TALER_TESTING_make_trait_peer_key_pub (unsigned int index,
 
 
 /**
- * Obtain a transfer subject from @a cmd.
+ * Obtain a string from @a cmd.
  *
  * @param cmd command to extract the subject from.
  * @param index index number associated with the transfer
  *        subject to offer.
- * @param transfer_subject[out] where to write the offered
- *        transfer subject.
+ * @param s[out] where to write the offered
+ *        string.
  *
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_transfer_subject (const struct
-                                          TALER_TESTING_Command *cmd,
-                                          unsigned int index,
-                                          const char **transfer_subject);
+TALER_TESTING_get_trait_string (const struct
+                                TALER_TESTING_Command *cmd,
+                                unsigned int index,
+                                const char **s);
 
 
 /**
- * Offer transfer subject.
+ * Offer string subject.
  *
  * @param index index number associated with the transfer
  *        subject being offered.
- * @param transfer_subject transfer subject to offer.
+ * @param s string to offer.
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_transfer_subject (unsigned int index,
-                                           const char *transfer_subject);
+TALER_TESTING_make_trait_string (unsigned int index,
+                                 const char *s);
 
 
 /**
@@ -2223,7 +2203,6 @@ TALER_TESTING_get_trait_amount (const struct TALER_TESTING_Command *cmd,
  * @param index which url is to be picked,
  *        in case multiple are offered.
  * @param url the url to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

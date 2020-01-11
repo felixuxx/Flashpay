@@ -425,12 +425,12 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
 /**
  * Convert @a af to @a wf.
  *
- * @param wireplugin name of the wire plugin the fees are for
+ * @param wiremethod name of the wire method the fees are for
  * @param[in,out] af aggregate fees, host format (updated to round time)
  * @param[out] wf aggregate fees, disk / signature format
  */
 void
-TALER_EXCHANGEDB_fees_2_wf (const char *wireplugin,
+TALER_EXCHANGEDB_fees_2_wf (const char *wiremethod,
                             struct TALER_EXCHANGEDB_AggregateFees *af,
                             struct TALER_MasterWireFeePS *wf);
 
@@ -470,10 +470,9 @@ struct TALER_EXCHANGEDB_AccountInfo
   const char *section_name;
 
   /**
-   * Name of the wire plugin that should be used to access
-   * the account.
+   * Name of the wire method used by this account.
    */
-  const char *plugin_name;
+  const char *method;
 
   /**
    * payto://-URL of the account.

@@ -870,7 +870,6 @@ struct TALER_AUDITORDB_Plugin
    * @param pp where is the auditor in processing
    * @param in_wire_off how far are we in the incoming wire transaction history
    * @param out_wire_off how far are we in the outgoing wire transaction history
-   * @param wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -883,9 +882,8 @@ struct TALER_AUDITORDB_Plugin
                                           const struct
                                           TALER_AUDITORDB_WireAccountProgressPoint
                                           *pp,
-                                          const void *in_wire_off,
-                                          const void *out_wire_off,
-                                          size_t wire_off_size);
+                                          uint64_t in_wire_off,
+                                          uint64_t out_wire_off);
 
 
   /**
@@ -899,7 +897,6 @@ struct TALER_AUDITORDB_Plugin
    * @param pp where is the auditor in processing
    * @param in_wire_off how far are we in the incoming wire transaction history
    * @param out_wire_off how far are we in the outgoing wire transaction history
-   * @param wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -912,9 +909,8 @@ struct TALER_AUDITORDB_Plugin
                                           const struct
                                           TALER_AUDITORDB_WireAccountProgressPoint
                                           *pp,
-                                          const void *in_wire_off,
-                                          const void *out_wire_off,
-                                          size_t wire_off_size);
+                                          uint64_t in_wire_off,
+                                          uint64_t out_wire_off);
 
 
   /**
@@ -927,7 +923,6 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] pp where is the auditor in processing
    * @param[out] in_wire_off how far are we in the incoming wire transaction history
    * @param[out] out_wire_off how far are we in the outgoing wire transaction history
-   * @param[out] wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -939,9 +934,8 @@ struct TALER_AUDITORDB_Plugin
                                        struct
                                        TALER_AUDITORDB_WireAccountProgressPoint
                                        *pp,
-                                       void **in_wire_off,
-                                       void **out_wire_off,
-                                       size_t *wire_off_size);
+                                       uint64_t *in_wire_off,
+                                       uint64_t *out_wire_off);
 
 
   /**

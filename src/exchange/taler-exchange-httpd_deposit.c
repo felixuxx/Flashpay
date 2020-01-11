@@ -400,7 +400,6 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   json_t *json;
   int res;
   json_t *wire;
-  char *emsg;
   enum TALER_ErrorCode ec;
   unsigned int hc;
   struct TALER_EXCHANGEDB_Deposit deposit;
@@ -460,18 +459,6 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                        "refund_deadline");
   }
 
-  if (TALER_EC_NONE !=
-      (ec = TEH_json_validate_wireformat (wire,
-                                          &emsg)))
-  {
-    GNUNET_JSON_parse_free (spec);
-    res = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      ec,
-                                      emsg);
-    GNUNET_free (emsg);
-    return res;
-  }
   if (GNUNET_OK !=
       check_timestamp_current (deposit.timestamp))
   {

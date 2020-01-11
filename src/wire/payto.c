@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
+#include "taler_bank_service.h"
 #include "taler_wire_lib.h"
 
 /**
@@ -43,8 +44,8 @@ TALER_WIRE_account_free (struct TALER_Account *acc)
   case TALER_PAC_X_TALER_BANK:
     GNUNET_free (acc->details.x_taler_bank.hostname);
     acc->details.x_taler_bank.hostname = NULL;
-    GNUNET_free (acc->details.x_taler_bank.bank_base_url);
-    acc->details.x_taler_bank.bank_base_url = NULL;
+    GNUNET_free (acc->details.x_taler_bank.account_base_url);
+    acc->details.x_taler_bank.account_base_url = NULL;
     break;
   case TALER_PAC_IBAN:
     GNUNET_free (acc->details.iban.number);
@@ -410,7 +411,8 @@ parse_payto_x_taler_bank (const char *account_url,
   const char *hostname;
   const char *account;
   const char *q;
-  unsigned long long no;
+  unsigned int port;
+  char *p;
 
 #define PREFIX "payto://x-taler-bank/"
   if (0 != strncasecmp (account_url,
@@ -422,74 +424,52 @@ parse_payto_x_taler_bank (const char *account_url,
                                  (unsigned char) '/')))
     return TALER_EC_PAYTO_MALFORMED;
   account++;
-  if (NULL != (q = strchr (account,
-                           (unsigned char) '?')))
+  if (NULL == r_account)
+    return TALER_EC_NONE;
+  q = strchr (account,
+              (unsigned char) '?');
+  if (0 == q)
+    q = account + strlen (account);
+  r_account->details.x_taler_bank.hostname
+    = GNUNET_strndup (hostname,
+                      account - hostname);
+  port = 443; /* if non given, equals 443.  */
+  if (NULL != (p = strchr (r_account->details.x_taler_bank.hostname,
+                           (unsigned char) ':')))
   {
-    char *s;
-
-    s = GNUNET_strndup (account,
-                        q - account);
-    if (1 != sscanf (s,
-                     "%llu",
-                     &no))
+    p++;
+    if (1 != sscanf (p,
+                     "%u",
+                     &port))
     {
-      GNUNET_free (s);
+      GNUNET_break (0);
+      TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
+      GNUNET_free (r_account->details.x_taler_bank.hostname);
+      r_account->details.x_taler_bank.hostname = NULL;
       return TALER_EC_PAYTO_MALFORMED;
     }
-    GNUNET_free (s);
   }
-  else if (1 != sscanf (account,
-                        "%llu",
-                        &no))
+  if (443 != port)
   {
-    return TALER_EC_PAYTO_MALFORMED;
+    GNUNET_assert
+      (GNUNET_SYSERR != GNUNET_asprintf
+        (&r_account->details.x_taler_bank.account_base_url,
+        "http://%s/%.*s",
+        r_account->details.x_taler_bank.hostname,
+        (int) (q - account),
+        account));
   }
-  if (no > MAX_ACCOUNT_NO)
-    return TALER_EC_PAYTO_MALFORMED;
-
-  if (NULL != r_account)
+  else
   {
-    long long unsigned port;
-    char *p;
-
-    r_account->details.x_taler_bank.hostname
-      = GNUNET_strndup (hostname,
-                        account - hostname);
-    r_account->details.x_taler_bank.no = no;
-    port = 443; /* if non given, equals 443.  */
-    if (NULL != (p = strchr (r_account->details.x_taler_bank.hostname,
-                             (unsigned char) ':')))
-    {
-      p++;
-      if (1 != sscanf (p,
-                       "%llu",
-                       &port))
-      {
-        GNUNET_break (0);
-        TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
-        GNUNET_free (r_account->details.x_taler_bank.hostname);
-        r_account->details.x_taler_bank.hostname = NULL;
-        return TALER_EC_PAYTO_MALFORMED;
-      }
-    }
-    if (443 != port)
-    {
-      GNUNET_assert
-        (GNUNET_SYSERR != GNUNET_asprintf
-          (&r_account->details.x_taler_bank.bank_base_url,
-          "http://%s",
-          r_account->details.x_taler_bank.hostname));
-    }
-    else
-    {
-      GNUNET_assert
-        (GNUNET_SYSERR != GNUNET_asprintf
-          (&r_account->details.x_taler_bank.bank_base_url,
-          "https://%s",
-          r_account->details.x_taler_bank.hostname));
-    }
-    r_account->type = TALER_PAC_X_TALER_BANK;
+    GNUNET_assert
+      (GNUNET_SYSERR != GNUNET_asprintf
+        (&r_account->details.x_taler_bank.account_base_url,
+        "https://%s/%.*s",
+        r_account->details.x_taler_bank.hostname,
+        (int) (q - account),
+        account));
   }
+  r_account->type = TALER_PAC_X_TALER_BANK;
   return TALER_EC_NONE;
 }
 

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -190,15 +190,11 @@ deposit_wtid_cb
     if (NULL != tts->bank_transfer_reference)
     {
       const struct TALER_TESTING_Command *bank_transfer_cmd;
-      char *ws;
+      const struct TALER_WireTransferIdentifierRawP *wtid_want;
 
       /* _this_ wire transfer subject line.  */
-      ws = GNUNET_STRINGS_data_to_string_alloc (wtid,
-                                                sizeof (*wtid));
-
       bank_transfer_cmd = TALER_TESTING_interpreter_lookup_command
                             (is, tts->bank_transfer_reference);
-
       if (NULL == bank_transfer_cmd)
       {
         GNUNET_break (0);
@@ -206,12 +202,9 @@ deposit_wtid_cb
         return;
       }
 
-      /* expected wire transfer subject line.  */
-      const char *transfer_subject;
-
       if (GNUNET_OK !=
-          TALER_TESTING_get_trait_transfer_subject
-            (bank_transfer_cmd, 0, &transfer_subject))
+          TALER_TESTING_get_trait_wtid
+            (bank_transfer_cmd, 0, &wtid_want))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -219,15 +212,13 @@ deposit_wtid_cb
       }
 
       /* Compare that expected and gotten subjects match.  */
-      if (0 != strcmp (ws, transfer_subject))
+      if (0 != GNUNET_memcmp (wtid,
+                              wtid_want))
       {
         GNUNET_break (0);
-        GNUNET_free (ws);
         TALER_TESTING_interpreter_fail (tts->is);
         return;
       }
-
-      GNUNET_free (ws);
     }
     break;
   case MHD_HTTP_ACCEPTED:

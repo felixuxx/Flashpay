@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016 Inria and GNUnet e.V.
+  (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -74,8 +74,8 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
  */
 uint64_t
 TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
-                              uint64_t debit_account,
-                              uint64_t credit_account,
+                              const char *debit_account,
+                              const char *credit_account,
                               const struct TALER_Amount *amount,
                               const char *subject,
                               const char *exchange_base_url);
@@ -101,25 +101,10 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
 int
 TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
                       const struct TALER_Amount *want_amount,
-                      uint64_t want_debit,
-                      uint64_t want_credit,
+                      const char *want_debit,
+                      const char *want_credit,
                       const char *exchange_base_url,
                       char **subject);
-
-
-/**
- * Reject incoming wire transfer to account @a credit_account
- * as identified by @a rowid.
- *
- * @param h fake bank handle
- * @param rowid identifies transfer to reject
- * @param credit_account account number of owner of credited account
- * @return #GNUNET_YES on success, #GNUNET_NO if the wire transfer was not found
- */
-int
-TALER_FAKEBANK_reject_transfer (struct TALER_FAKEBANK_Handle *h,
-                                uint64_t rowid,
-                                uint64_t credit_account);
 
 
 /**

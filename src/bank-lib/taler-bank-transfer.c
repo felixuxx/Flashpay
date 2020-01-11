@@ -25,9 +25,9 @@
 #include "taler_bank_service.h"
 
 /**
- * Bank URL.
+ * Account base URL.
  */
-static char *bank_url;
+static char *account_base_url;
 
 /**
  * Amount to transfer.
@@ -35,14 +35,9 @@ static char *bank_url;
 static struct TALER_Amount amount;
 
 /**
- * Debit account number.
+ * Credit account payto://-URI.
  */
-static unsigned long long debit_account_no;
-
-/**
- * Credit account number.
- */
-static unsigned long long credit_account_no;
+static char *credit_account;
 
 /**
  * Wire transfer subject.
@@ -168,11 +163,23 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct TALER_BANK_AuthenticationData auth;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   (void) cls;
   (void) args;
   (void) cfgfile;
   (void) cfg;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (subject,
+                                     strlen (subject),
+                                     &reserve_pub,
+                                     sizeof (reserve_pub)))
+  {
+    fprintf (stderr,
+             "Error: wire transfer subject must be a reserve public key\n");
+    return;
+  }
+
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   GNUNET_assert (NULL != ctx);
@@ -182,13 +189,11 @@ run (void *cls,
   auth.details.basic.username = username;
   auth.details.basic.password = password;
   op = TALER_BANK_admin_add_incoming (ctx,
-                                      bank_url,
+                                      account_base_url,
                                       &auth,
-                                      "https://exchange.com/legacy",
-                                      subject,
+                                      &reserve_pub,
                                       &amount,
-                                      debit_account_no,
-                                      credit_account_no,
+                                      credit_account,
                                       &res_cb,
                                       NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -219,26 +224,20 @@ main (int argc, char *const *argv)
       (GNUNET_GETOPT_option_string ('b',
                                     "bank",
                                     "URL",
-                                    "base URL of the bank",
-                                    &bank_url)),
+                                    "base URL of the account at the bank",
+                                    &account_base_url)),
     GNUNET_GETOPT_option_help ("Deposit funds into a Taler reserve"),
     GNUNET_GETOPT_option_mandatory
-      (GNUNET_GETOPT_option_ulong ('C',
-                                   "credit",
-                                   "ACCOUNT",
-                                   "number of the bank account to credit",
-                                   &credit_account_no)),
-    GNUNET_GETOPT_option_mandatory
-      (GNUNET_GETOPT_option_ulong ('D',
-                                   "debit",
-                                   "ACCOUNT",
-                                   "number of the bank account to debit",
-                                   &debit_account_no)),
+      (GNUNET_GETOPT_option_string ('C',
+                                    "credit",
+                                    "ACCOUNT",
+                                    "payto URL of the bank account to credit",
+                                    &credit_account)),
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_string ('s',
                                     "subject",
                                     "STRING",
-                                    "specifies the wire transfer subject",
+                                    "specifies the wire transfer subject (must be a reserve public key)",
                                     &subject)),
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_string ('u',

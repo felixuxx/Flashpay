@@ -22,7 +22,7 @@
 #define TALER_WIRE_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_wire_plugin.h"
+
 
 /**
  * Different account types supported by payto://.
@@ -45,6 +45,7 @@ enum TALER_PaytoAccountType
    */
   TALER_PAC_IBAN
 };
+
 
 /**
  * Information about an account extracted from a payto://-URL.
@@ -71,19 +72,15 @@ struct TALER_Account
     {
 
       /**
-       * Hostname of the bank (possibly including port).
+       * Bank account base URL.
+       */
+      char *account_base_url;
+
+      /**
+       * Only the hostname of the bank.
        */
       char *hostname;
 
-      /**
-       * Bank account number.
-       */
-      unsigned long long no;
-
-      /**
-       * Base URL of the bank hosting the account above.
-       */
-      char *bank_base_url;
     } x_taler_bank;
 
     /**
@@ -114,6 +111,18 @@ TALER_WIRE_account_free (struct TALER_Account *acc);
 
 
 /**
+ * Round the amount to something that can be
+ * transferred on the wire.
+ *
+ * @param[in,out] amount amount to round down
+ * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
+ *         #GNUNET_SYSERR if the amount or currency was invalid
+ */
+int
+TALER_WIRE_amount_round (struct TALER_Amount *amount);
+
+
+/**
  * Parse @a payto_url and store the result in @a acc
  *
  * @param payto_url URL to parse
@@ -133,38 +142,6 @@ TALER_WIRE_payto_to_account (const char *payto_url,
  */
 char *
 TALER_WIRE_payto_get_method (const char *payto_url);
-
-
-/**
- * Get the plugin name from the payment method.
- *
- * @param method the method implemented by the plugin (for
- *  simplicity, we assume 1 method is implemented by 1 plugin).
- * @return the plugin name, NULL if not found.
- */
-const char *
-TALER_WIRE_get_plugin_from_method (const char *method);
-
-
-/**
- * Load a WIRE plugin.
- *
- * @param cfg configuration to use
- * @param plugin_name name of the plugin to load
- * @return #GNUNET_OK on success
- */
-struct TALER_WIRE_Plugin *
-TALER_WIRE_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                        const char *plugin_name);
-
-
-/**
- * Unload a WIRE plugin.
- *
- * @param plugin the plugin to unload
- */
-void
-TALER_WIRE_plugin_unload (struct TALER_WIRE_Plugin *plugin);
 
 
 #endif

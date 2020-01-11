@@ -558,6 +558,5 @@ AC_CONFIG_FILES([Makefile
                  src/util/Makefile
                  src/util/taler-config
                  src/wire/Makefile
-                 src/wire-plugins/Makefile
                  ])
 AC_OUTPUT

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 GNUnet e.V.
+  Copyright (C) 2014-2020 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -241,8 +241,8 @@ postgres_create_tables (void *cls)
       ",account_name TEXT NOT NULL"
       ",last_wire_reserve_in_serial_id INT8 NOT NULL DEFAULT 0"
       ",last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0"
-      ",wire_in_off BYTEA"
-      ",wire_out_off BYTEA"
+      ",wire_in_off INT8"
+      ",wire_out_off INT8"
       ")"),
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS wire_auditor_progress"
                             "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
@@ -2135,23 +2135,16 @@ postgres_insert_wire_auditor_account_progress (void *cls,
                                                const struct
                                                TALER_AUDITORDB_WireAccountProgressPoint
                                                *pp,
-                                               const void *in_wire_off,
-                                               const void *out_wire_off,
-                                               size_t wire_off_size)
+                                               uint64_t in_wire_off,
+                                               uint64_t out_wire_off)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
-    GNUNET_PQ_query_param_fixed_size (in_wire_off,
-                                      NULL == in_wire_off
-                                      ? 0
-                                      : wire_off_size),
-    GNUNET_PQ_query_param_fixed_size (out_wire_off,
-                                      NULL == out_wire_off
-                                      ? 0
-                                      : wire_off_size),
+    GNUNET_PQ_query_param_uint64 (&in_wire_off),
+    GNUNET_PQ_query_param_uint64 (&out_wire_off),
     GNUNET_PQ_query_param_end
   };
 
@@ -2182,21 +2175,14 @@ postgres_update_wire_auditor_account_progress (void *cls,
                                                const struct
                                                TALER_AUDITORDB_WireAccountProgressPoint
                                                *pp,
-                                               const void *in_wire_off,
-                                               const void *out_wire_off,
-                                               size_t wire_off_size)
+                                               uint64_t in_wire_off,
+                                               uint64_t out_wire_off)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
-    GNUNET_PQ_query_param_fixed_size (in_wire_off,
-                                      NULL == in_wire_off
-                                      ? 0
-                                      : wire_off_size),
-    GNUNET_PQ_query_param_fixed_size (out_wire_off,
-                                      NULL == out_wire_off
-                                      ? 0
-                                      : wire_off_size),
+    GNUNET_PQ_query_param_uint64 (&in_wire_off),
+    GNUNET_PQ_query_param_uint64 (&out_wire_off),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
@@ -2231,12 +2217,9 @@ postgres_get_wire_auditor_account_progress (void *cls,
                                             struct
                                             TALER_AUDITORDB_WireAccountProgressPoint
                                             *pp,
-                                            void **in_wire_off,
-                                            void **out_wire_off,
-                                            size_t *wire_off_size)
+                                            uint64_t *in_wire_off,
+                                            uint64_t *out_wire_off)
 {
-  size_t xsize;
-  enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
@@ -2247,30 +2230,17 @@ postgres_get_wire_auditor_account_progress (void *cls,
                                   &pp->last_reserve_in_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_wire_wire_out_serial_id",
                                   &pp->last_wire_out_serial_id),
-    GNUNET_PQ_result_spec_variable_size ("wire_in_off",
-                                         in_wire_off,
-                                         wire_off_size),
-    GNUNET_PQ_result_spec_variable_size ("wire_out_off",
-                                         out_wire_off,
-                                         &xsize),
+    GNUNET_PQ_result_spec_uint64 ("wire_in_off",
+                                  in_wire_off),
+    GNUNET_PQ_result_spec_uint64 ("wire_out_off",
+                                  out_wire_off),
     GNUNET_PQ_result_spec_end
   };
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-                                                 "wire_auditor_account_progress_select",
-                                                 params,
-                                                 rs);
-  if (qs <= 0)
-  {
-    *wire_off_size = 0;
-    xsize = 0;
-  }
-  if ( (0 != xsize) &&
-       (0 != *wire_off_size) )
-  {
-    GNUNET_assert (xsize == *wire_off_size);
-  }
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "wire_auditor_account_progress_select",
+                                                   params,
+                                                   rs);
 }
 
 

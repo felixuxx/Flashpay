@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017, 2018 Taler Systems SA
+  Copyright (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,40 +28,6 @@
 #include "taler_json_lib.h"
 #include "taler_wire_lib.h"
 
-
-/**
- * Information we keep for each plugin.
- */
-struct Plugin
-{
-
-  /**
-   * We keep plugins in a DLL.
-   */
-  struct Plugin *next;
-
-  /**
-   * We keep plugins in a DLL.
-   */
-  struct Plugin *prev;
-
-  /**
-   * Pointer to the plugin.
-   */
-  struct TALER_WIRE_Plugin *plugin;
-
-};
-
-
-/**
- * Head of DLL of wire plugins.
- */
-static struct Plugin *wire_head;
-
-/**
- * Tail of DLL of wire plugins.
- */
-static struct Plugin *wire_tail;
 
 /**
  * Array of wire methods supported by this exchange.
@@ -191,9 +157,8 @@ load_account (void *cls,
     else
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Wire fees not specified for `%s', ignoring plugin %s\n",
-                  method,
-                  ai->plugin_name);
+                  "Wire fees not specified for `%s'\n",
+                  method);
       *ret = GNUNET_SYSERR;
     }
     GNUNET_free (method);
@@ -201,35 +166,15 @@ load_account (void *cls,
 
   if (GNUNET_YES == ai->debit_enabled)
   {
-    struct Plugin *p;
-
-    p = GNUNET_new (struct Plugin);
-    p->plugin = TALER_WIRE_plugin_load (cfg,
-                                        ai->plugin_name);
-    if (NULL == p->plugin)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to load plugin %s\n",
-                  ai->plugin_name);
-      GNUNET_free (p);
-      *ret = GNUNET_SYSERR;
-      return;
-    }
     if (GNUNET_OK !=
-        load_fee (p->plugin->method))
+        load_fee (ai->method))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Disabling plugin `%s' as wire transfer fees for `%s' are not given correctly\n",
-                  ai->plugin_name,
-                  p->plugin->method);
-      TALER_WIRE_plugin_unload (p->plugin);
-      GNUNET_free (p);
+                  "Wire transfer fees for `%s' are not given correctly\n",
+                  ai->method);
       *ret = GNUNET_SYSERR;
       return;
     }
-    GNUNET_CONTAINER_DLL_insert (wire_head,
-                                 wire_tail,
-                                 p);
   }
 }
 
@@ -251,12 +196,6 @@ TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &load_account,
                                   &ret);
-  if (NULL == wire_head)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to find properly configured wire transfer method\n");
-    ret = GNUNET_SYSERR;
-  }
   if (GNUNET_OK != ret)
     TEH_VALIDATION_done ();
   return ret;
@@ -269,79 +208,10 @@ TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 void
 TEH_VALIDATION_done ()
 {
-  struct Plugin *p;
-
-  while (NULL != (p = wire_head))
-  {
-    GNUNET_CONTAINER_DLL_remove (wire_head,
-                                 wire_tail,
-                                 p);
-    TALER_WIRE_plugin_unload (p->plugin);
-    GNUNET_free (p);
-  }
   json_decref (wire_fee_object);
   wire_fee_object = NULL;
   json_decref (wire_accounts_array);
   wire_accounts_array = NULL;
-}
-
-
-/**
- * Check if the given wire format JSON object is correctly formatted as
- * a wire address.
- *
- * @param wire the JSON wire format object
- * @param[out] emsg set to error message if we return an error code
- * @return #TALER_EC_NONE if correctly formatted; otherwise error code
- */
-enum TALER_ErrorCode
-TEH_json_validate_wireformat (const json_t *wire,
-                              char **emsg)
-{
-  const char *payto_url;
-  json_error_t error;
-  char *method;
-
-  *emsg = NULL;
-  if (0 != json_unpack_ex ((json_t *) wire,
-                           &error, 0,
-                           "{s:s}",
-                           "url", &payto_url))
-  {
-    GNUNET_asprintf (emsg,
-                     "No `url' specified in the wire details\n");
-    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_MISSING;
-  }
-  method = TALER_WIRE_payto_get_method (payto_url);
-  if (NULL == method)
-  {
-    GNUNET_asprintf (emsg,
-                     "Malformed payto URL `%s'\n",
-                     payto_url);
-    return TALER_EC_PAYTO_MALFORMED;
-  }
-  for (struct Plugin *p = wire_head; NULL != p; p = p->next)
-  {
-    if (0 == strcasecmp (p->plugin->method,
-                         method))
-    {
-      enum TALER_ErrorCode ec;
-
-      GNUNET_free (method);
-      ec = p->plugin->wire_validate (p->plugin->cls,
-                                     payto_url);
-      if (TALER_EC_NONE != ec)
-        GNUNET_asprintf (emsg,
-                         "Payto URL `%s' rejected by plugin\n",
-                         payto_url);
-      return ec;
-    }
-  }
-  GNUNET_asprintf (emsg,
-                   "Wire format type `%s' is not supported by this exchange\n",
-                   method);
-  GNUNET_free (method);
-  return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_UNSUPPORTED;
 }
 
 

@@ -27,6 +27,7 @@
 #include "taler_exchangedb_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
+#include "taler_bank_service.h"
 #include "taler_wire_lib.h"
 
 /**
@@ -34,23 +35,6 @@
  * are no transactions returned by the wire plugin?
  */
 #define DELAY GNUNET_TIME_UNIT_SECONDS
-
-
-/**
- * Closure for #reject_cb().
- */
-struct RejectContext
-{
-  /**
-   * Wire transfer subject that was illformed.
-   */
-  char *wtid_s;
-
-  /**
-   * Database session that encountered the problem.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
-};
 
 
 /**
@@ -69,14 +53,19 @@ struct WireAccount
   struct WireAccount *prev;
 
   /**
-   * Handle to the plugin.
-   */
-  struct TALER_WIRE_Plugin *wire_plugin;
-
-  /**
    * Name of the section that configures this account.
    */
   char *section_name;
+
+  /**
+   * Account information.
+   */
+  struct TALER_Account account;
+
+  /**
+   * Authentication data.
+   */
+  struct TALER_BANK_AuthenticationData auth;
 
   /**
    * Are we running from scratch and should re-process all transactions
@@ -108,6 +97,16 @@ static struct WireAccount *wa_tail;
 static struct WireAccount *wa_pos;
 
 /**
+ * Handle to the context for interacting with the bank.
+ */
+static struct GNUNET_CURL_Context *ctx;
+
+/**
+ * Scheduler context for running the @e ctx.
+ */
+static struct GNUNET_CURL_RescheduleContext *rc;
+
+/**
  * Which currency is used by this exchange?
  */
 static char *exchange_currency_string;
@@ -132,23 +131,13 @@ static int global_ret;
  * Encoded offset in the wire transfer list from where
  * to start the next query with the bank.
  */
-static void *last_row_off;
-
-/**
- * Number of bytes in #last_row_off.
- */
-static size_t last_row_off_size;
+static uint64_t last_row_off;
 
 /**
  * Latest row offset seen in this transaction, becomes
  * the new #last_row_off upon commit.
  */
-static void *latest_row_off;
-
-/**
- * Number of bytes in #latest_row_off.
- */
-static size_t latest_row_off_size;
+static uint64_t latest_row_off;
 
 /**
  * Should we delay the next request to the wire plugin a bit?
@@ -183,12 +172,7 @@ static struct GNUNET_SCHEDULER_Task *task;
 /**
  * Active request for history.
  */
-static struct TALER_WIRE_HistoryHandle *hh;
-
-/**
- * Active request to reject a wire transfer.
- */
-static struct TALER_WIRE_RejectHandle *rt;
+static struct TALER_BANK_CreditHistoryHandle *hh;
 
 
 /**
@@ -202,6 +186,16 @@ shutdown_task (void *cls)
   struct WireAccount *wa;
 
   (void) cls;
+  if (NULL != ctx)
+  {
+    GNUNET_CURL_fini (ctx);
+    ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
+  }
   if (NULL != task)
   {
     GNUNET_SCHEDULER_cancel (task);
@@ -209,19 +203,8 @@ shutdown_task (void *cls)
   }
   if (NULL != hh)
   {
-    wa_pos->wire_plugin->get_history_cancel (wa_pos->wire_plugin->cls,
-                                             hh);
+    TALER_BANK_credit_history_cancel (hh);
     hh = NULL;
-  }
-  if (NULL != rt)
-  {
-    char *wtid_s;
-
-    wtid_s = wa_pos->wire_plugin->reject_transfer_cancel (
-      wa_pos->wire_plugin->cls,
-      rt);
-    rt = NULL;
-    GNUNET_free (wtid_s);
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   db_plugin = NULL;
@@ -230,14 +213,13 @@ shutdown_task (void *cls)
     GNUNET_CONTAINER_DLL_remove (wa_head,
                                  wa_tail,
                                  wa);
-    TALER_WIRE_plugin_unload (wa->wire_plugin);
+    TALER_WIRE_account_free (&wa->account);
+    TALER_BANK_auth_free (&wa->auth);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);
   }
   wa_pos = NULL;
-  GNUNET_free_non_null (last_row_off);
-  last_row_off = NULL;
-  last_row_off_size = 0;
+  last_row_off = 0;
 }
 
 
@@ -259,13 +241,26 @@ add_account_cb (void *cls,
     return; /* not enabled for us, skip */
   wa = GNUNET_new (struct WireAccount);
   wa->reset_mode = reset_mode;
-  wa->wire_plugin = TALER_WIRE_plugin_load (cfg,
-                                            ai->plugin_name);
-  if (NULL == wa->wire_plugin)
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (cfg,
+                                 ai->section_name,
+                                 &wa->auth))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "Failed to load wire plugin for `%s'\n",
-                ai->plugin_name);
+                "Failed to load account `%s'\n",
+                ai->section_name);
+    GNUNET_free (wa);
+    return;
+  }
+  if (GNUNET_OK !=
+      TALER_BANK_account_parse_cfg (cfg,
+                                    ai->section_name,
+                                    &wa->account))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "Failed to load account `%s'\n",
+                ai->section_name);
+    TALER_BANK_auth_free (&wa->auth);
     GNUNET_free (wa);
     return;
   }
@@ -336,70 +331,28 @@ find_transfers (void *cls);
 
 
 /**
- * Function called upon completion of the rejection of a wire transfer.
- *
- * @param cls closure with the `struct RejectContext`
- * @param ec error code for the operation
- */
-static void
-reject_cb (void *cls,
-           enum TALER_ErrorCode ec)
-{
-  struct RejectContext *rtc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  rt = NULL;
-  if (TALER_EC_NONE != ec)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to wire back transfer `%s': %d\n",
-                rtc->wtid_s,
-                ec);
-    GNUNET_free (rtc->wtid_s);
-    db_plugin->rollback (db_plugin->cls,
-                         rtc->session);
-    GNUNET_free (rtc);
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  GNUNET_free (rtc->wtid_s);
-  qs = db_plugin->commit (db_plugin->cls,
-                          rtc->session);
-  GNUNET_break (0 <= qs);
-  GNUNET_free (rtc);
-  task = GNUNET_SCHEDULER_add_now (&find_transfers,
-                                   NULL);
-}
-
-
-/**
  * Callbacks of this type are used to serve the result of asking
  * the bank for the transaction history.
  *
  * @param cls closure with the `struct TALER_EXCHANGEDB_Session *`
  * @param ec taler error code
- * @param dir direction of the transfer
- * @param row_off identification of the position at which we are querying
- * @param row_off_size number of bytes in @a row_off
+ * @param serial_id identification of the position at which we are querying
  * @param details details about the wire transfer
+ * @param json raw JSON response
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 static int
 history_cb (void *cls,
+            unsigned int http_status,
             enum TALER_ErrorCode ec,
-            enum TALER_BANK_Direction dir,
-            const void *row_off,
-            size_t row_off_size,
-            const struct TALER_WIRE_TransferDetails *details)
+            uint64_t serial_id,
+            const struct TALER_BANK_CreditDetails *details,
+            const json_t *json)
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_ReservePublicKeyP reserve_pub;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Got history callback, direction %u!\n",
-              (unsigned int) dir);
-  if (TALER_BANK_DIRECTION_NONE == dir)
+  if (NULL == details)
   {
     hh = NULL;
     if (TALER_EC_NONE != ec)
@@ -428,11 +381,8 @@ history_cb (void *cls,
     if (0 < qs)
     {
       /* transaction success, update #last_row_off */
-      GNUNET_free_non_null (last_row_off);
       last_row_off = latest_row_off;
-      last_row_off_size = latest_row_off_size;
-      latest_row_off = NULL;
-      latest_row_off_size = 0;
+      latest_row_off = 0;
 
       /* if successful at limit, try increasing transaction batch size (AIMD) */
       if (current_batch_size == batch_size)
@@ -462,49 +412,10 @@ history_cb (void *cls,
                                     NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
-  if (NULL != details->wtid_s)
-  {
-    struct RejectContext *rtc;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Wire transfer over %s has invalid subject `%s', sending it back!\n",
-                TALER_amount2s (&details->amount),
-                details->wtid_s);
-    GNUNET_break (0 != row_off_size);
-    if (latest_row_off_size != row_off_size)
-    {
-      GNUNET_free_non_null (latest_row_off);
-      latest_row_off = GNUNET_malloc (row_off_size);
-      latest_row_off_size = row_off_size;
-    }
-    memcpy (latest_row_off,
-            row_off,
-            row_off_size);
-    rtc = GNUNET_new (struct RejectContext);
-    rtc->session = session;
-    rtc->wtid_s = GNUNET_strdup (details->wtid_s);
-    rt = wa_pos->wire_plugin->reject_transfer (wa_pos->wire_plugin->cls,
-                                               wa_pos->section_name,
-                                               row_off,
-                                               row_off_size,
-                                               &reject_cb,
-                                               rtc);
-    if (NULL == rt)
-    {
-      GNUNET_break (0);
-      db_plugin->rollback (db_plugin->cls,
-                           session);
-      GNUNET_assert (NULL == task);
-      task = GNUNET_SCHEDULER_add_now (&find_transfers,
-                                       NULL);
-    }
-    return GNUNET_SYSERR; /* will continue later... */
-  }
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Adding wire transfer over %s with (hashed) subject `%s'\n",
               TALER_amount2s (&details->amount),
-              TALER_B2S (&details->wtid));
+              TALER_B2S (&details->reserve_pub));
 
   /**
    * Debug block.
@@ -515,8 +426,8 @@ history_cb (void *cls,
     char wtid_s[PUBSIZE];
 
     GNUNET_break
-      (NULL != GNUNET_STRINGS_data_to_string (&details->wtid,
-                                              sizeof (details->wtid),
+      (NULL != GNUNET_STRINGS_data_to_string (&details->reserve_pub,
+                                              sizeof (details->reserve_pub),
                                               &wtid_s[0],
                                               PUBSIZE));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -525,20 +436,14 @@ history_cb (void *cls,
   }
 
   current_batch_size++;
-  /* Wire transfer identifier == reserve public key */
-  GNUNET_assert (sizeof (reserve_pub) == sizeof (details->wtid));
-  memcpy (&reserve_pub,
-          &details->wtid,
-          sizeof (reserve_pub));
   qs = db_plugin->reserves_in_insert (db_plugin->cls,
                                       session,
-                                      &reserve_pub,
+                                      &details->reserve_pub,
                                       &details->amount,
                                       details->execution_date,
                                       details->account_url,
                                       wa_pos->section_name,
-                                      row_off,
-                                      row_off_size);
+                                      serial_id);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -560,15 +465,7 @@ history_cb (void *cls,
     return GNUNET_SYSERR;
   }
 
-  if (latest_row_off_size != row_off_size)
-  {
-    GNUNET_free_non_null (latest_row_off);
-    latest_row_off = GNUNET_malloc (row_off_size);
-    latest_row_off_size = row_off_size;
-  }
-  memcpy (latest_row_off,
-          row_off,
-          row_off_size);
+  latest_row_off = serial_id;
   return GNUNET_OK;
 }
 
@@ -615,8 +512,7 @@ find_transfers (void *cls)
     qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
                                                      session,
                                                      wa_pos->section_name,
-                                                     &last_row_off,
-                                                     &last_row_off_size);
+                                                     &last_row_off);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -638,20 +534,17 @@ find_transfers (void *cls)
     }
   }
   wa_pos->reset_mode = GNUNET_NO;
-  GNUNET_assert ( (NULL == last_row_off) ||
-                  ( (NULL != last_row_off) &&
-                    (0 != last_row_off_size) ) );
   delay = GNUNET_YES;
   current_batch_size = 0;
 
-  hh = wa_pos->wire_plugin->get_history (wa_pos->wire_plugin->cls,
-                                         wa_pos->section_name,
-                                         TALER_BANK_DIRECTION_CREDIT,
-                                         last_row_off,
-                                         last_row_off_size,
-                                         batch_size,
-                                         &history_cb,
-                                         session);
+  hh = TALER_BANK_credit_history (ctx,
+                                  wa_pos->account.details.x_taler_bank.
+                                  account_base_url,
+                                  &wa_pos->auth,
+                                  last_row_off,
+                                  batch_size,
+                                  &history_cb,
+                                  session);
   if (NULL == hh)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -695,6 +588,14 @@ run (void *cls,
                                    NULL);
   GNUNET_SCHEDULER_add_shutdown (&shutdown_task,
                                  cls);
+  ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                          &rc);
+  rc = GNUNET_CURL_gnunet_rc_create (ctx);
+  if (NULL == ctx)
+  {
+    GNUNET_break (0);
+    return;
+  }
 }
 
 

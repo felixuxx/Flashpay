@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 GNUnet e.V. & Inria
+  Copyright (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -41,22 +41,9 @@ typedef void
 
 
 /**
- * Callback to process a merchant registration outcome.
- *
- * @param cls closure
- * @param status GNUNET_OK if the registration succeeded,
- *        GNUNET_NO otherwise.
- */
-typedef void
-(*TALER_WIRE_MerchantRegisterCallback) (void *cls,
-                                        unsigned int status);
-
-/**
  * Details about a valid wire transfer to the exchange.
- * It is the plugin's responsibility to filter and undo
- * invalid transfers.
  */
-struct TALER_WIRE_TransferDetails
+struct TALER_WIRE_CreditDetails
 {
   /**
    * Amount that was transferred
@@ -69,22 +56,44 @@ struct TALER_WIRE_TransferDetails
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Binary data that was encoded in the wire transfer subject, if
-   * it decoded properly.  Otherwise all-zeros and @e wtid_s is set.
+   * Binary data that was encoded in the wire transfer subject.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * payto://-URL of the source's account (used
+   * when the reserve is closed or for debugging).
+   */
+  const char *source_account_url;
+};
+
+
+/**
+ * Details about a valid wire transfer made by the
+ * exchange's aggregator to a merchant.
+ */
+struct TALER_WIRE_DebitDetails
+{
+  /**
+   * Amount that was transferred
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Time of the the transfer
+   */
+  struct GNUNET_TIME_Absolute execution_date;
+
+  /**
+   * Binary data that was encoded in the wire transfer subject.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
 
   /**
-   * Wire transfer identifer as a string.  Set to NULL if the
-   * identifier was properly Base32 encoded and this @e wtid could be
-   * set instead.
+   * payto://-URL of the target account which received
+   * the funds.
    */
-  char *wtid_s;
-
-  /**
-   * payto://-URL of the other account that was involved
-   */
-  char *account_url;
+  const char *target_account_url;
 };
 
 
@@ -96,33 +105,40 @@ struct TALER_WIRE_TransferDetails
  *
  * @param cls closure
  * @param ec taler error code
- * @param dir direction of the transfer, #TALER_BANK_DIRECTION_NONE when
- *            the iteration is complete
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 typedef int
-(*TALER_WIRE_HistoryResultCallback) (void *cls,
-                                     enum TALER_ErrorCode ec,
-                                     enum TALER_BANK_Direction dir,
-                                     const void *row_off,
-                                     size_t row_off_size,
-                                     const struct
-                                     TALER_WIRE_TransferDetails *details);
+(*TALER_WIRE_CreditResultCallback) (void *cls,
+                                    enum TALER_ErrorCode ec,
+                                    const void *row_off,
+                                    size_t row_off_size,
+                                    const struct
+                                    TALER_WIRE_CreditDetails *details);
 
 
 /**
  * Callbacks of this type are used to serve the result of asking
- * the bank to reject a wire transfer.
+ * the bank for the transaction history.  NOTE: this function will
+ * NOT get the list of history elements, but rather get (iteratively)
+ * called for each (parsed) history element.
  *
  * @param cls closure
- * @param ec status of the operation, #TALER_EC_NONE on success
+ * @param ec taler error code
+ * @param row_off identification of the position at which we are querying
+ * @param row_off_size number of bytes in @a row_off
+ * @param details details about the wire transfer
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-typedef void
-(*TALER_WIRE_RejectTransferCallback) (void *cls,
-                                      enum TALER_ErrorCode ec);
+typedef int
+(*TALER_WIRE_DebitResultCallback) (void *cls,
+                                   enum TALER_ErrorCode ec,
+                                   const void *row_off,
+                                   size_t row_off_size,
+                                   const struct
+                                   TALER_WIRE_DebitDetails *details);
 
 
 /**
@@ -136,9 +152,14 @@ struct TALER_WIRE_PrepareHandle;
 struct TALER_WIRE_ExecuteHandle;
 
 /**
- * Handle returned for querying the transaction history.
+ * Handle returned for querying the credit transaction history.
  */
-struct TALER_WIRE_HistoryHandle;
+struct TALER_WIRE_CreditHistoryHandle;
+
+/**
+ * Handle returned for querying the debit transaction history.
+ */
+struct TALER_WIRE_DebitHistoryHandle;
 
 
 /**
@@ -146,7 +167,8 @@ struct TALER_WIRE_HistoryHandle;
  *
  * @param cls closure
  * @param success #GNUNET_OK on success, #GNUNET_SYSERR on failure
- * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
+ * @param row_id unique ID of the wire transfer in the bank's records; NULL on error
+ * @param row_id_size number of bytes in @e row_id
  * @param emsg NULL on success, otherwise an error message
  */
 typedef void
@@ -155,6 +177,7 @@ typedef void
                                    const void *row_id,
                                    size_t row_id_size,
                                    const char *emsg);
+
 
 /**
  * @brief The plugin API, returned from the plugin's "init" function.
@@ -176,10 +199,9 @@ struct TALER_WIRE_Plugin
 
   /**
    * Which wire method (payto://METHOD/") is supported by this plugin?
-   * For example, "iban" or "x-taler-bank".
+   * For example, "x-taler-bank" or "iban".
    */
   const char *method;
-
 
   /**
    * Round amount DOWN to the amount that can be transferred via the wire
@@ -210,80 +232,7 @@ struct TALER_WIRE_Plugin
 
 
   /**
-   * Prepare for exeuction of a wire transfer.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param origin_account_section configuration section specifying the origin
-   *        account of the exchange to use
-   * @param destination_account_url payto:// URL identifying where to send the money
-   * @param amount amount to transfer, already rounded
-   * @param exchange_base_url base URL of this exchange (included in subject
-   *        to facilitate use of tracking API by merchant backend)
-   * @param wtid wire transfer identifier to use
-   * @param ptc function to call with the prepared data to persist
-   * @param ptc_cls closure for @a ptc
-   * @return NULL on failure
-   */
-  struct TALER_WIRE_PrepareHandle *
-  (*prepare_wire_transfer) (void *cls,
-                            const char *origin_account_section,
-                            const char *destination_account_url,
-                            const struct TALER_Amount *amount,
-                            const char *exchange_base_url,
-                            const struct TALER_WireTransferIdentifierRawP *wtid,
-                            TALER_WIRE_PrepareTransactionCallback ptc,
-                            void *ptc_cls);
-
-
-  /**
-   * Abort preparation of a wire transfer. For example,
-   * because we are shutting down.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param pth preparation to cancel
-   */
-  void
-  (*prepare_wire_transfer_cancel) (void *cls,
-                                   struct TALER_WIRE_PrepareHandle *pth);
-
-
-  /**
-   * Execute a wire transfer.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param buf buffer with the prepared execution details
-   * @param buf_size number of bytes in @a buf
-   * @param cc function to call upon success
-   * @param cc_cls closure for @a cc
-   * @return NULL on error
-   */
-  struct TALER_WIRE_ExecuteHandle *
-  (*execute_wire_transfer) (void *cls,
-                            const char *buf,
-                            size_t buf_size,
-                            TALER_WIRE_ConfirmationCallback cc,
-                            void *cc_cls);
-
-
-  /**
-   * Abort execution of a wire transfer. For example, because we are
-   * shutting down.  Note that if an execution is aborted, it may or
-   * may not still succeed. The caller MUST run @e
-   * execute_wire_transfer again for the same request as soon as
-   * possilbe, to ensure that the request either ultimately succeeds
-   * or ultimately fails. Until this has been done, the transaction is
-   * in limbo (i.e. may or may not have been committed).
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param eh execution to cancel
-   */
-  void
-  (*execute_wire_transfer_cancel) (void *cls,
-                                   struct TALER_WIRE_ExecuteHandle *eh);
-
-
-  /**
-   * Query transfer history of an account.  We use the variable-size
+   * Query credits made to exchange account.  We use the variable-size
    * @a start_off to indicate which transfers we are interested in as
    * different banking systems may have different ways to identify
    * transfers.  The @a start_off value must thus match the value of
@@ -295,7 +244,6 @@ struct TALER_WIRE_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param account_section specifies the configuration section which
    *        identifies the account for which we should get the history
-   * @param direction what kinds of wire transfers should be returned
    * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
    * @param start_off_len number of bytes in @a start_off
    * @param num_results how many results do we want; negative numbers to go into the past,
@@ -304,70 +252,65 @@ struct TALER_WIRE_Plugin
    * @param hres_cb the callback to call with the transaction history
    * @param hres_cb_cls closure for the above callback
    */
-  struct TALER_WIRE_HistoryHandle *
-  (*get_history) (void *cls,
+  struct TALER_WIRE_CreditHistoryHandle *
+  (*get_credits) (void *cls,
                   const char *account_section,
-                  enum TALER_BANK_Direction direction,
                   const void *start_off,
                   size_t start_off_len,
                   int64_t num_results,
-                  TALER_WIRE_HistoryResultCallback hres_cb,
+                  TALER_WIRE_CreditResultCallback hres_cb,
                   void *hres_cb_cls);
 
   /**
    * Cancel going over the account's history.
    *
    * @param cls plugins' closure
-   * @param whh operation to cancel
+   * @param chh operation to cancel
    */
   void
-  (*get_history_cancel) (void *cls,
-                         struct TALER_WIRE_HistoryHandle *whh);
+  (*get_credits_cancel) (void *cls,
+                         struct TALER_WIRE_CreditHistoryHandle *chh);
 
 
   /**
-   * Reject an incoming wire transfer that was obtained from the
-   * history. This function can be used to transfer funds back to
-   * the sender if the WTID was malformed (i.e. due to a typo).
+   * Query debits (transfers to merchants) made by an exchange.  We use the
+   * variable-size @a start_off to indicate which transfers we are interested
+   * in as different banking systems may have different ways to identify
+   * transfers.  The @a start_off value must thus match the value of a
+   * `row_off` argument previously given to the @a hres_cb.  Use NULL to query
+   * transfers from the beginning of time (with positive @a num_results) or
+   * from the latest committed transfers (with negative @a num_results).
    *
-   * Calling `reject_transfer` twice on the same wire transfer should
-   * be idempotent, i.e. not cause the funds to be wired back twice.
-   * Furthermore, the transfer should henceforth be removed from the
-   * results returned by @e get_history.
-   *
-   * @param cls plugin's closure
+   * @param cls the @e cls of this struct with the plugin-specific state
    * @param account_section specifies the configuration section which
-   *        identifies the account to use to reject the transfer
-   * @param start_off offset of the wire transfer in plugin-specific format
+   *        identifies the account for which we should get the history
+   * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
    * @param start_off_len number of bytes in @a start_off
-   * @param rej_cb function to call with the result of the operation
-   * @param rej_cb_cls closure for @a rej_cb
-   * @return handle to cancel the operation
+   * @param num_results how many results do we want; negative numbers to go into the past,
+   *                    positive numbers to go into the future starting at @a start_row;
+   *                    must not be zero.
+   * @param hres_cb the callback to call with the transaction history
+   * @param hres_cb_cls closure for the above callback
    */
-  struct TALER_WIRE_RejectHandle *
-  (*reject_transfer)(void *cls,
-                     const char *account_section,
-                     const void *start_off,
-                     size_t start_off_len,
-                     TALER_WIRE_RejectTransferCallback rej_cb,
-                     void *rej_cb_cls);
-
+  struct TALER_WIRE_DebitHistoryHandle *
+  (*get_debits) (void *cls,
+                 const char *account_section,
+                 const void *start_off,
+                 size_t start_off_len,
+                 int64_t num_results,
+                 TALER_WIRE_DebitResultCallback hres_cb,
+                 void *hres_cb_cls);
 
   /**
-   * Cancel ongoing reject operation.  Note that the rejection may still
-   * proceed. Basically, if this function is called, the rejection may
-   * have happened or not.  This function is usually used during shutdown
-   * or system upgrades.  At a later point, the application must call
-   * @e reject_transfer again for this wire transfer, unless the
-   * @e get_history shows that the wire transfer no longer exists.
+   * Cancel going over the account's history.
    *
    * @param cls plugins' closure
-   * @param rh operation to cancel
-   * @return closure of the callback of the operation
+   * @param dhh operation to cancel
    */
-  void *
-  (*reject_transfer_cancel)(void *cls,
-                            struct TALER_WIRE_RejectHandle *rh);
+  void
+  (*get_debits_cancel) (void *cls,
+                        struct TALER_WIRE_DebitHistoryHandle *dhh);
+
 
 };
 

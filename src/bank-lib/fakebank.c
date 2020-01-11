@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017, 2018 Inria and GNUnet e.V.
+  (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -25,12 +25,71 @@
 #include "platform.h"
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
-#include "fakebank.h"
+#include "taler_mhd_lib.h"
 
 /**
  * Maximum POST request size (for /admin/add/incoming)
  */
 #define REQUEST_BUFFER_MAX (4 * 1024)
+
+
+/**
+ * Details about a transcation we (as the simulated bank) received.
+ */
+struct Transaction
+{
+  /**
+   * We store transactions in a DLL.
+   */
+  struct Transaction *next;
+
+  /**
+   * We store transactions in a DLL.
+   */
+  struct Transaction *prev;
+
+  /**
+   * Amount to be transferred.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Account to debit.
+   */
+  char *debit_account;
+
+  /**
+   * Account to credit.
+   */
+  char *credit_account;
+
+  /**
+   * Subject of the transfer.
+   */
+  char *subject;
+
+  /**
+   * Base URL of the exchange.
+   */
+  char *exchange_base_url;
+
+  /**
+   * When did the transaction happen?
+   */
+  struct GNUNET_TIME_Absolute date;
+
+  /**
+   * Number of this transaction.
+   */
+  uint64_t row_id;
+
+  /**
+   * Has this transaction been subjected to #TALER_FAKEBANK_check()
+   * and should thus no longer be counted in
+   * #TALER_FAKEBANK_check_empty()?
+   */
+  int checked;
+};
 
 
 /**
@@ -62,6 +121,11 @@ struct TALER_FAKEBANK_Handle
    * Number of transactions.
    */
   uint64_t serial_counter;
+
+  /**
+   * Our port number.
+   */
+  uint16_t port;
 
 #if EPOLL_SUPPORT
   /**
@@ -95,8 +159,8 @@ struct TALER_FAKEBANK_Handle
 int
 TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
                       const struct TALER_Amount *want_amount,
-                      uint64_t want_debit,
-                      uint64_t want_credit,
+                      const char *want_debit,
+                      const char *want_credit,
                       const char *exchange_base_url,
                       char **subject)
 {
@@ -151,8 +215,8 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
  */
 uint64_t
 TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
-                              uint64_t debit_account,
-                              uint64_t credit_account,
+                              const char *debit_account,
+                              const char *credit_account,
                               const struct TALER_Amount *amount,
                               const char *subject,
                               const char *exchange_base_url)
@@ -160,15 +224,15 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
   struct Transaction *t;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Making transfer from %llu to %llu over %s and subject %s; for exchange: %s\n",
-              (unsigned long long) debit_account,
-              (unsigned long long) credit_account,
+              "Making transfer from %s to %s over %s and subject %s; for exchange: %s\n",
+              debit_account,
+              credit_account,
               TALER_amount2s (amount),
               subject,
               exchange_base_url);
   t = GNUNET_new (struct Transaction);
-  t->debit_account = debit_account;
-  t->credit_account = credit_account;
+  t->debit_account = GNUNET_strdup (debit_account);
+  t->credit_account = GNUNET_strdup (credit_account);
   t->amount = *amount;
   t->exchange_base_url = GNUNET_strdup (exchange_base_url);
   t->row_id = ++h->serial_counter;
@@ -179,31 +243,6 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                                     h->transactions_tail,
                                     t);
   return t->row_id;
-}
-
-
-/**
- * Reject incoming wire transfer to account @a credit_account
- * as identified by @a rowid.
- *
- * @param h fake bank handle
- * @param rowid identifies transfer to reject
- * @param credit_account account number of owner of credited account
- * @return #GNUNET_YES on success, #GNUNET_NO if the wire transfer was not found
- */
-int
-TALER_FAKEBANK_reject_transfer (struct TALER_FAKEBANK_Handle *h,
-                                uint64_t rowid,
-                                uint64_t credit_account)
-{
-  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
-    if ( (t->row_id == rowid) &&
-         (t->credit_account == credit_account) )
-    {
-      t->rejected = GNUNET_YES;
-      return GNUNET_YES;
-    }
-  return GNUNET_NO;
 }
 
 
@@ -223,8 +262,7 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
   t = h->transactions_head;
   while (NULL != t)
   {
-    if ( (GNUNET_YES != t->checked) &&
-         (GNUNET_YES != t->rejected) )
+    if (GNUNET_YES != t->checked)
       break;
     t = t->next;
   }
@@ -234,16 +272,15 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
            "Expected empty transaction set, but I have:\n");
   while (NULL != t)
   {
-    if ( (GNUNET_YES != t->checked) &&
-         (GNUNET_YES != t->rejected) )
+    if (GNUNET_YES != t->checked)
     {
       char *s;
 
       s = TALER_amount_to_string (&t->amount);
       fprintf (stderr,
-               "%llu -> %llu (%s) from %s\n",
-               (unsigned long long) t->debit_account,
-               (unsigned long long) t->credit_account,
+               "%s -> %s (%s) from %s\n",
+               t->debit_account,
+               t->credit_account,
                s,
                t->exchange_base_url);
       GNUNET_free (s);
@@ -270,6 +307,8 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
                                  h->transactions_tail,
                                  t);
     GNUNET_free (t->subject);
+    GNUNET_free (t->debit_account);
+    GNUNET_free (t->credit_account);
     GNUNET_free (t->exchange_base_url);
     GNUNET_free (t);
   }
@@ -287,62 +326,6 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_bank = NULL;
   }
   GNUNET_free (h);
-}
-
-
-/**
- * Create and queue a bank error message with the HTTP response
- * code @a response_code on connection @a connection.
- *
- * @param connection where to queue the reply
- * @param response_code http status code to use
- * @param ec taler error code to use
- * @param message human readable error message
- * @return MHD status code
- */
-static int
-create_bank_error (struct MHD_Connection *connection,
-                   unsigned int response_code,
-                   enum TALER_ErrorCode ec,
-                   const char *message)
-{
-  json_t *json;
-  struct MHD_Response *resp;
-  void *json_str;
-  size_t json_len;
-  int ret;
-
-  json = json_pack ("{s:s, s:I}",
-                    "error",
-                    message,
-                    "ec",
-                    (json_int_t) ec);
-  json_str = json_dumps (json,
-                         JSON_INDENT (2));
-  json_decref (json);
-  if (NULL == json_str)
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-  json_len = strlen (json_str);
-  resp = MHD_create_response_from_buffer (json_len,
-                                          json_str,
-                                          MHD_RESPMEM_MUST_FREE);
-  if (NULL == resp)
-  {
-    GNUNET_break (0);
-    free (json_str);
-    return MHD_NO;
-  }
-  (void) MHD_add_response_header (resp,
-                                  MHD_HTTP_HEADER_CONTENT_TYPE,
-                                  "application/json");
-  ret = MHD_queue_response (connection,
-                            response_code,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
 }
 
 
@@ -394,8 +377,6 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
 {
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
-  struct MHD_Response *resp;
-  int ret;
   uint64_t row_id;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
@@ -422,15 +403,14 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   }
   {
     const char *subject;
-    uint64_t debit_account;
-    uint64_t credit_account;
+    const char *debit_account;
+    const char *credit_account;
     const char *base_url;
     struct TALER_Amount amount;
-    char *amount_s;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("subject", &subject),
-      GNUNET_JSON_spec_uint64 ("debit_account", &debit_account),
-      GNUNET_JSON_spec_uint64 ("credit_account", &credit_account),
+      GNUNET_JSON_spec_string ("debit_account", &debit_account),
+      GNUNET_JSON_spec_string ("credit_account", &credit_account),
       TALER_JSON_spec_amount ("amount", &amount),
       GNUNET_JSON_spec_string ("exchange_url", &base_url),
       GNUNET_JSON_spec_end ()
@@ -450,80 +430,49 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                            &amount,
                                            subject,
                                            base_url);
-    amount_s = TALER_amount_to_string (&amount);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Receiving incoming wire transfer: %llu->%llu, subject: %s, amount: %s, from %s\n",
-                (unsigned long long) debit_account,
-                (unsigned long long) credit_account,
+                "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
+                debit_account,
+                credit_account,
                 subject,
-                amount_s,
+                TALER_amount2s (&amount),
                 base_url);
-    GNUNET_free (amount_s);
   }
   json_decref (json);
 
   /* Finally build response object */
-  {
-    void *json_str;
-    size_t json_len;
-
-    json = json_pack ("{s:I, s:o}",
-                      "row_id",
-                      (json_int_t) row_id,
-                      "timestamp", GNUNET_JSON_from_time_abs (GNUNET_TIME_UNIT_ZERO_ABS)); /*dummy tmp */
-
-    json_str = json_dumps (json,
-                           JSON_INDENT (2));
-    json_decref (json);
-    if (NULL == json_str)
-    {
-      GNUNET_break (0);
-      return MHD_NO;
-    }
-    json_len = strlen (json_str);
-    resp = MHD_create_response_from_buffer (json_len,
-                                            json_str,
-                                            MHD_RESPMEM_MUST_FREE);
-    if (NULL == resp)
-    {
-      GNUNET_break (0);
-      free (json_str);
-      return MHD_NO;
-    }
-    (void) MHD_add_response_header (resp,
-                                    MHD_HTTP_HEADER_CONTENT_TYPE,
-                                    "application/json");
-  }
-  ret = MHD_queue_response (connection,
-                            MHD_HTTP_OK,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:I, s:o}",
+                                    "row_id",
+                                    (json_int_t) row_id,
+                                    "timestamp", GNUNET_JSON_from_time_abs (
+                                      GNUNET_TIME_UNIT_ZERO_ABS));                                       /*dummy tmp */
 }
 
 
 /**
- * Handle incoming HTTP request for /reject.
+ * Handle incoming HTTP request for /transaction.
  *
  * @param h the fakebank handle
  * @param connection the connection
+ * @param account account making the transaction
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
 static int
-handle_reject (struct TALER_FAKEBANK_Handle *h,
-               struct MHD_Connection *connection,
-               const char *upload_data,
-               size_t *upload_data_size,
-               void **con_cls)
+handle_transaction (struct TALER_FAKEBANK_Handle *h,
+                    struct MHD_Connection *connection,
+                    const char *account,
+                    const char *upload_data,
+                    size_t *upload_data_size,
+                    void **con_cls)
 {
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
-  struct MHD_Response *resp;
-  int ret;
-  int found;
+  uint64_t row_id;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
@@ -548,13 +497,25 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
     break;
   }
   {
-    uint64_t row_id;
-    uint64_t credit_account;
+    struct GNUNET_HashCode uuid;
+    struct TALER_WireTransferIdentifierRawP wtid;
+    const char *credit_account;
+    const char *base_url;
+    struct TALER_Amount amount;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_uint64 ("row_id", &row_id),
-      GNUNET_JSON_spec_uint64 ("account_number", &credit_account),
+      GNUNET_JSON_spec_fixed_auto ("request_uid",
+                                   &uuid),
+      TALER_JSON_spec_amount ("amount",
+                              &amount),
+      GNUNET_JSON_spec_string ("exchange_base_url",
+                               &base_url),
+      GNUNET_JSON_spec_fixed_auto ("wtid",
+                                   &wtid),
+      GNUNET_JSON_spec_string ("credit_account",
+                               &credit_account),
       GNUNET_JSON_spec_end ()
     };
+
     if (GNUNET_OK !=
         GNUNET_JSON_parse (json,
                            spec,
@@ -564,31 +525,38 @@ handle_reject (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       return MHD_NO;
     }
-    found = TALER_FAKEBANK_reject_transfer (h,
-                                            row_id,
-                                            credit_account);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Rejected wire transfer #%llu (to %llu)\n",
-                (unsigned long long) row_id,
-                (unsigned long long) credit_account);
+    {
+      char *subject;
+
+      subject = GNUNET_STRINGS_data_to_string_alloc (&wtid,
+                                                     sizeof (wtid));
+      // FIXME: use uuid here!!!
+      row_id = TALER_FAKEBANK_make_transfer (h,
+                                             account,
+                                             credit_account,
+                                             &amount,
+                                             subject,
+                                             base_url);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
+                  account,
+                  credit_account,
+                  subject,
+                  TALER_amount2s (&amount),
+                  base_url);
+      GNUNET_free (subject);
+    }
   }
   json_decref (json);
 
-  if (GNUNET_OK != found)
-    return create_bank_error
-             (connection,
-             MHD_HTTP_NOT_FOUND,
-             TALER_EC_BANK_TRANSACTION_NOT_FOUND,
-             "transaction unknown");
-  /* finally build regular response */
-  resp = MHD_create_response_from_buffer (0,
-                                          NULL,
-                                          MHD_RESPMEM_PERSISTENT);
-  ret = MHD_queue_response (connection,
-                            MHD_HTTP_NO_CONTENT,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
+  /* Finally build response object */
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:I, s:o}",
+                                    "row_id",
+                                    (json_int_t) row_id,
+                                    "timestamp", GNUNET_JSON_from_time_abs (
+                                      GNUNET_TIME_UNIT_ZERO_ABS));                                       /*dummy tmp */
 }
 
 
@@ -626,75 +594,153 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Handle incoming HTTP request for /history
+ * This is the "base" structure for both the /history and the
+ * /history-range API calls.
+ */
+struct HistoryArgs
+{
+
+  /**
+   * Bank account number of the requesting client.
+   */
+  uint64_t account_number;
+
+  /**
+   * Index of the starting transaction.
+   */
+  uint64_t start_idx;
+
+  /**
+   * Requested number of results and order
+   * (positive: ascending, negative: descending)
+   */
+  int64_t delta;
+
+  /**
+   * Timeout for long polling.
+   */
+  struct GNUNET_TIME_Relative lp_timeout;
+
+  /**
+   * #GNUNET_YES if starting point was given.
+   */
+  int have_start;
+
+};
+
+
+/**
+ * Parse URL history arguments, of _both_ APIs:
+ * /history/incoming and /history/outgoing.
  *
- * @param h the fakebank handle
- * @param connection the connection
- * @param con_cls place to store state, not used
- * @return MHD result code
+ * @param connection MHD connection.
+ * @param function_name name of the caller.
+ * @param ha[out] will contain the parsed values.
+ * @return GNUNET_OK only if the parsing succeedes.
  */
 static int
-handle_history (struct TALER_FAKEBANK_Handle *h,
-                struct MHD_Connection *connection,
-                void **con_cls)
+parse_history_common_args (struct MHD_Connection *connection,
+                           struct HistoryArgs *ha)
 {
-  struct HistoryArgs ha;
-  struct HistoryRangeIds hri;
   const char *start;
   const char *delta;
-  struct Transaction *pos;
-
-  (void) con_cls;
-  if (GNUNET_OK !=
-      TFH_parse_history_common_args (connection,
-                                     &ha))
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
+  const char *long_poll_ms;
+  unsigned long long lp_timeout;
+  unsigned long long sval;
+  long long d;
 
   start = MHD_lookup_connection_value (connection,
                                        MHD_GET_ARGUMENT_KIND,
                                        "start");
+  ha->have_start = (NULL != start);
   delta = MHD_lookup_connection_value (connection,
                                        MHD_GET_ARGUMENT_KIND,
                                        "delta");
-  if ( ((NULL != start) && (1 != sscanf (start,
-                                         "%llu",
-                                         &hri.start))) ||
-       (NULL == delta) || (1 != sscanf (delta,
-                                        "%lld",
-                                        &hri.count)) )
+  long_poll_ms = MHD_lookup_connection_value (connection,
+                                              MHD_GET_ARGUMENT_KIND,
+                                              "long_poll_ms");
+  lp_timeout = 0;
+  if ( (NULL == delta) ||
+       (1 != sscanf (delta,
+                     "%lld",
+                     &d)) ||
+       ( (NULL != long_poll_ms) &&
+         (1 != sscanf (long_poll_ms,
+                       "%llu",
+                       &lp_timeout)) ) ||
+       ( (NULL != start) &&
+         (1 != sscanf (start,
+                       "%llu",
+                       &sval)) ) )
+  {
+    /* Fail if one of the above failed.  */
+    /* Invalid request, given that this is fakebank we impolitely
+     * just kill the connection instead of returning a nice error.
+     */
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+  if (NULL == start)
+    ha->start_idx = (d > 0) ? 0 : UINT64_MAX;
+  else
+    ha->start_idx = (uint64_t) sval;
+  ha->delta = (int64_t) d;
+  ha->lp_timeout
+    = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
+                                     lp_timeout);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Handle incoming HTTP request for /history/incoming
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param account which account the request is about
+ * @return MHD result code
+ */
+static int
+handle_credit_history (struct TALER_FAKEBANK_Handle *h,
+                       struct MHD_Connection *connection,
+                       const char *account)
+{
+  struct HistoryArgs ha;
+  struct Transaction *pos;
+  json_t *history;
+
+  if (GNUNET_OK !=
+      parse_history_common_args (connection,
+                                 &ha))
   {
     GNUNET_break (0);
     return MHD_NO;
   }
-  ha.range = &hri;
 
-  if (NULL == start)
+  if (! ha.have_start)
   {
-    pos = 0 > hri.count ?
-          h->transactions_tail : h->transactions_head;
+    pos = (0 > ha.delta)
+          ? h->transactions_tail
+          : h->transactions_head;
   }
   else if (NULL != h->transactions_head)
   {
     for (pos = h->transactions_head;
          NULL != pos;
          pos = pos->next)
-      if (pos->row_id  == hri.start)
+      if (pos->row_id  == ha.start_idx)
         break;
     if (NULL == pos)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid range specified,"
-                  " transaction %llu not known!\n",
-                  (unsigned long long) hri.start);
+                  "Invalid start specified, transaction %llu not known!\n",
+                  (unsigned long long) ha.start_idx);
       return MHD_NO;
     }
     /* range is exclusive, skip the matching entry */
-    if (hri.count > 0)
+    if (ha.delta > 0)
       pos = pos->next;
-    if (hri.count < 0)
+    if (ha.delta < 0)
       pos = pos->prev;
   }
   else
@@ -702,15 +748,210 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
     /* list is empty */
     pos = NULL;
   }
+  history = json_array ();
+  while ( (0 != ha.delta) &&
+          (NULL != pos) )
+  {
+    if (0 == strcasecmp (pos->credit_account,
+                         account))
+    {
+      json_t *trans;
+
+      trans = json_pack
+                ("{s:I, s:o, s:o, s:s, s:s, s:s}",
+                "row_id", (json_int_t) pos->row_id,
+                "date", GNUNET_JSON_from_time_abs (pos->date),
+                "amount", TALER_JSON_from_amount (&pos->amount),
+                "credit_account", account,
+                "debit_account", pos->debit_account,
+                "wtid", pos->subject /* we "know" it is OK */);
+      GNUNET_assert (0 ==
+                     json_array_append_new (history,
+                                            trans));
+      if (ha.delta > 0)
+        ha.delta--;
+      else
+        ha.delta++;
+    }
+    if (ha.delta > 0)
+      pos = pos->prev;
+    else
+      pos = pos->next;
+  }
+  return TALER_MHD_reply_json (connection,
+                               history,
+                               MHD_HTTP_OK);
+}
+
+
+/**
+ * Handle incoming HTTP request for /history/incoming
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param account which account the request is about
+ * @return MHD result code
+ */
+static int
+handle_debit_history (struct TALER_FAKEBANK_Handle *h,
+                      struct MHD_Connection *connection,
+                      const char *account)
+{
+  struct HistoryArgs ha;
+  struct Transaction *pos;
+  json_t *history;
+
+  if (GNUNET_OK !=
+      parse_history_common_args (connection,
+                                 &ha))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  if (! ha.have_start)
+  {
+    pos = (0 > ha.delta)
+          ? h->transactions_tail
+          : h->transactions_head;
+  }
+  else if (NULL != h->transactions_head)
+  {
+    for (pos = h->transactions_head;
+         NULL != pos;
+         pos = pos->next)
+      if (pos->row_id  == ha.start_idx)
+        break;
+    if (NULL == pos)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid start specified, transaction %llu not known!\n",
+                  (unsigned long long) ha.start_idx);
+      return MHD_NO;
+    }
+    /* range is exclusive, skip the matching entry */
+    if (ha.delta > 0)
+      pos = pos->next;
+    if (ha.delta < 0)
+      pos = pos->prev;
+  }
+  else
+  {
+    /* list is empty */
+    pos = NULL;
+  }
+  history = json_array ();
+  while ( (0 != ha.delta) &&
+          (NULL != pos) )
+  {
+    if (0 == strcasecmp (pos->debit_account,
+                         account))
+    {
+      json_t *trans;
+
+      trans = json_pack
+                ("{s:I, s:o, s:o, s:s, s:s, s:s}",
+                "row_id", (json_int_t) pos->row_id,
+                "date", GNUNET_JSON_from_time_abs (pos->date),
+                "amount", TALER_JSON_from_amount (&pos->amount),
+                "credit_account", pos->credit_account,
+                "debit_account", account,
+                "reserve_pub", pos->subject /* we "know" it is OK */);
+      GNUNET_assert (0 ==
+                     json_array_append_new (history,
+                                            trans));
+      if (ha.delta > 0)
+        ha.delta--;
+      else
+        ha.delta++;
+    }
+    if (ha.delta > 0)
+      pos = pos->prev;
+    else
+      pos = pos->next;
+  }
+  return TALER_MHD_reply_json (connection,
+                               history,
+                               MHD_HTTP_OK);
+}
+
+
+/**
+ * Handle incoming HTTP request.
+ *
+ * @param h our handle
+ * @param connection the connection
+ * @param url the requested url
+ * @param method the method (POST, GET, ...)
+ * @param account which account should process the request
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request (a `struct Buffer *`)
+ * @return MHD result code
+ */
+static int
+serve (struct TALER_FAKEBANK_Handle *h,
+       struct MHD_Connection *connection,
+       const char *account,
+       const char *url,
+       const char *method,
+       const char *upload_data,
+       size_t *upload_data_size,
+       void **con_cls)
+{
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "/history, start row (0 == no transactions exist): %llu\n",
-              NULL != pos ? pos->row_id : 0LL);
-  return TFH_build_history_response (connection,
-                                     pos,
-                                     &ha,
-                                     &TFH_handle_history_skip,
-                                     &TFH_handle_history_step,
-                                     &TFH_handle_history_advance);
+              "Fakebank, serving: %s\n",
+              url);
+  if ( (0 == strcmp (url,
+                     "/")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_home_page (h,
+                             connection,
+                             con_cls);
+  if ( (0 == strcmp (url,
+                     "/admin/add/incoming")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST)) )
+    return handle_admin_add_incoming (h,
+                                      connection,
+                                      upload_data,
+                                      upload_data_size,
+                                      con_cls);
+  if ( (0 == strcmp (url,
+                     "/transaction")) &&
+       (NULL != account) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST)) )
+    return handle_transaction (h,
+                               connection,
+                               account,
+                               upload_data,
+                               upload_data_size,
+                               con_cls);
+  if ( (0 == strcmp (url,
+                     "/history/incoming")) &&
+       (NULL != account) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_credit_history (h,
+                                  connection,
+                                  account);
+  if ( (0 == strcmp (url,
+                     "/history/outgoing")) &&
+       (NULL != account) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_debit_history (h,
+                                 connection,
+                                 account);
+
+  /* Unexpected URL path, just close the connection. */
+  /* we're rather impolite here, but it's a testcase. */
+  TALER_LOG_ERROR ("Breaking URL: %s\n",
+                   url);
+  GNUNET_break_op (0);
+  return MHD_NO;
 }
 
 
@@ -738,50 +979,28 @@ handle_mhd_request (void *cls,
                     void **con_cls)
 {
   struct TALER_FAKEBANK_Handle *h = cls;
+  char *account = NULL;
+  char *end;
+  int ret;
 
   (void) version;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Fakebank, serving: %s\n",
-              url);
-  if ( (0 == strcasecmp (url,
-                         "/")) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_GET)) )
-    return handle_home_page (h,
-                             connection,
-                             con_cls);
-  if ( (0 == strcasecmp (url,
-                         "/admin/add/incoming")) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_POST)) )
-    return handle_admin_add_incoming (h,
-                                      connection,
-                                      upload_data,
-                                      upload_data_size,
-                                      con_cls);
-  if ( (0 == strcasecmp (url,
-                         "/reject")) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_POST)) )
-    return handle_reject (h,
-                          connection,
-                          upload_data,
-                          upload_data_size,
-                          con_cls);
-  if ( (0 == strcasecmp (url,
-                         "/history")) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_GET)) )
-    return handle_history (h,
-                           connection,
-                           con_cls);
-
-  /* Unexpected URL path, just close the connection. */
-  /* we're rather impolite here, but it's a testcase. */
-  TALER_LOG_ERROR ("Breaking URL: %s\n",
-                   url);
-  GNUNET_break_op (0);
-  return MHD_NO;
+  if ( (strlen (url) > 1) &&
+       (NULL != (end = strchr (url + 1, '/'))) )
+  {
+    account = GNUNET_strndup (url + 1,
+                              end - url - 1);
+    url = end;
+  }
+  ret = serve (h,
+               connection,
+               account,
+               url,
+               method,
+               upload_data,
+               upload_data_size,
+               con_cls);
+  GNUNET_free_non_null (account);
+  return ret;
 }
 
 
@@ -918,6 +1137,7 @@ TALER_FAKEBANK_start (uint16_t port)
   struct TALER_FAKEBANK_Handle *h;
 
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
+  h->port = port;
   h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
 #if EPOLL_SUPPORT
                                   | MHD_USE_EPOLL_INTERNAL_THREAD

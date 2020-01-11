@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014-2019 Taler Systems SA
+  (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU Affero General Public License as
@@ -16,15 +16,13 @@
   along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file merchant/backend/taler-merchant-httpd.c
+ * @file benchmark/taler-exchange-benchmark.c
  * @brief HTTP serving layer intended to perform crypto-work and
  * communication with the exchange
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -58,23 +56,14 @@ enum BenchmarkError
  */
 #define UNITY_SIZE 6
 
-/**
- * Account number of the merchant.  Fakebank likes any number,
- * the only requirement is that this number then matches the
- * number given when building payto URLs at deposit time.
- */
-#define TALER_TESTING_USER_ACCOUNT_NUMBER 3
-
 #define FIRST_INSTRUCTION -1
 
 #define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
   TALER_TESTING_cmd_fakebank_transfer_retry \
     (TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-                                          exchange_bank_account.details. \
-                                          x_taler_bank.bank_base_url, \
-                                          TALER_TESTING_USER_ACCOUNT_NUMBER, \
-                                          exchange_bank_account.details. \
-                                          x_taler_bank.no, \
+                                          user_bank_account.details.                                      \
+                                          x_taler_bank.account_base_url, \
+                                          exchange_payto_url, \
                                           "dummy_user", \
                                           "dummy_password", \
                                           "http://example.com/"))
@@ -106,6 +95,11 @@ enum BenchmarkMode
  * Hold information regarding which bank has the exchange account.
  */
 static struct TALER_Account exchange_bank_account;
+
+/**
+ * Hold information about a user at the bank.
+ */
+static struct TALER_Account user_bank_account;
 
 /**
  * Time snapshot taken right before executing the CMDs.
@@ -167,6 +161,11 @@ static enum BenchmarkMode mode;
  * Config filename.
  */
 static char *cfg_filename;
+
+/**
+ * payto://-URL of the exchange's bank account.
+ */
+static char *exchange_payto_url;
 
 /**
  * Currency used.
@@ -405,12 +404,12 @@ stop_fakebank (void *cls)
 static void
 launch_fakebank (void *cls)
 {
-  const char *bank_base_url = cls;
+  const char *hostname = cls;
   const char *port;
   long pnum;
   struct TALER_FAKEBANK_Handle *fakebank;
 
-  port = strrchr (bank_base_url,
+  port = strrchr (hostname,
                   (unsigned char) ':');
   if (NULL == port)
     pnum = 80;
@@ -419,7 +418,7 @@ launch_fakebank (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting Fakebank on port %u (%s)\n",
               (unsigned int) pnum,
-              bank_base_url);
+              hostname);
   fakebank = TALER_FAKEBANK_start ((uint16_t) pnum);
   if (NULL == fakebank)
   {
@@ -466,8 +465,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                         NULL == loglev ? "INFO" : loglev,
                         logfile);
       GNUNET_SCHEDULER_run (&launch_fakebank,
-                            exchange_bank_account.details.x_taler_bank.
-                            bank_base_url);
+                            exchange_bank_account.details.x_taler_bank.hostname);
       exit (0);
     }
     if (-1 == fakebank)
@@ -824,10 +822,36 @@ main (int argc,
     return BAD_CLI_ARG;
   }
 
+  {
+    char *user_payto_url;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string
+          (cfg,
+          "benchmark",
+          "user-url",
+          &user_payto_url))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "benchmark",
+                                 "user-url");
+      return BAD_CONFIG_FILE;
+    }
+    if (TALER_EC_NONE !=
+        TALER_WIRE_payto_to_account (user_payto_url,
+                                     &user_bank_account))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  _ ("Malformed payto:// URL `%s' in configuration\n"),
+                  user_payto_url);
+      GNUNET_free (user_payto_url);
+      return BAD_CONFIG_FILE;
+    }
+    GNUNET_free (user_payto_url);
+  }
 
   {
     const char *bank_details_section;
-    char *exchange_payto_url;
 
     GNUNET_CONFIGURATION_iterate_sections
       (cfg,
@@ -873,7 +897,6 @@ main (int argc,
       GNUNET_free (exchange_payto_url);
       return BAD_CONFIG_FILE;
     }
-    GNUNET_free (exchange_payto_url);
   }
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {

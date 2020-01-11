@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -51,24 +51,14 @@ struct FakebankTransferState
   struct TALER_Amount amount;
 
   /**
-   * Wire transfer subject.
+   * Base URL of the debit account.
    */
-  const char *subject;
+  const char *debit_url;
 
   /**
-   * Base URL of the bank serving the request.
+   * Money receiver account URL.
    */
-  const char *bank_url;
-
-  /**
-   * Money sender account number.
-   */
-  uint64_t debit_account_no;
-
-  /**
-   * Money receiver account number.
-   */
-  uint64_t credit_account_no;
+  const char *payto_credit_account;
 
   /**
    * Username to use for authentication.
@@ -85,6 +75,11 @@ struct FakebankTransferState
    * we used to make a wire transfer subject line with.
    */
   struct TALER_ReservePrivateKeyP reserve_priv;
+
+  /**
+   * Reserve public key matching @e reserve_priv.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Handle to the pending request at the fakebank.
@@ -188,16 +183,15 @@ do_retry (void *cls)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param serial_id unique ID of the wire transfer
  * @param timestamp time stamp of the transaction made.
- * @param full_response full response from the exchange (for
- *        logging, in case of errors)
+ * @param json raw response
  */
 static void
-add_incoming_cb (void *cls,
+confirmation_cb (void *cls,
                  unsigned int http_status,
                  enum TALER_ErrorCode ec,
                  uint64_t serial_id,
                  struct GNUNET_TIME_Absolute timestamp,
-                 const json_t *full_response)
+                 const json_t *json)
 {
   struct FakebankTransferState *fts = cls;
   struct TALER_TESTING_Interpreter *is = fts->is;
@@ -256,130 +250,115 @@ fakebank_transfer_run (void *cls,
                        struct TALER_TESTING_Interpreter *is)
 {
   struct FakebankTransferState *fts = cls;
-  char *subject;
   struct TALER_BANK_AuthenticationData auth;
-  struct TALER_ReservePublicKeyP reserve_pub;
 
-  if (NULL != fts->subject)
+  /* Use reserve public key as subject */
+  if (NULL != fts->reserve_reference)
   {
-    subject = GNUNET_strdup (fts->subject);
+    const struct TALER_TESTING_Command *ref;
+    const struct TALER_ReservePrivateKeyP *reserve_priv;
+
+    ref = TALER_TESTING_interpreter_lookup_command
+            (is, fts->reserve_reference);
+    if (NULL == ref)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_reserve_priv (ref,
+                                              0,
+                                              &reserve_priv))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    fts->reserve_priv.eddsa_priv = reserve_priv->eddsa_priv;
   }
   else
   {
-    /* Use reserve public key as subject */
-    if (NULL != fts->reserve_reference)
+    if (NULL != fts->instance)
     {
-      const struct TALER_TESTING_Command *ref;
-      const struct TALER_ReservePrivateKeyP *reserve_priv;
+      char *section;
+      char *keys;
+      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+      struct GNUNET_CONFIGURATION_Handle *cfg;
 
-      ref = TALER_TESTING_interpreter_lookup_command
-              (is, fts->reserve_reference);
-      if (NULL == ref)
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
+      GNUNET_assert (NULL != fts->config_filename);
+      cfg = GNUNET_CONFIGURATION_create ();
       if (GNUNET_OK !=
-          TALER_TESTING_get_trait_reserve_priv (ref,
-                                                0,
-                                                &reserve_priv))
+          GNUNET_CONFIGURATION_load (cfg,
+                                     fts->config_filename))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      fts->reserve_priv.eddsa_priv = reserve_priv->eddsa_priv;
+
+      GNUNET_asprintf (&section,
+                       "instance-%s",
+                       fts->instance);
+      if (GNUNET_OK !=
+          GNUNET_CONFIGURATION_get_value_filename
+            (cfg,
+            section,
+            "TIP_RESERVE_PRIV_FILENAME",
+            &keys))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Configuration fails to specify reserve"
+                    " private key filename in section %s\n",
+                    section);
+        GNUNET_free (section);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      priv = GNUNET_CRYPTO_eddsa_key_create_from_file (keys);
+      GNUNET_free (keys);
+      if (NULL == priv)
+      {
+        GNUNET_log_config_invalid
+          (GNUNET_ERROR_TYPE_ERROR,
+          section,
+          "TIP_RESERVE_PRIV_FILENAME",
+          "Failed to read private key");
+        GNUNET_free (section);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      fts->reserve_priv.eddsa_priv = *priv;
+      GNUNET_free (section);
+      GNUNET_free (priv);
+      GNUNET_CONFIGURATION_destroy (cfg);
     }
     else
     {
-      if (NULL != fts->instance)
-      {
-        char *section;
-        char *keys;
-        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-        struct GNUNET_CONFIGURATION_Handle *cfg;
+      /* No referenced reserve, no instance to take priv
+       * from, no explicit subject given: create new key! */
+      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
 
-        GNUNET_assert (NULL != fts->config_filename);
-        cfg = GNUNET_CONFIGURATION_create ();
-        if (GNUNET_OK !=
-            GNUNET_CONFIGURATION_load (cfg,
-                                       fts->config_filename))
-        {
-          GNUNET_break (0);
-          TALER_TESTING_interpreter_fail (is);
-          return;
-        }
-
-        GNUNET_asprintf (&section,
-                         "instance-%s",
-                         fts->instance);
-        if (GNUNET_OK !=
-            GNUNET_CONFIGURATION_get_value_filename
-              (cfg,
-              section,
-              "TIP_RESERVE_PRIV_FILENAME",
-              &keys))
-        {
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Configuration fails to specify reserve"
-                      " private key filename in section %s\n",
-                      section);
-          GNUNET_free (section);
-          TALER_TESTING_interpreter_fail (is);
-          return;
-        }
-        priv = GNUNET_CRYPTO_eddsa_key_create_from_file (keys);
-        GNUNET_free (keys);
-        if (NULL == priv)
-        {
-          GNUNET_log_config_invalid
-            (GNUNET_ERROR_TYPE_ERROR,
-            section,
-            "TIP_RESERVE_PRIV_FILENAME",
-            "Failed to read private key");
-          GNUNET_free (section);
-          TALER_TESTING_interpreter_fail (is);
-          return;
-        }
-        fts->reserve_priv.eddsa_priv = *priv;
-        GNUNET_free (section);
-        GNUNET_free (priv);
-        GNUNET_CONFIGURATION_destroy (cfg);
-      }
-      else
-      {
-        /* No referenced reserve, no instance to take priv
-         * from, no explicit subject given: create new key! */
-        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-
-        priv = GNUNET_CRYPTO_eddsa_key_create ();
-        fts->reserve_priv.eddsa_priv = *priv;
-        GNUNET_free (priv);
-      }
+      priv = GNUNET_CRYPTO_eddsa_key_create ();
+      fts->reserve_priv.eddsa_priv = *priv;
+      GNUNET_free (priv);
     }
-    GNUNET_CRYPTO_eddsa_key_get_public
-      (&fts->reserve_priv.eddsa_priv, &reserve_pub.eddsa_pub);
-    subject = GNUNET_STRINGS_data_to_string_alloc
-                (&reserve_pub, sizeof (reserve_pub));
   }
-
+  GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
+                                      &fts->reserve_pub.eddsa_pub);
   auth.method = TALER_BANK_AUTH_BASIC;
   auth.details.basic.username = (char *) fts->auth_username;
   auth.details.basic.password = (char *) fts->auth_password;
   fts->is = is;
   fts->aih = TALER_BANK_admin_add_incoming
                (TALER_TESTING_interpreter_get_context (is),
-               fts->bank_url,
+               fts->debit_url,
                &auth,
-               fts->exchange_url,
-               subject,
+               &fts->reserve_pub,
                &fts->amount,
-               fts->debit_account_no,
-               fts->credit_account_no,
-               &add_incoming_cb,
+               fts->payto_credit_account,
+               &confirmation_cb,
                fts);
-  GNUNET_free (subject);
   if (NULL == fts->aih)
   {
     GNUNET_break (0);
@@ -408,6 +387,7 @@ fakebank_transfer_cleanup (void *cls,
                 "Command %s did not complete\n",
                 cmd->label);
     TALER_BANK_admin_add_incoming_cancel (fts->aih);
+    fts->aih = NULL;
   }
   if (NULL != fts->retry_task)
   {
@@ -435,31 +415,20 @@ fakebank_transfer_traits (void *cls,
                           unsigned int index)
 {
   struct FakebankTransferState *fts = cls;
-  #define MANDATORY 7
-  struct TALER_TESTING_Trait traits[MANDATORY + 1] = {
-    TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT
-      (&fts->debit_account_no),
-    TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT
-      (&fts->credit_account_no),
+  struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_url (0, fts->exchange_url),
+    TALER_TESTING_make_trait_url (1, fts->debit_url),
     TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
+    TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT (fts->payto_credit_account),
+    TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT (fts->debit_url),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
-    TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp)
+    TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
+    TALER_TESTING_make_trait_reserve_priv (0,
+                                           &fts->reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (0,
+                                          &fts->reserve_pub),
+    TALER_TESTING_trait_end ()
   };
-
-  /**
-   * The user gave explicit subject,
-   * there must be NO reserve priv.  */
-  if (NULL != fts->subject)
-    traits[MANDATORY - 1] =
-      TALER_TESTING_make_trait_transfer_subject (0,
-                                                 fts->subject);
-  /* A reserve priv must exist if no subject was given.  */
-  else
-    traits[MANDATORY - 1] = TALER_TESTING_make_trait_reserve_priv
-                              (0, &fts->reserve_priv),
-
-    traits[MANDATORY] = TALER_TESTING_trait_end ();
 
   return TALER_TESTING_get_trait (traits,
                                   ret,
@@ -475,27 +444,21 @@ fakebank_transfer_traits (void *cls,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param bank_url base URL of the bank that implements this
- *        wire transer.  For simplicity, both credit and debit
- *        bank account exist at the same bank.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
  * @param auth_username username identifying the @a
  *        debit_account_no at the bank.
  * @param auth_password password for @a auth_username.
  * @param exchange_url which exchange is involved in this transfer.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer
   (const char *label,
   const char *amount,
-  const char *bank_url,
-  uint64_t debit_account_no,
-  uint64_t credit_account_no,
+  const char *account_base_url,
+  const char *payto_credit_account,
   const char *auth_username,
   const char *auth_password,
   const char *exchange_url)
@@ -503,9 +466,8 @@ TALER_TESTING_cmd_fakebank_transfer
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
-  fts->bank_url = bank_url;
-  fts->credit_account_no = credit_account_no;
-  fts->debit_account_no = debit_account_no;
+  fts->debit_url = account_base_url;
+  fts->payto_credit_account = payto_credit_account;
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->exchange_url = exchange_url;
@@ -520,87 +482,17 @@ TALER_TESTING_cmd_fakebank_transfer
     GNUNET_assert (0);
   }
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = fts,
-    .label = label,
-    .run = &fakebank_transfer_run,
-    .cleanup = &fakebank_transfer_cleanup,
-    .traits = &fakebank_transfer_traits
-  };
-
-  return cmd;
-}
-
-
-/**
- * Create "fakebank transfer" CMD, letting the caller specifying
- * the subject line.
- *
- * @param label command label.
- * @param amount amount to transfer.
- * @param bank_url base URL of the bank that implements this
- *        wire transer.  For simplicity, both credit and debit
- *        bank account exist at the same bank.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
- *
- * @param auth_username username identifying the @a
- *        debit_account_no at the bank.
- * @param auth_password password for @a auth_username.
- * @param subject wire transfer's subject line.
- * @param exchange_url which exchange is involved in this transfer.
- *
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_with_subject
-  (const char *label,
-  const char *amount,
-  const char *bank_url,
-  uint64_t debit_account_no,
-  uint64_t credit_account_no,
-  const char *auth_username,
-  const char *auth_password,
-  const char *subject,
-  const char *exchange_url)
-{
-  struct FakebankTransferState *fts;
-
-  fts = GNUNET_new (struct FakebankTransferState);
-
-  TALER_LOG_DEBUG ("%s:FTS@%p\n",
-                   label,
-                   fts);
-
-  fts->bank_url = bank_url;
-  fts->credit_account_no = credit_account_no;
-  fts->debit_account_no = debit_account_no;
-  fts->auth_username = auth_username;
-  fts->auth_password = auth_password;
-  fts->subject = subject;
-  fts->exchange_url = exchange_url;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (amount,
-                              &fts->amount))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                amount,
-                label);
-    GNUNET_assert (0);
+    struct TALER_TESTING_Command cmd = {
+      .cls = fts,
+      .label = label,
+      .run = &fakebank_transfer_run,
+      .cleanup = &fakebank_transfer_cleanup,
+      .traits = &fakebank_transfer_traits
+    };
+
+    return cmd;
   }
-
-  struct TALER_TESTING_Command cmd = {
-    .cls = fts,
-    .label = label,
-    .run = &fakebank_transfer_run,
-    .cleanup = &fakebank_transfer_cleanup,
-    .traits = &fakebank_transfer_traits
-  };
-
-  return cmd;
 }
 
 
@@ -631,9 +523,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_ref
   (const char *label,
   const char *amount,
-  const char *bank_url,
-  uint64_t debit_account_no,
-  uint64_t credit_account_no,
+  const char *account_base_url,
+  const char *payto_credit_account,
   const char *auth_username,
   const char *auth_password,
   const char *ref,
@@ -642,9 +533,8 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
-  fts->bank_url = bank_url;
-  fts->credit_account_no = credit_account_no;
-  fts->debit_account_no = debit_account_no;
+  fts->debit_url = account_base_url;
+  fts->payto_credit_account = payto_credit_account;
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->reserve_reference = ref;
@@ -659,16 +549,17 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
                 label);
     GNUNET_assert (0);
   }
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = fts,
+      .label = label,
+      .run = &fakebank_transfer_run,
+      .cleanup = &fakebank_transfer_cleanup,
+      .traits = &fakebank_transfer_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = fts,
-    .label = label,
-    .run = &fakebank_transfer_run,
-    .cleanup = &fakebank_transfer_cleanup,
-    .traits = &fakebank_transfer_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -705,9 +596,8 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_fakebank_transfer_with_instance
   (const char *label,
   const char *amount,
-  const char *bank_url,
-  uint64_t debit_account_no,
-  uint64_t credit_account_no,
+  const char *account_base_url,
+  const char *payto_credit_account,
   const char *auth_username,
   const char *auth_password,
   const char *instance,
@@ -717,9 +607,8 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
   struct FakebankTransferState *fts;
 
   fts = GNUNET_new (struct FakebankTransferState);
-  fts->bank_url = bank_url;
-  fts->credit_account_no = credit_account_no;
-  fts->debit_account_no = debit_account_no;
+  fts->debit_url = account_base_url;
+  fts->payto_credit_account = payto_credit_account;
   fts->auth_username = auth_username;
   fts->auth_password = auth_password;
   fts->instance = instance;
@@ -735,16 +624,17 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
                 label);
     GNUNET_assert (0);
   }
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = fts,
+      .label = label,
+      .run = &fakebank_transfer_run,
+      .cleanup = &fakebank_transfer_cleanup,
+      .traits = &fakebank_transfer_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = fts,
-    .label = label,
-    .run = &fakebank_transfer_run,
-    .cleanup = &fakebank_transfer_cleanup,
-    .traits = &fakebank_transfer_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

@@ -1010,8 +1010,7 @@ struct ReserveContext
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
- * @param wire_reference unique reference identifying the wire transfer (binary blob)
- * @param wire_reference_size number of bytes in @a wire_reference
+ * @param wire_reference unique reference identifying the wire transfer
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -1021,8 +1020,7 @@ handle_reserve_in (void *cls,
                    const struct TALER_ReservePublicKeyP *reserve_pub,
                    const struct TALER_Amount *credit,
                    const char *sender_account_details,
-                   const void *wire_reference,
-                   size_t wire_reference_size,
+                   uint64_t wire_reference,
                    struct GNUNET_TIME_Absolute execution_date)
 {
   struct ReserveContext *rc = cls;
@@ -2032,35 +2030,6 @@ analyze_reserves (void *cls)
 
 
 /**
- * Information we keep per loaded wire plugin.
- */
-struct WirePlugin
-{
-
-  /**
-   * Kept in a DLL.
-   */
-  struct WirePlugin *next;
-
-  /**
-   * Kept in a DLL.
-   */
-  struct WirePlugin *prev;
-
-  /**
-   * Name of the wire method.
-   */
-  char *type;
-
-  /**
-   * Handle to the wire plugin.
-   */
-  struct TALER_WIRE_Plugin *plugin;
-
-};
-
-
-/**
  * Information about wire fees charged by the exchange.
  */
 struct WireFeeInfo
@@ -2106,16 +2075,6 @@ struct AggregationContext
 {
 
   /**
-   * DLL of wire plugins encountered.
-   */
-  struct WirePlugin *wire_head;
-
-  /**
-   * DLL of wire plugins encountered.
-   */
-  struct WirePlugin *wire_tail;
-
-  /**
    * DLL of wire fees charged by the exchange.
    */
   struct WireFeeInfo *fee_head;
@@ -2130,46 +2089,6 @@ struct AggregationContext
    */
   enum GNUNET_DB_QueryStatus qs;
 };
-
-
-/**
- * Find the relevant wire plugin.
- *
- * @param ac context to search
- * @param type type of the wire plugin to load; it
- *  will be used _as is_ from the dynamic loader.
- * @return NULL on error
- */
-static struct TALER_WIRE_Plugin *
-get_wire_plugin (struct AggregationContext *ac,
-                 const char *type)
-{
-  struct WirePlugin *wp;
-  struct TALER_WIRE_Plugin *plugin;
-
-  for (wp = ac->wire_head; NULL != wp; wp = wp->next)
-    if (0 == strcmp (type,
-                     wp->type))
-      return wp->plugin;
-
-  /* Wants the exact *plugin name* (!= method)  */
-  plugin = TALER_WIRE_plugin_load (cfg,
-                                   type);
-  if (NULL == plugin)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to locate wire plugin for `%s'\n",
-                type);
-    return NULL;
-  }
-  wp = GNUNET_new (struct WirePlugin);
-  wp->type = GNUNET_strdup (type);
-  wp->plugin = plugin;
-  GNUNET_CONTAINER_DLL_insert (ac->wire_head,
-                               ac->wire_tail,
-                               wp);
-  return plugin;
-}
 
 
 /**
@@ -2884,7 +2803,6 @@ check_wire_out_cb
 {
   struct AggregationContext *ac = cls;
   struct WireCheckContext wcc;
-  struct TALER_WIRE_Plugin *plugin;
   struct TALER_Amount final_amount;
   struct TALER_Amount exchange_gain;
   enum GNUNET_DB_QueryStatus qs;
@@ -2976,19 +2894,7 @@ check_wire_out_cb
   }
 
   /* Round down to amount supported by wire method */
-  plugin = get_wire_plugin
-             (ac,
-             TALER_WIRE_get_plugin_from_method (method));
-  if (NULL == plugin)
-  {
-    GNUNET_break (0);
-    GNUNET_free (method);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (method);
-  GNUNET_break (GNUNET_SYSERR !=
-                plugin->amount_round (plugin->cls,
-                                      &final_amount));
+  GNUNET_break (TALER_WIRE_amount_round (&final_amount));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
   if (GNUNET_OK !=
@@ -3071,7 +2977,6 @@ static enum GNUNET_DB_QueryStatus
 analyze_aggregations (void *cls)
 {
   struct AggregationContext ac;
-  struct WirePlugin *wc;
   struct WireFeeInfo *wfi;
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qs;
@@ -3124,15 +3029,6 @@ analyze_aggregations (void *cls)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     ac.qs = qs;
-  }
-  while (NULL != (wc = ac.wire_head))
-  {
-    GNUNET_CONTAINER_DLL_remove (ac.wire_head,
-                                 ac.wire_tail,
-                                 wc);
-    TALER_WIRE_plugin_unload (wc->plugin);
-    GNUNET_free (wc->type);
-    GNUNET_free (wc);
   }
   while (NULL != (wfi = ac.fee_head))
   {

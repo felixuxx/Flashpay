@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2019 Taler Systems SA
+  Copyright (C) 2017-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -27,9 +27,11 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_auditordb_plugin.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
+#include "taler_bank_service.h"
 #include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
@@ -65,9 +67,14 @@ struct WireAccount
   struct WireAccount *prev;
 
   /**
-   * Handle to the plugin.
+   * Authentication data for the account.
    */
-  struct TALER_WIRE_Plugin *wire_plugin;
+  struct TALER_BANK_AuthenticationData auth;
+
+  /**
+   * Our bank account number.
+   */
+  struct TALER_Account account;
 
   /**
    * Name of the section that configures this account.
@@ -77,7 +84,12 @@ struct WireAccount
   /**
    * Active wire request for the transaction history.
    */
-  struct TALER_WIRE_HistoryHandle *hh;
+  struct TALER_BANK_CreditHistoryHandle *chh;
+
+  /**
+   * Active wire request for the transaction history.
+   */
+  struct TALER_BANK_DebitHistoryHandle *dhh;
 
   /**
    * Progress point for this account.
@@ -92,17 +104,12 @@ struct WireAccount
   /**
    * Where we are in the inbound (CREDIT) transaction history.
    */
-  void *in_wire_off;
+  uint64_t in_wire_off;
 
   /**
    * Where we are in the inbound (DEBIT) transaction history.
    */
-  void *out_wire_off;
-
-  /**
-   * Number of bytes in #in_wire_off and #out_wire_off.
-   */
-  size_t wire_off_size;
+  uint64_t out_wire_off;
 
   /**
    * We should check for inbound transactions to this account.
@@ -341,6 +348,16 @@ static struct TALER_Amount total_wire_format_amount;
  */
 static struct TALER_Amount zero;
 
+/**
+ * Handle to the context for interacting with the bank.
+ */
+static struct GNUNET_CURL_Context *ctx;
+
+/**
+ * Scheduler context for running the @e ctx.
+ */
+static struct GNUNET_CURL_RescheduleContext *rc;
+
 
 /* *****************************   Shutdown   **************************** */
 
@@ -357,14 +374,11 @@ struct ReserveInInfo
   struct GNUNET_HashCode row_off_hash;
 
   /**
-   * Number of bytes in @e row_off.
-   */
-  size_t row_off_size;
-
-  /**
    * Expected details about the wire transfer.
+   * The member "account_url" is to be allocated
+   * at the end of this struct!
    */
-  struct TALER_WIRE_TransferDetails details;
+  struct TALER_BANK_CreditDetails details;
 
   /**
    * RowID in reserves_in table.
@@ -389,7 +403,7 @@ struct ReserveOutInfo
   /**
    * Expected details about the wire transfer.
    */
-  struct TALER_WIRE_TransferDetails details;
+  struct TALER_BANK_DebitDetails details;
 
 };
 
@@ -427,8 +441,6 @@ free_rii (void *cls,
                  GNUNET_CONTAINER_multihashmap_remove (in_map,
                                                        key,
                                                        rii));
-  GNUNET_free (rii->details.account_url);
-  GNUNET_free_non_null (rii->details.wtid_s); /* field not used (yet) */
   GNUNET_free (rii);
   return GNUNET_OK;
 }
@@ -453,8 +465,6 @@ free_roi (void *cls,
                  GNUNET_CONTAINER_multihashmap_remove (out_map,
                                                        key,
                                                        roi));
-  GNUNET_free (roi->details.account_url);
-  GNUNET_free_non_null (roi->details.wtid_s); /* field not used (yet) */
   GNUNET_free (roi);
   return GNUNET_OK;
 }
@@ -494,6 +504,17 @@ static void
 do_shutdown (void *cls)
 {
   struct WireAccount *wa;
+
+  if (NULL != ctx)
+  {
+    GNUNET_CURL_fini (ctx);
+    ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
+  }
 
   if (NULL != report_row_inconsistencies)
   {
@@ -617,21 +638,22 @@ do_shutdown (void *cls)
   }
   while (NULL != (wa = wa_head))
   {
-    if (NULL != wa->hh)
+    if (NULL != wa->dhh)
     {
-      struct TALER_WIRE_Plugin *wp = wa->wire_plugin;
-
-      wp->get_history_cancel (wp->cls,
-                              wa->hh);
-      wa->hh = NULL;
+      TALER_BANK_debit_history_cancel (wa->dhh);
+      wa->dhh = NULL;
+    }
+    if (NULL != wa->chh)
+    {
+      TALER_BANK_credit_history_cancel (wa->chh);
+      wa->chh = NULL;
     }
     GNUNET_CONTAINER_DLL_remove (wa_head,
                                  wa_tail,
                                  wa);
-    TALER_WIRE_plugin_unload (wa->wire_plugin);
+    TALER_BANK_auth_free (&wa->auth);
+    TALER_WIRE_account_free (&wa->account);
     GNUNET_free (wa->section_name);
-    GNUNET_free_non_null (wa->in_wire_off);
-    GNUNET_free_non_null (wa->out_wire_off);
     GNUNET_free (wa);
   }
   if (NULL != adb)
@@ -787,8 +809,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
                                                       wa->section_name,
                                                       &wa->pp,
                                                       wa->in_wire_off,
-                                                      wa->out_wire_off,
-                                                      wa->wire_off_size);
+                                                      wa->out_wire_off);
     else
       qs = adb->insert_wire_auditor_account_progress (adb->cls,
                                                       asession,
@@ -796,8 +817,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
                                                       wa->section_name,
                                                       &wa->pp,
                                                       wa->in_wire_off,
-                                                      wa->out_wire_off,
-                                                      wa->wire_off_size);
+                                                      wa->out_wire_off);
     if (0 >= qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1250,9 +1270,7 @@ complain_out_not_found (void *cls,
                      "amount_wired", TALER_JSON_from_amount (
                        &roi->details.amount),
                      "amount_justified", TALER_JSON_from_amount (&zero),
-                     "wtid", (NULL == roi->details.wtid_s)
-                     ? GNUNET_JSON_from_data_auto (&roi->details.wtid)
-                     : json_string (roi->details.wtid_s),
+                     "wtid", GNUNET_JSON_from_data_auto (&roi->details.wtid),
                      "timestamp", json_from_time_abs (
                        roi->details.execution_date),
                      "diagnostic",
@@ -1317,29 +1335,28 @@ check_exchange_wire_out (struct WireAccount *wa)
 
 /**
  * This function is called for all transactions that
- * are credited to the exchange's account (incoming
+ * are debited from the exchange's account (outgoing
  * transactions).
  *
  * @param cls `struct WireAccount` with current wire account to process
+ * @param http_status_code http status of the request
  * @param ec error code in case something went wrong
- * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
- * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 static int
 history_debit_cb (void *cls,
+                  unsigned int http_status_code,
                   enum TALER_ErrorCode ec,
-                  enum TALER_BANK_Direction dir,
-                  const void *row_off,
-                  size_t row_off_size,
-                  const struct TALER_WIRE_TransferDetails *details)
+                  uint64_t row_off,
+                  const struct TALER_BANK_DebitDetails *details,
+                  const json_t *json)
 {
   struct WireAccount *wa = cls;
   struct ReserveOutInfo *roi;
 
-  if (TALER_BANK_DIRECTION_NONE == dir)
+  if (NULL == details)
   {
     if (TALER_EC_NONE != ec)
     {
@@ -1348,7 +1365,7 @@ history_debit_cb (void *cls,
                   "Error fetching history: %u!\n",
                   (unsigned int) ec);
     }
-    wa->hh = NULL;
+    wa->dhh = NULL;
     check_exchange_wire_out (wa);
     return GNUNET_OK;
   }
@@ -1357,45 +1374,8 @@ history_debit_cb (void *cls,
               GNUNET_STRINGS_absolute_time_to_string (details->execution_date),
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->wtid));
-  if (NULL != details->wtid_s)
-  {
-    char *diagnostic;
-
-    GNUNET_asprintf (&diagnostic,
-                     "malformed subject `%s'",
-                     details->wtid_s);
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_wire_format_amount,
-                                    &total_wire_format_amount,
-                                    &details->amount));
-    report (report_wire_format_inconsistencies,
-            json_pack ("{s:o, s:o, s:s}",
-                       "amount", TALER_JSON_from_amount (&details->amount),
-                       "wire_offset", GNUNET_JSON_from_data (row_off,
-                                                             row_off_size),
-                       "diagnostic", diagnostic));
-    GNUNET_free (diagnostic);
-    return GNUNET_OK;
-  }
-
   /* Update offset */
-  if (NULL == wa->out_wire_off)
-  {
-    wa->wire_off_size = row_off_size;
-    wa->out_wire_off = GNUNET_malloc (row_off_size);
-  }
-  if (wa->wire_off_size != row_off_size)
-  {
-    GNUNET_break (0);
-    commit (GNUNET_DB_STATUS_HARD_ERROR);
-    wa->hh = NULL;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_SYSERR;
-  }
-  memcpy (wa->out_wire_off,
-          row_off,
-          row_off_size);
-
+  wa->out_wire_off = row_off;
   roi = GNUNET_new (struct ReserveOutInfo);
   GNUNET_CRYPTO_hash (&details->wtid,
                       sizeof (details->wtid),
@@ -1420,10 +1400,9 @@ history_debit_cb (void *cls,
                                     &total_wire_format_amount,
                                     &details->amount));
     report (report_wire_format_inconsistencies,
-            json_pack ("{s:o, s:o, s:s}",
+            json_pack ("{s:o, s:I, s:s}",
                        "amount", TALER_JSON_from_amount (&details->amount),
-                       "wire_offset", GNUNET_JSON_from_data (row_off,
-                                                             row_off_size),
+                       "wire_offset", (json_int_t) row_off,
                        "diagnostic", diagnostic));
     GNUNET_free (diagnostic);
     return GNUNET_OK;
@@ -1443,7 +1422,6 @@ static void
 process_debits (void *cls)
 {
   struct WireAccount *wa = cls;
-  struct TALER_WIRE_Plugin *wp;
 
   /* skip accounts where DEBIT is not enabled */
   while ( (NULL != wa) &&
@@ -1459,17 +1437,16 @@ process_debits (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking bank DEBIT records of account `%s'\n",
               wa->section_name);
-  GNUNET_assert (NULL == wa->hh);
-  wp = wa->wire_plugin;
-  wa->hh = wp->get_history (wp->cls,
-                            wa->section_name,
-                            TALER_BANK_DIRECTION_DEBIT,
-                            wa->out_wire_off,
-                            wa->wire_off_size,
-                            INT64_MAX,
-                            &history_debit_cb,
-                            wa);
-  if (NULL == wa->hh)
+  GNUNET_assert (NULL == wa->dhh);
+  wa->dhh = TALER_BANK_debit_history (ctx,
+                                      wa->account.details.x_taler_bank.
+                                      account_base_url,
+                                      &wa->auth,
+                                      wa->out_wire_off,
+                                      INT64_MAX,
+                                      &history_debit_cb,
+                                      wa);
+  if (NULL == wa->dhh)
   {
     fprintf (stderr,
              "Failed to obtain bank transaction history for `%s'\n",
@@ -1519,24 +1496,25 @@ conclude_credit_history ()
  * @param rowid unique serial ID for the entry in our DB
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
- * @param sender_url payto://-URL of the sender's bank account
- * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
- * @param wire_reference_size number of bytes in @a wire_reference
+ * @param sender_account_details payto://-URL of the sender's bank account
+ * @param wire_reference unique identifier for the wire transfer
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
 reserve_in_cb (void *cls,
                uint64_t rowid,
-               const struct TALER_ReservePublicKeyP *reserve_pub,
+               const struct
+               TALER_ReservePublicKeyP *reserve_pub,
                const struct TALER_Amount *credit,
-               const char *sender_url,
-               const void *wire_reference,
-               size_t wire_reference_size,
-               struct GNUNET_TIME_Absolute execution_date)
+               const char *sender_account_details,
+               uint64_t wire_reference,
+               struct GNUNET_TIME_Absolute
+               execution_date)
 {
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii;
+  size_t slen;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange wire IN (%llu) at %s of %s with reserve_pub %s\n",
@@ -1544,21 +1522,20 @@ reserve_in_cb (void *cls,
               GNUNET_STRINGS_absolute_time_to_string (execution_date),
               TALER_amount2s (credit),
               TALER_B2S (reserve_pub));
-  rii = GNUNET_new (struct ReserveInInfo);
-  GNUNET_CRYPTO_hash (wire_reference,
-                      wire_reference_size,
-                      &rii->row_off_hash);
-  rii->row_off_size = wire_reference_size;
+  slen = strlen (sender_account_details) + 1;
+  rii = GNUNET_malloc (sizeof (struct ReserveInInfo)
+                       + slen);
+  rii->rowid = rowid;
   rii->details.amount = *credit;
   rii->details.execution_date = execution_date;
-  /* reserve public key should be the WTID */
-  GNUNET_assert (sizeof (rii->details.wtid) ==
-                 sizeof (*reserve_pub));
-  memcpy (&rii->details.wtid,
-          reserve_pub,
-          sizeof (*reserve_pub));
-  rii->details.account_url = GNUNET_strdup (sender_url);
-  rii->rowid = rowid;
+  rii->details.reserve_pub = *reserve_pub;
+  rii->details.account_url = (const char *) &rii[1];
+  memcpy (&rii[1],
+          sender_account_details,
+          slen);
+  GNUNET_CRYPTO_hash (&wire_reference,
+                      sizeof (uint64_t),
+                      &rii->row_off_hash);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (in_map,
                                          &rii->row_off_hash,
@@ -1572,8 +1549,6 @@ reserve_in_cb (void *cls,
                        "wire_offset_hash", GNUNET_JSON_from_data_auto (
                          &rii->row_off_hash),
                        "diagnostic", "duplicate wire offset"));
-    GNUNET_free (rii->details.account_url);
-    GNUNET_free_non_null (rii->details.wtid_s); /* field not used (yet) */
     GNUNET_free (rii);
     return GNUNET_OK;
   }
@@ -1604,7 +1579,8 @@ complain_in_not_found (void *cls,
                      "amount_exchange_expected", TALER_JSON_from_amount (
                        &rii->details.amount),
                      "amount_wired", TALER_JSON_from_amount (&zero),
-                     "wtid", GNUNET_JSON_from_data_auto (&rii->details.wtid),
+                     "reserve_pub", GNUNET_JSON_from_data_auto (
+                       &rii->details.reserve_pub),
                      "timestamp", json_from_time_abs (
                        rii->details.execution_date),
                      "account", wa->section_name,
@@ -1635,25 +1611,24 @@ process_credits (void *cls);
  *
  * @param cls `struct WireAccount` we are processing
  * @param ec error code in case something went wrong
- * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
- * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
+ * @param json raw response
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 static int
 history_credit_cb (void *cls,
+                   unsigned int http_status,
                    enum TALER_ErrorCode ec,
-                   enum TALER_BANK_Direction dir,
-                   const void *row_off,
-                   size_t row_off_size,
-                   const struct TALER_WIRE_TransferDetails *details)
+                   uint64_t row_off,
+                   const struct TALER_BANK_CreditDetails *details,
+                   const json_t *json)
 {
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii;
   struct GNUNET_HashCode key;
 
-  if (TALER_BANK_DIRECTION_NONE == dir)
+  if (NULL == details)
   {
     if (TALER_EC_NONE != ec)
     {
@@ -1663,7 +1638,7 @@ history_credit_cb (void *cls,
                   (unsigned int) ec);
     }
     /* end of operation */
-    wa->hh = NULL;
+    wa->chh = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reconciling CREDIT processing of account `%s'\n",
                 wa->section_name);
@@ -1678,12 +1653,12 @@ history_credit_cb (void *cls,
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Analyzing bank CREDIT at %s of %s with WTID %s\n",
+              "Analyzing bank CREDIT at %s of %s with Reserve-pub %s\n",
               GNUNET_STRINGS_absolute_time_to_string (details->execution_date),
               TALER_amount2s (&details->amount),
-              TALER_B2S (&details->wtid));
-  GNUNET_CRYPTO_hash (row_off,
-                      row_off_size,
+              TALER_B2S (&details->reserve_pub));
+  GNUNET_CRYPTO_hash (&row_off,
+                      sizeof (row_off),
                       &key);
   rii = GNUNET_CONTAINER_multihashmap_get (in_map,
                                            &key);
@@ -1693,55 +1668,26 @@ history_credit_cb (void *cls,
                 "Failed to find wire transfer at `%s' in exchange database. Audit ends at this point in time.\n",
                 GNUNET_STRINGS_absolute_time_to_string (
                   details->execution_date));
-    wa->hh = NULL;
+    wa->chh = NULL;
     process_credits (wa->next);
     return GNUNET_SYSERR; /* not an error, just end of processing */
   }
 
   /* Update offset */
-  if (NULL == wa->in_wire_off)
-  {
-    wa->wire_off_size = row_off_size;
-    wa->in_wire_off = GNUNET_malloc (row_off_size);
-  }
-  if (wa->wire_off_size != row_off_size)
-  {
-    GNUNET_break (0);
-    commit (GNUNET_DB_STATUS_HARD_ERROR);
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_SYSERR;
-  }
-  memcpy (wa->in_wire_off,
-          row_off,
-          row_off_size);
-
-
+  wa->in_wire_off = row_off;
   /* compare records with expected data */
-  if (row_off_size != rii->row_off_size)
-  {
-    GNUNET_break (0);
-    report (report_row_inconsistencies,
-            json_pack ("{s:s, s:I, s:o, s:o, s:s}",
-                       "table", "reserves_in",
-                       "row", (json_int_t) rii->rowid,
-                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
-                                                              row_off_size),
-                       "wire_offset_hash", GNUNET_JSON_from_data_auto (&key),
-                       "diagnostic", "wire reference size missmatch"));
-    return GNUNET_OK;
-  }
-  if (0 != GNUNET_memcmp (&details->wtid,
-                          &rii->details.wtid))
+  if (0 != GNUNET_memcmp (&details->reserve_pub,
+                          &rii->details.reserve_pub))
   {
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:o, s:s}",
+            json_pack ("{s:I, s:I, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rii->rowid,
-                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
-                                                              row_off_size),
+                       "bank_row", (json_int_t) row_off,
                        "amount_exchange_expected", TALER_JSON_from_amount (
                          &rii->details.amount),
                        "amount_wired", TALER_JSON_from_amount (&zero),
-                       "wtid", GNUNET_JSON_from_data_auto (&rii->details.wtid),
+                       "reserve_pub", GNUNET_JSON_from_data_auto (
+                         &rii->details.reserve_pub),
                        "timestamp", json_from_time_abs (
                          rii->details.execution_date),
                        "diagnostic", "wire subject does not match"));
@@ -1750,15 +1696,15 @@ history_credit_cb (void *cls,
                                     &total_bad_amount_in_minus,
                                     &rii->details.amount));
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:o, s:s}",
+            json_pack ("{s:I, s:I, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rii->rowid,
-                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
-                                                              row_off_size),
+                       "bank_row", (json_int_t) row_off,
                        "amount_exchange_expected", TALER_JSON_from_amount (
                          &zero),
                        "amount_wired", TALER_JSON_from_amount (
                          &details->amount),
-                       "wtid", GNUNET_JSON_from_data_auto (&details->wtid),
+                       "reserve_pub", GNUNET_JSON_from_data_auto (
+                         &details->reserve_pub),
                        "timestamp", json_from_time_abs (
                          details->execution_date),
                        "diagnostic", "wire subject does not match"));
@@ -1773,15 +1719,15 @@ history_credit_cb (void *cls,
                              &details->amount))
   {
     report (report_reserve_in_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:o, s:s}",
+            json_pack ("{s:I, s:I, s:o, s:o, s:o, s:o, s:s}",
                        "row", (json_int_t) rii->rowid,
-                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
-                                                              row_off_size),
+                       "bank_row", (json_int_t) row_off,
                        "amount_exchange_expected", TALER_JSON_from_amount (
                          &rii->details.amount),
                        "amount_wired", TALER_JSON_from_amount (
                          &details->amount),
-                       "wtid", GNUNET_JSON_from_data_auto (&details->wtid),
+                       "reserve_pub", GNUNET_JSON_from_data_auto (
+                         &details->reserve_pub),
                        "timestamp", json_from_time_abs (
                          details->execution_date),
                        "diagnostic", "wire amount does not match"));
@@ -1820,13 +1766,12 @@ history_credit_cb (void *cls,
                        rii->details.account_url))
   {
     report (report_missattribution_in_inconsistencies,
-            json_pack ("{s:o, s:I, s:o, s:o}",
+            json_pack ("{s:o, s:I, s:I, s:o}",
                        "amount", TALER_JSON_from_amount (&rii->details.amount),
                        "row", (json_int_t) rii->rowid,
-                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
-                                                              row_off_size),
-                       "wtid", GNUNET_JSON_from_data_auto (
-                         &rii->details.wtid)));
+                       "bank_row", (json_int_t) row_off,
+                       "reserve_pub", GNUNET_JSON_from_data_auto (
+                         &rii->details.reserve_pub)));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_missattribution_in,
                                     &total_missattribution_in,
@@ -1836,11 +1781,10 @@ history_credit_cb (void *cls,
       rii->details.execution_date.abs_value_us)
   {
     report (report_row_minor_inconsistencies,
-            json_pack ("{s:s, s:I, s:o, s:s}",
+            json_pack ("{s:s, s:I, s:I, s:s}",
                        "table", "reserves_in",
                        "row", (json_int_t) rii->rowid,
-                       "raw_bank_row", GNUNET_JSON_from_data (row_off,
-                                                              row_off_size),
+                       "bank_row", (json_int_t) row_off,
                        "diagnostic", "execution date missmatch"));
   }
 cleanup:
@@ -1865,7 +1809,6 @@ static void
 process_credits (void *cls)
 {
   struct WireAccount *wa = cls;
-  struct TALER_WIRE_Plugin *wp;
   enum GNUNET_DB_QueryStatus qs;
 
   /* skip accounts where CREDIT is not enabled */
@@ -1899,16 +1842,15 @@ process_credits (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting bank CREDIT history of account `%s'\n",
               wa->section_name);
-  wp = wa->wire_plugin;
-  wa->hh = wp->get_history (wp->cls,
-                            wa->section_name,
-                            TALER_BANK_DIRECTION_CREDIT,
-                            wa->in_wire_off,
-                            wa->wire_off_size,
-                            INT64_MAX,
-                            &history_credit_cb,
-                            wa);
-  if (NULL == wa->hh)
+  wa->chh = TALER_BANK_credit_history (ctx,
+                                       wa->account.details.x_taler_bank.
+                                       account_base_url,
+                                       &wa->auth,
+                                       wa->in_wire_off,
+                                       INT64_MAX,
+                                       &history_credit_cb,
+                                       wa);
+  if (NULL == wa->chh)
   {
     fprintf (stderr,
              "Failed to obtain bank transaction history\n");
@@ -2037,8 +1979,7 @@ begin_transaction ()
                                                   wa->section_name,
                                                   &wa->pp,
                                                   &wa->in_wire_off,
-                                                  &wa->out_wire_off,
-                                                  &wa->wire_off_size);
+                                                  &wa->out_wire_off);
     if (0 > qsx)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -2096,30 +2037,62 @@ process_account_cb (void *cls,
                     const struct TALER_EXCHANGEDB_AccountInfo *ai)
 {
   struct WireAccount *wa;
-  struct TALER_WIRE_Plugin *wp;
 
   if ( (GNUNET_NO == ai->debit_enabled) &&
        (GNUNET_NO == ai->credit_enabled) )
     return; /* not an active exchange account */
-  wp = TALER_WIRE_plugin_load (cfg,
-                               ai->plugin_name);
-  if (NULL == wp)
-  {
-    fprintf (stderr,
-             "Failed to load wire plugin `%s'\n",
-             ai->plugin_name);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Found exchange account `%s'\n",
               ai->section_name);
   wa = GNUNET_new (struct WireAccount);
-  wa->wire_plugin = wp;
   wa->section_name = GNUNET_strdup (ai->section_name);
   wa->watch_debit = ai->debit_enabled;
   wa->watch_credit = ai->credit_enabled;
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (cfg,
+                                 ai->section_name,
+                                 &wa->auth))
+  {
+    GNUNET_break (0);
+    GNUNET_free (wa->section_name);
+    GNUNET_free (wa);
+    fprintf (stderr,
+             "Failed to access bank account `%s'\n",
+             wa->section_name);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TALER_BANK_account_parse_cfg (cfg,
+                                    wa->section_name,
+                                    &wa->account))
+  {
+    GNUNET_break (0);
+    TALER_BANK_auth_free (&wa->auth);
+    GNUNET_free (wa->section_name);
+    GNUNET_free (wa);
+    fprintf (stderr,
+             "Failed to access bank account `%s'\n",
+             wa->section_name);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (TALER_PAC_X_TALER_BANK != wa->account.type)
+  {
+    GNUNET_break (0);
+    TALER_WIRE_account_free (&wa->account);
+    TALER_BANK_auth_free (&wa->auth);
+    GNUNET_free (wa->section_name);
+    GNUNET_free (wa);
+    fprintf (stderr,
+             "Need x-taler-bank account URL in `%s'\n",
+             wa->section_name);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   GNUNET_CONTAINER_DLL_insert (wa_head,
                                wa_tail,
                                wa);
@@ -2258,6 +2231,14 @@ run (void *cls,
   }
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
+  ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                          &rc);
+  rc = GNUNET_CURL_gnunet_rc_create (ctx);
+  if (NULL == ctx)
+  {
+    GNUNET_break (0);
+    return;
+  }
   esession = edb->get_session (edb->cls);
   if (NULL == esession)
   {

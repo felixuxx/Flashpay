@@ -39,8 +39,9 @@ libtalerbank_la_LDFLAGS = \
 libtalerbank_la_SOURCES = \
   bank_api_admin.c \
   bank_api_common.c bank_api_common.h \
-  bank_api_history.c \
-  bank_api_reject.c \
+  bank_api_credit.c \
+  bank_api_debit.c \
+  bank_api_transaction.c \
   bank_api_parse.c
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
@@ -55,10 +56,10 @@ libtalerfakebank_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalerfakebank_la_SOURCES = \
-  fakebank_history.c \
-  fakebank.c fakebank.h
+  fakebank.c
 libtalerfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
@@ -69,8 +70,8 @@ libtalerbanktesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalerbanktesting_la_SOURCES = \
-  testing_api_cmd_history.c \
-  testing_api_cmd_reject.c \
+  testing_api_cmd_history_credit.c \
+  testing_api_cmd_history_debit.c \
   testing_api_helpers.c
 libtalerbanktesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \

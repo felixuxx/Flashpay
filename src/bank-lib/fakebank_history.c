@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017, 2018 Inria and GNUnet e.V.
+  (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -19,92 +19,15 @@
 
 /**
  * @file bank-lib/fakebank_history.c
- * @brief definitions for the "/history[-range]" layer.
+ * @brief definitions for the "/history" layer.
  * @author Marcello Stanisci <stanisci.m@gmail.com>
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_json_lib.h"
 #include "fakebank.h"
 
-/**
- * Decides whether the history builder will advance or not
- * to the next element.
- *
- * @param ha history args
- * @return GNUNET_YES/NO to advance/not-advance.
- */
-int
-TFH_handle_history_advance (const struct HistoryArgs *ha,
-                            const struct Transaction *pos)
-{
-  const struct HistoryRangeIds *hri = ha->range;
 
-  return (NULL != pos) && (0 != hri->count);
-}
-
-
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element does not get inserted in
- * the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-struct Transaction *
-TFH_handle_history_skip (const struct HistoryArgs *ha,
-                         const struct Transaction *pos)
-{
-  const struct HistoryRangeIds *hri = ha->range;
-
-  if (hri->count > 0)
-    return pos->next;
-  if (hri->count < 0)
-    return pos->prev;
-  return NULL;
-}
-
-
-/**
- * Iterates on the "next" element to be processed.  To
- * be used when the current element _gets_ inserted in the result.
- *
- * @param ha history arguments.
- * @param pos current element being processed.
- * @return the next element to be processed.
- */
-struct Transaction *
-TFH_handle_history_step (const struct HistoryArgs *ha,
-                         const struct Transaction *pos)
-{
-  struct HistoryRangeIds *hri = ha->range;
-
-  if (hri->count > 0)
-  {
-    hri->count--;
-    return pos->next;
-  }
-  if (hri->count < 0)
-  {
-    hri->count++;
-    return pos->prev;
-  }
-  return NULL;
-}
-
-
-/**
- * Actual history response builder.
- *
- * @param pos first (included) element in the result set, NULL if history is empty
- * @param ha history arguments.
- * @param caller_name which function is building the history.
- * @return MHD_YES / MHD_NO, after having enqueued the response
- *         object into MHD.
- */
 int
 TFH_build_history_response (struct MHD_Connection *connection,
                             struct Transaction *pos,
@@ -256,127 +179,4 @@ TFH_build_history_response (struct MHD_Connection *connection,
     MHD_destroy_response (resp);
   }
   return ret;
-}
-
-
-/**
- * Parse URL history arguments, of _both_ APIs:
- * /history and /history-range.
- *
- * @param connection MHD connection.
- * @param function_name name of the caller.
- * @param ha[out] will contain the parsed values.
- * @return GNUNET_OK only if the parsing succeedes.
- */
-int
-TFH_parse_history_common_args (struct MHD_Connection *connection,
-                               struct HistoryArgs *ha)
-{
-  /**
-   * @variable
-   * Just check if given and == "basic", no need to keep around.
-   */
-  const char *auth;
-
-  /**
-   * All those will go into the structure, after parsing.
-   */
-  const char *direction;
-  const char *cancelled;
-  const char *ordering;
-  const char *account_number;
-
-
-  auth = MHD_lookup_connection_value (connection,
-                                      MHD_GET_ARGUMENT_KIND,
-                                      "auth");
-  direction = MHD_lookup_connection_value (connection,
-                                           MHD_GET_ARGUMENT_KIND,
-                                           "direction");
-  cancelled = MHD_lookup_connection_value (connection,
-                                           MHD_GET_ARGUMENT_KIND,
-                                           "cancelled");
-  ordering = MHD_lookup_connection_value (connection,
-                                          MHD_GET_ARGUMENT_KIND,
-                                          "ordering");
-  account_number = MHD_lookup_connection_value
-                     (connection,
-                     MHD_GET_ARGUMENT_KIND,
-                     "account_number");
-
-  /* Fail if one of the above failed.  */
-  if ( (NULL == direction) ||
-       (NULL == cancelled) ||
-       ( (0 != strcasecmp (cancelled,
-                           "OMIT")) &&
-         (0 != strcasecmp (cancelled,
-                           "SHOW")) ) ||
-       ( (0 != strcasecmp (direction,
-                           "BOTH")) &&
-         (0 != strcasecmp (direction,
-                           "CREDIT")) &&
-         (0 != strcasecmp (direction,
-                           "DEBIT")) ) ||
-       (1 != sscanf (account_number,
-                     "%llu",
-                     &ha->account_number)) ||
-       ( (NULL == auth) || (0 != strcasecmp (auth,
-                                             "basic")) ) )
-  {
-    /* Invalid request, given that this is fakebank we impolitely
-     * just kill the connection instead of returning a nice error.
-     */
-    GNUNET_break (0);
-    return GNUNET_NO;
-  }
-
-  if (0 == strcasecmp (direction,
-                       "CREDIT"))
-  {
-    ha->direction = TALER_BANK_DIRECTION_CREDIT;
-  }
-  else if (0 == strcasecmp (direction,
-                            "DEBIT"))
-  {
-    ha->direction = TALER_BANK_DIRECTION_DEBIT;
-  }
-  else if (0 == strcasecmp (direction,
-                            "BOTH"))
-  {
-    ha->direction = TALER_BANK_DIRECTION_BOTH;
-  }
-
-  /* Direction is invalid.  */
-  else
-  {
-    GNUNET_break (0);
-    return GNUNET_NO;
-  }
-
-  if (0 == strcasecmp (cancelled,
-                       "OMIT"))
-  {
-    /* nothing */
-  }
-  else if (0 == strcasecmp (cancelled,
-                            "SHOW"))
-  {
-    ha->direction |= TALER_BANK_DIRECTION_CANCEL;
-  }
-
-  /* Cancel-showing policy is invalid.  */
-  else
-  {
-    GNUNET_break (0);
-    return GNUNET_NO;
-  }
-
-  if ((NULL != ordering)
-      && (0 == strcmp ("ascending",
-                       ordering)))
-    ha->ascending = GNUNET_YES;
-  else
-    ha->ascending = GNUNET_NO;
-
-  return GNUNET_OK;
 }

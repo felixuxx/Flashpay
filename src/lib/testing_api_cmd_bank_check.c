@@ -52,12 +52,12 @@ struct BankCheckState
   /**
    * Expected debit bank account.
    */
-  uint64_t debit_account;
+  const char *debit_account;
 
   /**
    * Expected credit bank account.
    */
-  uint64_t credit_account;
+  const char *credit_account;
 
   /**
    * Wire transfer subject (set by fakebank-lib).
@@ -95,18 +95,16 @@ check_bank_transfer_run (void *cls,
                          struct TALER_TESTING_Interpreter *is)
 {
   struct BankCheckState *bcs = cls;
-
   struct TALER_Amount amount;
-  const uint64_t *debit_account;
-  const uint64_t *credit_account;
+  const char *debit_account;
+  const char *credit_account;
   const char *exchange_base_url;
-
 
   if (NULL == bcs->deposit_reference)
   {
     TALER_LOG_INFO ("Deposit reference NOT given\n");
-    debit_account = &bcs->debit_account;
-    credit_account = &bcs->credit_account;
+    debit_account = bcs->debit_account;
+    credit_account = bcs->credit_account;
     exchange_base_url = bcs->exchange_base_url;
 
     if (GNUNET_OK !=
@@ -154,14 +152,13 @@ check_bank_transfer_run (void *cls,
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_get_trait_url
         (deposit_cmd, 0, &exchange_base_url)); // check 0 works!
-
   }
 
   if (GNUNET_OK !=
       TALER_FAKEBANK_check (is->fakebank,
                             &amount,
-                            *debit_account,
-                            *credit_account,
+                            debit_account,
+                            credit_account,
                             exchange_base_url,
                             &bcs->subject))
   {
@@ -217,18 +214,18 @@ check_bank_transfer_traits (void *cls,
     wtid_ptr = NULL;
   else
     wtid_ptr = &bcs->wtid;
+  {
+    struct TALER_TESTING_Trait traits[] = {
+      TALER_TESTING_make_trait_wtid (0, wtid_ptr),
+      TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
+      TALER_TESTING_trait_end ()
+    };
 
-  struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_transfer_subject (0, bcs->subject),
-    TALER_TESTING_make_trait_wtid (0, wtid_ptr),
-    TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
-    TALER_TESTING_trait_end ()
-  };
-
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
+    return TALER_TESTING_get_trait (traits,
+                                    ret,
+                                    trait,
+                                    index);
+  }
 }
 
 
@@ -250,8 +247,8 @@ TALER_TESTING_cmd_check_bank_transfer
   (const char *label,
   const char *exchange_base_url,
   const char *amount,
-  uint64_t debit_account,
-  uint64_t credit_account)
+  const char *debit_account,
+  const char *credit_account)
 {
   struct BankCheckState *bcs;
 
@@ -260,18 +257,18 @@ TALER_TESTING_cmd_check_bank_transfer
   bcs->amount = amount;
   bcs->debit_account = debit_account;
   bcs->credit_account = credit_account;
-
   bcs->deposit_reference = NULL;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .cls = bcs,
+      .run = &check_bank_transfer_run,
+      .cleanup = &check_bank_transfer_cleanup,
+      .traits = &check_bank_transfer_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .cls = bcs,
-    .run = &check_bank_transfer_run,
-    .cleanup = &check_bank_transfer_cleanup,
-    .traits = &check_bank_transfer_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

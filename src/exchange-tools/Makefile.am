@@ -23,7 +23,9 @@ taler_wire_SOURCES = \
   taler-wire.c
 taler_wire_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/wire/libtalerwire.la \
+  -lgnunetcurl \
   -lgnunetutil
 
 taler_exchange_keyup_SOURCES = \
@@ -32,6 +34,7 @@ taler_exchange_keyup_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil $(XLIB)
@@ -44,6 +47,7 @@ taler_exchange_wire_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \

@@ -30,7 +30,7 @@
 #include "taler_testing_lib.h"
 
 #define TALER_TESTING_TRAIT_CONTRACT_TERMS "contract-terms"
-#define TALER_TESTING_TRAIT_TRANSFER_SUBJECT "transfer-subject"
+#define TALER_TESTING_TRAIT_STRING "string"
 #define TALER_TESTING_TRAIT_AMOUNT "amount"
 #define TALER_TESTING_TRAIT_URL "url"
 #define TALER_TESTING_TRAIT_ORDER_ID "order-id"
@@ -80,46 +80,45 @@ TALER_TESTING_make_trait_contract_terms
 
 
 /**
- * Obtain a transfer subject from @a cmd.
+ * Obtain a string from @a cmd.
  *
  * @param cmd command to extract the subject from.
  * @param index index number associated with the transfer
  *        subject to offer.
- * @param transfer_subject[out] where to write the offered
- *        transfer subject.
+ * @param s[out] where to write the offered
+ *        string
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_transfer_subject
+TALER_TESTING_get_trait_string
   (const struct TALER_TESTING_Command *cmd,
   unsigned int index,
-  const char **transfer_subject)
+  const char **s)
 {
   return cmd->traits (cmd->cls,
-                      (const void **) transfer_subject,
-                      TALER_TESTING_TRAIT_TRANSFER_SUBJECT,
+                      (const void **) s,
+                      TALER_TESTING_TRAIT_STRING,
                       index);
 }
 
 
 /**
- * Offer transfer subject.
+ * Offer string.
  *
  * @param index index number associated with the transfer
  *        subject being offered.
- * @param transfer_subject transfer subject to offer.
- *
+ * @param s transfer subject to offer.
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_transfer_subject
+TALER_TESTING_make_trait_string
   (unsigned int index,
-  const char *transfer_subject)
+  const char *s)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_TRANSFER_SUBJECT,
-    .ptr = (const void *) transfer_subject
+    .trait_name = TALER_TESTING_TRAIT_STRING,
+    .ptr = (const void *) s
   };
   return ret;
 }

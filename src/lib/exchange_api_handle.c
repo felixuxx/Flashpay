@@ -1262,7 +1262,7 @@ keys_completed_cb (void *cls,
     for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
       kd.denom_keys[i].key.rsa_public_key
         = GNUNET_CRYPTO_rsa_public_key_dup (
-            kd_old.denom_keys[i].key.rsa_public_key);
+        kd_old.denom_keys[i].key.rsa_public_key);
 
     kd.num_auditors = kd_old.num_auditors;
     kd.auditors = GNUNET_new_array (kd.num_auditors,

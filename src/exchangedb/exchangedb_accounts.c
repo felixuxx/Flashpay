@@ -58,7 +58,7 @@ check_for_account (void *cls,
                    const char *section)
 {
   struct FindAccountContext *ctx = cls;
-  char *plugin_name;
+  char *method;
   char *payto_url;
   char *wire_response_filename;
   struct TALER_EXCHANGEDB_AccountInfo ai;
@@ -81,12 +81,12 @@ check_for_account (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ctx->cfg,
                                              section,
-                                             "PLUGIN",
-                                             &plugin_name))
+                                             "METHOD",
+                                             &method))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
-                               "PLUGIN");
+                               "METHOD");
     GNUNET_free (payto_url);
     return;
   }
@@ -97,7 +97,7 @@ check_for_account (void *cls,
                                                &wire_response_filename))
     wire_response_filename = NULL;
   ai.section_name = section;
-  ai.plugin_name = plugin_name;
+  ai.method = method;
   ai.payto_url = payto_url;
   ai.wire_response_filename = wire_response_filename;
 
@@ -112,7 +112,7 @@ check_for_account (void *cls,
   ctx->cb (ctx->cb_cls,
            &ai);
   GNUNET_free (payto_url);
-  GNUNET_free (plugin_name);
+  GNUNET_free (method);
   GNUNET_free_non_null (wire_response_filename);
 }
 

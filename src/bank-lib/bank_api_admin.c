@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2017 Taler Systems SA
+  Copyright (C) 2015--2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -166,13 +166,11 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank (used to execute this request)
+ * @param account_base_url URL of the bank (used to execute this request)
  * @param auth authentication data to send to the bank
- * @param exchange_base_url base URL of the exchange (for tracking)
- * @param subject wire transfer subject for the transfer
+ * @param reserve_pub wire transfer subject for the transfer
  * @param amount amount that was deposited
- * @param debit_account_no account number to withdraw from (53 bits at most)
- * @param credit_account_no account number to deposit into (53 bits at most)
+ * @param credit_account account to deposit into (payto)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -181,13 +179,12 @@ handle_admin_add_incoming_finished (void *cls,
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const char *bank_base_url,
+                               const char *account_base_url,
                                const struct TALER_BANK_AuthenticationData *auth,
-                               const char *exchange_base_url,
-                               const char *subject,
+                               const struct
+                               TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
-                               uint64_t debit_account_no,
-                               uint64_t credit_account_no,
+                               const char *credit_account,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls)
 {
@@ -195,18 +192,10 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   json_t *admin_obj;
   CURL *eh;
 
-  if (NULL == exchange_base_url)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  admin_obj = json_pack ("{s:{s:s}, s:s, s:s, s:o, s:I, s:I}",
-                         "auth", "type", "basic",
-                         "exchange_url", exchange_base_url,
-                         "subject", subject,
+  admin_obj = json_pack ("{s:o, s:o, s:s}",
+                         "subject", GNUNET_JSON_from_data_auto (reserve_pub),
                          "amount", TALER_JSON_from_amount (amount),
-                         "debit_account", (json_int_t) debit_account_no,
-                         "credit_account", (json_int_t) credit_account_no);
+                         "credit_account", credit_account);
   if (NULL == admin_obj)
   {
     GNUNET_break (0);
@@ -215,26 +204,32 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
-  aai->request_url = TALER_BANK_path_to_url_ (bank_base_url,
+  aai->request_url = TALER_BANK_path_to_url_ (account_base_url,
                                               "/admin/add/incoming");
-  aai->post_ctx.headers = TALER_BANK_make_auth_header_ (auth);
-
-  GNUNET_assert
-    (NULL != (aai->post_ctx.headers = curl_slist_append
-                                        (aai->post_ctx.headers,
-                                        "Content-Type: application/json")));
+  aai->post_ctx.headers = curl_slist_append
+                            (aai->post_ctx.headers,
+                            "Content-Type: application/json");
 
   eh = curl_easy_init ();
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_curl_easy_post (&aai->post_ctx, eh, admin_obj));
-
+  if ( (GNUNET_OK !=
+        TALER_BANK_setup_auth_ (eh,
+                                auth)) ||
+       (CURLE_OK !=
+        curl_easy_setopt (eh,
+                          CURLOPT_URL,
+                          aai->request_url)) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&aai->post_ctx,
+                              eh,
+                              admin_obj)) )
+  {
+    GNUNET_break (0);
+    TALER_BANK_admin_add_incoming_cancel (aai);
+    curl_easy_cleanup (eh);
+    json_decref (admin_obj);
+    return NULL;
+  }
   json_decref (admin_obj);
-
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   aai->request_url));
 
   aai->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file bank-lib/testing_api_cmd_history.c
  * @brief command to check the /history API from the bank.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -40,35 +38,26 @@
 struct HistoryState
 {
   /**
-   * Base URL of the bank offering the "history" operation.
+   * Base URL of the account offering the "history" operation.
    */
-  const char *bank_url;
+  char *account_url;
 
   /**
-   * Account number to ask the history for.
-   */
-  uint64_t account_no;
-
-  /**
-   * Which type of records we are interested: in-transfers
-   * / out-transfers / rejected transfers.
-   */
-  enum TALER_BANK_Direction direction;
-
-  /**
-   * First row number we want in the result.
+   * Reference to command defining the
+   * first row number we want in the result.
    */
   const char *start_row_reference;
 
   /**
-   * How many rows we want in the result, _at most_.
+   * How many rows we want in the result, _at most_,
+   * and ascending/descending.
    */
-  unsigned long long num_results;
+  long long num_results;
 
   /**
    * Handle to a pending "history" operation.
    */
-  struct TALER_BANK_HistoryHandle *hh;
+  struct TALER_BANK_CreditHistoryHandle *hh;
 
   /**
    * Expected number of results (= rows).
@@ -81,33 +70,8 @@ struct HistoryState
    */
   int failed;
 
-  /**
-   * If GNUNET_YES, this parameter will ask for results in
-   * chronological order.
-   */
-  unsigned int ascending;
-
-  /**********************************
-   * Following defs are specific to *
-   * the "/history-range" version.  *
-   **********************************/
-
-  /**
-   * Last row number we want in the result.  Only used
-   * as a trait source when using the /history-range API.
-   */
-  const char *end_row_reference;
-
-  /**
-   * Start date for /history-range.
-   */
-  struct GNUNET_TIME_Absolute start_date;
-
-  /**
-   * End date for /history-range.
-   */
-  struct GNUNET_TIME_Absolute end_date;
 };
+
 
 /**
  * Item in the transaction history, as reconstructed from the
@@ -119,7 +83,7 @@ struct History
   /**
    * Wire details.
    */
-  struct TALER_BANK_TransferDetails details;
+  struct TALER_BANK_CreditDetails details;
 
   /**
    * Serial ID of the wire transfer.
@@ -127,17 +91,10 @@ struct History
   uint64_t row_id;
 
   /**
-   * Direction of the transfer.
+   * URL to free.
    */
-  enum TALER_BANK_Direction direction;
-
+  char *url;
 };
-
-
-/**
- * Array mapping bank account numbers to login credentials.
- */
-extern struct TALER_BANK_AuthenticationData AUTHS[];
 
 
 /**
@@ -167,51 +124,6 @@ history_traits (void *cls,
 
 
 /**
- * Test if the CMD at offset @a off has been /rejected, and
- * is indeed a wire transfer CMD.
- *
- * @param is interpreter state (where we are right now)
- * @param off offset of the command to test for rejection.
- *
- * @return GNUNET_YES if the command at @a off was cancelled.
- */
-static int
-test_cancelled (struct TALER_TESTING_Interpreter *is,
-                unsigned int off)
-{
-  const char *rejected_reference;
-  const struct TALER_TESTING_Command *current_cmd;
-
-  current_cmd = &is->commands[off];
-  TALER_LOG_INFO ("Is `%s' rejected?\n",
-                  current_cmd->label);
-  for (int i = 0; i<is->ip; i++)
-  {
-    const struct TALER_TESTING_Command *c = &is->commands[i];
-
-
-    /* XXX: Errors reported here are NOT fatal */
-
-    /* Rejected wire transfers have a non-NULL reference to a
-     * reject command to mark them as rejected. So errors
-     * about "reject traits" not found are NOT fatal here */
-    if (GNUNET_OK != TALER_TESTING_get_trait_rejected
-          (c, 0, &rejected_reference))
-      continue;
-
-    TALER_LOG_INFO ("Command `%s' was rejected by `%s'.\n",
-                    current_cmd->label,
-                    c->label);
-
-    if (0 == strcmp (rejected_reference,
-                     current_cmd->label))
-      return GNUNET_YES;
-  }
-  return GNUNET_NO;
-}
-
-
-/**
  * Free history @a h of length @a h_len.
  *
  * @param h history array to free.
@@ -222,10 +134,7 @@ free_history (struct History *h,
               uint64_t h_len)
 {
   for (uint64_t off = 0; off<h_len; off++)
-  {
-    GNUNET_free (h[off].details.wire_transfer_subject);
-    GNUNET_free (h[off].details.account_url);
-  }
+    GNUNET_free (h[off].url);
   GNUNET_free_non_null (h);
 }
 
@@ -251,14 +160,12 @@ print_expected (struct History *h,
   for (uint64_t i = 0; i<h_len; i++)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "H(%llu): %s%s (serial: %llu, subject: %s,"
+                "H(%llu): %s (serial: %llu, subject: %s,"
                 " counterpart: %s)\n",
                 (unsigned long long) i,
-                (TALER_BANK_DIRECTION_CREDIT == h[i].direction) ?
-                "+" : "-",
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
-                h[i].details.wire_transfer_subject,
+                TALER_B2S (&h[i].details.reserve_pub),
                 h[i].details.account_url);
   }
 }
@@ -280,20 +187,6 @@ build_history_hit_limit (uint64_t total,
                          const struct HistoryState *hs,
                          const struct TALER_TESTING_Command *pos)
 {
-  /* "/history-range" case.  */
-  if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
-      hs->start_date.abs_value_us)
-  {
-    const struct GNUNET_TIME_Absolute *timestamp;
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_absolute_time (pos,
-                                                          0,
-                                                          &timestamp));
-    GNUNET_assert (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
-                   hs->end_date.abs_value_us);
-    return timestamp->abs_value_us >= hs->end_date.abs_value_us;
-  }
   return total >= hs->num_results;
 }
 
@@ -304,13 +197,6 @@ build_history_hit_limit (uint64_t total,
  * loops: the first to figure out how many history elements have
  * to be allocated, and the second to actually populate every
  * element.
- *
- * This command has a limitation currently: it orders the history
- * list with descending elements if and only if the 'delta' was
- * given negative; and will order the list with ascending elements
- * if and only if the 'delta' was given positive.  Therefore,
- * for now it is NOT possible to test such a "/history" request:
- * "/history?auth=basic&direction=both&delta=10&ordering=descending"
  *
  * @param is interpreter state (supposedly having the
  *        current CMD pointing at a "history" CMD).
@@ -350,10 +236,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                      (add_incoming_cmd, 0, &row_id_start));
   }
 
-  GNUNET_assert ((0 != hs->num_results) || /* "/history" */
-                 (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us != /* "/history-range" */
-                  hs->start_date.abs_value_us));
-
+  GNUNET_assert (0 != hs->num_results);
   if (0 == is->ip)
   {
     TALER_LOG_DEBUG ("Checking history at first CMD..\n");
@@ -387,8 +270,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
   for (unsigned int off = start; off != end + inc; off += inc)
   {
     const struct TALER_TESTING_Command *pos = &is->commands[off];
-    int cancelled;
     const uint64_t *row_id;
+    const char *credit_account;
+    const char *debit_account;
 
     /**
      * The following command allows us to skip over those CMDs
@@ -411,28 +295,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
       }
     }
 
-    /* Seek "/history-range" starting row, _if_ that's the case */
-    if ((GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
-         hs->start_date.abs_value_us) && (GNUNET_YES != ok))
-    {
-      const struct GNUNET_TIME_Absolute *timestamp;
-
-      TALER_TESTING_get_trait_absolute_time (pos,
-                                             0,
-                                             &timestamp);
-      TALER_LOG_DEBUG
-        ("Seeking first row, start vs timestamp: %llu vs %llu\n",
-        (long long unsigned int) hs->start_date.abs_value_us,
-        (long long unsigned int) timestamp->abs_value_us);
-
-      if (hs->start_date.abs_value_us <= timestamp->abs_value_us)
-      {
-        total = 0;
-        ok = GNUNET_YES;
-        continue;
-      }
-    }
-
     /* when 'start' was _not_ given, then ok == GNUNET_YES */
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
@@ -447,37 +309,23 @@ build_history (struct TALER_TESTING_Interpreter *is,
       break;
     }
 
-    cancelled = test_cancelled (is, off);
-
-    if ( (GNUNET_YES == cancelled) &&
-         (0 == (hs->direction & TALER_BANK_DIRECTION_CANCEL)) )
-    {
-      TALER_LOG_INFO ("Ignoring canceled wire"
-                      " transfer from history\n");
-      continue;
-    }
-
-    const uint64_t *credit_account_no;
-    const uint64_t *debit_account_no;
 
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (pos, &credit_account_no));
+        (pos, &credit_account));
 
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (pos, &debit_account_no));
+        (pos, &debit_account));
 
     TALER_LOG_INFO ("Potential history element:"
-                    " %llu->%llu; my account: %llu\n",
-                    (unsigned long long) *debit_account_no,
-                    (unsigned long long) *credit_account_no,
-                    (unsigned long long) hs->account_no);
+                    " %s->%s; my account: %s\n",
+                    debit_account,
+                    credit_account,
+                    hs->account_url);
 
-    if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
-           (hs->account_no == *credit_account_no)) ||
-         ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
-           (hs->account_no == *debit_account_no)) )
+    if (0 == strcasecmp (hs->account_url,
+                         credit_account))
     {
       TALER_LOG_INFO ("+1 my history\n");
       total++; /* found matching record */
@@ -508,11 +356,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
   for (unsigned int off = start; off != end + inc; off += inc)
   {
     const struct TALER_TESTING_Command *pos = &is->commands[off];
-    int cancelled;
     const uint64_t *row_id;
     char *bank_hostname;
-    const uint64_t *credit_account_no;
-    const uint64_t *debit_account_no;
+    const char *credit_account;
+    const char *debit_account;
 
     if (GNUNET_OK != TALER_TESTING_GET_TRAIT_ROW_ID
           (pos, &row_id))
@@ -528,28 +375,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
          * total doesn't get incremented if 'start'
          * was given and couldn't be found.
          */total = 0;
-        ok = GNUNET_YES;
-        continue;
-      }
-    }
-
-    /* Seek "/history-range" starting row, _if_ that's the case */
-    if ((GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us !=
-         hs->start_date.abs_value_us) && (GNUNET_YES != ok))
-    {
-      const struct GNUNET_TIME_Absolute *timestamp;
-
-      TALER_TESTING_get_trait_absolute_time (pos,
-                                             0,
-                                             &timestamp);
-      TALER_LOG_DEBUG
-        ("Seeking first row, start vs timestamp (2): %llu vs %llu\n",
-        (long long unsigned int) hs->start_date.abs_value_us,
-        (long long unsigned int) timestamp->abs_value_us);
-
-      if (hs->start_date.abs_value_us <= timestamp->abs_value_us)
-      {
-        total = 0;
         ok = GNUNET_YES;
         continue;
       }
@@ -574,43 +399,31 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (pos, &credit_account_no));
+        (pos, &credit_account));
 
     GNUNET_assert
       (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (pos, &debit_account_no));
+        (pos, &debit_account));
 
     TALER_LOG_INFO ("Potential history bit:"
-                    " %llu->%llu; my account: %llu\n",
-                    (unsigned long long) *debit_account_no,
-                    (unsigned long long) *credit_account_no,
-                    (unsigned long long) hs->account_no);
+                    " %s->%s; my account: %s\n",
+                    debit_account,
+                    credit_account,
+                    hs->account_url);
 
     /**
      * Discard transactions where the audited account played
      * _both_ the credit and the debit roles, but _only if_
      * the audit goes on both directions..  This needs more
      * explaination!
-     */if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
-           (hs->account_no == *credit_account_no)) &&
-         ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
-           (hs->account_no == *debit_account_no)) )
+     */if (0 == strcasecmp (hs->account_url,
+                         credit_account))
     {
       GNUNET_break (0);
       continue;
     }
 
-    cancelled = test_cancelled (is, off);
-    if ( (GNUNET_YES == cancelled) &&
-         (0 == (hs->direction & TALER_BANK_DIRECTION_CANCEL)) )
-    {
-      TALER_LOG_WARNING ("`%s' was cancelled\n",
-                         TALER_TESTING_interpreter_get_current_label
-                           (is));
-      continue;
-    }
-
-    bank_hostname = strchr (hs->bank_url, ':');
+    bank_hostname = strchr (hs->account_url, ':');
     GNUNET_assert (NULL != bank_hostname);
     bank_hostname += 3;
 
@@ -618,68 +431,36 @@ build_history (struct TALER_TESTING_Interpreter *is,
      * information.  */
 
     /* Asked for credit, and account got the credit.  */
-    if ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
-         (hs->account_no == *credit_account_no))
+    if (0 == strcasecmp (hs->account_url,
+                         credit_account))
     {
-      h[total].direction = TALER_BANK_DIRECTION_CREDIT;
-      if (GNUNET_YES == cancelled)
-        h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
-
-      GNUNET_asprintf
-        (&h[total].details.account_url,
-        ('/' == bank_hostname[strlen (bank_hostname) - 1])
-        ? "payto://x-taler-bank/%s%llu"
-        : "payto://x-taler-bank/%s/%llu",
-        bank_hostname,
-        (unsigned long long) *debit_account_no);
-    }
-
-    /* Asked for debit, and account got the debit.  */
-    if ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
-         (hs->account_no == *debit_account_no))
-    {
-      h[total].direction = TALER_BANK_DIRECTION_DEBIT;
-      if (GNUNET_YES == cancelled)
-        h[total].direction |= TALER_BANK_DIRECTION_CANCEL;
-
-      GNUNET_asprintf
-        (&h[total].details.account_url,
-        ('/' == bank_hostname[strlen (bank_hostname) - 1])
-        ? "payto://x-taler-bank/%s%llu"
-        : "payto://x-taler-bank/%s/%llu",
-        bank_hostname,
-        (unsigned long long) *credit_account_no);
+      h[total].url = GNUNET_strdup (debit_account);
+      h[total].details.account_url = h[total].url;
     }
 
     /* This block _completes_ the information of the current item,
      * with amount / subject / exchange URL.  */
-    if ( ( (0 != (hs->direction & TALER_BANK_DIRECTION_CREDIT)) &&
-           (hs->account_no == *credit_account_no)) ||
-         ( (0 != (hs->direction & TALER_BANK_DIRECTION_DEBIT)) &&
-           (hs->account_no == *debit_account_no)) )
+    if (0 == strcasecmp (hs->account_url,
+                         credit_account))
     {
       const struct TALER_Amount *amount;
-      const char *subject;
-      const char *exchange_url;
+      const struct TALER_ReservePublicKeyP *reserve_pub;
+      const char *account_url;
 
-      GNUNET_assert
-        (GNUNET_OK == TALER_TESTING_get_trait_amount_obj
-          (pos, 0, &amount));
-
-      GNUNET_assert
-        (GNUNET_OK == TALER_TESTING_get_trait_transfer_subject
-          (pos, 0, &subject));
-
-      GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_url
-                       (pos, 0, &exchange_url));
-
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_TESTING_get_trait_amount_obj
+                       (pos, 0, &amount));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_TESTING_get_trait_reserve_pub
+                       (pos, 0, &reserve_pub));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_TESTING_get_trait_url
+                       (pos, 1,
+                       &account_url));
       h[total].details.amount = *amount;
-
       h[total].row_id = *row_id;
-      GNUNET_asprintf (&h[total].details.wire_transfer_subject,
-                       "%s %s",
-                       subject,
-                       exchange_url);
+      h[total].details.reserve_pub = *reserve_pub;
+      h[total].details.account_url = account_url;
       TALER_LOG_INFO ("+1-bit of my history\n");
       total++;
     }
@@ -723,8 +504,7 @@ compute_result_count (struct TALER_TESTING_Interpreter *is)
 static int
 check_result (struct TALER_TESTING_Interpreter *is,
               unsigned int off,
-              enum TALER_BANK_Direction dir,
-              const struct TALER_BANK_TransferDetails *details)
+              const struct TALER_BANK_CreditDetails *details)
 {
   uint64_t total;
   struct History *h;
@@ -737,27 +517,22 @@ check_result (struct TALER_TESTING_Interpreter *is,
                 " results, but got result #%u to check\n",
                 (unsigned int) total,
                 off);
-    print_expected (h, total, off);
+    print_expected (h,
+                    total,
+                    off);
     return GNUNET_SYSERR;
   }
-  if (h[off].direction != dir)
-  {
-    GNUNET_break (0);
-    print_expected (h, total, off);
-    free_history (h,
-                  total);
-    return GNUNET_SYSERR;
-  }
-
-  if ( (0 != strcmp (h[off].details.wire_transfer_subject,
-                     details->wire_transfer_subject)) ||
+  if ( (0 != GNUNET_memcmp (&h[off].details.reserve_pub,
+                            &details->reserve_pub)) ||
        (0 != TALER_amount_cmp (&h[off].details.amount,
                                &details->amount)) ||
        (0 != strcasecmp (h[off].details.account_url,
                          details->account_url)) )
   {
     GNUNET_break (0);
-    print_expected (h, total, off);
+    print_expected (h,
+                    total,
+                    off);
     free_history (h,
                   total);
     return GNUNET_SYSERR;
@@ -789,22 +564,30 @@ check_result (struct TALER_TESTING_Interpreter *is,
  * @param details details about the wire transfer.
  * @param json detailed response from the HTTPD, or NULL if
  *        reply was not in JSON.
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static void
+static int
 history_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
-            enum TALER_BANK_Direction dir,
             uint64_t row_id,
-            const struct TALER_BANK_TransferDetails *details,
+            const struct TALER_BANK_CreditDetails *details,
             const json_t *json)
 {
   struct TALER_TESTING_Interpreter *is = cls;
   struct HistoryState *hs = is->commands[is->ip].cls;
 
   (void) row_id;
-  /*NOTE: "204 No Content" is used to signal the end of results.*/
-  if (MHD_HTTP_NO_CONTENT == http_status)
+  if (MHD_HTTP_OK != http_status)
+  {
+    hs->hh = NULL;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unwanted response code from /history: %u\n",
+                http_status);
+    TALER_TESTING_interpreter_fail (is);
+    return GNUNET_SYSERR;
+  }
+  if (NULL == details)
   {
     hs->hh = NULL;
     if ( (hs->results_obtained != compute_result_count (is)) ||
@@ -829,47 +612,33 @@ history_cb (void *cls,
       free_history (h,
                     total);
       TALER_TESTING_interpreter_fail (is);
-      return;
+      return GNUNET_SYSERR;
     }
     TALER_TESTING_interpreter_next (is);
-    return;
-  }
-
-  if (MHD_HTTP_OK != http_status)
-  {
-    hs->hh = NULL;
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unwanted response code from /history[-range]: %u\n",
-                http_status);
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    return GNUNET_OK;
   }
 
   /* check current element */
   if (GNUNET_OK != check_result (is,
                                  hs->results_obtained,
-                                 dir,
                                  details))
   {
+    char *acc;
+
     GNUNET_break (0);
-
-    {
-      char *acc;
-
-      acc = json_dumps (json,
-                        JSON_COMPACT);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Result %u was `%s'\n",
-                  (unsigned int) hs->results_obtained++,
-                  acc);
-      if (NULL != acc)
-        free (acc);
-    }
-
+    acc = json_dumps (json,
+                      JSON_COMPACT);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Result %u was `%s'\n",
+                (unsigned int) hs->results_obtained++,
+                acc);
+    if (NULL != acc)
+      free (acc);
     hs->failed = GNUNET_YES;
-    return;
+    return GNUNET_SYSERR;
   }
   hs->results_obtained++;
+  return GNUNET_OK;
 }
 
 
@@ -886,9 +655,8 @@ history_run (void *cls,
              struct TALER_TESTING_Interpreter *is)
 {
   struct HistoryState *hs = cls;
-  uint64_t row_id = UINT64_MAX;
-  const uint64_t *row_id_ptr = &row_id;
-  struct TALER_BANK_AuthenticationData *auth;
+  uint64_t row_id = (hs->num_results > 0) ? 0 : UINT64_MAX;
+  const uint64_t *row_ptr;
 
   (void) cmd;
   /* Get row_id from trait. */
@@ -902,27 +670,24 @@ history_run (void *cls,
     if (NULL == history_cmd)
       TALER_TESTING_FAIL (is);
 
-    if (GNUNET_OK != TALER_TESTING_get_trait_uint64 (history_cmd,
-                                                     0,
-                                                     &row_id_ptr))
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_uint64 (history_cmd,
+                                        0,
+                                        &row_ptr))
       TALER_TESTING_FAIL (is);
-    row_id = *row_id_ptr;
-
+    else
+      row_id = *row_ptr;
     TALER_LOG_DEBUG ("row id (from trait) is %llu\n",
                      (unsigned long long) row_id);
   }
 
-  auth = &AUTHS[hs->account_no - 1];
-  hs->hh = TALER_BANK_history (is->ctx,
-                               hs->bank_url,
-                               auth,
-                               hs->account_no,
-                               hs->direction,
-                               hs->ascending,
-                               row_id,
-                               hs->num_results,
-                               &history_cb,
-                               is);
+  hs->hh = TALER_BANK_credit_history (is->ctx,
+                                      hs->account_url,
+                                      NULL,
+                                      row_id,
+                                      hs->num_results,
+                                      &history_cb,
+                                      is);
   GNUNET_assert (NULL != hs->hh);
 }
 
@@ -944,8 +709,9 @@ history_cleanup (void *cls,
   if (NULL != hs->hh)
   {
     TALER_LOG_WARNING ("/history did not complete\n");
-    TALER_BANK_history_cancel (hs->hh);
+    TALER_BANK_credit_history_cancel (hs->hh);
   }
+  GNUNET_free (hs->account_url);
   GNUNET_free (hs);
 }
 
@@ -954,12 +720,8 @@ history_cleanup (void *cls,
  * Make a "history" CMD.
  *
  * @param label command label.
- * @param bank_url base URL of the bank offering the "history"
+ * @param account_url base URL of the account offering the "history"
  *        operation.
- * @param account_no bank account number to ask the history for.
- * @param direction which direction this operation is interested.
- * @param ascending if #GNUNET_YES, the bank will return the rows
- *        in ascending (= chronological) order.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -967,25 +729,17 @@ history_cleanup (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_history (const char *label,
-                                const char *bank_url,
-                                uint64_t account_no,
-                                enum TALER_BANK_Direction direction,
-                                unsigned int ascending,
+TALER_TESTING_cmd_bank_credits (const char *label,
+                                const char *account_url,
                                 const char *start_row_reference,
-                                unsigned long long num_results)
+                                long long num_results)
 {
   struct HistoryState *hs;
 
   hs = GNUNET_new (struct HistoryState);
-  hs->bank_url = bank_url;
-  hs->account_no = account_no;
-  hs->direction = direction;
+  hs->account_url = GNUNET_strdup (account_url);
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
-  hs->ascending = ascending;
-  hs->start_date = GNUNET_TIME_UNIT_FOREVER_ABS;
-  hs->end_date = GNUNET_TIME_UNIT_FOREVER_ABS;
 
   {
     struct TALER_TESTING_Command cmd = {
@@ -1001,4 +755,4 @@ TALER_TESTING_cmd_bank_history (const char *label,
 }
 
 
-/* end of testing_api_cmd_history.c */
+/* end of testing_api_cmd_credit_history.c */

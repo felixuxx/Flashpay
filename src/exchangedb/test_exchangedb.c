@@ -944,8 +944,7 @@ audit_refund_cb (void *cls,
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
- * @param wire_reference unique reference identifying the wire transfer (binary blob)
- * @param wire_reference_size number of bytes in @a wire_reference
+ * @param wire_reference unique reference identifying the wire transfer
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -955,8 +954,7 @@ audit_reserve_in_cb (void *cls,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
                      const struct TALER_Amount *credit,
                      const char *sender_account_details,
-                     const void *wire_reference,
-                     size_t wire_reference_size,
+                     uint64_t wire_reference,
                      struct GNUNET_TIME_Absolute execution_date)
 {
   auditor_row_cnt++;
@@ -1507,8 +1505,7 @@ run (void *cls)
   const char *sndr = "payto://x-taler-bank/localhost:8080/1";
   unsigned int matched;
   unsigned int cnt;
-  void *rr;
-  size_t rr_size;
+  uint64_t rr;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
 
@@ -1578,8 +1575,7 @@ run (void *cls)
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    "account-1",
-                                                   &rr,
-                                                   &rr_size));
+                                                   &rr));
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1590,17 +1586,13 @@ run (void *cls)
                                       now,
                                       sndr,
                                       "account-1",
-                                      "TEST",
                                       4));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    "account-1",
-                                                   &rr,
-                                                   &rr_size));
-  FAILIF (4 != rr_size);
-  FAILIF (0 != memcmp ("TEST", rr, 4));
-  GNUNET_free (rr);
+                                                   &rr));
+  FAILIF (4 != rr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
@@ -1617,24 +1609,18 @@ run (void *cls)
                                       now,
                                       sndr,
                                       "account-1",
-                                      "TEST2",
                                       5));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    "account-1",
-                                                   &rr,
-                                                   &rr_size));
-  GNUNET_free (rr);
+                                                   &rr));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
                                                    "account-1",
-                                                   &rr,
-                                                   &rr_size));
-  FAILIF (5 != rr_size);
-  FAILIF (0 != memcmp ("TEST2", rr, 5));
-  GNUNET_free (rr);
+                                                   &rr));
+  FAILIF (5 != rr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,

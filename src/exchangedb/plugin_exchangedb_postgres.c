@@ -253,7 +253,7 @@ postgres_create_tables (void *cls)
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS reserves_in"
                             "(reserve_in_serial_id BIGSERIAL UNIQUE"
                             ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-                            ",wire_reference BYTEA NOT NULL"
+                            ",wire_reference INT8 NOT NULL"
                             ",credit_val INT8 NOT NULL"
                             ",credit_frac INT4 NOT NULL"
                             ",sender_account_details TEXT NOT NULL"
@@ -2158,8 +2158,7 @@ reserves_update (void *cls,
  * @param sender_account_details account information for the sender (payto://-URL)
  * @param exchange_account_section name of the section in the configuration for the exchange's
  *                       account into which the deposit was made
- * @param wire_reference unique reference identifying the wire transfer (binary blob)
- * @param wire_reference_size number of bytes in @a wire_reference
+ * @param wire_ref unique reference identifying the wire transfer
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2170,8 +2169,7 @@ postgres_reserves_in_insert (void *cls,
                              struct GNUNET_TIME_Absolute execution_time,
                              const char *sender_account_details,
                              const char *exchange_account_section,
-                             const void *wire_reference,
-                             size_t wire_reference_size)
+                             uint64_t wire_ref)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus reserve_exists;
@@ -2252,8 +2250,7 @@ postgres_reserves_in_insert (void *cls,
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
-      GNUNET_PQ_query_param_fixed_size (wire_reference,
-                                        wire_reference_size),
+      GNUNET_PQ_query_param_uint64 (&wire_ref),
       TALER_PQ_query_param_amount (balance),
       GNUNET_PQ_query_param_string (exchange_account_section),
       GNUNET_PQ_query_param_string (sender_account_details),
@@ -2311,8 +2308,7 @@ postgres_reserves_in_insert (void *cls,
  * @param session the database session handle
  * @param exchange_account_name name of the section in the exchange's configuration
  *                       for the account that we are tracking here
- * @param[out] wire_reference set to unique reference identifying the wire transfer (binary blob)
- * @param[out] wire_reference_size set to number of bytes in @a wire_reference
+ * @param[out] wire_ref set to unique reference identifying the wire transfer
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2320,17 +2316,15 @@ postgres_get_latest_reserve_in_reference (void *cls,
                                           struct TALER_EXCHANGEDB_Session *
                                           session,
                                           const char *exchange_account_name,
-                                          void **wire_reference,
-                                          size_t *wire_reference_size)
+                                          uint64_t *wire_reference)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (exchange_account_name),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_variable_size ("wire_reference",
-                                         wire_reference,
-                                         wire_reference_size),
+    GNUNET_PQ_result_spec_uint64 ("wire_reference",
+                                  wire_reference),
     GNUNET_PQ_result_spec_end
   };
 
@@ -6192,14 +6186,12 @@ reserves_in_serial_helper_cb (void *cls,
     char *sender_account_details;
     struct GNUNET_TIME_Absolute execution_date;
     uint64_t rowid;
-    void *wire_reference;
-    size_t wire_reference_size;
+    uint64_t wire_reference;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
-      GNUNET_PQ_result_spec_variable_size ("wire_reference",
-                                           &wire_reference,
-                                           &wire_reference_size),
+      GNUNET_PQ_result_spec_uint64 ("wire_reference",
+                                    &wire_reference),
       TALER_PQ_RESULT_SPEC_AMOUNT ("credit",
                                    &credit),
       TALER_PQ_result_spec_absolute_time ("execution_date",
@@ -6227,7 +6219,6 @@ reserves_in_serial_helper_cb (void *cls,
                     &credit,
                     sender_account_details,
                     wire_reference,
-                    wire_reference_size,
                     execution_date);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)

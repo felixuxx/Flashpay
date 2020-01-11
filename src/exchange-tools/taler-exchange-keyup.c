@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -923,17 +923,17 @@ exchange_keys_update_denomkeys ()
  * Sign @a af with @a priv
  *
  * @param[in,out] af fee structure to sign
- * @param wireplugin name of the plugin for which we sign
+ * @param method name of the wire method for which we sign
  * @param priv private key to use for signing
  */
 static void
 sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
-         const char *wireplugin,
+         const char *method,
          const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
 {
   struct TALER_MasterWireFeePS wf;
 
-  TALER_EXCHANGEDB_fees_2_wf (wireplugin,
+  TALER_EXCHANGEDB_fees_2_wf (method,
                               af,
                               &wf);
   GNUNET_assert (GNUNET_OK ==
@@ -1101,28 +1101,15 @@ create_wire_fee_by_account (void *cls,
                             const struct TALER_EXCHANGEDB_AccountInfo *ai)
 {
   int *ret = cls;
-  struct TALER_WIRE_Plugin *plugin;
 
   if (GNUNET_NO == ai->credit_enabled)
     return;
-  plugin = TALER_WIRE_plugin_load (kcfg,
-                                   ai->plugin_name);
-  if (NULL == plugin)
-  {
-    fprintf (stderr,
-             "Failed to load wire plugin `%s' configured for account `%s'\n",
-             ai->plugin_name,
-             ai->section_name);
-    *ret = GNUNET_SYSERR;
-    return;
-  }
   /* We may call this function repeatedly for the same method
      if there are multiple accounts with plugins using the
      same method, but except for some minor performance loss,
      this is harmless. */
   create_wire_fee_for_method (ret,
-                              plugin->method);
-  TALER_WIRE_plugin_unload (plugin);
+                              ai->method);
 }
 
 

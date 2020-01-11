@@ -20,6 +20,7 @@
 /**
  * @file wire/wire_helper.c
  * @brief Helper functions for dealing with wire formats
+
  * @author Christian Grothoff <christian@grothoff.org>
  */
 #include "platform.h"
@@ -31,23 +32,6 @@
  */
 #define PAYTO "payto://"
 
-
-/**
- * Maps wire methods to plugin names.
- */
-struct ConversionTable
-{
-
-  /**
-   * Wire method (e.g. 'iban', 'x-taler-bank', ..)
-   */
-  const char *method;
-
-  /**
-   * Plugin name, e.g. 'taler_bank', ..
-   */
-  const char *plugin_name;
-};
 
 /**
  * Obtain the payment method from a @a payto_url
@@ -76,35 +60,23 @@ TALER_WIRE_payto_get_method (const char *payto_url)
 
 
 /**
- * Get the plugin name from the payment method.
+ * Round the amount to something that can be
+ * transferred on the wire.
  *
- * FIXME: this is ugly, would be better to have
- * a way to iterate over all plugins and interrogate
- * them as to what wire method(s) they support!
- *
- * @param method the method implemented by the plugin (for
- *  simplicity, we assume 1 method is implemented by 1 plugin).
- * @return the plugin name, NULL if not found.
+ * @param[in,out] amount amount to round down
+ * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
+ *         #GNUNET_SYSERR if the amount or currency was invalid
  */
-const char *
-TALER_WIRE_get_plugin_from_method (const char *method)
+int
+TALER_WIRE_amount_round (struct TALER_Amount *amount)
 {
-  static const struct ConversionTable ct[] = {
-    {"x-taler-bank", "taler_bank"},
-    {"iban", "taler_bank"},
-    {NULL, NULL}
-  };
+  uint32_t delta;
 
-  for (unsigned int i = 0;
-       NULL != ct[i].method;
-       i++)
-  {
-    if (0 == strcmp (method,
-                     ct[i].method))
-      return ct[i].plugin_name;
-  }
-
-  return NULL;
+  delta = amount->fraction % (TALER_AMOUNT_FRAC_BASE / 100);
+  if (0 == delta)
+    return GNUNET_NO;
+  amount->fraction -= delta;
+  return GNUNET_OK;
 }
 
 
