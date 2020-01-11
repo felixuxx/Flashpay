@@ -35,4 +35,6 @@ talerinclude_HEADERS = \
 
 endif
 
-EXTRA_DIST = gauger.h
+EXTRA_DIST = \
+  backoff.h \
+  gauger.h

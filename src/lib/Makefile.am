@@ -16,7 +16,6 @@ libtalerexchange_la_LDFLAGS = \
   -version-info 4:0:0 \
   -no-undefined
 libtalerexchange_la_SOURCES = \
-  backoff.h \
   exchange_api_curl_defaults.c exchange_api_curl_defaults.h \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
@@ -77,7 +76,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_exec_keyup.c \
   testing_api_cmd_exec_auditor-sign.c \
-  testing_api_cmd_fakebank_transfer.c \
   testing_api_cmd_withdraw.c \
   testing_api_cmd_wire.c \
   testing_api_cmd_refund.c \

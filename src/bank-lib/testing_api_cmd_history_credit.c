@@ -60,6 +60,11 @@ struct HistoryState
   struct TALER_BANK_CreditHistoryHandle *hh;
 
   /**
+   * Authentication data for the operation.
+   */
+  struct TALER_BANK_AuthenticationData auth;
+
+  /**
    * Expected number of results (= rows).
    */
   uint64_t results_obtained;
@@ -683,7 +688,7 @@ history_run (void *cls,
 
   hs->hh = TALER_BANK_credit_history (is->ctx,
                                       hs->account_url,
-                                      NULL,
+                                      &hs->auth,
                                       row_id,
                                       hs->num_results,
                                       &history_cb,
@@ -731,6 +736,8 @@ history_cleanup (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_credits (const char *label,
                                 const char *account_url,
+                                const struct
+                                TALER_BANK_AuthenticationData *auth,
                                 const char *start_row_reference,
                                 long long num_results)
 {
@@ -740,7 +747,7 @@ TALER_TESTING_cmd_bank_credits (const char *label,
   hs->account_url = GNUNET_strdup (account_url);
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
-
+  hs->auth = *auth;
   {
     struct TALER_TESTING_Command cmd = {
       .label = label,

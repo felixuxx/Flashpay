@@ -20,13 +20,8 @@
  * @brief backoff computation for the exchange lib
  * @author Florian Dold
  */
-
-
 #ifndef _TALER_BACKOFF_H
 #define _TALER_BACKOFF_H
-
-#include "platform.h"
-#include <gnunet/gnunet_time_lib.h>
 
 /**
  * Random exponential backoff used in the exchange lib.

@@ -204,7 +204,6 @@ typedef void
 
 
 /**
-
  * Execute a wire transfer.
  *
  * @param ctx context for HTTP interaction

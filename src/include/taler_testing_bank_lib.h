@@ -108,6 +108,7 @@ TALER_TESTING_has_in_name (const char *prog,
  * @param label command label.
  * @param account_url base URL of the account offering the "history"
  *        operation.
+ * @param auth login data to use
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -118,6 +119,8 @@ TALER_TESTING_has_in_name (const char *prog,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_credits (const char *label,
                                 const char *account_url,
+                                const struct
+                                TALER_BANK_AuthenticationData *auth,
                                 const char *start_row_reference,
                                 long long num_results);
 
@@ -128,6 +131,7 @@ TALER_TESTING_cmd_bank_credits (const char *label,
  * @param label command label.
  * @param account_url base URL of the account offering the "history"
  *        operation.
+ * @param auth authentication data
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -137,8 +141,124 @@ TALER_TESTING_cmd_bank_credits (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_debits (const char *label,
                                const char *account_url,
+                               const struct TALER_BANK_AuthenticationData *auth,
                                const char *start_row_reference,
                                long long num_results);
+
+
+/**
+ * Create transfer command.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param auth authentication data to use
+ * @param payto_credit_account which account receives money.
+ * @param wtid wire transfer identifier to use
+ * @param exchange_base_url exchange URL to use
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_transfer (const char *label,
+                            const char *amount,
+                            const char *account_base_url,
+                            const struct TALER_BANK_AuthenticationData *auth,
+                            const char *payto_credit_account,
+                            const struct TALER_WireTransferIdentifierRawP *wtid,
+                            const char *exchange_base_url);
+
+
+/**
+ * Create /admin/add-incoming command.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
+ * @param auth authentication data
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming (const char *label,
+                                      const char *amount,
+                                      const char *account_base_url,
+                                      const struct
+                                      TALER_BANK_AuthenticationData *auth,
+                                      const char *payto_credit_account);
+
+
+/**
+ * Create "fakebank transfer" CMD, letting the caller specify
+ * a reference to a command that can offer a reserve private key.
+ * This private key will then be used to construct the subject line
+ * of the wire transfer.
+ *
+ * @param label command label.
+ * @param amount the amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
+ * @param auth authentication data
+ * @param ref reference to a command that can offer a reserve
+ *        private key.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
+                                               const char *amount,
+                                               const char *account_base_url,
+                                               const struct
+                                               TALER_BANK_AuthenticationData *
+                                               auth,
+                                               const char *payto_credit_account,
+                                               const char *ref);
+
+
+/**
+ * Create "fakebank transfer" CMD, letting the caller specifying
+ * the merchant instance.  This version is useful when a tip
+ * reserve should be topped up, in fact the interpreter will need
+ * the "tipping instance" in order to get the instance public key
+ * and make a wire transfer subject out of it.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param payto_credit_account which account receives money.
+ * @param auth authentication data
+ * @param instance the instance that runs the tipping.  Under this
+ *        instance, the configuration file will provide the private
+ *        key of the tipping reserve.  This data will then used to
+ *        construct the wire transfer subject line.
+ * @param config_filename configuration file to use.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming_with_instance (const char *label,
+                                                    const char *amount,
+                                                    const char *account_base_url,
+                                                    const struct
+                                                    TALER_BANK_AuthenticationData
+                                                    *auth,
+                                                    const char *
+                                                    payto_credit_account,
+                                                    const char *instance,
+                                                    const char *config_filename);
+
+
+/**
+ * Modify a fakebank transfer command to enable retries when the
+ * reserve is not yet full or we get other transient errors from
+ * the fakebank.
+ *
+ * @param cmd a fakebank transfer command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd);
 
 
 #endif

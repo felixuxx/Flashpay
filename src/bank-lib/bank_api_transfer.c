@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/bank_api_transaction.c
- * @brief Implementation of the /transaction/ requests of the bank's HTTP API
+ * @file bank-lib/bank_api_transfer.c
+ * @brief Implementation of the /transfer/ requests of the bank's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -73,7 +73,7 @@ GNUNET_NETWORK_STRUCT_END
  * @param exchange_base_url base URL of this exchange (included in subject
  *        to facilitate use of tracking API by merchant backend)
  * @param wtid wire transfer identifier to use
- * @param buf[out] set to transaction data to persist, NULL on error
+ * @param buf[out] set to transfer data to persist, NULL on error
  * @param buf_size[out] set to number of bytes in @a buf, 0 on error
  */
 void
@@ -111,7 +111,7 @@ TALER_BANK_prepare_wire_transfer (const char *destination_account_url,
 
 
 /**
- * @brief An transaction Handle
+ * @brief An transfer Handle
  */
 struct TALER_BANK_WireExecuteHandle
 {
@@ -146,16 +146,16 @@ struct TALER_BANK_WireExecuteHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /transaction request.
+ * HTTP /transfer request.
  *
  * @param cls the `struct TALER_BANK_WireExecuteHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_transaction_finished (void *cls,
-                             long response_code,
-                             const void *response)
+handle_transfer_finished (void *cls,
+                          long response_code,
+                          const void *response)
 {
   struct TALER_BANK_WireExecuteHandle *weh = cls;
   uint64_t row_id = UINT64_MAX;
@@ -263,7 +263,7 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
                                   void *cc_cls)
 {
   struct TALER_BANK_WireExecuteHandle *weh;
-  json_t *transaction_obj;
+  json_t *transfer_obj;
   CURL *eh;
   const struct WirePackP *wp = buf;
   uint32_t d_len;
@@ -293,14 +293,14 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   }
   TALER_amount_ntoh (&amount,
                      &wp->amount);
-  transaction_obj = json_pack ("{s:o, s:o, s:s, s:o, s:o, s:s}",
-                               "request_uid", GNUNET_JSON_from_data_auto (
-                                 &wp->request_uid),
-                               "amount", TALER_JSON_from_amount (&amount),
-                               "exchange_url", exchange_base_url,
-                               "wtid", GNUNET_JSON_from_data_auto (&wp->wtid),
-                               "credit_account", destination_account_url);
-  if (NULL == transaction_obj)
+  transfer_obj = json_pack ("{s:o, s:o, s:s, s:o, s:o, s:s}",
+                            "request_uid", GNUNET_JSON_from_data_auto (
+                              &wp->request_uid),
+                            "amount", TALER_JSON_from_amount (&amount),
+                            "exchange_url", exchange_base_url,
+                            "wtid", GNUNET_JSON_from_data_auto (&wp->wtid),
+                            "credit_account", destination_account_url);
+  if (NULL == transfer_obj)
   {
     GNUNET_break (0);
     return NULL;
@@ -309,7 +309,7 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   weh->cb = cc;
   weh->cb_cls = cc_cls;
   weh->request_url = TALER_BANK_path_to_url_ (bank_base_url,
-                                              "/transaction");
+                                              "/transfer");
   weh->post_ctx.headers = curl_slist_append
                             (weh->post_ctx.headers,
                             "Content-Type: application/json");
@@ -325,20 +325,20 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
        (GNUNET_OK !=
         TALER_curl_easy_post (&weh->post_ctx,
                               eh,
-                              transaction_obj)) )
+                              transfer_obj)) )
   {
     GNUNET_break (0);
     TALER_BANK_execute_wire_transfer_cancel (weh);
     curl_easy_cleanup (eh);
-    json_decref (transaction_obj);
+    json_decref (transfer_obj);
     return NULL;
   }
-  json_decref (transaction_obj);
+  json_decref (transfer_obj);
 
   weh->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    weh->post_ctx.headers,
-                                   &handle_transaction_finished,
+                                   &handle_transfer_finished,
                                    weh);
   return weh;
 }
@@ -365,4 +365,4 @@ TALER_BANK_execute_wire_transfer_cancel (struct
 }
 
 
-/* end of bank_api_transaction.c */
+/* end of bank_api_transfer.c */

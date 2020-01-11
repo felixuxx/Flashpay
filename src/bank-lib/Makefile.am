@@ -41,7 +41,7 @@ libtalerbank_la_SOURCES = \
   bank_api_common.c bank_api_common.h \
   bank_api_credit.c \
   bank_api_debit.c \
-  bank_api_transaction.c \
+  bank_api_transfer.c \
   bank_api_parse.c
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
@@ -70,8 +70,10 @@ libtalerbanktesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalerbanktesting_la_SOURCES = \
+  testing_api_cmd_admin_add_incoming.c \
   testing_api_cmd_history_credit.c \
   testing_api_cmd_history_debit.c \
+  testing_api_cmd_transfer.c \
   testing_api_helpers.c
 libtalerbanktesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \

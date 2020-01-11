@@ -111,11 +111,11 @@ static char *exchange_url;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-                                       fakebank_url, USER_ACCOUNT_NO, \
-                                       EXCHANGE_ACCOUNT_NO, \
-                                       USER_LOGIN_NAME, USER_LOGIN_PASS, \
-                                       exchange_url)
+  TALER_TESTING_cmd_admin_add_incoming (label, amount, \
+                                        fakebank_url, USER_ACCOUNT_NO, \
+                                        EXCHANGE_ACCOUNT_NO, \
+                                        USER_LOGIN_NAME, USER_LOGIN_PASS, \
+                                        exchange_url)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -125,7 +125,7 @@ static char *exchange_url;
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE_SUBJECT(label,amount,subject) \
-  TALER_TESTING_cmd_fakebank_transfer_with_subject \
+  TALER_TESTING_cmd_admin_add_incoming_with_subject \
     (label, amount, fakebank_url, USER_ACCOUNT_NO, \
     EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
     subject, exchange_url)

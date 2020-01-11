@@ -57,6 +57,11 @@ struct HistoryState
   long long num_results;
 
   /**
+   * Login data to use to authenticate.
+   */
+  struct TALER_BANK_AuthenticationData auth;
+
+  /**
    * Handle to a pending "history" operation.
    */
   struct TALER_BANK_DebitHistoryHandle *hh;
@@ -67,7 +72,7 @@ struct HistoryState
   uint64_t results_obtained;
 
   /**
-   * Set to GNUNET_YES if the callback detects something
+   * Set to #GNUNET_YES if the callback detects something
    * unexpected.
    */
   int failed;
@@ -684,7 +689,7 @@ history_run (void *cls,
 
   hs->hh = TALER_BANK_debit_history (is->ctx,
                                      hs->account_url,
-                                     NULL,
+                                     &hs->auth,
                                      row_id,
                                      hs->num_results,
                                      &history_cb,
@@ -722,6 +727,7 @@ history_cleanup (void *cls,
  * @param label command label.
  * @param account_url base URL of the account offering the "history"
  *        operation.
+ * @param auth login data to use
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -731,6 +737,7 @@ history_cleanup (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_debits (const char *label,
                                const char *account_url,
+                               const struct TALER_BANK_AuthenticationData *auth,
                                const char *start_row_reference,
                                long long num_results)
 {
@@ -740,6 +747,7 @@ TALER_TESTING_cmd_bank_debits (const char *label,
   hs->account_url = account_url;
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
+  hs->auth = *auth;
 
   {
     struct TALER_TESTING_Command cmd = {

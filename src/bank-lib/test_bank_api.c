@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file bank/test_bank_api.c
  * @brief testcase to test bank's HTTP API
@@ -24,7 +23,6 @@
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
@@ -45,6 +43,16 @@
 static char *bank_url;
 
 /**
+ * Account URL.
+ */
+static char *account_url;
+
+/**
+ * payto://-URL of another account.
+ */
+static char *payto_url;
+
+/**
  * Handle to the Py-bank daemon.
  */
 static struct GNUNET_OS_Process *bankd;
@@ -56,26 +64,6 @@ static struct GNUNET_OS_Process *bankd;
 static int WITH_FAKEBANK;
 
 /**
- * Transfer @a amount from @a src account to @a dst using
- * @a subject and the @a label for the command.
- */
-#define TRANSFER(label,amount,src,dst,subject)          \
-  TALER_TESTING_cmd_fakebank_transfer_with_subject (label, \
-                                                    amount,   \
-                                                    bank_url, \
-                                                    src,                \
-                                                    dst, \
-                                                    AUTHS[src \
-                                                          - 1].details.basic. \
-                                                    username, \
-                                                    AUTHS[src \
-                                                          - 1].details.basic. \
-                                                    password, \
-                                                    subject, \
-                                                    "http://exchange.net/")
-
-
-/**
  * Main function that will tell the interpreter what commands to
  * run.
  *
@@ -85,89 +73,54 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Bank serves at `%s'\n",
-              bank_url);
-  extern struct TALER_BANK_AuthenticationData AUTHS[];
   struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_bank_history ("history-0",
-                                    bank_url,
-                                    TALER_TESTING_BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH,
-                                    GNUNET_YES,
+    TALER_TESTING_cmd_bank_credits ("history-0",
+                                    account_url,
                                     NULL,
                                     1),
-    /* WARNING: old API has expected http response code among
-     * the parameters, although it was always set as '200 OK' */
-    TRANSFER ("debit-1",
-              "KUDOS:5.01",
-              TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-              TALER_TESTING_BANK_ACCOUNT_NUMBER,
-              "subject 1"),
-    TALER_TESTING_cmd_bank_history ("history-1c",
-                                    bank_url,
-                                    TALER_TESTING_BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_CREDIT,
-                                    GNUNET_YES,
+    TALER_TESTING_cmd_admin_add_incoming ("debit-1",
+                                          "KUDOS:5.01",
+                                          account_url,
+                                          payto_url,
+                                          NULL,
+                                          NULL),
+    TALER_TESTING_cmd_bank_credits ("history-1c",
+                                    account_url,
                                     NULL,
                                     5),
-    TALER_TESTING_cmd_bank_history ("history-1d",
-                                    bank_url,
-                                    TALER_TESTING_BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_DEBIT,
-                                    GNUNET_YES,
-                                    NULL,
-                                    5),
-    TRANSFER ("debit-2",
-              "KUDOS:3.21",
-              TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-              TALER_TESTING_USER_ACCOUNT_NUMBER,
-              "subject 2"),
+    TALER_TESTING_cmd_bank_debits ("history-1d",
+                                   account_url,
+                                   NULL,
+                                   5),
+    TALER_TESTING_cmd_admin_add_incoming ("debit-2",
+                                          "KUDOS:3.21",
+                                          account_url,
+                                          payto_url,
+                                          NULL,
+                                          NULL),
     TRANSFER ("credit-2",
               "KUDOS:3.22",
               TALER_TESTING_USER_ACCOUNT_NUMBER,
               TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
               "credit 2"),
-    TALER_TESTING_cmd_bank_history ("history-2b",
-                                    bank_url,
-                                    TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH,
-                                    GNUNET_YES,
-                                    NULL,
-                                    5),
-    TALER_TESTING_cmd_bank_history ("history-2bi",
-                                    bank_url,
-                                    TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH,
-                                    GNUNET_YES,
-                                    "debit-1",
-                                    5),
-    TRANSFER ("credit-for-reject-1",
-              "KUDOS:1.01",
-              TALER_TESTING_BANK_ACCOUNT_NUMBER,
-              TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-              "subject 3"),
-    TALER_TESTING_cmd_bank_reject ("reject-1",
-                                   bank_url,
-                                   "credit-for-reject-1"),
-    TALER_TESTING_cmd_bank_history ("history-r1",
-                                    bank_url,
-                                    TALER_TESTING_BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH,
-                                    GNUNET_YES,
-                                    NULL,
-                                    5),
-    TALER_TESTING_cmd_bank_history ("history-r1c",
-                                    bank_url,
-                                    TALER_TESTING_BANK_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH
-                                    | TALER_BANK_DIRECTION_CANCEL,
-                                    GNUNET_YES,
-                                    NULL,
-                                    5),
+    TALER_TESTING_cmd_bank_debits ("history-2b",
+                                   account_url,
+                                   NULL,
+                                   5),
     TALER_TESTING_cmd_end ()
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Bank serves at `%s'\n",
+              bank_url);
+  GNUNET_asprintf (&account_url,
+                   "%s/%s",
+                   base_url,
+                   "alice");
+  GNUNET_asprintf (&payto_url,
+                   "payto://x-taler-bank/%s/%s",
+                   base_url,
+                   "bob");
   if (GNUNET_YES == WITH_FAKEBANK)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
