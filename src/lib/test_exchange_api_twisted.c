@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -23,7 +23,6 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
@@ -34,6 +33,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
+#include "taler_testing_bank_lib.h"
 #include <taler/taler_twister_testing_lib.h>
 #include <taler/taler_twister_service.h>
 
@@ -70,24 +70,26 @@ static char *auditor_url;
 static struct GNUNET_OS_Process *twisterd;
 
 /**
+ * URL of the exchange's account at the bank.  Obtained from CONFIG_FILE's
+ * "exchange-wire-test:BANK_URI" option plus the exchange account.
+ */
+static char *exchange_account_url; // FIXME: initialize!
+
+/**
  * Account number of the exchange at the bank.
  */
-#define EXCHANGE_ACCOUNT_NO 2
+#define EXCHANGE_ACCOUNT_NO "2" // FIXME: used?
 
 /**
- * Account number of some user.
+ * Payto URL of the user's account.
  */
-#define USER_ACCOUNT_NO 62
+static char *user_account_payto; // FIXME: initialize!
 
 /**
- * User name. Never checked by fakebank.
+ * Credentials for talking to the bank.
  */
-#define USER_LOGIN_NAME "user42"
+static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
 
-/**
- * User password. Never checked by fakebank.
- */
-#define USER_LOGIN_PASS "pass42"
 
 /**
  * Execute the taler-exchange-wirewatch command with
@@ -117,23 +119,10 @@ static struct GNUNET_OS_Process *twisterd;
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
   TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        fakebank_url, USER_ACCOUNT_NO, \
-                                        EXCHANGE_ACCOUNT_NO, \
-                                        USER_LOGIN_NAME, USER_LOGIN_PASS, \
-                                        exchange_url)
+                                        exchange_account_url, \
+                                        &auth, \
+                                        user_account_payto)
 
-/**
- * Run wire transfer of funds from some user's account to the
- * exchange.
- *
- * @param label label to use for the command.
- * @param amount amount to transfer, i.e. "EUR:1"
- */
-#define CMD_TRANSFER_TO_EXCHANGE_SUBJECT(label,amount,subject) \
-  TALER_TESTING_cmd_admin_add_incoming_with_subject \
-    (label, amount, fakebank_url, USER_ACCOUNT_NO, \
-    EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-    subject)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -150,17 +139,14 @@ run (void *cls,
    * response from a refresh-reveal operation.
    */
   struct TALER_TESTING_Command refresh_409_conflict[] = {
-
     CMD_TRANSFER_TO_EXCHANGE
       ("refresh-create-reserve",
       "EUR:5.01"),
-
     /**
      * Make previous command effective.
      */
     CMD_EXEC_WIREWATCH
       ("wirewatch"),
-
     /**
      * Withdraw EUR:5.
      */
@@ -191,13 +177,11 @@ run (void *cls,
       "refresh-withdraw-coin",
       MHD_HTTP_OK,
       NULL),
-
     /* Trigger 409 Conflict.  */
     TALER_TESTING_cmd_flip_upload
       ("flip-upload",
       CONFIG_FILE,
       "transfer_privs.0"),
-
     TALER_TESTING_cmd_refresh_reveal
       ("refresh-(flipped-)reveal",
       "refresh-melt",
@@ -217,16 +201,13 @@ run (void *cls,
     CMD_TRANSFER_TO_EXCHANGE
       ("create-reserve-r1",
       "EUR:5.01"),
-
     CMD_EXEC_WIREWATCH
       ("wirewatch-r1"),
-
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-r1",
       "create-reserve-r1",
       "EUR:5",
       MHD_HTTP_OK),
-
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1",
       "withdraw-coin-r1",
@@ -239,26 +220,22 @@ run (void *cls,
       GNUNET_TIME_UNIT_MINUTES,
       "EUR:5",
       MHD_HTTP_OK),
-
     TALER_TESTING_cmd_refund
       ("refund-currency-missmatch",
       MHD_HTTP_PRECONDITION_FAILED,
       "USD:5",
       "USD:0.01",
       "deposit-refund-1"),
-
     TALER_TESTING_cmd_refund
       ("refund-fee-above-amount",
       MHD_HTTP_BAD_REQUEST,
       "EUR:5",
       "EUR:10",
       "deposit-refund-1"),
-
     TALER_TESTING_cmd_flip_upload
       ("flip-upload",
       CONFIG_FILE,
       "merchant_sig"),
-
     TALER_TESTING_cmd_refund
       ("refund-bad-sig",
       MHD_HTTP_FORBIDDEN,
@@ -285,39 +262,32 @@ run (void *cls,
       GNUNET_TIME_UNIT_MINUTES,
       "EUR:5",
       MHD_HTTP_CONFLICT),
-
     TALER_TESTING_cmd_refund
       ("refund-deposit-not-found",
       MHD_HTTP_NOT_FOUND,
       "EUR:5",
       "EUR:0.01",
       "deposit-refund-to-fail"),
-
     TALER_TESTING_cmd_refund
       ("refund-insufficient-funds",
       MHD_HTTP_PRECONDITION_FAILED,
       "EUR:50",
       "EUR:0.01",
       "deposit-refund-1"),
-
     TALER_TESTING_cmd_refund
       ("refund-fee-too-low",
       MHD_HTTP_BAD_REQUEST,
       "EUR:5",
       "EUR:0.000001",
       "deposit-refund-1"),
-
     TALER_TESTING_cmd_end ()
   };
 
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
                              refresh_409_conflict),
-
     TALER_TESTING_cmd_batch ("refund",
                              refund),
-
     TALER_TESTING_cmd_end ()
   };
 

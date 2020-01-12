@@ -175,6 +175,7 @@ test_exchange_api_twisted_LDADD = \
   libtalertesting.la \
   libtalerexchange.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
