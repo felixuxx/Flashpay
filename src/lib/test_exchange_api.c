@@ -83,6 +83,16 @@ static char *exchange_account_url; // FIXME: initialize!
 static char *user_account_payto; // FIXME: initialize!
 
 /**
+ * Payto URL of the user's account.
+ */
+static char *user2_account_payto; // FIXME: initialize! (43!)
+
+/**
+ * Payto URL of the exchange's account.
+ */
+static char *exchange_account_payto; // FIXME: initialize!
+
+/**
  * Credentials for talking to the bank.
  */
 static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
@@ -381,23 +391,23 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-499c", exchange_url,
-      "EUR:4.98", 2, 42),
+      "EUR:4.98", exchange_account_payto, user_account_payto),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c1", exchange_url,
-      "EUR:0.98", 2, 42),
+      "EUR:0.98", exchange_account_payto, user_account_payto),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c2", exchange_url,
-      "EUR:0.98", 2, 42),
+      "EUR:0.98", exchange_account_payto, user_account_payto),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c", exchange_url,
-      "EUR:0.08", 2, 43),
+      "EUR:0.08", exchange_account_payto, user2_account_payto),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-1", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
 
     /**
      * NOTE: the old test-suite had this "check bank transfer"
@@ -405,7 +415,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-2", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
 
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
 
@@ -446,8 +456,7 @@ run (void *cls,
       ("check_bank_transfer-unaggregated",
       exchange_url,
       "EUR:5.01",
-      42,
-      2),
+      user_account_payto, exchange_account_payto),
 
     TALER_TESTING_cmd_withdraw_amount
       ("withdraw-coin-unaggregated",
@@ -525,7 +534,7 @@ run (void *cls,
      * other transfers around.
      */TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pre-refund", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
 
     TALER_TESTING_cmd_check_bank_empty
       ("check_bank_transfer-pre-refund"),
@@ -567,7 +576,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pre-refund", exchange_url,
-      "EUR:4.97", 2, 42),
+      "EUR:4.97", exchange_account_payto, user_account_payto),
 
     /**
      * Run failing refund, as past deadline & aggregation.
@@ -595,7 +604,7 @@ run (void *cls,
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-3b", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
 
 
     TALER_TESTING_cmd_deposit
@@ -716,15 +725,15 @@ run (void *cls,
       ("check_bank_short-lived_transfer",
       exchange_url,
       "EUR:5.01",
-      42,
-      2),
+      user_account_payto,
+      exchange_account_payto),
 
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_short-lived_reimburse",
       exchange_url,
       "EUR:5",
-      2,
-      42),
+      exchange_account_payto,
+      user_account_payto),
 
     /**
      * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
@@ -814,84 +823,67 @@ run (void *cls,
     /* check that we are empty before the rejection test */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr1", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr2", exchange_url,
-      "EUR:2.02", 42, 2),
+      "EUR:2.02", user_account_payto, exchange_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr3", exchange_url,
-      "EUR:1.01", 42, 2),
+      "EUR:1.01", user_account_payto, exchange_account_payto),
     TALER_TESTING_cmd_check_bank_empty
       ("check-empty-again"),
 
     TALER_TESTING_cmd_end ()
   };
 
-  #define RESERVE_OPEN_CLOSE_CHUNK 4
-  #define RESERVE_OPEN_CLOSE_ITERATIONS 3
-  #define CONSTANT_KEY \
-  "09QGYPEKNHBACK135BNXZFHA0YTQXT1KJDRVXF4J822G99AYNQ8G"
+#define RESERVE_OPEN_CLOSE_CHUNK 4
+#define RESERVE_OPEN_CLOSE_ITERATIONS 3
 
-  struct TALER_TESTING_Command reserve_open_close
-  [(RESERVE_OPEN_CLOSE_ITERATIONS
-    * RESERVE_OPEN_CLOSE_CHUNK) + 1];
-
+  struct TALER_TESTING_Command reserve_open_close[(RESERVE_OPEN_CLOSE_ITERATIONS
+                                                   * RESERVE_OPEN_CLOSE_CHUNK)
+                                                  + 1];
   for (unsigned int i = 0;
        i < RESERVE_OPEN_CLOSE_ITERATIONS;
        i++)
   {
-    reserve_open_close[i * RESERVE_OPEN_CLOSE_CHUNK]
-      = CMD_TRANSFER_TO_EXCHANGE_SUBJECT
+    reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 0]
+      = CMD_TRANSFER_TO_EXCHANGE
           ("reserve-open-close-key",
-          "EUR:20",
-          CONSTANT_KEY);
-
+          "EUR:20");
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 1]
       = TALER_TESTING_cmd_exec_wirewatch
           ("reserve-open-close-wirewatch",
           CONFIG_FILE_EXPIRE_RESERVE_NOW);
-
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
       = TALER_TESTING_cmd_exec_aggregator
           ("reserve-open-close-aggregation",
           CONFIG_FILE_EXPIRE_RESERVE_NOW);
-
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 3]
       = TALER_TESTING_cmd_status ("reserve-open-close-status",
                                   "reserve-open-close-key",
                                   "EUR:0",
                                   MHD_HTTP_OK);
   }
-  reserve_open_close
-  [RESERVE_OPEN_CLOSE_ITERATIONS * RESERVE_OPEN_CLOSE_CHUNK]
+  reserve_open_close[RESERVE_OPEN_CLOSE_ITERATIONS * RESERVE_OPEN_CLOSE_CHUNK]
     = TALER_TESTING_cmd_end ();
 
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_batch ("wire",
                              wire),
-
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
-
     TALER_TESTING_cmd_batch ("spend",
                              spend),
-
     TALER_TESTING_cmd_batch ("refresh",
                              refresh),
-
     TALER_TESTING_cmd_batch ("track",
                              track),
-
     TALER_TESTING_cmd_batch ("unaggregation",
                              unaggregation),
-
     TALER_TESTING_cmd_batch ("refund",
                              refund),
-
     TALER_TESTING_cmd_batch ("payback",
                              payback),
-    /* Fix #5462. */
     TALER_TESTING_cmd_batch ("reserve-open-close",
                              reserve_open_close),
     /**
