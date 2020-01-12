@@ -58,10 +58,15 @@ static char *payto_url;
 static struct GNUNET_OS_Process *bankd;
 
 /**
+ * Authentication data to use.
+ */
+static struct TALER_BANK_AuthenticationData auth;
+
+/**
  * Flag indicating whether the test is running against the
  * Fakebank.  Set up at runtime.
  */
-static int WITH_FAKEBANK;
+static int with_fakebank;
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -73,55 +78,62 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+  struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_bank_credits ("history-0",
                                     account_url,
+                                    &auth,
                                     NULL,
                                     1),
-    TALER_TESTING_cmd_fakebank_transfer ("debit-1",
-                                         "KUDOS:5.01",
-                                         account_url,
-                                         payto_url,
-                                         NULL,
-                                         NULL),
+    TALER_TESTING_cmd_admin_add_incoming ("debit-1",
+                                          "KUDOS:5.01",
+                                          account_url,
+                                          &auth,
+                                          payto_url),
     TALER_TESTING_cmd_bank_credits ("history-1c",
                                     account_url,
+                                    &auth,
                                     NULL,
                                     5),
     TALER_TESTING_cmd_bank_debits ("history-1d",
                                    account_url,
+                                   &auth,
                                    NULL,
                                    5),
-    TALER_TESTING_cmd_fakebank_transfer ("debit-2",
-                                         "KUDOS:3.21",
-                                         account_url,
-                                         payto_url,
-                                         NULL,
-                                         NULL),
-    TRANSFER ("credit-2",
-              "KUDOS:3.22",
-              TALER_TESTING_USER_ACCOUNT_NUMBER,
-              TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-              "credit 2"),
+    TALER_TESTING_cmd_admin_add_incoming ("debit-2",
+                                          "KUDOS:3.21",
+                                          account_url,
+                                          &auth,
+                                          payto_url),
+    TALER_TESTING_cmd_transfer ("credit-2",
+                                "KUDOS:3.22",
+                                account_url,
+                                &auth,
+                                payto_url,
+                                &wtid,
+                                "http://exchange.example.com/"),
     TALER_TESTING_cmd_bank_debits ("history-2b",
                                    account_url,
+                                   &auth,
                                    NULL,
                                    5),
     TALER_TESTING_cmd_end ()
   };
 
+  memset (&wtid, 42, sizeof (wtid));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Bank serves at `%s'\n",
               bank_url);
   GNUNET_asprintf (&account_url,
                    "%s/%s",
-                   base_url,
+                   bank_url,
                    "alice");
   GNUNET_asprintf (&payto_url,
                    "payto://x-taler-bank/%s/%s",
-                   base_url,
+                   bank_url,
                    "bob");
-  if (GNUNET_YES == WITH_FAKEBANK)
+  // FIXME: init 'auth'!
+  if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
                                      bank_url);
@@ -144,9 +156,9 @@ main (int argc,
                     "DEBUG",
                     NULL);
 
-  WITH_FAKEBANK = TALER_TESTING_has_in_name (argv[0],
+  with_fakebank = TALER_TESTING_has_in_name (argv[0],
                                              "_with_fakebank");
-  if (GNUNET_YES == WITH_FAKEBANK)
+  if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     if (NULL == (bank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
@@ -178,7 +190,7 @@ main (int argc,
                                           CONFIG_FILE,
                                           NULL,
                                           GNUNET_NO)) ? 0 : 1;
-  if (GNUNET_NO == WITH_FAKEBANK)
+  if (GNUNET_NO == with_fakebank)
   {
 
     GNUNET_OS_process_kill (bankd,

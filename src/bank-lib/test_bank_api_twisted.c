@@ -45,7 +45,7 @@
 /**
  * True when the test runs against Fakebank.
  */
-static int WITH_FAKEBANK;
+static int with_fakebank;
 
 /**
  * (real) Twister URL.  Used at startup time to check if it runs.
@@ -53,10 +53,15 @@ static int WITH_FAKEBANK;
 static char *twister_url;
 
 /**
- * URL of the twister where all the connections to the
+ * Account URL of the twister where all the connections to the
  * bank that have to be proxied should be addressed to.
  */
-#define TWISTED_BANK_URL twister_url
+static char *twisted_account_url;
+
+/**
+ * Authentication data to use.
+ */
+static struct TALER_BANK_AuthenticationData auth;
 
 /**
  * URL of the bank.
@@ -90,18 +95,21 @@ run (void *cls,
      * fakebank runs inside the same process of the test.
      */
     TALER_TESTING_cmd_wait_service ("wait-service",
-                                    TWISTED_BANK_URL),
-    TALER_TESTING_cmd_bank_history ("history-0",
-                                    TWISTED_BANK_URL,
-                                    TALER_TESTING_EXCHANGE_ACCOUNT_NUMBER,
-                                    TALER_BANK_DIRECTION_BOTH,
-                                    GNUNET_NO,
+                                    twister_url),
+    TALER_TESTING_cmd_bank_credits ("history-0",
+                                    twisted_account_url,
+                                    &auth,
                                     NULL,
                                     5),
     TALER_TESTING_cmd_end ()
   };
 
-  if (GNUNET_YES == WITH_FAKEBANK)
+  GNUNET_asprintf (&twisted_account_url,
+                   "%s/%s",
+                   twister_url,
+                   "alice");
+  // FIXME: init 'auth'!
+  if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
                                      bank_url);
@@ -150,10 +158,10 @@ main (int argc,
     return 77;
   }
 
-  WITH_FAKEBANK = TALER_TESTING_has_in_name (argv[0],
+  with_fakebank = TALER_TESTING_has_in_name (argv[0],
                                              "_with_fakebank");
 
-  if (GNUNET_YES == WITH_FAKEBANK)
+  if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     if (NULL == (bank_url = TALER_TESTING_prepare_fakebank
@@ -193,7 +201,7 @@ main (int argc,
                              GNUNET_NO);
   purge_process (twisterd);
 
-  if (GNUNET_NO == WITH_FAKEBANK)
+  if (GNUNET_NO == with_fakebank)
   {
     GNUNET_OS_process_kill (bankd,
                             SIGKILL);
