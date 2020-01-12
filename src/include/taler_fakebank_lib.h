@@ -113,7 +113,7 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
  * @param want_debit account that should have been credited
  * @param exchange_base_url expected base URL of the exchange,
  *        i.e. "https://example.com/"; may include a port
- * @param[out] subject set to the wire transfer identifier
+ * @param[out] wtid set to the wire transfer identifier
  * @return #GNUNET_OK on success
  */
 int
@@ -122,7 +122,7 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
                             const char *want_debit,
                             const char *want_credit,
                             const char *exchange_base_url,
-                            struct TALER_WireTransferIdentifierRawP **subject);
+                            struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
