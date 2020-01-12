@@ -33,6 +33,7 @@
 #include <microhttpd.h>
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
+#include "taler_testing_bank_lib.h"
 #include "taler_testing_lib.h"
 #include "taler_testing_auditor_lib.h"
 
@@ -66,24 +67,35 @@ static char *auditor_url;
 static char *exchange_url;
 
 /**
+ * URL of the exchange's account at the bank.  Obtained from CONFIG_FILE's
+ * "exchange-wire-test:BANK_URI" option plus the exchange account.
+ */
+static char *exchange_account_url; // FIXME: initialize!
+
+/**
  * Account number of the exchange at the bank.
  */
-#define EXCHANGE_ACCOUNT_NO 2
+#define EXCHANGE_ACCOUNT_NO "2" // FIXME: used?
 
 /**
- * Account number of some user.
+ * Payto URL of the user's account.
  */
-#define USER_ACCOUNT_NO 42
+static char *user_account_payto; // FIXME: initialize!
 
 /**
- * User name. Never checked by fakebank.
+ * Payto URL of the user's account.
  */
-#define USER_LOGIN_NAME "user42"
+static char *user2_account_payto; // FIXME: initialize! (43!)
 
 /**
- * User password. Never checked by fakebank.
+ * Payto URL of the exchange's account.
  */
-#define USER_LOGIN_PASS "pass42"
+static char *exchange_account_payto; // FIXME: initialize!
+
+/**
+ * Credentials for talking to the bank.
+ */
+static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
 
 /**
  * Execute the taler-exchange-wirewatch command with
@@ -112,23 +124,9 @@ static char *exchange_url;
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
   TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        fakebank_url, USER_ACCOUNT_NO, \
-                                        EXCHANGE_ACCOUNT_NO, \
-                                        USER_LOGIN_NAME, USER_LOGIN_PASS, \
-                                        exchange_url)
-
-/**
- * Run wire transfer of funds from some user's account to the
- * exchange.
- *
- * @param label label to use for the command.
- * @param amount amount to transfer, i.e. "EUR:1"
- */
-#define CMD_TRANSFER_TO_EXCHANGE_SUBJECT(label,amount,subject) \
-  TALER_TESTING_cmd_admin_add_incoming_with_subject \
-    (label, amount, fakebank_url, USER_ACCOUNT_NO, \
-    EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-    subject, exchange_url)
+                                        exchange_account_url, \
+                                        &auth, \
+                                        user_account_payto)
 
 /**
  * Run the taler-auditor.
@@ -271,19 +269,19 @@ run (void *cls,
      */
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-499c", exchange_url,
-      "EUR:4.98", 2, 42),
+      "EUR:4.98", exchange_account_payto, user_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c1", exchange_url,
-      "EUR:0.98", 2, 42),
+      "EUR:0.98", exchange_account_payto, user_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c", exchange_url,
-      "EUR:0.08", 2, 43),
+      "EUR:0.08", exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-1", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-aai-2", exchange_url,
-      "EUR:5.01", 42, 2),
+      "EUR:5.01", user_account_payto, exchange_account_payto),
 
     /* The following transactions got originated within
      * the "massive deposit confirms" batch.  */
@@ -291,68 +289,57 @@ run (void *cls,
       ("check-massive-transfer",
       exchange_url,
       "EUR:10.10",
-      42,
-      2),
+      user_account_payto, exchange_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-1",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-2",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-3",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-4",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-5",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-6",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-7",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-8",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-9",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-10",
       exchange_url,
       "EUR:0.98",
-      2,
-      43),
+      exchange_account_payto, user2_account_payto),
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
     TALER_TESTING_cmd_end ()
   };
@@ -370,8 +357,8 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-unaggregated",
                                            exchange_url,
                                            "EUR:5.01",
-                                           42,
-                                           2),
+                                           user_account_payto,
+                                           exchange_account_payto),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
                                        "create-reserve-unaggregated",
                                        "EUR:5",

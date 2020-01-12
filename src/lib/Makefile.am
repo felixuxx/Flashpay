@@ -242,6 +242,7 @@ test_auditor_api_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
