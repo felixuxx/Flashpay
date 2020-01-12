@@ -64,14 +64,59 @@ struct Transaction
   char *credit_account;
 
   /**
-   * Subject of the transfer.
+   * What does the @e subject contain?
    */
-  char *subject;
+  enum
+  {
+    /**
+     * Transfer TO the exchange.
+     */
+    T_CREDIT,
+
+    /**
+     * Transfer FROM the exchange.
+     */
+    T_DEBIT
+  } type;
 
   /**
-   * Base URL of the exchange.
+   * Wire transfer subject.
    */
-  char *exchange_base_url;
+  union
+  {
+
+    /**
+     * Used if @e type is T_DEBIT.
+     */
+    struct
+    {
+
+      /**
+       * Subject of the transfer.
+       */
+      struct TALER_WireTransferIdentifierRawP wtid;
+
+      /**
+       * Base URL of the exchange.
+       */
+      char *exchange_base_url;
+
+    } debit;
+
+    /**
+     * Used if @e type is T_CREDIT.
+     */
+    struct
+    {
+
+      /**
+       * Reserve public key of the credit operation.
+       */
+      struct TALER_ReservePublicKeyP reserve_pub;
+
+    } credit;
+
+  } subject;
 
   /**
    * When did the transaction happen?
@@ -142,43 +187,11 @@ struct TALER_FAKEBANK_Handle
 
 
 /**
- * Check that the @a want_amount was transferred from
- * the @a want_debit to the @a want_credit account.  If
- * so, set the @a subject to the transfer identifier.
- * If not, return #GNUNET_SYSERR.
- *
- * @param h bank instance
- * @param want_amount transfer amount desired
- * @param want_debit account that should have been debited
- * @param want_credit account that should have been credited
- * @param exchange_base_url expected base URL of the exchange
- *        i.e. "https://example.com/"; may include a port
- * @param[out] subject set to the wire transfer identifier
- * @return #GNUNET_OK on success
+ * Generate log messages for failed check operation.
  */
-int
-TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
-                      const struct TALER_Amount *want_amount,
-                      const char *want_debit,
-                      const char *want_credit,
-                      const char *exchange_base_url,
-                      char **subject)
+static void
+check_log (struct TALER_FAKEBANK_Handle *h)
 {
-  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
-  {
-    if ( (want_debit == t->debit_account) &&
-         (want_credit == t->credit_account) &&
-         (0 == TALER_amount_cmp (want_amount,
-                                 &t->amount)) &&
-         (GNUNET_NO == t->checked) &&
-         (0 == strcasecmp (exchange_base_url,
-                           t->exchange_base_url)) )
-    {
-      *subject = GNUNET_strdup (t->subject);
-      t->checked = GNUNET_YES;
-      return GNUNET_OK;
-    }
-  }
   fprintf (stderr,
            "Did not find matching transaction!\nI have:\n");
   for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
@@ -198,6 +211,87 @@ TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
            (unsigned long long) want_credit,
            TALER_amount2s (want_amount),
            exchange_base_url);
+}
+
+
+/**
+ * Check that the @a want_amount was transferred from the @a
+ * want_debit to the @a want_credit account.  If so, set the @a subject
+ * to the transfer identifier and remove the transaction from the
+ * list.  If the transaction was not recorded, return #GNUNET_SYSERR.
+ *
+ * @param h bank instance
+ * @param want_amount transfer amount desired
+ * @param want_debit account that should have been debited
+ * @param want_debit account that should have been credited
+ * @param exchange_base_url expected base URL of the exchange,
+ *        i.e. "https://example.com/"; may include a port
+ * @param[out] subject set to the wire transfer identifier
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
+                            const struct TALER_Amount *want_amount,
+                            const char *want_debit,
+                            const char *want_credit,
+                            const char *exchange_base_url,
+                            struct TALER_WireTransferIdentifierRawP **subject)
+{
+  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+  {
+    if ( (want_debit == t->debit_account) &&
+         (want_credit == t->credit_account) &&
+         (0 == TALER_amount_cmp (want_amount,
+                                 &t->amount)) &&
+         (GNUNET_NO == t->checked) &&
+         (0 == strcasecmp (exchange_base_url,
+                           t->exchange_base_url)) )
+    {
+      *subject = GNUNET_strdup (t->subject);
+      t->checked = GNUNET_YES;
+      return GNUNET_OK;
+    }
+  }
+  check_log (h);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Check that the @a want_amount was transferred from the @a want_debit to the
+ * @a want_credit account with the @a subject.  If so, remove the transaction
+ * from the list.  If the transaction was not recorded, return #GNUNET_SYSERR.
+ *
+ * @param h bank instance
+ * @param want_amount transfer amount desired
+ * @param want_debit account that should have been debited
+ * @param want_debit account that should have been credited
+ * @param reserve_pub reserve public key expected in wire subject
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
+                             const struct TALER_Amount *want_amount,
+                             const char *want_debit,
+                             const char *want_credit,
+                             const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+  {
+    if ( (want_debit == t->debit_account) &&
+         (want_credit == t->credit_account) &&
+         (0 == TALER_amount_cmp (want_amount,
+                                 &t->amount)) &&
+         (GNUNET_NO == t->checked) &&
+         (0 == strcasecmp (exchange_base_url,
+                           t->exchange_base_url)) )
+    {
+      *subject = GNUNET_strdup (t->subject);
+      t->checked = GNUNET_YES;
+      return GNUNET_OK;
+    }
+  }
+  check_log (h);
   return GNUNET_SYSERR;
 }
 
@@ -218,7 +312,8 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                               const char *debit_account,
                               const char *credit_account,
                               const struct TALER_Amount *amount,
-                              const char *subject,
+                              const struct
+                              TALER_WireTransferIdentifierRawP *subject,
                               const char *exchange_base_url)
 {
   struct Transaction *t;
@@ -229,6 +324,50 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
               credit_account,
               TALER_amount2s (amount),
               subject,
+              exchange_base_url);
+  t = GNUNET_new (struct Transaction);
+  t->debit_account = GNUNET_strdup (debit_account);
+  t->credit_account = GNUNET_strdup (credit_account);
+  t->amount = *amount;
+  t->row_id = ++h->serial_counter;
+  t->date = GNUNET_TIME_absolute_get ();
+  t->type = T_DEBIT;
+  t->subject.debit.exchange_base_url = GNUNET_strdup (exchange_base_url);
+  t->subject.debit.wtid = *subject;
+  GNUNET_TIME_round_abs (&t->date);
+  GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
+                                    h->transactions_tail,
+                                    t);
+  return t->row_id;
+}
+
+
+/**
+ * Tell the fakebank to create another wire transfer *to* an exchange.
+ *
+ * @param h fake bank handle
+ * @param debit_account account to debit
+ * @param credit_account account to credit
+ * @param amount amount to transfer
+ * @param reserve_pub reserve public key to use in subject
+ * @return serial_id of the transfer
+ */
+uint64_t
+TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
+                                    const char *debit_account,
+                                    const char *credit_account,
+                                    const struct TALER_Amount *amount,
+                                    const struct
+                                    TALER_ReservePublicKeyP *reserve_pub)
+{
+  struct Transaction *t;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Making transfer from %s to %s over %s and subject %s; for exchange: %s\n",
+              debit_account,
+              credit_account,
+              TALER_amount2s (amount),
+              TALER_B2S (reserve_pub),
               exchange_base_url);
   t = GNUNET_new (struct Transaction);
   t->debit_account = GNUNET_strdup (debit_account);
@@ -273,18 +412,12 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
   while (NULL != t)
   {
     if (GNUNET_YES != t->checked)
-    {
-      char *s;
-
-      s = TALER_amount_to_string (&t->amount);
       fprintf (stderr,
                "%s -> %s (%s) from %s\n",
                t->debit_account,
                t->credit_account,
-               s,
+               TALER_amount2s (&t->amount),
                t->exchange_base_url);
-      GNUNET_free (s);
-    }
     t = t->next;
   }
   return GNUNET_SYSERR;
@@ -309,7 +442,8 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     GNUNET_free (t->subject);
     GNUNET_free (t->debit_account);
     GNUNET_free (t->credit_account);
-    GNUNET_free (t->exchange_base_url);
+    if (T_DEBIT == t->type)
+      GNUNET_free (t->subject.debit.exchange_base_url);
     GNUNET_free (t);
   }
   if (NULL != h->mhd_task)
