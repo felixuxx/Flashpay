@@ -35,6 +35,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
+#include "taler_testing_bank_lib.h"
 
 /**
  * Configuration file we use.  One (big) configuration is used
@@ -66,24 +67,26 @@ static char *exchange_url;
 static char *auditor_url;
 
 /**
+ * URL of the exchange's account at the bank.  Obtained from CONFIG_FILE's
+ * "exchange-wire-test:BANK_URI" option plus the exchange account.
+ */
+static char *exchange_account_url; // FIXME: initialize!
+
+/**
  * Account number of the exchange at the bank.
  */
-#define EXCHANGE_ACCOUNT_NO 2
+#define EXCHANGE_ACCOUNT_NO "2" // FIXME: used?
 
 /**
- * Account number of some user.
+ * Payto URL of the user's account.
  */
-#define USER_ACCOUNT_NO 42
+static char *user_account_payto; // FIXME: initialize!
 
 /**
- * User name. Never checked by fakebank.
+ * Credentials for talking to the bank.
  */
-#define USER_LOGIN_NAME "user42"
+static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
 
-/**
- * User password. Never checked by fakebank.
- */
-#define USER_LOGIN_PASS "pass42"
 
 /**
  * Execute the taler-exchange-wirewatch command with
@@ -112,23 +115,9 @@ static char *auditor_url;
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
   TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        fakebank_url, USER_ACCOUNT_NO, \
-                                        EXCHANGE_ACCOUNT_NO, \
-                                        USER_LOGIN_NAME, USER_LOGIN_PASS, \
-                                        exchange_url)
-
-/**
- * Run wire transfer of funds from some user's account to the
- * exchange.
- *
- * @param label label to use for the command.
- * @param amount amount to transfer, i.e. "EUR:1"
- */
-#define CMD_TRANSFER_TO_EXCHANGE_SUBJECT(label,amount,subject) \
-  TALER_TESTING_cmd_admin_add_incoming_with_subject \
-    (label, amount, fakebank_url, USER_ACCOUNT_NO, \
-    EXCHANGE_ACCOUNT_NO, USER_LOGIN_NAME, USER_LOGIN_PASS, \
-    subject, exchange_url)
+                                        exchange_account_url, \
+                                        &auth, \
+                                        user_account_payto)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -832,20 +821,8 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-pr3", exchange_url,
       "EUR:1.01", 42, 2),
-
     TALER_TESTING_cmd_check_bank_empty
       ("check-empty-again"),
-
-    /* Test rejection of bogus wire transfers */
-    CMD_TRANSFER_TO_EXCHANGE_SUBJECT
-      ("bogus-subject",
-      "EUR:1.01",
-      "not a reserve public key"),
-
-    CMD_EXEC_WIREWATCH ("wirewatch-7"),
-
-    TALER_TESTING_cmd_check_bank_empty
-      ("check-empty-from-reject"),
 
     TALER_TESTING_cmd_end ()
   };

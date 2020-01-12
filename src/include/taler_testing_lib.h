@@ -1081,7 +1081,6 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
  * @param expected_amount how much money we expect being moved
  *        with this wire-transfer.
  * @param expected_wire_fee expected wire fee.
- *
  * @return the command
  */
 struct TALER_TESTING_Command
@@ -1102,7 +1101,6 @@ TALER_TESTING_cmd_track_transfer (const char *label,
  * @param amount the amount expected to be transferred.
  * @param debit_account the account that gave money.
  * @param credit_account the account that received money.
- *
  * @return the command
  */
 struct TALER_TESTING_Command

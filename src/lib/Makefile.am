@@ -85,6 +85,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_refresh.c \
   testing_api_cmd_track.c \
   testing_api_cmd_bank_check.c \
+  testing_api_cmd_bank_check_empty.c \
   testing_api_cmd_payback.c \
   testing_api_cmd_signal.c \
   testing_api_cmd_check_keys.c \

@@ -16,14 +16,12 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_cmd_bank_check.c
  * @brief command to check if a particular wire transfer took
  *        place.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -256,80 +254,6 @@ TALER_TESTING_cmd_check_bank_transfer
 
 
 /**
- * Cleanup the state, only defined to respect the API.
- *
- * @param cls closure.
- * @param cmd the command which is being cleaned up.
- */
-static void
-check_bank_empty_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
-{
-  return;
-}
-
-
-/**
- * Run the command.
- *
- * @param cls closure.
- * @param cmd the command to execute.
- * @param is the interpreter state.
- */
-static void
-check_bank_empty_run (void *cls,
-                      const struct TALER_TESTING_Command *cmd,
-                      struct TALER_TESTING_Interpreter *is)
-{
-
-  if (GNUNET_OK != TALER_FAKEBANK_check_empty (is->fakebank))
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-  TALER_TESTING_interpreter_next (is);
-}
-
-
-/**
- * Some commands (notably "bank history") could randomly
- * look for traits; this way makes sure we don't segfault.
- */
-static int
-check_bank_empty_traits (void *cls,
-                         const void **ret,
-                         const char *trait,
-                         unsigned int index)
-{
-  return GNUNET_SYSERR;
-}
-
-
-/**
- * Checks wheter all the wire transfers got "checked"
- * by the "bank check" CMD.
- *
- * @param label command label.
- *
- * @return the command
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_empty (const char *label)
-{
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &check_bank_empty_run,
-    .cleanup = &check_bank_empty_cleanup,
-    .traits = &check_bank_empty_traits
-  };
-
-  return cmd;
-}
-
-
-/**
  * Define a "bank check" CMD that takes the input
  * data from another CMD that offers it.
  *
@@ -337,7 +261,6 @@ TALER_TESTING_cmd_check_bank_empty (const char *label)
  * @param deposit_reference reference to a CMD that is
  *        able to provide the "check bank transfer" operation
  *        input data.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -345,7 +268,6 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
   (const char *label,
   const char *deposit_reference)
 {
-
   struct BankCheckState *bcs;
 
   bcs = GNUNET_new (struct BankCheckState);
