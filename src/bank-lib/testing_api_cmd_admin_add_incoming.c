@@ -50,14 +50,14 @@ struct AdminAddIncomingState
   struct TALER_Amount amount;
 
   /**
-   * Base URL of the debit account.
+   * Base URL of the credited account.
    */
-  const char *debit_url;
+  const char *exchange_credit_url;
 
   /**
-   * Money receiver account URL.
+   * Money sender account URL.
    */
-  const char *payto_credit_account;
+  const char *payto_debit_account;
 
   /**
    * Username to use for authentication.
@@ -120,7 +120,7 @@ struct AdminAddIncomingState
 
   /**
    * Was this command modified via
-   * #TALER_TESTING_cmd_fakebank_transfer_with_retry to
+   * #TALER_TESTING_cmd_admin_add_incoming_with_retry to
    * enable retries?
    */
   int do_retry;
@@ -135,13 +135,13 @@ struct AdminAddIncomingState
  * @param is interpreter state.
  */
 static void
-fakebank_transfer_run (void *cls,
-                       const struct TALER_TESTING_Command *cmd,
-                       struct TALER_TESTING_Interpreter *is);
+admin_add_incoming_run (void *cls,
+                        const struct TALER_TESTING_Command *cmd,
+                        struct TALER_TESTING_Interpreter *is);
 
 
 /**
- * Task scheduled to re-try #fakebank_transfer_run.
+ * Task scheduled to re-try #admin_add_incoming_run.
  *
  * @param cls a `struct AdminAddIncomingState`
  */
@@ -151,9 +151,9 @@ do_retry (void *cls)
   struct AdminAddIncomingState *fts = cls;
 
   fts->retry_task = NULL;
-  fakebank_transfer_run (fts,
-                         NULL,
-                         fts->is);
+  admin_add_incoming_run (fts,
+                          NULL,
+                          fts->is);
 }
 
 
@@ -231,9 +231,9 @@ confirmation_cb (void *cls,
  * @param is interpreter state.
  */
 static void
-fakebank_transfer_run (void *cls,
-                       const struct TALER_TESTING_Command *cmd,
-                       struct TALER_TESTING_Interpreter *is)
+admin_add_incoming_run (void *cls,
+                        const struct TALER_TESTING_Command *cmd,
+                        struct TALER_TESTING_Interpreter *is)
 {
   struct AdminAddIncomingState *fts = cls;
 
@@ -335,11 +335,11 @@ fakebank_transfer_run (void *cls,
   fts->aih
     = TALER_BANK_admin_add_incoming
         (TALER_TESTING_interpreter_get_context (is),
-        fts->debit_url,
+        fts->exchange_credit_url,
         &fts->auth,
         &fts->reserve_pub,
         &fts->amount,
-        fts->payto_credit_account,
+        fts->payto_debit_account,
         &confirmation_cb,
         fts);
   if (NULL == fts->aih)
@@ -352,15 +352,15 @@ fakebank_transfer_run (void *cls,
 
 
 /**
- * Free the state of a "fakebank transfer" CMD, and possibly
+ * Free the state of a "/admin/add-incoming" CMD, and possibly
  * cancel a pending operation thereof.
  *
  * @param cls closure
  * @param cmd current CMD being cleaned up.
  */
 static void
-fakebank_transfer_cleanup (void *cls,
-                           const struct TALER_TESTING_Command *cmd)
+admin_add_incoming_cleanup (void *cls,
+                            const struct TALER_TESTING_Command *cmd)
 {
   struct AdminAddIncomingState *fts = cls;
 
@@ -382,7 +382,7 @@ fakebank_transfer_cleanup (void *cls,
 
 
 /**
- * Offer internal data from a "fakebank transfer" CMD to other
+ * Offer internal data from a "/admin/add-incoming" CMD to other
  * commands.
  *
  * @param cls closure.
@@ -392,17 +392,16 @@ fakebank_transfer_cleanup (void *cls,
  * @return #GNUNET_OK on success.
  */
 static int
-fakebank_transfer_traits (void *cls,
-                          const void **ret,
-                          const char *trait,
-                          unsigned int index)
+admin_add_incoming_traits (void *cls,
+                           const void **ret,
+                           const char *trait,
+                           unsigned int index)
 {
   struct AdminAddIncomingState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_url (1, fts->debit_url),
+    TALER_TESTING_make_trait_url (1, fts->payto_debit_account),
     TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
-    TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT (fts->payto_credit_account),
-    TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT (fts->debit_url),
+    TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT (fts->exchange_credit_url),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
     TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
     TALER_TESTING_make_trait_reserve_priv (0,
@@ -420,33 +419,29 @@ fakebank_transfer_traits (void *cls,
 
 
 /**
- * Create fakebank_transfer command, the subject line will be
- * derived from a randomly created reserve priv.  Note that that
- * reserve priv will then be offered as trait.
+ * Create admin/add-incoming command.
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param account_base_url base URL of the account that implements this
- *        wire transer (which account gives money).
- * @param payto_credit_account which account receives money.
- * @param auth_username username identifying the @a
- *        debit_account_no at the bank.
- * @param auth_password password for @a auth_username.
+ * @param exchange_base_url base URL of the account that receives this
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
+ * @param auth authentication data
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer
+TALER_TESTING_cmd_admin_add_incoming
   (const char *label,
   const char *amount,
-  const char *account_base_url,
+  const char *exchange_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_credit_account)
+  const char *payto_debit_account)
 {
   struct AdminAddIncomingState *fts;
 
   fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->debit_url = account_base_url;
-  fts->payto_credit_account = payto_credit_account;
+  fts->exchange_credit_url = exchange_base_url;
+  fts->payto_debit_account = payto_debit_account;
   fts->auth = *auth;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
@@ -463,9 +458,9 @@ TALER_TESTING_cmd_fakebank_transfer
     struct TALER_TESTING_Command cmd = {
       .cls = fts,
       .label = label,
-      .run = &fakebank_transfer_run,
-      .cleanup = &fakebank_transfer_cleanup,
-      .traits = &fakebank_transfer_traits
+      .run = &admin_add_incoming_run,
+      .cleanup = &admin_add_incoming_cleanup,
+      .traits = &admin_add_incoming_traits
     };
 
     return cmd;
@@ -474,39 +469,34 @@ TALER_TESTING_cmd_fakebank_transfer
 
 
 /**
- * Create "fakebank transfer" CMD, letting the caller specify
+ * Create "/admin/add-incoming" CMD, letting the caller specify
  * a reference to a command that can offer a reserve private key.
  * This private key will then be used to construct the subject line
  * of the wire transfer.
  *
  * @param label command label.
  * @param amount the amount to transfer.
- * @param bank_url base URL of the bank running the transfer.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
- * @param auth_username username identifying the @a
- *        debit_account_no at the bank.
- * @param auth_password password for @a auth_username.
+ * @param account_bank_url base URL of the exchange account receiving the money
+ * @param payto_debit_account which account sends money
+ * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
  *        private key.
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_with_ref
+TALER_TESTING_cmd_admin_add_incoming_with_ref
   (const char *label,
   const char *amount,
   const char *account_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_credit_account,
+  const char *payto_debit_account,
   const char *ref)
 {
   struct AdminAddIncomingState *fts;
 
   fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->debit_url = account_base_url;
-  fts->payto_credit_account = payto_credit_account;
+  fts->exchange_credit_url = account_base_url;
+  fts->payto_debit_account = payto_debit_account;
   fts->auth = *auth;
   fts->reserve_reference = ref;
   if (GNUNET_OK !=
@@ -523,9 +513,9 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
     struct TALER_TESTING_Command cmd = {
       .cls = fts,
       .label = label,
-      .run = &fakebank_transfer_run,
-      .cleanup = &fakebank_transfer_cleanup,
-      .traits = &fakebank_transfer_traits
+      .run = &admin_add_incoming_run,
+      .cleanup = &admin_add_incoming_cleanup,
+      .traits = &admin_add_incoming_traits
     };
 
     return cmd;
@@ -534,7 +524,7 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
 
 
 /**
- * Create "fakebank transfer" CMD, letting the caller specifying
+ * Create "/admin/add-incoming" CMD, letting the caller specifying
  * the merchant instance.  This version is useful when a tip
  * reserve should be topped up, in fact the interpreter will need
  * the "tipping instance" in order to get the instance public key
@@ -542,17 +532,11 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param bank_url base URL of the bank that implements this
- *        wire transer.  For simplicity, both credit and debit
- *        bank account exist at the same bank.
- * @param debit_account_no which account (expressed as a number)
- *        gives money.
- * @param credit_account_no which account (expressed as a number)
- *        receives money.
- *
- * @param auth_username username identifying the @a
- *        debit_account_no at the bank.
- * @param auth_password password for @a auth_username.
+ * @param account_bank_url base URL of the exchange bank account
+ *        that receives the wire transfer
+ * @param payto_debit_account which account (expressed as a number)
+ *        gives money
+ * @param auth authentication data
  * @param instance the instance that runs the tipping.  Under this
  *        instance, the configuration file will provide the private
  *        key of the tipping reserve.  This data will then used to
@@ -561,20 +545,20 @@ TALER_TESTING_cmd_fakebank_transfer_with_ref
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_with_instance
+TALER_TESTING_cmd_admin_add_incoming_with_instance
   (const char *label,
   const char *amount,
   const char *account_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_credit_account,
+  const char *payto_debit_account,
   const char *instance,
   const char *config_filename)
 {
   struct AdminAddIncomingState *fts;
 
   fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->debit_url = account_base_url;
-  fts->payto_credit_account = payto_credit_account;
+  fts->exchange_credit_url = account_base_url;
+  fts->payto_debit_account = payto_debit_account;
   fts->auth = *auth;
   fts->instance = instance;
   fts->config_filename = config_filename;
@@ -592,9 +576,9 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
     struct TALER_TESTING_Command cmd = {
       .cls = fts,
       .label = label,
-      .run = &fakebank_transfer_run,
-      .cleanup = &fakebank_transfer_cleanup,
-      .traits = &fakebank_transfer_traits
+      .run = &admin_add_incoming_run,
+      .cleanup = &admin_add_incoming_cleanup,
+      .traits = &admin_add_incoming_traits
     };
 
     return cmd;
@@ -611,11 +595,11 @@ TALER_TESTING_cmd_fakebank_transfer_with_instance
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_fakebank_transfer_retry (struct TALER_TESTING_Command cmd)
+TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd)
 {
   struct AdminAddIncomingState *fts;
 
-  GNUNET_assert (&fakebank_transfer_run == cmd.run);
+  GNUNET_assert (&admin_add_incoming_run == cmd.run);
   fts = cmd.cls;
   fts->do_retry = GNUNET_YES;
   return cmd;

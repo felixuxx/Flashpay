@@ -59,13 +59,12 @@ enum BenchmarkError
 #define FIRST_INSTRUCTION -1
 
 #define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
-  TALER_TESTING_cmd_fakebank_transfer_retry \
-    (TALER_TESTING_cmd_fakebank_transfer (label, amount, \
-                                          user_bank_account.details.                                      \
-                                          x_taler_bank.account_base_url, \
-                                          exchange_payto_url, \
-                                          "dummy_user", \
-                                          "dummy_password"))
+  TALER_TESTING_cmd_admin_add_incoming_retry \
+    (TALER_TESTING_cmd_admin_add_incoming (label, amount, \
+                                           exchange_bank_account.details.                                      \
+                                           x_taler_bank.account_base_url, \
+                                           NULL, \
+                                           user_payto_url))
 
 
 /**
@@ -98,7 +97,7 @@ static struct TALER_Account exchange_bank_account;
 /**
  * Hold information about a user at the bank.
  */
-static struct TALER_Account user_bank_account;
+static char *user_payto_url;
 
 /**
  * Time snapshot taken right before executing the CMDs.
@@ -821,32 +820,17 @@ main (int argc,
     return BAD_CLI_ARG;
   }
 
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string
+        (cfg,
+        "benchmark",
+        "user-url",
+        &user_payto_url))
   {
-    char *user_payto_url;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string
-          (cfg,
-          "benchmark",
-          "user-url",
-          &user_payto_url))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "benchmark",
-                                 "user-url");
-      return BAD_CONFIG_FILE;
-    }
-    if (TALER_EC_NONE !=
-        TALER_WIRE_payto_to_account (user_payto_url,
-                                     &user_bank_account))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  _ ("Malformed payto:// URL `%s' in configuration\n"),
-                  user_payto_url);
-      GNUNET_free (user_payto_url);
-      return BAD_CONFIG_FILE;
-    }
-    GNUNET_free (user_payto_url);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "benchmark",
+                               "user-url");
+    return BAD_CONFIG_FILE;
   }
 
   {

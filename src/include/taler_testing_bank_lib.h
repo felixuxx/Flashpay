@@ -169,24 +169,26 @@ TALER_TESTING_cmd_transfer (const char *label,
                             const char *exchange_base_url);
 
 
+/* ***** Commands ONLY for testing (/admin-API) **** */
+
 /**
  * Create /admin/add-incoming command.
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param account_base_url base URL of the account that implements this
- *        wire transer (which account gives money).
- * @param payto_credit_account which account receives money.
+ * @param exchange_base_url base URL of the exchange account that receives this
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming (const char *label,
                                       const char *amount,
-                                      const char *account_base_url,
+                                      const char *exchange_base_url,
                                       const struct
                                       TALER_BANK_AuthenticationData *auth,
-                                      const char *payto_credit_account);
+                                      const char *payto_debit_account);
 
 
 /**
@@ -198,8 +200,8 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
  * @param label command label.
  * @param amount the amount to transfer.
  * @param account_base_url base URL of the account that implements this
- *        wire transer (which account gives money).
- * @param payto_credit_account which account receives money.
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
  *        private key.
@@ -212,7 +214,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
                                                const struct
                                                TALER_BANK_AuthenticationData *
                                                auth,
-                                               const char *payto_credit_account,
+                                               const char *payto_debit_account,
                                                const char *ref);
 
 
@@ -226,8 +228,8 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
  * @param label command label.
  * @param amount amount to transfer.
  * @param account_base_url base URL of the account that implements this
- *        wire transer (which account gives money).
- * @param payto_credit_account which account receives money.
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @param instance the instance that runs the tipping.  Under this
  *        instance, the configuration file will provide the private
@@ -244,7 +246,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_instance (const char *label,
                                                     TALER_BANK_AuthenticationData
                                                     *auth,
                                                     const char *
-                                                    payto_credit_account,
+                                                    payto_debit_account,
                                                     const char *instance,
                                                     const char *config_filename);
 

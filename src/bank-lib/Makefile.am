@@ -76,6 +76,7 @@ libtalerbanktesting_la_SOURCES = \
   testing_api_cmd_transfer.c \
   testing_api_helpers.c
 libtalerbanktesting_la_LIBADD = \
+  libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \
   -lgnunetutil \
