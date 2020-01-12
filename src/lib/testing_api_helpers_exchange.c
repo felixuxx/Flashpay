@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -339,15 +339,9 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
 struct SignInfo
 {
   /**
-   * Set to the base URL of the exchange. To be free'd
-   * by the caller.
+   * Members will be set to the exchange configuration.
    */
-  char *exchange_base_url;
-
-  /**
-   * Set to the auditor's base URL. To be free'd by the caller.
-   */
-  char *auditor_base_url;
+  struct TALER_TESTING_ExchangeConfiguration *ec;
 
   /**
    * Name of the configuration file to use.
@@ -379,17 +373,18 @@ sign_keys_for_exchange (void *cls,
   char *test_home_dir;
   char *signed_keys_out;
   char *exchange_master_pub;
+  int ret;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "BASE_URL",
-                                             &si->exchange_base_url))
+                                             &si->ec->exchange_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                "exchange",
                                "BASE_URL");
-    si->exchange_base_url = NULL;
+    si->ec->exchange_url = NULL;
     return GNUNET_NO;
   }
 
@@ -397,14 +392,14 @@ sign_keys_for_exchange (void *cls,
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "auditor",
                                              "BASE_URL",
-                                             &si->auditor_base_url))
+                                             &si->ec->auditor_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                "auditor",
                                "BASE_URL");
-    GNUNET_free (si->exchange_base_url);
-    si->exchange_base_url = NULL;
-    si->auditor_base_url = NULL;
+    GNUNET_free (si->ec->exchange_url);
+    si->ec->exchange_url = NULL;
+    si->ec->auditor_url = NULL;
     return GNUNET_SYSERR;
   }
 
@@ -417,11 +412,8 @@ sign_keys_for_exchange (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "paths",
                                "TALER_TEST_HOME");
-    GNUNET_free (si->exchange_base_url);
-    GNUNET_free (si->auditor_base_url);
-    si->exchange_base_url = NULL;
-    si->auditor_base_url = NULL;
-    return GNUNET_SYSERR;
+    ret = GNUNET_SYSERR;
+    goto fail;
   }
 
   GNUNET_asprintf (&signed_keys_out,
@@ -438,42 +430,42 @@ sign_keys_for_exchange (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "MASTER_PUBLIC_KEY");
-    GNUNET_free (si->exchange_base_url);
-    GNUNET_free (si->auditor_base_url);
-    si->exchange_base_url = NULL;
-    si->auditor_base_url = NULL;
     GNUNET_free (signed_keys_out);
-    return GNUNET_SYSERR;
+    ret = GNUNET_SYSERR;
+    goto fail;
   }
   if (GNUNET_OK !=
       TALER_TESTING_run_auditor_exchange (si->config_filename,
                                           exchange_master_pub,
-                                          si->exchange_base_url,
+                                          si->ec->exchange_url,
                                           GNUNET_NO))
   {
-    GNUNET_free (si->exchange_base_url);
-    GNUNET_free (si->auditor_base_url);
-    si->exchange_base_url = NULL;
-    si->auditor_base_url = NULL;
-    return GNUNET_NO;
+    GNUNET_free (signed_keys_out);
+    ret = GNUNET_NO;
+    goto fail;
   }
 
   if (GNUNET_OK !=
       TALER_TESTING_run_auditor_sign (si->config_filename,
                                       exchange_master_pub,
-                                      si->auditor_base_url,
+                                      si->ec->auditor_url,
                                       si->auditor_sign_input_filename,
                                       signed_keys_out))
   {
-    GNUNET_free (si->exchange_base_url);
-    GNUNET_free (si->auditor_base_url);
-    si->exchange_base_url = NULL;
-    si->auditor_base_url = NULL;
-    return GNUNET_NO;
+    GNUNET_free (signed_keys_out);
+    GNUNET_free (exchange_master_pub);
+    ret = GNUNET_NO;
+    goto fail;
   }
   GNUNET_free (signed_keys_out);
   GNUNET_free (exchange_master_pub);
   return GNUNET_OK;
+fail:
+  GNUNET_free (si->ec->exchange_url);
+  GNUNET_free (si->ec->auditor_url);
+  si->ec->exchange_url = NULL;
+  si->ec->auditor_url = NULL;
+  return ret;
 }
 
 
@@ -484,24 +476,17 @@ sign_keys_for_exchange (void *cls,
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
- * @param auditor_base_url[out] will be set to the auditor base url,
- *        if the config has any; otherwise it will be set to
- *        NULL.
- * @param exchange_base_url[out] will be set to the exchange base url,
- *        if the config has any; otherwise it will be set to
- *        NULL.
+ * @param ec[out] will be set to the exchange configuration data
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
 int
 TALER_TESTING_prepare_exchange (const char *config_filename,
-                                char **auditor_base_url,
-                                char **exchange_base_url)
+                                struct TALER_TESTING_ExchangeConfiguration *ec)
 {
   struct SignInfo si = {
     .config_filename = config_filename,
-    .exchange_base_url = NULL,
-    .auditor_base_url = NULL,
+    .ec = ec,
     .auditor_sign_input_filename = "auditor.in"
   };
 
@@ -520,8 +505,6 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
                                           &sign_keys_for_exchange,
                                           &si))
     return GNUNET_NO;
-  *exchange_base_url = si.exchange_base_url;
-  *auditor_base_url = si.auditor_base_url;
   return GNUNET_OK;
 }
 
@@ -946,6 +929,9 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
 
 /**
  * Test port in URL string for availability.
+ *
+ * @param url URL to extract port from, 80 is default
+ * @return #GNUNET_OK if the port is free
  */
 int
 TALER_TESTING_url_port_free (const char *url)
@@ -969,111 +955,6 @@ TALER_TESTING_url_port_free (const char *url)
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
-}
-
-
-/**
- * Allocate and return a piece of wire-details.  Combines
- * the @a account_no and the @a bank_url to a
- * @a payto://-URL and adds some salt to create the JSON.
- *
- * @param account_no account number
- * @param bank_url the bank_url (FIXME/WARNING: shouldn't this be a _hostname_ ??)
- * @return JSON describing the account, including the
- *         payto://-URL of the account, must be manually decref'd
- */
-json_t *
-TALER_TESTING_make_wire_details (unsigned long long account_no,
-                                 const char *bank_url)
-{
-  char *payto;
-  json_t *ret;
-  int ends_slash;
-
-  if (0 < strlen (bank_url))
-    ends_slash = '/' == bank_url[strlen (bank_url) - 1];
-  else
-    ends_slash = 0;
-
-  GNUNET_asprintf (&payto,
-                   (ends_slash)
-                   ? "payto://x-taler-bank/%s%llu"
-                   : "payto://x-taler-bank/%s/%llu",
-                   bank_url,
-                   account_no);
-  ret = json_pack ("{s:s, s:s}",
-                   "url", payto,
-                   "salt",
-                   "test-salt (must be constant for aggregation tests)");
-  GNUNET_free (payto);
-  return ret;
-}
-
-
-/**
- * Prepare launching a fakebank.  Check that the configuration
- * file has the right option, and that the port is available.
- * If everything is OK, return the configured URL of the fakebank.
- *
- * @param config_filename configuration file to use
- * @param config_section which account to use (must match x-taler-bank)
- * @return NULL on error, fakebank URL otherwise
- */
-char *
-TALER_TESTING_prepare_fakebank (const char *config_filename,
-                                const char *config_section)
-{
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  char *payto_url;
-  char *fakebank_url;
-  const char *start;
-  const char *end;
-
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
-                                              config_filename))
-    return NULL;
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             config_section,
-                                             "URL",
-                                             &payto_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                               config_section,
-                               "URL");
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return NULL;
-  }
-  GNUNET_CONFIGURATION_destroy (cfg);
-  if (0 != strncasecmp (payto_url,
-                        "payto://x-taler-bank/",
-                        strlen ("payto://x-taler-bank/")))
-  {
-    GNUNET_log_config_invalid
-      (GNUNET_ERROR_TYPE_WARNING,
-      config_section,
-      "URL",
-      "expected `x-taler-bank' payto://-URL");
-    GNUNET_CONFIGURATION_destroy (cfg);
-    GNUNET_free (payto_url);
-    return NULL;
-  }
-  start = &payto_url [strlen ("payto://x-taler-bank/")];
-  end = strchr (start,
-                (unsigned char) '/');
-  if (NULL == end)
-    end = &start[strlen (start)];
-  fakebank_url = GNUNET_strndup (start,
-                                 end - start);
-  GNUNET_free (payto_url);
-  if (GNUNET_OK !=
-      TALER_TESTING_url_port_free (fakebank_url))
-  {
-    GNUNET_free (fakebank_url);
-    return NULL;
-  }
-  return fakebank_url;
 }
 
 

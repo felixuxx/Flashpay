@@ -32,35 +32,19 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
 #include "taler_testing_lib.h"
-#include "taler_testing_bank_lib.h"
 
-
+// FIXME: rename config file to make it clear it is associated with a test!
 #define CONFIG_FILE "bank.conf"
 
 /**
- * Fakebank URL.
+ * Bank configuration data.
  */
-static char *bank_url;
-
-/**
- * Account URL.
- */
-static char *account_url;
-
-/**
- * payto://-URL of another account.
- */
-static char *payto_url;
+static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Handle to the Py-bank daemon.
  */
 static struct GNUNET_OS_Process *bankd;
-
-/**
- * Authentication data to use.
- */
-static struct TALER_BANK_AuthenticationData auth;
 
 /**
  * Flag indicating whether the test is running against the
@@ -81,40 +65,40 @@ run (void *cls,
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_bank_credits ("history-0",
-                                    account_url,
-                                    &auth,
+                                    bc.exchange_account_url,
+                                    &bc.exchange_auth,
                                     NULL,
                                     1),
     TALER_TESTING_cmd_admin_add_incoming ("debit-1",
                                           "KUDOS:5.01",
-                                          account_url,
-                                          &auth,
-                                          payto_url),
+                                          bc.exchange_account_url,
+                                          &bc.exchange_auth,
+                                          bc.user42_payto),
     TALER_TESTING_cmd_bank_credits ("history-1c",
-                                    account_url,
-                                    &auth,
+                                    bc.exchange_account_url,
+                                    &bc.exchange_auth,
                                     NULL,
                                     5),
     TALER_TESTING_cmd_bank_debits ("history-1d",
-                                   account_url,
-                                   &auth,
+                                   bc.exchange_account_url,
+                                   &bc.exchange_auth,
                                    NULL,
                                    5),
     TALER_TESTING_cmd_admin_add_incoming ("debit-2",
                                           "KUDOS:3.21",
-                                          account_url,
-                                          &auth,
-                                          payto_url),
+                                          bc.exchange_account_url,
+                                          &bc.exchange_auth,
+                                          bc.user42_payto),
     TALER_TESTING_cmd_transfer ("credit-2",
                                 "KUDOS:3.22",
-                                account_url,
-                                &auth,
-                                payto_url,
+                                bc.exchange_account_url,
+                                &bc.exchange_auth,
+                                bc.user42_payto,
                                 &wtid,
                                 "http://exchange.example.com/"),
     TALER_TESTING_cmd_bank_debits ("history-2b",
-                                   account_url,
-                                   &auth,
+                                   bc.exchange_account_url,
+                                   &bc.exchange_auth,
                                    NULL,
                                    5),
     TALER_TESTING_cmd_end ()
@@ -123,20 +107,11 @@ run (void *cls,
   memset (&wtid, 42, sizeof (wtid));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Bank serves at `%s'\n",
-              bank_url);
-  GNUNET_asprintf (&account_url,
-                   "%s/%s",
-                   bank_url,
-                   "alice");
-  GNUNET_asprintf (&payto_url,
-                   "payto://x-taler-bank/%s/%s",
-                   bank_url,
-                   "bob");
-  // FIXME: init 'auth'!
+              bc.bank_url);
   if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
-                                     bank_url);
+                                     bc.bank_url);
   else
     TALER_TESTING_run (is,
                        commands);
@@ -155,14 +130,15 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api",
                     "DEBUG",
                     NULL);
-
   with_fakebank = TALER_TESTING_has_in_name (argv[0],
                                              "_with_fakebank");
   if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
-    if (NULL == (bank_url = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                                            "account-1")))
+    if (GNUNET_OK !=
+        TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                        "account-1",
+                                        &bc))
     {
       GNUNET_break (0);
       return 77;
@@ -171,14 +147,16 @@ main (int argc,
   else
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
-    if (NULL == (bank_url = TALER_TESTING_prepare_bank (CONFIG_FILE)))
+    if (GNUNET_OK !=
+        TALER_TESTING_prepare_bank (CONFIG_FILE,
+                                    &bc))
     {
       GNUNET_break (0);
       return 77;
     }
 
     if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE,
-                                                 bank_url)))
+                                                 bc.bank_url)))
     {
       GNUNET_break (0);
       return 77;
@@ -197,9 +175,7 @@ main (int argc,
                             SIGKILL);
     GNUNET_OS_process_wait (bankd);
     GNUNET_OS_process_destroy (bankd);
-    GNUNET_free (bank_url);
   }
-
   return rv;
 }
 

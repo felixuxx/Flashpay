@@ -480,7 +480,7 @@ deposit_traits (void *cls,
  *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        withdrawals are implemented.
- * @param wire_details wire details associated with the "deposit"
+ * @param target_account_payto target account for the "deposit"
  *        request.
  * @param contract_terms contract terms to be signed over by the
  *        coin.
@@ -497,14 +497,16 @@ TALER_TESTING_cmd_deposit
   (const char *label,
   const char *coin_reference,
   unsigned int coin_index,
-  json_t *wire_details,
+  const char *target_account_payto,
   const char *contract_terms,
   struct GNUNET_TIME_Relative refund_deadline,
   const char *amount,
   unsigned int expected_response_code)
 {
   struct DepositState *ds;
+  json_t *wire_details;
 
+  wire_details = TALER_TESTING_make_wire_details (target_account_payto);
   ds = GNUNET_new (struct DepositState);
   ds->coin_reference = coin_reference;
   ds->coin_index = coin_index;

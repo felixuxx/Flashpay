@@ -33,7 +33,6 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include "taler_testing_bank_lib.h"
 #include <taler/taler_twister_testing_lib.h>
 #include <taler/taler_twister_service.h>
 
@@ -49,46 +48,19 @@
 static char *twister_url;
 
 /**
- * URL of the fakebank.  Obtained from CONFIG_FILE's
- * "exchange-wire-test:BANK_URI" option.
+ * Exchange configuration data.
  */
-static char *fakebank_url;
+static struct TALER_TESTING_ExchangeConfiguration ec;
 
 /**
- * Exchange base URL.
+ * Bank configuration data.
  */
-static char *exchange_url;
-
-/**
- * Auditor URL, unused but needed to achieve compilation.
- */
-static char *auditor_url;
+static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Twister process.
  */
 static struct GNUNET_OS_Process *twisterd;
-
-/**
- * URL of the exchange's account at the bank.  Obtained from CONFIG_FILE's
- * "exchange-wire-test:BANK_URI" option plus the exchange account.
- */
-static char *exchange_account_url; // FIXME: initialize!
-
-/**
- * Account number of the exchange at the bank.
- */
-#define EXCHANGE_ACCOUNT_NO "2" // FIXME: used?
-
-/**
- * Payto URL of the user's account.
- */
-static char *user_account_payto; // FIXME: initialize!
-
-/**
- * Credentials for talking to the bank.
- */
-static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
 
 
 /**
@@ -119,9 +91,9 @@ static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
   TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        exchange_account_url, \
-                                        &auth, \
-                                        user_account_payto)
+                                        bc.exchange_account_url,   \
+                                        &bc.exchange_auth, \
+                                        bc.user42_payto)
 
 
 /**
@@ -160,9 +132,7 @@ run (void *cls,
       ("refresh-deposit-partial",
       "refresh-withdraw-coin",
       0,
-      TALER_TESTING_make_wire_details
-        (42,
-        fakebank_url),
+      bc.user42_payto,
       "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
       GNUNET_TIME_UNIT_ZERO,
@@ -212,9 +182,7 @@ run (void *cls,
       ("deposit-refund-1",
       "withdraw-coin-r1",
       0,
-      TALER_TESTING_make_wire_details
-        (42,
-        fakebank_url),
+      bc.user42_payto,
       "{\"items\":[{\"name\":\"ice cream\","
       "\"value\":\"EUR:5\"}]}",
       GNUNET_TIME_UNIT_MINUTES,
@@ -251,9 +219,7 @@ run (void *cls,
       ("deposit-refund-to-fail",
       "withdraw-coin-r1",
       0,  /* coin index.  */
-      TALER_TESTING_make_wire_details
-        (42,
-        fakebank_url),
+      bc.user42_payto,
       /* This parameter will make any comparison about
          h_contract_terms fail, when /refund will be handled.
          So in other words, this is h_contract missmatch.  */
@@ -293,7 +259,7 @@ run (void *cls,
 
   TALER_TESTING_run_with_fakebank (is,
                                    commands,
-                                   fakebank_url);
+                                   bc.bank_url);
 }
 
 
@@ -322,9 +288,10 @@ main (int argc,
   GNUNET_log_setup ("test-exchange-api-twisted",
                     "DEBUG", NULL);
 
-  if (NULL == (fakebank_url = TALER_TESTING_prepare_fakebank
-                                (CONFIG_FILE,
-                                "account-2")))
+  if (GNUNET_OK !=
+      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                      "account-2",
+                                      &bc))
     return 77;
 
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
@@ -334,8 +301,7 @@ main (int argc,
   TALER_TESTING_cleanup_files (CONFIG_FILE);
 
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-                                          &auditor_url,
-                                          &exchange_url))
+                                          &ec))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);
@@ -345,8 +311,7 @@ main (int argc,
 
   case GNUNET_OK:
 
-    if (NULL == (twisterd = TALER_TESTING_run_twister
-                              (CONFIG_FILE)))
+    if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
       return 77;
 
     ret = TALER_TESTING_setup_with_exchange (&run,

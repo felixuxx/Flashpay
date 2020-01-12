@@ -35,7 +35,6 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include "taler_testing_bank_lib.h"
 #include "taler_error_codes.h"
 
 /* Error codes.  */
@@ -93,6 +92,11 @@ enum BenchmarkMode
  * Hold information regarding which bank has the exchange account.
  */
 static struct TALER_Account exchange_bank_account;
+
+/**
+ * Configuration of our exchange.
+ */
+static struct TALER_TESTING_ExchangeConfiguration ec;
 
 /**
  * Hold information about a user at the bank.
@@ -318,7 +322,7 @@ run (void *cls,
             withdraw_label,
             0, /* Index of the one withdrawn coin in the traits.  */
             TALER_TESTING_make_wire_details
-              (TALER_TESTING_USER_ACCOUNT_NUMBER,
+              (42 /* FIXME: ugly! */,
               exchange_bank_account.details.x_taler_bank.hostname),
             order_enc,
             GNUNET_TIME_UNIT_ZERO,
@@ -435,14 +439,12 @@ launch_fakebank (void *cls)
  * @param main_cb main function to run per process
  * @param main_cb_cls closure for @a main_cb
  * @param config_file configuration file to use
- * @param exchange_url exchange URL to use
  * @return #GNUNET_OK on success
  */
 static int
 parallel_benchmark (TALER_TESTING_Main main_cb,
                     void *main_cb_cls,
-                    const char *config_file,
-                    const char *exchange_url)
+                    const char *config_file)
 {
   int result = GNUNET_OK;
   pid_t cpids[howmany_clients];
@@ -556,11 +558,11 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 
   /* We always wait for the exchange, no matter if it's running locally or
      remotely */
-  if (0 != TALER_TESTING_wait_exchange_ready (exchange_url))
+  if (0 != TALER_TESTING_wait_exchange_ready (ec.exchange_url))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to detect running exchange at `%s'\n",
-                exchange_url);
+                ec.exchange_url);
     GNUNET_OS_process_kill (exchanged,
                             SIGTERM);
     if ( (MODE_BOTH == mode) || (MODE_CLIENT == mode))
@@ -719,8 +721,6 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *exchange_url = NULL;
-  char *auditor_url = NULL;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
@@ -836,11 +836,9 @@ main (int argc,
   {
     const char *bank_details_section;
 
-    GNUNET_CONFIGURATION_iterate_sections
-      (cfg,
-      &pick_exchange_account_cb,
-      &bank_details_section);
-
+    GNUNET_CONFIGURATION_iterate_sections (cfg,
+                                           &pick_exchange_account_cb,
+                                           &bank_details_section);
     if (NULL == bank_details_section)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -903,11 +901,9 @@ main (int argc,
     GNUNET_OS_process_wait (compute_wire_response);
     GNUNET_OS_process_destroy (compute_wire_response);
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_prepare_exchange
-        (cfg_filename,
-        &auditor_url,
-        &exchange_url));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_prepare_exchange (cfg_filename,
+                                                   &ec));
   }
   else
   {
@@ -915,7 +911,7 @@ main (int argc,
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "exchange",
                                                "BASE_URL",
-                                               &exchange_url))
+                                               &ec.exchange_url))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
@@ -950,16 +946,11 @@ main (int argc,
       return BAD_CONFIG_FILE;
     }
   }
-
   GNUNET_CONFIGURATION_destroy (cfg);
 
   result = parallel_benchmark (&run,
                                NULL,
-                               cfg_filename,
-                               exchange_url);
-
-  GNUNET_free_non_null (exchange_url);
-  GNUNET_free_non_null (auditor_url);
+                               cfg_filename);
 
   /* If we're the exchange worker, we're done now.  No need to print results */
   if (MODE_EXCHANGE == mode)

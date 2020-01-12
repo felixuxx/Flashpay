@@ -26,7 +26,6 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_testing_lib.h"
-#include "taler_testing_bank_lib.h"
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"

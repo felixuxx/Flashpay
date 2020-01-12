@@ -33,7 +33,6 @@
 #include <microhttpd.h>
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
-#include "taler_testing_bank_lib.h"
 #include "taler_testing_lib.h"
 #include "taler_testing_auditor_lib.h"
 
@@ -47,55 +46,14 @@
   "test_auditor_api_expire_reserve_now.conf"
 
 /**
- * URL of the fakebank.  Obtained from CONFIG_FILE's
- * "exchange-wire-test:BANK_URI" option.
+ * Exchange configuration data.
  */
-static char *fakebank_url;
+static struct TALER_TESTING_ExchangeConfiguration ec;
 
 /**
- * Auditor base URL as it appears in the configuration.  Note
- * that it might differ from the one where the exchange actually
- * listens from.
+ * Bank configuration data.
  */
-static char *auditor_url;
-
-/**
- * Exchange base URL as it appears in the configuration.  Note
- * that it might differ from the one where the exchange actually
- * listens from.
- */
-static char *exchange_url;
-
-/**
- * URL of the exchange's account at the bank.  Obtained from CONFIG_FILE's
- * "exchange-wire-test:BANK_URI" option plus the exchange account.
- */
-static char *exchange_account_url; // FIXME: initialize!
-
-/**
- * Account number of the exchange at the bank.
- */
-#define EXCHANGE_ACCOUNT_NO "2" // FIXME: used?
-
-/**
- * Payto URL of the user's account.
- */
-static char *user_account_payto; // FIXME: initialize!
-
-/**
- * Payto URL of the user's account.
- */
-static char *user2_account_payto; // FIXME: initialize! (43!)
-
-/**
- * Payto URL of the exchange's account.
- */
-static char *exchange_account_payto; // FIXME: initialize!
-
-/**
- * Credentials for talking to the bank.
- */
-static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
+static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Execute the taler-exchange-wirewatch command with
@@ -123,10 +81,10 @@ static struct TALER_BANK_AuthenticationData auth; // FIXME: initialize!
  * @param amount amount to transfer, i.e. "EUR:1"
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        exchange_account_url, \
-                                        &auth, \
-                                        user_account_payto)
+  TALER_TESTING_cmd_admin_add_incoming (label, amount,           \
+                                        bc.exchange_account_url, \
+                                        &bc.exchange_auth,       \
+                                        bc.user42_payto)
 
 /**
  * Run the taler-auditor.
@@ -186,8 +144,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("deposit-simple",
                                "withdraw-coin-1",
                                0,
-                               TALER_TESTING_make_wire_details (42,
-                                                                fakebank_url),
+                               bc.user42_payto,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:5",
@@ -221,8 +178,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
                                "refresh-withdraw-coin-1",
                                0,
-                               TALER_TESTING_make_wire_details (42,
-                                                                fakebank_url),
+                               bc.user42_payto,
                                "{\"items\":[{\"name\":\"ice\",\"value\":\"EUR:1\"}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:1",
@@ -246,8 +202,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("refresh-deposit-refreshed-1b",
                                "refresh-reveal-1",
                                3,
-                               TALER_TESTING_make_wire_details (43,
-                                                                fakebank_url),
+                               bc.user43_payto,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":3}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:0.1",
@@ -268,78 +223,78 @@ run (void *cls,
      * Check all the transfers took place.
      */
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-499c", exchange_url,
-      "EUR:4.98", exchange_account_payto, user_account_payto),
+      ("check_bank_transfer-499c", ec.exchange_url,
+      "EUR:4.98", bc.exchange_payto, bc.user42_payto),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c1", exchange_url,
-      "EUR:0.98", exchange_account_payto, user_account_payto),
+      ("check_bank_transfer-99c1", ec.exchange_url,
+      "EUR:0.98", bc.exchange_payto, bc.user42_payto),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c", exchange_url,
-      "EUR:0.08", exchange_account_payto, user2_account_payto),
+      ("check_bank_transfer-99c", ec.exchange_url,
+      "EUR:0.08", bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-1", exchange_url,
-      "EUR:5.01", user_account_payto, exchange_account_payto),
+      ("check_bank_transfer-aai-1", ec.exchange_url,
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-2", exchange_url,
-      "EUR:5.01", user_account_payto, exchange_account_payto),
+      ("check_bank_transfer-aai-2", ec.exchange_url,
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
 
     /* The following transactions got originated within
      * the "massive deposit confirms" batch.  */
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer",
-      exchange_url,
+      ec.exchange_url,
       "EUR:10.10",
-      user_account_payto, exchange_account_payto),
+      bc.user42_payto, bc.exchange_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-1",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-2",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-3",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-4",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-5",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-6",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-7",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-8",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-9",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-10",
-      exchange_url,
+      ec.exchange_url,
       "EUR:0.98",
-      exchange_account_payto, user2_account_payto),
+      bc.exchange_payto, bc.user43_payto),
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
     TALER_TESTING_cmd_end ()
   };
@@ -355,10 +310,10 @@ run (void *cls,
     CMD_EXEC_WIREWATCH ("wirewatch-unaggregated"),
     /* "consume" reserve creation transfer.  */
     TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-unaggregated",
-                                           exchange_url,
+                                           ec.exchange_url,
                                            "EUR:5.01",
-                                           user_account_payto,
-                                           exchange_account_payto),
+                                           bc.user42_payto,
+                                           bc.exchange_payto),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
                                        "create-reserve-unaggregated",
                                        "EUR:5",
@@ -366,9 +321,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("deposit-unaggregated",
                                "withdraw-coin-unaggregated",
                                0,
-                               TALER_TESTING_make_wire_details
-                                 (43,
-                                 fakebank_url),
+                               bc.user43_payto,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
                                GNUNET_TIME_relative_multiply
                                  (GNUNET_TIME_UNIT_YEARS,
@@ -404,8 +357,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("deposit-refund-1",
                                "withdraw-coin-r1",
                                0,
-                               TALER_TESTING_make_wire_details (42,
-                                                                fakebank_url),
+                               bc.user42_payto,
                                "{\"items\":[{\"name\":\"ice\",\"value\":\"EUR:5\"}]}",
                                GNUNET_TIME_UNIT_MINUTES,
                                "EUR:5",
@@ -423,8 +375,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("deposit-refund-2",
                                "withdraw-coin-r1",
                                0,
-                               TALER_TESTING_make_wire_details (42,
-                                                                fakebank_url),
+                               bc.user42_payto,
                                "{\"items\":[{\"name\":\"more\",\"value\":\"EUR:5\"}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:4.99",
@@ -510,8 +461,7 @@ run (void *cls,
     TALER_TESTING_cmd_deposit ("payback-deposit-partial",
                                "payback-withdraw-coin-2a",
                                0,
-                               TALER_TESTING_make_wire_details (42,
-                                                                fakebank_url),
+                               bc.user42_payto,
                                "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:0.5",
@@ -581,9 +531,7 @@ run (void *cls,
       ("massive-deposit-1",
       "massive-withdraw-1",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -592,9 +540,7 @@ run (void *cls,
       ("massive-deposit-2",
       "massive-withdraw-2",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -603,9 +549,7 @@ run (void *cls,
       ("massive-deposit-3",
       "massive-withdraw-3",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -614,9 +558,7 @@ run (void *cls,
       ("massive-deposit-4",
       "massive-withdraw-4",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -625,9 +567,7 @@ run (void *cls,
       ("massive-deposit-5",
       "massive-withdraw-5",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -636,9 +576,7 @@ run (void *cls,
       ("massive-deposit-6",
       "massive-withdraw-6",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -647,9 +585,7 @@ run (void *cls,
       ("massive-deposit-7",
       "massive-withdraw-7",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -658,9 +594,7 @@ run (void *cls,
       ("massive-deposit-8",
       "massive-withdraw-8",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -669,9 +603,7 @@ run (void *cls,
       ("massive-deposit-9",
       "massive-withdraw-9",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -680,9 +612,7 @@ run (void *cls,
       ("massive-deposit-10",
       "massive-withdraw-10",
       0,
-      TALER_TESTING_make_wire_details
-        (43,
-        fakebank_url),
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -727,7 +657,7 @@ run (void *cls,
 
   TALER_TESTING_run_with_fakebank (is,
                                    commands,
-                                   fakebank_url);
+                                   bc.bank_url);
 }
 
 
@@ -741,19 +671,18 @@ main (int argc,
   GNUNET_log_setup ("test-auditor-api",
                     "INFO",
                     NULL);
-  if (NULL == (fakebank_url
-               /* Check fakebank port is available and config cares
-                * about bank url. */
-                 = TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                                   "account-2")))
+  /* Check fakebank port is available and get configuration data. */
+  if (GNUNET_OK !=
+      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                      "account-2",
+                                      &bc))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-                                          &auditor_url,
-                                          &exchange_url))
+                                          &ec))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

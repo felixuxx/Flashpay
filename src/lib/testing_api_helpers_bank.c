@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -16,44 +16,19 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file bank-lib/testing_api_helpers.c
  * @brief convenience functions for bank-lib tests.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_testing_bank_lib.h"
+#include "taler_testing_lib.h"
 #include "taler_fakebank_lib.h"
 
 
 #define BANK_FAIL() \
   do {GNUNET_break (0); return NULL; } while (0)
-
-
-/**
- * Keep each bank account credentials at index:
- * bank account number - 1
- */
-struct TALER_BANK_AuthenticationData AUTHS[] = {
-
-  /* Bank credentials */
-  {.method = TALER_BANK_AUTH_BASIC,
-   .details.basic.username = TALER_TESTING_BANK_USERNAME,
-   .details.basic.password = TALER_TESTING_BANK_PASSWORD},
-
-  /* Exchange credentials */
-  {.method = TALER_BANK_AUTH_BASIC,
-   .details.basic.username = TALER_TESTING_EXCHANGE_USERNAME,
-   .details.basic.password = TALER_TESTING_EXCHANGE_PASSWORD },
-
-  /* User credentials */
-  {.method = TALER_BANK_AUTH_BASIC,
-   .details.basic.username = TALER_TESTING_USER_USERNAME,
-   .details.basic.password = TALER_TESTING_USER_PASSWORD }
-};
 
 
 /**
@@ -244,19 +219,19 @@ TALER_TESTING_run_bank (const char *config_filename,
  * and reset database.
  *
  * @param config_filename configuration file name.
- *
+ * @param bc[out] set to the bank's configuration data
  * @return the base url, or NULL upon errors.  Must be freed
  *         by the caller.
  */
-char *
-TALER_TESTING_prepare_bank (const char *config_filename)
+int
+TALER_TESTING_prepare_bank (const char *config_filename,
+                            struct TALER_TESTING_BankConfiguration *bc)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long port;
   struct GNUNET_OS_Process *dbreset_proc;
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
-  char *base_url;
   char *database;
 
   cfg = GNUNET_CONFIGURATION_create ();
@@ -265,7 +240,8 @@ TALER_TESTING_prepare_bank (const char *config_filename)
       GNUNET_CONFIGURATION_load (cfg, config_filename))
   {
     GNUNET_CONFIGURATION_destroy (cfg);
-    BANK_FAIL ();
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -277,7 +253,8 @@ TALER_TESTING_prepare_bank (const char *config_filename)
                                "bank",
                                "DATABASE");
     GNUNET_CONFIGURATION_destroy (cfg);
-    BANK_FAIL ();
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
 
   if (GNUNET_OK !=
@@ -291,17 +268,21 @@ TALER_TESTING_prepare_bank (const char *config_filename)
                                "HTTP_PORT");
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (database);
-    BANK_FAIL ();
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  if (GNUNET_OK != GNUNET_NETWORK_test_port_free
-        (IPPROTO_TCP, (uint16_t) port))
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+                                     (uint16_t) port))
   {
     fprintf (stderr,
              "Required port %llu not available, skipping.\n",
              port);
-    BANK_FAIL ();
+    GNUNET_break (0);
+    GNUNET_free (database);
+    return GNUNET_SYSERR;
   }
 
   /* DB preparation */
@@ -321,7 +302,7 @@ TALER_TESTING_prepare_bank (const char *config_filename)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to flush the bank db.\n");
     GNUNET_free (database);
-    BANK_FAIL ();
+    return GNUNET_SYSERR;
   }
   GNUNET_free (database);
 
@@ -331,31 +312,161 @@ TALER_TESTING_prepare_bank (const char *config_filename)
                                      &code))
   {
     GNUNET_OS_process_destroy (dbreset_proc);
-    BANK_FAIL ();
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
   if ( (type == GNUNET_OS_PROCESS_EXITED) &&
        (0 != code) )
   {
     fprintf (stderr,
              "Failed to setup database\n");
-    BANK_FAIL ();
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
        (0 != code) )
   {
-    fprintf (stderr,
-             "Unexpected error running"
-             " `taler-bank-manage django flush..'!\n");
-    BANK_FAIL ();
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected error running `taler-bank-manage django flush'!\n");
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-
   GNUNET_OS_process_destroy (dbreset_proc);
 
-  GNUNET_asprintf (&base_url,
+  GNUNET_asprintf (&bc->bank_url,
                    "http://localhost:%llu/",
                    port);
-  return base_url;
+  // FIXME: initialize rest of 'bc':
+  bc->exchange_account_url = NULL; // FIXME
+  bc->exchange_auth; // FIXME
+  bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "2");
+  bc->user42_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "42");
+  bc->user43_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "43");
+  return GNUNET_OK;
 }
 
 
-/* end of testing_api_helpers.c */
+/**
+ * Prepare launching a fakebank.  Check that the configuration
+ * file has the right option, and that the port is available.
+ * If everything is OK, return the configuration data of the fakebank.
+ *
+ * @param config_filename configuration file to use
+ * @param config_section which account to use (must match x-taler-bank)
+ * @param bc[out] set to the bank's configuration data
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_prepare_fakebank (const char *config_filename,
+                                const char *config_section,
+                                struct TALER_TESTING_BankConfiguration *bc)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *payto_url;
+  char *fakebank_url;
+  const char *start;
+  const char *end;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
+                                              config_filename))
+    return GNUNET_SYSERR;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             config_section,
+                                             "URL",
+                                             &payto_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               config_section,
+                               "URL");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_CONFIGURATION_destroy (cfg);
+  if (0 != strncasecmp (payto_url,
+                        "payto://x-taler-bank/",
+                        strlen ("payto://x-taler-bank/")))
+  {
+    GNUNET_log_config_invalid
+      (GNUNET_ERROR_TYPE_WARNING,
+      config_section,
+      "URL",
+      "expected `x-taler-bank' payto://-URL");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (payto_url);
+    return GNUNET_SYSERR;
+  }
+  start = &payto_url [strlen ("payto://x-taler-bank/")];
+  end = strchr (start,
+                (unsigned char) '/');
+  if (NULL == end)
+    end = &start[strlen (start)];
+  fakebank_url = GNUNET_strndup (start,
+                                 end - start);
+  GNUNET_free (payto_url);
+  if (GNUNET_OK !=
+      TALER_TESTING_url_port_free (fakebank_url))
+  {
+    GNUNET_free (fakebank_url);
+    return GNUNET_SYSERR;
+  }
+  bc->bank_url = fakebank_url;
+  // FIXME: initialize rest of 'bc':
+  bc->exchange_account_url = NULL; // FIXME
+  bc->exchange_auth; // FIXME
+  bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "2");
+  bc->user42_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "42");
+  bc->user43_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "43");
+  return GNUNET_OK;
+}
+
+
+/**
+ * Create an x-taler-bank payto:// URL from a @a bank_url
+ * and an @a account_name.
+ *
+ * @param bank_url the bank URL
+ * @param account_name the account name
+ * @return payto:// URL
+ */
+char *
+TALER_TESTING_make_xtalerbank_payto (const char *bank_url,
+                                     const char *account_name)
+{
+  char *payto;
+  int ends_slash;
+
+  if (0 < strlen (bank_url))
+    ends_slash = '/' == bank_url[strlen (bank_url) - 1];
+  else
+    ends_slash = 0;
+  GNUNET_asprintf (&payto,
+                   (ends_slash)
+                   ? "payto://x-taler-bank/%s%s"
+                   : "payto://x-taler-bank/%s/%s",
+                   bank_url,
+                   account_name);
+  return payto;
+}
+
+
+/**
+ * Allocate and return a piece of wire-details.  Combines
+ * a @a payto -URL and adds some salt to create the JSON.
+ *
+ * @param payto payto://-URL to encapsulate
+ * @return JSON describing the account, including the
+ *         payto://-URL of the account, must be manually decref'd
+ */
+json_t *
+TALER_TESTING_make_wire_details (const char *payto)
+{
+  return json_pack ("{s:s, s:s}",
+                    "url", payto,
+                    "salt",
+                    "test-salt (must be constant for aggregation tests)");
+}
+
+
+/* end of testing_api_helpers_bank.c */

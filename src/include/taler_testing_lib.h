@@ -30,6 +30,8 @@
 #include "taler_exchange_service.h"
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
+#include "taler_bank_service.h"
+#include "taler_wire_lib.h"
 #include <microhttpd.h>
 
 
@@ -55,33 +57,46 @@
   TALER_TESTING_make_trait_uint64 (3, data)
 
 
+// FIXME: replace these!
 #define TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT(cmd,out) \
   TALER_TESTING_get_trait_string (cmd, 4, out)
 
+// FIXME: replace these!
 #define TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT(data) \
   TALER_TESTING_make_trait_string (4, data)
 
+// FIXME: replace these!
 #define TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT(cmd,out) \
   TALER_TESTING_get_trait_string (cmd, 5, out)
 
+// FIXME: replace these!
 #define TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT(data) \
   TALER_TESTING_make_trait_string (5, data)
 
 
 /**
+ * Create an x-taler-bank payto:// URL from a @a bank_url
+ * and an @a account_name.
+ *
+ * @param bank_url the bank URL
+ * @param account_name the account name
+ * @return payto:// URL
+ */
+char *
+TALER_TESTING_make_xtalerbank_payto (const char *bank_url,
+                                     const char *account_name);
+
+
+/**
  * Allocate and return a piece of wire-details.  Combines
- * the @a account_no and the @a bank_url to a
- * @a payto://-URL and adds some salt to create the JSON.
+ * a @a payto -URL and adds some salt to create the JSON.
  *
- * @param account_no account number
- * @param bank_url the bank_url
- *
+ * @param payto payto://-URL to encapsulate
  * @return JSON describing the account, including the
  *         payto://-URL of the account, must be manually decref'd
  */
 json_t *
-TALER_TESTING_make_wire_details (unsigned long long account_no,
-                                 const char *bank_url);
+TALER_TESTING_make_wire_details (const char *payto);
 
 
 /**
@@ -97,25 +112,42 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Configuration data for an exchange.
+ */
+struct TALER_TESTING_ExchangeConfiguration
+{
+  /**
+   * Exchange base URL as it appears in the configuration.  Note
+   * that it might differ from the one where the exchange actually
+   * listens from.
+   */
+  char *exchange_url;
+
+  /**
+   * Auditor base URL as it appears in the configuration.  Note
+   * that it might differ from the one where the auditor actually
+   * listens from.
+   */
+  char *auditor_url;
+
+};
+
+
+/**
  * Prepare launching an exchange.  Checks that the configured
  * port is available, runs taler-exchange-keyup,
  * taler-auditor-sign and taler-exchange-dbinit.  Does not
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
- * @param auditor_base_url[out] will be set to the auditor base url,
- *        if the config has any; otherwise it will be set to
- *        NULL.
- * @param exchange_base_url[out] will be set to the exchange base url,
- *        if the config has any; otherwise it will be set to
- *        NULL.
+ * @param ec[out] will be set to the exchange configuration data
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
 int
 TALER_TESTING_prepare_exchange (const char *config_filename,
-                                char **auditor_base_url,
-                                char **exchange_base_url);
+                                struct TALER_TESTING_ExchangeConfiguration *ec);
+
 
 /**
  * "Canonical" cert_cb used when we are connecting to the
@@ -245,24 +277,67 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
 
 /**
  * Test port in URL string for availability.
+ *
+ * @param url URL to extract port from, 80 is default
+ * @return #GNUNET_OK if the port is free
  */
 int
 TALER_TESTING_url_port_free (const char *url);
 
 
 /**
+ * Configuration data for a bank.
+ */
+struct TALER_TESTING_BankConfiguration
+{
+  /**
+   * Bank base URL.
+   */
+  char *bank_url;
+
+  /**
+   * Base URL of the exchange's bank account. Basically
+   * @e bank_url plus the exchange account.
+   */
+  char *exchange_account_url;
+
+  /**
+   * Authentication data for the exchange user at the bank.
+   */
+  struct TALER_BANK_AuthenticationData exchange_auth;
+
+  /**
+   * Payto URL of the exchange's account ("2")
+   */
+  char *exchange_payto;
+
+  /**
+   * Payto URL of a user account ("42")
+   */
+  char *user42_payto;
+
+  /**
+   * Payto URL of another user's account ("43")
+   */
+  char *user43_payto;
+
+};
+
+/**
  * Prepare launching a fakebank.  Check that the configuration
  * file has the right option, and that the port is avaiable.
- * If everything is OK, return the configured URL of the fakebank.
+ * If everything is OK, return the configuration data of the fakebank.
  *
  * @param config_filename configuration file to use
  * @param config_section which account to use
  *                       (must match x-taler-bank)
- * @return NULL on error, fakebank URL otherwise
+ * @param bc[out] set to the bank's configuration data
+ * @return #GNUNET_OK on success
  */
-char *
+int
 TALER_TESTING_prepare_fakebank (const char *config_filename,
-                                const char *config_section);
+                                const char *config_section,
+                                struct TALER_TESTING_BankConfiguration *bc);
 
 
 /* ******************* Generic interpreter logic ************ */
@@ -707,7 +782,221 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
                                                void *main_cb_cls,
                                                const char *config_file);
 
+
+/**
+ * Start the (Python) bank process.  Assume the port
+ * is available and the database is clean.  Use the "prepare
+ * bank" function to do such tasks.
+ *
+ * @param config_filename configuration filename.
+ * @param bank_url base URL of the bank, used by `wget' to check
+ *        that the bank was started right.
+ *
+ * @return the process, or NULL if the process could not
+ *         be started.
+ */
+struct GNUNET_OS_Process *
+TALER_TESTING_run_bank (const char *config_filename,
+                        const char *bank_url);
+
+/**
+ * Runs the Fakebank by guessing / extracting the portnumber
+ * from the base URL.
+ *
+ * @param bank_url bank's base URL.
+ * @return the fakebank process handle, or NULL if any
+ *         error occurs.
+ */
+struct TALER_FAKEBANK_Handle *
+TALER_TESTING_run_fakebank (const char *bank_url);
+
+
+/**
+ * Prepare the bank execution.  Check if the port is available
+ * and reset database.
+ *
+ * @param config_filename configuration file name.
+ * @param bc[out] set to the bank's configuration data
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_prepare_bank (const char *config_filename,
+                            struct TALER_TESTING_BankConfiguration *bc);
+
+
+/**
+ * Look for substring in a programs' name.
+ *
+ * @param prog program's name to look into
+ * @param marker chunk to find in @a prog
+ */
+int
+TALER_TESTING_has_in_name (const char *prog,
+                           const char *marker);
+
+
 /* ************** Specific interpreter commands ************ */
+
+
+/**
+ * Make a credit "history" CMD.
+ *
+ * @param label command label.
+ * @param account_url base URL of the account offering the "history"
+ *        operation.
+ * @param auth login data to use
+ * @param start_row_reference reference to a command that can
+ *        offer a row identifier, to be used as the starting row
+ *        to accept in the result.
+ * @param num_results how many rows we want in the result,
+ *        and ascending/descending call
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_credits (const char *label,
+                                const char *account_url,
+                                const struct
+                                TALER_BANK_AuthenticationData *auth,
+                                const char *start_row_reference,
+                                long long num_results);
+
+
+/**
+ * Make a debit "history" CMD.
+ *
+ * @param label command label.
+ * @param account_url base URL of the account offering the "history"
+ *        operation.
+ * @param auth authentication data
+ * @param start_row_reference reference to a command that can
+ *        offer a row identifier, to be used as the starting row
+ *        to accept in the result.
+ * @param num_results how many rows we want in the result.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_bank_debits (const char *label,
+                               const char *account_url,
+                               const struct TALER_BANK_AuthenticationData *auth,
+                               const char *start_row_reference,
+                               long long num_results);
+
+
+/**
+ * Create transfer command.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account gives money).
+ * @param auth authentication data to use
+ * @param payto_credit_account which account receives money.
+ * @param wtid wire transfer identifier to use
+ * @param exchange_base_url exchange URL to use
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_transfer (const char *label,
+                            const char *amount,
+                            const char *account_base_url,
+                            const struct TALER_BANK_AuthenticationData *auth,
+                            const char *payto_credit_account,
+                            const struct TALER_WireTransferIdentifierRawP *wtid,
+                            const char *exchange_base_url);
+
+
+/* ***** Commands ONLY for testing (/admin-API) **** */
+
+/**
+ * Create /admin/add-incoming command.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param exchange_base_url base URL of the exchange account that receives this
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
+ * @param auth authentication data
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming (const char *label,
+                                      const char *amount,
+                                      const char *exchange_base_url,
+                                      const struct
+                                      TALER_BANK_AuthenticationData *auth,
+                                      const char *payto_debit_account);
+
+
+/**
+ * Create "fakebank transfer" CMD, letting the caller specify
+ * a reference to a command that can offer a reserve private key.
+ * This private key will then be used to construct the subject line
+ * of the wire transfer.
+ *
+ * @param label command label.
+ * @param amount the amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
+ * @param auth authentication data
+ * @param ref reference to a command that can offer a reserve
+ *        private key.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
+                                               const char *amount,
+                                               const char *account_base_url,
+                                               const struct
+                                               TALER_BANK_AuthenticationData *
+                                               auth,
+                                               const char *payto_debit_account,
+                                               const char *ref);
+
+
+/**
+ * Create "fakebank transfer" CMD, letting the caller specifying
+ * the merchant instance.  This version is useful when a tip
+ * reserve should be topped up, in fact the interpreter will need
+ * the "tipping instance" in order to get the instance public key
+ * and make a wire transfer subject out of it.
+ *
+ * @param label command label.
+ * @param amount amount to transfer.
+ * @param account_base_url base URL of the account that implements this
+ *        wire transer (which account receives money).
+ * @param payto_debit_account which account sends money.
+ * @param auth authentication data
+ * @param instance the instance that runs the tipping.  Under this
+ *        instance, the configuration file will provide the private
+ *        key of the tipping reserve.  This data will then used to
+ *        construct the wire transfer subject line.
+ * @param config_filename configuration file to use.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming_with_instance (const char *label,
+                                                    const char *amount,
+                                                    const char *account_base_url,
+                                                    const struct
+                                                    TALER_BANK_AuthenticationData
+                                                    *auth,
+                                                    const char *
+                                                    payto_debit_account,
+                                                    const char *instance,
+                                                    const char *config_filename);
+
+
+/**
+ * Modify a fakebank transfer command to enable retries when the
+ * reserve is not yet full or we get other transient errors from
+ * the fakebank.
+ *
+ * @param cmd a fakebank transfer command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd);
 
 
 /**
@@ -893,7 +1182,7 @@ TALER_TESTING_cmd_status (const char *label,
  *        coins, this parameter selects which one in that array.
  *        This value is currently ignored, as only one-coin
  *        withdrawals are implemented.
- * @param wire_details wire details associated with the "deposit"
+ * @param target_account_payto target account for the "deposit"
  *        request.
  * @param contract_terms contract terms to be signed over by the
  *        coin.
@@ -907,7 +1196,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit (const char *label,
                            const char *coin_reference,
                            unsigned int coin_index,
-                           json_t *wire_details,
+                           const char *target_account_payto,
                            const char *contract_terms,
                            struct GNUNET_TIME_Relative refund_deadline,
                            const char *amount,

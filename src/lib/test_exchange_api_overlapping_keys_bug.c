@@ -55,14 +55,9 @@
   "test_exchange_api_keys_cherry_picking_extended_2.conf"
 
 /**
- * Exchange base URL; mainly purpose is to make the compiler happy.
+ * Exchange configuration data.
  */
-static char *exchange_url;
-
-/**
- * Auditor base URL; mainly purpose is to make the compiler happy.
- */
-static char *auditor_url;
+static struct TALER_TESTING_ExchangeConfiguration ec;
 
 
 /**
@@ -106,8 +101,7 @@ main (int argc,
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-                                          &auditor_url,
-                                          &exchange_url))
+                                          &ec))
   {
   case GNUNET_SYSERR:
     GNUNET_break (0);

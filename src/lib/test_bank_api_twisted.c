@@ -33,7 +33,6 @@
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
 #include <taler/taler_twister_testing_lib.h>
-#include "taler_testing_bank_lib.h"
 #include <taler/taler_twister_service.h>
 
 /**
@@ -46,6 +45,11 @@
  * True when the test runs against Fakebank.
  */
 static int with_fakebank;
+
+/**
+ * Bank configuration data.
+ */
+static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * (real) Twister URL.  Used at startup time to check if it runs.
@@ -62,11 +66,6 @@ static char *twisted_account_url;
  * Authentication data to use.
  */
 static struct TALER_BANK_AuthenticationData auth;
-
-/**
- * URL of the bank.
- */
-static char *bank_url;
 
 /**
  * Twister process.
@@ -112,7 +111,7 @@ run (void *cls,
   if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
-                                     bank_url);
+                                     bc.bank_url);
   else
     TALER_TESTING_run (is,
                        commands);
@@ -164,9 +163,10 @@ main (int argc,
   if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
-    if (NULL == (bank_url = TALER_TESTING_prepare_fakebank
-                              (CONFIG_FILE,
-                              "account-1")))
+    if (GNUNET_OK !=
+        TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+                                        "account-1",
+                                        &bc))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);
@@ -176,8 +176,9 @@ main (int argc,
   else
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
-    if (NULL == (bank_url = TALER_TESTING_prepare_bank
-                              (CONFIG_FILE)))
+    if (GNUNET_OK !=
+        TALER_TESTING_prepare_bank (CONFIG_FILE,
+                                    &bc))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);
@@ -185,11 +186,10 @@ main (int argc,
     }
 
     if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE,
-                                                 bank_url)))
+                                                 bc.bank_url)))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);
-      GNUNET_free (bank_url);
       return 77;
     }
   }
@@ -210,8 +210,6 @@ main (int argc,
   }
 
   GNUNET_free (twister_url);
-  GNUNET_free (bank_url);
-
   if (GNUNET_OK == ret)
     return 0;
 

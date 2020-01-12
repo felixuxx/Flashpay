@@ -30,8 +30,7 @@ talerinclude_HEADERS = \
   taler_util.h \
   taler_mhd_lib.h \
   taler_pq_lib.h \
-  taler_signatures.h \
-  taler_testing_bank_lib.h 
+  taler_signatures.h
 
 endif
 
