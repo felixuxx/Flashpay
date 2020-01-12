@@ -30,8 +30,7 @@ taler_bank_transfer_LDADD = \
 
 lib_LTLIBRARIES = \
   libtalerbank.la \
-  libtalerfakebank.la \
-  libtalerbanktesting.la
+  libtalerfakebank.la
 
 libtalerbank_la_LDFLAGS = \
   -version-info 1:0:0 \
@@ -66,24 +65,6 @@ libtalerfakebank_la_LIBADD = \
   -lmicrohttpd \
   $(XLIB)
 
-libtalerbanktesting_la_LDFLAGS = \
-  -version-info 0:0:0 \
-  -no-undefined
-libtalerbanktesting_la_SOURCES = \
-  testing_api_cmd_admin_add_incoming.c \
-  testing_api_cmd_history_credit.c \
-  testing_api_cmd_history_debit.c \
-  testing_api_cmd_transfer.c \
-  testing_api_helpers.c
-libtalerbanktesting_la_LIBADD = \
-  libtalerbank.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  -lgnunetjson \
-  -lgnunetutil \
-  -ljansson \
-  -lmicrohttpd \
-  $(XLIB)
-
 if HAVE_LIBCURL
 libtalerbank_la_LIBADD += -lcurl
 else
@@ -91,70 +72,3 @@ if HAVE_LIBGNURL
 libtalerbank_la_LIBADD += -lgnurl
 endif
 endif
-
-check_PROGRAMS = \
-  test_bank_api_with_fakebank \
-  test_bank_api_with_pybank
-
-if HAVE_TWISTER
-check_PROGRAMS += \
-  test_bank_api_with_pybank_twisted \
-  test_bank_api_with_fakebank_twisted
-
-
-test_bank_api_with_pybank_twisted_SOURCES = \
-  test_bank_api_twisted.c
-test_bank_api_with_pybank_twisted_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
-  libtalerbank.la \
-  libtalerbanktesting.la \
-  libtalerfakebank.la \
-  $(top_builddir)/src/lib/libtalerexchange.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  -ltalertwistertesting \
-  -lgnunetjson \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
-
-
-test_bank_api_with_fakebank_twisted_SOURCES = \
-  test_bank_api_twisted.c
-test_bank_api_with_fakebank_twisted_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
-  libtalerbank.la \
-  libtalerbanktesting.la \
-  libtalerfakebank.la \
-  $(top_builddir)/src/lib/libtalerexchange.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  -ltalertwistertesting \
-  -lgnunetjson \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
-endif
-
-TESTS = \
-  $(check_PROGRAMS)
-
-test_bank_api_with_pybank_SOURCES = \
-  test_bank_api.c
-test_bank_api_with_pybank_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
-  libtalerbanktesting.la \
-  -ltalerexchange \
-  -lgnunetutil \
-  libtalerbank.la
-
-test_bank_api_with_fakebank_SOURCES = \
-  test_bank_api.c
-test_bank_api_with_fakebank_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
-  libtalerbanktesting.la \
-  -ltalerexchange \
-  -lgnunetutil \
-  libtalerbank.la
-
-EXTRA_DIST = \
-  bank.conf \
-  bank_twisted.conf

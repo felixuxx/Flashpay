@@ -9,8 +9,7 @@ endif
 lib_LTLIBRARIES = \
   libtalerauditor.la \
   libtalerexchange.la \
-  libtalertesting.la \
-  libtalerauditortesting.la
+  libtalertesting.la
 
 libtalerexchange_la_LDFLAGS = \
   -version-info 4:0:0 \
@@ -72,46 +71,57 @@ libtalertesting_la_LDFLAGS = \
   -no-undefined
 libtalertesting_la_SOURCES = \
   exchange_api_curl_defaults.c \
+  testing_api_cmd_auditor_deposit_confirmation.c \
+  testing_api_cmd_auditor_exchanges.c \
+  testing_api_cmd_auditor_exec_auditor.c \
+  testing_api_cmd_auditor_exec_auditor_dbinit.c \
+  testing_api_cmd_auditor_exec_wire_auditor.c \
+  testing_api_cmd_bank_admin_add_incoming.c \
+  testing_api_cmd_bank_check.c \
+  testing_api_cmd_bank_check_empty.c \
+  testing_api_cmd_bank_history_credit.c \
+  testing_api_cmd_bank_history_debit.c \
+  testing_api_cmd_bank_transfer.c \
+  testing_api_cmd_batch.c \
+  testing_api_cmd_check_keys.c \
+  testing_api_cmd_deposit.c \
   testing_api_cmd_exec_aggregator.c \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_exec_keyup.c \
   testing_api_cmd_exec_auditor-sign.c \
-  testing_api_cmd_withdraw.c \
-  testing_api_cmd_wire.c \
-  testing_api_cmd_refund.c \
-  testing_api_cmd_status.c \
-  testing_api_cmd_deposit.c \
-  testing_api_cmd_sleep.c \
-  testing_api_cmd_refresh.c \
-  testing_api_cmd_track.c \
-  testing_api_cmd_bank_check.c \
-  testing_api_cmd_bank_check_empty.c \
   testing_api_cmd_payback.c \
-  testing_api_cmd_signal.c \
-  testing_api_cmd_check_keys.c \
-  testing_api_cmd_batch.c \
+  testing_api_cmd_refund.c \
+  testing_api_cmd_refresh.c \
   testing_api_cmd_serialize_keys.c \
-  testing_api_helpers.c \
+  testing_api_cmd_signal.c \
+  testing_api_cmd_sleep.c \
+  testing_api_cmd_status.c \
+  testing_api_cmd_track.c \
+  testing_api_cmd_wire.c \
+  testing_api_cmd_withdraw.c \
+  testing_api_helpers_auditor.c \
+  testing_api_helpers_bank.c \
+  testing_api_helpers_exchange.c \
   testing_api_loop.c \
   testing_api_traits.c \
+  testing_api_trait_amount.c \
   testing_api_trait_blinding_key.c \
+  testing_api_trait_cmd.c \
   testing_api_trait_coin_priv.c \
   testing_api_trait_denom_pub.c \
   testing_api_trait_denom_sig.c \
   testing_api_trait_exchange_pub.c \
   testing_api_trait_exchange_sig.c \
+  testing_api_trait_fresh_coin.c \
   testing_api_trait_json.c \
+  testing_api_trait_key_peer.c \
+  testing_api_trait_number.c \
   testing_api_trait_process.c \
   testing_api_trait_reserve_pub.c \
   testing_api_trait_reserve_priv.c \
-  testing_api_trait_number.c \
-  testing_api_trait_fresh_coin.c \
   testing_api_trait_string.c \
-  testing_api_trait_key_peer.c \
-  testing_api_trait_wtid.c \
-  testing_api_trait_amount.c \
-  testing_api_trait_cmd.c \
-  testing_api_trait_time.c
+  testing_api_trait_time.c \
+  testing_api_trait_wtid.c
 libtalertesting_la_LIBADD = \
   libtalerexchange.la \
   $(top_builddir)/src/wire/libtalerwire.la \
@@ -125,30 +135,6 @@ libtalertesting_la_LIBADD = \
   -ljansson \
   $(XLIB)
 
-libtalerauditortesting_la_LDFLAGS = \
-  -version-info 0:0:0 \
-  -no-undefined
-libtalerauditortesting_la_SOURCES = \
-  testing_auditor_api_helpers.c \
-  testing_auditor_api_cmd_deposit_confirmation.c \
-  testing_auditor_api_cmd_exchanges.c \
-  testing_auditor_api_cmd_exec_auditor.c \
-  testing_auditor_api_cmd_exec_auditor_dbinit.c \
-  testing_auditor_api_cmd_exec_wire_auditor.c
-libtalerauditortesting_la_LIBADD = \
-  libtalerauditor.la \
-  libtalerexchange.la \
-  libtalertesting.la \
-  $(top_builddir)/src/wire/libtalerwire.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetcurl \
-  -lgnunetjson \
-  -lgnunetutil \
-  -ljansson \
-  $(XLIB)
-
-
 if HAVE_LIBCURL
 libtalerexchange_la_LIBADD += -lcurl
 else
@@ -158,15 +144,36 @@ endif
 endif
 
 check_PROGRAMS = \
-  test_exchange_api_keys_cherry_picking \
-  test_exchange_api_overlapping_keys_bug \
-  test_exchange_api \
   test_auditor_api_version \
-  test_auditor_api
+  test_auditor_api \
+  test_bank_api_with_fakebank \
+  test_bank_api_with_pybank \
+  test_exchange_api \
+  test_exchange_api_keys_cherry_picking \
+  test_exchange_api_overlapping_keys_bug
 
 if HAVE_TWISTER
   check_PROGRAMS += \
-    test_exchange_api_twisted
+    test_exchange_api_twisted \
+    test_bank_api_with_pybank_twisted \
+    test_bank_api_with_fakebank_twisted
+endif
+
+test_bank_api_with_pybank_SOURCES = \
+  test_bank_api.c
+test_bank_api_with_pybank_LDADD = \
+  libtalertesting.la \
+  libtalerexchange.la \
+  -lgnunetutil \
+  $(top_builddir)/src/bank-lib/libtalerbank.la
+
+test_bank_api_with_fakebank_SOURCES = \
+  test_bank_api.c
+test_bank_api_with_fakebank_LDADD = \
+  $(top_builddir)/src/lib/libtalertesting.la \
+  -ltalerexchange \
+  -lgnunetutil \
+  libtalerbank.la
 
 test_exchange_api_twisted_SOURCES = \
   test_exchange_api_twisted.c
@@ -175,7 +182,6 @@ test_exchange_api_twisted_LDADD = \
   libtalertesting.la \
   libtalerexchange.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -185,7 +191,35 @@ test_exchange_api_twisted_LDADD = \
   -lgnunetutil \
   -ljansson
 
-endif
+test_bank_api_with_fakebank_twisted_SOURCES = \
+  test_bank_api_twisted.c
+test_bank_api_with_fakebank_twisted_LDADD = \
+  $(top_builddir)/src/lib/libtalertesting.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  -ltalertwistertesting \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+test_bank_api_with_pybank_twisted_SOURCES = \
+  test_bank_api_twisted.c
+test_bank_api_with_pybank_twisted_LDADD = \
+  $(top_builddir)/src/lib/libtalertesting.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  -ltalertwistertesting \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
@@ -200,7 +234,6 @@ test_exchange_api_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
@@ -236,14 +269,12 @@ test_exchange_api_keys_cherry_picking_LDADD = \
 test_auditor_api_SOURCES = \
   test_auditor_api.c
 test_auditor_api_LDADD = \
-  libtalerauditortesting.la \
   libtalerauditor.la \
   libtalertesting.la \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
@@ -264,6 +295,8 @@ test_auditor_api_version_LDADD = \
 
 
 EXTRA_DIST = \
+  bank.conf \
+  bank_twisted.conf \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_exchange_api_home/.config/taler/account-2.json \
   test_exchange_api_keys_cherry_picking_home/.config/taler/x-taler-bank.json \
