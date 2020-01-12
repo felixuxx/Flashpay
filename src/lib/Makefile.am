@@ -196,7 +196,7 @@ test_bank_api_with_fakebank_LDADD = \
   $(top_builddir)/src/lib/libtalertesting.la \
   -ltalerexchange \
   -lgnunetutil \
-  libtalerbank.la
+  $(top_builddir)/src/bank-lib/libtalerbank.la
 
 test_bank_api_with_pybank_SOURCES = \
   test_bank_api.c
