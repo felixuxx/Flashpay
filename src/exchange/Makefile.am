@@ -15,6 +15,8 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   exchange.conf
 
+# Programs
+
 bin_PROGRAMS = \
   taler-exchange-aggregator \
   taler-exchange-httpd \
@@ -88,57 +90,24 @@ taler_exchange_httpd_SOURCES += \
   taler-exchange-httpd_test.c taler-exchange-httpd_test.h
 endif
 
+
+# Testcases
+
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+
 check_SCRIPTS = \
   test_taler_exchange_httpd.sh
-
 if HAVE_EXPENSIVE_TESTS
 check_SCRIPTS += \
   test_taler_exchange_httpd_afl.sh
 endif
 
-test_taler_exchange_aggregator_postgres_SOURCES = \
-  test_taler_exchange_aggregator.c
-test_taler_exchange_aggregator_postgres_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lmicrohttpd \
-  -lgnunetutil \
-  -lgnunetjson \
-  -ljansson \
-  -lpthread
-
-test_taler_exchange_wirewatch_postgres_SOURCES = \
-  test_taler_exchange_wirewatch.c
-test_taler_exchange_wirewatch_postgres_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lmicrohttpd \
-  -lgnunetutil \
-  -lgnunetjson \
-  -lgnunetpq \
-  -ljansson \
-  -lpthread
-
-check_PROGRAMS = \
-  test_taler_exchange_aggregator-postgres \
-  test_taler_exchange_wirewatch-postgres
-
-AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
-
 TESTS = \
-  $(check_SCRIPTS) \
-  $(check_PROGRAMS)
+  $(check_SCRIPTS)
 
+# Distribution
 
 EXTRA_DIST = \
-  test-taler-exchange-aggregator-postgres.conf \
-  test-taler-exchange-wirewatch-postgres.conf \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_taler_exchange_httpd.conf \
   exchange.conf \
