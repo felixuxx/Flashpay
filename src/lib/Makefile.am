@@ -161,7 +161,6 @@ check_PROGRAMS = \
   test_exchange_api_keys_cherry_picking \
   test_exchange_api_overlapping_keys_bug \
   test_exchange_api \
-  test_exchange_api_revocation \
   test_auditor_api_version \
   test_auditor_api
 
@@ -192,10 +191,6 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 TESTS = \
   $(check_PROGRAMS)
 
-# expected to fail for now: test incomplete, feature not implemented!
-#XFAIL_TESTS = \
-#  test_exchange_api_revocation
-
 test_exchange_api_SOURCES = \
   test_exchange_api.c
 test_exchange_api_LDADD = \
@@ -205,20 +200,6 @@ test_exchange_api_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalerbanktesting.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson
-
-test_exchange_api_revocation_SOURCES = \
-  test_exchange_api_revocation.c
-test_exchange_api_revocation_LDADD = \
-  libtalertesting.la \
-  libtalerexchange.la \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
