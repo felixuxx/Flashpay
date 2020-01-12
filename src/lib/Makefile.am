@@ -1,5 +1,8 @@
 # This Makefile.am is in the public domain
-AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/bank-lib
+AM_CPPFLAGS = \
+ -I$(top_srcdir)/src/include \
+ $(LIBGCRYPT_CFLAGS) \
+ $(POSTGRESQL_CPPFLAGS)
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0

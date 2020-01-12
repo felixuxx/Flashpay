@@ -1,2 +1,8 @@
 test_auditor_api_version
 test_exchange_api_revocation
+test_bank_api_with_fakebank
+test_bank_api_with_fakebank_twisted
+test_bank_api_with_pybank
+test_bank_api_with_pybank_twisted
+test_taler_exchange_aggregator-postgres
+test_taler_exchange_wirewatch-postgres
