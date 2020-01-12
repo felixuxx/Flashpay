@@ -28,7 +28,6 @@
 #include "taler_json_lib.h"
 #include "taler_wire_lib.h"
 #include "taler_signatures.h"
-#include "taler_wire_plugin.h"
 #include "exchange_api_handle.h"
 #include "exchange_api_curl_defaults.h"
 

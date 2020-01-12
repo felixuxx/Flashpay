@@ -60,11 +60,6 @@ struct BankCheckState
   const char *credit_account;
 
   /**
-   * Wire transfer subject (set by fakebank-lib).
-   */
-  char *subject;
-
-  /**
    * Binary form of the wire transfer subject.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
@@ -155,12 +150,12 @@ check_bank_transfer_run (void *cls,
   }
 
   if (GNUNET_OK !=
-      TALER_FAKEBANK_check (is->fakebank,
-                            &amount,
-                            debit_account,
-                            credit_account,
-                            exchange_base_url,
-                            &bcs->subject))
+      TALER_FAKEBANK_check_debit (is->fakebank,
+                                  &amount,
+                                  debit_account,
+                                  credit_account,
+                                  exchange_base_url,
+                                  &bcs->wtid))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -183,7 +178,6 @@ check_bank_transfer_cleanup
 {
   struct BankCheckState *bcs = cls;
 
-  GNUNET_free_non_null (bcs->subject);
   GNUNET_free (bcs);
 }
 
@@ -204,28 +198,17 @@ check_bank_transfer_traits (void *cls,
                             unsigned int index)
 {
   struct BankCheckState *bcs = cls;
-  struct TALER_WireTransferIdentifierRawP *wtid_ptr;
+  struct TALER_WireTransferIdentifierRawP *wtid_ptr = &bcs->wtid;
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_wtid (0, wtid_ptr),
+    TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
+    TALER_TESTING_trait_end ()
+  };
 
-  if (GNUNET_OK != GNUNET_STRINGS_string_to_data
-        (bcs->subject,
-        strlen (bcs->subject),
-        &bcs->wtid,
-        sizeof (struct TALER_WireTransferIdentifierRawP)))
-    wtid_ptr = NULL;
-  else
-    wtid_ptr = &bcs->wtid;
-  {
-    struct TALER_TESTING_Trait traits[] = {
-      TALER_TESTING_make_trait_wtid (0, wtid_ptr),
-      TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
-      TALER_TESTING_trait_end ()
-    };
-
-    return TALER_TESTING_get_trait (traits,
-                                    ret,
-                                    trait,
-                                    index);
-  }
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
 }
 
 
@@ -335,7 +318,6 @@ check_bank_empty_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_empty (const char *label)
 {
-
   struct TALER_TESTING_Command cmd = {
     .label = label,
     .run = &check_bank_empty_run,
@@ -368,14 +350,15 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref
 
   bcs = GNUNET_new (struct BankCheckState);
   bcs->deposit_reference = deposit_reference;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .cls = bcs,
+      .run = &check_bank_transfer_run,
+      .cleanup = &check_bank_transfer_cleanup,
+      .traits = &check_bank_transfer_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .cls = bcs,
-    .run = &check_bank_transfer_run,
-    .cleanup = &check_bank_transfer_cleanup,
-    .traits = &check_bank_transfer_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

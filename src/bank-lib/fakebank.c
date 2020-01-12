@@ -129,7 +129,8 @@ struct Transaction
   uint64_t row_id;
 
   /**
-   * Has this transaction been subjected to #TALER_FAKEBANK_check()
+   * Has this transaction been subjected to #TALER_FAKEBANK_check_credit()
+   * or #TALER_FAKEBANK_check_debit()
    * and should thus no longer be counted in
    * #TALER_FAKEBANK_check_empty()?
    */
