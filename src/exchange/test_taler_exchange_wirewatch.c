@@ -130,7 +130,7 @@ struct Command
       /**
        * Subject of the transfer, set by the command.
        */
-      char *subject;
+      struct TALER_WireTransferIdentifierRawP wtid;
 
     } expect_transfer;
 
@@ -387,8 +387,6 @@ shutdown_action (void *cls)
     case OPCODE_WAIT:
       break;
     case OPCODE_EXPECT_TRANSFER:
-      GNUNET_free_non_null (cmd->details.expect_transfer.subject);
-      cmd->details.expect_transfer.subject = NULL;
       break;
     case OPCODE_EXPECT_TRANSFERS_EMPTY:
       break;
@@ -562,12 +560,14 @@ interpreter (void *cls)
         return;
       }
       if (GNUNET_OK !=
-          TALER_FAKEBANK_check (fb,
-                                &want_amount,
-                                cmd->details.expect_transfer.debit_account,
-                                cmd->details.expect_transfer.credit_account,
-                                cmd->details.expect_transfer.exchange_base_url,
-                                &cmd->details.expect_transfer.subject))
+          TALER_FAKEBANK_check_debit (fb,
+                                      &want_amount,
+                                      cmd->details.expect_transfer.debit_account,
+                                      cmd->details.expect_transfer.
+                                      credit_account,
+                                      cmd->details.expect_transfer.
+                                      exchange_base_url,
+                                      &cmd->details.expect_transfer.wtid))
       {
         fail (cmd);
         return;
