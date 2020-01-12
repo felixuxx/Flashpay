@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017, 2018 Taler Systems SA
+  (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -120,7 +120,7 @@ struct Command
       /**
        * Subject of the transfer, set by the command.
        */
-      char *subject;
+      struct TALER_WireTransferIdentifierRawP wtid;
 
     } expect_transaction;
 
@@ -590,13 +590,15 @@ interpreter (void *cls)
           return;
         }
         if (GNUNET_OK !=
-            TALER_FAKEBANK_check (fb,
-                                  &want_amount,
-                                  cmd->details.expect_transaction.debit_account,
-                                  cmd->details.expect_transaction.credit_account,
-                                  cmd->details.expect_transaction.
-                                  exchange_base_url,
-                                  &cmd->details.expect_transaction.subject))
+            TALER_FAKEBANK_check_debit (fb,
+                                        &want_amount,
+                                        cmd->details.expect_transaction.
+                                        debit_account,
+                                        cmd->details.expect_transaction.
+                                        credit_account,
+                                        cmd->details.expect_transaction.
+                                        exchange_base_url,
+                                        &cmd->details.expect_transaction.wtid))
         {
           fail (cmd);
           return;
