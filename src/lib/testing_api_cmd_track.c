@@ -624,8 +624,7 @@ track_transfer_cb
     if (NULL != tts->total_amount_reference)
     {
       const struct TALER_TESTING_Command *total_amount_cmd;
-      const char *total_amount_from_reference_str;
-      struct TALER_Amount total_amount_from_reference;
+      const struct TALER_Amount *total_amount_from_reference;
 
       if (NULL == (total_amount_cmd
                      = TALER_TESTING_interpreter_lookup_command
@@ -636,20 +635,18 @@ track_transfer_cb
         return;
       }
 
-      if (GNUNET_OK != TALER_TESTING_get_trait_amount
-            (total_amount_cmd, 0, &total_amount_from_reference_str))
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_amount_obj (total_amount_cmd,
+                                              0,
+                                              &total_amount_from_reference))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
 
-      GNUNET_assert (GNUNET_OK == TALER_string_to_amount
-                       (total_amount_from_reference_str,
-                       &total_amount_from_reference));
-
       if (0 != TALER_amount_cmp (total_amount,
-                                 &total_amount_from_reference))
+                                 total_amount_from_reference))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Amount missmath to command %s\n",

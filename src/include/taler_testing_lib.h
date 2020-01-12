@@ -2055,36 +2055,7 @@ TALER_TESTING_make_trait_wtid (unsigned int index,
 
 
 /**
- * Offer amount in a trait.
- *
- * @param index which amount is to be offered,
- *        in case multiple are offered.
- * @param amount the amount to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_amount (unsigned int index,
-                                 const char *amount);
-
-
-/**
- * Obtain an amount from @a cmd.
- *
- * @param cmd command to extract the amount from.
- * @param index which amount is to be picked, in case
- *        multiple are offered.
- * @param amount[out] where to write the wire details.
- *
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_amount (const struct TALER_TESTING_Command *cmd,
-                                unsigned int index,
-                                const char **amount);
-
-
-/**
- * Offer url in a trait.
+ * Offer HTTP url in a trait.
  *
  * @param index which url is to be picked,
  *        in case multiple are offered.
@@ -2097,7 +2068,7 @@ TALER_TESTING_make_trait_url (unsigned int index,
 
 
 /**
- * Obtain a url from @a cmd.
+ * Obtain a HTTP url from @a cmd.
  *
  * @param cmd command to extract the url from.
  * @param index which url is to be picked, in case
@@ -2109,6 +2080,34 @@ int
 TALER_TESTING_get_trait_url (const struct TALER_TESTING_Command *cmd,
                              unsigned int index,
                              const char **url);
+
+
+/**
+ * Offer PAYTO url in a trait.
+ *
+ * @param index which url is to be picked,
+ *        in case multiple are offered.
+ * @param url the url to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_payto (unsigned int index,
+                                const char *url);
+
+
+/**
+ * Obtain a PAYTO url from @a cmd.
+ *
+ * @param cmd command to extract the url from.
+ * @param index which url is to be picked, in case
+ *        multiple are offered.
+ * @param url[out] where to write the url.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_payto (const struct TALER_TESTING_Command *cmd,
+                               unsigned int index,
+                               const char **url);
 
 
 /**
@@ -2167,37 +2166,6 @@ TALER_TESTING_get_trait_amount_obj (const struct TALER_TESTING_Command *cmd,
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_amount_obj (unsigned int index,
                                      const struct TALER_Amount *amount);
-
-
-/**
- * Offer a "reject" CMD reference.
- *
- * @param index which reference is to be offered,
- *        in case multiple are offered.
- * @param rejected_reference the reference to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_rejected (unsigned int index,
-                                   const char *rejected);
-
-
-/**
- * Obtain the reference to a "reject" CMD.  Usually offered
- * by _rejected_ bank transfers.
- *
- * @param cmd command to extract the reference from.
- * @param index which reference is to be picked, in case
- *        multiple are offered.
- * @param rejected_reference[out] where to write the reference.
- *
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_rejected (const struct TALER_TESTING_Command *cmd,
-                                  unsigned int index,
-                                  const char **rejected_reference);
 
 
 /**

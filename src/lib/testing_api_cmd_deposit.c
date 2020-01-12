@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_cmd_deposit.c
  * @brief command for testing /deposit.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -41,7 +39,7 @@ struct DepositState
   /**
    * Amount to deposit.
    */
-  const char *amount;
+  struct TALER_Amount amount;
 
   /**
    * Reference to any command that is able to provide a coin.
@@ -243,7 +241,6 @@ deposit_run (void *cls,
 {
   struct DepositState *ds = cls;
   const struct TALER_TESTING_Command *coin_cmd;
-  struct TALER_TESTING_Command *this_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
@@ -253,11 +250,8 @@ deposit_run (void *cls,
   struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
-  struct TALER_Amount amount;
 
   ds->is = is;
-  this_cmd = &is->commands[is->ip];
-
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command
                (is,
@@ -287,16 +281,6 @@ deposit_run (void *cls,
                  == TALER_TESTING_get_trait_denom_sig (coin_cmd,
                                                        ds->coin_index,
                                                        &denom_pub_sig));
-  if (GNUNET_OK !=
-      TALER_string_to_amount (ds->amount,
-                              &amount))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at '%u/%s'\n",
-                ds->amount, is->ip, this_cmd->label);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_hash (ds->contract_terms,
@@ -345,9 +329,10 @@ deposit_run (void *cls,
     dr.timestamp = GNUNET_TIME_absolute_hton (ds->timestamp);
     dr.refund_deadline = GNUNET_TIME_absolute_hton
                            (ds->refund_deadline);
-    TALER_amount_hton (&dr.amount_with_fee, &amount);
-    TALER_amount_hton
-      (&dr.deposit_fee, &denom_pub->fee_deposit);
+    TALER_amount_hton (&dr.amount_with_fee,
+                       &ds->amount);
+    TALER_amount_hton (&dr.deposit_fee,
+                       &denom_pub->fee_deposit);
     dr.merchant = merchant_pub;
     dr.coin_pub = coin_pub;
     GNUNET_assert (GNUNET_OK == GNUNET_CRYPTO_eddsa_sign
@@ -355,21 +340,20 @@ deposit_run (void *cls,
                      &dr.purpose,
                      &coin_sig.eddsa_signature));
   }
-  ds->dh = TALER_EXCHANGE_deposit
-             (is->exchange,
-             &amount,
-             wire_deadline,
-             ds->wire_details,
-             &h_contract_terms,
-             &coin_pub,
-             denom_pub_sig,
-             &denom_pub->key,
-             ds->timestamp,
-             &merchant_pub,
-             ds->refund_deadline,
-             &coin_sig,
-             &deposit_cb,
-             ds);
+  ds->dh = TALER_EXCHANGE_deposit (is->exchange,
+                                   &ds->amount,
+                                   wire_deadline,
+                                   ds->wire_details,
+                                   &h_contract_terms,
+                                   &coin_pub,
+                                   denom_pub_sig,
+                                   &denom_pub->key,
+                                   ds->timestamp,
+                                   &merchant_pub,
+                                   ds->refund_deadline,
+                                   &coin_sig,
+                                   &deposit_cb,
+                                   ds);
 
   if (NULL == ds->dh)
   {
@@ -472,8 +456,8 @@ deposit_traits (void *cls,
                                              ds->contract_terms),
     TALER_TESTING_make_trait_peer_key (0,
                                        &ds->merchant_priv.eddsa_priv),
-    TALER_TESTING_make_trait_amount (0,
-                                     ds->amount),
+    TALER_TESTING_make_trait_amount_obj (0,
+                                         &ds->amount),
     TALER_TESTING_trait_end ()
   };
 
@@ -551,18 +535,21 @@ TALER_TESTING_cmd_deposit
                      "refund_deadline",
                      GNUNET_JSON_from_time_abs (ds->refund_deadline));
   }
-  ds->amount = amount;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (amount,
+                                         &ds->amount));
   ds->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ds,
+      .label = label,
+      .run = &deposit_run,
+      .cleanup = &deposit_cleanup,
+      .traits = &deposit_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ds,
-    .label = label,
-    .run = &deposit_run,
-    .cleanup = &deposit_cleanup,
-    .traits = &deposit_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_trait_amount.c
  * @brief offer amounts as traits.

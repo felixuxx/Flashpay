@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -16,11 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file exchange-lib/testing_api_trait_string.c
+ * @file lib/testing_api_trait_string.c
  * @brief offers strings traits.
  * @author Marcello Stanisci
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_json_lib.h"
@@ -29,12 +29,31 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
+/**
+ * FIXME: use json-t instead?
+ */
 #define TALER_TESTING_TRAIT_CONTRACT_TERMS "contract-terms"
+
+/**
+ * Some string. Avoid, use something more precise!
+ */
 #define TALER_TESTING_TRAIT_STRING "string"
-#define TALER_TESTING_TRAIT_AMOUNT "amount"
+
+/**
+ * An HTTP-URL.
+ */
 #define TALER_TESTING_TRAIT_URL "url"
+
+/**
+ * A PAYTO-URL.
+ */
+#define TALER_TESTING_TRAIT_PAYTO "payto"
+
+/**
+ * String identifying an order.
+ */
 #define TALER_TESTING_TRAIT_ORDER_ID "order-id"
-#define TALER_TESTING_TRAIT_REJECTED "rejected"
+
 
 /**
  * Obtain contract terms from @a cmd.
@@ -125,53 +144,7 @@ TALER_TESTING_make_trait_string
 
 
 /**
- * Obtain an amount from @a cmd.
- *
- * @param cmd command to extract the amount from.
- * @param index which amount is to be picked, in case
- *        multiple are offered.
- * @param amount[out] where to write the wire details.
- *
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_amount
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const char **amount)
-{
-  return cmd->traits (cmd->cls,
-                      (const void **) amount,
-                      TALER_TESTING_TRAIT_AMOUNT,
-                      index);
-}
-
-
-/**
- * Offer amount in a trait.
- *
- * @param index which amount is to be offered,
- *        in case multiple are offered.
- * @param amount the amount to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_amount
-  (unsigned int index,
-  const char *amount)
-{
-  struct TALER_TESTING_Trait ret = {
-    .index = index,
-    .trait_name = TALER_TESTING_TRAIT_AMOUNT,
-    .ptr = (const void *) amount
-  };
-  return ret;
-}
-
-
-/**
- * Obtain a url from @a cmd.
+ * Obtain a HTTP url from @a cmd.
  *
  * @param cmd command to extract the url from.
  * @param index which url is to be picked, in case
@@ -194,7 +167,7 @@ TALER_TESTING_get_trait_url
 
 
 /**
- * Offer url in a trait.
+ * Offer HTTP url in a trait.
  *
  * @param index which url is to be picked,
  *        in case multiple are offered.
@@ -212,6 +185,11 @@ TALER_TESTING_make_trait_url
     .trait_name = TALER_TESTING_TRAIT_URL,
     .ptr = (const void *) url
   };
+
+  GNUNET_assert (0 != strncasecmp (url,
+                                   "payto://",
+                                   strlen ("payto://")));
+
   return ret;
 }
 
@@ -263,48 +241,49 @@ TALER_TESTING_make_trait_order_id
 
 
 /**
- * Obtain the reference to a "reject" CMD.  Usually offered
- * by _rejected_ bank transfers.
+ * Obtain a PAYTO-url from @a cmd.
  *
- * @param cmd command to extract the reference from.
- * @param index which reference is to be picked, in case
+ * @param cmd command to extract the url from.
+ * @param index which url is to be picked, in case
  *        multiple are offered.
- * @param rejected_reference[out] where to write the reference.
- *
+ * @param url[out] where to write the url.
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_rejected
+TALER_TESTING_get_trait_payto
   (const struct TALER_TESTING_Command *cmd,
   unsigned int index,
-  const char **rejected_reference)
+  const char **url)
 {
   return cmd->traits (cmd->cls,
-                      (const void **) rejected_reference,
-                      TALER_TESTING_TRAIT_REJECTED,
+                      (const void **) url,
+                      TALER_TESTING_TRAIT_PAYTO,
                       index);
 }
 
 
 /**
- * Offer a "reject" CMD reference.
+ * Offer a "payto" URL reference.
  *
  * @param index which reference is to be offered,
  *        in case multiple are offered.
- * @param rejected_reference the reference to offer.
- *
+ * @param payto the payto URL
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_rejected
+TALER_TESTING_make_trait_payto
   (unsigned int index,
-  const char *rejected)
+  const char *payto)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_REJECTED,
-    .ptr = (const void *) rejected
+    .trait_name = TALER_TESTING_TRAIT_PAYTO,
+    .ptr = (const void *) payto
   };
+
+  GNUNET_assert (0 == strncasecmp (payto,
+                                   "payto://",
+                                   strlen ("payto://")));
   return ret;
 }
 
