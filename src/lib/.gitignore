@@ -1,5 +1,4 @@
 test_auditor_api_version
-test_exchange_api_revocation
 test_bank_api_with_fakebank
 test_bank_api_with_fakebank_twisted
 test_bank_api_with_pybank
