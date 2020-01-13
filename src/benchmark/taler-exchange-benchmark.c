@@ -60,8 +60,8 @@ enum BenchmarkError
 #define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
   TALER_TESTING_cmd_admin_add_incoming_retry \
     (TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                           exchange_bank_account.details.                                      \
-                                           x_taler_bank.account_base_url, \
+                                           exchange_bank_account.details. \
+                                           x_taler_bank.account_base_url,    \
                                            NULL, \
                                            user_payto_url))
 
@@ -321,9 +321,7 @@ run (void *cls,
             ("deposit",
             withdraw_label,
             0, /* Index of the one withdrawn coin in the traits.  */
-            TALER_TESTING_make_wire_details
-              (42 /* FIXME: ugly! */,
-              exchange_bank_account.details.x_taler_bank.hostname),
+            exchange_payto_url,
             order_enc,
             GNUNET_TIME_UNIT_ZERO,
             AMOUNT_1,
