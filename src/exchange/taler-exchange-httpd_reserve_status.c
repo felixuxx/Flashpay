@@ -161,7 +161,7 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
                                       MHD_HTTP_NOT_FOUND,
                                       "{s:s, s:s, s:I}",
                                       "error", "Reserve not found",
-                                      "parameter", "withdraw_pub",
+                                      "parameter", "reserve_pub",
                                       "code",
                                       (json_int_t)
                                       TALER_EC_RESERVE_STATUS_UNKNOWN);
