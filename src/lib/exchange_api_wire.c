@@ -26,7 +26,6 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
-#include "taler_wire_lib.h"
 #include "taler_signatures.h"
 #include "exchange_api_handle.h"
 #include "exchange_api_curl_defaults.h"

@@ -22,7 +22,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler_json_lib.h"
-#include "taler_wire_lib.h"
 
 
 /**

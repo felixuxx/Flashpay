@@ -32,7 +32,6 @@
 #include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
 #include "taler_bank_service.h"
-#include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
 /**

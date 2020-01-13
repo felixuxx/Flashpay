@@ -26,7 +26,6 @@
 #include "taler-exchange-httpd_wire.h"
 #include "taler_exchangedb_lib.h"
 #include "taler_json_lib.h"
-#include "taler_wire_lib.h"
 
 
 /**

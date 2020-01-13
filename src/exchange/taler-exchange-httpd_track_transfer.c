@@ -29,7 +29,6 @@
 #include "taler-exchange-httpd_responses.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler_wire_lib.h"
 
 
 /**

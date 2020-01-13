@@ -23,7 +23,6 @@
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_crypto_lib.h"
 #include "taler_util.h"
-#include "taler_wire_lib.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_lib.h"
 #include "taler_signatures.h"

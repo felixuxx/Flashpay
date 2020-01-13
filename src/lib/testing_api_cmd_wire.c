@@ -16,18 +16,15 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_cmd_wire.c
  * @brief command for testing /wire.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"
-#include "taler_wire_lib.h"
 #include "taler_testing_lib.h"
 
 
