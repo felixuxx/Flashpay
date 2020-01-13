@@ -27,7 +27,7 @@
 
 
 /**
- * @brief An admin/add/incoming Handle
+ * @brief An admin/add-incoming Handle
  */
 struct TALER_BANK_AdminAddIncomingHandle
 {
@@ -62,7 +62,7 @@ struct TALER_BANK_AdminAddIncomingHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /admin/add/incoming request.
+ * HTTP /admin/add-incoming request.
  *
  * @param cls the `struct TALER_BANK_AdminAddIncomingHandle`
  * @param response_code HTTP response code, 0 on error
@@ -166,11 +166,11 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param account_base_url URL of the bank (used to execute this request)
+ * @param account_base_url URL of the bank (money flows into this account)
  * @param auth authentication data to send to the bank
  * @param reserve_pub wire transfer subject for the transfer
  * @param amount amount that was deposited
- * @param credit_account account to deposit into (payto)
+ * @param debit_account account to deposit from (payto URI, but used as 'payfrom')
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -184,7 +184,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                const struct
                                TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
-                               const char *credit_account,
+                               const char *debit_account,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls)
 {
@@ -193,9 +193,12 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   CURL *eh;
 
   admin_obj = json_pack ("{s:o, s:o, s:s}",
-                         "subject", GNUNET_JSON_from_data_auto (reserve_pub),
-                         "amount", TALER_JSON_from_amount (amount),
-                         "credit_account", credit_account);
+                         "reserve_pub",
+                         GNUNET_JSON_from_data_auto (reserve_pub),
+                         "amount",
+                         TALER_JSON_from_amount (amount),
+                         "debit_account",
+                         debit_account);
   if (NULL == admin_obj)
   {
     GNUNET_break (0);
@@ -205,7 +208,10 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
   aai->request_url = TALER_BANK_path_to_url_ (account_base_url,
-                                              "/admin/add/incoming");
+                                              "/admin/add-incoming");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting administrative transaction at `%s'\n",
+              aai->request_url);
   aai->post_ctx.headers = curl_slist_append
                             (aai->post_ctx.headers,
                             "Content-Type: application/json");

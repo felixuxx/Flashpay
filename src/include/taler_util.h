@@ -391,4 +391,16 @@ char *
 TALER_payto_get_method (const char *payto_url);
 
 
+/**
+ * Create an x-taler-bank payto:// URL from a @a bank_url
+ * and an @a account_name.
+ *
+ * @param bank_url the bank URL
+ * @param account_name the account name
+ * @return payto:// URL
+ */
+char *
+TALER_payto_xtalerbank_make (const char *bank_url,
+                             const char *account_name);
+
 #endif

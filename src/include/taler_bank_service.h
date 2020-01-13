@@ -199,11 +199,11 @@ typedef void
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param account_base_url URL of the account (used to execute this request)
- * @param auth authentication data to use
+ * @param account_base_url URL of the bank (money flows into this account)
+ * @param auth authentication data to send to the bank
  * @param reserve_pub wire transfer subject for the transfer
  * @param amount amount that was deposited
- * @param credit_account account to deposit into
+ * @param debit_account account to deposit from (payto URI, but used as 'payfrom')
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -350,7 +350,13 @@ struct TALER_BANK_CreditDetails
    * payto://-URL of the source account that
    * send the funds.
    */
-  const char *account_url;
+  const char *debit_account_url;
+
+  /**
+   * payto://-URL of the target account that
+   * received the funds.
+   */
+  const char *credit_account_url;
 };
 
 
@@ -455,7 +461,14 @@ struct TALER_BANK_DebitDetails
    * payto://-URL of the source account that
    * send the funds.
    */
-  const char *account_url;
+  const char *debit_account_url;
+
+  /**
+   * payto://-URL of the target account that
+   * received the funds.
+   */
+  const char *credit_account_url;
+
 };
 
 

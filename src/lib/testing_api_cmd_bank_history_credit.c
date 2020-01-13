@@ -170,7 +170,7 @@ print_expected (struct History *h,
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 TALER_B2S (&h[i].details.reserve_pub),
-                h[i].details.account_url);
+                h[i].details.debit_account_url);
   }
 }
 
@@ -415,18 +415,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
                     credit_account,
                     hs->account_url);
 
-    /**
-     * Discard transactions where the audited account played
-     * _both_ the credit and the debit roles, but _only if_
-     * the audit goes on both directions..  This needs more
-     * explaination!
-     */if (0 == strcasecmp (hs->account_url,
-                         credit_account))
-    {
-      GNUNET_break (0);
-      continue;
-    }
-
     bank_hostname = strchr (hs->account_url, ':');
     GNUNET_assert (NULL != bank_hostname);
     bank_hostname += 3;
@@ -435,15 +423,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
      * information.  */
 
     /* Asked for credit, and account got the credit.  */
-    if (0 == strcasecmp (hs->account_url,
-                         credit_account))
-    {
-      h[total].url = GNUNET_strdup (debit_account);
-      h[total].details.account_url = h[total].url;
-    }
-
-    /* This block _completes_ the information of the current item,
-     * with amount / subject / exchange URL.  */
     if (0 == strcasecmp (hs->account_url,
                          credit_account))
     {
@@ -461,10 +440,12 @@ build_history (struct TALER_TESTING_Interpreter *is,
                      TALER_TESTING_get_trait_url
                        (pos, 1,
                        &account_url));
+      h[total].url = GNUNET_strdup (debit_account);
+      h[total].details.debit_account_url = h[total].url;
       h[total].details.amount = *amount;
       h[total].row_id = *row_id;
       h[total].details.reserve_pub = *reserve_pub;
-      h[total].details.account_url = account_url;
+      h[total].details.credit_account_url = account_url;
       TALER_LOG_INFO ("+1-bit of my history\n");
       total++;
     }
@@ -530,8 +511,8 @@ check_result (struct TALER_TESTING_Interpreter *is,
                             &details->reserve_pub)) ||
        (0 != TALER_amount_cmp (&h[off].details.amount,
                                &details->amount)) ||
-       (0 != strcasecmp (h[off].details.account_url,
-                         details->account_url)) )
+       (0 != strcasecmp (h[off].details.debit_account_url,
+                         details->debit_account_url)) )
   {
     GNUNET_break (0);
     print_expected (h,
@@ -582,20 +563,12 @@ history_cb (void *cls,
   struct HistoryState *hs = is->commands[is->ip].cls;
 
   (void) row_id;
-  if (MHD_HTTP_OK != http_status)
-  {
-    hs->hh = NULL;
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unwanted response code from /history: %u\n",
-                http_status);
-    TALER_TESTING_interpreter_fail (is);
-    return GNUNET_SYSERR;
-  }
   if (NULL == details)
   {
     hs->hh = NULL;
     if ( (hs->results_obtained != compute_result_count (is)) ||
-         (GNUNET_YES == hs->failed) )
+         (GNUNET_YES == hs->failed) ||
+         (MHD_HTTP_NO_CONTENT != http_status) )
     {
       uint64_t total;
       struct History *h;
@@ -622,6 +595,15 @@ history_cb (void *cls,
     return GNUNET_OK;
   }
 
+  if (MHD_HTTP_OK != http_status)
+  {
+    hs->hh = NULL;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unwanted response code from /history: %u\n",
+                http_status);
+    TALER_TESTING_interpreter_fail (is);
+    return GNUNET_SYSERR;
+  }
   /* check current element */
   if (GNUNET_OK != check_result (is,
                                  hs->results_obtained,

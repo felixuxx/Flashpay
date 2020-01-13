@@ -349,10 +349,10 @@ TALER_TESTING_prepare_bank (const char *config_filename,
                    "%s%s",
                    bc->bank_url,
                    EXCHANGE_ACCOUNT_NAME);
-  bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url,
-                                                            EXCHANGE_ACCOUNT_NAME);
-  bc->user42_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "42");
-  bc->user43_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "43");
+  bc->exchange_payto = TALER_payto_xtalerbank_make (bc->bank_url,
+                                                    EXCHANGE_ACCOUNT_NAME);
+  bc->user42_payto = TALER_payto_xtalerbank_make (bc->bank_url, "42");
+  bc->user43_payto = TALER_payto_xtalerbank_make (bc->bank_url, "43");
   return GNUNET_OK;
 }
 
@@ -424,43 +424,14 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   }
   bc->bank_url = fakebank_url;
   GNUNET_asprintf (&bc->exchange_account_url,
-                   "%s%s",
+                   "%s/%s",
                    bc->bank_url,
                    EXCHANGE_ACCOUNT_NAME);
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
-  bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "2");
-  bc->user42_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "42");
-  bc->user43_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "43");
+  bc->exchange_payto = TALER_payto_xtalerbank_make (bc->bank_url, "2");
+  bc->user42_payto = TALER_payto_xtalerbank_make (bc->bank_url, "42");
+  bc->user43_payto = TALER_payto_xtalerbank_make (bc->bank_url, "43");
   return GNUNET_OK;
-}
-
-
-/**
- * Create an x-taler-bank payto:// URL from a @a bank_url
- * and an @a account_name.
- *
- * @param bank_url the bank URL
- * @param account_name the account name
- * @return payto:// URL
- */
-char *
-TALER_TESTING_make_xtalerbank_payto (const char *bank_url,
-                                     const char *account_name)
-{
-  char *payto;
-  int ends_slash;
-
-  if (0 < strlen (bank_url))
-    ends_slash = '/' == bank_url[strlen (bank_url) - 1];
-  else
-    ends_slash = 0;
-  GNUNET_asprintf (&payto,
-                   (ends_slash)
-                   ? "payto://x-taler-bank/%s%s"
-                   : "payto://x-taler-bank/%s/%s",
-                   bank_url,
-                   account_name);
-  return payto;
 }
 
 

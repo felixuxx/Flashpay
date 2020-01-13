@@ -440,7 +440,7 @@ history_cb (void *cls,
                                       &details->reserve_pub,
                                       &details->amount,
                                       details->execution_date,
-                                      details->account_url,
+                                      details->debit_account_url,
                                       wa_pos->section_name,
                                       serial_id);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)

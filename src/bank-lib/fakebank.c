@@ -169,6 +169,11 @@ struct TALER_FAKEBANK_Handle
   uint64_t serial_counter;
 
   /**
+   * BaseURL of the fakebank.
+   */
+  char *my_baseurl;
+
+  /**
    * Our port number.
    */
   uint16_t port;
@@ -188,7 +193,30 @@ struct TALER_FAKEBANK_Handle
 
 
 /**
+ * Return account string from an x-taler-bank payto:// URL.
+ *
+ * @param  payto:// URL of method x-taler-bank
+ * @return account_name the account name
+ */
+char *
+get_xtalerbank_payto_account (const char *payto_url)
+{
+  const char *beg;
+
+  GNUNET_assert (0 == strncasecmp (payto_url,
+                                   "payto://x-taler-bank/",
+                                   strlen ("payto://x-taler-bank/")));
+  beg = strchr (&payto_url[strlen ("payto://x-taler-bank/")],
+                '/');
+  GNUNET_assert (NULL != beg);
+  return GNUNET_strdup (&beg[1]);
+}
+
+
+/**
  * Generate log messages for failed check operation.
+ *
+ * @param h handle to output transaction log for
  */
 static void
 check_log (struct TALER_FAKEBANK_Handle *h)
@@ -197,11 +225,11 @@ check_log (struct TALER_FAKEBANK_Handle *h)
   {
     if (GNUNET_YES == t->checked)
       continue;
-    fprintf (stderr,
-             "%llu -> %llu (%s)\n",
-             (unsigned long long) t->debit_account,
-             (unsigned long long) t->credit_account,
-             TALER_amount2s (&t->amount));
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "%s -> %s (%s)\n",
+                t->debit_account,
+                t->credit_account,
+                TALER_amount2s (&t->amount));
   }
 }
 
@@ -247,15 +275,15 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
       return GNUNET_OK;
     }
   }
-  fprintf (stderr,
-           "Did not find matching transaction!\nI have:\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Did not find matching transaction!\nI have:\n");
   check_log (h);
-  fprintf (stderr,
-           "I wanted:\n%s -> %s (%s) from %s\n",
-           want_debit,
-           want_credit,
-           TALER_amount2s (want_amount),
-           exchange_base_url);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "I wanted:\n%s -> %s (%s) from %s\n",
+              want_debit,
+              want_credit,
+              TALER_amount2s (want_amount),
+              exchange_base_url);
   return GNUNET_SYSERR;
 }
 
@@ -296,15 +324,15 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
       return GNUNET_OK;
     }
   }
-  fprintf (stderr,
-           "Did not find matching transaction!\nI have:\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Did not find matching transaction!\nI have:\n");
   check_log (h);
-  fprintf (stderr,
-           "I wanted:\n%llu -> %llu (%s) with subject %s\n",
-           (unsigned long long) want_debit,
-           (unsigned long long) want_credit,
-           TALER_amount2s (want_amount),
-           TALER_B2S (reserve_pub));
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "I wanted:\n%llu -> %llu (%s) with subject %s\n",
+              (unsigned long long) want_debit,
+              (unsigned long long) want_credit,
+              TALER_amount2s (want_amount),
+              TALER_B2S (reserve_pub));
   return GNUNET_SYSERR;
 }
 
@@ -419,8 +447,8 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
   }
   if (NULL == t)
     return GNUNET_OK;
-  fprintf (stderr,
-           "Expected empty transaction set, but I have:\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Expected empty transaction set, but I have:\n");
   check_log (h);
   return GNUNET_SYSERR;
 }
@@ -460,6 +488,7 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     MHD_stop_daemon (h->mhd_bank);
     h->mhd_bank = NULL;
   }
+  GNUNET_free (h->my_baseurl);
   GNUNET_free (h);
 }
 
@@ -498,6 +527,7 @@ handle_mhd_completion_callback (void *cls,
  *
  * @param h the fakebank handle
  * @param connection the connection
+ * @param account account into which to deposit the funds (credit)
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
  * @param con_cls closure for request (a `struct Buffer *`)
@@ -506,6 +536,7 @@ handle_mhd_completion_callback (void *cls,
 static int
 handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                            struct MHD_Connection *connection,
+                           const char *account,
                            const char *upload_data,
                            size_t *upload_data_size,
                            void **con_cls)
@@ -538,16 +569,16 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   }
   {
     const char *debit_account;
-    const char *credit_account;
     struct TALER_Amount amount;
     struct TALER_ReservePublicKeyP reserve_pub;
+    char *debit;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
       GNUNET_JSON_spec_string ("debit_account", &debit_account),
-      GNUNET_JSON_spec_string ("credit_account", &credit_account),
       TALER_JSON_spec_amount ("amount", &amount),
       GNUNET_JSON_spec_end ()
     };
+
     if (GNUNET_OK !=
         GNUNET_JSON_parse (json,
                            spec,
@@ -557,17 +588,19 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       return MHD_NO;
     }
+    debit = get_xtalerbank_payto_account (debit_account);
     row_id = TALER_FAKEBANK_make_admin_transfer (h,
-                                                 debit_account,
-                                                 credit_account,
+                                                 debit,
+                                                 account,
                                                  &amount,
                                                  &reserve_pub);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s\n",
-                debit_account,
-                credit_account,
+                debit,
+                account,
                 TALER_B2S (&reserve_pub),
                 TALER_amount2s (&amount));
+    GNUNET_free (debit);
   }
   json_decref (json);
 
@@ -882,15 +915,24 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                          account))
     {
       json_t *trans;
+      char *credit_payto;
+      char *debit_payto;
 
+      credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
+                                                  account);
+      debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
+                                                 pos->debit_account);
       trans = json_pack
-                ("{s:I, s:o, s:o, s:s, s:s, s:s}",
+                ("{s:I, s:o, s:o, s:s, s:s, s:o}",
                 "row_id", (json_int_t) pos->row_id,
                 "date", GNUNET_JSON_from_time_abs (pos->date),
                 "amount", TALER_JSON_from_amount (&pos->amount),
-                "credit_account", account,
-                "debit_account", pos->debit_account,
-                "wtid", pos->subject /* we "know" it is OK */);
+                "credit_account", credit_payto,
+                "debit_account", debit_payto,
+                "wtid", GNUNET_JSON_from_data_auto (
+                  &pos->subject.debit.wtid));
+      GNUNET_free (credit_payto);
+      GNUNET_free (debit_payto);
       GNUNET_assert (0 ==
                      json_array_append_new (history,
                                             trans));
@@ -904,14 +946,16 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     else
       pos = pos->next;
   }
-  return TALER_MHD_reply_json (connection,
-                               history,
-                               MHD_HTTP_OK);
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o}",
+                                    "incoming_transactions",
+                                    history);
 }
 
 
 /**
- * Handle incoming HTTP request for /history/incoming
+ * Handle incoming HTTP request for /history/outgoing
  *
  * @param h the fakebank handle
  * @param connection the connection
@@ -974,15 +1018,23 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                          account))
     {
       json_t *trans;
+      char *credit_payto;
+      char *debit_payto;
 
+      credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
+                                                  pos->credit_account);
+      debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
+                                                 account);
       trans = json_pack
                 ("{s:I, s:o, s:o, s:s, s:s, s:s}",
                 "row_id", (json_int_t) pos->row_id,
                 "date", GNUNET_JSON_from_time_abs (pos->date),
                 "amount", TALER_JSON_from_amount (&pos->amount),
-                "credit_account", pos->credit_account,
-                "debit_account", account,
+                "credit_account", credit_payto,
+                "debit_account", debit_payto,
                 "reserve_pub", pos->subject /* we "know" it is OK */);
+      GNUNET_free (credit_payto);
+      GNUNET_free (debit_payto);
       GNUNET_assert (0 ==
                      json_array_append_new (history,
                                             trans));
@@ -996,9 +1048,11 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     else
       pos = pos->next;
   }
-  return TALER_MHD_reply_json (connection,
-                               history,
-                               MHD_HTTP_OK);
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o}",
+                                    "outgoing_transactions",
+                                    history);
 }
 
 
@@ -1026,8 +1080,9 @@ serve (struct TALER_FAKEBANK_Handle *h,
        void **con_cls)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Fakebank, serving: %s\n",
-              url);
+              "Fakebank, serving URL `%s' for account `%s'\n",
+              url,
+              account);
   if ( (0 == strcmp (url,
                      "/")) &&
        (0 == strcasecmp (method,
@@ -1036,11 +1091,12 @@ serve (struct TALER_FAKEBANK_Handle *h,
                              connection,
                              con_cls);
   if ( (0 == strcmp (url,
-                     "/admin/add/incoming")) &&
+                     "/admin/add-incoming")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_POST)) )
     return handle_admin_add_incoming (h,
                                       connection,
+                                      account,
                                       upload_data,
                                       upload_data_size,
                                       con_cls);
@@ -1264,6 +1320,9 @@ TALER_FAKEBANK_start (uint16_t port)
 
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->port = port;
+  GNUNET_asprintf (&h->my_baseurl,
+                   "http://localhost:%u/",
+                   (unsigned int) port);
   h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
 #if EPOLL_SUPPORT
                                   | MHD_USE_EPOLL_INTERNAL_THREAD

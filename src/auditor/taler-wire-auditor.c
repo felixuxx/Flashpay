@@ -1083,7 +1083,7 @@ wire_out_cb (void *cls,
 
     payto_url = TALER_JSON_wire_to_payto (wire);
     if (0 != strcasecmp (payto_url,
-                         roi->details.account_url))
+                         roi->details.credit_account_url))
     {
       /* Destination bank account is wrong in actual wire transfer, so
          we should count the wire transfer as entirely spurious, and
@@ -1212,7 +1212,7 @@ check_rc_matches (void *cls,
   if ( (0 == GNUNET_memcmp (&ctx->roi->details.wtid,
                             &rc->wtid)) &&
        (0 == strcasecmp (rc->receiver_account,
-                         ctx->roi->details.account_url)) &&
+                         ctx->roi->details.credit_account_url)) &&
        (0 == TALER_amount_cmp (&rc->amount,
                                &ctx->roi->details.amount)) )
   {
@@ -1254,7 +1254,7 @@ complain_out_not_found (void *cls,
   };
 
   (void) wa; // FIXME: log which account is affected...
-  hash_rc (roi->details.account_url,
+  hash_rc (roi->details.credit_account_url,
            &roi->details.wtid,
            &rkey);
   GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
@@ -1382,7 +1382,7 @@ history_debit_cb (void *cls,
   roi->details.amount = details->amount;
   roi->details.execution_date = details->execution_date;
   roi->details.wtid = details->wtid;
-  roi->details.account_url = GNUNET_strdup (details->account_url);
+  roi->details.credit_account_url = GNUNET_strdup (details->credit_account_url);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (out_map,
                                          &roi->subject_hash,
@@ -1528,7 +1528,7 @@ reserve_in_cb (void *cls,
   rii->details.amount = *credit;
   rii->details.execution_date = execution_date;
   rii->details.reserve_pub = *reserve_pub;
-  rii->details.account_url = (const char *) &rii[1];
+  rii->details.debit_account_url = (const char *) &rii[1];
   memcpy (&rii[1],
           sender_account_details,
           slen);
@@ -1761,8 +1761,8 @@ history_credit_cb (void *cls,
     }
     goto cleanup;
   }
-  if (0 != strcasecmp (details->account_url,
-                       rii->details.account_url))
+  if (0 != strcasecmp (details->debit_account_url,
+                       rii->details.debit_account_url))
   {
     report (report_missattribution_in_inconsistencies,
             json_pack ("{s:o, s:I, s:I, s:o}",

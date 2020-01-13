@@ -17,8 +17,8 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/bank_api_history.c
- * @brief Implementation of the /history[-range]
+ * @file bank-lib/bank_api_debit.c
+ * @brief Implementation of the /history/outgoing
  *        requests of the bank's HTTP API.
  * @author Christian Grothoff
  * @author Marcello Stanisci
@@ -78,7 +78,7 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
   json_t *history_array;
 
   if (NULL == (history_array = json_object_get (history,
-                                                "data")))
+                                                "outgoing_transactions")))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -101,8 +101,10 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
                                &row_id),
       GNUNET_JSON_spec_fixed_auto ("wtid",
                                    &td.wtid),
-      GNUNET_JSON_spec_string ("counterpart",
-                               &td.account_url),
+      GNUNET_JSON_spec_string ("credit_account",
+                               &td.credit_account_url),
+      GNUNET_JSON_spec_string ("debit_account",
+                               &td.debit_account_url),
       GNUNET_JSON_spec_string ("exchange_base_url",
                                &td.exchange_base_url),
       GNUNET_JSON_spec_end ()
@@ -252,13 +254,16 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
     return NULL;
   }
 
-  if (UINT64_MAX == start_row)
+  if ( ( (UINT64_MAX == start_row) &&
+         (0 > num_results) ) ||
+       ( (0 == start_row) &&
+         (0 < num_results) ) )
     GNUNET_asprintf (&url,
-                     "/history&delta=%lld",
+                     "/history/outgoing?delta=%lld",
                      (long long) num_results);
   else
     GNUNET_asprintf (&url,
-                     "/history&delta=%lld&start=%llu",
+                     "/history/outgoing?delta=%lld&start=%llu",
                      (long long) num_results,
                      start_row);
   hh = GNUNET_new (struct TALER_BANK_DebitHistoryHandle);
@@ -268,6 +273,9 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
   hh->request_url = TALER_BANK_path_to_url_ (bank_base_url,
                                              url);
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting history at `%s'\n",
+              hh->request_url);
   eh = curl_easy_init ();
   if ( (GNUNET_OK !=
         TALER_BANK_setup_auth_ (eh,

@@ -74,19 +74,6 @@
 
 
 /**
- * Create an x-taler-bank payto:// URL from a @a bank_url
- * and an @a account_name.
- *
- * @param bank_url the bank URL
- * @param account_name the account name
- * @return payto:// URL
- */
-char *
-TALER_TESTING_make_xtalerbank_payto (const char *bank_url,
-                                     const char *account_name);
-
-
-/**
  * Allocate and return a piece of wire-details.  Combines
  * a @a payto -URL and adds some salt to create the JSON.
  *

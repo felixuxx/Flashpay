@@ -776,4 +776,33 @@ TALER_payto_get_method (const char *payto_url)
 }
 
 
+/**
+ * Create an x-taler-bank payto:// URL from a @a bank_url
+ * and an @a account_name.
+ *
+ * @param bank_url the bank URL
+ * @param account_name the account name
+ * @return payto:// URL
+ */
+char *
+TALER_payto_xtalerbank_make (const char *bank_url,
+                             const char *account_name)
+{
+  char *payto;
+  int ends_slash;
+
+  if (0 < strlen (bank_url))
+    ends_slash = '/' == bank_url[strlen (bank_url) - 1];
+  else
+    ends_slash = 0;
+  GNUNET_asprintf (&payto,
+                   (ends_slash)
+                   ? "payto://x-taler-bank/%s%s"
+                   : "payto://x-taler-bank/%s/%s",
+                   bank_url,
+                   account_name);
+  return payto;
+}
+
+
 /* end of util.c */
