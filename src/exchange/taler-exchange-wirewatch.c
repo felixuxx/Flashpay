@@ -213,7 +213,7 @@ shutdown_task (void *cls)
     GNUNET_CONTAINER_DLL_remove (wa_head,
                                  wa_tail,
                                  wa);
-    TALER_WIRE_account_free (&wa->account);
+    TALER_BANK_account_free (&wa->account);
     TALER_BANK_auth_free (&wa->auth);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);

@@ -41,7 +41,7 @@
 #include "taler_auditordb_plugin.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
-#include "taler_wire_lib.h"
+#include "taler_bank_service.h"
 #include "taler_signatures.h"
 
 
@@ -1459,7 +1459,7 @@ get_closing_fee (const char *receiver_account,
   struct TALER_Amount wire_fee;
   char *method;
 
-  method = TALER_WIRE_payto_get_method (receiver_account);
+  method = TALER_payto_get_method (receiver_account);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Method is `%s'\n",
               method);
@@ -2894,7 +2894,7 @@ check_wire_out_cb
   }
 
   /* Round down to amount supported by wire method */
-  GNUNET_break (TALER_WIRE_amount_round (&final_amount));
+  GNUNET_break (TALER_amount_round (&final_amount));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
   if (GNUNET_OK !=

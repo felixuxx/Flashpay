@@ -85,6 +85,83 @@ struct TALER_BANK_AuthenticationData
 };
 
 
+/**
+ * Different account types supported by payto://.
+ */
+enum TALER_PaytoAccountType
+{
+
+  /**
+   * Used to indicate an uninitialized struct.
+   */
+  TALER_PAC_NONE = 0,
+
+  /**
+   * Account type of a bank running the x-taler-bank protocol.
+   */
+  TALER_PAC_X_TALER_BANK,
+
+  /**
+   * Account identified by IBAN number.
+   */
+  TALER_PAC_IBAN
+};
+
+
+/**
+ * Information about an account extracted from a payto://-URL.
+ */
+struct TALER_Account
+{
+
+  /**
+   * How this the account represented.
+   */
+  enum TALER_PaytoAccountType type;
+
+  /**
+   * Internals depending on @e type.
+   */
+  union
+  {
+
+    /**
+     * Taler bank address from x-taler-bank.  Set if
+     * @e type is #TALER_AC_X_TALER_BANK.
+     */
+    struct
+    {
+
+      /**
+       * Bank account base URL.
+       */
+      char *account_base_url;
+
+      /**
+       * Only the hostname of the bank.
+       */
+      char *hostname;
+
+    } x_taler_bank;
+
+    /**
+     * Taler bank address from iban.  Set if
+     * @e type is #TALER_AC_IBAN.
+     */
+    struct
+    {
+
+      /**
+       * IBAN number.
+       */
+      char *number;
+
+    } iban;
+
+  } details;
+};
+
+
 /* ********************* /admin/add/incoming *********************** */
 
 
@@ -447,6 +524,8 @@ void
 TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
 
 
+/* ******************** Convenience functions **************** */
+
 /**
  * Convenience method for parsing configuration section with bank account data.
  *
@@ -459,6 +538,26 @@ int
 TALER_BANK_account_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                               const char *section,
                               struct TALER_Account *acc);
+
+/**
+ * Release memory allocated in @a acc.
+ *
+ * @param acc account to free, the pointer itself is NOT free'd.
+ */
+void
+TALER_BANK_account_free (struct TALER_Account *acc);
+
+
+/**
+ * Parse @a payto_url and store the result in @a acc
+ *
+ * @param payto_url URL to parse
+ * @param acc[in,out] account to initialize, free using #TALER_BANK_account_free() later
+ * @return #TALER_EC_NONE if @a payto_url is well-formed
+ */
+enum TALER_ErrorCode
+TALER_BANK_payto_to_account (const char *payto_url,
+                             struct TALER_Account *acc);
 
 
 /**
@@ -485,5 +584,6 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
  */
 void
 TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth);
+
 
 #endif  /* _TALER_BANK_SERVICE_H */

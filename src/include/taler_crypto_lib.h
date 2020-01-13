@@ -510,12 +510,12 @@ struct TALER_TransferSecretP
  * Length of the raw value in the Taler wire transfer identifier
  * (in binary representation).
  */
-#define TALER_WIRE_TRANSFER_IDENTIFIER_LEN 32
+#define TALER_BANK_TRANSFER_IDENTIFIER_LEN 32
 
 /**
- * #TALER_WIRE_TRANSFER_IDENTIFIER_LEN as a string.
+ * #TALER_BANK_TRANSFER_IDENTIFIER_LEN as a string.
  */
-#define TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR "32"
+#define TALER_BANK_TRANSFER_IDENTIFIER_LEN_STR "32"
 
 
 /**
@@ -536,7 +536,7 @@ struct TALER_WireTransferIdentifierRawP
    * encode the actual value (i.e. a 256-bit / 32-byte public key or
    * a hash code), and the last byte for a minimalistic checksum.
    */
-  uint8_t raw[TALER_WIRE_TRANSFER_IDENTIFIER_LEN];
+  uint8_t raw[TALER_BANK_TRANSFER_IDENTIFIER_LEN];
 };
 
 

@@ -50,7 +50,7 @@ TALER_BANK_account_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
     return GNUNET_SYSERR;
   }
   if (TALER_EC_NONE !=
-      TALER_WIRE_payto_to_account (account_url,
+      TALER_BANK_payto_to_account (account_url,
                                    acc))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
@@ -67,7 +67,7 @@ TALER_BANK_account_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "URL",
                                "Malformed payto:// URL for x-taler-bank method");
     GNUNET_free (account_url);
-    TALER_WIRE_account_free (acc);
+    TALER_BANK_account_free (acc);
     return GNUNET_SYSERR;
   }
   GNUNET_free (account_url);

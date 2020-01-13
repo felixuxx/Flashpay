@@ -41,6 +41,7 @@ libtalerbank_la_SOURCES = \
   bank_api_credit.c \
   bank_api_debit.c \
   bank_api_transfer.c \
+  bank_api_payto.c \
   bank_api_parse.c
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \

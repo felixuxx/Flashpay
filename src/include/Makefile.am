@@ -27,7 +27,6 @@ talerinclude_HEADERS = \
   taler_json_lib.h \
   taler_testing_auditor_lib.h \
   taler_testing_lib.h \
-  taler_wire_lib.h \
   taler_util.h \
   taler_mhd_lib.h \
   taler_pq_lib.h \

@@ -422,7 +422,7 @@ postgres_create_tables (void *cls)
                             "(wireout_uuid BIGSERIAL PRIMARY KEY"
                             ",execution_date INT8 NOT NULL"
                             ",wtid_raw BYTEA UNIQUE NOT NULL CHECK (LENGTH(wtid_raw)="
-                            TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
+                            TALER_BANK_TRANSFER_IDENTIFIER_LEN_STR ")"
                             ",wire_target TEXT NOT NULL"
                             ",exchange_account_section TEXT NOT NULL"
                             ",amount_val INT8 NOT NULL"

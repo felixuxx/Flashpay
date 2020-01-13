@@ -146,7 +146,7 @@ load_account (void *cls,
       *ret = GNUNET_SYSERR;
       return;
     }
-    method = TALER_WIRE_payto_get_method (ai->payto_url);
+    method = TALER_payto_get_method (ai->payto_url);
     if (GNUNET_OK ==
         load_fee (method))
     {

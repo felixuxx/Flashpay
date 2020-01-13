@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015--2019 GNUnet e.V.
+  (C) 2015--2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -14,14 +14,13 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file wire/payto.c
+ * @file bank-lib/bank_api_payto.c
  * @brief Functions for parsing payto:// URIs
  * @author Christian Grothoff <christian@grothoff.org>
  */
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_bank_service.h"
-#include "taler_wire_lib.h"
 
 /**
  * Maximum legal 'value' for an account number, based on IEEE double (for JavaScript compatibility).
@@ -35,7 +34,7 @@
  * @param acc account to free, the pointer itself is NOT free'd.
  */
 void
-TALER_WIRE_account_free (struct TALER_Account *acc)
+TALER_BANK_account_free (struct TALER_Account *acc)
 {
   switch (acc->type)
   {
@@ -482,11 +481,11 @@ typedef enum TALER_ErrorCode
  * Parse @a payto_url and store the result in @a acc
  *
  * @param payto_url URL to parse
- * @param acc[in,out] account to initialize, free using #TALER_WIRE_account_free() later
+ * @param acc[in,out] account to initialize, free using #TALER_BANK_account_free() later
  * @return #TALER_EC_NONE if @a payto_url is well-formed
  */
 enum TALER_ErrorCode
-TALER_WIRE_payto_to_account (const char *payto_url,
+TALER_BANK_payto_to_account (const char *payto_url,
                              struct TALER_Account *acc)
 {
   Parser parsers[] = {

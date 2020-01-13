@@ -381,4 +381,14 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
                         ...);
 
 
+/**
+ * Obtain the payment method from a @a payto_url
+ *
+ * @param payto_url the URL to parse
+ * @return NULL on error (malformed @a payto_url)
+ */
+char *
+TALER_payto_get_method (const char *payto_url);
+
+
 #endif

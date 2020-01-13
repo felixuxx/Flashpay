@@ -652,7 +652,7 @@ do_shutdown (void *cls)
                                  wa_tail,
                                  wa);
     TALER_BANK_auth_free (&wa->auth);
-    TALER_WIRE_account_free (&wa->account);
+    TALER_BANK_account_free (&wa->account);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);
   }
@@ -2082,7 +2082,7 @@ process_account_cb (void *cls,
   if (TALER_PAC_X_TALER_BANK != wa->account.type)
   {
     GNUNET_break (0);
-    TALER_WIRE_account_free (&wa->account);
+    TALER_BANK_account_free (&wa->account);
     TALER_BANK_auth_free (&wa->auth);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);

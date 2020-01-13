@@ -18,7 +18,6 @@ libtalerjson_la_LDFLAGS = \
   -export-dynamic -no-undefined
 libtalerjson_la_LIBADD = \
   -lgnunetjson \
-  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson \

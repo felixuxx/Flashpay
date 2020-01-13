@@ -172,7 +172,7 @@ struct AggregationUnit
   /**
    * Wire preparation handle.
    */
-  struct TALER_WIRE_PrepareHandle *ph;
+  struct TALER_BANK_PrepareHandle *ph;
 
   /**
    * Array of #aggregation_limit row_ids from the
@@ -416,7 +416,7 @@ find_account_by_url (const char *url)
   char *method;
   struct WireAccount *wa;
 
-  method = TALER_WIRE_payto_get_method (url);
+  method = TALER_payto_get_method (url);
   if (NULL == method)
   {
     fprintf (stderr,
@@ -573,7 +573,7 @@ shutdown_task (void *cls)
       GNUNET_CONTAINER_DLL_remove (wa_head,
                                    wa_tail,
                                    wa);
-      TALER_WIRE_account_free (&wa->account);
+      TALER_BANK_account_free (&wa->account);
       TALER_BANK_auth_free (&wa->auth);
       TALER_EXCHANGEDB_fees_free (wa->af);
       GNUNET_free (wa->section_name);
@@ -1117,7 +1117,7 @@ expired_reserve_cb (void *cls,
   }
   /* round down to enable transfer */
   if (GNUNET_SYSERR ==
-      TALER_WIRE_amount_round (&amount_without_fee))
+      TALER_amount_round (&amount_without_fee))
   {
     GNUNET_break (0);
     global_ret = GNUNET_SYSERR;
@@ -1182,7 +1182,7 @@ expired_reserve_cb (void *cls,
   ctc = GNUNET_new (struct CloseTransferContext);
   ctc->wa = wa;
   ctc->session = session;
-  ctc->method = TALER_WIRE_payto_get_method (account_details);
+  ctc->method = TALER_payto_get_method (account_details);
   TALER_BANK_prepare_wire_transfer (account_details,
                                     &amount_without_fee,
                                     exchange_base_url,
@@ -1449,7 +1449,7 @@ run_aggregation (void *cls)
                                &au->total_amount,
                                &au->wire_fee)) ||
        (GNUNET_SYSERR ==
-        TALER_WIRE_amount_round (&au->final_amount)) ||
+        TALER_amount_round (&au->final_amount)) ||
        ( (0 == au->final_amount.value) &&
          (0 == au->final_amount.fraction) ) )
   {

@@ -197,7 +197,7 @@ TALER_JSON_wire_to_method (const json_t *wire_s)
                 "Fatally malformed wire record encountered: lacks payto://-url\n");
     return NULL;
   }
-  return TALER_WIRE_payto_get_method (payto_str);
+  return TALER_payto_get_method (payto_str);
 }
 
 

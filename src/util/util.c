@@ -744,4 +744,36 @@ TALER_buffer_write_vfstr (struct TALER_Buffer *buf,
 }
 
 
+/**
+ * Prefix of PAYTO URLs.
+ */
+#define PAYTO "payto://"
+
+
+/**
+ * Obtain the payment method from a @a payto_url
+ *
+ * @param payto_url the URL to parse
+ * @return NULL on error (malformed @a payto_url)
+ */
+char *
+TALER_payto_get_method (const char *payto_url)
+{
+  const char *start;
+  const char *end;
+
+  if (0 != strncmp (payto_url,
+                    PAYTO,
+                    strlen (PAYTO)))
+    return NULL;
+  start = &payto_url[strlen (PAYTO)];
+  end = strchr (start,
+                (unsigned char) '/');
+  if (NULL == end)
+    return NULL;
+  return GNUNET_strndup (start,
+                         end - start);
+}
+
+
 /* end of util.c */

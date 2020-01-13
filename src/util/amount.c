@@ -672,4 +672,25 @@ TALER_amount_divide (struct TALER_Amount *result,
 }
 
 
+/**
+ * Round the amount to something that can be
+ * transferred on the wire.
+ *
+ * @param[in,out] amount amount to round down
+ * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
+ *         #GNUNET_SYSERR if the amount or currency was invalid
+ */
+int
+TALER_amount_round (struct TALER_Amount *amount)
+{
+  uint32_t delta;
+
+  delta = amount->fraction % (TALER_AMOUNT_FRAC_BASE / 100);
+  if (0 == delta)
+    return GNUNET_NO;
+  amount->fraction -= delta;
+  return GNUNET_OK;
+}
+
+
 /* end of amount.c */

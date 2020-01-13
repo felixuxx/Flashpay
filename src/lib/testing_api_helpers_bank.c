@@ -17,15 +17,17 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/testing_api_helpers.c
- * @brief convenience functions for bank-lib tests.
+ * @file lib/testing_api_helpers_bank.c
+ * @brief convenience functions for bank tests.
  * @author Marcello Stanisci
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_testing_lib.h"
 #include "taler_fakebank_lib.h"
 
+#define EXCHANGE_ACCOUNT_NAME "2"
 
 #define BANK_FAIL() \
   do {GNUNET_break (0); return NULL; } while (0)
@@ -332,14 +334,23 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_destroy (dbreset_proc);
-
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (cfg,
+                                 "account-" EXCHANGE_ACCOUNT_NAME,
+                                 &bc->exchange_auth))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_asprintf (&bc->bank_url,
                    "http://localhost:%llu/",
                    port);
-  // FIXME: initialize rest of 'bc':
-  bc->exchange_account_url = NULL; // FIXME
-  bc->exchange_auth; // FIXME
-  bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "2");
+  GNUNET_asprintf (&bc->exchange_account_url,
+                   "%s%s",
+                   bc->bank_url,
+                   EXCHANGE_ACCOUNT_NAME);
+  bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url,
+                                                            EXCHANGE_ACCOUNT_NAME);
   bc->user42_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "42");
   bc->user43_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "43");
   return GNUNET_OK;
@@ -412,9 +423,11 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   bc->bank_url = fakebank_url;
-  // FIXME: initialize rest of 'bc':
-  bc->exchange_account_url = NULL; // FIXME
-  bc->exchange_auth; // FIXME
+  GNUNET_asprintf (&bc->exchange_account_url,
+                   "%s%s",
+                   bc->bank_url,
+                   EXCHANGE_ACCOUNT_NAME);
+  bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
   bc->exchange_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "2");
   bc->user42_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "42");
   bc->user43_payto = TALER_TESTING_make_xtalerbank_payto (bc->bank_url, "43");

@@ -133,7 +133,6 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_wtid.c
 libtalertesting_la_LIBADD = \
   libtalerexchange.la \
-  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \

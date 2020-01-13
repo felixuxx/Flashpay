@@ -109,7 +109,7 @@ wire_cb (void *cls,
     {
       char *method;
 
-      method = TALER_WIRE_payto_get_method (accounts[i].url);
+      method = TALER_payto_get_method (accounts[i].url);
       if (0 == strcmp (ws->expected_method,
                        method))
       {

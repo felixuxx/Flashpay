@@ -309,6 +309,18 @@ const char *
 TALER_amount2s (const struct TALER_Amount *amount);
 
 
+/**
+ * Round the amount to something that can be
+ * transferred on the wire.
+ *
+ * @param[in,out] amount amount to round down
+ * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
+ *         #GNUNET_SYSERR if the amount or currency was invalid
+ */
+int
+TALER_amount_round (struct TALER_Amount *amount);
+
+
 #if 0                           /* keep Emacsens' auto-indent happy */
 {
 #endif

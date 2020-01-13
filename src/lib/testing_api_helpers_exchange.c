@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_helpers.c
+ * @file lib/testing_api_helpers_exchange.c
  * @brief helper functions
  * @author Christian Grothoff
  * @author Marcello Stanisci
@@ -958,4 +958,4 @@ TALER_TESTING_url_port_free (const char *url)
 }
 
 
-/* end of testing_api_helpers.c */
+/* end of testing_api_helpers_exchange.c */

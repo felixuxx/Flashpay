@@ -22,7 +22,7 @@ pkgcfg_DATA = \
 EXTRA_DIST = \
   taler.conf
 
-SUBDIRS = include util wire json curl $(PQ_DIR) mhd $(BANK_LIB) exchangedb exchange exchange-tools auditordb auditor
+SUBDIRS = include util json curl $(PQ_DIR) mhd $(BANK_LIB) exchangedb exchange exchange-tools auditordb auditor
 if HAVE_LIBCURL
  SUBDIRS += lib benchmark
 else

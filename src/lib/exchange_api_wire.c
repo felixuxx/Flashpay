@@ -301,7 +301,7 @@ handle_wire_finished (void *cls,
             ec = TALER_EC_SERVER_JSON_INVALID;
             break;
           }
-          if (NULL == (method = TALER_WIRE_payto_get_method (wa->url)))
+          if (NULL == (method = TALER_payto_get_method (wa->url)))
           {
             /* bogus reply */
             GNUNET_break_op (0);

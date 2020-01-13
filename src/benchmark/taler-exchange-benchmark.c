@@ -858,7 +858,7 @@ main (int argc,
     }
 
     if (TALER_EC_NONE !=
-        TALER_WIRE_payto_to_account (exchange_payto_url,
+        TALER_BANK_payto_to_account (exchange_payto_url,
                                      &exchange_bank_account))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
