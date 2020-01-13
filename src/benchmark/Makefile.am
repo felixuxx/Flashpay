@@ -17,7 +17,6 @@ taler_exchange_benchmark_SOURCES = \
   taler-exchange-benchmark.c
 taler_exchange_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
@@ -31,5 +30,4 @@ taler_exchange_benchmark_LDADD = \
 
 EXTRA_DIST = \
   benchmark.conf \
-  exchange_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv 
-
+  exchange_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv
