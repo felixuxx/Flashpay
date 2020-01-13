@@ -63,6 +63,7 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
+  memset (&wtid, 42, sizeof (wtid));
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_bank_credits ("history-0",
                                     bc.exchange_account_url,
@@ -104,7 +105,6 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  memset (&wtid, 42, sizeof (wtid));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Bank serves at `%s'\n",
               bc.bank_url);
