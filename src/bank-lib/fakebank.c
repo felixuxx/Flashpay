@@ -28,7 +28,7 @@
 #include "taler_mhd_lib.h"
 
 /**
- * Maximum POST request size (for /admin/add/incoming)
+ * Maximum POST request size (for /admin/add-incoming)
  */
 #define REQUEST_BUFFER_MAX (4 * 1024)
 
@@ -62,6 +62,11 @@ struct Transaction
    * Account to credit.
    */
   char *credit_account;
+
+  /**
+   * Random unique identifier for the request.
+   */
+  struct GNUNET_HashCode request_uid;
 
   /**
    * What does the @e subject contain?
@@ -346,6 +351,7 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
  * @param amount amount to transfer
  * @param subject wire transfer subject to use
  * @param exchange_base_url exchange URL
+ * @param request_uid unique number to make the request unique, or NULL to create one
  * @return row_id of the transfer
  */
 uint64_t
@@ -355,10 +361,27 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                               const struct TALER_Amount *amount,
                               const struct
                               TALER_WireTransferIdentifierRawP *subject,
-                              const char *exchange_base_url)
+                              const char *exchange_base_url,
+                              const struct GNUNET_HashCode *request_uid)
 {
   struct Transaction *t;
 
+  if (NULL != request_uid)
+  {
+    for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+      if ( (0 == GNUNET_memcmp (request_uid,
+                                &t->request_uid)) &&
+           (0 == strcasecmp (debit_account,
+                             t->debit_account)) &&
+           (0 == strcasecmp (credit_account,
+                             t->credit_account)) &&
+           (0 == TALER_amount_cmp (amount,
+                                   &t->amount)) &&
+           (T_DEBIT == t->type) &&
+           (0 == GNUNET_memcmp (subject,
+                                &t->subject.debit.wtid)) )
+        return t->row_id;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Making transfer from %s to %s over %s and subject %s; for exchange: %s\n",
               debit_account,
@@ -375,6 +398,11 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
   t->type = T_DEBIT;
   t->subject.debit.exchange_base_url = GNUNET_strdup (exchange_base_url);
   t->subject.debit.wtid = *subject;
+  if (NULL == request_uid)
+    GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_NONCE,
+                                      &t->request_uid);
+  else
+    t->request_uid = *request_uid;
   GNUNET_TIME_round_abs (&t->date);
   GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
                                     h->transactions_tail,
@@ -690,13 +718,13 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     {
-      // FIXME: use uuid here!!!
       row_id = TALER_FAKEBANK_make_transfer (h,
                                              account,
                                              credit_account,
                                              &amount,
                                              &wtid,
-                                             base_url);
+                                             base_url,
+                                             &uuid);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
                   account,

@@ -70,6 +70,7 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
  * @param amount amount to transfer
  * @param subject wire transfer subject to use
  * @param exchange_base_url exchange URL
+ * @param request_uid unique number to make the request unique, or NULL to create one
  * @return serial_id of the transfer
  */
 uint64_t
@@ -79,7 +80,8 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                               const struct TALER_Amount *amount,
                               const struct
                               TALER_WireTransferIdentifierRawP *subject,
-                              const char *exchange_base_url);
+                              const char *exchange_base_url,
+                              const struct GNUNET_HashCode *request_uid);
 
 
 /**
