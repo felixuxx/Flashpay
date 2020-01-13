@@ -25,7 +25,6 @@
 #include <jansson.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_util.h"
-#include "taler_wire_lib.h"
 #include "taler_error_codes.h"
 
 
