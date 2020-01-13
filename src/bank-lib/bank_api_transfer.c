@@ -293,11 +293,11 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   }
   TALER_amount_ntoh (&amount,
                      &wp->amount);
-  transfer_obj = json_pack ("{s:o, s:o, s:s, s:o, s:o, s:s}",
+  transfer_obj = json_pack ("{s:o, s:o, s:s, s:o, s:s}",
                             "request_uid", GNUNET_JSON_from_data_auto (
                               &wp->request_uid),
                             "amount", TALER_JSON_from_amount (&amount),
-                            "exchange_url", exchange_base_url,
+                            "exchange_base_url", exchange_base_url,
                             "wtid", GNUNET_JSON_from_data_auto (&wp->wtid),
                             "credit_account", destination_account_url);
   if (NULL == transfer_obj)

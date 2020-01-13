@@ -616,23 +616,23 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Handle incoming HTTP request for /transaction.
+ * Handle incoming HTTP request for /transfer.
  *
  * @param h the fakebank handle
  * @param connection the connection
- * @param account account making the transaction
+ * @param account account making the transfer
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
 static int
-handle_transaction (struct TALER_FAKEBANK_Handle *h,
-                    struct MHD_Connection *connection,
-                    const char *account,
-                    const char *upload_data,
-                    size_t *upload_data_size,
-                    void **con_cls)
+handle_transfer (struct TALER_FAKEBANK_Handle *h,
+                 struct MHD_Connection *connection,
+                 const char *account,
+                 const char *upload_data,
+                 size_t *upload_data_size,
+                 void **con_cls)
 {
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
@@ -852,7 +852,7 @@ parse_history_common_args (struct MHD_Connection *connection,
 
 
 /**
- * Handle incoming HTTP request for /history/incoming
+ * Handle incoming HTTP request for /history/outgoing
  *
  * @param h the fakebank handle
  * @param connection the connection
@@ -911,8 +911,9 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
-    if (0 == strcasecmp (pos->credit_account,
-                         account))
+    if ( (0 == strcasecmp (pos->credit_account,
+                           account)) &&
+         (T_DEBIT == pos->type) )
     {
       json_t *trans;
       char *credit_payto;
@@ -923,12 +924,14 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
                                                  pos->debit_account);
       trans = json_pack
-                ("{s:I, s:o, s:o, s:s, s:s, s:o}",
+                ("{s:I, s:o, s:o, s:s, s:s, s:s, s:o}",
                 "row_id", (json_int_t) pos->row_id,
                 "date", GNUNET_JSON_from_time_abs (pos->date),
                 "amount", TALER_JSON_from_amount (&pos->amount),
                 "credit_account", credit_payto,
                 "debit_account", debit_payto,
+                "exchange_base_url",
+                pos->subject.debit.exchange_base_url,
                 "wtid", GNUNET_JSON_from_data_auto (
                   &pos->subject.debit.wtid));
       GNUNET_free (credit_payto);
@@ -949,13 +952,13 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o}",
-                                    "incoming_transactions",
+                                    "outgoing_transactions",
                                     history);
 }
 
 
 /**
- * Handle incoming HTTP request for /history/outgoing
+ * Handle incoming HTTP request for /history/incoming
  *
  * @param h the fakebank handle
  * @param connection the connection
@@ -1014,8 +1017,9 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
-    if (0 == strcasecmp (pos->debit_account,
-                         account))
+    if ( (0 == strcasecmp (pos->debit_account,
+                           account)) &&
+         (T_CREDIT == pos->type) )
     {
       json_t *trans;
       char *credit_payto;
@@ -1051,7 +1055,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o}",
-                                    "outgoing_transactions",
+                                    "incoming_transactions",
                                     history);
 }
 
@@ -1101,32 +1105,32 @@ serve (struct TALER_FAKEBANK_Handle *h,
                                       upload_data_size,
                                       con_cls);
   if ( (0 == strcmp (url,
-                     "/transaction")) &&
+                     "/transfer")) &&
        (NULL != account) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_POST)) )
-    return handle_transaction (h,
-                               connection,
-                               account,
-                               upload_data,
-                               upload_data_size,
-                               con_cls);
+    return handle_transfer (h,
+                            connection,
+                            account,
+                            upload_data,
+                            upload_data_size,
+                            con_cls);
   if ( (0 == strcmp (url,
                      "/history/incoming")) &&
-       (NULL != account) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_GET)) )
-    return handle_credit_history (h,
-                                  connection,
-                                  account);
-  if ( (0 == strcmp (url,
-                     "/history/outgoing")) &&
        (NULL != account) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
     return handle_debit_history (h,
                                  connection,
                                  account);
+  if ( (0 == strcmp (url,
+                     "/history/outgoing")) &&
+       (NULL != account) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_credit_history (h,
+                                  connection,
+                                  account);
 
   /* Unexpected URL path, just close the connection. */
   /* we're rather impolite here, but it's a testcase. */
