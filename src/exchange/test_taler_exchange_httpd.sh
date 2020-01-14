@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This file is part of TALER
-# Copyright (C) 2015, 2016 Inria and GNUnet e.V.
+# Copyright (C) 2015-2020 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU Affero General Public License as published by the Free Software
@@ -31,6 +31,7 @@ taler-exchange-wire -c test_taler_exchange_httpd.conf || exit 1
 # Run Exchange HTTPD (in background)
 taler-exchange-httpd -c test_taler_exchange_httpd.conf -i &
 # Give HTTP time to start
+# FIXME: replace with while-loop waiting for wget to succeed as in test-auditor.sh!
 sleep 5
 # Finally run test...
 # We read the JSON snippets to POST from test_taler_exchange_httpd.data

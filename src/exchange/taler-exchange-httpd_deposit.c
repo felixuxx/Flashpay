@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Inria and GNUnet e.V.
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -432,7 +432,10 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                    upload_data_size,
                                    &json);
   if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
     return MHD_NO;
+  }
   if ( (GNUNET_NO == res) ||
        (NULL == json) )
     return MHD_YES;
@@ -444,10 +447,15 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                    spec);
   json_decref (json);
   if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
     return MHD_NO; /* hard failure */
+  }
   if (GNUNET_NO == res)
+  {
+    GNUNET_break_op (0);
     return MHD_YES; /* failure */
-
+  }
   deposit.receiver_wire_account = wire;
   if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
   {

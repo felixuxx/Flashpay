@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019 GNUnet e.V.
+  Copyright (C) 2019-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -16,10 +16,9 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file lib/teah_common.c
- * @brief Helper routines shared by libtalerexchange and libtalerauditor
+ * @file curl/curl.c
+ * @brief Helper routines for interactions with libcurl
  * @author Christian Grothoff
  */
 #include "platform.h"
