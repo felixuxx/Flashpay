@@ -21,13 +21,55 @@
 #include "platform.h"
 #include "taler_util.h"
 
+#define CHECK(a,b) do { \
+    if (0 != strcmp (a,b)) {   \
+      GNUNET_break (0); \
+      fprintf (stderr, "Got %s, wanted %s\n", b, a); \
+      GNUNET_free (b); \
+      return 1; \
+    } else { \
+      GNUNET_free (b); \
+    }  \
+} while (0)
+
 
 int
 main (int argc,
       const char *const argv[])
 {
+  char *r;
 
-
+  GNUNET_log_setup ("test-payto",
+                    "WARNING",
+                    NULL);
+  r = TALER_payto_xtalerbank_make ("https://localhost/",
+                                   "account");
+  CHECK ("payto://x-taler-bank/localhost/account",
+         r);
+  r = TALER_payto_xtalerbank_make ("http://localhost:80/",
+                                   "account");
+  CHECK ("payto://x-taler-bank/localhost:80/account",
+         r);
+  r = TALER_payto_xtalerbank_make ("http://localhost/",
+                                   "account");
+  CHECK ("payto://x-taler-bank/localhost:80/account",
+         r);
+  r = TALER_xtalerbank_base_url_from_payto (
+    "payto://x-taler-bank/localhost/bob");
+  CHECK ("https://localhost/",
+         r);
+  r = TALER_xtalerbank_base_url_from_payto (
+    "payto://x-taler-bank/localhost:1080/bob");
+  CHECK ("http://localhost:1080/",
+         r);
+  r = TALER_xtalerbank_account_url_from_payto (
+    "payto://x-taler-bank/localhost/bob");
+  CHECK ("https://localhost/bob",
+         r);
+  r = TALER_xtalerbank_account_url_from_payto (
+    "payto://x-taler-bank/localhost:1080/alice");
+  CHECK ("http://localhost:1080/alice",
+         r);
   return 0;
 }
 

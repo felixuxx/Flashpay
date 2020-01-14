@@ -789,16 +789,38 @@ TALER_payto_xtalerbank_make (const char *bank_url,
                              const char *account_name)
 {
   char *payto;
-  int ends_slash;
+  int plaintext;
+  const char *port;
+  size_t slen;
 
-  if (0 < strlen (bank_url))
-    ends_slash = '/' == bank_url[strlen (bank_url) - 1];
+  if (0 == strncasecmp ("https://",
+                        bank_url,
+                        strlen ("https://")))
+  {
+    bank_url += strlen ("https://");
+    plaintext = GNUNET_NO;
+  }
+  else if (0 == strncasecmp ("http://",
+                             bank_url,
+                             strlen ("http://")))
+  {
+    bank_url += strlen ("http://");
+    plaintext = GNUNET_YES;
+  }
   else
-    ends_slash = 0;
+    return NULL;
+  slen = strlen (bank_url);
+  port = memchr (bank_url,
+                 ':',
+                 slen);
+  if ( (0 < slen) &&
+       ('/' == bank_url[slen - 1]) )
+    slen--;
   GNUNET_asprintf (&payto,
-                   (ends_slash)
-                   ? "payto://x-taler-bank/%s%s"
-                   : "payto://x-taler-bank/%s/%s",
+                   ( (NULL == port) && (GNUNET_YES == plaintext) )
+                   ? "payto://x-taler-bank/%.*s:80/%s"
+                   : "payto://x-taler-bank/%.*s/%s",
+                   (int) slen,
                    bank_url,
                    account_name);
   return payto;
@@ -817,20 +839,35 @@ TALER_xtalerbank_base_url_from_payto (const char *payto)
 {
   const char *start;
   const char *end;
+  char *ret;
+  int https;
+  const char *colon;
+  unsigned int port;
 
   if (0 != strncasecmp (payto,
                         "payto://x-taler-bank/",
                         strlen ("payto://x-taler-bank/")))
-  {
     return NULL;
-  }
-  start = &payto [strlen ("payto://x-taler-bank/")];
+  start = &payto[strlen ("payto://x-taler-bank/")];
   end = strchr (start,
-                (unsigned char) '/');
+                '/');
   if (NULL == end)
     end = &start[strlen (start)];
-  return GNUNET_strndup (start,
-                         end - start);
+  colon = strrchr (start,
+                   ':');
+  https = GNUNET_YES;
+  if ( (NULL != colon) &&
+       (1 == sscanf (colon + 1,
+                     "%u",
+                     &port)) &&
+       (443 != port) )
+    https = GNUNET_NO;
+  GNUNET_asprintf (&ret,
+                   "%s://%.*s/",
+                   (https ? "https" : "http"),
+                   (int) (end - start),
+                   start);
+  return ret;
 }
 
 
@@ -846,20 +883,34 @@ TALER_xtalerbank_account_url_from_payto (const char *payto)
 {
   const char *start;
   const char *end;
+  char *ret;
+  int https;
+  const char *colon;
+  unsigned int port;
 
   if (0 != strncasecmp (payto,
                         "payto://x-taler-bank/",
                         strlen ("payto://x-taler-bank/")))
-  {
     return NULL;
-  }
-  start = &payto [strlen ("payto://x-taler-bank/")];
+  start = &payto[strlen ("payto://x-taler-bank/")];
   end = strchr (start,
-                (unsigned char) '?');
+                '/');
   if (NULL == end)
     end = &start[strlen (start)];
-  return GNUNET_strndup (start,
-                         end - start);
+  colon = strrchr (start,
+                   ':');
+  https = GNUNET_YES;
+  if ( (NULL != colon) &&
+       (1 == sscanf (colon + 1,
+                     "%u",
+                     &port)) &&
+       (443 != port) )
+    https = GNUNET_NO;
+  GNUNET_asprintf (&ret,
+                   "%s://%s",
+                   (https ? "https" : "http"),
+                   start);
+  return ret;
 }
 
 
