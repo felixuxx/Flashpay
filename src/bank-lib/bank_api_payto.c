@@ -399,74 +399,31 @@ parse_payto_iban (const char *account_url,
  * Parse payto://x-taler-bank/ account URL (only account information,
  * wire subject and amount are ignored).
  *
- * @param account_url URL to parse
+ * @param payto_url URL to parse
  * @param account[out] set to information, can be NULL
  * @return #TALER_EC_NONE if @a account_url is well-formed
  */
 static enum TALER_ErrorCode
-parse_payto_x_taler_bank (const char *account_url,
+parse_payto_x_taler_bank (const char *payto_url,
                           struct TALER_Account *r_account)
 {
-  const char *hostname;
-  const char *account;
-  const char *q;
-  unsigned int port;
-  char *p;
-
 #define PREFIX "payto://x-taler-bank/"
-  if (0 != strncasecmp (account_url,
+  if (0 != strncasecmp (payto_url,
                         PREFIX,
                         strlen (PREFIX)))
     return TALER_EC_PAYTO_WRONG_METHOD;
-  hostname = &account_url[strlen (PREFIX)];
-  if (NULL == (account = strchr (hostname,
-                                 (unsigned char) '/')))
-    return TALER_EC_PAYTO_MALFORMED;
-  account++;
-  if (NULL == r_account)
-    return TALER_EC_NONE;
-  q = strchr (account,
-              (unsigned char) '?');
-  if (0 == q)
-    q = account + strlen (account);
+#undef PREFIX
   r_account->details.x_taler_bank.hostname
-    = GNUNET_strndup (hostname,
-                      account - hostname);
-  port = 443; /* if non given, equals 443.  */
-  if (NULL != (p = strchr (r_account->details.x_taler_bank.hostname,
-                           (unsigned char) ':')))
+    = TALER_xtalerbank_base_url_from_payto (payto_url);
+  if (NULL == r_account->details.x_taler_bank.hostname)
+    return TALER_EC_PAYTO_MALFORMED;
+  r_account->details.x_taler_bank.account_base_url
+    = TALER_xtalerbank_account_url_from_payto (payto_url);
+  if (NULL == r_account->details.x_taler_bank.hostname)
   {
-    p++;
-    if (1 != sscanf (p,
-                     "%u",
-                     &port))
-    {
-      GNUNET_break (0);
-      TALER_LOG_ERROR ("Malformed host from payto:// URI\n");
-      GNUNET_free (r_account->details.x_taler_bank.hostname);
-      r_account->details.x_taler_bank.hostname = NULL;
-      return TALER_EC_PAYTO_MALFORMED;
-    }
-  }
-  if (443 != port)
-  {
-    GNUNET_assert
-      (GNUNET_SYSERR != GNUNET_asprintf
-        (&r_account->details.x_taler_bank.account_base_url,
-        "http://%s/%.*s",
-        r_account->details.x_taler_bank.hostname,
-        (int) (q - account),
-        account));
-  }
-  else
-  {
-    GNUNET_assert
-      (GNUNET_SYSERR != GNUNET_asprintf
-        (&r_account->details.x_taler_bank.account_base_url,
-        "https://%s/%.*s",
-        r_account->details.x_taler_bank.hostname,
-        (int) (q - account),
-        account));
+    GNUNET_free (r_account->details.x_taler_bank.hostname);
+    r_account->details.x_taler_bank.hostname = NULL;
+    return TALER_EC_PAYTO_MALFORMED;
   }
   r_account->type = TALER_PAC_X_TALER_BANK;
   return TALER_EC_NONE;

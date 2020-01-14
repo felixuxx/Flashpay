@@ -70,6 +70,8 @@ TALER_BANK_setup_auth_ (CURL *easy,
 
 /**
  * Obtain the URL to use for an API request.
+ * FIXME: duplicates MAH_path_to_url2, and likely also logic in util!
+ * FIXME: duplicates TEAH_path_to_url2, and likely also logic in util!
  *
  * @param u base URL of the bank.
  * @param path Taler API path (i.e. "/history").

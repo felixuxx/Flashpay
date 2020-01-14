@@ -121,14 +121,11 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:5.01"),
-
     /**
      * Make a reserve exist, according to the previous
      * transfer.
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
-
-
     /**
      * Withdraw EUR:5.
      */
@@ -136,7 +133,6 @@ run (void *cls,
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
-
     /**
      * Check the reserve is depleted.
      */
