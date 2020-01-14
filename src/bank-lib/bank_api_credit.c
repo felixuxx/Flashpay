@@ -270,7 +270,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
   hh->bank_base_url = GNUNET_strdup (bank_base_url);
   hh->request_url = TALER_BANK_path_to_url_ (bank_base_url,
                                              url);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting history at `%s'\n",
               hh->request_url);
   eh = curl_easy_init ();

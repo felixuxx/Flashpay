@@ -771,9 +771,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     {
       rctx->ev_sigs[i].rsa_signature
         = GNUNET_CRYPTO_rsa_sign_blinded (
-            rctx->dkis[i]->denom_priv.rsa_private_key,
-            rctx->rcds[i].coin_ev,
-            rctx->rcds[i].coin_ev_size);
+        rctx->dkis[i]->denom_priv.rsa_private_key,
+        rctx->rcds[i].coin_ev,
+        rctx->rcds[i].coin_ev_size);
       if (NULL == rctx->ev_sigs[i].rsa_signature)
       {
         GNUNET_break (0);

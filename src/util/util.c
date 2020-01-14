@@ -805,4 +805,62 @@ TALER_payto_xtalerbank_make (const char *bank_url,
 }
 
 
+/**
+ * Given an x-taler-bank payto:// URL, compute
+ * the HTTP(S) base URL of the account.
+ *
+ * @param payto the payto URL
+ * @return bank URL of the account, NULL if not x-taler-bak payto URL
+ */
+char *
+TALER_xtalerbank_base_url_from_payto (const char *payto)
+{
+  const char *start;
+  const char *end;
+
+  if (0 != strncasecmp (payto,
+                        "payto://x-taler-bank/",
+                        strlen ("payto://x-taler-bank/")))
+  {
+    return NULL;
+  }
+  start = &payto [strlen ("payto://x-taler-bank/")];
+  end = strchr (start,
+                (unsigned char) '/');
+  if (NULL == end)
+    end = &start[strlen (start)];
+  return GNUNET_strndup (start,
+                         end - start);
+}
+
+
+/**
+ * Given an x-taler-bank payto:// URL, compute
+ * the HTTP(S) base URL of the account.
+ *
+ * @param payto the payto URL
+ * @return bank URL of the account, NULL if not x-taler-bak payto URL
+ */
+char *
+TALER_xtalerbank_account_url_from_payto (const char *payto)
+{
+  const char *start;
+  const char *end;
+
+  if (0 != strncasecmp (payto,
+                        "payto://x-taler-bank/",
+                        strlen ("payto://x-taler-bank/")))
+  {
+    return NULL;
+  }
+  start = &payto [strlen ("payto://x-taler-bank/")];
+  end = strchr (start,
+                (unsigned char) '?');
+  if (NULL == end)
+    end = &start[strlen (start)];
+  return GNUNET_strndup (start,
+                         end - start);
+}
+
+
 /* end of util.c */

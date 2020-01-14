@@ -374,9 +374,6 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   char *payto_url;
-  char *fakebank_url;
-  const char *start;
-  const char *end;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
@@ -395,38 +392,30 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   GNUNET_CONFIGURATION_destroy (cfg);
-  if (0 != strncasecmp (payto_url,
-                        "payto://x-taler-bank/",
-                        strlen ("payto://x-taler-bank/")))
+  bc->bank_url
+    = TALER_xtalerbank_base_url_from_payto (payto_url);
+  if (NULL == bc->bank_url)
   {
     GNUNET_log_config_invalid
       (GNUNET_ERROR_TYPE_WARNING,
       config_section,
       "URL",
       "expected `x-taler-bank' payto://-URL");
-    GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (payto_url);
     return GNUNET_SYSERR;
   }
-  start = &payto_url [strlen ("payto://x-taler-bank/")];
-  end = strchr (start,
-                (unsigned char) '/');
-  if (NULL == end)
-    end = &start[strlen (start)];
-  fakebank_url = GNUNET_strndup (start,
-                                 end - start);
-  GNUNET_free (payto_url);
   if (GNUNET_OK !=
-      TALER_TESTING_url_port_free (fakebank_url))
+      TALER_TESTING_url_port_free (bc->bank_url))
   {
-    GNUNET_free (fakebank_url);
+    GNUNET_free (bc->bank_url);
+    bc->bank_url = NULL;
+    GNUNET_free (payto_url);
     return GNUNET_SYSERR;
   }
-  bc->bank_url = fakebank_url;
-  GNUNET_asprintf (&bc->exchange_account_url,
-                   "%s/%s",
-                   bc->bank_url,
-                   EXCHANGE_ACCOUNT_NAME);
+  bc->exchange_account_url
+    = TALER_xtalerbank_account_url_from_payto (payto_url);
+  GNUNET_assert (NULL != bc->exchange_account_url);
+  GNUNET_free (payto_url);
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
   bc->exchange_payto = TALER_payto_xtalerbank_make (bc->bank_url, "2");
   bc->user42_payto = TALER_payto_xtalerbank_make (bc->bank_url, "42");

@@ -1111,7 +1111,7 @@ serve (struct TALER_FAKEBANK_Handle *h,
        size_t *upload_data_size,
        void **con_cls)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Fakebank, serving URL `%s' for account `%s'\n",
               url,
               account);
@@ -1198,6 +1198,9 @@ handle_mhd_request (void *cls,
   int ret;
 
   (void) version;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Handling request for `%s'\n",
+              url);
   if ( (strlen (url) > 1) &&
        (NULL != (end = strchr (url + 1, '/'))) )
   {

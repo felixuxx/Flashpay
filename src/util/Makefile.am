@@ -56,15 +56,15 @@ libtalerutil_la_LDFLAGS = \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
 
-TESTS = \
- test_amount \
- test_crypto \
- test_url
 
 check_PROGRAMS = \
  test_amount \
  test_crypto \
+ test_payto \
  test_url
+
+TESTS = \
+ $(check_PROGRAMS)
 
 
 test_amount_SOURCES = \
@@ -76,6 +76,12 @@ test_amount_LDADD = \
 test_crypto_SOURCES = \
   test_crypto.c
 test_crypto_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
+
+test_payto_SOURCES = \
+  test_payto.c
+test_payto_LDADD = \
   -lgnunetutil \
   libtalerutil.la
 
