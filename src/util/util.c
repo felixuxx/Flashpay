@@ -22,6 +22,7 @@
  */
 
 #include "platform.h"
+#include "gnunet/gnunet_buffer_lib.h"
 #include "taler_util.h"
 #include <gcrypt.h>
 
@@ -216,14 +217,14 @@ urlencode_len (const char *s)
  * @param s string to encode
  */
 static void
-buffer_write_urlencode (struct TALER_Buffer *buf, const char *s)
+buffer_write_urlencode (struct GNUNET_Buffer *buf, const char *s)
 {
-  TALER_buffer_ensure_remaining (buf, urlencode_len (s) + 1);
+  GNUNET_buffer_ensure_remaining (buf, urlencode_len (s) + 1);
 
   for (size_t i = 0; i < strlen (s); i++)
   {
     if (GNUNET_YES == is_reserved (s[i]))
-      TALER_buffer_write_fstr (buf, "%%%02X", s[i]);
+      GNUNET_buffer_write_fstr (buf, "%%%02X", s[i]);
     else
       buf->mem[buf->position++] = s[i];
   }
@@ -239,10 +240,10 @@ buffer_write_urlencode (struct TALER_Buffer *buf, const char *s)
 char *
 TALER_urlencode (const char *s)
 {
-  struct TALER_Buffer buf = { 0 };
+  struct GNUNET_Buffer buf = { 0 };
 
   buffer_write_urlencode (&buf, s);
-  return TALER_buffer_reap_str (&buf);
+  return GNUNET_buffer_reap_str (&buf);
 }
 
 
@@ -263,7 +264,7 @@ TALER_url_join (const char *base_url,
 {
   unsigned int iparam = 0;
   va_list args;
-  struct TALER_Buffer buf = { 0 };
+  struct GNUNET_Buffer buf = { 0 };
   size_t len;
 
   GNUNET_assert (NULL != base_url);
@@ -311,9 +312,9 @@ TALER_url_join (const char *base_url,
   }
   va_end (args);
 
-  TALER_buffer_prealloc (&buf, len);
-  TALER_buffer_write_str (&buf, base_url);
-  TALER_buffer_write_str (&buf, path);
+  GNUNET_buffer_prealloc (&buf, len);
+  GNUNET_buffer_write_str (&buf, base_url);
+  GNUNET_buffer_write_str (&buf, path);
 
   va_start (args, path);
   while (1)
@@ -327,15 +328,15 @@ TALER_url_join (const char *base_url,
     value = va_arg (args, char *);
     if (NULL == value)
       continue;
-    TALER_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
+    GNUNET_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
     iparam++;
-    TALER_buffer_write_str (&buf, key);
-    TALER_buffer_write_str (&buf, "=");
+    GNUNET_buffer_write_str (&buf, key);
+    GNUNET_buffer_write_str (&buf, "=");
     buffer_write_urlencode (&buf, value);
   }
   va_end (args);
 
-  return TALER_buffer_reap_str (&buf);
+  return GNUNET_buffer_reap_str (&buf);
 }
 
 
@@ -357,7 +358,7 @@ TALER_url_absolute_raw_va (const char *proto,
                            const char *path,
                            va_list args)
 {
-  struct TALER_Buffer buf = { 0 };
+  struct GNUNET_Buffer buf = { 0 };
   unsigned int iparam = 0;
   size_t len = 0;
   va_list args2;
@@ -380,14 +381,14 @@ TALER_url_absolute_raw_va (const char *proto,
   }
   va_end (args2);
 
-  TALER_buffer_prealloc (&buf, len);
+  GNUNET_buffer_prealloc (&buf, len);
 
-  TALER_buffer_write_str (&buf, proto);
-  TALER_buffer_write_str (&buf, "://");
-  TALER_buffer_write_str (&buf, host);
+  GNUNET_buffer_write_str (&buf, proto);
+  GNUNET_buffer_write_str (&buf, "://");
+  GNUNET_buffer_write_str (&buf, host);
 
-  TALER_buffer_write_path (&buf, prefix);
-  TALER_buffer_write_path (&buf, path);
+  GNUNET_buffer_write_path (&buf, prefix);
+  GNUNET_buffer_write_path (&buf, path);
 
   va_copy (args2, args);
   while (1)
@@ -400,15 +401,15 @@ TALER_url_absolute_raw_va (const char *proto,
     value = va_arg (args, char *);
     if (NULL == value)
       continue;
-    TALER_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
+    GNUNET_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
     iparam++;
-    TALER_buffer_write_str (&buf, key);
-    TALER_buffer_write_str (&buf, "=");
+    GNUNET_buffer_write_str (&buf, key);
+    GNUNET_buffer_write_str (&buf, "=");
     buffer_write_urlencode (&buf, value);
   }
   va_end (args2);
 
-  return TALER_buffer_reap_str (&buf);
+  return GNUNET_buffer_reap_str (&buf);
 }
 
 
