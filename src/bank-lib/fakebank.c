@@ -210,10 +210,14 @@ check_log (struct TALER_FAKEBANK_Handle *h)
     if (GNUNET_YES == t->checked)
       continue;
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "%s -> %s (%s)\n",
+                "%s -> %s (%s) %s (%s)\n",
                 t->debit_account,
                 t->credit_account,
-                TALER_amount2s (&t->amount));
+                TALER_amount2s (&t->amount),
+                (T_DEBIT == t->type)
+                ? t->subject.debit.exchange_base_url
+                : TALER_B2S (&t->subject.credit.reserve_pub),
+                (T_DEBIT == t->type) ? "DEBIT" : "CREDIT");
   }
 }
 
@@ -263,7 +267,7 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
               "Did not find matching transaction! I have:\n");
   check_log (h);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "I wanted: %s->%s (%s) from %s\n",
+              "I wanted: %s->%s (%s) from exchange %s (DEBIT)\n",
               want_debit,
               want_credit,
               TALER_amount2s (want_amount),
@@ -312,7 +316,7 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
               "Did not find matching transaction!\nI have:\n");
   check_log (h);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "I wanted:\n%llu -> %llu (%s) with subject %s\n",
+              "I wanted:\n%llu -> %llu (%s) with subject %s (CREDIT)\n",
               (unsigned long long) want_debit,
               (unsigned long long) want_credit,
               TALER_amount2s (want_amount),

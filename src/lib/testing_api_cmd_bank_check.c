@@ -135,7 +135,6 @@ check_bank_transfer_run (void *cls,
                                                        0,
                                                        &amount_ptr));
     amount = *amount_ptr;
-
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_payto (deposit_cmd,
                                                   TALER_TESTING_PT_DEBIT,
