@@ -280,4 +280,15 @@ char *
 TALER_xtalerbank_account_url_from_payto (const char *payto);
 
 
+/**
+ * Obtain the account name from a payto URL.
+ *
+ * @param payto an x-taler-bank payto URL
+ * @return only the account name from the @a payto URL, NULL if not an x-taler-bank
+ *   payto URL
+ */
+char *
+TALER_xtalerbank_account_from_payto (const char *payto);
+
+
 #endif

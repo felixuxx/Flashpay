@@ -129,9 +129,10 @@ check_bank_transfer_run (void *cls,
     if (NULL == deposit_cmd)
       TALER_TESTING_FAIL (is);
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_get_trait_amount_obj
-        (deposit_cmd, 0, &amount_ptr));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_amount_obj (deposit_cmd,
+                                                       0,
+                                                       &amount_ptr));
     amount = *amount_ptr;
 
     GNUNET_assert

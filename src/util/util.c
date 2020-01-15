@@ -710,4 +710,35 @@ TALER_xtalerbank_account_url_from_payto (const char *payto)
 }
 
 
+/**
+ * Obtain the account name from a payto URL.
+ *
+ * @param payto an x-taler-bank payto URL
+ * @return only the account name from the @a payto URL, NULL if not an x-taler-bank
+ *   payto URL
+ */
+char *
+TALER_xtalerbank_account_from_payto (const char *payto)
+{
+  const char *beg;
+  const char *end;
+
+  if (0 != strncasecmp (payto,
+                        "payto://x-taler-bank/",
+                        strlen ("payto://x-taler-bank/")))
+    return NULL;
+  beg = strchr (&payto[strlen ("payto://x-taler-bank/")],
+                '/');
+  if (NULL == beg)
+    return NULL;
+  beg++;
+  end = strchr (beg,
+                '?');
+  if (NULL == end)
+    return GNUNET_strdup (beg);
+  return GNUNET_strndup (beg,
+                         end - beg);
+}
+
+
 /* end of util.c */

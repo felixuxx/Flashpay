@@ -78,6 +78,14 @@ main (int argc,
     "payto://x-taler-bank/localhost:1080/alice");
   CHECK ("http://localhost:1080/alice",
          r);
+  r = TALER_xtalerbank_account_from_payto (
+    "payto://x-taler-bank/localhost:1080/alice");
+  CHECK ("alice",
+         r);
+  r = TALER_xtalerbank_account_from_payto (
+    "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1");
+  CHECK ("alice",
+         r);
   return 0;
 }
 

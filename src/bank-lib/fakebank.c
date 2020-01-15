@@ -54,12 +54,12 @@ struct Transaction
   struct TALER_Amount amount;
 
   /**
-   * Account to debit.
+   * Account to debit (string, not payto!)
    */
   char *debit_account;
 
   /**
-   * Account to credit.
+   * Account to credit (string, not payto!)
    */
   char *credit_account;
 
@@ -198,27 +198,6 @@ struct TALER_FAKEBANK_Handle
 
 
 /**
- * Return account string from an x-taler-bank payto:// URL.
- *
- * @param  payto:// URL of method x-taler-bank
- * @return account_name the account name
- */
-char *
-get_xtalerbank_payto_account (const char *payto_url)
-{
-  const char *beg;
-
-  GNUNET_assert (0 == strncasecmp (payto_url,
-                                   "payto://x-taler-bank/",
-                                   strlen ("payto://x-taler-bank/")));
-  beg = strchr (&payto_url[strlen ("payto://x-taler-bank/")],
-                '/');
-  GNUNET_assert (NULL != beg);
-  return GNUNET_strdup (&beg[1]);
-}
-
-
-/**
  * Generate log messages for failed check operation.
  *
  * @param h handle to output transaction log for
@@ -346,8 +325,8 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
  * Tell the fakebank to create another wire transfer.
  *
  * @param h fake bank handle
- * @param debit_account account to debit
- * @param credit_account account to credit
+ * @param debit_account account to debit, not payto://!
+ * @param credit_account account to credit, not payto://!
  * @param amount amount to transfer
  * @param subject wire transfer subject to use
  * @param exchange_base_url exchange URL
@@ -366,6 +345,12 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
 {
   struct Transaction *t;
 
+  GNUNET_break (0 != strncasecmp ("payto://",
+                                  debit_account,
+                                  strlen ("payto://")));
+  GNUNET_break (0 != strncasecmp ("payto://",
+                                  credit_account,
+                                  strlen ("payto://")));
   if (NULL != request_uid)
   {
     for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
@@ -431,6 +416,12 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
 {
   struct Transaction *t;
 
+  GNUNET_break (0 != strncasecmp ("payto://",
+                                  debit_account,
+                                  strlen ("payto://")));
+  GNUNET_break (0 != strncasecmp ("payto://",
+                                  credit_account,
+                                  strlen ("payto://")));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Making transfer from %s to %s over %s and subject %s\n",
               debit_account,
@@ -616,7 +607,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       return MHD_NO;
     }
-    debit = get_xtalerbank_payto_account (debit_account);
+    debit = TALER_xtalerbank_account_from_payto (debit_account);
     row_id = TALER_FAKEBANK_make_admin_transfer (h,
                                                  debit,
                                                  account,
@@ -692,6 +683,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
     struct GNUNET_HashCode uuid;
     struct TALER_WireTransferIdentifierRawP wtid;
     const char *credit_account;
+    char *credit;
     const char *base_url;
     struct TALER_Amount amount;
     struct GNUNET_JSON_Specification spec[] = {
@@ -718,9 +710,10 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     {
+      credit = TALER_xtalerbank_account_from_payto (credit_account);
       row_id = TALER_FAKEBANK_make_transfer (h,
                                              account,
-                                             credit_account,
+                                             credit,
                                              &amount,
                                              &wtid,
                                              base_url,
@@ -728,10 +721,11 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
                   account,
-                  credit_account,
+                  credit,
                   TALER_B2S (&wtid),
                   TALER_amount2s (&amount),
                   base_url);
+      GNUNET_free (credit);
     }
   }
   json_decref (json);
@@ -972,14 +966,6 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       else
         ha.delta++;
     }
-    else
-    {
-      fprintf (stderr,
-               "Skipping transaction %s->%s: only care about %s\n",
-               pos->debit_account,
-               pos->credit_account,
-               account);
-    }
     if (ha.delta > 0)
       pos = pos->prev;
     else
@@ -1087,14 +1073,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
         ha.delta--;
       else
         ha.delta++;
-    }
-    else
-    {
-      fprintf (stderr,
-               "Skipping transaction %s->%s: only care about %s\n",
-               pos->debit_account,
-               pos->credit_account,
-               account);
     }
     if (ha.delta > 0)
       pos = pos->prev;
