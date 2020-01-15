@@ -41,6 +41,12 @@ src/bank-lib/test_bank_api_with_fakebank
 src/bank-lib/test_bank_api_with_fakebank_twisted
 src/bank-lib/test_bank_api_with_pybank_twisted
 src/lib/test_exchange_api
+
+src/lib/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
+src/lib/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
+src/lib/test_taler_exchange_httpd_home/.local/share/taler/auditor/
+src/lib/test_taler_exchange_httpd_home/.local/share/taler/auditors/
+
 src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
 src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
 src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditor/
@@ -56,6 +62,7 @@ src/exchange/test_taler_exchange_aggregator-postgres
 src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
 src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
 src/exchange-tools/taler-auditor-sign
+src/exchange-tools/taler-exchange-tvg
 src/exchange-tools/taler-exchange-dbinit
 src/exchange-tools/taler-exchange-keycheck
 src/exchange-tools/taler-exchange-keyup

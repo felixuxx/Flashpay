@@ -271,6 +271,7 @@ test_taler_exchange_wirewatch_postgres_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/lib/libtalertesting.la \
   -lmicrohttpd \
   -lgnunetutil \
   -lgnunetjson \
