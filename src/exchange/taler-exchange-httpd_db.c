@@ -108,8 +108,6 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                                              "could not establish database session");
     return GNUNET_SYSERR;
   }
-  TEH_plugin->preflight (TEH_plugin->cls,
-                         session);
   for (unsigned int retries = 0; retries < MAX_TRANSACTION_COMMIT_RETRIES;
        retries++)
   {

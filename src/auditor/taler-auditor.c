@@ -1120,6 +1120,7 @@ handle_reserve_out (void *cls,
 
   (void) denom_sig; /* FIXME: checked elsewhere? If so, potential for
                        optimization to simply not fetch this value from DB! */
+
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_out_serial_id);
   ppr.last_reserve_out_serial_id = rowid + 1;

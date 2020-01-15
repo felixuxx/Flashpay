@@ -1247,8 +1247,7 @@ run_reserve_closures (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  db_plugin->preflight (db_plugin->cls,
-                        session);
+
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
                         session,
@@ -1798,8 +1797,6 @@ run_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  db_plugin->preflight (db_plugin->cls,
-                        session);
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
                         session,
