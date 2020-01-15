@@ -404,7 +404,7 @@ admin_add_incoming_traits (void *cls,
 {
   struct AdminAddIncomingState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
+    TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
                                     fts->payto_debit_account),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange-lib/testing_api_trait_number.c
  * @brief traits to offer numbers
@@ -31,6 +30,8 @@
 
 #define TALER_TESTING_TRAIT_UINT "uint"
 #define TALER_TESTING_TRAIT_UINT64 "uint-64"
+#define TALER_TESTING_TRAIT_BANK_ROW "bank-transaction-row"
+
 
 /**
  * Obtain a number from @a cmd.
@@ -41,10 +42,9 @@
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_uint
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const unsigned int **n)
+TALER_TESTING_get_trait_uint (const struct TALER_TESTING_Command *cmd,
+                              unsigned int index,
+                              const unsigned int **n)
 {
   return cmd->traits (cmd->cls,
                       (const void **) n,
@@ -61,9 +61,8 @@ TALER_TESTING_get_trait_uint
  * @return #GNUNET_OK on success.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_uint
-  (unsigned int index,
-  const unsigned int *n)
+TALER_TESTING_make_trait_uint (unsigned int index,
+                               const unsigned int *n)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -84,10 +83,9 @@ TALER_TESTING_make_trait_uint
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_uint64
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const uint64_t **n)
+TALER_TESTING_get_trait_uint64 (const struct TALER_TESTING_Command *cmd,
+                                unsigned int index,
+                                const uint64_t **n)
 {
   return cmd->traits (cmd->cls,
                       (const void **) n,
@@ -103,14 +101,48 @@ TALER_TESTING_get_trait_uint64
  * @param n number to offer.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_uint64
-  (unsigned int index,
-  const uint64_t *n)
+TALER_TESTING_make_trait_uint64 (unsigned int index,
+                                 const uint64_t *n)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_UINT64,
     .ptr = (const void *) n
+  };
+  return ret;
+}
+
+
+/**
+ * Obtain a bank transaction row value from @a cmd.
+ *
+ * @param cmd command to extract the number from.
+ * @param row[out] set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_bank_row (const struct TALER_TESTING_Command *cmd,
+                                  const uint64_t **row)
+{
+  return cmd->traits (cmd->cls,
+                      (const void **) row,
+                      TALER_TESTING_TRAIT_BANK_ROW,
+                      0);
+}
+
+
+/**
+ * Offer bank transaction row trait.
+ *
+ * @param row number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_bank_row (const uint64_t *row)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = 0,
+    .trait_name = TALER_TESTING_TRAIT_BANK_ROW,
+    .ptr = (const void *) row
   };
   return ret;
 }

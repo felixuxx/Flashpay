@@ -49,15 +49,6 @@
   } while (0)
 
 
-// FIXME: replace these
-#define TALER_TESTING_GET_TRAIT_ROW_ID(cmd,out) \
-  TALER_TESTING_get_trait_uint64 (cmd, 3, out)
-
-// FIXME: replace these
-#define TALER_TESTING_MAKE_TRAIT_ROW_ID(data) \
-  TALER_TESTING_make_trait_uint64 (3, data)
-
-
 /**
  * Allocate and return a piece of wire-details.  Combines
  * a @a payto -URL and adds some salt to create the JSON.
@@ -1728,6 +1719,27 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 
 
 /**
+ * Obtain a bank transaction row value from @a cmd.
+ *
+ * @param cmd command to extract the number from.
+ * @param row[out] set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_bank_row (const struct TALER_TESTING_Command *cmd,
+                                  const uint64_t **row);
+
+
+/**
+ * Offer bank transaction row trait.
+ *
+ * @param row number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_bank_row (const uint64_t *row);
+
+
+/**
  * Offer a reserve private key.
  *
  * @param index reserve priv's index number.
@@ -1857,7 +1869,7 @@ TALER_TESTING_get_trait_exchange_pub (const struct TALER_TESTING_Command *cmd,
 int
 TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
                                  unsigned int index,
-                                 struct GNUNET_OS_Process ***processp); // FIXME: why is this a ***!? ** should do!
+                                 struct GNUNET_OS_Process ***processp);
 
 
 /**
@@ -1871,7 +1883,7 @@ TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_process (unsigned int index,
-                                  struct GNUNET_OS_Process **processp); // FIXME: why is this a "**"? * should do!
+                                  struct GNUNET_OS_Process **processp);
 
 
 /**

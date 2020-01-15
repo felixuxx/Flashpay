@@ -217,7 +217,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
   GNUNET_assert (0 != hs->num_results);
   if (0 == is->ip)
   {
-    TALER_LOG_DEBUG ("Checking history at first CMD (empty history)\n");
+    TALER_LOG_DEBUG ("Checking history at FIRST transaction (EMPTY)\n");
     *rh = NULL;
     return 0;
   }
@@ -241,6 +241,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
   if (NULL == row_id_start)
     ok = GNUNET_YES;
 
+  // FIXME: simplify logic by folding the TWO loops into ONE,
+  // (first doubling h if needed, and finally shrinking h to required size)
+
   /* This loop counts how many commands _later than "start"_ belong
    * to the history of the caller.  This is stored in the @var total
    * variable.  */
@@ -251,13 +254,12 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *credit_account;
     const char *debit_account;
 
-    /**
-     * The following command allows us to skip over those CMDs
+    /* The following command allows us to skip over those CMDs
      * that do not offer a "row_id" trait.  Such skipped CMDs are
-     * not interesting for building a history.
-     */if (GNUNET_OK != TALER_TESTING_get_trait_uint64 (pos,
-                                                     0,
-                                                     &row_id))
+     * not interesting for building a history. *///
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_bank_row (pos,
+                                          &row_id))
       continue;
 
     /* Seek "/history" starting row.  */
@@ -309,7 +311,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
   if (0 == total)
   {
-    TALER_LOG_DEBUG ("Checking history at first CMD.. (2)\n");
+    TALER_LOG_DEBUG ("Checking history with ZERO transactions\n");
     *rh = NULL;
     return 0;
   }
@@ -334,8 +336,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *debit_account;
 
     if (GNUNET_OK !=
-        TALER_TESTING_GET_TRAIT_ROW_ID (pos,
-                                        &row_id))
+        TALER_TESTING_get_trait_bank_row (pos,
+                                          &row_id))
       continue;
 
     if (NULL != row_id_start)
@@ -377,8 +379,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                    TALER_TESTING_get_trait_payto (pos,
                                                   TALER_TESTING_PT_DEBIT,
                                                   &debit_account));
-    TALER_LOG_INFO ("Potential history bit:"
-                    " %s->%s; my account: %s\n",
+    TALER_LOG_INFO ("Potential history bit: %s->%s; my account: %s\n",
                     debit_account,
                     credit_account,
                     hs->account_url);
@@ -399,15 +400,17 @@ build_history (struct TALER_TESTING_Interpreter *is,
       const char *account_url;
 
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_amount_obj
-                       (pos, 0, &amount));
+                     TALER_TESTING_get_trait_amount_obj (pos,
+                                                         0,
+                                                         &amount));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_reserve_pub
-                       (pos, 0, &reserve_pub));
+                     TALER_TESTING_get_trait_reserve_pub (pos,
+                                                          0,
+                                                          &reserve_pub));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_url
-                       (pos, 1,
-                       &account_url));
+                     TALER_TESTING_get_trait_url (pos,
+                                                  1,
+                                                  &account_url));
       h[total].url = GNUNET_strdup (debit_account);
       h[total].details.debit_account_url = h[total].url;
       h[total].details.amount = *amount;

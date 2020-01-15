@@ -298,7 +298,7 @@ transfer_traits (void *cls,
   struct TransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_url (1, fts->account_debit_url),
-    TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
+    TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
                                     fts->payto_credit_account),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,

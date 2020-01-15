@@ -239,6 +239,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
   if (NULL == row_id_start)
     ok = GNUNET_YES;
 
+  // FIXME: simplify logic by folding the TWO loops into ONE,
+  // (first doubling h if needed, and finally shrinking h to required size)
+
   /* This loop counts how many commands _later than "start"_ belong
    * to the history of the caller.  This is stored in the @var total
    * variable.  */
@@ -251,11 +254,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
     /* The following command allows us to skip over those CMDs
      * that do not offer a "row_id" trait.  Such skipped CMDs are
-     * not interesting for building a history.
-     */
-    if (GNUNET_OK != TALER_TESTING_get_trait_uint64 (pos,
-                                                     0,
-                                                     &row_id))
+     * not interesting for building a history. *///
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_bank_row (pos,
+                                          &row_id))
       continue;
 
     /* Seek "/history" starting row.  */
@@ -275,7 +277,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
       continue; /* skip until we find the marker */
 
     TALER_LOG_DEBUG ("Found first row\n");
-
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
     {
@@ -287,7 +288,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
                    TALER_TESTING_get_trait_payto (pos,
                                                   TALER_TESTING_PT_DEBIT,
                                                   &debit_account));
-
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_payto (pos,
                                                   TALER_TESTING_PT_CREDIT,
@@ -333,8 +333,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *debit_account;
 
     if (GNUNET_OK !=
-        TALER_TESTING_GET_TRAIT_ROW_ID (pos,
-                                        &row_id))
+        TALER_TESTING_get_trait_bank_row (pos,
+                                          &row_id))
       continue;
 
     if (NULL != row_id_start)
@@ -353,7 +353,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
     }
 
     TALER_LOG_INFO ("Found first row (2)\n");
-
     if (GNUNET_NO == ok)
     {
       TALER_LOG_INFO ("Skip on `%s'\n",
@@ -380,17 +379,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
                     debit_account,
                     credit_account,
                     hs->account_url);
-    /* Discard transactions where the audited account played _both_ the debit
-     * and the debit roles, but _only if_ the audit goes on both directions..
-     * This needs more explaination!
-     */
-    if (0 == strcasecmp (hs->account_url,
-                         debit_account))
-    {
-      GNUNET_break (0);
-      continue;
-    }
-
     bank_hostname = strchr (hs->account_url, ':');
     GNUNET_assert (NULL != bank_hostname);
     bank_hostname += 3;
@@ -407,15 +395,17 @@ build_history (struct TALER_TESTING_Interpreter *is,
       const char *account_url;
 
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_amount_obj
-                       (pos, 0, &amount));
+                     TALER_TESTING_get_trait_amount_obj (pos,
+                                                         0,
+                                                         &amount));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_wtid
-                       (pos, 0, &wtid));
+                     TALER_TESTING_get_trait_wtid (pos,
+                                                   0,
+                                                   &wtid));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_url
-                       (pos, 1,
-                       &account_url));
+                     TALER_TESTING_get_trait_url (pos,
+                                                  1,
+                                                  &account_url));
       h[total].url = GNUNET_strdup (credit_account);
       h[total].details.credit_account_url = h[total].url;
       h[total].details.amount = *amount;
