@@ -185,14 +185,14 @@ build_history (struct TALER_TESTING_Interpreter *is,
 {
   struct HistoryState *hs = is->commands[is->ip].cls;
   unsigned int total;
+  unsigned int pos;
   struct History *h;
   const struct TALER_TESTING_Command *add_incoming_cmd;
   int inc;
   unsigned int start;
   unsigned int end;
-  /* GNUNET_YES whenever either no 'start' value was given for the history
-   * query, or the given value is found in the list of all the CMDs.
-   */
+  /* #GNUNET_YES whenever either no 'start' value was given for the history
+   * query, or the given value is found in the list of all the CMDs. */
   int ok;
   const uint64_t *row_id_start = NULL;
 
@@ -219,7 +219,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
     return 0;
   }
 
-  /* AKA 'delta'.  */
+  /* AKA 'delta' */
   if (hs->num_results > 0)
   {
     inc = 1;  /* _inc_rement */
@@ -233,188 +233,96 @@ build_history (struct TALER_TESTING_Interpreter *is,
     end = 0;
   }
 
-  total = 0;
   ok = GNUNET_NO;
-
   if (NULL == row_id_start)
     ok = GNUNET_YES;
-
-  // FIXME: simplify logic by folding the TWO loops into ONE,
-  // (first doubling h if needed, and finally shrinking h to required size)
-
-  /* This loop counts how many commands _later than "start"_ belong
-   * to the history of the caller.  This is stored in the @var total
-   * variable.  */
+  h = NULL;
+  total = 0;
+  GNUNET_array_grow (h,
+                     total,
+                     4);
+  pos = 0;
   for (unsigned int off = start; off != end + inc; off += inc)
   {
-    const struct TALER_TESTING_Command *pos = &is->commands[off];
+    const struct TALER_TESTING_Command *cmd = &is->commands[off];
     const uint64_t *row_id;
     const char *debit_account;
     const char *credit_account;
+    const struct TALER_Amount *amount;
+    const struct TALER_WireTransferIdentifierRawP *wtid;
+    const char *account_url;
 
-    /* The following command allows us to skip over those CMDs
-     * that do not offer a "row_id" trait.  Such skipped CMDs are
-     * not interesting for building a history. *///
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_bank_row (pos,
-                                          &row_id))
-      continue;
-
+    if ( (GNUNET_OK !=
+          TALER_TESTING_get_trait_bank_row (cmd,
+                                            &row_id)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_payto (cmd,
+                                         TALER_TESTING_PT_DEBIT,
+                                         &debit_account)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_payto (cmd,
+                                         TALER_TESTING_PT_CREDIT,
+                                         &credit_account)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_amount_obj (cmd,
+                                              0,
+                                              &amount)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_wtid (cmd,
+                                        0,
+                                        &wtid)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_url (cmd,
+                                       1,
+                                       &account_url)) )
+      continue; /* not an event we care about */
     /* Seek "/history" starting row.  */
-    if (NULL != row_id_start)
+    if ( (NULL != row_id_start) &&
+         (*row_id_start == *row_id) &&
+         (GNUNET_NO == ok) )
     {
-      if (*row_id_start == *row_id)
-      {
-        /* Doesn't count, start is excluded from output. */
-        total = 0;
-        ok = GNUNET_YES;
-        continue;
-      }
+      /* Until here nothing counted */
+      ok = GNUNET_YES;
+      continue;
     }
-
     /* when 'start' was _not_ given, then ok == GNUNET_YES */
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
-
-    TALER_LOG_DEBUG ("Found first row\n");
+    if (0 != strcasecmp (hs->account_url,
+                         debit_account))
+      continue; /* account missmatch */
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
     {
       TALER_LOG_DEBUG ("Hit history limit\n");
       break;
     }
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_payto (pos,
-                                                  TALER_TESTING_PT_DEBIT,
-                                                  &debit_account));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_payto (pos,
-                                                  TALER_TESTING_PT_CREDIT,
-                                                  &credit_account));
-    TALER_LOG_INFO ("Potential history element:"
-                    " %s->%s; my account: %s\n",
+    TALER_LOG_INFO ("Found history: %s->%s for account %s\n",
                     debit_account,
                     credit_account,
                     hs->account_url);
-    if (0 == strcasecmp (hs->account_url,
-                         debit_account))
-    {
-      TALER_LOG_INFO ("+1 my history\n");
-      total++; /* found matching record */
-    }
+    /* found matching record, make sure we have room */
+    if (pos == total)
+      GNUNET_array_grow (h,
+                         total,
+                         pos * 2);
+    h[total].url = GNUNET_strdup (credit_account);
+    h[total].details.credit_account_url = h[total].url;
+    h[total].details.amount = *amount;
+    h[total].row_id = *row_id;
+    h[total].details.wtid = *wtid;
+    h[total].details.debit_account_url = account_url;
+    pos++;
   }
-
   GNUNET_assert (GNUNET_YES == ok);
-
-  if (0 == total)
+  GNUNET_array_grow (h,
+                     total,
+                     pos);
+  if (0 == pos)
   {
-    TALER_LOG_DEBUG ("Checking history at first CMD.. (2)\n");
+    TALER_LOG_DEBUG ("Empty history computed\n");
     *rh = NULL;
     return 0;
-  }
-
-  h = GNUNET_new_array ((unsigned int) total,
-                        struct History);
-  total = 0;
-  ok = GNUNET_NO;
-  if (NULL == row_id_start)
-    ok = GNUNET_YES;
-
-  /**
-   * This loop _only_ populates the array of history elements.
-   */
-  for (unsigned int off = start; off != end + inc; off += inc)
-  {
-    const struct TALER_TESTING_Command *pos = &is->commands[off];
-    const uint64_t *row_id;
-    char *bank_hostname;
-    const char *credit_account;
-    const char *debit_account;
-
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_bank_row (pos,
-                                          &row_id))
-      continue;
-
-    if (NULL != row_id_start)
-    {
-
-      if (*row_id_start == *row_id)
-      {
-        /**
-         * Warning: this zeroing is superfluous, as
-         * total doesn't get incremented if 'start'
-         * was given and couldn't be found.
-         */total = 0;
-        ok = GNUNET_YES;
-        continue;
-      }
-    }
-
-    TALER_LOG_INFO ("Found first row (2)\n");
-    if (GNUNET_NO == ok)
-    {
-      TALER_LOG_INFO ("Skip on `%s'\n",
-                      pos->label);
-      continue; /* skip until we find the marker */
-    }
-
-    if (total >= GNUNET_MAX (hs->num_results,
-                             -hs->num_results))
-    {
-      TALER_LOG_INFO ("Hit history limit (2)\n");
-      break;
-    }
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_payto (pos,
-                                                  TALER_TESTING_PT_DEBIT,
-                                                  &debit_account));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_payto (pos,
-                                                  TALER_TESTING_PT_CREDIT,
-                                                  &credit_account));
-    TALER_LOG_INFO ("Potential history bit: %s->%s; my account: %s\n",
-                    debit_account,
-                    credit_account,
-                    hs->account_url);
-    bank_hostname = strchr (hs->account_url, ':');
-    GNUNET_assert (NULL != bank_hostname);
-    bank_hostname += 3;
-
-    /* Next two blocks only put the 'direction' and 'banking'
-     * information.  */
-
-    /* Asked for debit, and account got the debit.  */
-    if (0 == strcasecmp (hs->account_url,
-                         debit_account))
-    {
-      const struct TALER_Amount *amount;
-      const struct TALER_WireTransferIdentifierRawP *wtid;
-      const char *account_url;
-
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_amount_obj (pos,
-                                                         0,
-                                                         &amount));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_wtid (pos,
-                                                   0,
-                                                   &wtid));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_url (pos,
-                                                  1,
-                                                  &account_url));
-      h[total].url = GNUNET_strdup (credit_account);
-      h[total].details.credit_account_url = h[total].url;
-      h[total].details.amount = *amount;
-      h[total].row_id = *row_id;
-      h[total].details.wtid = *wtid;
-      h[total].details.debit_account_url = account_url;
-      TALER_LOG_INFO ("+1-bit of my history\n");
-      total++;
-    }
   }
   *rh = h;
   return total;
