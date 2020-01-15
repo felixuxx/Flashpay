@@ -122,11 +122,14 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:5.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-create-reserve-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "create-reserve-1"),
     /**
      * Make a reserve exist, according to the previous transfer.
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
-
     /**
      * Withdraw EUR:5.
      */
@@ -153,13 +156,16 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command refresh[] = {
-    /**
-     * Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
+    /* Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
      * test-suite gave a account number of _424_ to the user at
      * this step; to type less, here the _42_ number is reused.
-     * Does this change the tests semantics?
-     */CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
+     * Does this change the tests semantics? *///
+    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-refresh-create-reserve-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "refresh-create-reserve-1"),
     /**
      * Make previous command effective.
      */
@@ -216,8 +222,8 @@ run (void *cls,
      * happen here, as each deposit operation is run with a
      * fresh merchant public key! NOTE: this comment comes
      * "verbatim" from the old test-suite, and IMO does not explain
-     * a lot!
-     */CMD_EXEC_AGGREGATOR ("run-aggregator"),
+     * a lot!*///
+    CMD_EXEC_AGGREGATOR ("run-aggregator"),
 
     /**
      * Check all the transfers took place.
@@ -231,22 +237,9 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c", ec.exchange_url,
       "EUR:0.08", bc.exchange_payto, bc.user43_payto),
-    TALER_TESTING_cmd_check_bank_admin_transfer
-      ("check_bank_transfer-aai-1",
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
-      "FIXME"),
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-2",
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
-      "FIXME"),
 
     /* The following transactions got originated within
      * the "massive deposit confirms" batch.  */
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check-massive-transfer",
-      ec.exchange_url,
-      "EUR:10.10",
-      bc.user42_payto, bc.exchange_payto),
     TALER_TESTING_cmd_check_bank_transfer
       ("check-massive-transfer-1",
       ec.exchange_url,
@@ -311,11 +304,12 @@ run (void *cls,
                               "EUR:5.01"),
     CMD_EXEC_WIREWATCH ("wirewatch-unaggregated"),
     /* "consume" reserve creation transfer.  */
-    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-unaggregated",
-                                           ec.exchange_url,
-                                           "EUR:5.01",
-                                           bc.user42_payto,
-                                           bc.exchange_payto),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check_bank_transfer-unaggregated",
+      "EUR:5.01",
+      bc.user42_payto,
+      bc.exchange_payto,
+      "create-reserve-unaggregated"),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
                                        "create-reserve-unaggregated",
                                        "EUR:5",
@@ -488,6 +482,11 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("massive-reserve",
                               "EUR:10.10"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-massive-transfer",
+      "EUR:10.10",
+      bc.user42_payto, bc.exchange_payto,
+      "massive-reserve"),
     CMD_EXEC_WIREWATCH ("massive-wirewatch"),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-1",
                                        "massive-reserve",
