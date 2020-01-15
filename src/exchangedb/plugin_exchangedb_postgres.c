@@ -1711,6 +1711,7 @@ postgres_get_session (void *cls)
   return session;
 }
 
+
 /**
  * Do a pre-flight check that we are not in an uncommitted transaction.
  * If we are, try to commit the previous transaction and output a warning.

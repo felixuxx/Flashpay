@@ -1352,8 +1352,8 @@ TALER_TESTING_cmd_track_transfer (const char *label,
                                   const char *expected_wire_fee);
 
 /**
- * Make a "bank check" CMD.  It checks whether a
- * particular wire transfer has been made or not.
+ * Make a "bank check" CMD.  It checks whether a particular wire transfer from
+ * the exchange (debit) has been made or not.
  *
  * @param label the command label.
  * @param exchange_base_url base url of the exchange involved in
@@ -1369,6 +1369,25 @@ TALER_TESTING_cmd_check_bank_transfer (const char *label,
                                        const char *amount,
                                        const char *debit_payto,
                                        const char *credit_payto);
+
+
+/**
+ * Make a "bank check" CMD.  It checks whether a particular wire transfer to
+ * the exchange (credit) has been made or not.
+ *
+ * @param label the command label.
+ * @param amount the amount expected to be transferred.
+ * @param debit_payto the account that gave money.
+ * @param credit_payto the account that received money.
+ * @param reserve_pub_ref command that provides the reserve public key to expect
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_bank_admin_transfer (const char *label,
+                                             const char *amount,
+                                             const char *debit_payto,
+                                             const char *credit_payto,
+                                             const char *reserve_pub_ref);
 
 
 /**

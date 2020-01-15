@@ -164,6 +164,10 @@ status_run (void *cls,
 
   /* NOTE: the following line might generate a ERROR log
    * statements, but it can be ignored.  */
+  /* FIXME: instead of having this logic here, any
+     command exporting a reserve_priv MUST also
+     export a reserve_pub, which would obsolete this
+     logic! */
   if (GNUNET_OK ==
       TALER_TESTING_get_trait_reserve_priv (create_reserve,
                                             0,

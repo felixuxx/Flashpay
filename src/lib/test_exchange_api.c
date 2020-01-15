@@ -351,17 +351,19 @@ run (void *cls,
       ("check_bank_transfer-99c", ec.exchange_url,
       "EUR:0.08", bc.exchange_payto, bc.user43_payto),
 
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-1", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check_bank_transfer-aai-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "FIXME"),
 
     /**
      * NOTE: the old test-suite had this "check bank transfer"
      * command with debit account == 424.
      */
-    TALER_TESTING_cmd_check_bank_transfer
+    TALER_TESTING_cmd_check_bank_admin_transfer
       ("check_bank_transfer-aai-2", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "FIXME"),
 
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
 
@@ -544,9 +546,10 @@ run (void *cls,
                                        "EUR:5",
                                        MHD_HTTP_OK),
 
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-3b", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check_bank_transfer-aai-3b",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "FIXME"),
 
 
     TALER_TESTING_cmd_deposit

@@ -231,12 +231,14 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_transfer
       ("check_bank_transfer-99c", ec.exchange_url,
       "EUR:0.08", bc.exchange_payto, bc.user43_payto),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check_bank_transfer-aai-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "FIXME"),
     TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-1", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-aai-2", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
+      ("check_bank_transfer-aai-2",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "FIXME"),
 
     /* The following transactions got originated within
      * the "massive deposit confirms" batch.  */
