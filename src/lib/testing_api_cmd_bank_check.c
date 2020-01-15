@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -50,12 +50,12 @@ struct BankCheckState
   /**
    * Expected debit bank account.
    */
-  const char *debit_account;
+  const char *debit_payto;
 
   /**
    * Expected credit bank account.
    */
-  const char *credit_account;
+  const char *credit_payto;
 
   /**
    * Binary form of the wire transfer subject.
@@ -89,15 +89,17 @@ check_bank_transfer_run (void *cls,
 {
   struct BankCheckState *bcs = cls;
   struct TALER_Amount amount;
-  const char *debit_account;
-  const char *credit_account;
+  char *debit_account;
+  char *credit_account;
   const char *exchange_base_url;
+  const char *debit_payto;
+  const char *credit_payto;
 
   if (NULL == bcs->deposit_reference)
   {
     TALER_LOG_INFO ("Deposit reference NOT given\n");
-    debit_account = bcs->debit_account;
-    credit_account = bcs->credit_account;
+    debit_payto = bcs->debit_payto;
+    credit_payto = bcs->credit_payto;
     exchange_base_url = bcs->exchange_base_url;
 
     if (GNUNET_OK !=
@@ -112,8 +114,7 @@ check_bank_transfer_run (void *cls,
       return;
     }
   }
-
-  if (NULL != bcs->deposit_reference)
+  else
   {
     const struct TALER_TESTING_Command *deposit_cmd;
     const struct TALER_Amount *amount_ptr;
@@ -138,19 +139,19 @@ check_bank_transfer_run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_payto (deposit_cmd,
                                                   TALER_TESTING_PT_DEBIT,
-                                                  &debit_account));
-
+                                                  &debit_payto));
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_payto (deposit_cmd,
                                                   TALER_TESTING_PT_CREDIT,
-                                                  &credit_account));
-
+                                                  &credit_payto));
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_url (deposit_cmd,
                                                 0, /* TODO: check 0 works! */
                                                 &exchange_base_url));
   }
 
+  debit_account = TALER_xtalerbank_account_from_payto (debit_payto);
+  credit_account = TALER_xtalerbank_account_from_payto (credit_payto);
   if (GNUNET_OK !=
       TALER_FAKEBANK_check_debit (is->fakebank,
                                   &amount,
@@ -160,9 +161,13 @@ check_bank_transfer_run (void *cls,
                                   &bcs->wtid))
   {
     GNUNET_break (0);
+    GNUNET_free (credit_account);
+    GNUNET_free (debit_account);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  GNUNET_free (credit_account);
+  GNUNET_free (debit_account);
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -222,8 +227,8 @@ check_bank_transfer_traits (void *cls,
  * @param exchange_base_url base url of the exchange involved in
  *        the wire transfer.
  * @param amount the amount expected to be transferred.
- * @param debit_account the account that gave money.
- * @param credit_account the account that received money.
+ * @param debit_payto the account that gave money.
+ * @param credit_payto the account that received money.
  *
  * @return the command
  */
@@ -232,16 +237,16 @@ TALER_TESTING_cmd_check_bank_transfer
   (const char *label,
   const char *exchange_base_url,
   const char *amount,
-  const char *debit_account,
-  const char *credit_account)
+  const char *debit_payto,
+  const char *credit_payto)
 {
   struct BankCheckState *bcs;
 
   bcs = GNUNET_new (struct BankCheckState);
   bcs->exchange_base_url = exchange_base_url;
   bcs->amount = amount;
-  bcs->debit_account = debit_account;
-  bcs->credit_account = credit_account;
+  bcs->debit_payto = debit_payto;
+  bcs->credit_payto = credit_payto;
   bcs->deposit_reference = NULL;
   {
     struct TALER_TESTING_Command cmd = {

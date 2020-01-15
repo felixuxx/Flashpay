@@ -260,10 +260,10 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
     }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Did not find matching transaction!\nI have:\n");
+              "Did not find matching transaction! I have:\n");
   check_log (h);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "I wanted:\n%s -> %s (%s) from %s\n",
+              "I wanted: %s->%s (%s) from %s\n",
               want_debit,
               want_credit,
               TALER_amount2s (want_amount),

@@ -1359,16 +1359,16 @@ TALER_TESTING_cmd_track_transfer (const char *label,
  * @param exchange_base_url base url of the exchange involved in
  *        the wire transfer.
  * @param amount the amount expected to be transferred.
- * @param debit_account the account that gave money.
- * @param credit_account the account that received money.
+ * @param debit_payto the account that gave money.
+ * @param credit_payto the account that received money.
  * @return the command
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer (const char *label,
                                        const char *exchange_base_url,
                                        const char *amount,
-                                       const char *debit_account,
-                                       const char *credit_account);
+                                       const char *debit_payto,
+                                       const char *credit_payto);
 
 
 /**
