@@ -81,7 +81,7 @@ check_bank_admin_transfer_run (void *cls,
   char *credit_account;
   const char *debit_payto;
   const char *credit_payto;
-  const struct TALER_ReservePublicKeyP *reserve_pubp;
+  const struct TALER_ReservePublicKeyP *reserve_pub;
   const struct TALER_TESTING_Command *cmd_ref;
 
   cmd_ref
@@ -96,7 +96,7 @@ check_bank_admin_transfer_run (void *cls,
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_pub (cmd_ref,
                                            0,
-                                           &reserve_pubp))
+                                           &reserve_pub))
   {
     GNUNET_break (0);
     TALER_LOG_ERROR ("Command reference fails to provide reserve public key\n");
@@ -169,11 +169,11 @@ check_bank_admin_transfer_traits (void *cls,
                                   const char *trait,
                                   unsigned int index)
 {
-  struct BankAdminCheckState *bcs = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_trait_end ()
   };
 
+  (void) cls;
   return TALER_TESTING_get_trait (traits,
                                   ret,
                                   trait,

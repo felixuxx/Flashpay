@@ -87,6 +87,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_auditor_exec_wire_auditor.c \
   testing_api_cmd_bank_admin_add_incoming.c \
   testing_api_cmd_bank_check.c \
+  testing_api_cmd_bank_admin_check.c \
   testing_api_cmd_bank_check_empty.c \
   testing_api_cmd_bank_history_credit.c \
   testing_api_cmd_bank_history_debit.c \

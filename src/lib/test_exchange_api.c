@@ -121,6 +121,10 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:5.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-create-reserve-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "create-reserve-1"),
     /**
      * Make a reserve exist, according to the previous
      * transfer.
@@ -199,15 +203,16 @@ run (void *cls,
 
 
   struct TALER_TESTING_Command refresh[] = {
-
-    /**
-     * Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
+    /* Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
      * test-suite gave a account number of _424_ to the user at
      * this step; to type less, here the _42_ number is reused.
-     * Does this change the tests semantics?
-     */CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
+     * Does this change the tests semantics? */
+    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),
-
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-refresh-create-reserve-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "refresh-create-reserve-1"),
     /**
      * Make previous command effective.
      */
@@ -351,20 +356,6 @@ run (void *cls,
       ("check_bank_transfer-99c", ec.exchange_url,
       "EUR:0.08", bc.exchange_payto, bc.user43_payto),
 
-    TALER_TESTING_cmd_check_bank_admin_transfer
-      ("check_bank_transfer-aai-1",
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
-      "FIXME"),
-
-    /**
-     * NOTE: the old test-suite had this "check bank transfer"
-     * command with debit account == 424.
-     */
-    TALER_TESTING_cmd_check_bank_admin_transfer
-      ("check_bank_transfer-aai-2", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
-      "FIXME"),
-
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
 
     TALER_TESTING_cmd_track_transaction
@@ -390,28 +381,19 @@ run (void *cls,
    * very far in the future does NOT get aggregated now.
    */
   struct TALER_TESTING_Command unaggregation[] = {
-
-    TALER_TESTING_cmd_check_bank_empty
-      ("far-future-aggregation-a"),
-
+    TALER_TESTING_cmd_check_bank_empty ("far-future-aggregation-a"),
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-unaggregated",
                               "EUR:5.01"),
-
-    CMD_EXEC_WIREWATCH ("wirewatch-unaggregated"),
-
     /* "consume" reserve creation transfer.  */
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-unaggregated",
-      ec.exchange_url,
-      "EUR:5.01",
-      bc.user42_payto, bc.exchange_payto),
-
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-unaggregated",
-      "create-reserve-unaggregated",
-      "EUR:5",
-      MHD_HTTP_OK),
-
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-create-reserve-unaggregated",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "create-reserve-unaggregated"),
+    CMD_EXEC_WIREWATCH ("wirewatch-unaggregated"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
+                                       "create-reserve-unaggregated",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit
       ("deposit-unaggregated",
       "withdraw-coin-unaggregated",
@@ -441,7 +423,10 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r1",
                               "EUR:5.01"),
-
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-create-reserve-r1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "create-reserve-r1"),
 
     /**
      * Run wire-watch to trigger the reserve creation.
@@ -471,16 +456,11 @@ run (void *cls,
      */
     CMD_EXEC_AGGREGATOR ("run-aggregator-refund"),
 
-    /**
-     * Check that aggregator didn't do anything, as expected.
+    /* Check that aggregator didn't do anything, as expected.
      * Note, this operation takes two commands: one to "flush"
      * the preliminary transfer (used to withdraw) from the
      * fakebank and the second to actually check there are not
-     * other transfers around.
-     */TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pre-refund", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
-
+     * other transfers around. *///
     TALER_TESTING_cmd_check_bank_empty
       ("check_bank_transfer-pre-refund"),
 
@@ -538,20 +518,16 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-rb",
                               "EUR:5.01"),
-
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-create-reserve-rb",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "create-reserve-rb"),
     CMD_EXEC_WIREWATCH ("wirewatch-rb"),
 
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-rb",
                                        "create-reserve-rb",
                                        "EUR:5",
                                        MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_check_bank_admin_transfer
-      ("check_bank_transfer-aai-3b",
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
-      "FIXME"),
-
-
     TALER_TESTING_cmd_deposit
       ("deposit-refund-1b", "withdraw-coin-rb", 0,
       bc.user42_payto,
@@ -587,7 +563,10 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-1",
                               "EUR:5.01"),
-
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("payback-create-reserve-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "payback-create-reserve-1"),
     /**
      * Run wire-watch to trigger the reserve creation.
      */
@@ -638,13 +617,16 @@ run (void *cls,
                               "EUR:3.99",
                               MHD_HTTP_OK),
 
-    /**
-     * These commands should close the reserve because
+    /* These commands should close the reserve because
      * the aggregator is given a config file that ovverrides
-     * the reserve expiration time (making it now-ish)
-     */CMD_TRANSFER_TO_EXCHANGE
+     * the reserve expiration time (making it now-ish) */
+    CMD_TRANSFER_TO_EXCHANGE
       ("short-lived-reserve",
       "EUR:5.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-short-lived-reserve",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "short-lived-reserve"),
 
     TALER_TESTING_cmd_exec_wirewatch
       ("short-lived-aggregation",
@@ -664,29 +646,22 @@ run (void *cls,
       "short-lived-reserve",
       "EUR:1",
       MHD_HTTP_CONFLICT),
-
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_short-lived_transfer",
-      ec.exchange_url,
-      "EUR:5.01",
-      bc.user42_payto,
-      bc.exchange_payto),
-
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_short-lived_reimburse",
-      ec.exchange_url,
-      "EUR:5",
-      bc.exchange_payto,
-      bc.user42_payto),
-
-    /**
-     * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_short-lived_reimburse",
+                                           ec.exchange_url,
+                                           "EUR:5",
+                                           bc.exchange_payto,
+                                           bc.user42_payto),
+    /* Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
      * config, then withdraw two coin, partially spend one, and
      * then have the rest paid back.  Check deposit of other coin
-     * fails.  (Do not use EUR:5 here as the EUR:5 coin was
-     * revoked and we did not bother to create a new one...)
-     */CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
+     * fails.  Do not use EUR:5 here as the EUR:5 coin was
+     * revoked and we did not bother to create a new one... *///
+    CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
                               "EUR:2.02"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-payback-create-reserve-2",
+      "EUR:2.02", bc.user42_payto, bc.exchange_payto,
+      "payback-create-reserve-2"),
 
     /* Make previous command effective. */
     CMD_EXEC_WIREWATCH ("wirewatch-5"),
@@ -751,6 +726,10 @@ run (void *cls,
     /* Test that revoked coins cannot be withdrawn */
     CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-3",
                               "EUR:1.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-payback-create-reserve-3",
+      "EUR:1.01", bc.user42_payto, bc.exchange_payto,
+      "payback-create-reserve-3"),
 
     CMD_EXEC_WIREWATCH ("wirewatch-6"),
 
@@ -761,15 +740,6 @@ run (void *cls,
       MHD_HTTP_NOT_FOUND),
 
     /* check that we are empty before the rejection test */
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pr1", ec.exchange_url,
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto),
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pr2", ec.exchange_url,
-      "EUR:2.02", bc.user42_payto, bc.exchange_payto),
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-pr3", ec.exchange_url,
-      "EUR:1.01", bc.user42_payto, bc.exchange_payto),
     TALER_TESTING_cmd_check_bank_empty
       ("check-empty-again"),
 
@@ -783,6 +753,10 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:5.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer
+      ("check-create-reserve-1",
+      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "create-reserve-1"),
     /**
      * Run wire-watch to trigger the reserve creation.
      */
