@@ -227,6 +227,11 @@ static struct CloseTransferContext *ctc;
 static char *exchange_currency_string;
 
 /**
+ * How many fractional digits does the currency use?
+ */
+static uint8_t currency_rounding_fractional_digits;
+
+/**
  * What is the base URL of this exchange?
  */
 static char *exchange_base_url;
@@ -612,6 +617,30 @@ exchange_serve_process_config ()
              exchange_currency_string,
              (unsigned int) TALER_CURRENCY_LEN);
     return GNUNET_SYSERR;
+  }
+
+  {
+    unsigned long long num;
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_number (cfg,
+                                               "taler",
+                                               "CURRENCY_ROUNDING_FRACTIONAL_DIGITS",
+                                               &num))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "No [taler]/CURRENCY_ROUNDING_FRACTIONAL_DIGITS specified, defaulting to 2 digits.\n");
+      currency_rounding_fractional_digits = 2;
+    }
+    else if (num > TALER_AMOUNT_FRAC_LEN)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Value of CURRENCY_ROUNDING_FRACTIONAL_DIGITS too big.\n");
+      return GNUNET_SYSERR;
+    }
+    else
+    {
+      currency_rounding_fractional_digits = (uint8_t) num;
+    }
   }
 
   if (NULL ==
@@ -1116,7 +1145,8 @@ expired_reserve_cb (void *cls,
   }
   /* round down to enable transfer */
   if (GNUNET_SYSERR ==
-      TALER_amount_round (&amount_without_fee))
+      TALER_amount_round_down (&amount_without_fee,
+                               currency_rounding_fractional_digits))
   {
     GNUNET_break (0);
     global_ret = GNUNET_SYSERR;
@@ -1447,7 +1477,8 @@ run_aggregation (void *cls)
                                &au->total_amount,
                                &au->wire_fee)) ||
        (GNUNET_SYSERR ==
-        TALER_amount_round (&au->final_amount)) ||
+        TALER_amount_round_down (&au->final_amount,
+                                 currency_rounding_fractional_digits)) ||
        ( (0 == au->final_amount.value) &&
          (0 == au->final_amount.fraction) ) )
   {

@@ -86,6 +86,11 @@ static struct TALER_EXCHANGEDB_Plugin *edb;
 static char *currency;
 
 /**
+ * How many fractional digits does the currency use?
+ */
+static uint8_t currency_rounding_fractional_digits;
+
+/**
  * Our configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -2895,7 +2900,8 @@ check_wire_out_cb
   }
 
   /* Round down to amount supported by wire method */
-  GNUNET_break (TALER_amount_round (&final_amount));
+  GNUNET_break (TALER_amount_round_down (&final_amount,
+                                         currency_rounding_fractional_digits));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
   if (GNUNET_OK !=
@@ -5203,6 +5209,30 @@ run (void *cls,
                                "CURRENCY");
     global_ret = 1;
     return;
+  }
+  {
+    unsigned long long num;
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_number (cfg,
+                                               "taler",
+                                               "CURRENCY_ROUNDING_FRACTIONAL_DIGITS",
+                                               &num))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "No [taler]/CURRENCY_ROUNDING_FRACTIONAL_DIGITS specified, defaulting to 2 digits.\n");
+      currency_rounding_fractional_digits = 2;
+    }
+    else if (num > TALER_AMOUNT_FRAC_LEN)
+    {
+      global_ret = 1;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Value of CURRENCY_ROUNDING_FRACTIONAL_DIGITS too big.\n");
+      return;
+    }
+    else
+    {
+      currency_rounding_fractional_digits = (uint8_t) num;
+    }
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
