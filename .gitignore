@@ -57,7 +57,6 @@ src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-key
 src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
 src/exchange-tools/taler-auditor-sign
 src/exchange-tools/taler-exchange-dbinit
-src/exchange-tools/taler-exchange-tvg
 src/exchange-tools/taler-exchange-keycheck
 src/exchange-tools/taler-exchange-keyup
 src/exchange-tools/taler-exchange-wire
