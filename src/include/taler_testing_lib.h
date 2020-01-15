@@ -49,28 +49,13 @@
   } while (0)
 
 
+// FIXME: replace these
 #define TALER_TESTING_GET_TRAIT_ROW_ID(cmd,out) \
   TALER_TESTING_get_trait_uint64 (cmd, 3, out)
 
+// FIXME: replace these
 #define TALER_TESTING_MAKE_TRAIT_ROW_ID(data) \
   TALER_TESTING_make_trait_uint64 (3, data)
-
-
-// FIXME: replace these!
-#define TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT(cmd,out) \
-  TALER_TESTING_get_trait_string (cmd, 4, out)
-
-// FIXME: replace these!
-#define TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT(data) \
-  TALER_TESTING_make_trait_string (4, data)
-
-// FIXME: replace these!
-#define TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT(cmd,out) \
-  TALER_TESTING_get_trait_string (cmd, 5, out)
-
-// FIXME: replace these!
-#define TALER_TESTING_MAKE_TRAIT_DEBIT_ACCOUNT(data) \
-  TALER_TESTING_make_trait_string (5, data)
 
 
 /**
@@ -2358,15 +2343,36 @@ TALER_TESTING_get_trait_url (const struct TALER_TESTING_Command *cmd,
 
 
 /**
+ * Used as the "index" in payto traits, to identify what kind of
+ * payto URL we are returning.
+ */
+enum TALER_TESTING_PaytoType
+{
+  /**
+   * We don't know / not credit or debit.
+   */
+  TALER_TESTING_PT_NEUTRAL,
+  /**
+   * Credit side of a transaction.
+   */
+  TALER_TESTING_PT_CREDIT,
+  /**
+   * Debit side of a transaction.
+   */
+  TALER_TESTING_PT_DEBIT
+};
+
+
+/**
  * Offer PAYTO url in a trait.
  *
- * @param index which url is to be picked,
+ * @param pt which url is to be picked,
  *        in case multiple are offered.
  * @param url the url to offer.
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_payto (unsigned int index,
+TALER_TESTING_make_trait_payto (enum TALER_TESTING_PaytoType pt,
                                 const char *url);
 
 
@@ -2374,14 +2380,14 @@ TALER_TESTING_make_trait_payto (unsigned int index,
  * Obtain a PAYTO url from @a cmd.
  *
  * @param cmd command to extract the url from.
- * @param index which url is to be picked, in case
+ * @param pt which url is to be picked, in case
  *        multiple are offered.
  * @param url[out] where to write the url.
  * @return #GNUNET_OK on success.
  */
 int
 TALER_TESTING_get_trait_payto (const struct TALER_TESTING_Command *cmd,
-                               unsigned int index,
+                               enum TALER_TESTING_PaytoType pt,
                                const char **url);
 
 

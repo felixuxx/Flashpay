@@ -398,9 +398,11 @@ admin_add_incoming_traits (void *cls,
 {
   struct AdminAddIncomingState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_payto (1, fts->payto_debit_account),
     TALER_TESTING_MAKE_TRAIT_ROW_ID (&fts->serial_id),
-    TALER_TESTING_MAKE_TRAIT_CREDIT_ACCOUNT (fts->exchange_credit_url),
+    TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
+                                    fts->payto_debit_account),
+    TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
+                                    fts->exchange_credit_url),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
     TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
     TALER_TESTING_make_trait_reserve_priv (0,

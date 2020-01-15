@@ -135,17 +135,20 @@ check_bank_transfer_run (void *cls,
                                                        &amount_ptr));
     amount = *amount_ptr;
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (deposit_cmd, &debit_account));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (deposit_cmd,
+                                                  TALER_TESTING_PT_DEBIT,
+                                                  &debit_account));
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (deposit_cmd, &credit_account));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (deposit_cmd,
+                                                  TALER_TESTING_PT_CREDIT,
+                                                  &credit_account));
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_get_trait_url
-        (deposit_cmd, 0, &exchange_base_url)); // check 0 works!
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_url (deposit_cmd,
+                                                0, /* TODO: check 0 works! */
+                                                &exchange_base_url));
   }
 
   if (GNUNET_OK !=

@@ -311,20 +311,20 @@ build_history (struct TALER_TESTING_Interpreter *is,
       break;
     }
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (pos, &debit_account));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_DEBIT,
+                                                  &debit_account));
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (pos, &credit_account));
-
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_CREDIT,
+                                                  &credit_account));
     TALER_LOG_INFO ("Potential history element:"
                     " %s->%s; my account: %s\n",
                     debit_account,
                     credit_account,
                     hs->account_url);
-
     if (0 == strcasecmp (hs->account_url,
                          debit_account))
     {
@@ -398,19 +398,18 @@ build_history (struct TALER_TESTING_Interpreter *is,
       break;
     }
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (pos, &debit_account));
-
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (pos, &credit_account));
-
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_DEBIT,
+                                                  &debit_account));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_CREDIT,
+                                                  &credit_account));
     TALER_LOG_INFO ("Potential history bit: %s->%s; my account: %s\n",
                     debit_account,
                     credit_account,
                     hs->account_url);
-
     /* Discard transactions where the audited account played _both_ the debit
      * and the debit roles, but _only if_ the audit goes on both directions..
      * This needs more explaination!

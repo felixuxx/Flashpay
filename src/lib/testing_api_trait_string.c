@@ -65,10 +65,9 @@
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_contract_terms
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const json_t **contract_terms)
+TALER_TESTING_get_trait_contract_terms (const struct TALER_TESTING_Command *cmd,
+                                        unsigned int index,
+                                        const json_t **contract_terms)
 {
   return cmd->traits (cmd->cls,
                       (const void **) contract_terms,
@@ -85,9 +84,8 @@ TALER_TESTING_get_trait_contract_terms
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_contract_terms
-  (unsigned int index,
-  const json_t *contract_terms)
+TALER_TESTING_make_trait_contract_terms (unsigned int index,
+                                         const json_t *contract_terms)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -109,10 +107,9 @@ TALER_TESTING_make_trait_contract_terms
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_string
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const char **s)
+TALER_TESTING_get_trait_string (const struct TALER_TESTING_Command *cmd,
+                                unsigned int index,
+                                const char **s)
 {
   return cmd->traits (cmd->cls,
                       (const void **) s,
@@ -130,9 +127,8 @@ TALER_TESTING_get_trait_string
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_string
-  (unsigned int index,
-  const char *s)
+TALER_TESTING_make_trait_string (unsigned int index,
+                                 const char *s)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -154,10 +150,9 @@ TALER_TESTING_make_trait_string
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_url
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const char **url)
+TALER_TESTING_get_trait_url (const struct TALER_TESTING_Command *cmd,
+                             unsigned int index,
+                             const char **url)
 {
   return cmd->traits (cmd->cls,
                       (const void **) url,
@@ -176,9 +171,8 @@ TALER_TESTING_get_trait_url
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_url
-  (unsigned int index,
-  const char *url)
+TALER_TESTING_make_trait_url (unsigned int index,
+                              const char *url)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -205,10 +199,9 @@ TALER_TESTING_make_trait_url
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_order_id
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const char **order_id)
+TALER_TESTING_get_trait_order_id (const struct TALER_TESTING_Command *cmd,
+                                  unsigned int index,
+                                  const char **order_id)
 {
   return cmd->traits (cmd->cls,
                       (const void **) order_id,
@@ -227,9 +220,8 @@ TALER_TESTING_get_trait_order_id
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_order_id
-  (unsigned int index,
-  const char *order_id)
+TALER_TESTING_make_trait_order_id (unsigned int index,
+                                   const char *order_id)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
@@ -244,39 +236,37 @@ TALER_TESTING_make_trait_order_id
  * Obtain a PAYTO-url from @a cmd.
  *
  * @param cmd command to extract the url from.
- * @param index which url is to be picked, in case
+ * @param pt which url is to be picked, in case
  *        multiple are offered.
  * @param url[out] where to write the url.
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_payto
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const char **url)
+TALER_TESTING_get_trait_payto (const struct TALER_TESTING_Command *cmd,
+                               enum TALER_TESTING_PaytoType pt,
+                               const char **url)
 {
   return cmd->traits (cmd->cls,
                       (const void **) url,
                       TALER_TESTING_TRAIT_PAYTO,
-                      index);
+                      (unsigned int) pt);
 }
 
 
 /**
  * Offer a "payto" URL reference.
  *
- * @param index which reference is to be offered,
+ * @param pt which reference is to be offered,
  *        in case multiple are offered.
  * @param payto the payto URL
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_payto
-  (unsigned int index,
-  const char *payto)
+TALER_TESTING_make_trait_payto (enum TALER_TESTING_PaytoType pt,
+                                const char *payto)
 {
   struct TALER_TESTING_Trait ret = {
-    .index = index,
+    .index = (unsigned int) pt,
     .trait_name = TALER_TESTING_TRAIT_PAYTO,
     .ptr = (const void *) payto
   };
