@@ -81,12 +81,6 @@ taler_exchange_httpd_LDADD = \
   -lz \
   -lpthread
 
-if HAVE_DEVELOPER
-taler_exchange_httpd_SOURCES += \
-  taler-exchange-httpd_test.c taler-exchange-httpd_test.h
-endif
-
-
 # Testcases
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;

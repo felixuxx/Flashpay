@@ -41,9 +41,6 @@
 #include "taler-exchange-httpd_track_transaction.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_wire.h"
-#if HAVE_DEVELOPER
-#include "taler-exchange-httpd_test.h"
-#endif
 #include "taler_exchangedb_plugin.h"
 #include "taler-exchange-httpd_validation.h"
 
@@ -356,71 +353,6 @@ handle_mhd_request (void *cls,
       "Only GET is allowed", 0,
       &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-#if HAVE_DEVELOPER
-    /* Client crypto-interoperability test functions */
-    { "/test", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test, MHD_HTTP_OK },
-    { "/test", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/base32", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_base32, MHD_HTTP_OK },
-    { "/test/base32", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/encrypt", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_encrypt, MHD_HTTP_OK },
-    { "/test/encrypt", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/hkdf", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_hkdf, MHD_HTTP_OK },
-    { "/test/hkdf", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/ecdhe", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
-    { "/test/ecdhe", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/eddsa", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_eddsa, MHD_HTTP_OK },
-    { "/test/eddsa", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/rsa/get", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
-    { "/test/rsa/get", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/rsa/sign", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
-    { "/test/rsa/sign", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/test/transfer", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TEST_handler_test_transfer, MHD_HTTP_OK },
-    { "/test/transfer", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-#endif
     { NULL, NULL, NULL, NULL, 0, NULL, 0 }
   };
   static struct TEH_RequestHandler h404 = {
