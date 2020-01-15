@@ -63,58 +63,62 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
-  memset (&wtid, 42, sizeof (wtid));
-  struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_bank_credits ("history-0",
-                                    bc.exchange_account_url,
-                                    &bc.exchange_auth,
-                                    NULL,
-                                    1),
-    TALER_TESTING_cmd_admin_add_incoming ("debit-1",
-                                          "KUDOS:5.01",
-                                          bc.exchange_account_url,
-                                          &bc.exchange_auth,
-                                          bc.user42_payto),
-    TALER_TESTING_cmd_bank_credits ("history-1c",
-                                    bc.exchange_account_url,
-                                    &bc.exchange_auth,
-                                    NULL,
-                                    5),
-    TALER_TESTING_cmd_bank_debits ("history-1d",
-                                   bc.exchange_account_url,
-                                   &bc.exchange_auth,
-                                   NULL,
-                                   5),
-    TALER_TESTING_cmd_admin_add_incoming ("debit-2",
-                                          "KUDOS:3.21",
-                                          bc.exchange_account_url,
-                                          &bc.exchange_auth,
-                                          bc.user42_payto),
-    TALER_TESTING_cmd_transfer ("credit-2",
-                                "KUDOS:3.22",
-                                bc.exchange_account_url,
-                                &bc.exchange_auth,
-                                bc.user42_payto,
-                                &wtid,
-                                "http://exchange.example.com/"),
-    TALER_TESTING_cmd_bank_debits ("history-2b",
-                                   bc.exchange_account_url,
-                                   &bc.exchange_auth,
-                                   NULL,
-                                   5),
-    TALER_TESTING_cmd_end ()
-  };
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Bank serves at `%s'\n",
-              bc.bank_url);
-  if (GNUNET_YES == with_fakebank)
-    TALER_TESTING_run_with_fakebank (is,
-                                     commands,
-                                     bc.bank_url);
-  else
-    TALER_TESTING_run (is,
-                       commands);
+  memset (&wtid, 42, sizeof (wtid));
+
+  {
+    struct TALER_TESTING_Command commands[] = {
+      TALER_TESTING_cmd_bank_credits ("history-0",
+                                      bc.exchange_account_url,
+                                      &bc.exchange_auth,
+                                      NULL,
+                                      1),
+      TALER_TESTING_cmd_admin_add_incoming ("debit-1",
+                                            "KUDOS:5.01",
+                                            bc.exchange_account_url,
+                                            &bc.exchange_auth,
+                                            bc.user42_payto),
+      TALER_TESTING_cmd_bank_credits ("history-1c",
+                                      bc.exchange_account_url,
+                                      &bc.exchange_auth,
+                                      NULL,
+                                      5),
+      TALER_TESTING_cmd_bank_debits ("history-1d",
+                                     bc.exchange_account_url,
+                                     &bc.exchange_auth,
+                                     NULL,
+                                     5),
+      TALER_TESTING_cmd_admin_add_incoming ("debit-2",
+                                            "KUDOS:3.21",
+                                            bc.exchange_account_url,
+                                            &bc.exchange_auth,
+                                            bc.user42_payto),
+      TALER_TESTING_cmd_transfer ("credit-2",
+                                  "KUDOS:3.22",
+                                  bc.exchange_account_url,
+                                  &bc.exchange_auth,
+                                  bc.user42_payto,
+                                  &wtid,
+                                  "http://exchange.example.com/"),
+      TALER_TESTING_cmd_bank_debits ("history-2b",
+                                     bc.exchange_account_url,
+                                     &bc.exchange_auth,
+                                     NULL,
+                                     5),
+      TALER_TESTING_cmd_end ()
+    };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Bank serves at `%s'\n",
+                bc.bank_url);
+    if (GNUNET_YES == with_fakebank)
+      TALER_TESTING_run_with_fakebank (is,
+                                       commands,
+                                       bc.bank_url);
+    else
+      TALER_TESTING_run (is,
+                         commands);
+  }
 }
 
 

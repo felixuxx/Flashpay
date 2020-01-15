@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/testing_api_cmd_history.c
+ * @file lib/testing_api_cmd_bank_history_debit.c
  * @brief command to check the /history API from the bank.
  * @author Marcello Stanisci
  */
@@ -29,6 +29,29 @@
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
+
+/**
+ * Item in the transaction history, as reconstructed from the
+ * command history.
+ */
+struct History
+{
+
+  /**
+   * Wire details.
+   */
+  struct TALER_BANK_DebitDetails details;
+
+  /**
+   * Serial ID of the wire transfer.
+   */
+  uint64_t row_id;
+
+  /**
+   * URL to free.
+   */
+  char *url;
+};
 
 
 /**
@@ -74,30 +97,16 @@ struct HistoryState
    */
   int failed;
 
-};
-
-
-/**
- * Item in the transaction history, as reconstructed from the
- * command history.
- */
-struct History
-{
+  /**
+   * Expected history.
+   */
+  struct History *h;
 
   /**
-   * Wire details.
+   * Length of @e h
    */
-  struct TALER_BANK_DebitDetails details;
+  unsigned int total;
 
-  /**
-   * Serial ID of the wire transfer.
-   */
-  uint64_t row_id;
-
-  /**
-   * URL to free.
-   */
-  char *url;
 };
 
 
@@ -128,22 +137,6 @@ history_traits (void *cls,
 
 
 /**
- * Free history @a h of length @a h_len.
- *
- * @param h history array to free.
- * @param h_len number of entries in @a h.
- */
-static void
-free_history (struct History *h,
-              uint64_t h_len)
-{
-  for (uint64_t off = 0; off<h_len; off++)
-    GNUNET_free (h[off].url);
-  GNUNET_free_non_null (h);
-}
-
-
-/**
  * Log which history we expected.  Called when an error occurs.
  *
  * @param h what we expected.
@@ -152,7 +145,7 @@ free_history (struct History *h,
  */
 static void
 print_expected (struct History *h,
-                uint64_t h_len,
+                unsigned int h_len,
                 unsigned int off)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -161,37 +154,16 @@ print_expected (struct History *h,
               (unsigned long long) h_len);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Expected history:\n");
-  for (uint64_t i = 0; i<h_len; i++)
+  for (unsigned int i = 0; i<h_len; i++)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "H(%llu): %s (serial: %llu, subject: %s,"
-                " counterpart: %s)\n",
-                (unsigned long long) i,
+                "H(%u): %s (serial: %llu, subject: %s, counterpart: %s)\n",
+                i,
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 TALER_B2S (&h[i].details.wtid),
                 h[i].details.credit_account_url);
   }
-}
-
-
-/**
- * Tell if the current item is beyond the allowed limit.
- *
- * @param total current number of items in the built history list.
- *        Note, this is the list we build locally and compare with
- *        what the server returned.
- * @param hs the history CMD state.
- * @param pos current item to be evaluated or not (if the list
- *        has already enough elements).
- * @return GNUNET_OK / GNUNET_NO.
- */
-static int
-build_history_hit_limit (uint64_t total,
-                         const struct HistoryState *hs,
-                         const struct TALER_TESTING_Command *pos)
-{
-  return total >= hs->num_results;
 }
 
 
@@ -205,15 +177,14 @@ build_history_hit_limit (uint64_t total,
  * @param is interpreter state (supposedly having the
  *        current CMD pointing at a "history" CMD).
  * @param[out] rh history array to initialize.
- *
  * @return number of entries in @a rh.
  */
-static uint64_t
+static unsigned int
 build_history (struct TALER_TESTING_Interpreter *is,
                struct History **rh)
 {
   struct HistoryState *hs = is->commands[is->ip].cls;
-  uint64_t total;
+  unsigned int total;
   struct History *h;
   const struct TALER_TESTING_Command *add_incoming_cmd;
   int inc;
@@ -303,9 +274,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
     TALER_LOG_DEBUG ("Found first row\n");
 
-    if (build_history_hit_limit (total,
-                                 hs,
-                                 pos))
+    if (total >= GNUNET_MAX (hs->num_results,
+                             -hs->num_results) )
     {
       TALER_LOG_DEBUG ("Hit history limit\n");
       break;
@@ -342,8 +312,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
     return 0;
   }
 
-
-  GNUNET_assert (total < UINT_MAX);
   h = GNUNET_new_array ((unsigned int) total,
                         struct History);
   total = 0;
@@ -390,9 +358,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
       continue; /* skip until we find the marker */
     }
 
-    if (build_history_hit_limit (total,
-                                 hs,
-                                 pos))
+    if (total >= GNUNET_MAX (hs->num_results,
+                             -hs->num_results))
     {
       TALER_LOG_INFO ("Hit history limit (2)\n");
       break;
@@ -462,45 +429,24 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
 
 /**
- * Compute how many results we expect to be returned for
- * the current command at @a is.
- *
- * @param is the interpreter state to inspect.
- * @return number of results expected.
- */
-static uint64_t
-compute_result_count (struct TALER_TESTING_Interpreter *is)
-{
-  uint64_t total;
-  struct History *h;
-
-  total = build_history (is, &h);
-  free_history (h, total);
-  return total;
-}
-
-
-/**
  * Check that the "/history" response matches the
  * CMD whose offset in the list of CMDs is @a off.
  *
  * @param is the interpreter state.
+ * @param h expected history
+ * @param total number of entries in @a h
  * @param off the offset (of the CMD list) where the command
  *        to check is.
- * @param dir the expected direction of the transaction.
  * @param details the expected transaction details.
- *
  * @return #GNUNET_OK if the transaction is what we expect.
  */
 static int
 check_result (struct TALER_TESTING_Interpreter *is,
+              struct History *h,
+              uint64_t total,
               unsigned int off,
               const struct TALER_BANK_DebitDetails *details)
 {
-  uint64_t total;
-  struct History *h;
-
-  total = build_history (is, &h);
   if (off >= total)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -524,12 +470,8 @@ check_result (struct TALER_TESTING_Interpreter *is,
     print_expected (h,
                     total,
                     off);
-    free_history (h,
-                  total);
     return GNUNET_SYSERR;
   }
-  free_history (h,
-                total);
   return GNUNET_OK;
 }
 
@@ -569,38 +511,6 @@ history_cb (void *cls,
   struct HistoryState *hs = is->commands[is->ip].cls;
 
   (void) row_id;
-  if (NULL == details)
-  {
-    hs->hh = NULL;
-    if ( (hs->results_obtained != compute_result_count (is)) ||
-         (GNUNET_YES == hs->failed) ||
-         (MHD_HTTP_NO_CONTENT != http_status) )
-    {
-      uint64_t total;
-      struct History *h;
-
-      GNUNET_break (0);
-      total = build_history (is, &h);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Expected history of length %llu, got %llu;"
-                  " HTTP status code: %u/%d, failed: %d\n",
-                  (unsigned long long) total,
-                  (unsigned long long) hs->results_obtained,
-                  http_status,
-                  (int) ec,
-                  hs->failed);
-      print_expected (h,
-                      total,
-                      UINT_MAX);
-      free_history (h,
-                    total);
-      TALER_TESTING_interpreter_fail (is);
-      return GNUNET_SYSERR;
-    }
-    TALER_TESTING_interpreter_next (is);
-    return GNUNET_OK;
-  }
-
   if (MHD_HTTP_OK != http_status)
   {
     hs->hh = NULL;
@@ -610,8 +520,36 @@ history_cb (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return GNUNET_SYSERR;
   }
+  if (NULL == details)
+  {
+    hs->hh = NULL;
+    if ( (hs->results_obtained != hs->total) ||
+         (GNUNET_YES == hs->failed) ||
+         (MHD_HTTP_NO_CONTENT != http_status) )
+    {
+      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Expected history of length %u, got %llu;"
+                  " HTTP status code: %u/%d, failed: %d\n",
+                  hs->total,
+                  (unsigned long long) hs->results_obtained,
+                  http_status,
+                  (int) ec,
+                  hs->failed);
+      print_expected (hs->h,
+                      hs->total,
+                      UINT_MAX);
+      TALER_TESTING_interpreter_fail (is);
+      return GNUNET_SYSERR;
+    }
+    TALER_TESTING_interpreter_next (is);
+    return GNUNET_OK;
+  }
+
   /* check current element */
   if (GNUNET_OK != check_result (is,
+                                 hs->h,
+                                 hs->total,
                                  hs->results_obtained,
                                  details))
   {
@@ -656,12 +594,12 @@ history_run (void *cls,
   {
     const struct TALER_TESTING_Command *history_cmd;
 
-    history_cmd = TALER_TESTING_interpreter_lookup_command
-                    (is, hs->start_row_reference);
+    history_cmd
+      = TALER_TESTING_interpreter_lookup_command (is,
+                                                  hs->start_row_reference);
 
     if (NULL == history_cmd)
       TALER_TESTING_FAIL (is);
-
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_uint64 (history_cmd,
                                         0,
@@ -672,7 +610,7 @@ history_run (void *cls,
     TALER_LOG_DEBUG ("row id (from trait) is %llu\n",
                      (unsigned long long) row_id);
   }
-
+  hs->total = build_history (is, &hs->h);
   hs->hh = TALER_BANK_debit_history (is->ctx,
                                      hs->account_url,
                                      &hs->auth,
@@ -703,6 +641,9 @@ history_cleanup (void *cls,
     TALER_LOG_WARNING ("/history did not complete\n");
     TALER_BANK_debit_history_cancel (hs->hh);
   }
+  for (unsigned int off = 0; off<hs->total; off++)
+    GNUNET_free (hs->h[off].url);
+  GNUNET_free_non_null (hs->h);
   GNUNET_free (hs);
 }
 
@@ -749,4 +690,4 @@ TALER_TESTING_cmd_bank_debits (const char *label,
 }
 
 
-/* end of testing_api_cmd_history_debit.c */
+/* end of testing_api_cmd_bank_history_debit.c */
