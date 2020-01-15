@@ -1053,7 +1053,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
                                                   pos->credit_account);
       debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                 account);
+                                                 pos->debit_account);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Returning transaction %s->%s (%s)\n",
                   debit_payto,

@@ -1040,13 +1040,13 @@ postgres_preflight (void *cls,
                                  es))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check committed transaction `%s'!\n",
+                "BUG: Preflight check rolled back transaction `%s'!\n",
                 session->transaction_name);
   }
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check failed to commit transaction `%s'!\n",
+                "BUG: Preflight check failed to rollback transaction `%s'!\n",
                 session->transaction_name);
   }
   session->transaction_name = NULL;

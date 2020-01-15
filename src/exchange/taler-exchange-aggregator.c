@@ -1244,6 +1244,10 @@ expired_reserve_cb (void *cls,
   erc->async_cont = GNUNET_YES;
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
+  GNUNET_free (ctc->method);
+  GNUNET_free (ctc);
+  ctc = NULL;
+
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -1326,9 +1330,9 @@ run_reserve_closures (void *cls)
                                      NULL);
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    (void) commit_or_warn (session);
     if (GNUNET_YES == erc.async_cont)
       break;
-    (void) commit_or_warn (session);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
     return;
@@ -1831,7 +1835,7 @@ run_transfers (void *cls)
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
                         session,
-                        "aggregator run transfer"))
+			"aggregator run transfer"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
