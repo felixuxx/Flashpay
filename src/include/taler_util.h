@@ -259,6 +259,17 @@ TALER_payto_xtalerbank_make (const char *bank_url,
 
 
 /**
+ * Create an x-taler-bank payto:// URL from an @a account_url.
+ *
+ * @param account_url the bank URL
+ * @param account_name the account name
+ * @return payto:// URL
+ */
+char *
+TALER_payto_xtalerbank_make2 (const char *account_url);
+
+
+/**
  * Given an x-taler-bank payto:// URL, compute
  * the HTTP(S) base URL of the account.
  *

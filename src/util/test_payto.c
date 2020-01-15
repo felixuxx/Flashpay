@@ -50,6 +50,9 @@ main (int argc,
                                    "account");
   CHECK ("payto://x-taler-bank/localhost/account",
          r);
+  r = TALER_payto_xtalerbank_make2 ("https://localhost/account");
+  CHECK ("payto://x-taler-bank/localhost/account",
+         r);
   r = TALER_payto_xtalerbank_make ("http://localhost:80/",
                                    "account");
   CHECK ("payto://x-taler-bank/localhost:80/account",
@@ -60,6 +63,10 @@ main (int argc,
          r);
   r = TALER_payto_xtalerbank_make ("http://localhost/",
                                    "account");
+  r = TALER_payto_xtalerbank_make2 ("http://localhost:80/account");
+  CHECK ("payto://x-taler-bank/localhost:80/account",
+         r);
+  r = TALER_payto_xtalerbank_make2 ("http://localhost/account");
   CHECK ("payto://x-taler-bank/localhost:80/account",
          r);
   r = TALER_xtalerbank_base_url_from_payto (

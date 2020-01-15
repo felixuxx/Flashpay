@@ -304,7 +304,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
       continue; /* skip until we find the marker */
 
     TALER_LOG_DEBUG ("Found first row\n");
-
     if (build_history_hit_limit (total,
                                  hs,
                                  pos))
@@ -312,16 +311,14 @@ build_history (struct TALER_TESTING_Interpreter *is,
       TALER_LOG_DEBUG ("Hit history limit\n");
       break;
     }
-
-
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (pos, &credit_account));
-
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (pos, &debit_account));
-
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_CREDIT,
+                                                  &credit_account));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_DEBIT,
+                                                  &debit_account));
     TALER_LOG_INFO ("Potential history element:"
                     " %s->%s; my account: %s\n",
                     debit_account,
@@ -365,8 +362,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *credit_account;
     const char *debit_account;
 
-    if (GNUNET_OK != TALER_TESTING_GET_TRAIT_ROW_ID
-          (pos, &row_id))
+    if (GNUNET_OK !=
+        TALER_TESTING_GET_TRAIT_ROW_ID (pos,
+                                        &row_id))
       continue;
 
     if (NULL != row_id_start)
@@ -401,14 +399,14 @@ build_history (struct TALER_TESTING_Interpreter *is,
       break;
     }
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_CREDIT_ACCOUNT
-        (pos, &credit_account));
-
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_GET_TRAIT_DEBIT_ACCOUNT
-        (pos, &debit_account));
-
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_CREDIT,
+                                                  &credit_account));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_payto (pos,
+                                                  TALER_TESTING_PT_DEBIT,
+                                                  &debit_account));
     TALER_LOG_INFO ("Potential history bit:"
                     " %s->%s; my account: %s\n",
                     debit_account,

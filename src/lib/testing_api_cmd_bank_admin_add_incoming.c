@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_admin_add_incoming.c
+ * @file lib/testing_api_cmd_admin_add_incoming.c
  * @brief implementation of a bank /admin/add-incoming command
  * @author Christian Grothoff
  * @author Marcello Stanisci
@@ -57,6 +57,11 @@ struct AdminAddIncomingState
    * Money sender account URL.
    */
   const char *payto_debit_account;
+
+  /**
+   * Money sender account URL.
+   */
+  char *payto_credit_account;
 
   /**
    * Username to use for authentication.
@@ -376,6 +381,7 @@ admin_add_incoming_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (fts->retry_task);
     fts->retry_task = NULL;
   }
+  GNUNET_free (fts->payto_credit_account);
   GNUNET_free (fts);
 }
 
@@ -402,7 +408,8 @@ admin_add_incoming_traits (void *cls,
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
                                     fts->payto_debit_account),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
-                                    fts->exchange_credit_url),
+                                    fts->payto_credit_account),
+    TALER_TESTING_make_trait_url (0, fts->exchange_credit_url),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
     TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
     TALER_TESTING_make_trait_reserve_priv (0,
@@ -416,6 +423,65 @@ admin_add_incoming_traits (void *cls,
                                   ret,
                                   trait,
                                   index);
+}
+
+
+/**
+ * Create internal state for "/admin/add-incoming" CMD.
+ *
+ * @param amount the amount to transfer.
+ * @param account_bank_url base URL of the exchange account receiving the money
+ * @param payto_debit_account which account sends money
+ * @param auth authentication data
+ * @return the internal state
+ */
+static struct AdminAddIncomingState *
+make_fts (const char *amount,
+          const char *exchange_base_url,
+          const struct TALER_BANK_AuthenticationData *auth,
+          const char *payto_debit_account)
+{
+  struct AdminAddIncomingState *fts;
+
+  fts = GNUNET_new (struct AdminAddIncomingState);
+  fts->exchange_credit_url = exchange_base_url;
+  fts->payto_debit_account = payto_debit_account;
+  fts->payto_credit_account
+    = TALER_payto_xtalerbank_make2 (exchange_base_url);
+  fts->auth = *auth;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (amount,
+                              &fts->amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s'\n",
+                amount);
+    GNUNET_assert (0);
+  }
+  return fts;
+}
+
+
+/**
+ * Helper function to create admin/add-incoming command.
+ *
+ * @param label command label.
+ * @param fts internal state to use
+ * @return the command.
+ */
+static struct TALER_TESTING_Command
+make_command (const char *label,
+              struct AdminAddIncomingState *fts)
+{
+  struct TALER_TESTING_Command cmd = {
+    .cls = fts,
+    .label = label,
+    .run = &admin_add_incoming_run,
+    .cleanup = &admin_add_incoming_cleanup,
+    .traits = &admin_add_incoming_traits
+  };
+
+  return cmd;
 }
 
 
@@ -438,34 +504,11 @@ TALER_TESTING_cmd_admin_add_incoming
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account)
 {
-  struct AdminAddIncomingState *fts;
-
-  fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->exchange_credit_url = exchange_base_url;
-  fts->payto_debit_account = payto_debit_account;
-  fts->auth = *auth;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (amount,
-                              &fts->amount))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                amount,
-                label);
-    GNUNET_assert (0);
-  }
-
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = fts,
-      .label = label,
-      .run = &admin_add_incoming_run,
-      .cleanup = &admin_add_incoming_cleanup,
-      .traits = &admin_add_incoming_traits
-    };
-
-    return cmd;
-  }
+  return make_command (label,
+                       make_fts (amount,
+                                 exchange_base_url,
+                                 auth,
+                                 payto_debit_account));
 }
 
 
@@ -495,32 +538,13 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
 {
   struct AdminAddIncomingState *fts;
 
-  fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->exchange_credit_url = account_base_url;
-  fts->payto_debit_account = payto_debit_account;
-  fts->auth = *auth;
+  fts = make_fts (amount,
+                  account_base_url,
+                  auth,
+                  payto_debit_account);
   fts->reserve_reference = ref;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (amount,
-                              &fts->amount))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                amount,
-                label);
-    GNUNET_assert (0);
-  }
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = fts,
-      .label = label,
-      .run = &admin_add_incoming_run,
-      .cleanup = &admin_add_incoming_cleanup,
-      .traits = &admin_add_incoming_traits
-    };
-
-    return cmd;
-  }
+  return make_command (label,
+                       fts);
 }
 
 
@@ -557,33 +581,15 @@ TALER_TESTING_cmd_admin_add_incoming_with_instance
 {
   struct AdminAddIncomingState *fts;
 
-  fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->exchange_credit_url = account_base_url;
-  fts->payto_debit_account = payto_debit_account;
-  fts->auth = *auth;
+  fts = make_fts (amount,
+                  account_base_url,
+                  auth,
+                  payto_debit_account);
   fts->instance = instance;
   fts->config_filename = config_filename;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (amount,
-                              &fts->amount))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                amount,
-                label);
-    GNUNET_assert (0);
-  }
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = fts,
-      .label = label,
-      .run = &admin_add_incoming_run,
-      .cleanup = &admin_add_incoming_cleanup,
-      .traits = &admin_add_incoming_traits
-    };
 
-    return cmd;
-  }
+  return make_command (label,
+                       fts);
 }
 
 
@@ -607,4 +613,4 @@ TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd)
 }
 
 
-/* end of testing_api_cmd_admin_add_incoming.c */
+/* end of testing_api_cmd_bank_admin_add_incoming.c */

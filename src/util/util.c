@@ -624,6 +624,60 @@ TALER_payto_xtalerbank_make (const char *bank_url,
 
 
 /**
+ * Create an x-taler-bank payto:// URL from an @a account_url.
+ *
+ * @param account_url the bank URL
+ * @param account_name the account name
+ * @return payto:// URL
+ */
+char *
+TALER_payto_xtalerbank_make2 (const char *account_url)
+{
+  char *payto;
+  int plaintext;
+  const char *port;
+  size_t slen;
+  const char *account;
+
+  if (0 == strncasecmp ("https://",
+                        account_url,
+                        strlen ("https://")))
+  {
+    account_url += strlen ("https://");
+    plaintext = GNUNET_NO;
+  }
+  else if (0 == strncasecmp ("http://",
+                             account_url,
+                             strlen ("http://")))
+  {
+    account_url += strlen ("http://");
+    plaintext = GNUNET_YES;
+  }
+  else
+    return NULL;
+  account = strchr (account_url,
+                    '/');
+  if (NULL == account)
+    return NULL;
+  slen = account - account_url;
+  port = memchr (account_url,
+                 ':',
+                 slen);
+  if ( (0 < slen) &&
+       ('/' == account_url[slen - 1]) )
+    slen--;
+  GNUNET_asprintf (&payto,
+                   ( (NULL == port) && (GNUNET_YES == plaintext) )
+                   ? "payto://x-taler-bank/%.*s:80/%s"
+                   : "payto://x-taler-bank/%.*s/%s",
+                   (int) slen,
+                   account_url,
+                   account + 1);
+  return payto;
+}
+
+
+/**
  * Given an x-taler-bank payto:// URL, compute
  * the HTTP(S) base URL of the account.
  *
