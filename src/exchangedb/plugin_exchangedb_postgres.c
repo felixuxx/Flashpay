@@ -78,7 +78,7 @@
 
 
 /**
- * Handle for a database session (per-thread, for transactions).
+ * Handler for a database session (per-thread, for transactions).
  */
 struct TALER_EXCHANGEDB_Session
 {
@@ -1711,6 +1711,17 @@ postgres_get_session (void *cls)
   return session;
 }
 
+/**
+ * Do a pre-flight check that we are not in an uncommitted transaction.
+ * If we are, try to commit the previous transaction and output a warning.
+ * Does not return anything, as we will continue regardless of the outcome.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session the database connection
+ */
+static void
+postgres_preflight (void *cls,
+                    struct TALER_EXCHANGEDB_Session *session);
 
 /**
  * Start a transaction.
@@ -1730,6 +1741,9 @@ postgres_start (void *cls,
     GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL SERIALIZABLE"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
+
+  postgres_preflight (cls,
+                      session);
 
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1813,7 +1827,7 @@ postgres_preflight (void *cls,
                     struct TALER_EXCHANGEDB_Session *session)
 {
   struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("COMMIT"),
+    GNUNET_PQ_make_execute ("ROLLBACK"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 

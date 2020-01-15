@@ -70,7 +70,6 @@ TAH_DB_run_transaction (struct MHD_Connection *connection,
                                              "failed to establish session with database");
     return GNUNET_SYSERR;
   }
-  //  TAH_plugin->preflight (TAH_plugin->cls, session); // FIXME: needed?
   for (unsigned int retries = 0; retries < MAX_TRANSACTION_COMMIT_RETRIES;
        retries++)
   {

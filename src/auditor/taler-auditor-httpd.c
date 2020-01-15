@@ -372,8 +372,8 @@ handle_mhd_request (void *cls,
     { "/version", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
       &handle_version, MHD_HTTP_OK },
-    /* Landing page, for now tells humans to go away (FIXME: replace
-       with auditor's welcome page!) */
+    /* Landing page, for now tells humans to go away
+     * (NOTE: ideally, the reverse proxy will respond with a nicer page) */
     { "/", MHD_HTTP_METHOD_GET, "text/plain",
       "Hello, I'm the Taler auditor. This HTTP server is not for humans.\n", 0,
       &TAH_MHD_handler_static_response, MHD_HTTP_OK },

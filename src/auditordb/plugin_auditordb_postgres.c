@@ -62,6 +62,8 @@ struct TALER_AUDITORDB_Session
    * Postgres connection handle.
    */
   struct GNUNET_PQ_Context *conn;
+
+  const char *transaction_name;
 };
 
 
@@ -1012,6 +1014,43 @@ postgres_get_session (void *cls)
   return session;
 }
 
+/**
+ * Do a pre-flight check that we are not in an uncommitted transaction.
+ * If we are, try to commit the previous transaction and output a warning.
+ * Does not return anything, as we will continue regardless of the outcome.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session the database connection
+ */
+static void
+postgres_preflight (void *cls,
+                    struct TALER_AUDITORDB_Session *session)
+{
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("ROLLBACK"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+
+  (void) cls;
+  if (NULL == session->transaction_name)
+    return; /* all good */
+  if (GNUNET_OK ==
+      GNUNET_PQ_exec_statements (session->conn,
+                                 es))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "BUG: Preflight check committed transaction `%s'!\n",
+                session->transaction_name);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "BUG: Preflight check failed to commit transaction `%s'!\n",
+                session->transaction_name);
+  }
+  session->transaction_name = NULL;
+}
+
 
 /**
  * Start a transaction.
@@ -1029,6 +1068,8 @@ postgres_start (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  postgres_preflight (cls,
+                      session);
   (void) cls;
   if (GNUNET_OK !=
       GNUNET_PQ_exec_statements (session->conn,
