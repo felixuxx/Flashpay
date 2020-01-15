@@ -149,9 +149,9 @@ print_expected (struct History *h,
                 unsigned int off)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Transaction history missmatch at position %u/%llu\n",
+              "Transaction history missmatch at position %u/%u\n",
               off,
-              (unsigned long long) h_len);
+              h_len);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Expected history:\n");
   for (unsigned int i = 0; i<h_len; i++)
@@ -281,7 +281,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
          (*row_id_start == *row_id) &&
          (GNUNET_NO == ok) )
     {
-      /* Until here nothing counted */
+      /* Until here, nothing counted. */
       ok = GNUNET_YES;
       continue;
     }
@@ -319,11 +319,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                      total,
                      pos);
   if (0 == pos)
-  {
-    TALER_LOG_DEBUG ("Empty history computed\n");
-    *rh = NULL;
-    return 0;
-  }
+    TALER_LOG_DEBUG ("Empty debit history computed\n");
   *rh = h;
   return total;
 }
