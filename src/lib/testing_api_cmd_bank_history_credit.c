@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank-lib/testing_api_cmd_history.c
+ * @file lib/testing_api_cmd_history.c
  * @brief command to check the /history API from the bank.
  * @author Marcello Stanisci
  */
