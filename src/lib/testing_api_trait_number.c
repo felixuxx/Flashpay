@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_number.c
+ * @file lib/testing_api_trait_number.c
  * @brief traits to offer numbers
  * @author Marcello Stanisci
  */
