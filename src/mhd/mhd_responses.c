@@ -284,6 +284,11 @@ TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
   /* This adds the Access-Control-Allow-Origin header.
    * All endpoints of the exchange allow CORS. */
   TALER_MHD_add_global_headers (resp);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         // Not available as MHD constant yet
+                                         "Access-Control-Allow-Headers",
+                                         "*"));
   GNUNET_assert (MHD_YES == MHD_queue_response (connection, MHD_HTTP_NO_CONTENT,
                                                 resp));
   return MHD_YES;
