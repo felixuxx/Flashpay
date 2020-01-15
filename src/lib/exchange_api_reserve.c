@@ -1051,6 +1051,9 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_free (wsh);
     return NULL;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Attempting to withdraw from reserve %s\n",
+              TALER_B2S (reserve_pub));
 
   wsh->ps = *ps;
   wsh->url = TEAH_path_to_url (exchange, "/reserve/withdraw");

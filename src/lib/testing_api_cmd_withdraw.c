@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -363,8 +363,10 @@ withdraw_traits (void *cls,
     return GNUNET_SYSERR;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
-        (reserve_cmd, 0, &reserve_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_reserve_priv (reserve_cmd,
+                                            0,
+                                            &reserve_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ws->is);
@@ -479,16 +481,17 @@ TALER_TESTING_cmd_withdraw_denomination
   ws->reserve_reference = reserve_reference;
   ws->pk = dk;
   ws->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ws,
+      .label = label,
+      .run = &withdraw_run,
+      .cleanup = &withdraw_cleanup,
+      .traits = &withdraw_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ws,
-    .label = label,
-    .run = &withdraw_run,
-    .cleanup = &withdraw_cleanup,
-    .traits = &withdraw_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

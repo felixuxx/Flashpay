@@ -412,6 +412,7 @@ MAH_path_to_url (struct TALER_AUDITOR_Handle *h,
 
 /**
  * Obtain the URL to use for an API request.
+ * FIXME: duplicates TEAH_path_to_url2, and likely also logic in util!
  *
  * @param base_url base URL of the auditor (i.e. "http://auditor/")
  * @param path Taler API path (i.e. "/deposit-confirmation")

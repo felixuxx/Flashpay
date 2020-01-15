@@ -888,112 +888,6 @@ parse_history_common_args (struct MHD_Connection *connection,
  * @return MHD result code
  */
 static int
-handle_credit_history (struct TALER_FAKEBANK_Handle *h,
-                       struct MHD_Connection *connection,
-                       const char *account)
-{
-  struct HistoryArgs ha;
-  struct Transaction *pos;
-  json_t *history;
-
-  if (GNUNET_OK !=
-      parse_history_common_args (connection,
-                                 &ha))
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  if (! ha.have_start)
-  {
-    pos = (0 > ha.delta)
-          ? h->transactions_tail
-          : h->transactions_head;
-  }
-  else if (NULL != h->transactions_head)
-  {
-    for (pos = h->transactions_head;
-         NULL != pos;
-         pos = pos->next)
-      if (pos->row_id  == ha.start_idx)
-        break;
-    if (NULL == pos)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid start specified, transaction %llu not known!\n",
-                  (unsigned long long) ha.start_idx);
-      return MHD_NO;
-    }
-    /* range is exclusive, skip the matching entry */
-    if (ha.delta > 0)
-      pos = pos->next;
-    if (ha.delta < 0)
-      pos = pos->prev;
-  }
-  else
-  {
-    /* list is empty */
-    pos = NULL;
-  }
-  history = json_array ();
-  while ( (0 != ha.delta) &&
-          (NULL != pos) )
-  {
-    if ( (0 == strcasecmp (pos->credit_account,
-                           account)) &&
-         (T_DEBIT == pos->type) )
-    {
-      json_t *trans;
-      char *credit_payto;
-      char *debit_payto;
-
-      credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                  account);
-      debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                 pos->debit_account);
-      trans = json_pack
-                ("{s:I, s:o, s:o, s:s, s:s, s:s, s:o}",
-                "row_id", (json_int_t) pos->row_id,
-                "date", GNUNET_JSON_from_time_abs (pos->date),
-                "amount", TALER_JSON_from_amount (&pos->amount),
-                "credit_account", credit_payto,
-                "debit_account", debit_payto,
-                "exchange_base_url",
-                pos->subject.debit.exchange_base_url,
-                "wtid", GNUNET_JSON_from_data_auto (
-                  &pos->subject.debit.wtid));
-      GNUNET_free (credit_payto);
-      GNUNET_free (debit_payto);
-      GNUNET_assert (0 ==
-                     json_array_append_new (history,
-                                            trans));
-      if (ha.delta > 0)
-        ha.delta--;
-      else
-        ha.delta++;
-    }
-    if (ha.delta > 0)
-      pos = pos->prev;
-    else
-      pos = pos->next;
-  }
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "outgoing_transactions",
-                                    history);
-}
-
-
-/**
- * Handle incoming HTTP request for /history/incoming
- *
- * @param h the fakebank handle
- * @param connection the connection
- * @param account which account the request is about
- * @return MHD result code
- */
-static int
 handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                       struct MHD_Connection *connection,
                       const char *account)
@@ -1047,6 +941,119 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   {
     if ( (0 == strcasecmp (pos->debit_account,
                            account)) &&
+         (T_DEBIT == pos->type) )
+    {
+      json_t *trans;
+      char *credit_payto;
+      char *debit_payto;
+
+      credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
+                                                  account);
+      debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
+                                                 pos->debit_account);
+      trans = json_pack
+                ("{s:I, s:o, s:o, s:s, s:s, s:s, s:o}",
+                "row_id", (json_int_t) pos->row_id,
+                "date", GNUNET_JSON_from_time_abs (pos->date),
+                "amount", TALER_JSON_from_amount (&pos->amount),
+                "credit_account", credit_payto,
+                "debit_account", debit_payto,
+                "exchange_base_url",
+                pos->subject.debit.exchange_base_url,
+                "wtid", GNUNET_JSON_from_data_auto (
+                  &pos->subject.debit.wtid));
+      GNUNET_free (credit_payto);
+      GNUNET_free (debit_payto);
+      GNUNET_assert (0 ==
+                     json_array_append_new (history,
+                                            trans));
+      if (ha.delta > 0)
+        ha.delta--;
+      else
+        ha.delta++;
+    }
+    else
+    {
+      fprintf (stderr,
+               "Skipping transaction %s->%s: only care about %s\n",
+               pos->debit_account,
+               pos->credit_account,
+               account);
+    }
+    if (ha.delta > 0)
+      pos = pos->prev;
+    else
+      pos = pos->next;
+  }
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o}",
+                                    "outgoing_transactions",
+                                    history);
+}
+
+
+/**
+ * Handle incoming HTTP request for /history/incoming
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param account which account the request is about
+ * @return MHD result code
+ */
+static int
+handle_credit_history (struct TALER_FAKEBANK_Handle *h,
+                       struct MHD_Connection *connection,
+                       const char *account)
+{
+  struct HistoryArgs ha;
+  struct Transaction *pos;
+  json_t *history;
+
+  if (GNUNET_OK !=
+      parse_history_common_args (connection,
+                                 &ha))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  if (! ha.have_start)
+  {
+    pos = (0 > ha.delta)
+          ? h->transactions_tail
+          : h->transactions_head;
+  }
+  else if (NULL != h->transactions_head)
+  {
+    for (pos = h->transactions_head;
+         NULL != pos;
+         pos = pos->next)
+      if (pos->row_id  == ha.start_idx)
+        break;
+    if (NULL == pos)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid start specified, transaction %llu not known!\n",
+                  (unsigned long long) ha.start_idx);
+      return MHD_NO;
+    }
+    /* range is exclusive, skip the matching entry */
+    if (ha.delta > 0)
+      pos = pos->next;
+    if (ha.delta < 0)
+      pos = pos->prev;
+  }
+  else
+  {
+    /* list is empty */
+    pos = NULL;
+  }
+  history = json_array ();
+  while ( (0 != ha.delta) &&
+          (NULL != pos) )
+  {
+    if ( (0 == strcasecmp (pos->credit_account,
+                           account)) &&
          (T_CREDIT == pos->type) )
     {
       json_t *trans;
@@ -1057,14 +1064,20 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                                                   pos->credit_account);
       debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
                                                  account);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Returning transaction %s->%s (%s)\n",
+                  debit_payto,
+                  credit_payto,
+                  TALER_B2S (&pos->subject));
       trans = json_pack
-                ("{s:I, s:o, s:o, s:s, s:s, s:s}",
+                ("{s:I, s:o, s:o, s:s, s:s, s:o}",
                 "row_id", (json_int_t) pos->row_id,
                 "date", GNUNET_JSON_from_time_abs (pos->date),
                 "amount", TALER_JSON_from_amount (&pos->amount),
                 "credit_account", credit_payto,
                 "debit_account", debit_payto,
-                "reserve_pub", pos->subject /* we "know" it is OK */);
+                "reserve_pub", GNUNET_JSON_from_data_auto (
+                  &pos->subject.credit));
       GNUNET_free (credit_payto);
       GNUNET_free (debit_payto);
       GNUNET_assert (0 ==
@@ -1074,6 +1087,14 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
         ha.delta--;
       else
         ha.delta++;
+    }
+    else
+    {
+      fprintf (stderr,
+               "Skipping transaction %s->%s: only care about %s\n",
+               pos->debit_account,
+               pos->credit_account,
+               account);
     }
     if (ha.delta > 0)
       pos = pos->prev;
@@ -1148,17 +1169,17 @@ serve (struct TALER_FAKEBANK_Handle *h,
        (NULL != account) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
-    return handle_debit_history (h,
-                                 connection,
-                                 account);
+    return handle_credit_history (h,
+                                  connection,
+                                  account);
   if ( (0 == strcmp (url,
                      "/history/outgoing")) &&
        (NULL != account) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
-    return handle_credit_history (h,
-                                  connection,
-                                  account);
+    return handle_debit_history (h,
+                                 connection,
+                                 account);
 
   /* Unexpected URL path, just close the connection. */
   /* we're rather impolite here, but it's a testcase. */

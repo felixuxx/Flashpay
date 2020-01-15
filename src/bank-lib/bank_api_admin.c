@@ -209,9 +209,10 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->cb_cls = res_cb_cls;
   aai->request_url = TALER_BANK_path_to_url_ (account_base_url,
                                               "/admin/add-incoming");
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Requesting administrative transaction at `%s'\n",
-              aai->request_url);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requesting administrative transaction at `%s' for reserve %s\n",
+              aai->request_url,
+              TALER_B2S (reserve_pub));
   aai->post_ctx.headers = curl_slist_append
                             (aai->post_ctx.headers,
                             "Content-Type: application/json");
