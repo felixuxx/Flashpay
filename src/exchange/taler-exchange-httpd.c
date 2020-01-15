@@ -420,11 +420,20 @@ handle_mhd_request (void *cls,
   for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
     rh = &handlers[i];
-    if ( (0 == strcmp (url,
-                       rh->url)) &&
-         ( (NULL == rh->method) ||
-           (0 == strcmp (method,
-                         rh->method)) ) )
+    if (0 != strcmp (url, rh->url))
+      continue;
+
+    /* The URL is a match!  What we now do depends on the method. */
+
+    if (0 == strcmp (method, MHD_HTTP_METHOD_OPTIONS))
+    {
+      GNUNET_async_scope_restore (&old_scope);
+      return TALER_MHD_reply_cors_preflight (connection);
+    }
+
+    if ( (NULL == rh->method) ||
+         (0 == strcmp (method,
+                       rh->method)) )
     {
       /* FIXME: consider caching 'rh' in '**connection_cls' to
          avoid repeated lookup! */

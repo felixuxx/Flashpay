@@ -441,4 +441,14 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                        struct TALER_MHD_Legal *legal);
 
 
+/**
+ * Send back a "204 No Content" response with headers
+ * for the CORS pre-flight request.
+ *
+ * @param connection the MHD connection
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection);
+
 #endif

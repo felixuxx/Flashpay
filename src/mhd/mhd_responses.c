@@ -268,6 +268,29 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
 
 
 /**
+ * Send back a "204 No Content" response with headers
+ * for the CORS pre-flight request.
+ *
+ * @param connection the MHD connection
+ * @return MHD result code
+ */
+int
+TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
+{
+  struct MHD_Response *resp;
+
+  GNUNET_assert (NULL != (resp = MHD_create_response_from_buffer (0, NULL,
+                                                                  MHD_RESPMEM_PERSISTENT)));
+  /* This adds the Access-Control-Allow-Origin header.
+   * All endpoints of the exchange allow CORS. */
+  TALER_MHD_add_global_headers (resp);
+  GNUNET_assert (MHD_YES == MHD_queue_response (connection, MHD_HTTP_NO_CONTENT,
+                                                resp));
+  return MHD_YES;
+}
+
+
+/**
  * Function to call to handle the request by building a JSON
  * reply from a format string and varargs.
  *
