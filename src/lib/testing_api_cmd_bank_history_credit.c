@@ -507,15 +507,6 @@ history_cb (void *cls,
   struct HistoryState *hs = is->commands[is->ip].cls;
 
   (void) row_id;
-  if (MHD_HTTP_OK != http_status)
-  {
-    hs->hh = NULL;
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unwanted response code from /history: %u\n",
-                http_status);
-    TALER_TESTING_interpreter_fail (is);
-    return GNUNET_SYSERR;
-  }
   if (NULL == details)
   {
     hs->hh = NULL;
@@ -540,6 +531,15 @@ history_cb (void *cls,
     }
     TALER_TESTING_interpreter_next (is);
     return GNUNET_OK;
+  }
+  if (MHD_HTTP_OK != http_status)
+  {
+    hs->hh = NULL;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unwanted response code from /history: %u\n",
+                http_status);
+    TALER_TESTING_interpreter_fail (is);
+    return GNUNET_SYSERR;
   }
 
   /* check current element */

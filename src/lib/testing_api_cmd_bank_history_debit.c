@@ -205,8 +205,10 @@ build_history (struct TALER_TESTING_Interpreter *is,
     add_incoming_cmd = TALER_TESTING_interpreter_lookup_command
                          (is, hs->start_row_reference);
     GNUNET_assert (NULL != add_incoming_cmd);
-    GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_uint64
-                     (add_incoming_cmd, 0, &row_id_start));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_uint64 (add_incoming_cmd,
+                                                   0,
+                                                   &row_id_start));
   }
 
   GNUNET_assert (0 != hs->num_results);
@@ -330,8 +332,9 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *credit_account;
     const char *debit_account;
 
-    if (GNUNET_OK != TALER_TESTING_GET_TRAIT_ROW_ID
-          (pos, &row_id))
+    if (GNUNET_OK !=
+        TALER_TESTING_GET_TRAIT_ROW_ID (pos,
+                                        &row_id))
       continue;
 
     if (NULL != row_id_start)
@@ -511,15 +514,6 @@ history_cb (void *cls,
   struct HistoryState *hs = is->commands[is->ip].cls;
 
   (void) row_id;
-  if (MHD_HTTP_OK != http_status)
-  {
-    hs->hh = NULL;
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unwanted response code from /history: %u\n",
-                http_status);
-    TALER_TESTING_interpreter_fail (is);
-    return GNUNET_SYSERR;
-  }
   if (NULL == details)
   {
     hs->hh = NULL;
@@ -544,6 +538,15 @@ history_cb (void *cls,
     }
     TALER_TESTING_interpreter_next (is);
     return GNUNET_OK;
+  }
+  if (MHD_HTTP_OK != http_status)
+  {
+    hs->hh = NULL;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unwanted response code from /history: %u\n",
+                http_status);
+    TALER_TESTING_interpreter_fail (is);
+    return GNUNET_SYSERR;
   }
 
   /* check current element */
