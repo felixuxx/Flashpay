@@ -1663,6 +1663,25 @@ TALER_TESTING_cmd_serialize_keys (const char *label);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_connect_with_state (const char *label,
                                       const char *state_reference);
+/**
+ * Make the "insert-deposit" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @param TODO
+ * @param TODO
+ * @param TODO
+ * @param TODO
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_insert_deposit (const char *label,
+                                  const char *config_filename,
+				  const char *merchant_name,
+				  unsigned int merchant_account,
+				  struct GNUNET_TIME_Absolute wire_deadline,
+				  const char *amount_with_fee,
+				  const char *deposit_fee);
 
 /* *** Generic trait logic for implementing traits ********* */
 

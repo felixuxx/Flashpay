@@ -109,6 +109,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_track.c \
   testing_api_cmd_wire.c \
   testing_api_cmd_withdraw.c \
+  testing_api_cmd_insert_deposit.c \
   testing_api_helpers_auditor.c \
   testing_api_helpers_bank.c \
   testing_api_helpers_exchange.c \
