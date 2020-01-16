@@ -41,14 +41,8 @@ libtalerexchange_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  $(LIBGNURLCURL_LIBS) \
   $(XLIB)
-if HAVE_LIBCURL
-libtalerexchange_la_LIBADD += -lcurl
-else
-if HAVE_LIBGNURL
-libtalerexchange_la_LIBADD += -lgnurl
-endif
-endif
 
 libtalerauditor_la_LDFLAGS = \
   -version-info 0:0:0 \
@@ -66,14 +60,8 @@ libtalerauditor_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  $(LIBGNURLCURL_LIBS) \
   $(XLIB)
-if HAVE_LIBCURL
-libtalerauditor_la_LIBADD += -lcurl
-else
-if HAVE_LIBGNURL
-libtalerauditor_la_LIBADD += -lgnurl
-endif
-endif
 
 libtalertesting_la_LDFLAGS = \
   -version-info 0:0:0 \

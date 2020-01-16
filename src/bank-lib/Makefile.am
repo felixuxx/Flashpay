@@ -50,6 +50,7 @@ libtalerbank_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  $(LIBGNURLCURL_LIBS) \
   $(XLIB)
 
 libtalerfakebank_la_LDFLAGS = \
@@ -65,11 +66,3 @@ libtalerfakebank_la_LIBADD = \
   -ljansson \
   -lmicrohttpd \
   $(XLIB)
-
-if HAVE_LIBCURL
-libtalerbank_la_LIBADD += -lcurl
-else
-if HAVE_LIBGNURL
-libtalerbank_la_LIBADD += -lgnurl
-endif
-endif

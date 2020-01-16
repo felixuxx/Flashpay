@@ -191,17 +191,17 @@ AS_IF([test "$gnurl" = 1],
       [AM_CONDITIONAL(HAVE_LIBGNURL, true)
        AC_DEFINE([HAVE_LIBGNURL],[1],[Have libgnurl])
        AM_CONDITIONAL(HAVE_LIBCURL, false)
-       AC_DEFINE([HAVE_LIBCURL],[0],[Lacking libcurl])],
+       AC_DEFINE([HAVE_LIBCURL],[0],[Lacking libcurl])
+       [LIBGNURLCURL_LIBS="-lgnurl"]],
       [AS_IF([test "$curl" = 1],
              [AM_CONDITIONAL(HAVE_LIBGNURL, false)
               AC_DEFINE([HAVE_LIBGNURL],[0],[Lacking libgnurl])
               AM_CONDITIONAL(HAVE_LIBCURL, true)
               AC_DEFINE([HAVE_LIBCURL],[1],[Have libcurl])],
-             [AC_MSG_WARN([WARNING: No libgnurl/libcurl, taler-bank support will not be compiled])
-              AM_CONDITIONAL(HAVE_LIBGNURL, false)
-              AC_DEFINE([HAVE_LIBGNURL],[0],[Lacking libgnurl])
-              AM_CONDITIONAL(HAVE_LIBCURL, false)
-              AC_DEFINE([HAVE_LIBCURL],[0],[Lacking libcurl])])])
+              [LIBGNURLCURL_LIBS="-lcurl"]
+             [AC_MSG_ERROR([WARNING: No libgnurl/libcurl, taler-bank support will not be compiled])])])
+
+AC_SUBST([LIBGNURLCURL_LIBS])
 
 # Check for GNUnet's libgnunetcurl.
 libgnunetcurl=0
