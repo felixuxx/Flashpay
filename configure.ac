@@ -61,17 +61,6 @@ CFLAGS="-Wall -Wno-address-of-packed-member $CFLAGS"
 AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h])
 
 
-# should the build process be restricted to the code required
-# for GNU Taler wallets?
-AC_MSG_CHECKING([whether to compile GNU Taler Wallet library ONLY])
-AC_ARG_ENABLE([wallet],
-   [AS_HELP_STRING([--enable-wallet], [only compile for Taler wallet])],
-   [wallet_only=${enableval}],
-   [wallet_only=no])
-AC_MSG_RESULT($wallet_only)
-AM_CONDITIONAL([WALLET_ONLY], [test "x$wallet_only" = "xyes"])
-
-
 # Require minimum libgcrypt version
 need_libgcrypt_version=1.6.1
 AC_DEFINE_UNQUOTED([NEED_LIBGCRYPT_VERSION], ["$need_libgcrypt_version"],
@@ -121,9 +110,6 @@ fd = epoll_create1(EPOLL_CLOEXEC);]])],
       [mhd_cv_have_epoll_create1=no])])
   AS_IF([test "x$mhd_cv_have_epoll_create1" = "xyes"],[
     AC_DEFINE([[HAVE_EPOLL_CREATE1]], [[1]], [Define if you have epoll_create1 function.])]))
-
-
-AS_IF([test "x$wallet_only" != xyes],[
 
 
 # Check for GNUnet's libgnunetutil.
@@ -325,55 +311,6 @@ AS_IF([test $jansson = 0],
 AX_LIB_POSTGRESQL([9.3])
 AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
 
-
-# true clause: test wallet-only set to false
-],[
-# false clause: for test wallet-only set to true
-
-# Check for GNUnet's libgnunetutil_taler_wallet.
-
-CFLAGS_SAVE=$CFLAGS
-LDFLAGS_SAVE=$LDFLAGS
-LIBS_SAVE=$LIBS
-CFLAGS="$CFLAGS $LIBGCRYPT_CFLAGS"
-LDFLAGS="$LDFLAGS $LIBGCRYPT_LDFLAGS"
-LIBS="-lgcrypt -lgpg-error $LIBS"
-
-
-libgnunetutil_taler_wallet=0
-AC_MSG_CHECKING([for libgnunetutil_taler_wallet])
-AC_ARG_WITH(gnunet,
-            [AS_HELP_STRING([--with-gnunet=PFX], [base of GNUnet installation])],
-            [AC_MSG_RESULT([given as $with_gnunet])],
-            [AC_MSG_RESULT(not given)
-             with_gnunet=yes])
-AS_CASE([$with_gnunet],
-        [yes], [],
-        [no], [AC_MSG_ERROR([--with-gnunet is required])],
-        [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
-         CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
-AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_util_taler_wallet_lib.h],
- [AC_CHECK_LIB([gnunetutil_taler_wallet], [GNUNET_CRYPTO_hash_context_start], libgnunetutil_taler_wallet=1)],
-  [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif])
-AS_IF([test $libgnunetutil_taler_wallet != 1],
-  [AC_MSG_ERROR([[
-***
-*** You need libgnunetutil_taler_wallet to build this program.
-*** This library is part of GNUnet, available at
-***   https://gnunet.org/
-*** Run GNUnet's configure with --enable-taler-wallet as well!
-*** ]])])
-
-CFLAGS=$CFLAGS_SAVE
-LDFLAGS=$LDFLAGS_SAVE
-LIBS=$LIBS_SAVE
-
-
-# end of wallet/no-wallet specific logic
-])
-
 TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
 TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
 
@@ -524,7 +461,6 @@ AM_CONDITIONAL([ENABLE_DOC], [test "x$enable_doc" = "xyes"])
 # logic if doc_only is set, make sure conditionals are still defined
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
 AM_CONDITIONAL([MHD_HAVE_EPOLL], [false])
-AM_CONDITIONAL([WALLET_ONLY], [false])
 AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
 AM_CONDITIONAL([HAVE_LIBCURL], [false])
 AM_CONDITIONAL([HAVE_LIBGNURL], [false])

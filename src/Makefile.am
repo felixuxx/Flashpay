@@ -11,10 +11,6 @@ if HAVE_LIBGNURL
 endif
 endif
 
-if WALLET_ONLY
-SUBDIRS = include util
-else
-
 pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   taler.conf
@@ -29,6 +25,4 @@ else
 if HAVE_LIBGNURL
  SUBDIRS += lib benchmark
 endif
-endif
-
 endif

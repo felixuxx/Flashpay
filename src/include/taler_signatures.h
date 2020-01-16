@@ -27,12 +27,7 @@
 #ifndef TALER_SIGNATURES_H
 #define TALER_SIGNATURES_H
 
-#if HAVE_GNUNET_GNUNET_UTIL_LIB_H
 #include <gnunet/gnunet_util_lib.h>
-#elif HAVE_GNUNET_GNUNET_UTIL_TALER_WALLET_LIB_H
-#include <gnunet/gnunet_util_taler_wallet_lib.h>
-#endif
-
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
 

@@ -1,15 +1,6 @@
 # This Makefile.am is in the public domain
 talerincludedir = $(includedir)/taler
 
-if WALLET_ONLY
-talerinclude_HEADERS = \
-  platform.h \
-  taler_amount_lib.h \
-  taler_crypto_lib.h \
-  taler_util_wallet.h \
-  taler_signatures.h
-else
-
 talerinclude_HEADERS = \
   platform.h \
   taler_auditor_service.h \
@@ -31,8 +22,6 @@ talerinclude_HEADERS = \
   taler_mhd_lib.h \
   taler_pq_lib.h \
   taler_signatures.h
-
-endif
 
 EXTRA_DIST = \
   backoff.h \

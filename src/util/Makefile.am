@@ -19,26 +19,8 @@ EXTRA_DIST = \
 bin_SCRIPTS = \
   taler-config
 
-if WALLET_ONLY
-lib_LTLIBRARIES = \
-  libtalerutil_wallet.la
-else
 lib_LTLIBRARIES = \
   libtalerutil.la
-endif
-
-libtalerutil_wallet_la_SOURCES = \
-  amount.c \
-  crypto.c
-
-libtalerutil_wallet_la_LIBADD = \
-  -lgnunetutil_taler_wallet \
-  $(LIBGCRYPT_LIBS) \
-  $(XLIB)
-
-libtalerutil_wallet_la_LDFLAGS = \
-  -version-info 1:0:1 \
-  -export-dynamic -no-undefined
 
 libtalerutil_la_SOURCES = \
   amount.c \
