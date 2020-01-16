@@ -39,7 +39,7 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "bank_twisted.conf"
+#define CONFIG_FILE "test_bank_api_twisted.conf"
 
 /**
  * True when the test runs against Fakebank.

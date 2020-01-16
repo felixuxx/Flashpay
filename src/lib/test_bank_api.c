@@ -33,8 +33,7 @@
 #include <microhttpd.h>
 #include "taler_testing_lib.h"
 
-// FIXME: rename config file to make it clear it is associated with a test!
-#define CONFIG_FILE "bank.conf"
+#define CONFIG_FILE "test_bank_api.conf"
 
 /**
  * Bank configuration data.
