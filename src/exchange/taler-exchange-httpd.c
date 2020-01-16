@@ -425,15 +425,15 @@ handle_mhd_request (void *cls,
 
     /* The URL is a match!  What we now do depends on the method. */
 
-    if (0 == strcmp (method, MHD_HTTP_METHOD_OPTIONS))
+    if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
     {
       GNUNET_async_scope_restore (&old_scope);
       return TALER_MHD_reply_cors_preflight (connection);
     }
 
     if ( (NULL == rh->method) ||
-         (0 == strcmp (method,
-                       rh->method)) )
+         (0 == strcasecmp (method,
+                           rh->method)) )
     {
       /* FIXME: consider caching 'rh' in '**connection_cls' to
          avoid repeated lookup! */
