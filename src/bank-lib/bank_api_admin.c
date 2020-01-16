@@ -129,11 +129,6 @@ handle_admin_add_incoming_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     ec = TALER_BANK_parse_ec_ (j);
     break;
-  case MHD_HTTP_NOT_ACCEPTABLE:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (j);
-    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
