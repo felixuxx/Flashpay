@@ -405,34 +405,13 @@ char *
 MAH_path_to_url (struct TALER_AUDITOR_Handle *h,
                  const char *path)
 {
-  return MAH_path_to_url2 (h->url,
-                           path);
-}
-
-
-/**
- * Obtain the URL to use for an API request.
- * FIXME: duplicates TEAH_path_to_url2, and likely also logic in util!
- *
- * @param base_url base URL of the auditor (i.e. "http://auditor/")
- * @param path Taler API path (i.e. "/deposit-confirmation")
- * @return the full URL to use with cURL
- */
-char *
-MAH_path_to_url2 (const char *base_url,
-                  const char *path)
-{
-  char *url;
-
-  if ( ('/' == path[0]) &&
-       (0 < strlen (base_url)) &&
-       ('/' == base_url[strlen (base_url) - 1]) )
-    path++; /* avoid generating URL with "//" from concat */
-  GNUNET_asprintf (&url,
-                   "%s%s",
-                   base_url,
-                   path);
-  return url;
+  char *ret;
+  GNUNET_assert ('/' == path[0]);
+  ret = TALER_url_join (h->url,
+                        path + 1,
+                        NULL);
+  GNUNET_assert (NULL != ret);
+  return ret;
 }
 
 

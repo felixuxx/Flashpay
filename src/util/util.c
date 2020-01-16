@@ -278,21 +278,19 @@ TALER_url_join (const char *base_url,
   if ('/' != base_url[strlen (base_url) - 1])
   {
     /* Must be an actual base URL! */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Base URL `%s' does not end with '/'\n",
+                base_url);
     return NULL;
   }
   if ('/' == path[0])
   {
     /* The path must be relative. */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Path `%s' is not relative\n",
+                path);
     return NULL;
   }
-
-  /* Path should be relative to existing path of base URL */
-  GNUNET_break ('/' != path[0]);
-
-  if ('/' == path[0])
-    GNUNET_break (0);
 
   /* 1st pass: compute length */
   len = strlen (base_url) + strlen (path) + 1;

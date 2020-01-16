@@ -254,19 +254,26 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
        ( (0 == start_row) &&
          (0 < num_results) ) )
     GNUNET_asprintf (&url,
-                     "/history/outgoing?delta=%lld",
+                     "history/outgoing?delta=%lld",
                      (long long) num_results);
   else
     GNUNET_asprintf (&url,
-                     "/history/outgoing?delta=%lld&start=%llu",
+                     "history/outgoing?delta=%lld&start=%llu",
                      (long long) num_results,
                      start_row);
   hh = GNUNET_new (struct TALER_BANK_DebitHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
-  hh->request_url = TALER_BANK_path_to_url_ (account_base_url,
-                                             url);
-
+  hh->request_url = TALER_url_join (account_base_url,
+                                    url,
+                                    NULL);
+  GNUNET_free (url);
+  if (NULL == hh->request_url)
+  {
+    GNUNET_free (hh);
+    GNUNET_break (0);
+    return NULL;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting history at `%s'\n",
               hh->request_url);
@@ -282,7 +289,6 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     TALER_BANK_debit_history_cancel (hh);
     curl_easy_cleanup (eh);
-    GNUNET_free (url);
     return NULL;
   }
   hh->job = GNUNET_CURL_job_add2 (ctx,
@@ -290,7 +296,6 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
                                   NULL,
                                   &handle_history_finished,
                                   hh);
-  GNUNET_free (url);
   return hh;
 }
 

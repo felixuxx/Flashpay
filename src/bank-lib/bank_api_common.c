@@ -68,33 +68,4 @@ TALER_BANK_setup_auth_ (CURL *easy,
 }
 
 
-/**
- * Obtain the URL to use for an API request.
- * FIXME: duplicates MAH_path_to_url2, and likely also logic in util!
- * FIXME: duplicates TEAH_path_to_url2, and likely also logic in util!
- *
- * @param u base URL of the bank.
- * @param path Taler API path (i.e. "/history").
- *
- * @return the full URL to use with cURL, must be
- *         freed by the caller.
- */
-char *
-TALER_BANK_path_to_url_ (const char *u,
-                         const char *path)
-{
-  char *url;
-
-  if ( ('/' == path[0]) &&
-       (0 < strlen (u)) &&
-       ('/' == u[strlen (u) - 1]) )
-    path++; /* avoid generating URL with "//" from concat */
-  GNUNET_asprintf (&url,
-                   "%s%s",
-                   u,
-                   path);
-  return url;
-}
-
-
 /* end of bank_api_common.c */

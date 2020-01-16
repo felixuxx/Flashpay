@@ -288,6 +288,18 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   }
   TALER_amount_ntoh (&amount,
                      &wp->amount);
+  weh = GNUNET_new (struct TALER_BANK_WireExecuteHandle);
+  weh->cb = cc;
+  weh->cb_cls = cc_cls;
+  weh->request_url = TALER_url_join (bank_base_url,
+                                     "transfer",
+                                     NULL);
+  if (NULL == weh->request_url)
+  {
+    GNUNET_free (weh);
+    GNUNET_break (0);
+    return NULL;
+  }
   transfer_obj = json_pack ("{s:o, s:o, s:s, s:o, s:s}",
                             "request_uid", GNUNET_JSON_from_data_auto (
                               &wp->request_uid),
@@ -300,11 +312,6 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     return NULL;
   }
-  weh = GNUNET_new (struct TALER_BANK_WireExecuteHandle);
-  weh->cb = cc;
-  weh->cb_cls = cc_cls;
-  weh->request_url = TALER_BANK_path_to_url_ (bank_base_url,
-                                              "/transfer");
   weh->post_ctx.headers = curl_slist_append
                             (weh->post_ctx.headers,
                             "Content-Type: application/json");

@@ -50,7 +50,7 @@ static char *config_filename;
 
 static struct TALER_TESTING_Command
 transfer_to_exchange (const char *label,
-		      const char *amount)
+                      const char *amount)
 {
   return TALER_TESTING_cmd_admin_add_incoming (label,
                                                amount,
@@ -58,6 +58,7 @@ transfer_to_exchange (const char *label,
                                                &bc.exchange_auth,
                                                bc.user42_payto);
 }
+
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -72,37 +73,38 @@ run (void *cls,
   struct TALER_TESTING_Command all[] = {
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-on-start"),
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-on-empty",
-		                       config_filename),
+                                       config_filename),
     TALER_TESTING_cmd_exec_wirewatch ("run-wirewatch-on-empty",
-		                      config_filename),
+                                      config_filename),
     TALER_TESTING_cmd_check_bank_empty ("expect-transfers-empty-after-dry-run"),
 
     transfer_to_exchange ("run-transfer-good-to-exchange",
-		          "EUR:5"),
+                          "EUR:5"),
     TALER_TESTING_cmd_exec_wirewatch ("run-wirewatch-on-good-transfer",
-		                      config_filename),
+                                      config_filename),
 
-    TALER_TESTING_cmd_check_bank_admin_transfer ("clear-good-transfer-to-the-exchange",
-                                                 "EUR:5",
-                                                 bc.user42_payto, // debit
-                                                 bc.exchange_payto, // credit
-                                                 "run-transfer-good-to-exchange"),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "clear-good-transfer-to-the-exchange",
+      "EUR:5",
+      bc.user42_payto,                                            // debit
+      bc.exchange_payto,                                            // credit
+      "run-transfer-good-to-exchange"),
 
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-non-expired-reserve",
-		                       config_filename),
+                                       config_filename),
 
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-1"),
     TALER_TESTING_cmd_sleep ("wait (5s)",
-		             5),
+                             5),
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-on-expired-reserve",
-		                       config_filename),
+                                       config_filename),
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-1",
-		                           ec.exchange_url,
-					   "EUR:4.99",
-					   bc.exchange_payto,
-					   bc.user42_payto),
+                                           ec.exchange_url,
+                                           "EUR:4.99",
+                                           bc.exchange_payto,
+                                           bc.user42_payto),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-2"),
-    TALER_TESTING_cmd_end ()  
+    TALER_TESTING_cmd_end ()
   };
 
   TALER_TESTING_run_with_fakebank (is,
@@ -110,15 +112,13 @@ run (void *cls,
                                    bc.bank_url);
 }
 
+
 int
 main (int argc,
       char *const argv[])
 {
   const char *plugin_name;
   char *testname;
-  struct GNUNET_OS_Process *proc;
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  struct GNUNET_SIGNAL_Context *shc_chld;
 
   /* these might get in the way */
   unsetenv ("XDG_DATA_HOME");
@@ -157,7 +157,7 @@ main (int argc,
 
   TALER_TESTING_cleanup_files (config_filename);
   if (GNUNET_OK != TALER_TESTING_prepare_exchange (config_filename,
-		                                   &ec))
+                                                   &ec))
   {
     TALER_LOG_INFO ("Could not prepare the exchange\n");
     return 77;
@@ -174,5 +174,6 @@ main (int argc,
                                                      NULL,
                                                      config_filename)) ? 0 : 1;
 }
+
 
 /* end of test_taler_exchange_wirewatch.c */

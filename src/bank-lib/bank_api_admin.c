@@ -202,8 +202,15 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
-  aai->request_url = TALER_BANK_path_to_url_ (account_base_url,
-                                              "/admin/add-incoming");
+  aai->request_url = TALER_url_join (account_base_url,
+                                     "admin/add-incoming",
+                                     NULL);
+  if (NULL == aai->request_url)
+  {
+    GNUNET_free (aai);
+    GNUNET_break (0);
+    return NULL;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting administrative transaction at `%s' for reserve %s\n",
               aai->request_url,
