@@ -49,6 +49,11 @@ struct TransferState
   const char *account_debit_url;
 
   /**
+   * Money receiver payto URL.
+   */
+  char *payto_debit_account;
+
+  /**
    * Money receiver account URL.
    */
   const char *payto_credit_account;
@@ -275,6 +280,7 @@ transfer_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (fts->retry_task);
     fts->retry_task = NULL;
   }
+  GNUNET_free (fts->payto_debit_account);
   GNUNET_free (fts);
 }
 
@@ -303,7 +309,7 @@ transfer_traits (void *cls,
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
                                     fts->payto_credit_account),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
-                                    fts->account_debit_url),
+                                    fts->payto_debit_account),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
     TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
     TALER_TESTING_make_trait_wtid (0,
@@ -346,6 +352,7 @@ TALER_TESTING_cmd_transfer
   fts = GNUNET_new (struct TransferState);
   fts->account_debit_url = account_base_url;
   fts->exchange_base_url = exchange_base_url;
+  fts->payto_debit_account = TALER_payto_xtalerbank_make2 (exchange_base_url);
   fts->payto_credit_account = payto_credit_account;
   fts->auth = *auth;
   fts->wtid = *wtid;
