@@ -250,7 +250,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *credit_account;
     const struct TALER_Amount *amount;
     const struct TALER_WireTransferIdentifierRawP *wtid;
-    const char *account_url;
+    const char *account_debit_url;
 
     if ( (GNUNET_OK !=
           TALER_TESTING_get_trait_bank_row (cmd,
@@ -273,8 +273,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                         &wtid)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_url (cmd,
-                                       1,
-                                       &account_url)) )
+                                       0,
+                                       &account_debit_url)) )
       continue; /* not an event we care about */
     /* Seek "/history" starting row.  */
     if ( (NULL != row_id_start) &&
@@ -306,12 +306,12 @@ build_history (struct TALER_TESTING_Interpreter *is,
       GNUNET_array_grow (h,
                          total,
                          pos * 2);
-    h[total].url = GNUNET_strdup (credit_account);
-    h[total].details.credit_account_url = h[total].url;
-    h[total].details.amount = *amount;
-    h[total].row_id = *row_id;
-    h[total].details.wtid = *wtid;
-    h[total].details.debit_account_url = account_url;
+    h[pos].url = GNUNET_strdup (credit_account);
+    h[pos].details.credit_account_url = h[pos].url;
+    h[pos].details.amount = *amount;
+    h[pos].row_id = *row_id;
+    h[pos].details.wtid = *wtid;
+    h[pos].details.debit_account_url = account_debit_url;
     pos++;
   }
   GNUNET_assert (GNUNET_YES == ok);

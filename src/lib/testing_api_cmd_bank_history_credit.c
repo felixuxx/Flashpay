@@ -253,7 +253,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *debit_account;
     const struct TALER_Amount *amount;
     const struct TALER_ReservePublicKeyP *reserve_pub;
-    const char *account_url;
+    const char *exchange_credit_url;
 
     /* The following command allows us to skip over those CMDs
      * that do not offer a "row_id" trait.  Such skipped CMDs are
@@ -269,18 +269,18 @@ build_history (struct TALER_TESTING_Interpreter *is,
           TALER_TESTING_get_trait_payto (cmd,
                                          TALER_TESTING_PT_DEBIT,
                                          &debit_account)) ||
-         (GNUNET_OK ==
+         (GNUNET_OK !=
           TALER_TESTING_get_trait_amount_obj (cmd,
                                               0,
                                               &amount)) ||
-         (GNUNET_OK ==
+         (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_pub (cmd,
                                                0,
                                                &reserve_pub)) ||
-         (GNUNET_OK ==
+         (GNUNET_OK !=
           TALER_TESTING_get_trait_url (cmd,
-                                       1,
-                                       &account_url)) )
+                                       0,
+                                       &exchange_credit_url)) )
       continue; /* not an interesting event */
     /* Seek "/history" starting row.  */
     if ( (NULL != row_id_start) &&
@@ -295,7 +295,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
     if (0 != strcasecmp (hs->account_url,
-                         credit_account))
+                         exchange_credit_url))
       continue; /* account missmatch */
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
@@ -312,12 +312,12 @@ build_history (struct TALER_TESTING_Interpreter *is,
       GNUNET_array_grow (h,
                          total,
                          pos * 2);
-    h[total].url = GNUNET_strdup (debit_account);
-    h[total].details.debit_account_url = h[total].url;
-    h[total].details.amount = *amount;
-    h[total].row_id = *row_id;
-    h[total].details.reserve_pub = *reserve_pub;
-    h[total].details.credit_account_url = account_url;
+    h[pos].url = GNUNET_strdup (debit_account);
+    h[pos].details.debit_account_url = h[pos].url;
+    h[pos].details.amount = *amount;
+    h[pos].row_id = *row_id;
+    h[pos].details.reserve_pub = *reserve_pub;
+    h[pos].details.credit_account_url = exchange_credit_url;
     pos++;
   }
   GNUNET_assert (GNUNET_YES == ok);
