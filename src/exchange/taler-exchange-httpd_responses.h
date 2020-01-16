@@ -55,6 +55,7 @@ TEH_RESPONSE_compile_reserve_history (const struct
  *
  * @param connection connection to the client
  * @param ec error code to return
+ * @param coin_pub public key of the coin
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
@@ -62,17 +63,22 @@ int
 TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
                                             enum TALER_ErrorCode ec,
                                             const struct
+                                            TALER_CoinSpendPublicKeyP *coin_pub,
+                                            const struct
                                             TALER_EXCHANGEDB_TransactionList *tl);
 
 
 /**
  * Compile the transaction history of a coin into a JSON object.
  *
+ * @param coin_pub public key of the coin
  * @param tl transaction history to JSON-ify
- * @return json representation of the @a rh
+ * @return json representation of the @a rh, NULL on error
  */
 json_t *
 TEH_RESPONSE_compile_transaction_history (const struct
+                                          TALER_CoinSpendPublicKeyP *coin_pub,
+                                          const struct
                                           TALER_EXCHANGEDB_TransactionList *tl);
 
 

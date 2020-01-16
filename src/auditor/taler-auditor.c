@@ -2274,7 +2274,7 @@ check_transaction_history_for_deposit (const struct
       }
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-      amount_with_fee = &tl->details.melt->session.amount_with_fee;
+      amount_with_fee = &tl->details.melt->amount_with_fee;
       fee = &tl->details.melt->melt_fee;
       fee_dki = &issue->fee_refresh;
       if (GNUNET_OK !=
@@ -2489,7 +2489,7 @@ wire_transfer_information_cb (void *cls,
   struct TALER_Amount computed_value;
   struct TALER_Amount coin_value_without_fee;
   struct TALER_EXCHANGEDB_TransactionList *tl;
-  const struct TALER_CoinPublicInfo *coin;
+  struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_HashCode hw;
 
@@ -2525,36 +2525,26 @@ wire_transfer_information_cb (void *cls,
                               "no transaction history for coin claimed in aggregation");
     return;
   }
-
-  /* Obtain general denomination information about the coin */
-  coin = NULL;
-  switch (tl->type)
+  qs = edb->get_known_coin (edb->cls,
+                            esession,
+                            coin_pub,
+                            &coin);
+  if (qs < 0)
   {
-  case TALER_EXCHANGEDB_TT_DEPOSIT:
-    coin = &tl->details.deposit->coin;
-    break;
-  case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-    coin = &tl->details.melt->session.coin;
-    break;
-  case TALER_EXCHANGEDB_TT_REFUND:
-    coin = &tl->details.refund->coin;
-    break;
-  case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
-    coin = &tl->details.payback_refresh->coin;
-    break;
-  case TALER_EXCHANGEDB_TT_PAYBACK:
-    coin = &tl->details.payback->coin;
-    break;
-  case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
-    coin = &tl->details.payback_refresh->coin;
-    break;
+    GNUNET_break (0); /* this should be a foreign key violation at this point! */
+    wcc->qs = qs;
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "could not get coin details for coin claimed in aggregation");
+    return;
   }
-  GNUNET_assert (NULL != coin); /* hard check that switch worked */
-  qs = get_denomination_info_by_hash (&coin->denom_pub_hash,
+
+  qs = get_denomination_info_by_hash (&coin.denom_pub_hash,
                                       &issue);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
     edb->free_coin_transaction_list (edb->cls,
                                      tl);
     wcc->qs = qs;
@@ -2564,7 +2554,7 @@ wire_transfer_information_cb (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_test_coin_valid (coin,
+      TALER_test_coin_valid (&coin,
                              denom_pub))
   {
     report (report_bad_sig_losses,
@@ -2578,7 +2568,7 @@ wire_transfer_information_cb (void *cls,
                   TALER_amount_add (&total_bad_sig_loss,
                                     &total_bad_sig_loss,
                                     coin_value));
-
+    GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
     edb->free_coin_transaction_list (edb->cls,
                                      tl);
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -2587,7 +2577,8 @@ wire_transfer_information_cb (void *cls,
                               "coin denomination signature invalid");
     return;
   }
-
+  GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
+  coin.denom_sig.rsa_signature = NULL; /* just to be sure */
   GNUNET_assert (NULL != issue); /* mostly to help static analysis */
   /* Check transaction history to see if it supports aggregate
      valuation */

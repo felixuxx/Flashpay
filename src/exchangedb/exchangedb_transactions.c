@@ -46,8 +46,9 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (struct
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (spent.currency,
                                         &refunded));
-  for (struct TALER_EXCHANGEDB_TransactionList *pos = tl; NULL != pos; pos =
-         pos->next)
+  for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
+       NULL != pos;
+       pos = pos->next)
   {
     switch (pos->type)
     {
@@ -67,7 +68,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (struct
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
-                            &pos->details.melt->session.amount_with_fee))
+                            &pos->details.melt->amount_with_fee))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;

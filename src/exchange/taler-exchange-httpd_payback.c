@@ -346,6 +346,7 @@ payback_transaction (void *cls,
                           session);
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
                                                            TALER_EC_PAYBACK_COIN_BALANCE_ZERO,
+                                                           &pc->coin->coin_pub,
                                                            tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);

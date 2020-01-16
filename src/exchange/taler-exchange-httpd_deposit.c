@@ -214,6 +214,8 @@ deposit_transaction (void *cls,
                 "Deposited coin has insufficient funds left!\n");
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
                                                            TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+                                                           &deposit->coin.
+                                                           coin_pub,
                                                            tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);

@@ -42,11 +42,14 @@
 /**
  * Compile the transaction history of a coin into a JSON object.
  *
+ * @param coin_pub public key of the coin
  * @param tl transaction history to JSON-ify
  * @return json representation of the @a rh, NULL on error
  */
 json_t *
 TEH_RESPONSE_compile_transaction_history (const struct
+                                          TALER_CoinSpendPublicKeyP *coin_pub,
+                                          const struct
                                           TALER_EXCHANGEDB_TransactionList *tl)
 {
   json_t *history;
@@ -66,7 +69,8 @@ TEH_RESPONSE_compile_transaction_history (const struct
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       {
         struct TALER_DepositRequestPS dr;
-        const struct TALER_EXCHANGEDB_Deposit *deposit = pos->details.deposit;
+        const struct TALER_EXCHANGEDB_DepositListEntry *deposit =
+          pos->details.deposit;
 
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
@@ -80,14 +84,14 @@ TEH_RESPONSE_compile_transaction_history (const struct
         TALER_amount_hton (&dr.deposit_fee,
                            &deposit->deposit_fee);
         dr.merchant = deposit->merchant_pub;
-        dr.coin_pub = deposit->coin.coin_pub;
+        dr.coin_pub = *coin_pub;
 #if SANITY_CHECKS_ON
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                         &dr.purpose,
                                         &deposit->csig.eddsa_signature,
-                                        &deposit->coin.coin_pub.eddsa_pub))
+                                        &coin_pub->eddsa_pub))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -132,24 +136,25 @@ TEH_RESPONSE_compile_transaction_history (const struct
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
       {
         struct TALER_RefreshMeltCoinAffirmationPS ms;
-        const struct TALER_EXCHANGEDB_RefreshMelt *melt = pos->details.melt;
+        const struct TALER_EXCHANGEDB_RefreshMeltListEntry *melt =
+          pos->details.melt;
 
         ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
         ms.purpose.size = htonl (sizeof (struct
                                          TALER_RefreshMeltCoinAffirmationPS));
-        ms.rc = melt->session.rc;
+        ms.rc = melt->rc;
         TALER_amount_hton (&ms.amount_with_fee,
-                           &melt->session.amount_with_fee);
+                           &melt->amount_with_fee);
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
-        ms.coin_pub = melt->session.coin.coin_pub;
+        ms.coin_pub = *coin_pub;
 #if SANITY_CHECKS_ON
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                         &ms.purpose,
-                                        &melt->session.coin_sig.eddsa_signature,
-                                        &melt->session.coin.coin_pub.eddsa_pub))
+                                        &melt->coin_sig.eddsa_signature,
+                                        &coin_pub->eddsa_pub))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -161,15 +166,15 @@ TEH_RESPONSE_compile_transaction_history (const struct
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o}",
                                               "type", "MELT",
                                               "amount", TALER_JSON_from_amount (
-                                                &melt->session.amount_with_fee),
+                                                &melt->amount_with_fee),
                                               "melt_fee",
                                               TALER_JSON_from_amount (
                                                 &melt->melt_fee),
                                               "rc", GNUNET_JSON_from_data_auto (
-                                                &melt->session.rc),
+                                                &melt->rc),
                                               "coin_sig",
                                               GNUNET_JSON_from_data_auto (
-                                                &melt->session.coin_sig))))
+                                                &melt->coin_sig))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -180,7 +185,8 @@ TEH_RESPONSE_compile_transaction_history (const struct
     case TALER_EXCHANGEDB_TT_REFUND:
       {
         struct TALER_RefundRequestPS rr;
-        const struct TALER_EXCHANGEDB_Refund *refund = pos->details.refund;
+        const struct TALER_EXCHANGEDB_RefundListEntry *refund =
+          pos->details.refund;
         struct TALER_Amount value;
 
         if (GNUNET_OK !=
@@ -195,7 +201,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
         rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
         rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
         rr.h_contract_terms = refund->h_contract_terms;
-        rr.coin_pub = refund->coin.coin_pub;
+        rr.coin_pub = *coin_pub;
         rr.merchant = refund->merchant_pub;
         rr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
         TALER_amount_hton (&rr.refund_amount,
@@ -245,7 +251,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
       {
-        struct TALER_EXCHANGEDB_PaybackRefresh *pr =
+        struct TALER_EXCHANGEDB_PaybackRefreshListEntry *pr =
           pos->details.old_coin_payback;
         struct TALER_PaybackRefreshConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
@@ -257,7 +263,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
         pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
         TALER_amount_hton (&pc.payback_amount,
                            &pr->value);
-        pc.coin_pub = pr->coin.coin_pub;
+        pc.coin_pub = *coin_pub;
         pc.old_coin_pub = pr->old_coin_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
@@ -299,7 +305,8 @@ TEH_RESPONSE_compile_transaction_history (const struct
       }
     case TALER_EXCHANGEDB_TT_PAYBACK:
       {
-        const struct TALER_EXCHANGEDB_Payback *payback = pos->details.payback;
+        const struct TALER_EXCHANGEDB_PaybackListEntry *payback =
+          pos->details.payback;
         struct TALER_PaybackConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
@@ -309,7 +316,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
         pc.timestamp = GNUNET_TIME_absolute_hton (payback->timestamp);
         TALER_amount_hton (&pc.payback_amount,
                            &payback->value);
-        pc.coin_pub = payback->coin.coin_pub;
+        pc.coin_pub = *coin_pub;
         pc.reserve_pub = payback->reserve_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
@@ -347,7 +354,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
       break;
     case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
       {
-        struct TALER_EXCHANGEDB_PaybackRefresh *pr =
+        struct TALER_EXCHANGEDB_PaybackRefreshListEntry *pr =
           pos->details.payback_refresh;
         struct TALER_PaybackRefreshConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
@@ -359,7 +366,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
         pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
         TALER_amount_hton (&pc.payback_amount,
                            &pr->value);
-        pc.coin_pub = pr->coin.coin_pub;
+        pc.coin_pub = *coin_pub;
         pc.old_coin_pub = pr->old_coin_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
@@ -415,6 +422,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
  *
  * @param connection connection to the client
  * @param ec error code to return
+ * @param coin_pub public key of the coin
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
@@ -422,11 +430,14 @@ int
 TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
                                             enum TALER_ErrorCode ec,
                                             const struct
+                                            TALER_CoinSpendPublicKeyP *coin_pub,
+                                            const struct
                                             TALER_EXCHANGEDB_TransactionList *tl)
 {
   json_t *history;
 
-  history = TEH_RESPONSE_compile_transaction_history (tl);
+  history = TEH_RESPONSE_compile_transaction_history (coin_pub,
+                                                      tl);
   if (NULL == history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,

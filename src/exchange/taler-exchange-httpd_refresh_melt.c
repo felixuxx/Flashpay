@@ -59,7 +59,8 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
 {
   json_t *history;
 
-  history = TEH_RESPONSE_compile_transaction_history (tl);
+  history = TEH_RESPONSE_compile_transaction_history (coin_pub,
+                                                      tl);
   if (NULL == history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,

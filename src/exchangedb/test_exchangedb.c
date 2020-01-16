@@ -1432,36 +1432,36 @@ check_refund_cb (void *cls,
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
 
   if (0 != GNUNET_memcmp (merchant_pub,
-                          &refund->merchant_pub))
+                          &refund->details.merchant_pub))
   {
     GNUNET_break (0);
     result = 66;
   }
   if (0 != GNUNET_memcmp (merchant_sig,
-                          &refund->merchant_sig))
+                          &refund->details.merchant_sig))
   {
     GNUNET_break (0);
     result = 66;
   }
   if (0 != GNUNET_memcmp (h_contract,
-                          &refund->h_contract_terms))
+                          &refund->details.h_contract_terms))
   {
     GNUNET_break (0);
     result = 66;
   }
-  if (rtransaction_id != refund->rtransaction_id)
+  if (rtransaction_id != refund->details.rtransaction_id)
   {
     GNUNET_break (0);
     result = 66;
   }
   if (0 != TALER_amount_cmp (amount_with_fee,
-                             &refund->refund_amount))
+                             &refund->details.refund_amount))
   {
     GNUNET_break (0);
     result = 66;
   }
   if (0 != TALER_amount_cmp (refund_fee,
-                             &refund->refund_fee))
+                             &refund->details.refund_fee))
   {
     GNUNET_break (0);
     result = 66;
@@ -1925,7 +1925,10 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->test_deposit_done (plugin->cls,
                                      session,
-                                     &deposit));
+                                     &deposit.coin.coin_pub,
+                                     &deposit.merchant_pub,
+                                     &deposit.h_contract_terms,
+                                     &deposit.h_wire));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_done (plugin->cls,
                                      session,
@@ -1936,7 +1939,10 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->test_deposit_done (plugin->cls,
                                      session,
-                                     &deposit));
+                                     &deposit.coin.coin_pub,
+                                     &deposit.merchant_pub,
+                                     &deposit.h_contract_terms,
+                                     &deposit.h_wire));
 
   result = 10;
   deposit2 = deposit;
@@ -1966,13 +1972,14 @@ run (void *cls)
 
   /* test insert_refund! */
   refund.coin = deposit.coin;
-  refund.merchant_pub = deposit.merchant_pub;
-  RND_BLK (&refund.merchant_sig);
-  refund.h_contract_terms = deposit.h_contract_terms;
-  refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                                     UINT64_MAX);
-  refund.refund_amount = deposit.amount_with_fee;
-  refund.refund_fee = fee_refund;
+  refund.details.merchant_pub = deposit.merchant_pub;
+  RND_BLK (&refund.details.merchant_sig);
+  refund.details.h_contract_terms = deposit.h_contract_terms;
+  refund.details.rtransaction_id
+    = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                UINT64_MAX);
+  refund.details.refund_amount = deposit.amount_with_fee;
+  refund.details.refund_fee = fee_refund;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refund (plugin->cls,
                                  session,
@@ -2064,11 +2071,8 @@ run (void *cls)
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       {
-        struct TALER_EXCHANGEDB_Deposit *have = tlp->details.deposit;
+        struct TALER_EXCHANGEDB_DepositListEntry *have = tlp->details.deposit;
 
-        FAILIF (0 != memcmp (&have->coin.coin_pub,
-                             &deposit.coin.coin_pub,
-                             sizeof (struct TALER_CoinSpendPublicKeyP)));
         /* Note: we're not comparing the denomination keys, as there is
            still the question of whether we should even bother exporting
            them here. */
@@ -2108,31 +2112,29 @@ run (void *cls)
 #endif
     case TALER_EXCHANGEDB_TT_REFUND:
       {
-        struct TALER_EXCHANGEDB_Refund *have = tlp->details.refund;
+        struct TALER_EXCHANGEDB_RefundListEntry *have = tlp->details.refund;
 
-        FAILIF (0 != memcmp (&have->coin.coin_pub,
-                             &refund.coin.coin_pub,
-                             sizeof (struct TALER_CoinSpendPublicKeyP)));
         /* Note: we're not comparing the denomination keys, as there is
            still the question of whether we should even bother exporting
            them here. */
         FAILIF (0 != GNUNET_memcmp (&have->merchant_pub,
-                                    &refund.merchant_pub));
+                                    &refund.details.merchant_pub));
         FAILIF (0 != GNUNET_memcmp (&have->merchant_sig,
-                                    &refund.merchant_sig));
+                                    &refund.details.merchant_sig));
         FAILIF (0 != GNUNET_memcmp (&have->h_contract_terms,
-                                    &refund.h_contract_terms));
-        FAILIF (have->rtransaction_id != refund.rtransaction_id);
+                                    &refund.details.h_contract_terms));
+        FAILIF (have->rtransaction_id != refund.details.rtransaction_id);
         FAILIF (0 != TALER_amount_cmp (&have->refund_amount,
-                                       &refund.refund_amount));
+                                       &refund.details.refund_amount));
         FAILIF (0 != TALER_amount_cmp (&have->refund_fee,
-                                       &refund.refund_fee));
+                                       &refund.details.refund_fee));
         matched |= 4;
         break;
       }
     case TALER_EXCHANGEDB_TT_PAYBACK:
       {
-        struct TALER_EXCHANGEDB_Payback *payback = tlp->details.payback;
+        struct TALER_EXCHANGEDB_PaybackListEntry *payback =
+          tlp->details.payback;
 
         FAILIF (0 != GNUNET_memcmp (&payback->coin_sig,
                                     &coin_sig));
@@ -2140,9 +2142,6 @@ run (void *cls)
                                     &coin_blind));
         FAILIF (0 != GNUNET_memcmp (&payback->reserve_pub,
                                     &reserve_pub));
-        FAILIF (0 != memcmp (&payback->coin.coin_pub,
-                             &deposit.coin.coin_pub,
-                             sizeof (deposit.coin.coin_pub)));
         FAILIF (0 != TALER_amount_cmp (&payback->value,
                                        &value));
         matched |= 8;
