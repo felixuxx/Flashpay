@@ -116,6 +116,7 @@ fake_coin (struct TALER_CoinPublicInfo *coin)
 }
 
 
+#if 0
 /**
  * Helper function to fake a deposit operation.
  *
@@ -208,6 +209,7 @@ do_deposit (struct Command *cmd)
   json_decref (deposit.receiver_wire_account);
   return ret;
 }
+#endif
 
 /**
  * Interprets the commands from the test program.
@@ -867,7 +869,8 @@ run_test ()
  * otherwise GNUNET_OK
  */
 static int
-prepare_database (const struct GNUNET_CONFIGURATION_Handle *cfg)
+prepare_database (void *cls,
+		  const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
 
   // connect to the database.
@@ -896,13 +899,20 @@ prepare_database (const struct GNUNET_CONFIGURATION_Handle *cfg)
 }
 
 
+/**
+ * Collects all the tests.
+ */
 static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  if (GNUNET_OK != prepare_database (is->cfg))
-    return;
-
+  struct TALER_TESTING_Command all[] = {
+    TALER_TESTING_cmd_end ()  
+  };
+  
+  TALER_TESTING_run_with_fakebank (is,
+		                   all,
+				   bc.bank_url);
 }
 
 int
@@ -914,11 +924,6 @@ main (int argc,
   struct GNUNET_OS_Process *proc;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_SIGNAL_Context *shc_chld;
-
-
-  /* these might get in the way */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
 
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {
@@ -937,13 +942,17 @@ main (int argc,
                     "DEBUG",
                     NULL);
 
-
+  /* these might get in the way */
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
 
   TALER_TESTING_cleanup_files (config_filename);
+
+  // BUG: FAILS NOW.
   if (GNUNET_OK != TALER_TESTING_prepare_exchange (config_filename,
 			                           &ec))
   {
-    TALER_LOG_WARNING ("Could not prepare the exchange (keyup, ..)\n");
+    TALER_LOG_WARNING ("Could not prepare the exchange.\n");
     return 77;
   }
 
@@ -958,6 +967,13 @@ main (int argc,
   coin_pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
   coin_pub = GNUNET_CRYPTO_rsa_private_key_get_public (coin_pk);
 
+  if (GNUNET_OK != GNUNET_CONFIGURATION_parse_and_run (config_filename,
+			                               &prepare_database,
+                                                       NULL))
+  {
+    TALER_LOG_WARNING ("Could not prepare database for tests.\n");
+    return result;
+  }
 
   result = TALER_TESTING_setup (&run,
 	                        NULL,
