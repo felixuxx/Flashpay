@@ -155,19 +155,6 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
 
 
 /**
- * Compute the hash of the given wire details.   The resulting
- * hash is what is signed by the master public key.
- *
- * @param wire_s wire details to hash
- * @param hc[out] set to the hash
- * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
- */
-int
-TALER_JSON_exchange_wire_signature_hash (const json_t *wire_s,
-                                         struct GNUNET_HashCode *hc);
-
-
-/**
  * Check the signature in @a wire_s.
  *
  * @param wire_s signed wire information of an exchange
