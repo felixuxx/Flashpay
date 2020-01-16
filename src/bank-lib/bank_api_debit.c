@@ -41,11 +41,6 @@ struct TALER_BANK_DebitHistoryHandle
   char *request_url;
 
   /**
-   * The base URL of the bank.
-   */
-  char *bank_base_url;
-
-  /**
    * Handle for the request.
    */
   struct GNUNET_CURL_Job *job;
@@ -220,7 +215,7 @@ handle_history_finished (void *cls,
  * Request the debit history of the exchange's bank account.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the base INCLUDING account number
+ * @param account_base_url URL of the base INCLUDING account number
  * @param auth authentication data to use
  * @param start_row from which row on do we want to get results,
  *        use UINT64_MAX for the latest; exclusive
@@ -237,7 +232,7 @@ handle_history_finished (void *cls,
  */
 struct TALER_BANK_DebitHistoryHandle *
 TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
-                          const char *bank_base_url,
+                          const char *account_base_url,
                           const struct TALER_BANK_AuthenticationData *auth,
                           uint64_t start_row,
                           int64_t num_results,
@@ -269,8 +264,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
   hh = GNUNET_new (struct TALER_BANK_DebitHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
-  hh->bank_base_url = GNUNET_strdup (bank_base_url);
-  hh->request_url = TALER_BANK_path_to_url_ (bank_base_url,
+  hh->request_url = TALER_BANK_path_to_url_ (account_base_url,
                                              url);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -317,7 +311,6 @@ TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh)
     hh->job = NULL;
   }
   GNUNET_free (hh->request_url);
-  GNUNET_free (hh->bank_base_url);
   GNUNET_free (hh);
 }
 

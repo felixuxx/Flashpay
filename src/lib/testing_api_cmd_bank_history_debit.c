@@ -50,7 +50,12 @@ struct History
   /**
    * URL to free.
    */
-  char *url;
+  char *c_url;
+
+  /**
+   * URL to free.
+   */
+  char *d_url;
 };
 
 
@@ -63,6 +68,11 @@ struct HistoryState
    * Base URL of the account offering the "history" operation.
    */
   const char *account_url;
+
+  /**
+   * Payto URL of the debited account offering the "history" operation.
+   */
+  char *debit_payto;
 
   /**
    * Reference to command defining the
@@ -189,8 +199,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
   struct History *h;
   const struct TALER_TESTING_Command *add_incoming_cmd;
   int inc;
-  unsigned int start;
-  unsigned int end;
+  int start;
+  int end;
   /* #GNUNET_YES whenever either no 'start' value was given for the history
    * query, or the given value is found in the list of all the CMDs. */
   int ok;
@@ -222,15 +232,15 @@ build_history (struct TALER_TESTING_Interpreter *is,
   /* AKA 'delta' */
   if (hs->num_results > 0)
   {
-    inc = 1;  /* _inc_rement */
+    inc = 1;  /* _inc_rement: go forwards */
     start = 0;
-    end = is->ip - 1;
+    end = is->ip;
   }
   else
   {
-    inc = -1;
+    inc = -1; /* decrement: we go backwards */
     start = is->ip - 1;
-    end = 0;
+    end = -1; /* range is exclusive, do look at 0! */
   }
 
   ok = GNUNET_NO;
@@ -242,7 +252,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
                      total,
                      4);
   pos = 0;
-  for (unsigned int off = start; off != end + inc; off += inc)
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking commands %u to %u for debit history\n",
+              start,
+              end);
+  for (int off = start; off != end; off += inc)
   {
     const struct TALER_TESTING_Command *cmd = &is->commands[off];
     const uint64_t *row_id;
@@ -250,8 +264,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const char *credit_account;
     const struct TALER_Amount *amount;
     const struct TALER_WireTransferIdentifierRawP *wtid;
-    const char *account_debit_url;
+    const char *exchange_base_url;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Checking if command %s is relevant for debit history\n",
+                cmd->label);
     if ( (GNUNET_OK !=
           TALER_TESTING_get_trait_bank_row (cmd,
                                             &row_id)) ||
@@ -274,9 +291,12 @@ build_history (struct TALER_TESTING_Interpreter *is,
          (GNUNET_OK !=
           TALER_TESTING_get_trait_url (cmd,
                                        0,
-                                       &account_debit_url)) )
+                                       &exchange_base_url)) )
       continue; /* not an event we care about */
     /* Seek "/history" starting row.  */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Command %s is relevant for debit history!\n",
+                cmd->label);
     if ( (NULL != row_id_start) &&
          (*row_id_start == *row_id) &&
          (GNUNET_NO == ok) )
@@ -288,9 +308,15 @@ build_history (struct TALER_TESTING_Interpreter *is,
     /* when 'start' was _not_ given, then ok == GNUNET_YES */
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
-    if (0 != strcasecmp (hs->account_url,
+    if (0 != strcasecmp (hs->debit_payto,
                          debit_account))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Account %s does not match desired account %s\n",
+                  debit_account,
+                  hs->debit_payto);
       continue; /* account missmatch */
+    }
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
     {
@@ -306,12 +332,14 @@ build_history (struct TALER_TESTING_Interpreter *is,
       GNUNET_array_grow (h,
                          total,
                          pos * 2);
-    h[pos].url = GNUNET_strdup (credit_account);
-    h[pos].details.credit_account_url = h[pos].url;
+    h[pos].c_url = GNUNET_strdup (credit_account);
+    h[pos].d_url = GNUNET_strdup (debit_account);
+    h[pos].details.credit_account_url = h[pos].c_url;
+    h[pos].details.debit_account_url = h[pos].d_url;
     h[pos].details.amount = *amount;
     h[pos].row_id = *row_id;
     h[pos].details.wtid = *wtid;
-    h[pos].details.debit_account_url = account_debit_url;
+    h[pos].details.exchange_base_url = exchange_base_url;
     pos++;
   }
   GNUNET_assert (GNUNET_YES == ok);
@@ -539,7 +567,11 @@ history_cleanup (void *cls,
     TALER_BANK_debit_history_cancel (hs->hh);
   }
   for (unsigned int off = 0; off<hs->total; off++)
-    GNUNET_free (hs->h[off].url);
+  {
+    GNUNET_free (hs->h[off].c_url);
+    GNUNET_free (hs->h[off].d_url);
+  }
+  GNUNET_free (hs->debit_payto);
   GNUNET_free_non_null (hs->h);
   GNUNET_free (hs);
 }
@@ -572,6 +604,7 @@ TALER_TESTING_cmd_bank_debits (const char *label,
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
   hs->auth = *auth;
+  hs->debit_payto = TALER_payto_xtalerbank_make2 (account_url);
 
   {
     struct TALER_TESTING_Command cmd = {

@@ -951,7 +951,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       char *debit_payto;
 
       credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                  account);
+                                                  pos->credit_account);
       debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
                                                  pos->debit_account);
       trans = json_pack

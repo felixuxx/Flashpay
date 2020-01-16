@@ -228,6 +228,11 @@ transfer_run (void *cls,
   void *buf;
   size_t buf_size;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Transfer of %s from %s to %s\n",
+              TALER_amount2s (&fts->amount),
+              fts->account_debit_url,
+              fts->payto_credit_account);
   TALER_BANK_prepare_wire_transfer (fts->payto_credit_account,
                                     &fts->amount,
                                     fts->exchange_base_url,
@@ -304,7 +309,7 @@ transfer_traits (void *cls,
   struct TransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_url (0,
-                                  fts->account_debit_url),
+                                  fts->exchange_base_url),
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
                                     fts->payto_credit_account),
@@ -352,7 +357,7 @@ TALER_TESTING_cmd_transfer
   fts = GNUNET_new (struct TransferState);
   fts->account_debit_url = account_base_url;
   fts->exchange_base_url = exchange_base_url;
-  fts->payto_debit_account = TALER_payto_xtalerbank_make2 (exchange_base_url);
+  fts->payto_debit_account = TALER_payto_xtalerbank_make2 (account_base_url);
   fts->payto_credit_account = payto_credit_account;
   fts->auth = *auth;
   fts->wtid = *wtid;
