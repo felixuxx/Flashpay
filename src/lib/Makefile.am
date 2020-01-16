@@ -332,8 +332,8 @@ test_bank_api_with_pybank_twisted_LDADD = \
 # Distribution
 
 EXTRA_DIST = \
-  bank.conf \
-  bank_twisted.conf \
+  test_bank_api.conf \
+  test_bank_api_bank_twisted.conf \
   test_auditor_api.conf \
   test_auditor_api_expire_reserve_now.conf \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
