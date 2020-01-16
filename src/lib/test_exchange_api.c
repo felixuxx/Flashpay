@@ -206,18 +206,14 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command refresh[] = {
-    /* Fill reserve with EUR:5, 1ct is for fees.  NOTE: the old
-     * test-suite gave a account number of _424_ to the user at
-     * this step; to type less, here the _42_ number is reused.
-     * Does this change the tests semantics? */
+    /* Fill reserve with EUR:5, 1ct is for fees. */
     CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),
-    TALER_TESTING_cmd_check_bank_admin_transfer (
-      "check-refresh-create-reserve-1",
-      "EUR:5.01",
-      bc.user42_payto,
-      bc.exchange_payto,
-      "refresh-create-reserve-1"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("ck-refresh-create-reserve-1",
+                                                 "EUR:5.01",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "refresh-create-reserve-1"),
     /**
      * Make previous command effective.
      */
@@ -294,8 +290,13 @@ run (void *cls,
                                     "refresh-withdraw-coin-1",
                                     MHD_HTTP_CONFLICT,
                                     NULL),
-    /* FIXME: also test with coin that was already melted
-     * (signature differs from coin that was deposited...) */
+    /* Test running a failing melt operation (on a coin that
+       was itself revealed and subsequently deposited) */
+    TALER_TESTING_cmd_refresh_melt ("refresh-melt-failing-2",
+                                    "refresh-reveal-1",
+                                    MHD_HTTP_CONFLICT,
+                                    NULL),
+
     TALER_TESTING_cmd_end ()
   };
 
