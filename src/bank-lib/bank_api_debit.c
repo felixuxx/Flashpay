@@ -169,27 +169,27 @@ handle_history_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (j);
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Access denied */
-    ec = TALER_BANK_parse_ec_ (j);
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (j);
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    ec = TALER_BANK_parse_ec_ (j);
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_BANK_parse_ec_ (j);
+    ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
@@ -197,7 +197,7 @@ handle_history_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
-    ec = TALER_BANK_parse_ec_ (j);
+    ec = TALER_JSON_get_error_code (j);
     response_code = 0;
     break;
   }

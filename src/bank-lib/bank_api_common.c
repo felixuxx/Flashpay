@@ -97,34 +97,4 @@ TALER_BANK_path_to_url_ (const char *u,
 }
 
 
-/**
- * Parse error code given in @a json.
- *
- * @param json the json to parse.
- *
- * @return error code, or #TALER_EC_INVALID if not found.
- */
-enum TALER_ErrorCode
-TALER_BANK_parse_ec_ (const json_t *json)
-{
-  uint32_t ec;
-
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_uint32 ("ec",
-                             &ec),
-    GNUNET_JSON_spec_end ()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return TALER_EC_INVALID;
-  }
-  return (enum TALER_ErrorCode) ec;
-}
-
-
 /* end of bank_api_common.c */

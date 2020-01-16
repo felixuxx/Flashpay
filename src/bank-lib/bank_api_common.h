@@ -63,14 +63,4 @@ TALER_BANK_path_to_url_ (const char *u,
                          const char *path);
 
 
-/**
- * Parse error code given in @a json.
- *
- * @param json the json to parse
- * @return error code, or #TALER_EC_INVALID if not found
- */
-enum TALER_ErrorCode
-TALER_BANK_parse_ec_ (const json_t *json);
-
-
 #endif
