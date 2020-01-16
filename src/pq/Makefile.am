@@ -6,8 +6,6 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-talerincludedir = $(includedir)/taler
-
 lib_LTLIBRARIES = \
   libtalerpq.la
 
