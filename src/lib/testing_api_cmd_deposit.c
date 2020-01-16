@@ -493,15 +493,14 @@ deposit_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit
-  (const char *label,
-  const char *coin_reference,
-  unsigned int coin_index,
-  const char *target_account_payto,
-  const char *contract_terms,
-  struct GNUNET_TIME_Relative refund_deadline,
-  const char *amount,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_deposit (const char *label,
+                           const char *coin_reference,
+                           unsigned int coin_index,
+                           const char *target_account_payto,
+                           const char *contract_terms,
+                           struct GNUNET_TIME_Relative refund_deadline,
+                           const char *amount,
+                           unsigned int expected_response_code)
 {
   struct DepositState *ds;
   json_t *wire_details;

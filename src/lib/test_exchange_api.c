@@ -178,12 +178,11 @@ run (void *cls,
                                "EUR:5",
                                MHD_HTTP_CONFLICT),
     /* Try to double spend using a different transaction id.
-     * (copied verbatim from old exchange-lib tests.)
-     * FIXME: how can it get a different transaction id?  There
-     * isn't such a thing actually, the exchange only knows about
-     * contract terms' hashes.  So since the contract terms are
-     * exactly the same as the previous command,
-     * how can a different id be generated? *///
+     * The test needs the contract terms to differ. This
+     * is currently the case because of the "timestamp" field,
+     * which is set automatically by #TALER_TESTING_cmd_deposit().
+     * This could theoretically fail if at some point a deposit
+     * command executs in less than 1 ms. *///
     TALER_TESTING_cmd_deposit ("deposit-double-1",
                                "withdraw-coin-1",
                                0,
@@ -693,9 +692,8 @@ run (void *cls,
                                MHD_HTTP_NOT_FOUND),
     /* Test deposit fails after payback, with proof in payback */
 
-    /* FIXME: #3887: right now, the exchange will never return the
-     * coin's transaction history with payback data, as we get a
-     * 404 on the DK! */
+    /* Note that, the exchange will never return the coin's transaction
+     * history with payback data, as we get a 404 on the DK! */
     TALER_TESTING_cmd_deposit ("payback-deposit-partial-after-payback",
                                "payback-withdraw-coin-2a",
                                0,
@@ -721,117 +719,6 @@ run (void *cls,
     /* check that we are empty before the rejection test */
     TALER_TESTING_cmd_check_bank_empty ("check-empty-again"),
 
-    TALER_TESTING_cmd_end ()
-  };
-
-  struct TALER_TESTING_Command revocation[] = {
-    /**
-     * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
-     * config.
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
-                              "EUR:5.01"),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
-                                                 "EUR:5.01",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
-                                                 "create-reserve-1"),
-    /**
-     * Run wire-watch to trigger the reserve creation.
-     */
-    CMD_EXEC_WIREWATCH ("wirewatch-4"),
-    /* Withdraw a 5 EUR coin, at fee of 1 ct */
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-1",
-                                       "create-reserve-1",
-                                       "EUR:5",
-                                       MHD_HTTP_OK),
-    /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in full)
-     * (merchant would receive EUR:0.99 due to 1 ct deposit fee) *///
-    TALER_TESTING_cmd_deposit ("deposit-partial",
-                               "withdraw-revocation-coin-1",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:1",
-                               MHD_HTTP_OK),
-    /**
-     * Melt SOME of the rest of the coin's value
-     * (EUR:3.17 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_refresh_melt ("refresh-melt-1",
-                                    "withdraw-revocation-coin-1",
-                                    MHD_HTTP_OK,
-                                    NULL),
-    /**
-     * Complete (successful) melt operation, and withdraw the coins
-     */
-    TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-1",
-                                      "refresh-melt-1",
-                                      MHD_HTTP_OK),
-    /* Make refreshed coin invalid */
-    TALER_TESTING_cmd_revoke ("revoke-2-EUR:5",
-                              MHD_HTTP_OK,
-                              "refresh-melt-1",
-                              CONFIG_FILE),
-    /* Refund coin to original coin */
-    TALER_TESTING_cmd_payback ("payback-1a",
-                               MHD_HTTP_OK,
-                               "refresh-reveal-1#0",
-                               "EUR:1",
-                               "refresh-melt-1"),
-    TALER_TESTING_cmd_payback ("payback-1b",
-                               MHD_HTTP_OK,
-                               "refresh-reveal-1#1",
-                               "EUR:1",
-                               "refresh-melt-1"),
-    TALER_TESTING_cmd_payback ("payback-1c",
-                               MHD_HTTP_OK,
-                               "refresh-reveal-1#2",
-                               "EUR:1",
-                               "refresh-melt-1"),
-    /* Now we have EUR:3.83 EUR back after 3x EUR:1 in paybacks */
-    /* Melt original coin AGAIN, but only create one 0.1 EUR coin;
-       This costs EUR:0.03 in refresh and EUR:01 in withdraw fees,
-       leaving EUR:3.69. */
-    TALER_TESTING_cmd_refresh_melt ("refresh-melt-2",
-                                    "withdraw-revocation-coin-1",
-                                    MHD_HTTP_OK,
-                                    "EUR:0.1",
-                                    NULL),
-    /**
-     * Complete (successful) melt operation, and withdraw the coins
-     */
-    TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-2",
-                                      "refresh-melt-2",
-                                      MHD_HTTP_OK),
-    /* Revokes refreshed EUR:0.1 coin  */
-    TALER_TESTING_cmd_revoke ("revoke-3-EUR:0.1",
-                              MHD_HTTP_OK,
-                              "refresh-reveal-2",
-                              CONFIG_FILE),
-    /* Revoke also original coin denomination */
-    TALER_TESTING_cmd_revoke ("revoke-4-EUR:5",
-                              MHD_HTTP_OK,
-                              "withdraw-revocation-coin-1",
-                              CONFIG_FILE),
-    /* Refund coin EUR:0.1 to original coin, creating zombie! */
-    TALER_TESTING_cmd_payback ("payback-2",
-                               MHD_HTTP_OK,
-                               "refresh-reveal-2",
-                               "EUR:0.1",
-                               "refresh-melt-2"),
-    /* Due to payback, original coin is now at EUR:3.79 */
-    /* Refund original (now zombie) coin to reserve */
-    TALER_TESTING_cmd_payback ("payback-3",
-                               MHD_HTTP_OK,
-                               "withdraw-revocation-coin-1",
-                               "EUR:3.79",
-                               NULL),
-    /* Check the money is back with the reserve */
-    TALER_TESTING_cmd_status ("payback-reserve-status-1",
-                              "create-reserve-1",
-                              "EUR:3.79",
-                              MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 
@@ -883,12 +770,7 @@ run (void *cls,
                                payback),
       TALER_TESTING_cmd_batch ("reserve-open-close",
                                reserve_open_close),
-      TALER_TESTING_cmd_batch ("revocation",
-                               revocation),
-      /**
-       * End the suite.  Fixme: better to have a label for this
-       * too, as it shows as "(null)" on logs.
-       */
+      /* End the suite. */
       TALER_TESTING_cmd_end ()
     };
 
