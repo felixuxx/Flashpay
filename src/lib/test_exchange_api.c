@@ -91,6 +91,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  * run.
  *
  * @param cls closure
+ * @param is interpreter we use to run commands
  */
 static void
 run (void *cls,
