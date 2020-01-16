@@ -63,11 +63,6 @@ static char *twister_url;
 static char *twisted_account_url;
 
 /**
- * Authentication data to use.
- */
-static struct TALER_BANK_AuthenticationData auth;
-
-/**
  * Twister process.
  */
 static struct GNUNET_OS_Process *twisterd;
@@ -97,7 +92,7 @@ run (void *cls,
                                     twister_url),
     TALER_TESTING_cmd_bank_credits ("history-0",
                                     twisted_account_url,
-                                    &auth,
+                                    &bc.exchange_auth,
                                     NULL,
                                     5),
     TALER_TESTING_cmd_end ()
@@ -107,7 +102,6 @@ run (void *cls,
                    "%s/%s",
                    twister_url,
                    "alice");
-  // FIXME: init 'auth'!
   if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
