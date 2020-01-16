@@ -30,11 +30,6 @@
 #include "taler_testing_lib.h"
 
 /**
- * FIXME: use json-t instead?
- */
-#define TALER_TESTING_TRAIT_CONTRACT_TERMS "contract-terms"
-
-/**
  * Some string. Avoid, use something more precise!
  */
 #define TALER_TESTING_TRAIT_STRING "string"
@@ -53,47 +48,6 @@
  * String identifying an order.
  */
 #define TALER_TESTING_TRAIT_ORDER_ID "order-id"
-
-
-/**
- * Obtain contract terms from @a cmd.
- *
- * @param cmd command to extract the contract terms from.
- * @param index contract terms index number.
- * @param contract_terms[out] where to write the contract
- *        terms.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_contract_terms (const struct TALER_TESTING_Command *cmd,
-                                        unsigned int index,
-                                        const json_t **contract_terms)
-{
-  return cmd->traits (cmd->cls,
-                      (const void **) contract_terms,
-                      TALER_TESTING_TRAIT_CONTRACT_TERMS,
-                      index);
-}
-
-
-/**
- * Offer contract terms.
- *
- * @param index contract terms index number.
- * @param contract_terms contract terms to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_contract_terms (unsigned int index,
-                                         const json_t *contract_terms)
-{
-  struct TALER_TESTING_Trait ret = {
-    .index = index,
-    .trait_name = TALER_TESTING_TRAIT_CONTRACT_TERMS,
-    .ptr = (const void *) contract_terms
-  };
-  return ret;
-}
 
 
 /**

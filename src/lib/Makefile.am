@@ -107,6 +107,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_blinding_key.c \
   testing_api_trait_cmd.c \
   testing_api_trait_coin_priv.c \
+  testing_api_trait_contract.c \
   testing_api_trait_denom_pub.c \
   testing_api_trait_denom_sig.c \
   testing_api_trait_exchange_pub.c \
