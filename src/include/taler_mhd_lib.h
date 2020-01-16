@@ -257,7 +257,7 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
  * to clean up our state.
  *
  * @param con_cls value as it was left by
- *        #TALER_MHD_post_json(), to be cleaned up
+ *        #TALER_MHD_parse_post_json(), to be cleaned up
  */
 void
 TALER_MHD_parse_post_cleanup_callback (void *con_cls);

@@ -114,7 +114,6 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
 void
 TALER_MHD_parse_post_cleanup_callback (void *con_cls)
 {
-  // FIXME: this should probably NOT be done with a 'void *' like this!
   GNUNET_JSON_post_parser_cleanup (con_cls);
 }
 
