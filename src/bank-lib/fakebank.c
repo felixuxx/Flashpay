@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file bank-lib/fakebank.c
  * @brief library that fakes being a Taler bank for testcases
@@ -426,12 +425,6 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
   GNUNET_break (0 != strncasecmp ("payto://",
                                   credit_account,
                                   strlen ("payto://")));
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Making transfer from %s to %s over %s and subject %s\n",
-              debit_account,
-              credit_account,
-              TALER_amount2s (amount),
-              TALER_B2S (reserve_pub));
   t = GNUNET_new (struct Transaction);
   t->debit_account = GNUNET_strdup (debit_account);
   t->credit_account = GNUNET_strdup (credit_account);
@@ -444,6 +437,13 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
   GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
                                     h->transactions_tail,
                                     t);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Making transfer from %s to %s over %s and subject %s at row %llu\n",
+              debit_account,
+              credit_account,
+              TALER_amount2s (amount),
+              TALER_B2S (reserve_pub),
+              (unsigned long long) t->row_id);
   return t->row_id;
 }
 
@@ -612,17 +612,17 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     debit = TALER_xtalerbank_account_from_payto (debit_account);
-    row_id = TALER_FAKEBANK_make_admin_transfer (h,
-                                                 debit,
-                                                 account,
-                                                 &amount,
-                                                 &reserve_pub);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s\n",
                 debit,
                 account,
                 TALER_B2S (&reserve_pub),
                 TALER_amount2s (&amount));
+    row_id = TALER_FAKEBANK_make_admin_transfer (h,
+                                                 debit,
+                                                 account,
+                                                 &amount,
+                                                 &reserve_pub);
     GNUNET_free (debit);
   }
   json_decref (json);
@@ -870,6 +870,11 @@ parse_history_common_args (struct MHD_Connection *connection,
   else
     ha->start_idx = (uint64_t) sval;
   ha->delta = (int64_t) d;
+  if (0 == ha->delta)
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
   ha->lp_timeout
     = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
                                      lp_timeout);
@@ -923,9 +928,9 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     /* range is exclusive, skip the matching entry */
-    if (ha.delta > 0)
-      pos = pos->next;
-    if (ha.delta < 0)
+    if (0 > ha.delta)
+      pos = pos->prev;
+    else
       pos = pos->prev;
   }
   else
@@ -970,9 +975,9 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       else
         ha.delta++;
     }
-    if (ha.delta > 0)
+    if (0 > ha.delta)
       pos = pos->prev;
-    else
+    if (0 < ha.delta)
       pos = pos->next;
   }
   return TALER_MHD_reply_json_pack (connection,
@@ -1018,8 +1023,17 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     for (pos = h->transactions_head;
          NULL != pos;
          pos = pos->next)
+    {
       if (pos->row_id  == ha.start_idx)
         break;
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Skipping transaction %s->%s (%s) at %llu (looking for start index %llu)\n",
+                  pos->debit_account,
+                  pos->credit_account,
+                  TALER_B2S (&pos->subject.credit.reserve_pub),
+                  (unsigned long long) pos->row_id,
+                  (unsigned long long) ha.start_idx);
+    }
     if (NULL == pos)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1028,10 +1042,16 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     /* range is exclusive, skip the matching entry */
-    if (ha.delta > 0)
-      pos = pos->next;
-    if (ha.delta < 0)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping transaction %s->%s (%s) (start index %llu is exclusive)\n",
+                pos->debit_account,
+                pos->credit_account,
+                TALER_B2S (&pos->subject.credit.reserve_pub),
+                (unsigned long long) ha.start_idx);
+    if (0 > ha.delta)
       pos = pos->prev;
+    else
+      pos = pos->next;
   }
   else
   {
@@ -1055,10 +1075,11 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
                                                  pos->debit_account);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Returning transaction %s->%s (%s)\n",
-                  debit_payto,
-                  credit_payto,
-                  TALER_B2S (&pos->subject));
+                  "Returning transaction %s->%s (%s) at %llu\n",
+                  pos->debit_account,
+                  pos->credit_account,
+                  TALER_B2S (&pos->subject.credit.reserve_pub),
+                  (unsigned long long) pos->row_id);
       trans = json_pack
                 ("{s:I, s:o, s:o, s:s, s:s, s:o}",
                 "row_id", (json_int_t) pos->row_id,
@@ -1067,7 +1088,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                 "credit_account", credit_payto,
                 "debit_account", debit_payto,
                 "reserve_pub", GNUNET_JSON_from_data_auto (
-                  &pos->subject.credit));
+                  &pos->subject.credit.reserve_pub));
       GNUNET_free (credit_payto);
       GNUNET_free (debit_payto);
       GNUNET_assert (0 ==
@@ -1078,9 +1099,18 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       else
         ha.delta++;
     }
-    if (ha.delta > 0)
+    else if (T_CREDIT == pos->type)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Skipping transaction %s->%s (%s) at row %llu\n",
+                  pos->debit_account,
+                  pos->credit_account,
+                  TALER_B2S (&pos->subject.credit.reserve_pub),
+                  (unsigned long long) pos->row_id);
+    }
+    if (0 > ha.delta)
       pos = pos->prev;
-    else
+    if (0 < ha.delta)
       pos = pos->next;
   }
   return TALER_MHD_reply_json_pack (connection,

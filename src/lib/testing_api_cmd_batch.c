@@ -60,8 +60,8 @@ batch_run (void *cls,
   struct BatchState *bs = cls;
 
   if (NULL != bs->batch[bs->batch_ip].label)
-    TALER_LOG_DEBUG ("Running batched command: %s\n",
-                     bs->batch[bs->batch_ip].label);
+    TALER_LOG_INFO ("Running batched command: %s\n",
+                    bs->batch[bs->batch_ip].label);
 
   /* hit end command, leap to next top-level command.  */
   if (NULL == bs->batch[bs->batch_ip].label)
