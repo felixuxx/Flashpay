@@ -762,7 +762,7 @@ run (void *cls,
      */
     CMD_EXEC_WIREWATCH ("wirewatch-4"),
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-1",
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -772,7 +772,7 @@ run (void *cls,
      * deposit fee)
      */TALER_TESTING_cmd_deposit
       ("deposit-partial",
-      "withdraw-coin-1", 0,
+      "withdraw-revocation-coin-1", 0,
       bc.user42_payto,
       "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
@@ -782,7 +782,7 @@ run (void *cls,
      * (EUR:3.17 = 3x EUR:1.03 + 7x EUR:0.13) */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt-1",
-      "withdraw-coin-1",
+      "withdraw-revocation-coin-1",
       MHD_HTTP_OK,
       NULL),
     /**
@@ -818,7 +818,7 @@ run (void *cls,
        leaving EUR:3.69. */
     TALER_TESTING_cmd_refresh_melt
       ("refresh-melt-2",
-      "withdraw-coin-1",
+      "withdraw-revocation-coin-1",
       MHD_HTTP_OK,
       "EUR:0.1",
       NULL),
@@ -836,7 +836,7 @@ run (void *cls,
     /* Revoke also original coin denomination */
     TALER_TESTING_cmd_revoke ("revoke-3",
                               MHD_HTTP_OK,
-                              "withdraw-coin-1",
+                              "withdraw-revocation-coin-1",
                               CONFIG_FILE),
     /* Refund coin EUR:0.1 to original coin, creating zombie! */
     TALER_TESTING_cmd_payback ("payback-2",
@@ -848,7 +848,7 @@ run (void *cls,
     /* Refund original (now zombie) coin to reserve */
     TALER_TESTING_cmd_payback ("payback-3",
                                MHD_HTTP_OK,
-                               "withdraw-coin-1",
+                               "withdraw-revocation-coin-1",
                                "EUR:3.79",
                                NULL),
     /* Check the money is back with the reserve */

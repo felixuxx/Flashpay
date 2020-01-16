@@ -63,12 +63,12 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchange",
-                                               "keydir",
+                                               "KEYDIR",
                                                &dir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "keydir");
+                               "KEYDIR");
     return GNUNET_SYSERR;
   }
   if (GNUNET_YES ==
@@ -77,7 +77,23 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
     GNUNET_break (GNUNET_OK ==
                   GNUNET_DISK_directory_remove (dir));
   GNUNET_free (dir);
-  // TODO: auditor-specific clean-up here!
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchange",
+                                               "REVOCATION_DIR",
+                                               &dir))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "REVOCATION_DIR");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_YES ==
+      GNUNET_DISK_directory_test (dir,
+                                  GNUNET_NO))
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_DISK_directory_remove (dir));
+  GNUNET_free (dir);
   return GNUNET_OK;
 }
 
