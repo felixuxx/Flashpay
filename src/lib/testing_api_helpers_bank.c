@@ -273,7 +273,6 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  GNUNET_CONFIGURATION_destroy (cfg);
 
   if (GNUNET_OK !=
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
@@ -284,6 +283,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
              port);
     GNUNET_break (0);
     GNUNET_free (database);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
 
@@ -304,6 +304,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to flush the bank db.\n");
     GNUNET_free (database);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
   GNUNET_free (database);
@@ -315,6 +316,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   {
     GNUNET_OS_process_destroy (dbreset_proc);
     GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
   if ( (type == GNUNET_OS_PROCESS_EXITED) &&
@@ -323,6 +325,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     fprintf (stderr,
              "Failed to setup database\n");
     GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
@@ -331,6 +334,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected error running `taler-bank-manage django flush'!\n");
     GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
   GNUNET_OS_process_destroy (dbreset_proc);
@@ -340,8 +344,10 @@ TALER_TESTING_prepare_bank (const char *config_filename,
                                  &bc->exchange_auth))
   {
     GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
+  GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_asprintf (&bc->bank_url,
                    "http://localhost:%llu/",
                    port);
