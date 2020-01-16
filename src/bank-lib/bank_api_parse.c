@@ -144,7 +144,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
           auth->details.basic.username = NULL;
           GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                      section,
-                                     "USERNAME");
+                                     "PASSWORD");
           GNUNET_free (method);
           return GNUNET_SYSERR;
         }
