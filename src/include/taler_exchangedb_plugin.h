@@ -983,7 +983,6 @@ typedef int
  * @param rowid unique serial ID for the refresh session in our DB
  * @param h_blind_ev blinded hash of the coin's public key
  * @param denom_pub public denomination key of the deposited coin
- * @param denom_sig signature over the deposited coin
  * @param reserve_pub public key of the reserve
  * @param reserve_sig signature over the withdraw operation
  * @param execution_date when did the wallet withdraw the coin
@@ -996,8 +995,6 @@ typedef int
                                      const struct GNUNET_HashCode *h_blind_ev,
                                      const struct
                                      TALER_DenominationPublicKey *denom_pub,
-                                     const struct
-                                     TALER_DenominationSignature *denom_sig,
                                      const struct
                                      TALER_ReservePublicKeyP *reserve_pub,
                                      const struct

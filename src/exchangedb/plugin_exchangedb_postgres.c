@@ -854,7 +854,6 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " h_blind_ev"
                               ",denom.denom_pub"
-                              ",denom_sig"
                               ",reserve_sig"
                               ",reserve_pub"
                               ",execution_date"
@@ -6386,7 +6385,6 @@ reserves_out_serial_helper_cb (void *cls,
   {
     struct GNUNET_HashCode h_blind_ev;
     struct TALER_DenominationPublicKey denom_pub;
-    struct TALER_DenominationSignature denom_sig;
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_ReserveSignatureP reserve_sig;
     struct GNUNET_TIME_Absolute execution_date;
@@ -6397,8 +6395,6 @@ reserves_out_serial_helper_cb (void *cls,
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                             &denom_pub.rsa_public_key),
-      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                           &denom_sig.rsa_signature),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
@@ -6426,7 +6422,6 @@ reserves_out_serial_helper_cb (void *cls,
                     rowid,
                     &h_blind_ev,
                     &denom_pub,
-                    &denom_sig,
                     &reserve_pub,
                     &reserve_sig,
                     execution_date,

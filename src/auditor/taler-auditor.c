@@ -1095,7 +1095,6 @@ handle_reserve_in (void *cls,
  * @param rowid unique serial ID for the refresh session in our DB
  * @param h_blind_ev blinded hash of the coin's public key
  * @param denom_pub public denomination key of the deposited coin
- * @param denom_sig signature over the deposited coin
  * @param reserve_pub public key of the reserve
  * @param reserve_sig signature over the withdraw operation
  * @param execution_date when did the wallet withdraw the coin
@@ -1107,7 +1106,6 @@ handle_reserve_out (void *cls,
                     uint64_t rowid,
                     const struct GNUNET_HashCode *h_blind_ev,
                     const struct TALER_DenominationPublicKey *denom_pub,
-                    const struct TALER_DenominationSignature *denom_sig,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_ReserveSignatureP *reserve_sig,
                     struct GNUNET_TIME_Absolute execution_date,
@@ -1122,9 +1120,6 @@ handle_reserve_out (void *cls,
   struct GNUNET_TIME_Absolute valid_start;
   struct GNUNET_TIME_Absolute expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
-
-  (void) denom_sig; /* FIXME: checked elsewhere? If so, potential for
-                       optimization to simply not fetch this value from DB! */
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_out_serial_id);
@@ -3469,7 +3464,6 @@ sync_denomination (void *cls,
  * @param rowid unique serial ID for the refresh session in our DB
  * @param h_blind_ev blinded hash of the coin's public key
  * @param denom_pub public denomination key of the deposited coin
- * @param denom_sig signature over the deposited coin
  * @param reserve_pub public key of the reserve
  * @param reserve_sig signature over the withdraw operation (verified elsewhere)
  * @param execution_date when did the wallet withdraw the coin
@@ -3481,7 +3475,6 @@ withdraw_cb (void *cls,
              uint64_t rowid,
              const struct GNUNET_HashCode *h_blind_ev,
              const struct TALER_DenominationPublicKey *denom_pub,
-             const struct TALER_DenominationSignature *denom_sig,
              const struct TALER_ReservePublicKeyP *reserve_pub,
              const struct TALER_ReserveSignatureP *reserve_sig,
              struct GNUNET_TIME_Absolute execution_date,
