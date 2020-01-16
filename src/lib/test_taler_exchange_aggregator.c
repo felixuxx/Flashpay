@@ -40,6 +40,11 @@ static struct TALER_TESTING_ExchangeConfiguration ec;
 static struct TALER_TESTING_BankConfiguration bc;
 
 /**
+ * Contains plugin and session.
+ */
+static struct TALER_TESTING_DatabaseConnection dbc;
+
+/**
  * Return value from main().
  */
 static int result;
@@ -48,16 +53,6 @@ static int result;
  * Name of the configuration file to use.
  */
 static char *config_filename;
-
-/**
- * Database plugin.
- */
-static struct TALER_EXCHANGEDB_Plugin *plugin;
-
-/**
- * Our session with the database.
- */
-static struct TALER_EXCHANGEDB_Session *session;
 
 /**
  * Private key we use for fake coins.
@@ -69,6 +64,9 @@ static struct GNUNET_CRYPTO_RsaPrivateKey *coin_pk;
  */
 static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
 
+#define MERCHANT_ACCOUNT "irrelevant-merchant-account-uri"
+
+#if 0
 /**
  * Setup (fake) information about a coin used in deposit.
  *
@@ -95,8 +93,9 @@ fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
                  TALER_string_to_amount_nbo ("EUR:0.1",
                                              &issue->properties.fee_refund));
 }
+#endif
 
-
+#if 0
 /**
  * Setup (fake) information about a coin used in deposit.
  *
@@ -114,7 +113,7 @@ fake_coin (struct TALER_CoinPublicInfo *coin)
   coin->denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign_fdh (coin_pk,
                                                               &hc);
 }
-
+#endif
 
 #if 0
 /**
@@ -874,8 +873,8 @@ prepare_database (void *cls,
 {
 
   // connect to the database.
-  plugin = TALER_EXCHANGEDB_plugin_load (cfg);
-  if (NULL == plugin)
+  dbc.plugin = TALER_EXCHANGEDB_plugin_load (cfg);
+  if (NULL == dbc.plugin)
   {
     GNUNET_break (0);
     result = 77;
@@ -883,17 +882,17 @@ prepare_database (void *cls,
   }
 
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
+      dbc.plugin->create_tables (dbc.plugin->cls))
   {
     GNUNET_break (0);
-    TALER_EXCHANGEDB_plugin_unload (plugin);
-    plugin = NULL;
+    TALER_EXCHANGEDB_plugin_unload (dbc.plugin);
+    dbc.plugin = NULL;
     result = 77;
     return GNUNET_NO;
   }
 
-  session = plugin->get_session (plugin->cls);
-  GNUNET_assert (NULL != session);
+  dbc.session = dbc.plugin->get_session (dbc.plugin->cls);
+  GNUNET_assert (NULL != dbc.session);
 
   return GNUNET_OK;
 }
@@ -907,6 +906,16 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command all[] = {
+    TALER_TESTING_cmd_exec_aggregator ("run-aggregator-on-empty-db",
+		                       config_filename),
+    TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-on-start"),
+    TALER_TESTING_cmd_insert_deposit ("do-deposit-1",
+		                      &dbc,
+				      "bob",
+				      MERCHANT_ACCOUNT, // not relevant
+				      GNUNET_TIME_UNIT_ZERO,
+				      "EUR:1",
+				      "EUR:0.1"),
     TALER_TESTING_cmd_end ()  
   };
   
@@ -921,9 +930,6 @@ main (int argc,
 {
   const char *plugin_name;
   char *testname;
-  struct GNUNET_OS_Process *proc;
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  struct GNUNET_SIGNAL_Context *shc_chld;
 
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {
@@ -948,7 +954,6 @@ main (int argc,
 
   TALER_TESTING_cleanup_files (config_filename);
 
-  // BUG: FAILS NOW.
   if (GNUNET_OK != TALER_TESTING_prepare_exchange (config_filename,
 			                           &ec))
   {
@@ -981,10 +986,10 @@ main (int argc,
 		                NULL, // no exchange process handle.
 		                GNUNET_NO); // do not try to connect to the exchange
 
-  GNUNET_CRYPTO_rsa_private_key_free (coin_pk);
-  GNUNET_CRYPTO_rsa_public_key_free (coin_pub);
   GNUNET_free (config_filename);
   GNUNET_free (testname);
+  dbc.plugin->drop_tables (dbc.plugin->cls);
+  TALER_EXCHANGEDB_plugin_unload (dbc.plugin);
   return GNUNET_OK == result ? 0 : 1;
 }
 

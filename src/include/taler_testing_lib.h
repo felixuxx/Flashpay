@@ -94,6 +94,22 @@ struct TALER_TESTING_ExchangeConfiguration
 
 };
 
+/**
+ * Connection to the database: aggregates
+ * plugin and session handles.
+ */
+struct TALER_TESTING_DatabaseConnection
+{
+  /**
+   * Database plugin.
+   */
+  struct TALER_EXCHANGEDB_Plugin *plugin;
+  
+  /**
+   * Session with the database.
+   */
+  struct TALER_EXCHANGEDB_Session *session;
+};
 
 /**
  * Prepare launching an exchange.  Checks that the configured
@@ -1667,7 +1683,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  * Make the "insert-deposit" CMD.
  *
  * @param label command label.
- * @param config_filename configuration filename.
+ * @param dbc collects plugin and session handles
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account value indicating the merchant at its bank.
  * @param wire_deadline point in time where the aggregator should have
@@ -1678,10 +1694,10 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (const char *label,
-                                  const char *config_filename,
+		                  const struct TALER_TESTING_DatabaseConnection *dbc,
 				  const char *merchant_name,
 				  const char *merchant_account,
-				  struct GNUNET_TIME_Absolute wire_deadline,
+				  struct GNUNET_TIME_Relative wire_deadline,
 				  const char *amount_with_fee,
 				  const char *deposit_fee);
 

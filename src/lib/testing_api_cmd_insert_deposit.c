@@ -24,11 +24,13 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler_util.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "auditor_api_handle.h"
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
+#include "taler_exchangedb_plugin.h"
 
 
 /**
@@ -39,7 +41,7 @@ struct InsertDepositState
   /**
    * Configuration file used by the command.
    */
-  const char *config_filename;
+  const struct TALER_TESTING_DatabaseConnection *dbc;
 
   /**
    * Human-readable name of the shop.
@@ -55,7 +57,7 @@ struct InsertDepositState
    * Deadline before which the aggregator should
    * send the payment to the merchant.
    */
-  struct GNUNET_TIME_Absolute wire_deadline;
+  struct GNUNET_TIME_Relative wire_deadline;
 
   /**
    * Amount to deposit, inclusive of deposit fee.
@@ -67,6 +69,35 @@ struct InsertDepositState
    */
   const char *deposit_fee;
 };
+
+/**
+ * Setup (fake) information about a coin used in deposit.
+ *
+ * @param[out] issue information to initialize with "valid" data
+ */
+static void
+fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+{
+  memset (issue, 0, sizeof (struct
+                            TALER_EXCHANGEDB_DenominationKeyInformationP));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:1",
+                                             &issue->properties.value));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_withdraw));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_deposit));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_refresh));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_refund));
+}
+
+
 
 
 /**
@@ -82,7 +113,122 @@ insert_deposit_run (void *cls,
                     struct TALER_TESTING_Interpreter *is)
 {
   struct InsertDepositState *ids = cls;
-  // TODO
+  struct TALER_EXCHANGEDB_Deposit deposit;
+  struct TALER_MerchantPrivateKeyP merchant_priv;
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+  struct TALER_DenominationPublicKey dpk;
+  struct GNUNET_CRYPTO_RsaPrivateKey *denom_priv;
+  struct GNUNET_HashCode hc;
+
+  // prepare and store issue first.
+  fake_issue (&issue);
+  denom_priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  dpk.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_priv);
+  GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
+                                     &issue.properties.denom_hash);
+
+  if ( (GNUNET_OK !=
+        ids->dbc->plugin->start (ids->dbc->plugin->cls,
+                                 ids->dbc->session,
+                                 "talertestinglib: denomination insertion")) ||
+       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+        ids->dbc->plugin->insert_denomination_info (ids->dbc->plugin->cls,
+                                                    ids->dbc->session,
+                                                    &dpk,
+                                                    &issue)) ||
+       (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+        ids->dbc->plugin->commit (ids->dbc->plugin->cls,
+                                  ids->dbc->session)) )
+  {
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
+  // prepare and store deposit now.
+  memset (&deposit,
+          0,
+	  sizeof (deposit));
+
+  GNUNET_CRYPTO_kdf (&merchant_priv,
+                     sizeof (struct TALER_MerchantPrivateKeyP),
+                     "merchant-priv",
+                     strlen ("merchant-priv"),
+                     ids->merchant_name,
+                     strlen (ids->merchant_name),
+                     NULL,
+		     0);
+  GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
+                                      &deposit.merchant_pub.eddsa_pub);
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &deposit.h_contract_terms);
+  if ( (GNUNET_OK !=
+        TALER_string_to_amount (ids->amount_with_fee,
+                                &deposit.amount_with_fee)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (ids->deposit_fee,
+                                &deposit.deposit_fee)) )
+  {
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
+  GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
+		                     &deposit.coin.denom_pub_hash);
+
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &hc);
+  deposit.coin.denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv,
+                                                                     &hc);
+  {
+    char *str;
+
+    GNUNET_asprintf (&str,
+                     "payto://x-taler-bank/localhost:8082/%s",
+                     ids->merchant_account);
+    deposit.receiver_wire_account
+      = json_pack ("{s:s, s:s}",
+                   "salt", "this-is-a-salt-value",
+                   "url", str);
+    GNUNET_free (str);
+  }
+
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_merchant_wire_signature_hash (
+                   deposit.receiver_wire_account,
+                   &deposit.h_wire));
+  deposit.timestamp = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&deposit.timestamp);
+  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (
+    ids->wire_deadline);
+  GNUNET_TIME_round_abs (&deposit.wire_deadline);
+
+  /* finally, actually perform the DB operation */
+  if ( (GNUNET_OK !=
+        ids->dbc->plugin->start (ids->dbc->plugin->cls,
+                                 ids->dbc->session,
+                                 "libtalertesting: insert deposit")) ||
+       (0 >
+        ids->dbc->plugin->ensure_coin_known (ids->dbc->plugin->cls,
+                                             ids->dbc->session,
+                                             &deposit.coin)) ||
+       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+        ids->dbc->plugin->insert_deposit (ids->dbc->plugin->cls,
+                                          ids->dbc->session,
+                                          &deposit)) ||
+       (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+        ids->dbc->plugin->commit (ids->dbc->plugin->cls,
+                                  ids->dbc->session)) )
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+  }
+
+  GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig.rsa_signature);
+  GNUNET_CRYPTO_rsa_public_key_free (dpk.rsa_public_key);
+  GNUNET_CRYPTO_rsa_private_key_free (denom_priv);
+  json_decref (deposit.receiver_wire_account);
+
+  TALER_TESTING_interpreter_next (is);
 }
 
 
@@ -97,9 +243,9 @@ static void
 insert_deposit_cleanup (void *cls,
                         const struct TALER_TESTING_Command *cmd)
 {
-  struct InsertDepositState *ds = cls;
-
-  GNUNET_free (ds);
+  struct InsertDepositState *ids = cls;
+  
+  GNUNET_free (ids);
 }
 
 
@@ -118,16 +264,7 @@ insert_deposit_traits (void *cls,
                        const char *trait,
                        unsigned int index)
 {
-  struct InsertDepositState *ids = cls;
-  struct TALER_TESTING_Trait traits[] = {
-    // FIXME: needed?
-    TALER_TESTING_trait_end ()
-  };
-
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
+  return GNUNET_NO;
 }
 
 
@@ -135,7 +272,7 @@ insert_deposit_traits (void *cls,
  * Make the "insert-deposit" CMD.
  *
  * @param label command label.
- * @param config_filename configuration filename.
+ * @param dbc collects database plugin and session handles.
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account value indicating the merchant at its bank.
  * @param wire_deadline point in time where the aggregator should have
@@ -146,10 +283,10 @@ insert_deposit_traits (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (const char *label,
-                                  const char *config_filename,
+                                  const struct TALER_TESTING_DatabaseConnection *dbc,
 				  const char *merchant_name,
 				  const char *merchant_account,
-				  struct GNUNET_TIME_Absolute wire_deadline,
+				  struct GNUNET_TIME_Relative wire_deadline,
 				  const char *amount_with_fee,
 				  const char *deposit_fee)
 {
@@ -157,7 +294,7 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
   struct InsertDepositState *ids;
 
   ids = GNUNET_new (struct InsertDepositState);
-  ids->config_filename = config_filename;
+  ids->dbc = dbc;
   ids->merchant_name = merchant_name;
   ids->merchant_account = merchant_account;
   ids->wire_deadline = wire_deadline;
@@ -169,8 +306,9 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
   cmd.run = &insert_deposit_run;
   cmd.cleanup = &insert_deposit_cleanup;
   cmd.traits = &insert_deposit_traits;
+
   return cmd;
 }
 
 
-/* end of testing_auditor_api_cmd_exec_auditor_dbinit.c */
+/* end of testing_api_cmd_insert_deposit.c */
