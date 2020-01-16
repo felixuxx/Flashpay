@@ -24,7 +24,7 @@
 #include "taler_util.h"
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
-#include "taler_exchangedb_plugin.h"
+#include "taler_exchangedb_lib.h"
 #include <microhttpd.h>
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
