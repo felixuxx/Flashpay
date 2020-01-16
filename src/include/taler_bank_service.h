@@ -217,7 +217,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                const struct
                                TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
-                               const char *credit_account,
+                               const char *debit_account,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls);
 

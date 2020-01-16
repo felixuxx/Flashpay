@@ -149,7 +149,7 @@ TALER_project_data_default (void);
  * URL-encode a string according to rfc3986.
  *
  * @param s string to encode
- * @returns the urlencoded string, the caller must free it with GNUNET_free
+ * @returns the urlencoded string, the caller must free it with GNUNET_free()
  */
 char *
 TALER_urlencode (const char *s);
@@ -160,9 +160,9 @@ TALER_urlencode (const char *s);
  * directly or via proxy).
  *
  * @param connection MHD connection
- * @returns GNUNET_YES if the MHD connection is using https,
- *          GNUNET_NO if the MHD connection is using http,
- *          GNUNET_SYSERR if the connection type couldn't be determined
+ * @returns #GNUNET_YES if the MHD connection is using https,
+ *          #GNUNET_NO if the MHD connection is using http,
+ *          #GNUNET_SYSERR if the connection type couldn't be determined
  */
 int
 TALER_mhd_is_https (struct MHD_Connection *connection);
