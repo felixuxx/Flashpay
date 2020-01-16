@@ -26,7 +26,18 @@
 #include "taler_exchangedb_plugin.h"
 #include <microhttpd.h>
 #include "taler_fakebank_lib.h"
+#include "taler_testing_lib.h"
 
+
+/**
+ * Helper structure to keep exchange configuration values.
+ */
+static struct TALER_TESTING_ExchangeConfiguration ec;
+
+/**
+ * Bank configuration data.
+ */
+static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Commands for the interpreter.
@@ -252,16 +263,6 @@ static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
  */
 static struct TALER_FAKEBANK_Handle *fb;
 
-
-/**
- * Interprets the commands from the test program.
- *
- * @param cls the `struct State` of the interpreter
- */
-static void
-interpreter (void *cls);
-
-
 /**
  * Task triggered whenever we are to shutdown.
  *
@@ -319,6 +320,7 @@ shutdown_action (void *cls)
   plugin = NULL;
 }
 
+#if 0
 
 /**
  * Task triggered whenever we receive a SIGCHLD (child
@@ -349,7 +351,7 @@ maint_child_death (void *cls)
 
   interpreter (state);
 }
-
+#endif
 
 /**
  * Setup (fake) information about a coin used in deposit.
@@ -511,6 +513,7 @@ fail (struct Command *cmd)
  *
  * @param cls the `struct State` of the interpreter
  */
+#if 0
 static void
 interpreter (void *cls)
 {
@@ -613,12 +616,13 @@ interpreter (void *cls)
     }
   }
 }
-
+#endif
 
 /**
  * Contains the test program. Here each step of the testcase
  * is defined.
  */
+#if 0
 static void
 run_test ()
 {
@@ -1155,15 +1159,59 @@ run_test ()
   int_task = GNUNET_SCHEDULER_add_now (&interpreter,
                                        &state);
 }
+#endif
 
+/**
+ * @return GNUNET_NO if database could not be prepared,
+ * otherwise GNUNET_OK
+ */
+static int
+prepare_database (const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+
+  // connect to the database.
+  plugin = TALER_EXCHANGEDB_plugin_load (cfg);
+  if (NULL == plugin)
+  {
+    GNUNET_break (0);
+    result = 77;
+    return GNUNET_NO;
+  }
+
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls))
+  {
+    GNUNET_break (0);
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
+    result = 77;
+    return GNUNET_NO;
+  }
+
+  session = plugin->get_session (plugin->cls);
+  GNUNET_assert (NULL != session);
+
+  return GNUNET_OK;
+}
+
+
+static void
+run (void *cls,
+     struct TALER_TESTING_Interpreter *is)
+{
+  if (GNUNET_OK != prepare_database (is->cfg))
+    return;
+
+}
 
 /**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with configuration
  */
+#if 0
 static void
-run (void *cls)
+OLDrun (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
@@ -1231,7 +1279,7 @@ run (void *cls)
   }
   run_test ();
 }
-
+#endif
 
 /**
  * Signal handler called for SIGCHLD.  Triggers the
@@ -1250,7 +1298,6 @@ sighandler_child_death ()
   errno = old_errno;    /* restore errno */
 }
 
-
 int
 main (int argc,
       char *const argv[])
@@ -1261,7 +1308,11 @@ main (int argc,
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_SIGNAL_Context *shc_chld;
 
-  result = -1;
+
+  /* these might get in the way */
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
+
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {
     GNUNET_break (0);
@@ -1274,65 +1325,44 @@ main (int argc,
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf",
                           testname);
-  /* these might get in the way */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
+
   GNUNET_log_setup ("test_taler_exchange_aggregator",
-                    "WARNING",
+                    "DEBUG",
                     NULL);
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
-                                  NULL, NULL, NULL,
-                                  "taler-exchange-keyup",
-                                  "taler-exchange-keyup",
-                                  "-c", config_filename,
-                                  NULL);
-  if (NULL == proc)
+
+
+
+  TALER_TESTING_cleanup_files (config_filename);
+  if (GNUNET_OK != TALER_TESTING_prepare_exchange (config_filename,
+			                           &ec))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    TALER_LOG_WARNING ("Could not prepare the exchange (keyup, ..)\n");
     return 77;
   }
-  GNUNET_OS_process_wait (proc);
-  GNUNET_OS_process_destroy (proc);
-  if (GNUNET_OK !=
-      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-                                     8082))
+
+  if (GNUNET_OK != TALER_TESTING_prepare_fakebank (config_filename,
+			                           "account-1",
+			                           &bc))
   {
-    fprintf (stderr,
-             "Required port %u not available, skipping.\n",
-             (unsigned int) 8082);
+    TALER_LOG_WARNING ("Could not prepare the fakebank\n");
     return 77;
   }
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_parse (cfg,
-                                  config_filename))
-  {
-    GNUNET_break (0);
-    GNUNET_free (config_filename);
-    GNUNET_free (testname);
-    return 2;
-  }
-  sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO,
-                              GNUNET_NO, GNUNET_NO);
-  GNUNET_assert (NULL != sigpipe);
-  shc_chld =
-    GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
-                                   &sighandler_child_death);
+
   coin_pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
   coin_pub = GNUNET_CRYPTO_rsa_private_key_get_public (coin_pk);
-  GNUNET_SCHEDULER_run (&run,
-                        cfg);
+
+
+  result = TALER_TESTING_setup (&run,
+	                        NULL,
+		                config_filename,
+		                NULL, // no exchange process handle.
+		                GNUNET_NO); // do not try to connect to the exchange
+
   GNUNET_CRYPTO_rsa_private_key_free (coin_pk);
   GNUNET_CRYPTO_rsa_public_key_free (coin_pub);
-  GNUNET_SIGNAL_handler_uninstall (shc_chld);
-  shc_chld = NULL;
-  GNUNET_DISK_pipe_close (sigpipe);
-  GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_free (config_filename);
   GNUNET_free (testname);
-  return result;
+  return GNUNET_OK == result ? 0 : 1;
 }
 
 

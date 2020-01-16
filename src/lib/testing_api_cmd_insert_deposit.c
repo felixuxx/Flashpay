@@ -81,7 +81,7 @@ insert_deposit_run (void *cls,
                     const struct TALER_TESTING_Command *cmd,
                     struct TALER_TESTING_Interpreter *is)
 {
-  struct InsertDepositState *ks = cls;
+  struct InsertDepositState *ids = cls;
   // TODO
 }
 
@@ -118,7 +118,7 @@ insert_deposit_traits (void *cls,
                        const char *trait,
                        unsigned int index)
 {
-  struct AuditorDbinitState *ks = cls;
+  struct InsertDepositState *ids = cls;
   struct TALER_TESTING_Trait traits[] = {
     // FIXME: needed?
     TALER_TESTING_trait_end ()
@@ -154,17 +154,17 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
 				  const char *deposit_fee)
 {
   struct TALER_TESTING_Command cmd;
-  struct InsertDepositState *ds;
+  struct InsertDepositState *ids;
 
-  ds = GNUNET_new (struct InsertDepositState);
-  ds->config_filename = config_filename;
-  ds->merchant_name = merchant_name;
-  ds->merchant_account = merchant_account;
-  ds->wire_deadline = wire_deadline;
-  ds->amount_with_fee = amount_with_fee;
-  ds->deposit_fee = deposit_fee;
+  ids = GNUNET_new (struct InsertDepositState);
+  ids->config_filename = config_filename;
+  ids->merchant_name = merchant_name;
+  ids->merchant_account = merchant_account;
+  ids->wire_deadline = wire_deadline;
+  ids->amount_with_fee = amount_with_fee;
+  ids->deposit_fee = deposit_fee;
 
-  cmd.cls = ds;
+  cmd.cls = ids;
   cmd.label = label;
   cmd.run = &insert_deposit_run;
   cmd.cleanup = &insert_deposit_cleanup;
