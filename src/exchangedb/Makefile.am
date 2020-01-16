@@ -46,8 +46,9 @@ libtalerexchangedb_la_SOURCES = \
   exchangedb_auditorkeys.c \
   exchangedb_denomkeys.c \
   exchangedb_fees.c \
+  exchangedb_plugin.c \
   exchangedb_signkeys.c \
-  exchangedb_plugin.c
+  exchangedb_transactions.c
 
 libtalerexchangedb_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \

@@ -107,23 +107,5 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                         void *cb_cls);
 
 
-/**
- * Calculate the total value of all transactions performed.
- * Stores @a off plus the cost of all transactions in @a tl
- * in @a ret.
- *
- * @param tl transaction list to process
- * @param off offset to use as the starting value
- * @param[out] ret where the resulting total is to be stored
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
- */
-// FIXME: maybe move to another module, i.e. exchangedb???
-int
-TEH_DB_calculate_transaction_list_totals (struct
-                                          TALER_EXCHANGEDB_TransactionList *tl,
-                                          const struct TALER_Amount *off,
-                                          struct TALER_Amount *ret);
-
-
 #endif
 /* TALER_EXCHANGE_HTTPD_DB_H */

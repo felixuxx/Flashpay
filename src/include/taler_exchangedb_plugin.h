@@ -24,7 +24,82 @@
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_db_lib.h>
-#include "taler_exchangedb_lib.h"
+#include "taler_signatures.h"
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief On disk format used for a exchange signing key.  Signing keys are used
+ * by the exchange to affirm its messages, but not to create coins.
+ * Includes the private key followed by the public information about
+ * the signing key.
+ */
+struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP
+{
+  /**
+   * Private key part of the exchange's signing key.
+   */
+  struct TALER_ExchangePrivateKeyP signkey_priv;
+
+  /**
+   * Signature over @e issue
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+  /**
+   * Public information about a exchange signing key.
+   */
+  struct TALER_ExchangeSigningKeyValidityPS issue;
+
+};
+
+
+/**
+ * Information about a denomination key.
+ */
+struct TALER_EXCHANGEDB_DenominationKeyInformationP
+{
+
+  /**
+   * Signature over this struct to affirm the validity of the key.
+   */
+  struct TALER_MasterSignatureP signature;
+
+  /**
+   * Signed properties of the denomination key.
+   */
+  struct TALER_DenominationKeyValidityPS properties;
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * @brief All information about a denomination key (which is used to
+ * sign coins into existence).
+ */
+struct TALER_EXCHANGEDB_DenominationKeyIssueInformation
+{
+  /**
+   * The private key of the denomination.  Will be NULL if the private
+   * key is not available (this is the case after the key has expired
+   * for signing coins, but is still valid for depositing coins).
+   */
+  struct TALER_DenominationPrivateKey denom_priv;
+
+  /**
+   * Decoded denomination public key (the hash of it is in
+   * @e issue, but we sometimes need the full public key as well).
+   */
+  struct TALER_DenominationPublicKey denom_pub;
+
+  /**
+   * Signed public information about a denomination key.
+   */
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+};
 
 
 /**

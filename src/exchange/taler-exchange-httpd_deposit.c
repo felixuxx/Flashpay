@@ -193,9 +193,9 @@ deposit_transaction (void *cls,
   if (0 > qs)
     return qs;
   if (GNUNET_OK !=
-      TEH_DB_calculate_transaction_list_totals (tl,
-                                                &spent,
-                                                &spent))
+      TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
+                                                          &spent,
+                                                          &spent))
   {
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);

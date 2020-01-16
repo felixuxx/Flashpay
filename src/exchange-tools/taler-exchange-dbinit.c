@@ -20,7 +20,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_exchangedb_plugin.h"
+#include "taler_exchangedb_lib.h"
 
 
 /**

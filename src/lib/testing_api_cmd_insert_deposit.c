@@ -98,8 +98,6 @@ fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 }
 
 
-
-
 /**
  * Run the command.
  *
@@ -147,7 +145,7 @@ insert_deposit_run (void *cls,
   // prepare and store deposit now.
   memset (&deposit,
           0,
-	  sizeof (deposit));
+          sizeof (deposit));
 
   GNUNET_CRYPTO_kdf (&merchant_priv,
                      sizeof (struct TALER_MerchantPrivateKeyP),
@@ -156,7 +154,7 @@ insert_deposit_run (void *cls,
                      ids->merchant_name,
                      strlen (ids->merchant_name),
                      NULL,
-		     0);
+                     0);
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
                                       &deposit.merchant_pub.eddsa_pub);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
@@ -173,7 +171,7 @@ insert_deposit_run (void *cls,
   }
 
   GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
-		                     &deposit.coin.denom_pub_hash);
+                                     &deposit.coin.denom_pub_hash);
 
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &hc);
@@ -244,7 +242,7 @@ insert_deposit_cleanup (void *cls,
                         const struct TALER_TESTING_Command *cmd)
 {
   struct InsertDepositState *ids = cls;
-  
+
   GNUNET_free (ids);
 }
 
@@ -283,12 +281,13 @@ insert_deposit_traits (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (const char *label,
-                                  const struct TALER_TESTING_DatabaseConnection *dbc,
-				  const char *merchant_name,
-				  const char *merchant_account,
-				  struct GNUNET_TIME_Relative wire_deadline,
-				  const char *amount_with_fee,
-				  const char *deposit_fee)
+                                  const struct
+                                  TALER_TESTING_DatabaseConnection *dbc,
+                                  const char *merchant_name,
+                                  const char *merchant_account,
+                                  struct GNUNET_TIME_Relative wire_deadline,
+                                  const char *amount_with_fee,
+                                  const char *deposit_fee)
 {
   struct TALER_TESTING_Command cmd;
   struct InsertDepositState *ids;

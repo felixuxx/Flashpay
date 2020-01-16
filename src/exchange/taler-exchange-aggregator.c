@@ -1835,7 +1835,7 @@ run_transfers (void *cls)
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
                         session,
-			"aggregator run transfer"))
+                        "aggregator run transfer"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");

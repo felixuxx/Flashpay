@@ -1293,6 +1293,7 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
                                    h);
 }
 
+
 #else
 /**
  * Schedule MHD.  This function should be called initially when an

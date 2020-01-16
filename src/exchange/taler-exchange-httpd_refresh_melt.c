@@ -225,9 +225,9 @@ refresh_check_melt (struct MHD_Connection *connection,
     }
   }
   if (GNUNET_OK !=
-      TEH_DB_calculate_transaction_list_totals (tl,
-                                                &spent,
-                                                &spent))
+      TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
+                                                          &spent,
+                                                          &spent))
   {
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,

@@ -104,7 +104,7 @@ struct TALER_TESTING_DatabaseConnection
    * Database plugin.
    */
   struct TALER_EXCHANGEDB_Plugin *plugin;
-  
+
   /**
    * Session with the database.
    */
@@ -1679,6 +1679,7 @@ TALER_TESTING_cmd_serialize_keys (const char *label);
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_connect_with_state (const char *label,
                                       const char *state_reference);
+
 /**
  * Make the "insert-deposit" CMD.
  *
@@ -1694,12 +1695,13 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (const char *label,
-		                  const struct TALER_TESTING_DatabaseConnection *dbc,
-				  const char *merchant_name,
-				  const char *merchant_account,
-				  struct GNUNET_TIME_Relative wire_deadline,
-				  const char *amount_with_fee,
-				  const char *deposit_fee);
+                                  const struct
+                                  TALER_TESTING_DatabaseConnection *dbc,
+                                  const char *merchant_name,
+                                  const char *merchant_account,
+                                  struct GNUNET_TIME_Relative wire_deadline,
+                                  const char *amount_with_fee,
+                                  const char *deposit_fee);
 
 /* *** Generic trait logic for implementing traits ********* */
 

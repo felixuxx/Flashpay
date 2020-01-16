@@ -312,9 +312,9 @@ payback_transaction (void *cls,
                  TALER_amount_get_zero (pc->value.currency,
                                         &spent));
   if (GNUNET_OK !=
-      TEH_DB_calculate_transaction_list_totals (tl,
-                                                &spent,
-                                                &spent))
+      TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
+                                                          &spent,
+                                                          &spent))
   {
     GNUNET_break (0);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
