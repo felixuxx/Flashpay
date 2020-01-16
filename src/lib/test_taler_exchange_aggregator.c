@@ -64,7 +64,7 @@ static struct GNUNET_CRYPTO_RsaPrivateKey *coin_pk;
  */
 static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
 
-#define MERCHANT_ACCOUNT "irrelevant-merchant-account-uri"
+#define USER42_ACCOUNT "42"
 
 #if 0
 /**
@@ -912,10 +912,18 @@ run (void *cls,
     TALER_TESTING_cmd_insert_deposit ("do-deposit-1",
 		                      &dbc,
 				      "bob",
-				      MERCHANT_ACCOUNT, // not relevant
+				      USER42_ACCOUNT,
 				      GNUNET_TIME_UNIT_ZERO,
 				      "EUR:1",
 				      "EUR:0.1"),
+    TALER_TESTING_cmd_exec_aggregator ("run-aggregator-on-deposit-1",
+		                       config_filename),
+
+    TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-1",
+		                           ec.exchange_url,
+					   "EUR:0.89",
+					   bc.exchange_payto,
+					   bc.user42_payto),
     TALER_TESTING_cmd_end ()  
   };
   
