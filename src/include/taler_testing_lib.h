@@ -1668,17 +1668,19 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  *
  * @param label command label.
  * @param config_filename configuration filename.
- * @param TODO
- * @param TODO
- * @param TODO
- * @param TODO
+ * @param merchant_name Human-readable name of the merchant.
+ * @param merchant_account value indicating the merchant at its bank.
+ * @param wire_deadline point in time where the aggregator should have
+ *        wired money to the merchant.
+ * @param amount_with_fee amount to deposit (inclusive of deposit fee)
+ * @param deposit_fee deposit fee
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (const char *label,
                                   const char *config_filename,
 				  const char *merchant_name,
-				  unsigned int merchant_account,
+				  const char *merchant_account,
 				  struct GNUNET_TIME_Absolute wire_deadline,
 				  const char *amount_with_fee,
 				  const char *deposit_fee);

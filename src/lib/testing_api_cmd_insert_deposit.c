@@ -40,6 +40,32 @@ struct InsertDepositState
    * Configuration file used by the command.
    */
   const char *config_filename;
+
+  /**
+   * Human-readable name of the shop.
+   */
+  const char *merchant_name;
+
+  /**
+   * Merchant bank account (FIXME: payto, non-payto?)
+   */
+  const char *merchant_account;
+
+  /**
+   * Deadline before which the aggregator should
+   * send the payment to the merchant.
+   */
+  struct GNUNET_TIME_Absolute wire_deadline;
+
+  /**
+   * Amount to deposit, inclusive of deposit fee.
+   */
+  const char *amount_with_fee;
+
+  /**
+   * Deposit fee.
+   */
+  const char *deposit_fee;
 };
 
 
@@ -110,17 +136,19 @@ insert_deposit_traits (void *cls,
  *
  * @param label command label.
  * @param config_filename configuration filename.
- * @param TODO
- * @param TODO
- * @param TODO
- * @param TODO
+ * @param merchant_name Human-readable name of the merchant.
+ * @param merchant_account value indicating the merchant at its bank.
+ * @param wire_deadline point in time where the aggregator should have
+ *        wired money to the merchant.
+ * @param amount_with_fee amount to deposit (inclusive of deposit fee)
+ * @param deposit_fee deposit fee
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (const char *label,
                                   const char *config_filename,
 				  const char *merchant_name,
-				  unsigned int merchant_account,
+				  const char *merchant_account,
 				  struct GNUNET_TIME_Absolute wire_deadline,
 				  const char *amount_with_fee,
 				  const char *deposit_fee)
@@ -130,6 +158,12 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
 
   ds = GNUNET_new (struct InsertDepositState);
   ds->config_filename = config_filename;
+  ds->merchant_name = merchant_name;
+  ds->merchant_account = merchant_account;
+  ds->wire_deadline = wire_deadline;
+  ds->amount_with_fee = amount_with_fee;
+  ds->deposit_fee = deposit_fee;
+
   cmd.cls = ds;
   cmd.label = label;
   cmd.run = &insert_deposit_run;
