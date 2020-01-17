@@ -62,12 +62,6 @@ static struct TALER_TESTING_BankConfiguration bc;
 static char *twister_url;
 
 /**
- * Account URL of the twister where all the connections to the
- * bank that have to be proxied should be addressed to.
- */
-static char *twisted_account_url;
-
-/**
  * Twister process.
  */
 static struct GNUNET_OS_Process *twisterd;
@@ -89,11 +83,6 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
 
-  GNUNET_asprintf (&twisted_account_url,
-                   "%s%s/",
-                   twister_url,
-                   "42");
-
   struct TALER_TESTING_Command commands[] = {
     /**
      * Can't use the "wait service" CMD here because the
@@ -102,7 +91,7 @@ run (void *cls,
     TALER_TESTING_cmd_wait_service ("wait-service",
                                     twister_url),
     TALER_TESTING_cmd_bank_credits ("history-0",
-                                    twisted_account_url,
+                                    bc.exchange_auth.wire_gateway_url,
                                     &bc.exchange_auth,
                                     NULL,
                                     5),
@@ -161,6 +150,9 @@ main (int argc,
     GNUNET_break (0);
     return 77;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "twister_url is %s\n",
+              twister_url);
   if (NULL == (twisterd = TALER_TESTING_run_twister (cfgfilename)))
   {
     GNUNET_break (0);
@@ -173,7 +165,7 @@ main (int argc,
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     if (GNUNET_OK !=
         TALER_TESTING_prepare_fakebank (cfgfilename,
-                                        "account-1",
+                                        "account-2",
                                         &bc))
     {
       GNUNET_break (0);
