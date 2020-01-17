@@ -5447,7 +5447,8 @@ run (void *cls,
                       " s:I, s:I, s:I, s:I, s:I,"
                       " s:I, s:I, s:I, s:I, s:I,"
                       " s:I, s:I, s:I, s:I, s:I,"
-                      " s:I, s:I, s:I, s:o, s:o }",
+                      " s:I, s:I, s:I, s:o, s:o,"
+                      " s:o }",
                       /* blocks of 5 for easier counting/matching to format string */
                       /* block */
                       "reserve_balance_insufficient_inconsistencies",
@@ -5616,6 +5617,7 @@ run (void *cls,
                       "auditor_end_time", json_string (
                         GNUNET_STRINGS_absolute_time_to_string (
                           GNUNET_TIME_absolute_get ())),
+                      /* block */
                       "total_irregular_paybacks",
                       TALER_JSON_from_amount (&total_irregular_paybacks)
                       );
