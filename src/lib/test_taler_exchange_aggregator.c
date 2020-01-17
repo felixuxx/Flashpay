@@ -186,22 +186,19 @@ run (void *cls,
                                            ec.exchange_url,
                                            "EUR:0.89",
                                            bc.exchange_payto,
-                                           TALER_payto_xtalerbank_make (
-                                             bc.bank_url, "4")),
+                                           "payto://x-taler-bank/localhost/4"),
 
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3b",
                                            ec.exchange_url,
                                            "EUR:0.89",
                                            bc.exchange_payto,
-                                           TALER_payto_xtalerbank_make (
-                                             bc.bank_url, "4")),
+                                           "payto://x-taler-bank/localhost/4"),
 
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3c",
                                            ec.exchange_url,
                                            "EUR:0.89",
                                            bc.exchange_payto,
-                                           TALER_payto_xtalerbank_make (
-                                             bc.bank_url, "5")),
+                                           "payto://x-taler-bank/localhost/5"),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-after-3"),
 
     // checking that aggregator waits for the deadline.
