@@ -263,29 +263,26 @@ deposit_run (void *cls,
     return;
   }
 
-  /* Fixme: do prefer "interpreter fail" over assertions,
-   * as the former takes care of shutting down processes  too */
-  GNUNET_assert (NULL != coin_cmd);
-
-  GNUNET_assert (GNUNET_OK
-                 == TALER_TESTING_get_trait_coin_priv (coin_cmd,
-                                                       ds->coin_index,
-                                                       &coin_priv));
-
-  GNUNET_assert (GNUNET_OK
-                 == TALER_TESTING_get_trait_denom_pub (coin_cmd,
-                                                       ds->coin_index,
-                                                       &denom_pub));
-
-  GNUNET_assert (GNUNET_OK
-                 == TALER_TESTING_get_trait_denom_sig (coin_cmd,
-                                                       ds->coin_index,
-                                                       &denom_pub_sig));
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (ds->contract_terms,
-                                  &h_contract_terms));
-
+  if ( (GNUNET_OK !=
+        TALER_TESTING_get_trait_coin_priv (coin_cmd,
+                                           ds->coin_index,
+                                           &coin_priv)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_denom_pub (coin_cmd,
+                                           ds->coin_index,
+                                           &denom_pub)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_denom_sig (coin_cmd,
+                                           ds->coin_index,
+                                           &denom_pub_sig)) ||
+       (GNUNET_OK !=
+        TALER_JSON_hash (ds->contract_terms,
+                         &h_contract_terms)) )
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -307,9 +304,8 @@ deposit_run (void *cls,
     wire_deadline = GNUNET_TIME_relative_to_absolute
                       (GNUNET_TIME_UNIT_ZERO);
   }
-  GNUNET_CRYPTO_eddsa_key_get_public
-    (&ds->merchant_priv.eddsa_priv,
-    &merchant_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
+                                      &merchant_pub.eddsa_pub);
 
   (void) GNUNET_TIME_round_abs (&wire_deadline);
 
@@ -322,10 +318,9 @@ deposit_run (void *cls,
     dr.purpose.purpose = htonl
                            (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
     dr.h_contract_terms = h_contract_terms;
-    GNUNET_assert
-      (GNUNET_OK ==
-      TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
-                                               &dr.h_wire));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
+                                                            &dr.h_wire));
     dr.timestamp = GNUNET_TIME_absolute_hton (ds->timestamp);
     dr.refund_deadline = GNUNET_TIME_absolute_hton
                            (ds->refund_deadline);
@@ -335,10 +330,10 @@ deposit_run (void *cls,
                        &denom_pub->fee_deposit);
     dr.merchant = merchant_pub;
     dr.coin_pub = coin_pub;
-    GNUNET_assert (GNUNET_OK == GNUNET_CRYPTO_eddsa_sign
-                     (&coin_priv->eddsa_priv,
-                     &dr.purpose,
-                     &coin_sig.eddsa_signature));
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                                             &dr.purpose,
+                                             &coin_sig.eddsa_signature));
   }
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,
@@ -361,7 +356,6 @@ deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  return;
 }
 
 
@@ -419,17 +413,15 @@ deposit_traits (void *cls,
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
 
-  coin_cmd = TALER_TESTING_interpreter_lookup_command
-               (ds->is,
-               ds->coin_reference);
-
+  coin_cmd
+    = TALER_TESTING_interpreter_lookup_command (ds->is,
+                                                ds->coin_reference);
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
     return GNUNET_NO;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                          ds->coin_index,
@@ -439,34 +431,35 @@ deposit_traits (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return GNUNET_NO;
   }
+  {
+    struct TALER_TESTING_Trait traits[] = {
+      /* First two traits are only available if
+         ds->traits is #GNUNET_YES */
+      TALER_TESTING_make_trait_exchange_pub (0,
+                                             &ds->exchange_pub),
+      TALER_TESTING_make_trait_exchange_sig (0,
+                                             &ds->exchange_sig),
+      /* These traits are always available */
+      TALER_TESTING_make_trait_coin_priv (0,
+                                          coin_spent_priv),
+      TALER_TESTING_make_trait_wire_details (0,
+                                             ds->wire_details),
+      TALER_TESTING_make_trait_contract_terms (0,
+                                               ds->contract_terms),
+      TALER_TESTING_make_trait_peer_key (0,
+                                         &ds->merchant_priv.eddsa_priv),
+      TALER_TESTING_make_trait_amount_obj (0,
+                                           &ds->amount),
+      TALER_TESTING_trait_end ()
+    };
 
-  struct TALER_TESTING_Trait traits[] = {
-    /* First two traits are only available if
-       ds->traits is #GNUNET_YES */
-    TALER_TESTING_make_trait_exchange_pub (0,
-                                           &ds->exchange_pub),
-    TALER_TESTING_make_trait_exchange_sig (0,
-                                           &ds->exchange_sig),
-    /* These traits are always available */
-    TALER_TESTING_make_trait_coin_priv (0,
-                                        coin_spent_priv),
-    TALER_TESTING_make_trait_wire_details (0,
-                                           ds->wire_details),
-    TALER_TESTING_make_trait_contract_terms (0,
-                                             ds->contract_terms),
-    TALER_TESTING_make_trait_peer_key (0,
-                                       &ds->merchant_priv.eddsa_priv),
-    TALER_TESTING_make_trait_amount_obj (0,
-                                         &ds->amount),
-    TALER_TESTING_trait_end ()
-  };
-
-  return TALER_TESTING_get_trait ((ds->traits_ready)
-                                  ? traits
-                                  : &traits[2],
-                                  ret,
-                                  trait,
-                                  index);
+    return TALER_TESTING_get_trait ((ds->traits_ready)
+                                    ? traits
+                                    : &traits[2],
+                                    ret,
+                                    trait,
+                                    index);
+  }
 }
 
 
