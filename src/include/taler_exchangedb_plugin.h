@@ -2462,14 +2462,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to perform "garbage collection" on the
    * database, expiring records we no longer require.
    *
-   * FIXME: we probably need to consider here which entries the
-   * auditor still needs to check, at least with respect to GC of the
-   * prewire table (for denominations, we can assume that the auditor
-   * runs long before the DK expire_legal time is hit).  Thus, this
-   * function probably should take the "last_prewire_serial_id"
-   * from the "auditor_progress" table as an extra argument (which
-   * the user would then have to manually specify).
-   *
    * @param cls closure
    * @return #GNUNET_OK on success,
    *         #GNUNET_SYSERR on DB errors
