@@ -80,6 +80,11 @@ struct PostgresClosure
   pthread_key_t db_conn_threadlocal;
 
   /**
+   * Directory with SQL statements to run to create tables.
+   */
+  char *sql_dir;
+
+  /**
    * Database connection string, as read from
    * the configuration.
    */
@@ -408,8 +413,8 @@ postgres_create_tables (void *cls)
   struct GNUNET_PQ_Context *conn;
 
   conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            pc->sql_dir,
                             NULL,
-                            es,
                             NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
@@ -3446,10 +3451,23 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   const char *ec;
 
   pg = GNUNET_new (struct PostgresClosure);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "auditordb-postgres",
+                                               "SQL_DIR",
+                                               &pg->sql_dir))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "auditordb-postgres",
+                               "SQL_DIR");
+    GNUNET_free (pg);
+    return NULL;
+  }
   if (0 != pthread_key_create (&pg->db_conn_threadlocal,
                                &db_conn_destroy))
   {
     TALER_LOG_ERROR ("Cannnot create pthread key.\n");
+    GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
   }
@@ -3469,6 +3487,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "auditordb-postgres",
                                  "CONFIG");
+      GNUNET_free (pg->sql_dir);
       GNUNET_free (pg);
       return NULL;
     }
@@ -3483,6 +3502,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
                                "taler",
                                "CURRENCY");
     GNUNET_free (pg->connection_cfg_str);
+    GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
   }
@@ -3589,6 +3609,7 @@ libtaler_plugin_auditordb_postgres_done (void *cls)
   struct PostgresClosure *pg = plugin->cls;
 
   GNUNET_free (pg->connection_cfg_str);
+  GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
   GNUNET_free (pg);
   GNUNET_free (plugin);

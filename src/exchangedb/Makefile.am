@@ -22,7 +22,7 @@ EXTRA_DIST = \
   exchangedb.conf \
   exchangedb-postgres.conf \
   plugin_exchangedb_common.c \
-  test-exchange-db-postgres.conf
+  test-exchange-db-postgres.conf \
   $(sql_DATA)
 
 plugindir = $(libdir)/taler
