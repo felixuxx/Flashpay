@@ -42,7 +42,12 @@ enum TALER_BANK_AuthenticationMethod
   /**
    * Basic authentication with cleartext username and password.
    */
-  TALER_BANK_AUTH_BASIC
+  TALER_BANK_AUTH_BASIC,
+
+  /**
+   * The authentication data refers to a fakebank.
+   */
+  TALER_BANK_AUTH_FAKEBANK,
 };
 
 
@@ -51,6 +56,12 @@ enum TALER_BANK_AuthenticationMethod
  */
 struct TALER_BANK_AuthenticationData
 {
+
+  /**
+   * Base URL we use to talk to the wire gateway,
+   * which talks to the bank for us.
+   */
+  char *wire_gateway_url;
 
   /**
    * Which authentication method should we use?
@@ -78,6 +89,14 @@ struct TALER_BANK_AuthenticationData
        */
       char *password;
     } basic;
+
+    struct
+    {
+      /**
+       * Port that the fakebank runs on.
+       */
+      uint16_t fb_port;
+    } fakebank;
 
   } details;
 

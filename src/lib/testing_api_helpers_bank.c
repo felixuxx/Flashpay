@@ -380,11 +380,30 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   char *payto_url;
+  uint16_t fakebank_port;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
                                               config_filename))
     return GNUNET_SYSERR;
+
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (cfg,
+                                 "account-" EXCHANGE_ACCOUNT_NAME,
+                                 &bc->exchange_auth))
+  {
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_SYSERR;
+  }
+
+  GNUNET_assert (TALER_BANK_AUTH_FAKEBANK == bc->exchange_auth.method);
+
+  fakebank_port = bc->exchange_auth.details.fakebank.fb_port;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Fakebank port from config: %u\n",
+              (unsigned int) fakebank_port);
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              config_section,
@@ -418,10 +437,16 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     GNUNET_free (payto_url);
     return GNUNET_SYSERR;
   }
-  bc->exchange_account_url
-    = TALER_xtalerbank_account_url_from_payto (payto_url);
+  GNUNET_asprintf (&bc->exchange_account_url,
+                   "http://localhost:%u/%s/",
+                   fakebank_port,
+                   EXCHANGE_ACCOUNT_NAME);
   GNUNET_assert (NULL != bc->exchange_account_url);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "fakebank account URL: %s\n",
+              bc->exchange_account_url);
   GNUNET_free (payto_url);
+  /* Now we know it's the fake bank, for purpose of authentication, we
+   * don't have any auth. */
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
   bc->exchange_payto = TALER_payto_xtalerbank_make (bc->bank_url, "2");
   bc->user42_payto = TALER_payto_xtalerbank_make (bc->bank_url, "42");

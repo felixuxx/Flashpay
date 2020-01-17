@@ -1783,8 +1783,7 @@ wire_prepare_cb (void *cls,
   }
   wa = wpd->wa;
   wpd->eh = TALER_BANK_execute_wire_transfer (ctx,
-                                              wa->account.details.x_taler_bank.
-                                              account_base_url,
+                                              wa->auth.wire_gateway_url,
                                               &wa->auth,
                                               buf,
                                               buf_size,

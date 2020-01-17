@@ -140,7 +140,7 @@ main (int argc,
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     if (GNUNET_OK !=
         TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                        "account-1",
+                                        "account-2",
                                         &bc))
     {
       GNUNET_break (0);

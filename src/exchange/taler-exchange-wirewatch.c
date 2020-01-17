@@ -537,8 +537,7 @@ find_transfers (void *cls)
   current_batch_size = 0;
 
   hh = TALER_BANK_credit_history (ctx,
-                                  wa_pos->account.details.x_taler_bank.
-                                  account_base_url,
+                                  wa_pos->auth.wire_gateway_url,
                                   &wa_pos->auth,
                                   last_row_off,
                                   batch_size,

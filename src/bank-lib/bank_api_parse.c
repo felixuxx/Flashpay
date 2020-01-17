@@ -98,16 +98,50 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
     { NULL, TALER_BANK_AUTH_NONE     }
   };
   char *method;
+  unsigned long long fakebank_port;
+
+  if (GNUNET_OK ==
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             section,
+                                             "FAKEBANK_PORT",
+                                             &fakebank_port))
+  {
+    auth->method = TALER_BANK_AUTH_FAKEBANK;
+    auth->details.fakebank.fb_port = (uint16_t) fakebank_port;
+    // FIXME: we should not hardcode exchange account number "2"
+    GNUNET_asprintf (&auth->wire_gateway_url,
+                     "http://localhost:%u/2/",
+                     (unsigned int) fakebank_port);
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Using fakebank %s on port %u\n",
+                auth->wire_gateway_url,
+                (unsigned int) fakebank_port);
+    return GNUNET_OK;
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              section,
-                                             "TALER_BANK_AUTH_METHOD",
+                                             "WIRE_GATEWAY_URL",
+                                             &auth->wire_gateway_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "WIRE_GATEWAY_URL");
+    return GNUNET_SYSERR;
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             "WIRE_GATEWAY_AUTH_METHOD",
                                              &method))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "TALER_BANK_AUTH_METHOD");
+                               "WIRE_GATEWAY_AUTH_METHOD");
+    GNUNET_free (auth->wire_gateway_url);
     return GNUNET_SYSERR;
   }
   for (unsigned int i = 0; NULL != methods[i].m; i++)
@@ -132,6 +166,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                      section,
                                      "USERNAME");
           GNUNET_free (method);
+          GNUNET_free (auth->wire_gateway_url);
           return GNUNET_SYSERR;
         }
         if (GNUNET_OK !=
@@ -146,11 +181,14 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                      section,
                                      "PASSWORD");
           GNUNET_free (method);
+          GNUNET_free (auth->wire_gateway_url);
           return GNUNET_SYSERR;
         }
         auth->method = TALER_BANK_AUTH_BASIC;
         GNUNET_free (method);
         return GNUNET_OK;
+      case TALER_BANK_AUTH_FAKEBANK:
+        GNUNET_assert (0);
       }
     }
   }
@@ -184,7 +222,10 @@ TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth)
       auth->details.basic.password = NULL;
     }
     break;
+  case TALER_BANK_AUTH_FAKEBANK:
+    break;
   }
+  GNUNET_free (auth->wire_gateway_url);
 }
 
 

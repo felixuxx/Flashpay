@@ -1842,8 +1842,7 @@ process_credits (void *cls)
               "Starting bank CREDIT history of account `%s'\n",
               wa->section_name);
   wa->chh = TALER_BANK_credit_history (ctx,
-                                       wa->account.details.x_taler_bank.
-                                       account_base_url,
+                                       wa->auth.wire_gateway_url,
                                        &wa->auth,
                                        wa->in_wire_off,
                                        INT64_MAX,
