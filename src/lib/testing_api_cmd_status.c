@@ -74,14 +74,13 @@ struct StatusState
  * @param history detailed transaction history, NULL on error.
  */
 static void
-reserve_status_cb
-  (void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
-  const json_t *json,
-  const struct TALER_Amount *balance,
-  unsigned int history_length,
-  const struct TALER_EXCHANGE_ReserveHistory *history)
+reserve_status_cb (void *cls,
+                   unsigned int http_status,
+                   enum TALER_ErrorCode ec,
+                   const json_t *json,
+                   const struct TALER_Amount *balance,
+                   unsigned int history_length,
+                   const struct TALER_EXCHANGE_ReserveHistory *history)
 {
   struct StatusState *ss = cls;
   struct TALER_Amount eb;
@@ -98,10 +97,12 @@ reserve_status_cb
     return;
   }
 
-  GNUNET_assert (GNUNET_OK == TALER_string_to_amount
-                   (ss->expected_balance, &eb));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (ss->expected_balance,
+                                         &eb));
 
-  if (0 != TALER_amount_cmp (&eb, balance))
+  if (0 != TALER_amount_cmp (&eb,
+                             balance))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected amount in reserve: %s\n",
@@ -110,23 +111,23 @@ reserve_status_cb
     return;
   }
 
-/**
- * Fixme: need a way to check if reserve history is consistent.
- * Every command which relates to reserve 'x' should be added in
- * a linked list of all commands that relate to the same reserve
- * 'x'.
- *
- * API-wise, any command that relates to a reserve should offer a
- * method called e.g. "compare_with_history" that takes an element
- * of the array returned by "/reserve/status" and checks if that
- * element correspond to itself (= the command exposing the check-
- * method).
- *
- * IDEA: Maybe realize this via another trait, some kind of
- * "reserve history update trait" which returns information about
- * how the command changes the history (provided only by commands
- * that change reserve balances)?
- */TALER_TESTING_interpreter_next (ss->is);
+  /**
+   * FIXME: need a way to check if reserve history is consistent.  Every
+   * command which relates to reserve 'x' should be added in a linked list of
+   * all commands that relate to the same reserve 'x'.
+   *
+   * API-wise, any command that relates to a reserve should offer a
+   * method called e.g. "compare_with_history" that takes an element
+   * of the array returned by "/reserve/status" and checks if that
+   * element correspond to itself (= the command exposing the check-
+   * method).
+   *
+   * IDEA: Maybe realize this via another trait, some kind of
+   * "reserve history update trait" which returns information about
+   * how the command changes the history (provided only by commands
+   * that change reserve balances)?
+   *///
+  TALER_TESTING_interpreter_next (ss->is);
 }
 
 
@@ -144,16 +145,12 @@ status_run (void *cls,
 {
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
-  const struct TALER_ReservePrivateKeyP *reserve_priv;
-  struct TALER_ReservePublicKeyP reserve_pub;
   const struct TALER_ReservePublicKeyP *reserve_pubp;
 
   ss->is = is;
-  GNUNET_assert (NULL != ss->reserve_reference);
-
   create_reserve
-    = TALER_TESTING_interpreter_lookup_command
-        (is, ss->reserve_reference);
+    = TALER_TESTING_interpreter_lookup_command (is,
+                                                ss->reserve_reference);
 
   if (NULL == create_reserve)
   {
@@ -161,36 +158,16 @@ status_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
-  /* NOTE: the following line might generate a ERROR log
-   * statements, but it can be ignored.  */
-  /* FIXME: instead of having this logic here, any
-     command exporting a reserve_priv MUST also
-     export a reserve_pub, which would obsolete this
-     logic! */
-  if (GNUNET_OK ==
-      TALER_TESTING_get_trait_reserve_priv (create_reserve,
-                                            0,
-                                            &reserve_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_reserve_pub (create_reserve,
+                                           0,
+                                           &reserve_pubp))
   {
-    GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                        &reserve_pub.eddsa_pub);
-    reserve_pubp = &reserve_pub;
+    GNUNET_break (0);
+    TALER_LOG_ERROR ("Failed to find reserve_pub for status query\n");
+    TALER_TESTING_interpreter_fail (is);
+    return;
   }
-  else
-  {
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_reserve_pub (create_reserve,
-                                             0,
-                                             &reserve_pubp))
-    {
-      GNUNET_break (0);
-      TALER_LOG_ERROR ("The reserve has neither a priv nor a pub.\n");
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-  }
-
   ss->rsh = TALER_EXCHANGE_reserve_status (is->exchange,
                                            reserve_pubp,
                                            &reserve_status_cb,
@@ -242,17 +219,19 @@ TALER_TESTING_cmd_status (const char *label,
 {
   struct StatusState *ss;
 
+  GNUNET_assert (NULL != reserve_reference);
   ss = GNUNET_new (struct StatusState);
   ss->reserve_reference = reserve_reference;
   ss->expected_balance = expected_balance;
   ss->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ss,
+      .label = label,
+      .run = &status_run,
+      .cleanup = &status_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ss,
-    .label = label,
-    .run = &status_run,
-    .cleanup = &status_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

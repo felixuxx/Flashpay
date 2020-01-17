@@ -350,6 +350,7 @@ withdraw_traits (void *cls,
   struct WithdrawState *ws = cls;
   const struct TALER_TESTING_Command *reserve_cmd;
   const struct TALER_ReservePrivateKeyP *reserve_priv;
+  const struct TALER_ReservePublicKeyP *reserve_pub;
 
   /* We offer the reserve key where these coins were withdrawn
    * from. */
@@ -372,6 +373,15 @@ withdraw_traits (void *cls,
     TALER_TESTING_interpreter_fail (ws->is);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_reserve_pub (reserve_cmd,
+                                           0,
+                                           &reserve_pub))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (ws->is);
+    return GNUNET_SYSERR;
+  }
   if (NULL == ws->exchange_url)
     ws->exchange_url
       = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
@@ -387,6 +397,8 @@ withdraw_traits (void *cls,
                                         &ws->sig),
     TALER_TESTING_make_trait_reserve_priv (0,
                                            reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (0,
+                                          reserve_pub),
     TALER_TESTING_make_trait_amount_obj (0,
                                          &ws->amount),
     TALER_TESTING_make_trait_url (0, ws->exchange_url),
