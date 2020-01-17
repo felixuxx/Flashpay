@@ -425,10 +425,14 @@ struct TALER_AUDITORDB_Plugin
 
 
   /**
-   * Drop the Taler tables.  This should only be used in testcases.
+   * Drop all auditor tables OR deletes recoverable auditor state.
+   * This should only be used by testcases or when restarting the
+   * auditor from scratch.
    *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param drop_exchangelist should we also drop the exchange and deposit_confirmations table?
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param drop_exchangelist drop all tables, including schema versioning
+   *        and the exchange and deposit_confirmations table; NOT to be
+   *        used when restarting the auditor
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
   int

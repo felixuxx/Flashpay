@@ -166,6 +166,7 @@ postgres_drop_tables (void *cls)
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS denomination_revocations CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS denominations CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP SCHEMA IF EXISTS _v CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   struct GNUNET_PQ_Context *conn;

@@ -18,7 +18,7 @@
 BEGIN;
 
 -- Check patch versioning is in place.
-SELECT _v.register_patch('0001', NULL, NULL);
+SELECT _v.register_patch('exchange-0001', NULL, NULL);
 
 
 -- Main denominations table. All the coins the exchange knows about.

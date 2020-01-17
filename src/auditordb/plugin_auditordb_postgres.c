@@ -13,7 +13,6 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file plugin_auditordb_postgres.c
  * @brief Low-level (statement-level) Postgres database access for the auditor
@@ -94,10 +93,14 @@ struct PostgresClosure
 
 
 /**
- * Drop all Taler tables.  This should only be used by testcases.
+ * Drop all auditor tables OR deletes recoverable auditor state.
+ * This should only be used by testcases or when restarting the
+ * auditor from scratch.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param drop_exchangelist should we also drop the exchange and deposit_confirmations table?
+ * @param drop_exchangelist drop all tables, including schema versioning
+ *        and the exchange and deposit_confirmations table; NOT to be
+ *        used when restarting the auditor
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
@@ -106,8 +109,26 @@ postgres_drop_tables (void *cls,
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_predicted_result;"),
+    GNUNET_PQ_make_execute (
+      "DELETE FROM auditor_historic_denomination_revenue;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_balance_summary;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_denomination_pending;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_reserve_balance;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_wire_fee_balance;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_reserves;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_progress_reserve;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_progress_aggregation;"),
+    GNUNET_PQ_make_execute (
+      "DELETE FROM auditor_progress_deposit_confirmation;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_progress_coin;"),
+    GNUNET_PQ_make_execute ("DELETE FROM wire_auditor_progress;"),
+    GNUNET_PQ_make_execute ("DELETE FROM wire_auditor_account_progress;"),
+    GNUNET_PQ_make_execute ("DELETE FROM auditor_historic_reserve_summary;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+  struct GNUNET_PQ_ExecuteStatement esx[] = {
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_predicted_result;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_historic_ledger;"),
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS auditor_historic_denomination_revenue;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_balance_summary;"),
@@ -127,14 +148,12 @@ postgres_drop_tables (void *cls,
       "DROP TABLE IF EXISTS wire_auditor_account_progress;"),
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS auditor_historic_reserve_summary CASCADE;"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-  struct GNUNET_PQ_ExecuteStatement esx[] = {
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS auditor_denominations CASCADE;"),
     GNUNET_PQ_make_execute (
       "DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
     GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
+    GNUNET_PQ_make_execute ("DROP SCHEMA IF EXISTS _v CASCADE;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
   struct GNUNET_PQ_Context *conn;
@@ -149,10 +168,6 @@ postgres_drop_tables (void *cls,
   if (drop_exchangelist)
     ret = GNUNET_PQ_exec_statements (conn,
                                      esx);
-  /* TODO: we probably need a bit more fine-grained control
-     over drops for the '-r' option of taler-auditor; also,
-     for the testcase, we currently fail to drop the
-     auditor_denominations table... */
   GNUNET_PQ_disconnect (conn);
   return ret;
 }
@@ -377,27 +392,6 @@ postgres_create_tables (void *cls)
                             ",PRIMARY KEY (h_contract_terms, h_wire, coin_pub, "
                             "  merchant_pub, exchange_sig, exchange_pub, master_sig)"
                             ")"),
-    /* Table with historic business ledger; basically, when the exchange
-       operator decides to use operating costs for anything but wire
-       transfers to merchants, it goes in here.  This happens when the
-       operator users transaction fees for business expenses. "purpose"
-       is free-form but should be a human-readable wire transfer
-       identifier.   This is NOT yet used and outside of the scope of
-       the core auditing logic. However, once we do take fees to use
-       operating costs, and if we still want "auditor_predicted_result" to match
-       the tables overall, we'll need a command-line tool to insert rows
-       into this table and update "auditor_predicted_result" accordingly.
-       (So this table for now just exists as a reminder of what we'll
-       need in the long term.) */GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS auditor_historic_ledger"
-                            "(master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE"
-                            ",purpose VARCHAR NOT NULL"
-                            ",timestamp INT8 NOT NULL"
-                            ",balance_val INT8 NOT NULL"
-                            ",balance_frac INT4 NOT NULL"
-                            ")"),
-    GNUNET_PQ_make_try_execute (
-      "CREATE INDEX history_ledger_by_master_pub_and_time "
-      "ON auditor_historic_ledger(master_pub,timestamp)"),
     /* Table with the sum of the ledger, auditor_historic_revenue and
        the auditor_reserve_balance.  This is the
        final amount that the exchange should have in its bank account

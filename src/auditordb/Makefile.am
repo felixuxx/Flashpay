@@ -11,9 +11,17 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   auditordb-postgres.conf
 
+sqldir = $(prefix)/share/taler/sql/auditor/
+
+sql_DATA = \
+  0000.sql \
+  0001.sql
+
 EXTRA_DIST = \
   auditordb-postgres.conf \
-  test-auditor-db-postgres.conf
+  test-auditor-db-postgres.conf \
+  $(sql_DATA) \
+  9999.sql
 
 plugindir = $(libdir)/taler
 
