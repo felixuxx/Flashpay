@@ -158,6 +158,11 @@ check_bank_transfer_run (void *cls,
               debit_payto,
               debit_account);
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "converted credit_payto (%s) to credit_account (%s)\n",
+              credit_payto,
+              credit_account);
+
   if (GNUNET_OK !=
       TALER_FAKEBANK_check_debit (is->fakebank,
                                   &amount,

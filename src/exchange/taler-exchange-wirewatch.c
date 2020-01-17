@@ -357,8 +357,9 @@ history_cb (void *cls,
     if (TALER_EC_NONE != ec)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Error fetching history: %u!\n",
-                  (unsigned int) ec);
+                  "Error fetching history: ec=%u, http_status=%u\n",
+                  (unsigned int) ec,
+                  http_status);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "End of list. Committing progress!\n");
@@ -535,6 +536,10 @@ find_transfers (void *cls)
   wa_pos->reset_mode = GNUNET_NO;
   delay = GNUNET_YES;
   current_batch_size = 0;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "wirewatch: requesting incoming history from %s\n",
+              wa_pos->auth.wire_gateway_url);
 
   hh = TALER_BANK_credit_history (ctx,
                                   wa_pos->auth.wire_gateway_url,

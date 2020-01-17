@@ -54,12 +54,12 @@ struct AdminAddIncomingState
   const char *exchange_credit_url;
 
   /**
-   * Money sender account URL.
+   * Money sender payto URL.
    */
   const char *payto_debit_account;
 
   /**
-   * Money sender account URL.
+   * Money receiver payto URL.
    */
   char *payto_credit_account;
 
