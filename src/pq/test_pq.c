@@ -88,7 +88,6 @@ run_queries (struct GNUNET_PQ_Context *conn)
   json = json_object ();
   json_object_set_new (json, "foo", json_integer (42));
   GNUNET_assert (NULL != json);
-  /* FIXME: test GNUNET_PQ_result_spec_variable_size */
   {
     struct GNUNET_PQ_QueryParam params_insert[] = {
       TALER_PQ_query_param_amount (&hamount),
