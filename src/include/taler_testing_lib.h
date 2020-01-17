@@ -867,7 +867,7 @@ TALER_TESTING_cmd_bank_debits (const char *label,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param account_base_url base URL of the account that implements this
+ * @param bank_base_url base URL of the account that implements this
  *        wire transer (which account gives money).
  * @param auth authentication data to use
  * @param payto_credit_account which account receives money.
@@ -878,7 +878,7 @@ TALER_TESTING_cmd_bank_debits (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer (const char *label,
                             const char *amount,
-                            const char *account_base_url,
+                            const char *bank_base_url,
                             const struct TALER_BANK_AuthenticationData *auth,
                             const char *payto_debit_account,
                             const char *payto_credit_account,
