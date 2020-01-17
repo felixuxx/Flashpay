@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017, 2018, 2019 Taler Systems SA
+  Copyright (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -1298,7 +1298,8 @@ handle_payback_by_reserve (void *cls,
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_payback_serial_id);
   ppr.last_reserve_payback_serial_id = rowid + 1;
-  // FIXME: should probably check that denom_pub hashes to this hash code!
+  /* We know that denom_pub matches denom_pub_hash because this
+     is how the SQL statement joined the tables. */
   pr.h_denom_pub = coin->denom_pub_hash;
   pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
   pr.purpose.size = htonl (sizeof (pr));
