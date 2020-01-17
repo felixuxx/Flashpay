@@ -1358,14 +1358,19 @@ history_debit_cb (void *cls,
 
   if (NULL == details)
   {
+    wa->dhh = NULL;
     if (TALER_EC_NONE != ec)
     {
-      /* FIXME: log properly to audit report! */
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Error fetching history: %u!\n",
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error fetching debit history of account %s: %u/%u!\n",
+                  wa->section_name,
+                  http_status_code,
                   (unsigned int) ec);
+      commit (GNUNET_DB_STATUS_HARD_ERROR);
+      global_ret = 1;
+      GNUNET_SCHEDULER_shutdown ();
+      return GNUNET_SYSERR;
     }
-    wa->dhh = NULL;
     check_exchange_wire_out (wa);
     return GNUNET_OK;
   }
@@ -1629,15 +1634,20 @@ history_credit_cb (void *cls,
 
   if (NULL == details)
   {
+    wa->chh = NULL;
     if (TALER_EC_NONE != ec)
     {
-      /* FIXME: log properly to audit report! */
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Error fetching history: %u!\n",
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error fetching credit history of account %s: %u/%u!\n",
+                  wa->section_name,
+                  http_status,
                   (unsigned int) ec);
+      commit (GNUNET_DB_STATUS_HARD_ERROR);
+      global_ret = 1;
+      GNUNET_SCHEDULER_shutdown ();
+      return GNUNET_SYSERR;
     }
     /* end of operation */
-    wa->chh = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reconciling CREDIT processing of account `%s'\n",
                 wa->section_name);
