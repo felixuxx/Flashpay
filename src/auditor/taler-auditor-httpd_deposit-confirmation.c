@@ -54,7 +54,19 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   struct TALER_DepositConfirmationPS dcs;
   struct TALER_AUDITORDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_TIME_Absolute now;
 
+  now = GNUNET_TIME_absolute_get ();
+  if ( (es->ep_start.abs_value_us > now.abs_value_us) ||
+       (es->ep_expire.abs_value_us < now.abs_value_us) )
+  {
+    /* Signing key expired */
+    TALER_LOG_WARNING ("Expired exchange signing key\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                       "master_sig (expired)");
+  }
   /* check exchange signing key signature */
   skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   skv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
