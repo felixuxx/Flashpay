@@ -403,17 +403,19 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
-  // FIXME: we should not hardcode exchange account number "2"
+
   GNUNET_asprintf (&bc->exchange_auth.wire_gateway_url,
-                   "http://localhost:%u/2/",
-                   (unsigned int) fakebank_port);
+                   "http://localhost:%u/%s/",
+                   (unsigned int) fakebank_port,
+                   EXCHANGE_ACCOUNT_NAME);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Using fakebank %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
               (unsigned int) fakebank_port);
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Fakebank port from config: %u\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Fakebank port from config: %u\n",
               (unsigned int) fakebank_port);
 
   GNUNET_CONFIGURATION_destroy (cfg);
@@ -425,6 +427,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     bc->bank_url = NULL;
     return GNUNET_SYSERR;
   }
+  /* FIXME: this duplicates bc->exchange_auth.wire_gateway_url */
   GNUNET_asprintf (&bc->exchange_account_url,
                    "http://localhost:%u/%s/",
                    fakebank_port,

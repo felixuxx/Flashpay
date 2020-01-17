@@ -276,6 +276,8 @@ struct TALER_TESTING_BankConfiguration
   /**
    * Base URL of the exchange's bank account. Basically
    * @e bank_url plus the exchange account.
+   *
+   * FIXME: remove? This duplicates exchange_auth.wire_gateway_url!
    */
   char *exchange_account_url;
 
