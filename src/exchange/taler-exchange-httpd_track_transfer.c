@@ -253,12 +253,13 @@ struct WtidTransactionContext
  * transaction data for the given wire transfer identifier.
  *
  * @param cls our context for transmission
- * @param rowid which row in the DB is the information from (for diagnostics)
+ * @param rowid which row in the DB is the information from (for diagnostics), ignored
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param wire where the funds were sent
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
+ * @param denom_pub denomination public key of the @a coin_pub (ignored)
  * @param coin_pub which public key was this payment about
  * @param deposit_value amount contributed by this coin in total
  * @param deposit_fee deposit fee charged by exchange for this coin

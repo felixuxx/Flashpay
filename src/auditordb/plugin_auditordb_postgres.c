@@ -1906,6 +1906,9 @@ postgres_get_auditor_progress_coin (void *cls,
  * @param session connection to use
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
+ * @param pp how far are we in the auditor's tables
+ * @param in_wire_off how far are we in the incoming wire transfers
+ * @param out_wire_off how far are we in the outgoing wire transfers
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

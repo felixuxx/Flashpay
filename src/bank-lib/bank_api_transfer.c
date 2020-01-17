@@ -73,8 +73,8 @@ GNUNET_NETWORK_STRUCT_END
  * @param exchange_base_url base URL of this exchange (included in subject
  *        to facilitate use of tracking API by merchant backend)
  * @param wtid wire transfer identifier to use
- * @param buf[out] set to transfer data to persist, NULL on error
- * @param buf_size[out] set to number of bytes in @a buf, 0 on error
+ * @param[out] buf set to transfer data to persist, NULL on error
+ * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
 TALER_BANK_prepare_wire_transfer (const char *destination_account_url,

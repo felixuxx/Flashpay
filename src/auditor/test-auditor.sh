@@ -702,12 +702,13 @@ function test_11() {
 echo "===========11: spurious outgoing transfer ==========="
 OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
 OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id=$OLD_ID;" | psql $DB -Aqt`
+OLD_SUBJECT=`echo "SELECT subject FROM app_banktransaction WHERE id=$OLD_ID;" | psql $DB -Aqt`
 # Change wire transfer to be FROM the exchange (#2) to elsewhere!
 # (Note: this change also causes a missing incoming wire transfer, but
 #  this test is only concerned about the outgoing wire transfer
 #  being detected as such, and we simply ignore the other
 #  errors being reported.)
-echo "UPDATE app_banktransaction SET debit_account_id=2,credit_account_id=1 WHERE id=$OLD_ID;" | psql -Aqt $DB
+echo -e "UPDATE app_banktransaction SET debit_account_id=2,credit_account_id=1,subject='CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/' WHERE id=$OLD_ID;" | psql -Aqt $DB
 
 run_audit
 
@@ -740,7 +741,7 @@ fi
 echo PASS
 
 # Undo database modification (exchange always has account #2)
-echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2 WHERE id=$OLD_ID;" | psql -Aqt $DB
+echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2,subject=$OLD_SUBJECT WHERE id=$OLD_ID;" | psql -Aqt $DB
 
 }
 

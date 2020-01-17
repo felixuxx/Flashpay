@@ -366,7 +366,7 @@ refresh_melt_transaction (void *cls,
  * happened.  We now need to validate the coins being melted and the
  * session signature and then hand things of to execute the melt
  * operation.  This function parses the JSON arrays and then passes
- * processing on to #handle_refresh_melt_binary().
+ * processing on to #refresh_melt_transaction().
  *
  * @param connection the MHD connection to handle
  * @param[in,out] rmc details about the melt request
@@ -578,9 +578,9 @@ check_for_denomination_key (struct MHD_Connection *connection,
 
 /**
  * Handle a "/refresh/melt" request.  Parses the request into the JSON
- * components and then hands things of to #handle_refresh_melt_json()
+ * components and then hands things of to #check_for_denomination_key()
  * to validate the melted coins, the signature and execute the melt
- * using TEH_DB_execute_refresh_melt().
+ * using handle_refresh_melt().
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle

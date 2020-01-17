@@ -66,7 +66,7 @@ load_fee (const char *method)
 
 
 /**
- * Initialize account; checks if @ai has /wire information, and if so,
+ * Initialize account; checks if @a ai has /wire information, and if so,
  * adds the /wire information (if included) to our responses. Also, if
  * the account is debitable, we try to load the plugin.
  *

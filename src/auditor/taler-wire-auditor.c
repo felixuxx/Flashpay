@@ -1609,6 +1609,7 @@ process_credits (void *cls);
  * transactions).
  *
  * @param cls `struct WireAccount` we are processing
+ * @param http_status HTTP status returned by the bank
  * @param ec error code in case something went wrong
  * @param row_off identification of the position at which we are querying
  * @param details details about the wire transfer
