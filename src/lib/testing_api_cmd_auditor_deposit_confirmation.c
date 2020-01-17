@@ -18,7 +18,7 @@
 */
 
 /**
- * @file lib/testing_auditor_api_cmd_deposit_confirmation.c
+ * @file lib/testing_api_cmd_auditor_deposit_confirmation.c
  * @brief command for testing /deposit_confirmation.
  * @author Christian Grothoff
  */
