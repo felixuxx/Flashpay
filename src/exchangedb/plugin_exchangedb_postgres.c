@@ -147,39 +147,17 @@ static int
 postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS prewire CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS payback CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS payback_refresh CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS aggregation_tracking CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_out CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_fee CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS deposits CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS refunds CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS refresh_commitments CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS refresh_revealed_coins CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS refresh_transfer_keys CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS known_coins CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves_close CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves_out CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves_in CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS reserves CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS denomination_revocations CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS denominations CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP SCHEMA IF EXISTS _v CASCADE;"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
   struct GNUNET_PQ_Context *conn;
+  char *drop_dir;
 
+  GNUNET_asprintf (&drop_dir,
+                   "%sdrop",
+                   pc->sql_dir);
   conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            drop_dir,
                             NULL,
-                            es,
                             NULL);
+  GNUNET_free (drop_dir);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);

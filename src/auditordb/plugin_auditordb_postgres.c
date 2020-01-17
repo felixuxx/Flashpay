@@ -113,69 +113,20 @@ postgres_drop_tables (void *cls,
                       int drop_exchangelist)
 {
   struct PostgresClosure *pc = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_predicted_result;"),
-    GNUNET_PQ_make_execute (
-      "DELETE FROM auditor_historic_denomination_revenue;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_balance_summary;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_denomination_pending;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_reserve_balance;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_wire_fee_balance;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_reserves;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_progress_reserve;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_progress_aggregation;"),
-    GNUNET_PQ_make_execute (
-      "DELETE FROM auditor_progress_deposit_confirmation;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_progress_coin;"),
-    GNUNET_PQ_make_execute ("DELETE FROM wire_auditor_progress;"),
-    GNUNET_PQ_make_execute ("DELETE FROM wire_auditor_account_progress;"),
-    GNUNET_PQ_make_execute ("DELETE FROM auditor_historic_reserve_summary;"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-  struct GNUNET_PQ_ExecuteStatement esx[] = {
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_predicted_result;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS auditor_historic_denomination_revenue;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_balance_summary;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS auditor_denomination_pending;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserve_balance;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_wire_fee_balance;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_reserves;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_reserve;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS auditor_progress_aggregation;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_progress_coin;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS wire_auditor_progress;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS wire_auditor_account_progress;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS auditor_historic_reserve_summary CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS auditor_denominations CASCADE;"),
-    GNUNET_PQ_make_execute (
-      "DROP TABLE IF EXISTS deposit_confirmations CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP TABLE IF EXISTS auditor_exchanges CASCADE;"),
-    GNUNET_PQ_make_execute ("DROP SCHEMA IF EXISTS _v CASCADE;"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
   struct GNUNET_PQ_Context *conn;
-  int ret;
+  char *exec_dir;
 
+  GNUNET_asprintf (&exec_dir,
+                   (drop_exchangelist) ? "%sdrop" : "%srestart",
+                   pc->sql_dir);
   conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            exec_dir,
                             NULL,
-                            es,
                             NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  ret = GNUNET_OK;
-  if (drop_exchangelist)
-    ret = GNUNET_PQ_exec_statements (conn,
-                                     esx);
   GNUNET_PQ_disconnect (conn);
-  return ret;
+  return GNUNET_OK;
 }
 
 
