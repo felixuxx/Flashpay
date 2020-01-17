@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/taler_curl_lib.h
+ * @file taler_curl_lib.h
  * @brief Helper routines shared by libtalerexchange and libtalerauditor
  * @author Christian Grothoff
  */

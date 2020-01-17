@@ -289,12 +289,12 @@ static struct TALER_Amount total_missed_deposit_confirmations;
 static struct TALER_Amount reported_emergency_risk_by_count;
 
 /**
- * Total amount reported in all calls to #report_emergency().
+ * Total amount reported in all calls to #report_emergency_by_amount().
  */
 static struct TALER_Amount reported_emergency_risk_by_amount;
 
 /**
- * Total amount in losses reported in all calls to #report_emergency().
+ * Total amount in losses reported in all calls to #report_emergency_by_amount().
  */
 static struct TALER_Amount reported_emergency_loss;
 
@@ -1453,7 +1453,7 @@ handle_payback_by_reserve (void *cls,
  *
  * @param receiver_account payto:// URI of the target account
  * @param atime when was the transfer made
- * @param fee[out] set to the closing fee
+ * @param[out] fee set to the closing fee
  * @return #GNUNET_OK on success
  */
 static int
