@@ -187,7 +187,7 @@ TALER_TESTING_run_bank (const char *config_filename,
 
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for `taler-bank-manage' to be ready");
+           "Waiting for `taler-bank-manage' to be ready (via %s)\n", wget_cmd);
   iter = 0;
   do
   {
@@ -348,17 +348,21 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   GNUNET_CONFIGURATION_destroy (cfg);
-  GNUNET_asprintf (&bc->bank_url,
-                   "http://localhost:%llu/",
-                   port);
-  GNUNET_asprintf (&bc->exchange_account_url,
-                   "%s%s",
-                   bc->bank_url,
-                   EXCHANGE_ACCOUNT_NAME);
-  bc->exchange_payto = TALER_payto_xtalerbank_make (bc->bank_url,
-                                                    EXCHANGE_ACCOUNT_NAME);
-  bc->user42_payto = TALER_payto_xtalerbank_make (bc->bank_url, "42");
-  bc->user43_payto = TALER_payto_xtalerbank_make (bc->bank_url, "43");
+  bc->bank_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
+  bc->exchange_account_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
+  bc->exchange_payto = "payto://x-taler-bank/localhost/2";
+  bc->user42_payto = "payto://x-taler-bank/localhost/42";
+  bc->user43_payto = "payto://x-taler-bank/localhost/43";
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Using pybank %s on port %u\n",
+              bc->exchange_auth.wire_gateway_url,
+              (unsigned int) port);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",
+              bc->exchange_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+              bc->user42_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+              bc->user43_payto);
   return GNUNET_OK;
 }
 
@@ -413,7 +417,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
               (unsigned int) fakebank_port);
 
   GNUNET_CONFIGURATION_destroy (cfg);
-  bc->bank_url = bc->exchange_auth.wire_gateway_url;
+  bc->bank_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
   if (GNUNET_OK !=
       TALER_TESTING_url_port_free (bc->bank_url))
   {

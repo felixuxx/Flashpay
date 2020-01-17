@@ -33,7 +33,8 @@
 #include <microhttpd.h>
 #include "taler_testing_lib.h"
 
-#define CONFIG_FILE "test_bank_api.conf"
+#define CONFIG_FILE_FAKEBANK "test_bank_api_fakebank.conf"
+#define CONFIG_FILE_PYBANK "test_bank_api_pybank.conf"
 
 /**
  * Bank configuration data.
@@ -126,6 +127,7 @@ main (int argc,
       char *const *argv)
 {
   int rv;
+  const char *cfgfilename;
 
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -138,8 +140,9 @@ main (int argc,
   if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
+    cfgfilename = CONFIG_FILE_FAKEBANK;
     if (GNUNET_OK !=
-        TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+        TALER_TESTING_prepare_fakebank (CONFIG_FILE_FAKEBANK,
                                         "account-2",
                                         &bc))
     {
@@ -150,15 +153,16 @@ main (int argc,
   else
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
+    cfgfilename = CONFIG_FILE_PYBANK;
     if (GNUNET_OK !=
-        TALER_TESTING_prepare_bank (CONFIG_FILE,
+        TALER_TESTING_prepare_bank (CONFIG_FILE_PYBANK,
                                     &bc))
     {
       GNUNET_break (0);
       return 77;
     }
 
-    if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE,
+    if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE_PYBANK,
                                                  bc.bank_url)))
     {
       GNUNET_break (0);
@@ -168,7 +172,7 @@ main (int argc,
 
   rv = (GNUNET_OK == TALER_TESTING_setup (&run,
                                           NULL,
-                                          CONFIG_FILE,
+                                          cfgfilename,
                                           NULL,
                                           GNUNET_NO)) ? 0 : 1;
   if (GNUNET_NO == with_fakebank)
