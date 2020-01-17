@@ -950,10 +950,19 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       char *credit_payto;
       char *debit_payto;
 
-      credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                  pos->credit_account);
-      debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                 pos->debit_account);
+      GNUNET_asprintf (&credit_payto,
+                       "payto://x-taler-bank/localhost/%s",
+                       pos->credit_account);
+
+      GNUNET_asprintf (&debit_payto,
+                       "payto://x-taler-bank/localhost/%s",
+                       pos->debit_account);
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "made credit_payto (%s) from credit_account (%s) within fakebank\n",
+                  credit_payto,
+                  pos->credit_account);
+
       trans = json_pack
                 ("{s:I, s:o, s:o, s:s, s:s, s:s, s:o}",
                 "row_id", (json_int_t) pos->row_id,
@@ -1070,10 +1079,19 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       char *credit_payto;
       char *debit_payto;
 
-      credit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                  pos->credit_account);
-      debit_payto = TALER_payto_xtalerbank_make (h->my_baseurl,
-                                                 pos->debit_account);
+      GNUNET_asprintf (&credit_payto,
+                       "payto://x-taler-bank/localhost/%s",
+                       pos->credit_account);
+
+      GNUNET_asprintf (&debit_payto,
+                       "payto://x-taler-bank/localhost/%s",
+                       pos->debit_account);
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "made credit_payto (%s) from credit_account (%s) within fakebank\n",
+                  credit_payto,
+                  pos->credit_account);
+
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Returning transaction %s->%s (%s) at %llu\n",
                   pos->debit_account,

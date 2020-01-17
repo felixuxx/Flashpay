@@ -371,6 +371,12 @@ check_result (struct TALER_TESTING_Interpreter *is,
                          details->debit_account_url)) )
   {
     GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "expected debit_account_url: %s\n",
+                details->debit_account_url);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "actual debit_account_url: %s\n",
+                h[off].details.debit_account_url);
     print_expected (h,
                     total,
                     off);
