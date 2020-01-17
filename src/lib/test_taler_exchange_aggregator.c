@@ -15,7 +15,7 @@
 */
 
 /**
- * @file exchange/test_taler_exchange_aggregator.c
+ * @file lib/test_taler_exchange_aggregator.c
  * @brief Tests for taler-exchange-aggregator logic
  * @author Christian Grothoff <christian@grothoff.org>
  * @author Marcello Stanisci

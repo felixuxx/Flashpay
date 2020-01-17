@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange/testing_api_cmd_refund.c
+ * @file lib/testing_api_cmd_refund.c
  * @brief Implement the /refund test command, plus other
  *        corollary commands (?).
  * @author Marcello Stanisci

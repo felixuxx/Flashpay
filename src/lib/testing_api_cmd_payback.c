@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange/testing_api_cmd_payback.c
+ * @file lib/testing_api_cmd_payback.c
  * @brief Implement the /revoke and /payback test commands.
  * @author Marcello Stanisci
  */

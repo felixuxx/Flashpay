@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange/testing_api_cmd_track.c
+ * @file lib/testing_api_cmd_track.c
  * @brief Implement the testing CMDs for the /track operations.
  * @author Marcello Stanisci
  */

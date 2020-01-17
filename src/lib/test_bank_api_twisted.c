@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange/test_bank_api_with_fakebank_twisted.c
+ * @file lib/test_bank_api_with_fakebank_twisted.c
  * @author Marcello Stanisci
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff

@@ -15,7 +15,7 @@
 */
 
 /**
- * @file exchange/test_taler_exchange_wirewatch.c
+ * @file lib/test_taler_exchange_wirewatch.c
  * @brief Tests for taler-exchange-wirewatch and taler-exchange-aggregator logic;
  *        Performs an invalid wire transfer to the exchange, and then checks that
  *        wirewatch immediately sends the money back.

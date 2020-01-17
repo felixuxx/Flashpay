@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange/testing_api_cmd_status.c
+ * @file lib/testing_api_cmd_status.c
  * @brief Implement the /reserve/status test command.
  * @author Marcello Stanisci
  */

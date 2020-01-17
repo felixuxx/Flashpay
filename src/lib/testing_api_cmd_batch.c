@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange/testing_api_cmd_batch.c
+ * @file lib/testing_api_cmd_batch.c
  * @brief Implement batch-execution of CMDs.
  * @author Marcello Stanisci
  */

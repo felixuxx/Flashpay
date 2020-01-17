@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange/test_exchange_api_twisted.c
+ * @file lib/test_exchange_api_twisted.c
  * @brief testcase to test exchange's HTTP API interface
  * @author Marcello Stanisci
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
