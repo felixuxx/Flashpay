@@ -66,7 +66,7 @@ TALER_TESTING_get_trait_fresh_coins
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_fresh_coins
   (unsigned int index,
-  struct TALER_TESTING_FreshCoinData *fresh_coins)
+  const struct TALER_TESTING_FreshCoinData *fresh_coins)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
