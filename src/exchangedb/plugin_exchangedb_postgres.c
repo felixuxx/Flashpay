@@ -1885,23 +1885,6 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == reserve_exists);
     return reserve_exists;
   }
-  if ( (0 == reserve.balance.value) &&
-       (0 == reserve.balance.fraction) )
-  {
-    /* TODO: reserve balance is empty, we might want to update
-       sender_account_details here.  (So that IF a customer uses the
-       same reserve public key from a different account, we USUALLY
-       switch to the new account (but only if the old reserve was
-       drained).)  This helps make sure that on reserve expiration the
-       funds go back to a valid account in cases where the customer
-       has closed the old bank account and some (buggy?) wallet keeps
-       using the same reserve key with the customer's new account.
-
-       Note that for a non-drained reserve we should not switch,
-       as that opens an attack vector for an adversary who can see
-       the wire transfer subjects (i.e. when using Bitcoin).
-    */}
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating reserve %s with expiration in %s\n",
               TALER_B2S (reserve_pub),
