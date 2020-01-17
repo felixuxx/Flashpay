@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -19,8 +19,6 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * FIXME: Consider which of these need to really be globals...
  */
 #ifndef TALER_EXCHANGE_HTTPD_H
 #define TALER_EXCHANGE_HTTPD_H
@@ -29,19 +27,9 @@
 
 
 /**
- * Which currency is used by this exchange?
- */
-extern char *TEH_exchange_currency_string;
-
-/**
- * Should we return "Connection: close" in each response?
- */
-extern int TEH_exchange_connection_close;
-
-/**
  * How long is caching /keys allowed at most?
  */
-extern struct GNUNET_TIME_Relative max_keys_caching;
+extern struct GNUNET_TIME_Relative TEH_max_keys_caching;
 
 /**
  * The exchange's configuration.
@@ -63,11 +51,6 @@ extern char *TEH_revocation_directory;
  * configuration in the exchange directory).
  */
 extern struct TALER_MasterPublicKeyP TEH_master_public_key;
-
-/**
- * Private key of the exchange we use to sign messages.
- */
-extern struct GNUNET_CRYPTO_EddsaPrivateKey TEH_exchange_private_signing_key;
 
 /**
  * Our DB plugin.

@@ -75,16 +75,6 @@ struct ExchangeHttpRequestClosure
 
 
 /**
- * Which currency is used by this exchange?
- */
-char *TEH_exchange_currency_string;
-
-/**
- * Should we return "Connection: close" in each response?
- */
-int TEH_exchange_connection_close;
-
-/**
  * Base directory of the exchange (global)
  */
 char *TEH_exchange_directory;
@@ -102,7 +92,7 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
 /**
  * How long is caching /keys allowed at most?
  */
-struct GNUNET_TIME_Relative max_keys_caching;
+struct GNUNET_TIME_Relative TEH_max_keys_caching;
 
 /**
  * Master public key (according to the
@@ -481,8 +471,6 @@ handle_mhd_request (void *cls,
 static int
 exchange_serve_process_config ()
 {
-  char *TEH_master_public_key_str;
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cfg,
                                              "exchange",
@@ -495,7 +483,7 @@ exchange_serve_process_config ()
       GNUNET_CONFIGURATION_get_value_time (cfg,
                                            "exchange",
                                            "MAX_KEYS_CACHING",
-                                           &max_keys_caching))
+                                           &TEH_max_keys_caching))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
@@ -525,49 +513,59 @@ exchange_serve_process_config ()
                                "REVOCATION_DIR");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &TEH_exchange_currency_string))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "currency");
-    return GNUNET_SYSERR;
+    char *currency_string;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "taler",
+                                               "CURRENCY",
+                                               &currency_string))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler",
+                                 "CURRENCY");
+      return GNUNET_SYSERR;
+    }
+    if (strlen (currency_string) >= TALER_CURRENCY_LEN)
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler",
+                                 "CURRENCY",
+                                 "Value is too long");
+      GNUNET_free (currency_string);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (currency_string);
   }
-  if (strlen (TEH_exchange_currency_string) >= TALER_CURRENCY_LEN)
   {
-    fprintf (stderr,
-             "Currency `%s' longer than the allowed limit of %u characters.",
-             TEH_exchange_currency_string,
-             (unsigned int) TALER_CURRENCY_LEN);
-    return GNUNET_SYSERR;
+    char *master_public_key_str;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "MASTER_PUBLIC_KEY",
+                                               &master_public_key_str))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "master_public_key");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_public_key_from_string (master_public_key_str,
+                                                    strlen (
+                                                      master_public_key_str),
+                                                    &TEH_master_public_key.
+                                                    eddsa_pub))
+    {
+      fprintf (stderr,
+               "Invalid master public key given in exchange configuration.");
+      GNUNET_free (master_public_key_str);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (master_public_key_str);
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange",
-                                             "MASTER_PUBLIC_KEY",
-                                             &TEH_master_public_key_str))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "master_public_key");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_public_key_from_string (TEH_master_public_key_str,
-                                                  strlen (
-                                                    TEH_master_public_key_str),
-                                                  &TEH_master_public_key.
-                                                  eddsa_pub))
-  {
-    fprintf (stderr,
-             "Invalid master public key given in exchange configuration.");
-    GNUNET_free (TEH_master_public_key_str);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (TEH_master_public_key_str);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Launching exchange with public key `%s'...\n",
               GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
@@ -784,11 +782,12 @@ main (int argc,
   char *cfgfile = NULL;
   char *loglev = NULL;
   char *logfile = NULL;
+  int connection_close;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('C',
                                "connection-close",
                                "force HTTP connections to be closed after each request",
-                               &TEH_exchange_connection_close),
+                               &connection_close),
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
     GNUNET_GETOPT_option_flag ('i',
                                "init-db",
@@ -825,7 +824,7 @@ main (int argc,
                          argc, argv))
     return 1;
   go = TALER_MHD_GO_NONE;
-  if (TEH_exchange_connection_close)
+  if (connection_close)
     go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
   TALER_MHD_setup (go);
   GNUNET_assert (GNUNET_OK ==

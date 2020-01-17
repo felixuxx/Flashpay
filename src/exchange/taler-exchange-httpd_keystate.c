@@ -1258,7 +1258,7 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
   {
     struct GNUNET_TIME_Absolute m;
 
-    m = GNUNET_TIME_relative_to_absolute (max_keys_caching);
+    m = GNUNET_TIME_relative_to_absolute (TEH_max_keys_caching);
     m = GNUNET_TIME_absolute_min (m,
                                   key_state->next_reload);
     get_date_string (m,
