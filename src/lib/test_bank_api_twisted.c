@@ -83,6 +83,12 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+
+  GNUNET_asprintf (&twisted_account_url,
+                   "%s%s/",
+                   twister_url,
+                   "alice");
+
   struct TALER_TESTING_Command commands[] = {
     /**
      * Can't use the "wait service" CMD here because the
@@ -98,10 +104,6 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  GNUNET_asprintf (&twisted_account_url,
-                   "%s/%s",
-                   twister_url,
-                   "alice");
   if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
