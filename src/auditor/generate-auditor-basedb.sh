@@ -103,7 +103,7 @@ taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
 
 # Wait for all services to be available
-for n in `seq 1 20`
+for n in `seq 1 50`
 do
     echo -n "."
     sleep 0.1
