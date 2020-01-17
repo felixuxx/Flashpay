@@ -65,8 +65,6 @@ static int
 prepare_database (void *cls,
                   const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-
-  // connect to the database.
   dbc.plugin = TALER_EXCHANGEDB_plugin_load (cfg);
   if (NULL == dbc.plugin)
   {
@@ -74,7 +72,6 @@ prepare_database (void *cls,
     result = 77;
     return GNUNET_NO;
   }
-
   if (GNUNET_OK !=
       dbc.plugin->create_tables (dbc.plugin->cls))
   {
@@ -84,7 +81,6 @@ prepare_database (void *cls,
     result = 77;
     return GNUNET_NO;
   }
-
   dbc.session = dbc.plugin->get_session (dbc.plugin->cls);
   GNUNET_assert (NULL != dbc.session);
 
@@ -106,8 +102,8 @@ run (void *cls,
                                        config_filename),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-on-start"),
 
-    // check aggregation happens on the simplest case:
-    // one deposit into the database.
+    /* check aggregation happens on the simplest case:
+       one deposit into the database. */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-1",
                                       &dbc,
                                       "bob",
@@ -125,7 +121,7 @@ run (void *cls,
                                            bc.user42_payto),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-after-1"),
 
-    // check aggregation accumulates well.
+    /* check aggregation accumulates well. */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-2a",
                                       &dbc,
                                       "bob",
@@ -152,8 +148,7 @@ run (void *cls,
                                            bc.user42_payto),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-after-2"),
 
-    // check that different merchants stem different aggregations.
-
+    /* check that different merchants stem different aggregations. */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-3a",
                                       &dbc,
                                       "bob",
@@ -161,7 +156,6 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:1",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-3b",
                                       &dbc,
                                       "bob",
@@ -169,7 +163,6 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:1",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-3c",
                                       &dbc,
                                       "alice",
@@ -177,23 +170,19 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:1",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-3",
                                        config_filename),
-
 
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3a",
                                            ec.exchange_url,
                                            "EUR:0.89",
                                            bc.exchange_payto,
                                            "payto://x-taler-bank/localhost/4"),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3b",
                                            ec.exchange_url,
                                            "EUR:0.89",
                                            bc.exchange_payto,
                                            "payto://x-taler-bank/localhost/4"),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-3c",
                                            ec.exchange_url,
                                            "EUR:0.89",
@@ -201,35 +190,27 @@ run (void *cls,
                                            "payto://x-taler-bank/localhost/5"),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-after-3"),
 
-    // checking that aggregator waits for the deadline.
-
+    /* checking that aggregator waits for the deadline. */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-4a",
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.2",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-4b",
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.2",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-4-early",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-4-fast"),
 
@@ -237,7 +218,6 @@ run (void *cls,
 
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-4-delayed",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-4",
                                            ec.exchange_url,
                                            "EUR:0.19",
@@ -249,11 +229,9 @@ run (void *cls,
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         10),
-
                                       "EUR:0.2",
                                       "EUR:0.1"),
 
@@ -261,32 +239,26 @@ run (void *cls,
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.2",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-5-early",
                                        config_filename),
 
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-5-early"),
-
     TALER_TESTING_cmd_sleep ("wait (5s)", 5),
 
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-5-delayed",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-5",
                                            ec.exchange_url,
                                            "EUR:0.19",
                                            bc.exchange_payto,
                                            bc.user42_payto),
-
-    // Test NEVER running 'tiny' unless they make up minimum unit
+    /* Test NEVER running 'tiny' unless they make up minimum unit */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-6a",
                                       &dbc,
                                       "bob",
@@ -294,7 +266,6 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.102",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-6a-tiny",
                                        config_filename),
     TALER_TESTING_cmd_check_bank_empty (
@@ -306,7 +277,6 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.102",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-6c",
                                       &dbc,
                                       "bob",
@@ -314,12 +284,10 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.102",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-6c-tiny",
                                        config_filename),
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-6c-tiny"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-6d",
                                       &dbc,
                                       "bob",
@@ -327,12 +295,10 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.102",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-6d-tiny",
                                        config_filename),
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-6d-tiny"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-6e",
                                       &dbc,
                                       "bob",
@@ -340,19 +306,15 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.112",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-6e",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-6",
                                            ec.exchange_url,
                                            "EUR:0.01",
                                            bc.exchange_payto,
                                            bc.user42_payto),
 
-
-    // Test profiteering if wire deadline is short
-
+    /* Test profiteering if wire deadline is short */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-7a",
                                       &dbc,
                                       "bob",
@@ -360,13 +322,10 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.109",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-7a-tiny",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-7a-tiny"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-7b",
                                       &dbc,
                                       "bob",
@@ -374,18 +333,15 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.119",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-7-profit",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-7",
                                            ec.exchange_url,
                                            "EUR:0.01",
                                            bc.exchange_payto,
                                            bc.user42_payto),
 
-    // Now check profit was actually taken
-
+    /* Now check profit was actually taken */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-7c",
                                       &dbc,
                                       "bob",
@@ -393,57 +349,43 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.122",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-7-loss",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-7",
                                            ec.exchange_url,
                                            "EUR:0.01",
                                            bc.exchange_payto,
                                            bc.user42_payto),
 
-    // Test that aggregation would happen fully if wire deadline is long
-
+    /* Test that aggregation would happen fully if wire deadline is long */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-8a",
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.109",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-8a-tiny",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-8a-tiny"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-8b",
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.109",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-8b-tiny",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-8b-tiny"),
 
-
-    // now trigger aggregate with large transaction and short deadline
-
+    /* now trigger aggregate with large transaction and short deadline */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-8c",
                                       &dbc,
                                       "bob",
@@ -451,58 +393,43 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.122",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-8",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-8",
                                            ec.exchange_url,
                                            "EUR:0.03",
                                            bc.exchange_payto,
                                            bc.user42_payto),
 
-
-    // Test aggregation with fees and rounding profits.
-
+    /* Test aggregation with fees and rounding profits. */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-9a",
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.104",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-9a-tiny",
                                        config_filename),
-
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-9a-tiny"),
-
     TALER_TESTING_cmd_insert_deposit ("do-deposit-9b",
                                       &dbc,
                                       "bob",
                                       USER42_ACCOUNT,
-
                                       GNUNET_TIME_relative_multiply
                                         (GNUNET_TIME_UNIT_SECONDS,
                                         5),
-
                                       "EUR:0.105",
                                       "EUR:0.1"),
-
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-9b-tiny",
                                        config_filename),
     TALER_TESTING_cmd_check_bank_empty (
       "expect-empty-transactions-after-9b-tiny"),
 
-
-    // now trigger aggregate with large transaction and short deadline
-
+    /* now trigger aggregate with large transaction and short deadline */
     TALER_TESTING_cmd_insert_deposit ("do-deposit-9c",
                                       &dbc,
                                       "bob",
@@ -510,12 +437,9 @@ run (void *cls,
                                       GNUNET_TIME_UNIT_ZERO,
                                       "EUR:0.112",
                                       "EUR:0.1"),
-
     TALER_TESTING_cmd_exec_aggregator ("run-aggregator-deposit-9",
                                        config_filename),
-
-    // 0.009 + 0.009 + 0.022 - 0.001 - 0.002 - 0.008 = 0.029 => 0.02
-
+    /* 0.009 + 0.009 + 0.022 - 0.001 - 0.002 - 0.008 = 0.029 => 0.02 */
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-9",
                                            ec.exchange_url,
                                            "EUR:0.01",

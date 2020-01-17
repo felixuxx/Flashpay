@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file auditor-lib/testing_api_cmd_insert_deposit.c
  * @brief deposit a coin directly into the database.
@@ -49,7 +48,7 @@ struct InsertDepositState
   const char *merchant_name;
 
   /**
-   * Merchant bank account (FIXME: payto, non-payto?)
+   * Merchant account name (NOT a payto-URI).
    */
   const char *merchant_account;
 
@@ -272,7 +271,7 @@ insert_deposit_traits (void *cls,
  * @param label command label.
  * @param dbc collects database plugin and session handles.
  * @param merchant_name Human-readable name of the merchant.
- * @param merchant_account value indicating the merchant at its bank.
+ * @param merchant_account merchant's account name (NOT a payto:// URI)
  * @param wire_deadline point in time where the aggregator should have
  *        wired money to the merchant.
  * @param amount_with_fee amount to deposit (inclusive of deposit fee)

@@ -1687,7 +1687,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  * @param label command label.
  * @param dbc collects plugin and session handles
  * @param merchant_name Human-readable name of the merchant.
- * @param merchant_account value indicating the merchant at its bank.
+ * @param merchant_account merchant's account name (NOT a payto:// URI)
  * @param wire_deadline point in time where the aggregator should have
  *        wired money to the merchant.
  * @param amount_with_fee amount to deposit (inclusive of deposit fee)
