@@ -955,7 +955,6 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski,
  * @param cls closure with the `struct ResponseFactoryContext *`
  * @param filename name of the file the key came from
  * @param ski the sign key issue
- * @param ski_sig signature over @a ski
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -1589,7 +1588,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
  * This function checks if the @a denom_pub is already known to us,
  * and if not adds it to our set.
  *
- * @parma cls closure, a `struct ResponseFactoryContext *`
+ * @param cls closure, a `struct ResponseFactoryContext *`
  * @param denom_pub public key of the denomination
  * @param issue detailed information about the denomination (value, expiration times, fees)
  */
@@ -1899,6 +1898,7 @@ TEH_KS_release_ (const char *location,
  * For every call to #TEH_KS_acquire(), a matching call
  * to #TEH_KS_release() must be made.
  *
+ * @param now for what timestamp should we acquire the key state
  * @param location name of the function in which the lock is acquired
  * @return the key state, NULL on error (usually pretty fatal)
  */
@@ -1964,8 +1964,8 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
  * @param key_state state to look in
  * @param denom_pub_hash hash of denomination public key
  * @param use purpose for which the key is being located
- * @param ec[out] set to the error code, in case the operation failed
- * @param hc[out] set to the HTTP status code to use
+ * @param[out] ec set to the error code, in case the operation failed
+ * @param[out] hc set to the HTTP status code to use
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */

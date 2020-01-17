@@ -32,13 +32,13 @@
 /**
  * Add the @a body as POST data to the easy handle in @a ctx.
  *
- * @param ctx[in,out] a request context (updated)
+ * @param[in,out] ctx a request context (updated)
  * @param eh easy handle to use
  * @param body JSON body to add to @e ctx
  * @return #GNUNET_OK on success #GNUNET_SYSERR on failure
  */
 int
-TALER_curl_easy_post (struct TEAH_PostContext *ctx,
+TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
                       CURL *eh,
                       const json_t *body)
 {
@@ -104,12 +104,13 @@ TALER_curl_easy_post (struct TEAH_PostContext *ctx,
 /**
  * Free the data in @a ctx.
  *
- * @param ctx[in] a request context (updated)
+ * @param[in] ctx a request context (updated)
  */
 void
-TALER_curl_easy_post_finished (struct TEAH_PostContext *ctx)
+TALER_curl_easy_post_finished (struct TALER_CURL_PostContext *ctx)
 {
   curl_slist_free_all (ctx->headers);
   ctx->headers = NULL;
   GNUNET_free_non_null (ctx->json_enc);
+  ctx->json_enc = NULL;
 }

@@ -52,7 +52,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle
    * Context for #TEH_curl_easy_post(). Keeps the data that must
    * persist for Curl to make the upload.
    */
-  struct TEAH_PostContext ctx;
+  struct TALER_CURL_PostContext ctx;
 
   /**
    * Handle for the request.

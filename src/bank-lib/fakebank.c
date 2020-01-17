@@ -283,7 +283,7 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
  * @param h bank instance
  * @param want_amount transfer amount desired
  * @param want_debit account that should have been debited
- * @param want_debit account that should have been credited
+ * @param want_credit account that should have been credited
  * @param reserve_pub reserve public key expected in wire subject
  * @return #GNUNET_OK on success
  */
@@ -450,7 +450,8 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
 
 /**
  * Check that no wire transfers were ordered (or at least none
- * that have not been taken care of via #TALER_FAKEBANK_check()).
+ * that have not been taken care of via #TALER_FAKEBANK_check_credit()
+ * or #TALER_FAKEBANK_check_debit()).
  * If any transactions are onrecord, return #GNUNET_SYSERR.
  *
  * @param h bank instance
@@ -819,8 +820,7 @@ struct HistoryArgs
  * /history/incoming and /history/outgoing.
  *
  * @param connection MHD connection.
- * @param function_name name of the caller.
- * @param ha[out] will contain the parsed values.
+ * @param[out] ha will contain the parsed values.
  * @return GNUNET_OK only if the parsing succeedes.
  */
 static int

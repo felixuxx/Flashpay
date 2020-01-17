@@ -99,12 +99,12 @@ static struct GNUNET_CURL_RescheduleContext *rc;
  * history returned by the bank.
  *
  * @param cls closure
+ * @param http_status HTTP status code from server
  * @param ec taler error code
- * @param dir direction of the transfer
- * @param row_off identification of the position at
- *        which we are querying
- * @param row_off_size number of bytes in @a row_off
+ * @param serial_id identification of the position at
+ *        which we are returning data
  * @param details details about the wire transfer
+ * @param json original full response from server
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to
  *         abort iteration
  */

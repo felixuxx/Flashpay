@@ -337,7 +337,7 @@ advance_fees (struct WireAccount *wa,
 /**
  * Update wire transfer fee data structure in @a wp.
  *
- * @param wp wire transfer fee data structure to update
+ * @param wa wire account data structure to update
  * @param now timestamp to update fees to
  * @param session DB session to use
  * @return transaction status

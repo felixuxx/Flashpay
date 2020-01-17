@@ -21,8 +21,8 @@
  * @brief Helper routines shared by libtalerexchange and libtalerauditor
  * @author Christian Grothoff
  */
-#ifndef TEAH_COMMON_H
-#define TEAH_COMMON_H
+#ifndef TALER_CURL_LIB_H
+#define TALER_CURL_LIB_H
 
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
@@ -33,10 +33,10 @@
 #define COMPRESS_BODIES 1
 
 /**
- * State used for #TEAL_curl_easy_post() and
- * #TEAL_curl_easy_post_finished().
+ * State used for #TALER_curl_easy_post() and
+ * #TALER_curl_easy_post_finished().
  */
-struct TEAH_PostContext
+struct TALER_CURL_PostContext
 {
   /**
    * JSON encoding of the request to POST.
@@ -60,7 +60,7 @@ struct TEAH_PostContext
  * @return #GNUNET_OK on success #GNUNET_SYSERR on failure
  */
 int
-TALER_curl_easy_post (struct TEAH_PostContext *ctx,
+TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
                       CURL *eh,
                       const json_t *body);
 
@@ -71,7 +71,7 @@ TALER_curl_easy_post (struct TEAH_PostContext *ctx,
  * @param ctx[in] a request context (updated)
  */
 void
-TALER_curl_easy_post_finished (struct TEAH_PostContext *ctx);
+TALER_curl_easy_post_finished (struct TALER_CURL_PostContext *ctx);
 
 
 #endif

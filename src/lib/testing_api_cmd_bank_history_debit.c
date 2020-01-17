@@ -18,7 +18,7 @@
 */
 /**
  * @file lib/testing_api_cmd_bank_history_debit.c
- * @brief command to check the /history API from the bank.
+ * @brief command to check the /history/outgoing API from the bank.
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -288,7 +288,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                        TALER_TESTING_UT_EXCHANGE_BASE_URL,
                                        &exchange_base_url)) )
       continue; /* not an event we care about */
-    /* Seek "/history" starting row.  */
+    /* Seek "/history/outgoing" starting row.  */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Command %s is relevant for debit history!\n",
                 cmd->label);
@@ -340,7 +340,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
 
 /**
- * Check that the "/history" response matches the
+ * Check that the "/history/outgoing" response matches the
  * CMD whose offset in the list of CMDs is @a off.
  *
  * @param is the interpreter state.
@@ -451,7 +451,7 @@ history_cb (void *cls,
   {
     hs->hh = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unwanted response code from /history: %u\n",
+                "Unwanted response code from /history/outgoing: %u\n",
                 http_status);
     TALER_TESTING_interpreter_fail (is);
     return GNUNET_SYSERR;
@@ -549,7 +549,7 @@ history_cleanup (void *cls,
   (void) cmd;
   if (NULL != hs->hh)
   {
-    TALER_LOG_WARNING ("/history did not complete\n");
+    TALER_LOG_WARNING ("/history/outgoing did not complete\n");
     TALER_BANK_debit_history_cancel (hs->hh);
   }
   for (unsigned int off = 0; off<hs->total; off++)

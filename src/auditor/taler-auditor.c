@@ -590,7 +590,7 @@ report_amount_arithmetic_inconsistency (const char *operation,
  * @param coin_pub affected coin
  * @param exchange amount calculated by exchange
  * @param auditor amount calculated by auditor
- * @param proftable 1 if @a exchange being larger than @a auditor is
+ * @param profitable 1 if @a exchange being larger than @a auditor is
  *           profitable for the exchange for this operation,
  *           -1 if @a exchange being smaller than @a auditor is
  *           profitable for the exchange, and 0 if it is unclear

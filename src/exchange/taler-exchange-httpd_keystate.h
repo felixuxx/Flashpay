@@ -42,6 +42,7 @@ struct TEH_KS_StateHandle;
  * For every call to #TEH_KS_acquire(), a matching call
  * to #TEH_KS_release() must be made.
  *
+ * @param now for what timestamp should we acquire the key state
  * @param location name of the function in which the lock is acquired
  * @return the key state, NULL on error (usually pretty fatal)
  */

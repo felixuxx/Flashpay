@@ -17,8 +17,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/testing_api_cmd_history.c
- * @brief command to check the /history API from the bank.
+ * @file lib/testing_api_cmd_bank_history_credit.c
+ * @brief command to check the /history/incoming API from the bank.
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -282,7 +282,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                        TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
                                        &exchange_credit_url)) )
       continue; /* not an interesting event */
-    /* Seek "/history" starting row.  */
+    /* Seek "/history/incoming" starting row.  */
     if ( (NULL != row_id_start) &&
          (*row_id_start == *row_id) &&
          (GNUNET_NO == ok) )
@@ -332,7 +332,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
 
 
 /**
- * Check that the "/history" response matches the
+ * Check that the "/history/incoming" response matches the
  * CMD whose offset in the list of CMDs is @a off.
  *
  * @param is the interpreter state.
@@ -450,7 +450,7 @@ history_cb (void *cls,
   {
     hs->hh = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unwanted response code from /history: %u\n",
+                "Unwanted response code from /history/incoming: %u\n",
                 http_status);
     TALER_TESTING_interpreter_fail (is);
     return GNUNET_SYSERR;
@@ -549,7 +549,7 @@ history_cleanup (void *cls,
   (void) cmd;
   if (NULL != hs->hh)
   {
-    TALER_LOG_WARNING ("/history did not complete\n");
+    TALER_LOG_WARNING ("/history/incoming did not complete\n");
     TALER_BANK_credit_history_cancel (hs->hh);
   }
   GNUNET_free (hs->account_url);

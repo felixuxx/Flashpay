@@ -729,7 +729,7 @@ check_pending_rc (void *cls,
  *
  * @param receiver_account payto://-URI of the account
  * @param wtid wire transfer identifier used
- * @param key[out] set to the key
+ * @param[out] key set to the key
  */
 static void
 hash_rc (const char *receiver_account,
@@ -1343,6 +1343,7 @@ check_exchange_wire_out (struct WireAccount *wa)
  * @param ec error code in case something went wrong
  * @param row_off identification of the position at which we are querying
  * @param details details about the wire transfer
+ * @param json original response in JSON format
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 static int

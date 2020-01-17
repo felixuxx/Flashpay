@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/testing_api_cmd_admin_add_incoming.c
+ * @file lib/testing_api_cmd_bank_admin_add_incoming.c
  * @brief implementation of a bank /admin/add-incoming command
  * @author Christian Grothoff
  * @author Marcello Stanisci

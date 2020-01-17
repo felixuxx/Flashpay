@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mhd_legal.h
+ * @file mhd_legal.c
  * @brief API for returning legal documents based on client language
  *        and content type preferences
  * @author Christian Grothoff

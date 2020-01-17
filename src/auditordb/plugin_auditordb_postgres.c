@@ -35,7 +35,7 @@
  * when fetching amounts from the database.
  *
  * @param field name of the database field to fetch amount from
- * @param amountp[out] pointer to amount to set
+ * @param[out] amountp pointer to amount to set
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount ( \
     field,pg->currency,amountp)
@@ -45,7 +45,7 @@
  * when fetching amounts from the database.  NBO variant.
  *
  * @param field name of the database field to fetch amount from
- * @param amountp[out] pointer to amount to set
+ * @param[out] amountp pointer to amount to set
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field, \
                                         amountp) TALER_PQ_result_spec_amount_nbo ( \
@@ -992,7 +992,7 @@ struct ExchangeInfoContext
 
 
 /**
- * Helper function for #postgres_auditor_list_exchanges().
+ * Helper function for #postgres_list_exchanges().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
@@ -1988,7 +1988,6 @@ postgres_update_wire_auditor_account_progress (void *cls,
  * @param[out] pp where is the auditor in processing
  * @param[out] in_wire_off how far are we in the incoming wire transaction history
  * @param[out] out_wire_off how far are we in the outgoing wire transaction history
- * @param[out] wire_off_size how many bytes do @a in_wire_off and @a out_wire_off take?
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

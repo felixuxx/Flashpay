@@ -40,7 +40,7 @@ struct TALER_BANK_AdminAddIncomingHandle
   /**
    * POST context.
    */
-  struct TEAH_PostContext post_ctx;
+  struct TALER_CURL_PostContext post_ctx;
 
   /**
    * Handle for the request.

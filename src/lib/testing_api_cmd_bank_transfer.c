@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/testing_api_cmd_transfer.c
+ * @file lib/testing_api_cmd_bank_transfer.c
  * @brief implementation of a bank /transfer command
  * @author Christian Grothoff
  * @author Marcello Stanisci
