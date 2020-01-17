@@ -29,6 +29,7 @@
 /**
  * Verify a coins transaction history as returned by the exchange.
  *
+ * @param dk fee structure for the coin, NULL to skip verifying fees
  * @param currency expected currency for the coin
  * @param coin_pub public key of the coin
  * @param history history of the coin in json encoding
@@ -36,7 +37,9 @@
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
 int
-TALER_EXCHANGE_verify_coin_history (const char *currency,
+TALER_EXCHANGE_verify_coin_history (const struct
+                                    TALER_EXCHANGE_DenomPublicKey *dk,
+                                    const char *currency,
                                     const struct
                                     TALER_CoinSpendPublicKeyP *coin_pub,
                                     json_t *history,

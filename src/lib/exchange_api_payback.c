@@ -237,7 +237,8 @@ handle_payback_finished (void *cls,
       history = json_object_get (j,
                                  "history");
       if (GNUNET_OK !=
-          TALER_EXCHANGE_verify_coin_history (dki->fee_deposit.currency,
+          TALER_EXCHANGE_verify_coin_history (dki,
+                                              dki->fee_deposit.currency,
                                               &ph->coin_pub,
                                               history,
                                               &total))
@@ -366,8 +367,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->coin_pub = pr.coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
-  ph->pk.key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
-    pk->key.rsa_public_key);
+  ph->pk.key.rsa_public_key = NULL; /* zero out, as lifetime cannot be warranted */
   ph->cb = payback_cb;
   ph->cb_cls = payback_cb_cls;
   ph->url = TEAH_path_to_url (exchange, "/payback");
@@ -382,7 +382,6 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
     curl_easy_cleanup (eh);
     json_decref (payback_obj);
     GNUNET_free (ph->url);
-    GNUNET_CRYPTO_rsa_public_key_free (ph->pk.key.rsa_public_key);
     GNUNET_free (ph);
     return NULL;
   }
@@ -416,7 +415,6 @@ TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph)
   }
   GNUNET_free (ph->url);
   TALER_curl_easy_post_finished (&ph->ctx);
-  GNUNET_CRYPTO_rsa_public_key_free (ph->pk.key.rsa_public_key);
   GNUNET_free (ph);
 }
 

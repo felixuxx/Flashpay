@@ -864,6 +864,11 @@ struct TALER_EXCHANGE_RefreshMeltHandle
    * Actual information about the melt operation.
    */
   struct MeltData *md;
+
+  /**
+   * @brief Public information about the coin's denomination key
+   */
+  struct TALER_EXCHANGE_DenomPublicKey dki;
 };
 
 
@@ -1000,7 +1005,8 @@ verify_refresh_melt_signature_conflict (struct
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (original_value.currency,
+      TALER_EXCHANGE_verify_coin_history (&rmh->dki,
+                                          original_value.currency,
                                           &coin_pub,
                                           history,
                                           &total))
@@ -1153,6 +1159,8 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                              TALER_EXCHANGE_RefreshMeltCallback melt_cb,
                              void *melt_cb_cls)
 {
+  const struct TALER_EXCHANGE_Keys *key_state;
+  const struct TALER_EXCHANGE_DenomPublicKey *dki;
   json_t *melt_obj;
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
   CURL *eh;
@@ -1208,10 +1216,16 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     free_melt_data (md);
     return NULL;
   }
+  key_state = TALER_EXCHANGE_get_keys (exchange);
+  dki = TALER_EXCHANGE_get_denomination_key (key_state,
+                                             &md->melted_coin.pub_key);
 
   /* and now we can at last begin the actual request handling */
   rmh = GNUNET_new (struct TALER_EXCHANGE_RefreshMeltHandle);
   rmh->exchange = exchange;
+  rmh->dki = *dki;
+  rmh->dki.key.rsa_public_key = NULL; /* lifetime not warranted, so better
+                                         not copy the pointer */
   rmh->melt_cb = melt_cb;
   rmh->melt_cb_cls = melt_cb_cls;
   rmh->md = md;

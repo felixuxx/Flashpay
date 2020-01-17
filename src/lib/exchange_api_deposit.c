@@ -101,9 +101,10 @@ struct TALER_EXCHANGE_DepositHandle
   struct TALER_Amount amount_with_fee;
 
   /**
-   * Total value of the coin being transacted with.
+   * @brief Public information about the coin's denomination key.
+   * Note that the "key" field itself has been zero'ed out.
    */
-  struct TALER_Amount coin_value;
+  struct TALER_EXCHANGE_DenomPublicKey dki;
 
   /**
    * Chance that we will inform the auditor about the deposit
@@ -250,7 +251,8 @@ verify_deposit_signature_forbidden (const struct
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (dh->coin_value.currency,
+      TALER_EXCHANGE_verify_coin_history (&dh->dki,
+                                          dh->dki.value.currency,
                                           &dh->depconf.coin_pub,
                                           history,
                                           &total))
@@ -269,7 +271,7 @@ verify_deposit_signature_forbidden (const struct
   }
 
   if (0 >= TALER_amount_cmp (&total,
-                             &dh->coin_value))
+                             &dh->dki.value))
   {
     /* transaction should have still fit */
     GNUNET_break (0);
@@ -604,7 +606,9 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->depconf.coin_pub = *coin_pub;
   dh->depconf.merchant = *merchant_pub;
   dh->amount_with_fee = *amount;
-  dh->coin_value = dki->value;
+  dh->dki = *dki;
+  dh->dki.key.rsa_public_key = NULL; /* lifetime not warranted, so better
+                                        not copy the pointer */
 
   eh = TEL_curl_easy_get (dh->url);
   if (GNUNET_OK !=
