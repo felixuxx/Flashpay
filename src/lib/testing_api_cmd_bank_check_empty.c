@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_bank_check_empty.c
+ * @file lib/testing_api_cmd_bank_check_empty.c
  * @brief command to check if a particular wire transfer took
  *        place.
  * @author Marcello Stanisci

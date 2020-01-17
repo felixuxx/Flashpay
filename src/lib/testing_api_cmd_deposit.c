@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_deposit.c
+ * @file lib/testing_api_cmd_deposit.c
  * @brief command for testing /deposit.
  * @author Marcello Stanisci
  */

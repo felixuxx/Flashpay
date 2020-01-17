@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/testing_auditor_api_cmd_exchanges.c
+ * @file lib/testing_auditor_api_cmd_exchanges.c
  * @brief command for testing /exchanges.
  * @author Christian Grothoff
  */

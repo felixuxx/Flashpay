@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_trait_cmd.c
+ * @file lib/testing_api_trait_cmd.c
  * @brief offers CMDs as traits.
  * @author Marcello Stanisci
  */

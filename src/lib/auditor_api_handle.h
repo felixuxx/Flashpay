@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/auditor_api_handle.h
+ * @file lib/auditor_api_handle.h
  * @brief Internal interface to the handle part of the auditor's HTTP API
  * @author Christian Grothoff
  */

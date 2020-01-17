@@ -18,7 +18,7 @@
 */
 
 /**
- * @file auditor-lib/test_auditor_api_version.c
+ * @file lib/test_auditor_api_version.c
  * @brief testcase to test auditor's HTTP API interface to fetch /version
  * @author Christian Grothoff
  * @author Marcello Stanisci

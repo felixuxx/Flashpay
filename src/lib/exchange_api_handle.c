@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/exchange_api_handle.c
+ * @file lib/exchange_api_handle.c
  * @brief Implementation of the "handle" component of the exchange's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff

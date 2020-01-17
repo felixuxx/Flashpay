@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_cmd_exec_aggregator.c
+ * @file lib/testing_api_cmd_exec_aggregator.c
  * @brief run the taler-exchange-aggregator command
  * @author Marcello Stanisci
  */

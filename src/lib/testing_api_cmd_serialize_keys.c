@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_cmd_serialize_keys.c
+ * @file lib/testing_api_cmd_serialize_keys.c
  * @brief Lets tests use the keys serialization API.
  * @author Marcello Stanisci
  */

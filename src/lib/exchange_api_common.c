@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_common.c
+ * @file lib/exchange_api_common.c
  * @brief common functions for the exchange API
  * @author Christian Grothoff
  */

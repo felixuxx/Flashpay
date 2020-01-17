@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_cmd_check_keys.c
+ * @file lib/testing_api_cmd_check_keys.c
  * @brief Implementation of "check keys" test command.  XXX-NOTE:
  *        the number of 'expected keys' is NOT the number of the
  *        downloaded keys, but rather the number of keys that the

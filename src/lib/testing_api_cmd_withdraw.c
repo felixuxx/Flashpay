@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_withdraw.c
+ * @file lib/testing_api_cmd_withdraw.c
  * @brief main interpreter loop for testcases
  * @author Christian Grothoff
  * @author Marcello Stanisci

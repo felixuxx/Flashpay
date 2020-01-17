@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_signal.c
+ * @file lib/testing_api_cmd_signal.c
  * @brief command(s) to send signals to processes.
  * @author Marcello Stanisci
  */

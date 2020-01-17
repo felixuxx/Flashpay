@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_cmd_exec_wirewatch.c
+ * @file lib/testing_api_cmd_exec_wirewatch.c
  * @brief run the taler-exchange-wirewatch command
  * @author Christian Grothoff
  * @author Marcello Stanisci

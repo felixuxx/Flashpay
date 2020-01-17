@@ -18,7 +18,7 @@
 */
 
 /**
- * @file auditor-lib/testing_auditor_api_cmd_exec_wire-auditor.c
+ * @file lib/testing_auditor_api_cmd_exec_wire-auditor.c
  * @brief run the taler-wire-auditor command
  * @author Marcello Stanisci
  * @author Christian Grothoff

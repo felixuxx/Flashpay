@@ -18,7 +18,7 @@
 */
 
 /**
- * @file auditor-lib/testing_auditor_api_helpers.c
+ * @file lib/testing_auditor_api_helpers.c
  * @brief helper functions
  * @author Christian Grothoff
  */

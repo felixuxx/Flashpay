@@ -38,7 +38,7 @@
  * @param cmd command that is offering the key.
  * @param index (typically zero) which key to return if there
  *        are multiple on offer.
- * @param priv[out] set to the key coming from @a cmd.
+ * @param[out] priv set to the key coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -85,8 +85,7 @@ TALER_TESTING_make_trait_merchant_priv (unsigned int index,
  * @param cmd command offering the key.
  * @param index (typically zero) which key to return if there
  *        are multiple on offer.
- * @param pub[out] set to the key coming from @a cmd.
- *
+ * @param[out] pub set to the key coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int

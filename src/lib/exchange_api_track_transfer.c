@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_track_transfer.c
+ * @file lib/exchange_api_track_transfer.c
  * @brief Implementation of the /track/transfer request of the exchange's HTTP API
  * @author Christian Grothoff
  */

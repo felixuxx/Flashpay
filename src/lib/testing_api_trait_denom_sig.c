@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_trait_denom_sig.c
+ * @file lib/testing_api_trait_denom_sig.c
  * @brief offer denomination signatures as traits
  * @author Christian Grothoff
  * @author Marcello Stanisci

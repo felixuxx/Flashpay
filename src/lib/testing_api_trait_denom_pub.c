@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_denom_pub.c
+ * @file lib/testing_api_trait_denom_pub.c
  * @brief denom pub traits.
  * @author Christian Grothoff
  * @author Marcello Stanisci

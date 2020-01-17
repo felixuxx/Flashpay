@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_sleep.c
+ * @file lib/testing_api_cmd_sleep.c
  * @brief command(s) to sleep for a bit
  * @author Christian Grothoff
  */

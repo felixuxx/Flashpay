@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/auditor_api_exchanges.c
+ * @file lib/auditor_api_exchanges.c
  * @brief Implementation of the /exchanges request of the auditor's HTTP API
  * @author Christian Grothoff
  */

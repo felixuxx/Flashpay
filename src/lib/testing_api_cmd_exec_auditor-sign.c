@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_cmd_exec_auditor-sign.c
+ * @file lib/testing_api_cmd_exec_auditor-sign.c
  * @brief run the taler-exchange-aggregator command
  * @author Marcello Stanisci
  */

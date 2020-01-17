@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_reserve.c
+ * @file lib/exchange_api_reserve.c
  * @brief Implementation of the /reserve requests of the exchange's HTTP API
  * @author Christian Grothoff
  */

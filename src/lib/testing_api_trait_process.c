@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_trait_process.c
+ * @file lib/testing_api_trait_process.c
  * @brief trait offering process handles.
  * @author Christian Grothoff
  * @author Marcello Stanisci

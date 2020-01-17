@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_trait_time.c
+ * @file lib/testing_api_trait_time.c
  * @brief traits to offer time stamps.
  * @author Marcello Stanisci
  */

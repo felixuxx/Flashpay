@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_amount.c
+ * @file lib/testing_api_trait_amount.c
  * @brief offer amounts as traits.
  * @author Marcello Stanisci
  */

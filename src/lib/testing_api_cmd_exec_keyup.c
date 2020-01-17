@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_cmd_exec_keyup.c
+ * @file lib/testing_api_cmd_exec_keyup.c
  * @brief run the taler-exchange-keyup command
  * @author Marcello Stanisci
  * @author Christian Grothoff

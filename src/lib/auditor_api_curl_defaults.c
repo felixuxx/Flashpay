@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/curl_defaults.c
+ * @file lib/curl_defaults.c
  * @brief curl easy handle defaults
  * @author Florian Dold
  */

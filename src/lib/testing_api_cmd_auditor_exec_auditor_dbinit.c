@@ -18,7 +18,7 @@
 */
 
 /**
- * @file auditor-lib/testing_auditor_api_cmd_exec_auditor_dbinit.c
+ * @file lib/testing_auditor_api_cmd_exec_auditor_dbinit.c
  * @brief run the taler-auditor-dbinit "-r" command
  * @author Marcello Stanisci
  * @author Christian Grothoff

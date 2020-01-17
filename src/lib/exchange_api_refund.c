@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_refund.c
+ * @file lib/exchange_api_refund.c
  * @brief Implementation of the /refund request of the exchange's HTTP API
  * @author Christian Grothoff
  */

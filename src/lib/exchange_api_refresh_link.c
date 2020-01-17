@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_refresh_link.c
+ * @file lib/exchange_api_refresh_link.c
  * @brief Implementation of the /refresh/link request of the exchange's HTTP API
  * @author Christian Grothoff
  */

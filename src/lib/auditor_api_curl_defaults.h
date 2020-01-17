@@ -16,7 +16,7 @@
 */
 
 /**
- * @file auditor-lib/curl_defaults.h
+ * @file lib/curl_defaults.h
  * @brief curl easy handle defaults
  * @author Florian Dold
  */

@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_reserve_pub.c
+ * @file lib/testing_api_trait_reserve_pub.c
  * @brief implements reserve public key trait
  * @author Christian Grothoff
  * @author Marcello Stanisci

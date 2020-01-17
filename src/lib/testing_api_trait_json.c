@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_trait_json.c
+ * @file lib/testing_api_trait_json.c
  * @brief offers JSON traits.
  * @author Marcello Stanisci
  */

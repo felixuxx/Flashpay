@@ -18,7 +18,7 @@
 */
 
 /**
- * @file auditor-lib/testing_auditor_api_cmd_exec_auditor.c
+ * @file lib/testing_auditor_api_cmd_exec_auditor.c
  * @brief run the taler-auditor command
  * @author Marcello Stanisci
  * @author Christian Grothoff

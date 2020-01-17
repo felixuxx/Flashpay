@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_handle.h
+ * @file lib/exchange_api_handle.h
  * @brief Internal interface to the handle part of the exchange's HTTP API
  * @author Christian Grothoff
  */

@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/test_exchange_api_keys_cherry_picking_new.c
+ * @file lib/test_exchange_api_keys_cherry_picking_new.c
  * @brief testcase to test exchange's /keys cherry picking ability
  * @author Marcello Stanisci
  * @author Christian Grothoff

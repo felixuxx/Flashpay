@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_blinding_key.c
+ * @file lib/testing_api_trait_blinding_key.c
  * @brief offer blinding keys as traits.
  * @author Christian Grothoff
  * @author Marcello Stanisci

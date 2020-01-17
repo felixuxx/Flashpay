@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_cmd_wire.c
+ * @file lib/testing_api_cmd_wire.c
  * @brief command for testing /wire.
  * @author Marcello Stanisci
  */

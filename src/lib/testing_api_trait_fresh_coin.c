@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_fresh_coin.c
+ * @file lib/testing_api_fresh_coin.c
  * @brief traits to offer fresh conins (after "melt" operations)
  * @author Marcello Stanisci
  */

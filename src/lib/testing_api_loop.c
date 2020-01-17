@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_loop.c
+ * @file lib/testing_api_loop.c
  * @brief main interpreter loop for testcases
  * @author Christian Grothoff
  * @author Marcello Stanisci

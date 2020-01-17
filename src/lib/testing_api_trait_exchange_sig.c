@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_trait_exchange_sig.c
+ * @file lib/testing_api_trait_exchange_sig.c
  * @brief exchange pub traits.
  * @author Christian Grothoff
  */

@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/test_exchange_api_overlapping_keys_bug.c
+ * @file lib/test_exchange_api_overlapping_keys_bug.c
  * @brief testcase to test exchange's /keys cherry picking ability and
  *          other /keys related operations
  * @author Marcello Stanisci

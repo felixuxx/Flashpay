@@ -118,7 +118,7 @@ struct TALER_TESTING_DatabaseConnection
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
- * @param ec[out] will be set to the exchange configuration data
+ * @param[out] ec will be set to the exchange configuration data
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
@@ -311,7 +311,7 @@ struct TALER_TESTING_BankConfiguration
  * @param config_filename configuration file to use
  * @param config_section which account to use
  *                       (must match x-taler-bank)
- * @param bc[out] set to the bank's configuration data
+ * @param[out] bc set to the bank's configuration data
  * @return #GNUNET_OK on success
  */
 int
@@ -495,7 +495,7 @@ struct TALER_TESTING_Command
    * commands.
    *
    * @param cls closure
-   * @param ret[out] result (could be anything)
+   * @param[out] ret result (could be anything)
    * @param trait name of the trait
    * @param index index number of the object to extract.
    * @return #GNUNET_OK on success
@@ -796,7 +796,7 @@ TALER_TESTING_run_fakebank (const char *bank_url);
  * and reset database.
  *
  * @param config_filename configuration file name.
- * @param bc[out] set to the bank's configuration data
+ * @param[out] bc set to the bank's configuration data
  * @return #GNUNET_OK on success
  */
 int
@@ -1745,7 +1745,7 @@ TALER_TESTING_trait_end (void);
  * Extract a trait.
  *
  * @param traits the array of all the traits.
- * @param ret[out] where to store the result.
+ * @param[out] ret where to store the result.
  * @param trait type of the trait to extract.
  * @param index index number of the trait to extract.
  * @return #GNUNET_OK when the trait is found.
@@ -1764,7 +1764,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  * Obtain a bank transaction row value from @a cmd.
  *
  * @param cmd command to extract the number from.
- * @param row[out] set to the number coming from @a cmd.
+ * @param[out] row set to the number coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -1800,8 +1800,7 @@ TALER_TESTING_make_trait_reserve_priv (unsigned int index,
  *
  * @param cmd command to extract the reserve priv from.
  * @param index reserve priv's index number.
- * @param reserve_priv[out] set to the reserve priv.
- *
+ * @param[out] reserve_priv set to the reserve priv.
  * @return #GNUNET_OK on success.
  */
 int
@@ -1829,7 +1828,7 @@ TALER_TESTING_make_trait_reserve_pub (unsigned int index,
  *
  * @param cmd command to extract the reserve pub from.
  * @param index reserve pub's index number.
- * @param reserve_pub[out] set to the reserve pub.
+ * @param[out] reserve_pub set to the reserve pub.
  * @return #GNUNET_OK on success.
  */
 int
@@ -1858,7 +1857,7 @@ TALER_TESTING_make_trait_exchange_sig (unsigned int index,
  *
  * @param cmd command to extract trait from
  * @param index index number of the exchange to obtain.
- * @param exchange_sig[out] set to the offered exchange signature.
+ * @param[out] exchange_sig set to the offered exchange signature.
  * @return #GNUNET_OK on success.
  */
 int
@@ -1887,7 +1886,7 @@ TALER_TESTING_make_trait_exchange_pub (unsigned int index,
  *
  * @param cmd command to extract trait from
  * @param index index number of the exchange to obtain.
- * @param exchange_pub[out] set to the offered exchange pub.
+ * @param[out] exchange_pub set to the offered exchange pub.
  * @return #GNUNET_OK on success.
  */
 int
@@ -1903,9 +1902,8 @@ TALER_TESTING_get_trait_exchange_pub (const struct TALER_TESTING_Command *cmd,
  * @param cmd command to extract trait from.
  * @param index which process to pick if @a cmd
  *        has multiple on offer.
- * @param processp[out] set to the address of the pointer to the
+ * @param[out] processp set to the address of the pointer to the
  *        process.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -1946,8 +1944,7 @@ TALER_TESTING_make_trait_coin_priv (unsigned int index,
  *
  * @param cmd command to extract trait from.
  * @param index index of the coin priv to obtain.
- * @param coin_priv[out] set to the private key of the coin.
- *
+ * @param[out] coin_priv set to the private key of the coin.
  * @return #GNUNET_OK on success.
  */
 int
@@ -1977,8 +1974,7 @@ TALER_TESTING_make_trait_blinding_key (unsigned int index,
  *
  * @param cmd command to extract trait from
  * @param index which coin to pick if @a cmd has multiple on offer.
- * @param blinding_key[out] set to the offered blinding key.
- *
+ * @param[out] blinding_key set to the offered blinding key.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2008,8 +2004,7 @@ TALER_TESTING_make_trait_denom_pub (unsigned int index,
  *
  * @param cmd command to extract trait from
  * @param index index number of the denom to obtain.
- * @param denom_pub[out] set to the offered denom pub.
- *
+ * @param[out] denom_pub set to the offered denom pub.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2024,8 +2019,7 @@ TALER_TESTING_get_trait_denom_pub (const struct TALER_TESTING_Command *cmd,
  *
  * @param cmd command to extract the denom sig from.
  * @param index index number associated with the denom sig.
- * @param denom_sig[out] set to the offered signature.
- *
+ * @param[out] denom_sig set to the offered signature.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2066,8 +2060,7 @@ TALER_TESTING_make_trait_uint64 (unsigned int index,
  *
  * @param cmd command to extract the number from.
  * @param index the number's index number.
- * @param n[out] set to the number coming from @a cmd.
- *
+ * @param[out] n set to the number coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2081,7 +2074,6 @@ TALER_TESTING_get_trait_uint64 (const struct TALER_TESTING_Command *cmd,
  *
  * @param index the number's index number.
  * @param n the number to offer.
- *
  * @return #GNUNET_OK on success.
  */
 struct TALER_TESTING_Trait
@@ -2094,8 +2086,7 @@ TALER_TESTING_make_trait_uint (unsigned int index,
  *
  * @param cmd command to extract the number from.
  * @param index the number's index number.
- * @param n[out] set to the number coming from @a cmd.
- *
+ * @param[out] n set to the number coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2118,7 +2109,6 @@ struct TALER_TESTING_FreshCoinData;
  *        if there are multiple on offer.  Typically passed as
  *        zero.
  * @param fresh_coins the array of fresh coins to offer
- *
  * @return the trait,
  */
 struct TALER_TESTING_Trait
@@ -2133,8 +2123,7 @@ TALER_TESTING_make_trait_fresh_coins (unsigned int index,
  * @param cmd command to extract the fresh coin from.
  * @param index which array to pick if @a cmd has multiple
  *        on offer.
- * @param fresh_coins[out] will point to the offered array.
- *
+ * @param[out] fresh_coins will point to the offered array.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2149,7 +2138,7 @@ TALER_TESTING_get_trait_fresh_coins (const struct TALER_TESTING_Command *cmd,
  *
  * @param cmd command to extract the contract terms from.
  * @param index contract terms index number.
- * @param contract_terms[out] where to write the contract
+ * @param[out] contract_terms where to write the contract
  *        terms.
  * @return #GNUNET_OK on success.
  */
@@ -2178,8 +2167,7 @@ TALER_TESTING_make_trait_contract_terms (unsigned int index,
  * @param index index number associate with the wire details
  *        on offer; usually zero, as one command sticks to
  *        one bank account.
- * @param wire_details[out] where to write the wire details.
- *
+ * @param[out] wire_details where to write the wire details.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2208,7 +2196,7 @@ TALER_TESTING_make_trait_wire_details (unsigned int index,
  *
  * @param cmd command to extract the keys from.
  * @param index index number associate with the keys on offer.
- * @param keys[out] where to write the serialized keys.
+ * @param[out] keys where to write the serialized keys.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2237,7 +2225,7 @@ TALER_TESTING_make_trait_exchange_keys (unsigned int index,
  * @param cmd command that is offering the key.
  * @param index (typically zero) which key to return if there
  *        are multiple on offer.
- * @param priv[out] set to the key coming from @a cmd.
+ * @param[out] priv set to the key coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2269,7 +2257,7 @@ TALER_TESTING_make_trait_merchant_priv (unsigned int index,
  * @param cmd command offering the key.
  * @param index (typically zero) which key to return if there
  *        are multiple on offer.
- * @param pub[out] set to the key coming from @a cmd.
+ * @param[out] pub set to the key coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2299,9 +2287,8 @@ TALER_TESTING_make_trait_merchant_pub (unsigned int index,
  * @param cmd command to extract the subject from.
  * @param index index number associated with the transfer
  *        subject to offer.
- * @param s[out] where to write the offered
+ * @param[out] s where to write the offered
  *        string.
- *
  * @return #GNUNET_OK on success.
  */
 int
@@ -2330,7 +2317,7 @@ TALER_TESTING_make_trait_string (unsigned int index,
  * @param cmd command to extract trait from
  * @param index which WTID to pick if @a cmd has multiple on
  *        offer
- * @param wtid[out] set to the wanted WTID.
+ * @param[out] wtid set to the wanted WTID.
  * @return #GNUNET_OK on success
  */
 int
@@ -2395,7 +2382,7 @@ TALER_TESTING_make_trait_url (enum TALER_TESTING_URL_Type index,
  * @param cmd command to extract the url from.
  * @param index which url is to be picked, in case
  *        multiple are offered.
- * @param url[out] where to write the url.
+ * @param[out] url where to write the url.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2444,7 +2431,7 @@ TALER_TESTING_make_trait_payto (enum TALER_TESTING_PaytoType pt,
  * @param cmd command to extract the url from.
  * @param pt which url is to be picked, in case
  *        multiple are offered.
- * @param url[out] where to write the url.
+ * @param[out] url where to write the url.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2459,7 +2446,7 @@ TALER_TESTING_get_trait_payto (const struct TALER_TESTING_Command *cmd,
  * @param cmd command to extract the order id from.
  * @param index which order id is to be picked, in case
  *        multiple are offered.
- * @param order_id[out] where to write the order id.
+ * @param[out] order_id where to write the order id.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2487,8 +2474,7 @@ TALER_TESTING_make_trait_order_id (unsigned int index,
  * @param cmd command to extract the amount from.
  * @param index which amount to pick if @a cmd has multiple
  *        on offer
- * @param amount[out] set to the amount.
- *
+ * @param[out] amount set to the amount.
  * @return #GNUNET_OK on success
  */
 int
@@ -2535,8 +2521,7 @@ TALER_TESTING_make_trait_cmd (unsigned int index,
  *        kind of traits do not need this index.  For
  *        example, a "meta" CMD returns always the
  *        CMD currently being executed.
- * @param _cmd[out] where to write the wire details.
- *
+ * @param[out] _cmd where to write the wire details.
  * @return #GNUNET_OK on success.
  */
 int
@@ -2551,7 +2536,7 @@ TALER_TESTING_get_trait_cmd (const struct TALER_TESTING_Command *cmd,
  * @param cmd command to extract trait from
  * @param index which time stamp to pick if
  *        @a cmd has multiple on offer.
- * @param time[out] set to the wanted WTID.
+ * @param[out] time set to the wanted WTID.
  * @return #GNUNET_OK on success
  */
 int

@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_deposit.c
+ * @file lib/exchange_api_deposit.c
  * @brief Implementation of the /deposit request of the exchange's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff

@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/testing_api_traits.c
+ * @file lib/testing_api_traits.c
  * @brief loop for trait resolution
  * @author Christian Grothoff
  * @author Marcello Stanisci

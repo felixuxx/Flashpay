@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_refresh.c
+ * @file lib/exchange_api_refresh.c
  * @brief Implementation of the /refresh/melt+reveal requests of the exchange's HTTP API
  * @author Christian Grothoff
  */

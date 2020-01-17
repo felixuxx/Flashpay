@@ -18,7 +18,7 @@
 */
 
 /**
- * @file exchange-lib/testing_api_trait_coin_priv.c
+ * @file lib/testing_api_trait_coin_priv.c
  * @brief coin priv traits.
  * @author Christian Grothoff
  * @author Marcello Stanisci

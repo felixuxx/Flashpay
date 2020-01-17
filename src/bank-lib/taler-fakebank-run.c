@@ -18,7 +18,7 @@
 */
 
 /**
- * @file bank/taler-fakebank-run.c
+ * @file bank-lib/taler-fakebank-run.c
  * @brief Launch the fakebank, for testing the fakebank itself.
  * @author Marcello Stanisci
  */

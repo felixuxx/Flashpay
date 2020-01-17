@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_payback.c
+ * @file lib/exchange_api_payback.c
  * @brief Implementation of the /payback request of the exchange's HTTP API
  * @author Christian Grothoff
  */

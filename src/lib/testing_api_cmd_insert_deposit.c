@@ -17,7 +17,7 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor-lib/testing_api_cmd_insert_deposit.c
+ * @file lib/testing_api_cmd_insert_deposit.c
  * @brief deposit a coin directly into the database.
  * @author Marcello Stanisci
  * @author Christian Grothoff
