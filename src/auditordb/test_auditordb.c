@@ -392,6 +392,8 @@ run (void *cls)
   struct TALER_Amount rbalance2;
   struct TALER_Amount loss;
   struct TALER_Amount loss2;
+  struct TALER_Amount iirp;
+  struct TALER_Amount iirp2;
   uint64_t nissued;
 
   GNUNET_assert (GNUNET_OK ==
@@ -415,6 +417,9 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.6",
                                          &loss));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.1",
+                                         &iirp));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_balance (plugin->cls,
@@ -474,7 +479,8 @@ run (void *cls)
                                           &deposit_fee_balance,
                                           &denom_balance,
                                           &rbalance,
-                                          &loss));
+                                          &loss,
+                                          &iirp));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_balance_summary\n");
@@ -488,7 +494,8 @@ run (void *cls)
                                           &melt_fee_balance,
                                           &refund_fee_balance,
                                           &rbalance,
-                                          &loss));
+                                          &loss,
+                                          &iirp));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_balance_summary\n");
@@ -499,6 +506,7 @@ run (void *cls)
   ZR_BLK (&refund_fee_balance2);
   ZR_BLK (&rbalance2);
   ZR_BLK (&loss2);
+  ZR_BLK (&iirp2);
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_balance_summary (plugin->cls,
@@ -509,7 +517,8 @@ run (void *cls)
                                        &melt_fee_balance2,
                                        &refund_fee_balance2,
                                        &rbalance2,
-                                       &loss2));
+                                       &loss2,
+                                       &iirp2));
 
   FAILIF ( (0 != GNUNET_memcmp (&denom_balance2,
                                 &denom_balance) ) ||
@@ -523,6 +532,8 @@ run (void *cls)
                               &rbalance));
   FAILIF (0 != GNUNET_memcmp (&loss2,
                               &loss));
+  FAILIF (0 != GNUNET_memcmp (&iirp2,
+                              &iirp));
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

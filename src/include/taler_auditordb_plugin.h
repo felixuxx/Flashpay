@@ -1302,6 +1302,8 @@ struct TALER_AUDITORDB_Plugin
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
    * @param payback_loss actual losses from payback (actualized @a risk)
+   * @param irregular_paybacks paybacks made of non-revoked coins (reduces
+   *             risk, but should never happen)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1313,7 +1315,8 @@ struct TALER_AUDITORDB_Plugin
                             const struct TALER_Amount *melt_fee_balance,
                             const struct TALER_Amount *refund_fee_balance,
                             const struct TALER_Amount *risk,
-                            const struct TALER_Amount *payback_loss);
+                            const struct TALER_Amount *payback_loss,
+                            const struct TALER_Amount *irregular_paybacks);
 
 
   /**
@@ -1329,6 +1332,8 @@ struct TALER_AUDITORDB_Plugin
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
    * @param payback_loss actual losses from payback (actualized @a risk)
+   * @param irregular_paybacks paybacks made of non-revoked coins (reduces
+   *             risk, but should never happen)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1340,7 +1345,8 @@ struct TALER_AUDITORDB_Plugin
                             const struct TALER_Amount *melt_fee_balance,
                             const struct TALER_Amount *refund_fee_balance,
                             const struct TALER_Amount *risk,
-                            const struct TALER_Amount *payback_loss);
+                            const struct TALER_Amount *payback_loss,
+                            const struct TALER_Amount *irregular_paybacks);
 
 
   /**
@@ -1355,6 +1361,8 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] refund_fee_balance total refund fees collected for this DK
    * @param[out] risk maximum risk exposure of the exchange
    * @param[out] payback_loss actual losses from payback (actualized @a risk)
+   * @param[out] irregular_paybacks paybacks made of non-revoked coins (reduces
+   *             risk, but should never happen)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1366,7 +1374,8 @@ struct TALER_AUDITORDB_Plugin
                          struct TALER_Amount *melt_fee_balance,
                          struct TALER_Amount *refund_fee_balance,
                          struct TALER_Amount *risk,
-                         struct TALER_Amount *payback_loss);
+                         struct TALER_Amount *payback_loss,
+                         struct TALER_Amount *irregular_payback);
 
 
   /**

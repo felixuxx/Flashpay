@@ -319,6 +319,11 @@ static struct TALER_Amount total_risk;
 static struct TALER_Amount total_payback_loss;
 
 /**
+ * Paybacks we made on denominations that were not revoked (!?).
+ */
+static struct TALER_Amount total_irregular_paybacks;
+
+/**
  * Total withdraw fees earned.
  */
 static struct TALER_Amount total_withdraw_fee_income;
@@ -1339,9 +1344,10 @@ handle_payback_by_reserve (void *cls,
       report_row_inconsistency ("payback",
                                 rowid,
                                 "denomination key not in revocation set");
-      /* FIXME: add amount involved to some loss statistic!?
-         It's kind-of not a loss (we just paid back), OTOH, it is
-         certainly irregular and involves some amount.  */
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_irregular_paybacks,
+                                      &total_irregular_paybacks,
+                                      amount));
     }
     else
     {
@@ -4628,7 +4634,8 @@ analyze_coins (void *cls)
                                   &total_melt_fee_income,
                                   &total_refund_fee_income,
                                   &total_risk,
-                                  &total_payback_loss);
+                                  &total_payback_loss,
+                                  &total_irregular_paybacks);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -4727,7 +4734,8 @@ analyze_coins (void *cls)
                                       &total_melt_fee_income,
                                       &total_refund_fee_income,
                                       &total_risk,
-                                      &total_payback_loss);
+                                      &total_payback_loss,
+                                      &total_irregular_paybacks);
   else
     qs = adb->insert_balance_summary (adb->cls,
                                       asession,
@@ -4737,7 +4745,8 @@ analyze_coins (void *cls)
                                       &total_melt_fee_income,
                                       &total_refund_fee_income,
                                       &total_risk,
-                                      &total_payback_loss);
+                                      &total_payback_loss,
+                                      &total_irregular_paybacks);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -5318,6 +5327,9 @@ run (void *cls,
                                         &total_payback_loss));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
+                                        &total_irregular_paybacks));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
                                         &total_withdraw_fee_income));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
@@ -5598,7 +5610,9 @@ run (void *cls,
                         GNUNET_STRINGS_absolute_time_to_string (start_time)),
                       "auditor_end_time", json_string (
                         GNUNET_STRINGS_absolute_time_to_string (
-                          GNUNET_TIME_absolute_get ()))
+                          GNUNET_TIME_absolute_get ())),
+                      "total_irregular_paybacks",
+                      TALER_JSON_from_amount (&total_irregular_paybacks)
                       );
   GNUNET_break (NULL != report);
   json_dumpf (report,

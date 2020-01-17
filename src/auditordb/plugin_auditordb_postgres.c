@@ -614,9 +614,11 @@ postgres_get_session (void *cls)
                             ",risk_frac"
                             ",loss_val"
                             ",loss_frac"
+                            ",irregular_payback_val"
+                            ",irregular_payback_frac"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
-                            "          $11,$12,$13);",
-                            13),
+                            "          $11,$12,$13,$14,$15);",
+                            15),
     /* Used in #postgres_update_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_update",
                             "UPDATE auditor_balance_summary SET"
@@ -632,8 +634,10 @@ postgres_get_session (void *cls)
                             ",risk_frac=$10"
                             ",loss_val=$11"
                             ",loss_frac=$12"
-                            " WHERE master_pub=$13;",
-                            13),
+                            ",irregular_payback_val=$13"
+                            ",irregular_payback_frac=$14"
+                            " WHERE master_pub=$15;",
+                            15),
     /* Used in #postgres_get_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_select",
                             "SELECT"
@@ -649,6 +653,8 @@ postgres_get_session (void *cls)
                             ",risk_frac"
                             ",loss_val"
                             ",loss_frac"
+                            ",irregular_payback_val"
+                            ",irregular_payback_frac"
                             " FROM auditor_balance_summary"
                             " WHERE master_pub=$1;",
                             1),
@@ -2620,6 +2626,7 @@ postgres_get_denomination_balance (void *cls,
  * @param refund_fee_balance total refund fees collected for this DK
  * @param risk maximum risk exposure of the exchange
  * @param loss materialized @a risk from payback
+ * @param irregular_payback paybacks on non-revoked coins
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2632,7 +2639,8 @@ postgres_insert_balance_summary (void *cls,
                                  const struct TALER_Amount *melt_fee_balance,
                                  const struct TALER_Amount *refund_fee_balance,
                                  const struct TALER_Amount *risk,
-                                 const struct TALER_Amount *loss)
+                                 const struct TALER_Amount *loss,
+                                 const struct TALER_Amount *irregular_payback)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2642,6 +2650,7 @@ postgres_insert_balance_summary (void *cls,
     TALER_PQ_query_param_amount (refund_fee_balance),
     TALER_PQ_query_param_amount (risk),
     TALER_PQ_query_param_amount (loss),
+    TALER_PQ_query_param_amount (irregular_payback),
     GNUNET_PQ_query_param_end
   };
 
@@ -2675,6 +2684,7 @@ postgres_insert_balance_summary (void *cls,
  * @param refund_fee_balance total refund fees collected for this DK
  * @param risk maximum risk exposure of the exchange
  * @param loss materialized @a risk from payback
+ * @param irregular_payback paybacks made on non-revoked coins
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2687,7 +2697,8 @@ postgres_update_balance_summary (void *cls,
                                  const struct TALER_Amount *melt_fee_balance,
                                  const struct TALER_Amount *refund_fee_balance,
                                  const struct TALER_Amount *risk,
-                                 const struct TALER_Amount *loss)
+                                 const struct TALER_Amount *loss,
+                                 const struct TALER_Amount *irregular_payback)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
@@ -2696,6 +2707,7 @@ postgres_update_balance_summary (void *cls,
     TALER_PQ_query_param_amount (refund_fee_balance),
     TALER_PQ_query_param_amount (risk),
     TALER_PQ_query_param_amount (loss),
+    TALER_PQ_query_param_amount (irregular_payback),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2718,6 +2730,7 @@ postgres_update_balance_summary (void *cls,
  * @param[out] refund_fee_balance total refund fees collected for this DK
  * @param[out] risk maximum risk exposure of the exchange
  * @param[out] loss losses from payback (on revoked denominations)
+ * @param[out] irregular_payback paybacks on NOT revoked denominations
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2729,7 +2742,8 @@ postgres_get_balance_summary (void *cls,
                               struct TALER_Amount *melt_fee_balance,
                               struct TALER_Amount *refund_fee_balance,
                               struct TALER_Amount *risk,
-                              struct TALER_Amount *loss)
+                              struct TALER_Amount *loss,
+                              struct TALER_Amount *irregular_payback)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2743,6 +2757,7 @@ postgres_get_balance_summary (void *cls,
     TALER_PQ_RESULT_SPEC_AMOUNT ("refund_fee_balance", refund_fee_balance),
     TALER_PQ_RESULT_SPEC_AMOUNT ("risk", risk),
     TALER_PQ_RESULT_SPEC_AMOUNT ("loss", loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("irregular_payback", irregular_payback),
     GNUNET_PQ_result_spec_end
   };
 

@@ -172,6 +172,8 @@ CREATE TABLE IF NOT EXISTS auditor_balance_summary
   ,risk_frac INT4 NOT NULL
   ,loss_val INT8 NOT NULL
   ,loss_frac INT4 NOT NULL
+  ,irregular_payback_val INT8 NOT NULL
+  ,irregular_payback_frac INT4 NOT NULL
   );
 -- Table with historic profits; basically, when a denom_pub has
 -- expired and everything associated with it is garbage collected,
