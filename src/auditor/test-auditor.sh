@@ -1065,12 +1065,12 @@ echo PASS
 echo -n "Testing risk/loss calculation... "
 
 AMOUNT=`jq -r .emergencies_risk_by_amount < test-audit.json`
-if test "x$AMOUNT" != "xTESTKUDOS:0"
+if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
     exit_fail "Reported amount wrong: $AMOUNT"
 fi
 AMOUNT=`jq -r .emergencies_risk_by_count < test-audit.json`
-if test "x$AMOUNT" != "xTESTKUDOS:0"
+if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
     exit_fail "Reported amount wrong: $AMOUNT"
 fi
