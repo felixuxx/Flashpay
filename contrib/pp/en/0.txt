@@ -39,7 +39,7 @@ We may process your information for the following reasons:
 
 * to transfer money as specified by our users (Taler transactions);
 
-* to assist government entities in linking income to the underlying
+* to assist government entities in linking income to the underlying contract
 
 * to support you using the Taler Wallet or to improve our Services
 
