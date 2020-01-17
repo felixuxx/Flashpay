@@ -315,9 +315,9 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
               "Did not find matching transaction!\nI have:\n");
   check_log (h);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "I wanted:\n%llu -> %llu (%s) with subject %s (CREDIT)\n",
-              (unsigned long long) want_debit,
-              (unsigned long long) want_credit,
+              "I wanted:\n%s -> %s (%s) with subject %s (CREDIT)\n",
+              want_debit,
+              want_credit,
               TALER_amount2s (want_amount),
               TALER_B2S (reserve_pub));
   return GNUNET_SYSERR;

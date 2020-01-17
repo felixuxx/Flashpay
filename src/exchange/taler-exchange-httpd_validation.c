@@ -114,8 +114,10 @@ load_account (void *cls,
                          ai->payto_url))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "URL in Wire response file `%s' does not match URL in configuration!\n",
-                  ai->wire_response_filename);
+                  "URL in Wire response file `%s' does not match URL in configuration (%s vs %s)!\n",
+                  ai->wire_response_filename,
+                  url,
+                  ai->payto_url);
       json_decref (wire_s);
       GNUNET_free (url);
       *ret = GNUNET_SYSERR;

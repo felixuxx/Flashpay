@@ -149,8 +149,15 @@ check_bank_transfer_run (void *cls,
                                                 &exchange_base_url));
   }
 
+
   debit_account = TALER_xtalerbank_account_from_payto (debit_payto);
   credit_account = TALER_xtalerbank_account_from_payto (credit_payto);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "converted debit_payto (%s) to debit_account (%s)\n",
+              debit_payto,
+              debit_account);
+
   if (GNUNET_OK !=
       TALER_FAKEBANK_check_debit (is->fakebank,
                                   &amount,

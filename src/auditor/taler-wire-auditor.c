@@ -1438,8 +1438,7 @@ process_debits (void *cls)
               wa->section_name);
   GNUNET_assert (NULL == wa->dhh);
   wa->dhh = TALER_BANK_debit_history (ctx,
-                                      wa->account.details.x_taler_bank.
-                                      account_base_url,
+                                      wa->auth.wire_gateway_url,
                                       &wa->auth,
                                       wa->out_wire_off,
                                       INT64_MAX,

@@ -43,11 +43,6 @@ enum TALER_BANK_AuthenticationMethod
    * Basic authentication with cleartext username and password.
    */
   TALER_BANK_AUTH_BASIC,
-
-  /**
-   * The authentication data refers to a fakebank.
-   */
-  TALER_BANK_AUTH_FAKEBANK,
 };
 
 

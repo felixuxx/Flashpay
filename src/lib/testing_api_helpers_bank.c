@@ -379,8 +379,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
                                 struct TALER_TESTING_BankConfiguration *bc)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
-  char *payto_url;
-  uint16_t fakebank_port;
+  unsigned long long fakebank_port;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
@@ -388,53 +387,38 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     return GNUNET_SYSERR;
 
   if (GNUNET_OK !=
-      TALER_BANK_auth_parse_cfg (cfg,
-                                 "account-" EXCHANGE_ACCOUNT_NAME,
-                                 &bc->exchange_auth))
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "BANK",
+                                             "HTTP_PORT",
+                                             &fakebank_port))
   {
-    GNUNET_break (0);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "BANK",
+                               "HTTP_PORT");
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
+  bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
+  // FIXME: we should not hardcode exchange account number "2"
+  GNUNET_asprintf (&bc->exchange_auth.wire_gateway_url,
+                   "http://localhost:%u/2/",
+                   (unsigned int) fakebank_port);
 
-  GNUNET_assert (TALER_BANK_AUTH_FAKEBANK == bc->exchange_auth.method);
-
-  fakebank_port = bc->exchange_auth.details.fakebank.fb_port;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Using fakebank %s on port %u\n",
+              bc->exchange_auth.wire_gateway_url,
+              (unsigned int) fakebank_port);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Fakebank port from config: %u\n",
               (unsigned int) fakebank_port);
 
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             config_section,
-                                             "URL",
-                                             &payto_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                               config_section,
-                               "URL");
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
-  }
   GNUNET_CONFIGURATION_destroy (cfg);
-  bc->bank_url
-    = TALER_xtalerbank_base_url_from_payto (payto_url);
-  if (NULL == bc->bank_url)
-  {
-    GNUNET_log_config_invalid
-      (GNUNET_ERROR_TYPE_WARNING,
-      config_section,
-      "URL",
-      "expected `x-taler-bank' payto://-URL");
-    GNUNET_free (payto_url);
-    return GNUNET_SYSERR;
-  }
+  bc->bank_url = bc->exchange_auth.wire_gateway_url;
   if (GNUNET_OK !=
       TALER_TESTING_url_port_free (bc->bank_url))
   {
     GNUNET_free (bc->bank_url);
     bc->bank_url = NULL;
-    GNUNET_free (payto_url);
     return GNUNET_SYSERR;
   }
   GNUNET_asprintf (&bc->exchange_account_url,
@@ -444,13 +428,18 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   GNUNET_assert (NULL != bc->exchange_account_url);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "fakebank account URL: %s\n",
               bc->exchange_account_url);
-  GNUNET_free (payto_url);
   /* Now we know it's the fake bank, for purpose of authentication, we
    * don't have any auth. */
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
-  bc->exchange_payto = TALER_payto_xtalerbank_make (bc->bank_url, "2");
-  bc->user42_payto = TALER_payto_xtalerbank_make (bc->bank_url, "42");
-  bc->user43_payto = TALER_payto_xtalerbank_make (bc->bank_url, "43");
+  bc->exchange_payto = "payto://x-taler-bank/localhost/2";
+  bc->user42_payto = "payto://x-taler-bank/localhost/42";
+  bc->user43_payto = "payto://x-taler-bank/localhost/43";
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",
+              bc->exchange_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+              bc->user42_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+              bc->user43_payto);
   return GNUNET_OK;
 }
 
