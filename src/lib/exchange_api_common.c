@@ -224,8 +224,10 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
          for the exchange to lie here, so not checking is probably OK
          (an auditor ought to check, though). Then again, we similarly
          had no reason to check the merchant's signature (other than a
-         well-formendess check). *//* TODO: check that deposit fee and coin value match
-   our expectations from /keys! */add = GNUNET_NO;
+         well-formendess check). *///
+      /* TODO: check that deposit fee and coin value match
+         our expectations from /keys! *///
+      add = GNUNET_NO;
     }
     else if (0 == strcasecmp (type,
                               "PAYBACK"))
