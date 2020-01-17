@@ -123,7 +123,7 @@ parse_fees (json_t *fees)
 
   json_object_foreach (fees, key, fee_array) {
     struct FeeMap *fe = GNUNET_new (struct FeeMap);
-    int len;
+    unsigned int len;
     unsigned int idx;
     json_t *fee;
 
@@ -222,7 +222,7 @@ handle_wire_finished (void *cls,
     {
       json_t *accounts;
       json_t *fees;
-      int num_accounts;
+      unsigned int num_accounts;
       struct FeeMap *fm;
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_JSON_Specification spec[] = {
