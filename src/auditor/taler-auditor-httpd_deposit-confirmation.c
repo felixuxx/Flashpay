@@ -126,8 +126,9 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   qs = TAH_plugin->insert_deposit_confirmation (TAH_plugin->cls,
                                                 session,
                                                 dc);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  if (0 > qs)
   {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
     TALER_LOG_WARNING ("Failed to store /deposit-confirmation in database\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
@@ -166,7 +167,6 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   int res;
   struct TALER_AUDITORDB_DepositConfirmation dc;
   struct TALER_AUDITORDB_ExchangeSigningKey es;
-
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &dc.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &dc.h_wire),
