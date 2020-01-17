@@ -181,7 +181,7 @@ insert_deposit_run (void *cls,
     char *str;
 
     GNUNET_asprintf (&str,
-                     "payto://x-taler-bank/localhost:8082/%s",
+                     "payto://x-taler-bank/localhost/%s",
                      ids->merchant_account);
     deposit.receiver_wire_account
       = json_pack ("{s:s, s:s}",

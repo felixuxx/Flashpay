@@ -12,6 +12,8 @@ set -eu
 
 # Ensure starting accounts exist
 taler-bank-manage -c $1 --with-db $2 django provide_accounts
+taler-bank-manage -c $1 --with-db $2 django add_bank_account 42
+taler-bank-manage -c $1 --with-db $2 django add_bank_account 43
 
 # This is 'x' hashed by Django
 PW_HASH='pbkdf2_sha256$180000$RBYjEO0WzE1z$x2Avt35TkOL2pMHvts3B1U1NIJalXZf95WnJhGFOAUs='

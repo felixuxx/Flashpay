@@ -878,6 +878,7 @@ TALER_TESTING_cmd_transfer (const char *label,
                             const char *amount,
                             const char *account_base_url,
                             const struct TALER_BANK_AuthenticationData *auth,
+                            const char *payto_debit_account,
                             const char *payto_credit_account,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             const char *exchange_base_url);
