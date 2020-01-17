@@ -141,7 +141,7 @@ TALER_EXCHANGE_verify_coin_history (const struct
                          &dr.deposit_fee);
       if ( (GNUNET_YES !=
             TALER_amount_cmp_currency (&fee,
-                                       &dki->fee_deposit)) ||
+                                       &dk->fee_deposit)) ||
            (0 !=
             TALER_amount_cmp (&fee,
                               &dk->fee_deposit)) )
@@ -193,7 +193,7 @@ TALER_EXCHANGE_verify_coin_history (const struct
                          &rm.melt_fee);
       if ( (GNUNET_YES !=
             TALER_amount_cmp_currency (&fee,
-                                       &dki->fee_refresh)) ||
+                                       &dk->fee_refresh)) ||
            (0 !=
             TALER_amount_cmp (&fee,
                               &dk->fee_refresh)) )
@@ -257,7 +257,7 @@ TALER_EXCHANGE_verify_coin_history (const struct
                          &rr.refund_fee);
       if ( (GNUNET_YES !=
             TALER_amount_cmp_currency (&fee,
-                                       &dki->fee_refund)) ||
+                                       &dk->fee_refund)) ||
            (0 !=
             TALER_amount_cmp (&fee,
                               &dk->fee_refund)) )

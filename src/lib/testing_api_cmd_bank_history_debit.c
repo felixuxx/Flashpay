@@ -285,7 +285,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                         &wtid)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_url (cmd,
-                                       0,
+                                       TALER_TESTING_UT_EXCHANGE_BASE_URL,
                                        &exchange_base_url)) )
       continue; /* not an event we care about */
     /* Seek "/history" starting row.  */

@@ -279,7 +279,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                                &reserve_pub)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_url (cmd,
-                                       0,
+                                       TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
                                        &exchange_credit_url)) )
       continue; /* not an interesting event */
     /* Seek "/history" starting row.  */

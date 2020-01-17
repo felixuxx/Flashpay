@@ -124,29 +124,29 @@ check_bank_transfer_run (void *cls,
                       (is),
                     bcs->deposit_reference,
                     bcs->deposit_reference);
-    deposit_cmd = TALER_TESTING_interpreter_lookup_command
-                    (is, bcs->deposit_reference);
-
+    deposit_cmd
+      = TALER_TESTING_interpreter_lookup_command (is,
+                                                  bcs->deposit_reference);
     if (NULL == deposit_cmd)
       TALER_TESTING_FAIL (is);
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_amount_obj (deposit_cmd,
-                                                       0,
-                                                       &amount_ptr));
+    if ( (GNUNET_OK !=
+          TALER_TESTING_get_trait_amount_obj (deposit_cmd,
+                                              0,
+                                              &amount_ptr)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_payto (deposit_cmd,
+                                         TALER_TESTING_PT_DEBIT,
+                                         &debit_payto)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_payto (deposit_cmd,
+                                         TALER_TESTING_PT_CREDIT,
+                                         &credit_payto)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_url (deposit_cmd,
+                                       TALER_TESTING_UT_EXCHANGE_BASE_URL,
+                                       &exchange_base_url)) )
+      TALER_TESTING_FAIL (is);
     amount = *amount_ptr;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_payto (deposit_cmd,
-                                                  TALER_TESTING_PT_DEBIT,
-                                                  &debit_payto));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_payto (deposit_cmd,
-                                                  TALER_TESTING_PT_CREDIT,
-                                                  &credit_payto));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_url (deposit_cmd,
-                                                0, /* TODO: check 0 works! */
-                                                &exchange_base_url));
   }
 
 
@@ -218,8 +218,10 @@ check_bank_transfer_traits (void *cls,
   struct BankCheckState *bcs = cls;
   struct TALER_WireTransferIdentifierRawP *wtid_ptr = &bcs->wtid;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_wtid (0, wtid_ptr),
-    TALER_TESTING_make_trait_url (0, bcs->exchange_base_url),
+    TALER_TESTING_make_trait_wtid (0,
+                                   wtid_ptr),
+    TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
+                                  bcs->exchange_base_url),
     TALER_TESTING_trait_end ()
   };
 

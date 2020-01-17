@@ -385,30 +385,32 @@ withdraw_traits (void *cls,
   if (NULL == ws->exchange_url)
     ws->exchange_url
       = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
+  {
+    struct TALER_TESTING_Trait traits[] = {
+      TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
+                                          &ws->ps.coin_priv),
+      TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
+                                             &ws->ps.blinding_key),
+      TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
+                                          ws->pk),
+      TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
+                                          &ws->sig),
+      TALER_TESTING_make_trait_reserve_priv (0,
+                                             reserve_priv),
+      TALER_TESTING_make_trait_reserve_pub (0,
+                                            reserve_pub),
+      TALER_TESTING_make_trait_amount_obj (0,
+                                           &ws->amount),
+      TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
+                                    ws->exchange_url),
+      TALER_TESTING_trait_end ()
+    };
 
-  struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
-                                        &ws->ps.coin_priv),
-    TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
-                                           &ws->ps.blinding_key),
-    TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
-                                        ws->pk),
-    TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
-                                        &ws->sig),
-    TALER_TESTING_make_trait_reserve_priv (0,
-                                           reserve_priv),
-    TALER_TESTING_make_trait_reserve_pub (0,
-                                          reserve_pub),
-    TALER_TESTING_make_trait_amount_obj (0,
-                                         &ws->amount),
-    TALER_TESTING_make_trait_url (0, ws->exchange_url),
-    TALER_TESTING_trait_end ()
-  };
-
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
+    return TALER_TESTING_get_trait (traits,
+                                    ret,
+                                    trait,
+                                    index);
+  }
 }
 
 

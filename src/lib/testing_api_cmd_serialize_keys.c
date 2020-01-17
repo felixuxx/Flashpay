@@ -144,7 +144,8 @@ serialize_keys_traits (void *cls,
   struct SerializeKeysState *sks = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_exchange_keys (0, sks->keys),
-    TALER_TESTING_make_trait_url (0, sks->exchange_url),
+    TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
+                                  sks->exchange_url),
     TALER_TESTING_trait_end ()
   };
 
@@ -192,12 +193,10 @@ connect_with_state_run (void *cls,
     return;
   }
 
-  GNUNET_assert
-    (GNUNET_OK == TALER_TESTING_get_trait_exchange_keys
-      (state_cmd,
-      0,
-      &serialized_keys));
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_exchange_keys (state_cmd,
+                                                        0,
+                                                        &serialized_keys));
   {
     char *dump;
 
@@ -208,21 +207,17 @@ connect_with_state_run (void *cls,
     free (dump);
   }
 
-  GNUNET_assert
-    (GNUNET_OK == TALER_TESTING_get_trait_url
-      (state_cmd,
-      0,
-      &exchange_url));
-
-  is->exchange = TALER_EXCHANGE_connect
-                   (is->ctx,
-                   exchange_url,
-                   TALER_TESTING_cert_cb,
-                   cwss,
-                   TALER_EXCHANGE_OPTION_DATA,
-                   serialized_keys,
-                   TALER_EXCHANGE_OPTION_END);
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_url (state_cmd,
+                                              TALER_TESTING_UT_EXCHANGE_BASE_URL,
+                                              &exchange_url));
+  is->exchange = TALER_EXCHANGE_connect (is->ctx,
+                                         exchange_url,
+                                         TALER_TESTING_cert_cb,
+                                         cwss,
+                                         TALER_EXCHANGE_OPTION_DATA,
+                                         serialized_keys,
+                                         TALER_EXCHANGE_OPTION_END);
   cwss->consumed = GNUNET_YES;
 }
 
@@ -235,9 +230,8 @@ connect_with_state_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-connect_with_state_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+connect_with_state_cleanup (void *cls,
+                            const struct TALER_TESTING_Command *cmd)
 {
   struct ConnectWithStateState *cwss = cls;
 

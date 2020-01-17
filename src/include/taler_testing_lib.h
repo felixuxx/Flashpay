@@ -2352,6 +2352,29 @@ TALER_TESTING_make_trait_wtid (unsigned int index,
 
 
 /**
+ * Different types of URLs that appear in traits.
+ */
+enum TALER_TESTING_URL_Type
+{
+  /**
+   * Category of last resort. Should not be used.
+   */
+  TALER_TESTING_UT_UNDEFINED = 0,
+
+  /**
+   * HTTP base URL of an exchange (API), as for example
+   * given in wire transfers subjects made by the aggregator.
+   */
+  TALER_TESTING_UT_EXCHANGE_BASE_URL = 1,
+
+  /**
+   * HTTP URL of the exchange's bank account at the bank.
+   */
+  TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL = 2
+};
+
+
+/**
  * Offer HTTP url in a trait.
  *
  * @param index which url is to be picked,
@@ -2360,7 +2383,7 @@ TALER_TESTING_make_trait_wtid (unsigned int index,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_url (unsigned int index,
+TALER_TESTING_make_trait_url (enum TALER_TESTING_URL_Type index,
                               const char *url);
 
 
@@ -2375,7 +2398,7 @@ TALER_TESTING_make_trait_url (unsigned int index,
  */
 int
 TALER_TESTING_get_trait_url (const struct TALER_TESTING_Command *cmd,
-                             unsigned int index,
+                             enum TALER_TESTING_URL_Type index,
                              const char **url);
 
 
