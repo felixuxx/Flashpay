@@ -112,7 +112,7 @@ reserve_status_cb (void *cls,
   }
 
   /**
-   * TODO: We should check that reserve history is consistent.  Every
+   * TODO (#6049): We should check that reserve history is consistent.  Every
    * command which relates to reserve 'x' should be added in a linked list of
    * all commands that relate to the same reserve 'x'.
    *
