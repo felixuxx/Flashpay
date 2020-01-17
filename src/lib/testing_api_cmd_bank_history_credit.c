@@ -150,7 +150,7 @@ print_expected (struct History *h,
                 unsigned int off)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Transaction history missmatch at position %u/%u\n",
+              "Transaction history (credit) mismatch at position %u/%u\n",
               off,
               h_len);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
