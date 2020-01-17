@@ -988,6 +988,9 @@ refresh_melt_run (void *cls,
                                        &melt_amount,
                                        &fresh_pk->fee_withdraw));
       rms->fresh_pks[i] = *fresh_pk;
+      /* Make a deep copy of the RSA key */
+      rms->fresh_pks[i].key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
+        fresh_pk->key.rsa_public_key);
     }
     rms->refresh_data = TALER_EXCHANGE_refresh_prepare
                           (rms->melt_priv, &melt_amount, melt_sig,
@@ -1040,6 +1043,11 @@ refresh_melt_cleanup (void *cls,
   {
     GNUNET_SCHEDULER_cancel (rms->retry_task);
     rms->retry_task = NULL;
+  }
+  if (NULL != rms->fresh_pks)
+  {
+    for (unsigned int i = 0; i < rms->num_fresh_coins; i++)
+      GNUNET_CRYPTO_rsa_public_key_free (rms->fresh_pks[i].key.rsa_public_key);
   }
   GNUNET_free_non_null (rms->fresh_pks);
   rms->fresh_pks = NULL;

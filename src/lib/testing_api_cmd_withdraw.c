@@ -55,7 +55,7 @@ struct WithdrawState
    * use.  Otherwise, this will be set (by the interpreter) to the
    * denomination PK matching @e amount.
    */
-  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+  struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
    * Exchange base URL.  Only used as offered trait.
@@ -246,6 +246,7 @@ withdraw_run (void *cls,
   struct WithdrawState *ws = cls;
   const struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
+  const struct TALER_EXCHANGE_DenomPublicKey *dpk;
 
   (void) cmd;
   create_reserve = TALER_TESTING_interpreter_lookup_command
@@ -268,15 +269,20 @@ withdraw_run (void *cls,
   TALER_planchet_setup_random (&ws->ps);
   ws->is = is;
 
-  ws->pk = TALER_TESTING_find_pk
-             (TALER_EXCHANGE_get_keys (is->exchange),
-             &ws->amount);
-  if (NULL == ws->pk)
+  dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+                               &ws->amount);
+  if (NULL == dpk)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to determine denomination key at %s\n",
                 cmd->label);
     GNUNET_assert (0);
+  }
+  else
+  {
+    /* We copy the denomination key, as re-querying /keys
+     * would free the old one. */
+    ws->pk = TALER_EXCHANGE_copy_denomination_key (dpk);
   }
 
   ws->wsh = TALER_EXCHANGE_reserve_withdraw (is->exchange,
@@ -325,6 +331,12 @@ withdraw_cleanup (void *cls,
     GNUNET_CRYPTO_rsa_signature_free (ws->sig.rsa_signature);
     ws->sig.rsa_signature = NULL;
   }
+  if (NULL != ws->pk)
+  {
+    TALER_EXCHANGE_destroy_denomination_key (ws->pk);
+    ws->pk = NULL;
+  }
+
   GNUNET_free_non_null (ws->exchange_url);
   GNUNET_free (ws);
 }
@@ -493,7 +505,7 @@ TALER_TESTING_cmd_withdraw_denomination
   }
   ws = GNUNET_new (struct WithdrawState);
   ws->reserve_reference = reserve_reference;
-  ws->pk = dk;
+  ws->pk = TALER_EXCHANGE_copy_denomination_key (dk);
   ws->expected_response_code = expected_response_code;
   {
     struct TALER_TESTING_Command cmd = {

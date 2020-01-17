@@ -2128,6 +2128,43 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Create a copy of a denomination public key.
+ *
+ * @param key key to copy
+ * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key
+ */
+struct TALER_EXCHANGE_DenomPublicKey *
+TALER_EXCHANGE_copy_denomination_key (const struct
+                                      TALER_EXCHANGE_DenomPublicKey *key)
+{
+  struct TALER_EXCHANGE_DenomPublicKey *copy;
+
+  copy = GNUNET_new (struct TALER_EXCHANGE_DenomPublicKey);
+  *copy = *key;
+  copy->key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
+    key->key.rsa_public_key);
+
+  return copy;
+}
+
+
+/**
+ * Destroy a denomination public key.
+ * Should only be called with keys created by #TALER_EXCHANGE_copy_denomination_key.
+ *
+ * @param key key to destroy.
+ */
+void
+TALER_EXCHANGE_destroy_denomination_key (struct
+                                         TALER_EXCHANGE_DenomPublicKey *key)
+{
+  GNUNET_CRYPTO_rsa_public_key_free (key->key.rsa_public_key);;
+  key->key.rsa_public_key = NULL;
+  GNUNET_free (key);
+}
+
+
+/**
  * Obtain the denomination key details from the exchange.
  *
  * @param keys the exchange's key set

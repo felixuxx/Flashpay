@@ -531,6 +531,28 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Create a copy of a denomination public key.
+ *
+ * @param key key to copy
+ * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key
+ */
+struct TALER_EXCHANGE_DenomPublicKey *
+TALER_EXCHANGE_copy_denomination_key (const struct
+                                      TALER_EXCHANGE_DenomPublicKey *key);
+
+
+/**
+ * Destroy a denomination public key.
+ * Should only be called with keys created by #TALER_EXCHANGE_copy_denomination_key.
+ *
+ * @param key key to destroy.
+ */
+void
+TALER_EXCHANGE_destroy_denomination_key (struct
+                                         TALER_EXCHANGE_DenomPublicKey *key);
+
+
+/**
  * Obtain the denomination key details from the exchange.
  *
  * @param keys the exchange's key set
