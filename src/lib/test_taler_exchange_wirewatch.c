@@ -148,6 +148,7 @@ main (int argc,
     };
 
     conn = GNUNET_PQ_connect ("postgres:///talercheck",
+                              NULL,
                               es,
                               NULL);
     if (NULL == conn)
