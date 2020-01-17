@@ -16,9 +16,8 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file lib/testing_api_fresh_coin.c
+ * @file lib/testing_api_trait_fresh_coin.c
  * @brief traits to offer fresh conins (after "melt" operations)
  * @author Marcello Stanisci
  */
@@ -37,7 +36,7 @@
  * @param cmd command to extract the fresh coin from.
  * @param index which array to pick if @a cmd has multiple
  *        on offer.
- * @param fresh_coins[out] will point to the offered array.
+ * @param[out] fresh_coins will point to the offered array.
  * @return #GNUNET_OK on success.
  */
 int
@@ -57,10 +56,9 @@ TALER_TESTING_get_trait_fresh_coins
  * Offer a _array_ of fresh coins.
  *
  * @param index which array of fresh coins to offer,
- *        if there are multiple on offer.  Tipically passed as
+ *        if there are multiple on offer.  Typically passed as
  *        zero.
  * @param fresh_coins the array of fresh coins to offer
- *
  * @return the trait,
  */
 struct TALER_TESTING_Trait

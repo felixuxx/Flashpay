@@ -16,9 +16,8 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file lib/testing_auditor_api_helpers.c
+ * @file lib/testing_api_auditor_helpers.c
  * @brief helper functions
  * @author Christian Grothoff
  */
