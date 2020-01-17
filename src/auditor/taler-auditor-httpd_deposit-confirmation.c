@@ -67,6 +67,11 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                        TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                        "master_sig (expired)");
   }
+
+  /* TODO: consider having an in-memory cache of already
+     verified exchange signing keys, this could save us
+     a signature check AND a database transaction per
+     operation. */
   /* check exchange signing key signature */
   skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   skv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
