@@ -741,7 +741,7 @@ fi
 echo PASS
 
 # Undo database modification (exchange always has account #2)
-echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2,subject=$OLD_SUBJECT WHERE id=$OLD_ID;" | psql -Aqt $DB
+echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2,subject='$OLD_SUBJECT' WHERE id=$OLD_ID;" | psql -Aqt $DB
 
 }
 
