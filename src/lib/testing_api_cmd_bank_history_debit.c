@@ -70,11 +70,6 @@ struct HistoryState
   const char *account_url;
 
   /**
-   * Payto URL of the debited account offering the "history" operation.
-   */
-  char *debit_payto;
-
-  /**
    * Reference to command defining the
    * first row number we want in the result.
    */
@@ -308,15 +303,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
     /* when 'start' was _not_ given, then ok == GNUNET_YES */
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
-    if (0 != strcasecmp (hs->debit_payto,
-                         debit_account))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Account %s does not match desired account %s\n",
-                  debit_account,
-                  hs->debit_payto);
-      continue; /* account missmatch */
-    }
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
     {
@@ -571,7 +557,6 @@ history_cleanup (void *cls,
     GNUNET_free (hs->h[off].c_url);
     GNUNET_free (hs->h[off].d_url);
   }
-  GNUNET_free (hs->debit_payto);
   GNUNET_free_non_null (hs->h);
   GNUNET_free (hs);
 }
@@ -604,7 +589,6 @@ TALER_TESTING_cmd_bank_debits (const char *label,
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
   hs->auth = *auth;
-  hs->debit_payto = TALER_payto_xtalerbank_make2 (account_url);
 
   {
     struct TALER_TESTING_Command cmd = {
