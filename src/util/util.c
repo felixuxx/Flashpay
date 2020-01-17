@@ -720,49 +720,6 @@ TALER_xtalerbank_base_url_from_payto (const char *payto)
 
 
 /**
- * Given an x-taler-bank payto:// URL, compute
- * the HTTP(S) base URL of the account.
- *
- * @param payto the payto URL
- * @return bank URL of the account, NULL if not x-taler-bak payto URL
- */
-char *
-TALER_xtalerbank_account_url_from_payto (const char *payto)
-{
-  const char *start;
-  const char *end;
-  char *ret;
-  int https;
-  const char *colon;
-  unsigned int port;
-
-  if (0 != strncasecmp (payto,
-                        "payto://x-taler-bank/",
-                        strlen ("payto://x-taler-bank/")))
-    return NULL;
-  start = &payto[strlen ("payto://x-taler-bank/")];
-  end = strchr (start,
-                '/');
-  if (NULL == end)
-    end = &start[strlen (start)];
-  colon = strrchr (start,
-                   ':');
-  https = GNUNET_YES;
-  if ( (NULL != colon) &&
-       (1 == sscanf (colon + 1,
-                     "%u",
-                     &port)) &&
-       (443 != port) )
-    https = GNUNET_NO;
-  GNUNET_asprintf (&ret,
-                   "%s://%s",
-                   (https ? "https" : "http"),
-                   start);
-  return ret;
-}
-
-
-/**
  * Obtain the account name from a payto URL.
  *
  * @param payto an x-taler-bank payto URL

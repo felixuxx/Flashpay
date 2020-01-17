@@ -77,14 +77,6 @@ main (int argc,
     "payto://x-taler-bank/localhost:1080/bob");
   CHECK ("http://localhost:1080/",
          r);
-  r = TALER_xtalerbank_account_url_from_payto (
-    "payto://x-taler-bank/localhost/bob");
-  CHECK ("https://localhost/bob",
-         r);
-  r = TALER_xtalerbank_account_url_from_payto (
-    "payto://x-taler-bank/localhost:1080/alice");
-  CHECK ("http://localhost:1080/alice",
-         r);
   r = TALER_xtalerbank_account_from_payto (
     "payto://x-taler-bank/localhost:1080/alice");
   CHECK ("alice",
