@@ -534,8 +534,8 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
-   * @param master_pub master public key of the exchange
-   * @param exchange_url public (base) URL of the API of the exchange
+   * @param cb function to call with the results
+   * @param cb_cls closure for @a cb
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
@@ -579,7 +579,7 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
-   * @param master_pub for which exchange do we want to get deposit confirmations
+   * @param master_public_key for which exchange do we want to get deposit confirmations
    * @param start_id row/serial ID where to start the iteration (0 from
    *                  the start, exclusive, i.e. serial_ids must start from 1)
    * @param cb function to call with results

@@ -2847,7 +2847,7 @@ struct MatchingDepositContext
  *
  * @param cls closure of type `struct MatchingDepositContext *`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 match_deposit_cb (void *cls,
@@ -3277,7 +3277,7 @@ struct SelectRefundContext
  *
  * @param cls closure of type `struct SelectRefundContext *`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 get_refunds_cb (void *cls,
@@ -3588,7 +3588,7 @@ struct GetRevealContext
  *
  * @param cls closure of type `struct GetRevealContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_revealed_coins (void *cls,
@@ -3823,7 +3823,7 @@ free_link_data_list (void *cls,
  *
  * @param cls closure of type `struct LinkDataContext *`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_ldl (void *cls,
@@ -3981,7 +3981,7 @@ struct CoinHistoryContext
  *
  * @param cls closure of type `struct CoinHistoryContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_coin_deposit (void *cls,
@@ -4052,7 +4052,7 @@ add_coin_deposit (void *cls,
  *
  * @param cls closure of type `struct CoinHistoryContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_coin_melt (void *cls,
@@ -4112,7 +4112,7 @@ add_coin_melt (void *cls,
  *
  * @param cls closure of type `struct CoinHistoryContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_coin_refund (void *cls,
@@ -4175,7 +4175,7 @@ add_coin_refund (void *cls,
  *
  * @param cls closure of type `struct CoinHistoryContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_old_coin_payback (void *cls,
@@ -4242,7 +4242,7 @@ add_old_coin_payback (void *cls,
  *
  * @param cls closure of type `struct CoinHistoryContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_coin_payback (void *cls,
@@ -4303,7 +4303,7 @@ add_coin_payback (void *cls,
  *
  * @param cls closure of type `struct CoinHistoryContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 add_coin_payback_refresh (void *cls,
@@ -4511,7 +4511,7 @@ struct WireTransferResultContext
  *
  * @param cls closure of type `struct WireTransferResultContext *`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 handle_wt_result (void *cls,
@@ -4924,7 +4924,7 @@ struct ExpiredReserveContext
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 reserve_expired_cb (void *cls,
@@ -5410,7 +5410,7 @@ struct DepositSerialContext
  *
  * @param cls closure of type `struct DepositSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 deposit_serial_helper_cb (void *cls,
@@ -5561,7 +5561,7 @@ struct RefreshsSerialContext
  *
  * @param cls closure of type `struct RefreshsSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 refreshs_serial_helper_cb (void *cls,
@@ -5701,7 +5701,7 @@ struct RefundsSerialContext
  *
  * @param cls closure of type `struct RefundsSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 refunds_serial_helper_cb (void *cls,
@@ -5839,7 +5839,7 @@ struct ReservesInSerialContext
  *
  * @param cls closure of type `struct ReservesInSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 reserves_in_serial_helper_cb (void *cls,
@@ -6023,7 +6023,7 @@ struct ReservesOutSerialContext
  *
  * @param cls closure of type `struct ReservesOutSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 reserves_out_serial_helper_cb (void *cls,
@@ -6163,7 +6163,7 @@ struct WireOutSerialContext
  *
  * @param cls closure of type `struct WireOutSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 wire_out_serial_helper_cb (void *cls,
@@ -6343,7 +6343,7 @@ struct PaybackSerialContext
  *
  * @param cls closure of type `struct PaybackSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 payback_serial_helper_cb (void *cls,
@@ -6493,7 +6493,7 @@ struct PaybackRefreshSerialContext
  *
  * @param cls closure of type `struct PaybackRefreshSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 payback_refresh_serial_helper_cb (void *cls,
@@ -6644,7 +6644,7 @@ struct ReserveClosedSerialContext
  *
  * @param cls closure of type `struct ReserveClosedSerialContext`
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 reserve_closed_serial_helper_cb (void *cls,
