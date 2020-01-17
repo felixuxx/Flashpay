@@ -1412,56 +1412,17 @@ wire_missing_cb (void *cls,
  * to a particular coin.
  *
  * @param cls closure with the `struct TALER_EXCHANGEDB_Refund *` we expect to get
- * @param merchant_pub public key of merchant who authorized refund
- * @param merchant_sig signature of merchant authorizing refund
- * @param h_contract hash of contract being refunded
- * @param rtransaction_id refund transaction ID
  * @param amount_with_fee amount being refunded
- * @param refund_fee fee the exchange keeps for the refund processing
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
 check_refund_cb (void *cls,
-                 const struct TALER_MerchantPublicKeyP *merchant_pub,
-                 const struct TALER_MerchantSignatureP *merchant_sig,
-                 const struct GNUNET_HashCode *h_contract,
-                 uint64_t rtransaction_id,
-                 const struct TALER_Amount *amount_with_fee,
-                 const struct TALER_Amount *refund_fee)
+                 const struct TALER_Amount *amount_with_fee)
 {
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
 
-  if (0 != GNUNET_memcmp (merchant_pub,
-                          &refund->details.merchant_pub))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  if (0 != GNUNET_memcmp (merchant_sig,
-                          &refund->details.merchant_sig))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  if (0 != GNUNET_memcmp (h_contract,
-                          &refund->details.h_contract_terms))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  if (rtransaction_id != refund->details.rtransaction_id)
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
   if (0 != TALER_amount_cmp (amount_with_fee,
                              &refund->details.refund_amount))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  if (0 != TALER_amount_cmp (refund_fee,
-                             &refund->details.refund_fee))
   {
     GNUNET_break (0);
     result = 66;
@@ -1988,6 +1949,8 @@ run (void *cls)
           plugin->select_refunds_by_coin (plugin->cls,
                                           session,
                                           &refund.coin.coin_pub,
+                                          &refund.details.merchant_pub,
+                                          &refund.details.h_contract_terms,
                                           &check_refund_cb,
                                           &refund));
 

@@ -134,11 +134,6 @@ struct AggregationUnit
   struct GNUNET_HashCode h_wire;
 
   /**
-   * Hash code of contract we are currently looking into.
-   */
-  const struct GNUNET_HashCode *h_contract;
-
-  /**
    * Wire transfer identifier we use.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
@@ -678,36 +673,15 @@ exchange_serve_process_config ()
  * the aggregation unit's total amount.
  *
  * @param cls closure with a `struct AggregationUnit *`
- * @param merchant_pub public key of merchant who authorized refund
- * @param merchant_sig signature of merchant authorizing refund
- * @param h_contract hash of contract being refunded
- * @param rtransaction_id refund transaction ID
- * @param amount_with_fee amount being refunded
- * @param refund_fee fee the exchange keeps for the refund processing
+ * @param amount_with_fee what was the refunded amount with the fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
 refund_by_coin_cb (void *cls,
-                   const struct TALER_MerchantPublicKeyP *merchant_pub,
-                   const struct TALER_MerchantSignatureP *merchant_sig,
-                   const struct GNUNET_HashCode *h_contract,
-                   uint64_t rtransaction_id,
-                   const struct TALER_Amount *amount_with_fee,
-                   const struct TALER_Amount *refund_fee)
+                   const struct TALER_Amount *amount_with_fee)
 {
   struct AggregationUnit *aux = cls;
 
-  (void) merchant_sig;
-  (void) rtransaction_id;
-  (void) refund_fee;
-  /* TODO: potential optimization: include these conditions
-     in the SELECT, and avoid fetching the values we do not need! */
-  if (0 != GNUNET_memcmp (merchant_pub,
-                          &aux->merchant_pub))
-    return GNUNET_OK; /* different merchant */
-  if (0 != GNUNET_memcmp (h_contract,
-                          aux->h_contract))
-    return GNUNET_OK; /* different contract */
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Aggregator subtracts applicable refund of amount %s\n",
               TALER_amount2s (amount_with_fee));
@@ -776,13 +750,13 @@ deposit_cb (void *cls,
               TALER_B2S (coin_pub),
               TALER_amount2s (&au->total_amount));
   au->row_id = row_id;
-  au->h_contract = h_contract_terms;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           au->session,
                                           coin_pub,
+                                          &au->merchant_pub,
+                                          h_contract_terms,
                                           &refund_by_coin_cb,
                                           au);
-  au->h_contract = NULL;
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -938,13 +912,13 @@ aggregate_cb (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
 
-  au->h_contract = h_contract_terms;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           au->session,
                                           coin_pub,
+                                          &au->merchant_pub,
+                                          h_contract_terms,
                                           &refund_by_coin_cb,
                                           au);
-  au->h_contract = NULL;
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

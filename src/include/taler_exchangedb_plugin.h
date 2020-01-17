@@ -1094,28 +1094,16 @@ typedef int
 
 /**
  * Callback invoked with information about refunds applicable
- * to a particular coin.
+ * to a particular coin and contract.
  *
  * @param cls closure
- * @param merchant_pub public key of merchant who authorized refund
- * @param merchant_sig signature of merchant authorizing refund
- * @param h_contract hash of contract being refunded
- * @param rtransaction_id refund transaction ID
  * @param amount_with_fee amount being refunded
- * @param refund_fee fee the exchange keeps for the refund processing
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
 (*TALER_EXCHANGEDB_RefundCoinCallback)(void *cls,
                                        const struct
-                                       TALER_MerchantPublicKeyP *merchant_pub,
-                                       const struct
-                                       TALER_MerchantSignatureP *merchant_sig,
-                                       const struct GNUNET_HashCode *h_contract,
-                                       uint64_t rtransaction_id,
-                                       const struct
-                                       TALER_Amount *amount_with_fee,
-                                       const struct TALER_Amount *refund_fee);
+                                       TALER_Amount *amount_with_fee);
 
 
 /**
@@ -1947,11 +1935,13 @@ struct TALER_EXCHANGEDB_Plugin
                    const struct TALER_EXCHANGEDB_Refund *refund);
 
   /**
-   * Select refunds by @a coin_pub.
+   * Select refunds by @a coin_pub, @a merchant_pub and @a h_contract.
    *
    * @param cls closure of plugin
    * @param session database handle to use
    * @param coin_pub coin to get refunds for
+   * @param merchant_pub merchant to get refunds for
+   * @param h_contract_pub contract (hash) to get refunds for
    * @param cb function to call for each refund found
    * @param cb_cls closure for @a cb
    * @return query result status
@@ -1960,6 +1950,8 @@ struct TALER_EXCHANGEDB_Plugin
   (*select_refunds_by_coin)(void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                            const struct TALER_MerchantPublicKeyP *merchant_pub,
+                            const struct GNUNET_HashCode *h_contract,
                             TALER_EXCHANGEDB_RefundCoinCallback cb,
                             void *cb_cls);
 

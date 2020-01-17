@@ -736,6 +736,17 @@ postgres_get_session (void *cls)
                               "    JOIN denominations denom USING (denom_pub_hash)"
                               " WHERE coin_pub=$1;",
                               1),
+      /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
+      GNUNET_PQ_make_prepare ("get_refunds_by_coin_and_contract",
+                              "SELECT"
+                              " amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              " FROM refunds"
+                              " WHERE"
+                              "       coin_pub=$1"
+                              "   AND merchant_pub=$2"
+                              "   AND h_contract_terms=$3;",
+                              3),
       /* Fetch refunds with rowid '\geq' the given parameter */
       GNUNET_PQ_make_prepare ("audit_get_refunds_incr",
                               "SELECT"
@@ -3296,25 +3307,10 @@ get_refunds_cb (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_MerchantPublicKeyP merchant_pub;
-    struct TALER_MerchantSignatureP merchant_sig;
-    struct GNUNET_HashCode h_contract;
-    uint64_t rtransaction_id;
     struct TALER_Amount amount_with_fee;
-    struct TALER_Amount refund_fee;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
-                                            &merchant_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
-                                            &merchant_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                            &h_contract),
-      GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
-                                    &rtransaction_id),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &amount_with_fee),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
-                                   &refund_fee),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3329,23 +3325,20 @@ get_refunds_cb (void *cls,
     }
     if (GNUNET_OK !=
         srctx->cb (srctx->cb_cls,
-                   &merchant_pub,
-                   &merchant_sig,
-                   &h_contract,
-                   rtransaction_id,
-                   &amount_with_fee,
-                   &refund_fee))
+                   &amount_with_fee))
       return;
   }
 }
 
 
 /**
- * Select refunds by @a coin_pub.
+ * Select refunds by @a coin_pub, @a merchant_pub and @a h_contract.
  *
  * @param cls closure of plugin
  * @param session database handle to use
  * @param coin_pub coin to get refunds for
+ * @param merchant_pub merchant to get refunds for
+ * @param h_contract_pub contract (hash) to get refunds for
  * @param cb function to call for each refund found
  * @param cb_cls closure for @a cb
  * @return query result status
@@ -3355,13 +3348,19 @@ postgres_select_refunds_by_coin (void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct
                                  TALER_CoinSpendPublicKeyP *coin_pub,
-                                 TALER_EXCHANGEDB_RefundCoinCallback cb,
+                                 const struct
+                                 TALER_MerchantPublicKeyP *merchant_pub,
+                                 const struct GNUNET_HashCode *h_contract,
+                                 TALER_EXCHANGEDB_RefundCoinCallback
+                                 cb,
                                  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_contract),
     GNUNET_PQ_query_param_end
   };
   struct SelectRefundContext srctx = {
@@ -3372,7 +3371,7 @@ postgres_select_refunds_by_coin (void *cls,
   };
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-                                             "get_refunds_by_coin",
+                                             "get_refunds_by_coin_and_contract",
                                              params,
                                              &get_refunds_cb,
                                              &srctx);
