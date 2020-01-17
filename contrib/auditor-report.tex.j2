@@ -766,16 +766,16 @@ with respect to outgoing wire transfers.
 {% else %}
   \begin{longtable}{p{5.5cm}|r|r}
   {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
-  {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
+  {\bf Account}                  & {\bf Row} & {\bf Timestamp}  \\
   \hline \hline
 \endfirsthead
   {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
-  {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
+  {\bf Account}                  & {\bf Row} & {\bf Timestamp}  \\
   \hline \hline
 \endhead
   \hline \hline
   {\bf Wire transfer identifier} & {\bf Wired} & {\bf Justified}  \\
-  {\bf Diagnostic}               & {\bf Row} & {\bf Timestamp}  \\
+  {\bf Account}                  & {\bf Row} & {\bf Timestamp}  \\
 \endfoot
   \hline
   {\bf Total deltas}  &
@@ -789,7 +789,7 @@ with respect to outgoing wire transfers.
   {{ item.amount_wired }} &
   {{ item.amount_justified }} \\
 \nopagebreak
-  {{ item.diagnostic }} &
+  {{ item.account_section }} &
   {{ item.row }} &
   {\tiny {{ item.timestamp }} } \\ \hline
 {% endfor %}

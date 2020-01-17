@@ -1253,7 +1253,6 @@ complain_out_not_found (void *cls,
     .found = GNUNET_NO
   };
 
-  (void) wa; // FIXME: log which account is affected...
   hash_rc (roi->details.credit_account_url,
            &roi->details.wtid,
            &rkey);
@@ -1264,7 +1263,7 @@ complain_out_not_found (void *cls,
   if (GNUNET_YES == ctx.found)
     return GNUNET_OK;
   report (report_wire_out_inconsistencies,
-          json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
+          json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                      "row", (json_int_t) 0,
                      "amount_wired", TALER_JSON_from_amount (
                        &roi->details.amount),
@@ -1272,6 +1271,8 @@ complain_out_not_found (void *cls,
                      "wtid", GNUNET_JSON_from_data_auto (&roi->details.wtid),
                      "timestamp", json_from_time_abs (
                        roi->details.execution_date),
+                     "account_section",
+                     wa->section_name,
                      "diagnostic",
                      "justification for wire transfer not found"));
   GNUNET_break (GNUNET_OK ==
