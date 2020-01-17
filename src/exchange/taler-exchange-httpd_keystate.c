@@ -1261,12 +1261,12 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
     m = GNUNET_TIME_relative_to_absolute (TEH_max_keys_caching);
     m = GNUNET_TIME_absolute_min (m,
                                   key_state->next_reload);
-    m = GNUNET_TIME_UNIT_FOREVER_ABS;
-    get_date_string (m,
-                     dat);
     // FIXME: setting 'm' to FOREVER here exposes
     // a crash-bug in lib/ where we access /keys
     // data after it was already free'd!
+    // m = GNUNET_TIME_UNIT_FOREVER_ABS;
+    get_date_string (m,
+                     dat);
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_EXPIRES,
