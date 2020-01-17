@@ -518,6 +518,275 @@ refresh_reveal_persist (void *cls,
 
 
 /**
+ * Resolve denomination hashes using the @a key_state
+ *
+ * @param key_state the key state
+ * @param connection the MHD connection to handle
+ * @param rctx context for the operation, partially built at this time
+ * @param transfer_pub transfer public key
+ * @param link_sigs_json link signatures in JSON format
+ * @param new_denoms_h_json requests for fresh coins to be created
+ * @param coin_evs envelopes of gamma-selected coins to be signed
+ * @return MHD result code
+ */
+static int
+resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
+                                      struct MHD_Connection *connection,
+                                      struct RevealContext *rctx,
+                                      const json_t *link_sigs_json,
+                                      const json_t *new_denoms_h_json,
+                                      const json_t *coin_evs)
+{
+  unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
+  const struct
+  TALER_EXCHANGEDB_DenominationKeyIssueInformation *dkis[num_fresh_coins];
+  struct GNUNET_HashCode dki_h[num_fresh_coins];
+  struct TALER_RefreshCoinData rcds[num_fresh_coins];
+  struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
+  struct TALER_EXCHANGEDB_RefreshMelt refresh_melt;
+  int res;
+
+  /* Parse denomination key hashes */
+  for (unsigned int i = 0; i<num_fresh_coins; i++)
+  {
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto (NULL,
+                                   &dki_h[i]),
+      GNUNET_JSON_spec_end ()
+    };
+    unsigned int hc;
+    enum TALER_ErrorCode ec;
+
+    res = TALER_MHD_parse_json_array (connection,
+                                      new_denoms_h_json,
+                                      spec,
+                                      i,
+                                      -1);
+    if (GNUNET_OK != res)
+    {
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    }
+    dkis[i] = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                      &dki_h[i],
+                                                      TEH_KS_DKU_WITHDRAW,
+                                                      &ec,
+                                                      &hc);
+    if (NULL == dkis[i])
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         hc,
+                                         ec,
+                                         "failed to find denomination key");
+    }
+    GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
+  }
+
+  /* Parse coin envelopes */
+  for (unsigned int i = 0; i<num_fresh_coins; i++)
+  {
+    struct TALER_RefreshCoinData *rcd = &rcds[i];
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_varsize (NULL,
+                                (void **) &rcd->coin_ev,
+                                &rcd->coin_ev_size),
+      GNUNET_JSON_spec_end ()
+    };
+
+    res = TALER_MHD_parse_json_array (connection,
+                                      coin_evs,
+                                      spec,
+                                      i,
+                                      -1);
+    if (GNUNET_OK != res)
+    {
+      for (unsigned int j = 0; j<i; j++)
+        GNUNET_free_non_null (rcds[j].coin_ev);
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    }
+    rcd->dk = &dkis[i]->denom_pub;
+  }
+
+  /* lookup old_coin_pub in database */
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+        (qs = TEH_plugin->get_melt (TEH_plugin->cls,
+                                    NULL,
+                                    &rctx->rc,
+                                    &refresh_melt)))
+    {
+      switch (qs)
+      {
+      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+        res = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_NOT_FOUND,
+                                          TALER_EC_REFRESH_REVEAL_SESSION_UNKNOWN,
+                                          "rc");
+        break;
+      case GNUNET_DB_STATUS_HARD_ERROR:
+        res = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_REFRESH_REVEAL_DB_FETCH_SESSION_ERROR,
+                                          "failed to fetch session data");
+        break;
+      case GNUNET_DB_STATUS_SOFT_ERROR:
+      default:
+        GNUNET_break (0);   /* should be impossible */
+        res = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_INTERNAL_INVARIANT_FAILURE,
+                                          "assertion failed");
+        break;
+      }
+      goto cleanup;
+    }
+  }
+  /* Parse link signatures array */
+  for (unsigned int i = 0; i<num_fresh_coins; i++)
+  {
+    struct GNUNET_JSON_Specification link_spec[] = {
+      GNUNET_JSON_spec_fixed_auto (NULL, &link_sigs[i]),
+      GNUNET_JSON_spec_end ()
+    };
+    int res;
+
+    res = TALER_MHD_parse_json_array (connection,
+                                      link_sigs_json,
+                                      link_spec,
+                                      i,
+                                      -1);
+    if (GNUNET_OK != res)
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    /* Check link_sigs[i] signature */
+    {
+      struct TALER_LinkDataPS ldp;
+
+      ldp.purpose.size = htonl (sizeof (ldp));
+      ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
+      ldp.h_denom_pub = dki_h[i];
+      ldp.old_coin_pub = refresh_melt.session.coin.coin_pub;
+      ldp.transfer_pub = rctx->gamma_tp;
+      GNUNET_CRYPTO_hash (rcds[i].coin_ev,
+                          rcds[i].coin_ev_size,
+                          &ldp.coin_envelope_hash);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
+                                      &ldp.purpose,
+                                      &link_sigs[i].eddsa_signature,
+                                      &refresh_melt.session.coin.coin_pub.
+                                      eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        res = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_FORBIDDEN,
+                                          TALER_EC_REFRESH_REVEAL_LINK_SIGNATURE_INVALID,
+                                          "link_sig");
+        goto cleanup;
+      }
+    }
+  }
+
+  rctx->num_fresh_coins = num_fresh_coins;
+  rctx->rcds = rcds;
+  rctx->dkis = dkis;
+  rctx->link_sigs = link_sigs;
+
+  /* sign _early_ (optimistic!) to keep out of transaction scope! */
+  rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
+                                    struct TALER_DenominationSignature);
+  for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
+  {
+    rctx->ev_sigs[i].rsa_signature
+      = GNUNET_CRYPTO_rsa_sign_blinded (
+          rctx->dkis[i]->denom_priv.rsa_private_key,
+          rctx->rcds[i].coin_ev,
+          rctx->rcds[i].coin_ev_size);
+    if (NULL == rctx->ev_sigs[i].rsa_signature)
+    {
+      GNUNET_break (0);
+      res = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_REFRESH_REVEAL_SIGNING_ERROR,
+                                        "internal signing error");
+      goto cleanup;
+    }
+  }
+
+  /* We try the three transactions a few times, as theoretically
+     the pre-check might be satisfied by a concurrent transaction
+     voiding our final commit due to uniqueness violation; naturally,
+     on hard errors we exit immediately */
+  for (unsigned int retries = 0; retries < MAX_REVEAL_RETRIES; retries++)
+  {
+    /* do transactional work */
+    rctx->preflight_ok = GNUNET_NO;
+    if ( (GNUNET_OK ==
+          TEH_DB_run_transaction (connection,
+                                  "reveal pre-check",
+                                  &res,
+                                  &refresh_reveal_preflight,
+                                  rctx)) &&
+         (GNUNET_YES == rctx->preflight_ok) )
+    {
+      /* Generate final (positive) response */
+      GNUNET_assert (NULL != rctx->ev_sigs);
+      res = reply_refresh_reveal_success (connection,
+                                          num_fresh_coins,
+                                          rctx->ev_sigs);
+      GNUNET_break (MHD_NO != res);
+      goto cleanup;   /* aka 'break' */
+    }
+    if (GNUNET_SYSERR == rctx->preflight_ok)
+    {
+      GNUNET_break (0);
+      goto cleanup;   /* aka 'break' */
+    }
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "run reveal",
+                                &res,
+                                &refresh_reveal_transaction,
+                                rctx))
+    {
+      /* reveal failed, too bad */
+      GNUNET_break_op (0);
+      goto cleanup;   /* aka 'break' */
+    }
+    if (GNUNET_OK ==
+        TEH_DB_run_transaction (connection,
+                                "persist reveal",
+                                &res,
+                                &refresh_reveal_persist,
+                                rctx))
+    {
+      /* Generate final (positive) response */
+      GNUNET_assert (NULL != rctx->ev_sigs);
+      res = reply_refresh_reveal_success (connection,
+                                          num_fresh_coins,
+                                          rctx->ev_sigs);
+      break;
+    }
+  }   /* end for (retries...) */
+
+cleanup:
+  GNUNET_break (MHD_NO != res);
+  /* free resources */
+  if (NULL != rctx->ev_sigs)
+  {
+    for (unsigned int i = 0; i<num_fresh_coins; i++)
+      if (NULL != rctx->ev_sigs[i].rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (rctx->ev_sigs[i].rsa_signature);
+    GNUNET_free (rctx->ev_sigs);
+    rctx->ev_sigs = NULL; /* just to be safe... */
+  }
+  for (unsigned int i = 0; i<num_fresh_coins; i++)
+    GNUNET_free_non_null (rcds[i].coin_ev);
+  return res;
+}
+
+
+/**
  * Handle a "/refresh/reveal" request.   Parses the given JSON
  * transfer private keys and if successful, passes everything to
  * #TEH_DB_execute_refresh_reveal() which will verify that the
@@ -543,8 +812,6 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   unsigned int num_tprivs = json_array_size (tp_json);
-  struct TEH_KS_StateHandle *key_state;
-  struct TALER_EXCHANGEDB_RefreshMelt refresh_melt;
 
   GNUNET_assert (num_tprivs == TALER_CNC_KAPPA - 1);
   if ( (num_fresh_coins >= MAX_FRESH_COINS) ||
@@ -594,16 +861,10 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
 
-  /* Resolve denomination hashes */
   {
-    const struct
-    TALER_EXCHANGEDB_DenominationKeyIssueInformation *dkis[num_fresh_coins];
-    struct GNUNET_HashCode dki_h[num_fresh_coins];
-    struct TALER_RefreshCoinData rcds[num_fresh_coins];
-    struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
-    int res;
+    struct TEH_KS_StateHandle *key_state;
+    int ret;
 
-    /* Resolve denomination hashes */
     key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
     if (NULL == key_state)
     {
@@ -613,248 +874,14 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
                                          TALER_EC_REFRESH_REVEAL_KEYS_MISSING,
                                          "exchange lacks keys");
     }
-
-    /* Parse denomination key hashes */
-    for (unsigned int i = 0; i<num_fresh_coins; i++)
-    {
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL,
-                                     &dki_h[i]),
-        GNUNET_JSON_spec_end ()
-      };
-      unsigned int hc;
-      enum TALER_ErrorCode ec;
-
-      res = TALER_MHD_parse_json_array (connection,
-                                        new_denoms_h_json,
-                                        spec,
-                                        i,
-                                        -1);
-      if (GNUNET_OK != res)
-      {
-        TEH_KS_release (key_state);
-        return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-      }
-      dkis[i] = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                        &dki_h[i],
-                                                        TEH_KS_DKU_WITHDRAW,
-                                                        &ec,
-                                                        &hc);
-      if (NULL == dkis[i])
-      {
-        TEH_KS_release (key_state);
-        return TALER_MHD_reply_with_error (connection,
-                                           hc,
-                                           ec,
-                                           "failed to find denomination key");
-      }
-      GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
-    }
-
-    /* Parse coin envelopes */
-    for (unsigned int i = 0; i<num_fresh_coins; i++)
-    {
-      struct TALER_RefreshCoinData *rcd = &rcds[i];
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_varsize (NULL,
-                                  (void **) &rcd->coin_ev,
-                                  &rcd->coin_ev_size),
-        GNUNET_JSON_spec_end ()
-      };
-
-      res = TALER_MHD_parse_json_array (connection,
-                                        coin_evs,
-                                        spec,
-                                        i,
-                                        -1);
-      if (GNUNET_OK != res)
-      {
-        for (unsigned int j = 0; j<i; j++)
-          GNUNET_free_non_null (rcds[j].coin_ev);
-        TEH_KS_release (key_state);
-        return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-      }
-      rcd->dk = &dkis[i]->denom_pub;
-    }
-
-    /* lookup old_coin_pub in database */
-    {
-      enum GNUNET_DB_QueryStatus qs;
-
-      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          (qs = TEH_plugin->get_melt (TEH_plugin->cls,
-                                      NULL,
-                                      &rctx->rc,
-                                      &refresh_melt)))
-      {
-        switch (qs)
-        {
-        case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-          res = TALER_MHD_reply_with_error (connection,
-                                            MHD_HTTP_NOT_FOUND,
-                                            TALER_EC_REFRESH_REVEAL_SESSION_UNKNOWN,
-                                            "rc");
-          break;
-        case GNUNET_DB_STATUS_HARD_ERROR:
-          res = TALER_MHD_reply_with_error (connection,
-                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                            TALER_EC_REFRESH_REVEAL_DB_FETCH_SESSION_ERROR,
-                                            "failed to fetch session data");
-          break;
-        case GNUNET_DB_STATUS_SOFT_ERROR:
-        default:
-          GNUNET_break (0); /* should be impossible */
-          res = TALER_MHD_reply_with_error (connection,
-                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                            TALER_EC_INTERNAL_INVARIANT_FAILURE,
-                                            "assertion failed");
-          break;
-        }
-        goto cleanup;
-      }
-    }
-    /* Parse link signatures array */
-    for (unsigned int i = 0; i<num_fresh_coins; i++)
-    {
-      struct GNUNET_JSON_Specification link_spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL, &link_sigs[i]),
-        GNUNET_JSON_spec_end ()
-      };
-      int res;
-
-      res = TALER_MHD_parse_json_array (connection,
-                                        link_sigs_json,
-                                        link_spec,
-                                        i,
-                                        -1);
-      if (GNUNET_OK != res)
-        return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-      /* Check link_sigs[i] signature */
-      {
-        struct TALER_LinkDataPS ldp;
-
-        ldp.purpose.size = htonl (sizeof (ldp));
-        ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
-        ldp.h_denom_pub = dki_h[i];
-        ldp.old_coin_pub = refresh_melt.session.coin.coin_pub;
-        ldp.transfer_pub = rctx->gamma_tp;
-        GNUNET_CRYPTO_hash (rcds[i].coin_ev,
-                            rcds[i].coin_ev_size,
-                            &ldp.coin_envelope_hash);
-        if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
-                                        &ldp.purpose,
-                                        &link_sigs[i].eddsa_signature,
-                                        &refresh_melt.session.coin.coin_pub.
-                                        eddsa_pub))
-        {
-          GNUNET_break_op (0);
-          res = TALER_MHD_reply_with_error (connection,
-                                            MHD_HTTP_FORBIDDEN,
-                                            TALER_EC_REFRESH_REVEAL_LINK_SIGNATURE_INVALID,
-                                            "link_sig");
-          goto cleanup;
-        }
-      }
-    }
-
-    rctx->num_fresh_coins = num_fresh_coins;
-    rctx->rcds = rcds;
-    rctx->dkis = dkis;
-    rctx->link_sigs = link_sigs;
-
-    /* sign _early_ (optimistic!) to keep out of transaction scope! */
-    rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
-                                      struct TALER_DenominationSignature);
-    for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
-    {
-      rctx->ev_sigs[i].rsa_signature
-        = GNUNET_CRYPTO_rsa_sign_blinded (
-            rctx->dkis[i]->denom_priv.rsa_private_key,
-            rctx->rcds[i].coin_ev,
-            rctx->rcds[i].coin_ev_size);
-      if (NULL == rctx->ev_sigs[i].rsa_signature)
-      {
-        GNUNET_break (0);
-        res = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_REFRESH_REVEAL_SIGNING_ERROR,
-                                          "internal signing error");
-        goto cleanup;
-      }
-    }
-
-    /* We try the three transactions a few times, as theoretically
-       the pre-check might be satisfied by a concurrent transaction
-       voiding our final commit due to uniqueness violation; naturally,
-       on hard errors we exit immediately */
-    for (unsigned int retries = 0; retries < MAX_REVEAL_RETRIES; retries++)
-    {
-      /* do transactional work */
-      rctx->preflight_ok = GNUNET_NO;
-      if ( (GNUNET_OK ==
-            TEH_DB_run_transaction (connection,
-                                    "reveal pre-check",
-                                    &res,
-                                    &refresh_reveal_preflight,
-                                    rctx)) &&
-           (GNUNET_YES == rctx->preflight_ok) )
-      {
-        /* Generate final (positive) response */
-        GNUNET_assert (NULL != rctx->ev_sigs);
-        res = reply_refresh_reveal_success (connection,
-                                            num_fresh_coins,
-                                            rctx->ev_sigs);
-        GNUNET_break (MHD_NO != res);
-        goto cleanup; /* aka 'break' */
-      }
-      if (GNUNET_SYSERR == rctx->preflight_ok)
-      {
-        GNUNET_break (0);
-        goto cleanup; /* aka 'break' */
-      }
-      if (GNUNET_OK !=
-          TEH_DB_run_transaction (connection,
-                                  "run reveal",
-                                  &res,
-                                  &refresh_reveal_transaction,
-                                  rctx))
-      {
-        /* reveal failed, too bad */
-        GNUNET_break_op (0);
-        goto cleanup; /* aka 'break' */
-      }
-      if (GNUNET_OK ==
-          TEH_DB_run_transaction (connection,
-                                  "persist reveal",
-                                  &res,
-                                  &refresh_reveal_persist,
-                                  rctx))
-      {
-        /* Generate final (positive) response */
-        GNUNET_assert (NULL != rctx->ev_sigs);
-        res = reply_refresh_reveal_success (connection,
-                                            num_fresh_coins,
-                                            rctx->ev_sigs);
-        break;
-      }
-    } /* end for (retries...) */
-    GNUNET_break (MHD_NO != res);
-
-cleanup:
-    GNUNET_break (MHD_NO != res);
-    /* free resources */
-    if (NULL != rctx->ev_sigs)
-    {
-      for (unsigned int i = 0; i<num_fresh_coins; i++)
-        if (NULL != rctx->ev_sigs[i].rsa_signature)
-          GNUNET_CRYPTO_rsa_signature_free (rctx->ev_sigs[i].rsa_signature);
-      GNUNET_free (rctx->ev_sigs);
-    }
-    for (unsigned int i = 0; i<num_fresh_coins; i++)
-      GNUNET_free_non_null (rcds[i].coin_ev);
+    ret = resolve_refresh_reveal_denominations (key_state,
+                                                connection,
+                                                rctx,
+                                                link_sigs_json,
+                                                new_denoms_h_json,
+                                                coin_evs);
     TEH_KS_release (key_state);
-    return res;
+    return ret;
   }
 }
 

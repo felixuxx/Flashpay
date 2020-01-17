@@ -2273,12 +2273,18 @@ read_again:
 void
 TEH_KS_free ()
 {
+  GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   if (NULL != internal_key_state)
   {
     struct TEH_KS_StateHandle *ks = internal_key_state;
 
     internal_key_state = NULL;
+    GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
     TEH_KS_release (ks);
+  }
+  else
+  {
+    GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
   }
 }
 

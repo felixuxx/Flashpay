@@ -288,10 +288,10 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 
   /* check denomination */
   {
-    struct TEH_KS_StateHandle *mks;
+    struct TEH_KS_StateHandle *key_state;
 
-    mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-    if (NULL == mks)
+    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
+    if (NULL == key_state)
     {
       TALER_LOG_ERROR ("Lacking keys to operate\n");
       return TALER_MHD_reply_with_error (connection,
@@ -299,14 +299,14 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                          TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                          "no keys");
     }
-    dki = TEH_KS_denomination_key_lookup_by_hash (mks,
+    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                   &deposit->coin.denom_pub_hash,
                                                   TEH_KS_DKU_DEPOSIT,
                                                   &ec,
                                                   &hc);
     if (NULL == dki)
     {
-      TEH_KS_release (mks);
+      TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
@@ -314,7 +314,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
     }
     TALER_amount_ntoh (&dc.value,
                        &dki->issue.properties.value);
-    TEH_KS_release (mks);
+    TEH_KS_release (key_state);
   }
   /* execute transaction */
   dc.deposit = deposit;
