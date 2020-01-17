@@ -156,15 +156,14 @@ struct TrackTransferState
  *        if @a http_status is #MHD_HTTP_OK).
  */
 static void
-deposit_wtid_cb
-  (void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const json_t *json,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  struct GNUNET_TIME_Absolute execution_time,
-  const struct TALER_Amount *coin_contribution)
+deposit_wtid_cb (void *cls,
+                 unsigned int http_status,
+                 enum TALER_ErrorCode ec,
+                 const struct TALER_ExchangePublicKeyP *exchange_pub,
+                 const json_t *json,
+                 const struct TALER_WireTransferIdentifierRawP *wtid,
+                 struct GNUNET_TIME_Absolute execution_time,
+                 const struct TALER_Amount *coin_contribution)
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
@@ -255,12 +254,12 @@ track_transaction_run (void *cls,
   const json_t *wire_details;
   struct GNUNET_HashCode h_wire_details;
   struct GNUNET_HashCode h_contract_terms;
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
+  const struct TALER_MerchantPrivateKeyP *merchant_priv;
 
   tts->is = is;
-  transaction_cmd = TALER_TESTING_interpreter_lookup_command
-                      (tts->is, tts->transaction_reference);
-
+  transaction_cmd
+    = TALER_TESTING_interpreter_lookup_command (tts->is,
+                                                tts->transaction_reference);
   if (NULL == transaction_cmd)
   {
     GNUNET_break (0);
@@ -268,8 +267,10 @@ track_transaction_run (void *cls,
     return;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-        (transaction_cmd, tts->coin_index, &coin_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_coin_priv (transaction_cmd,
+                                         tts->coin_index,
+                                         &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -280,23 +281,28 @@ track_transaction_run (void *cls,
                                       &coin_pub.eddsa_pub);
 
   /* Get the strings.. */
-  if (GNUNET_OK != TALER_TESTING_get_trait_wire_details
-        (transaction_cmd, 0, &wire_details))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_wire_details (transaction_cmd,
+                                            0,
+                                            &wire_details))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
     return;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_contract_terms
-        (transaction_cmd, 0, &contract_terms))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_contract_terms (transaction_cmd,
+                                              0,
+                                              &contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
     return;
   }
 
-  if ((NULL == wire_details) || (NULL == contract_terms))
+  if ( (NULL == wire_details) ||
+       (NULL == contract_terms) )
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
@@ -312,23 +318,23 @@ track_transaction_run (void *cls,
      TALER_JSON_hash (contract_terms,
                       &h_contract_terms)) );
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_peer_key
-        (transaction_cmd, 0, &merchant_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_merchant_priv (transaction_cmd,
+                                             0,
+                                             &merchant_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (tts->is);
     return;
   }
 
-  tts->tth = TALER_EXCHANGE_track_transaction
-               (is->exchange,
-               (struct TALER_MerchantPrivateKeyP *) merchant_priv,
-               &h_wire_details,
-               &h_contract_terms,
-               &coin_pub,
-               &deposit_wtid_cb,
-               tts);
-
+  tts->tth = TALER_EXCHANGE_track_transaction (is->exchange,
+                                               merchant_priv,
+                                               &h_wire_details,
+                                               &h_contract_terms,
+                                               &coin_pub,
+                                               &deposit_wtid_cb,
+                                               tts);
   GNUNET_assert (NULL != tts->tth);
 }
 
@@ -341,9 +347,8 @@ track_transaction_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-track_transaction_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+track_transaction_cleanup (void *cls,
+                           const struct TALER_TESTING_Command *cmd)
 {
   struct TrackTransactionState *tts = cls;
 
@@ -404,12 +409,11 @@ track_transaction_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transaction
-  (const char *label,
-  const char *transaction_reference,
-  unsigned int coin_index,
-  unsigned int expected_response_code,
-  const char *bank_transfer_reference)
+TALER_TESTING_cmd_track_transaction (const char *label,
+                                     const char *transaction_reference,
+                                     unsigned int coin_index,
+                                     unsigned int expected_response_code,
+                                     const char *bank_transfer_reference)
 {
   struct TrackTransactionState *tts;
 
@@ -418,16 +422,17 @@ TALER_TESTING_cmd_track_transaction
   tts->expected_response_code = expected_response_code;
   tts->bank_transfer_reference = bank_transfer_reference;
   tts->coin_index = coin_index;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = tts,
+      .label = label,
+      .run = &track_transaction_run,
+      .cleanup = &track_transaction_cleanup,
+      .traits = &track_transaction_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = tts,
-    .label = label,
-    .run = &track_transaction_run,
-    .cleanup = &track_transaction_cleanup,
-    .traits = &track_transaction_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -483,18 +488,17 @@ track_transfer_cleanup (void *cls,
  *        transactions.
  */
 static void
-track_transfer_cb
-  (void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const json_t *json,
-  const struct GNUNET_HashCode *h_wire,
-  struct GNUNET_TIME_Absolute execution_time,
-  const struct TALER_Amount *total_amount,
-  const struct TALER_Amount *wire_fee,
-  unsigned int details_length,
-  const struct TALER_TrackTransferDetails *details)
+track_transfer_cb (void *cls,
+                   unsigned int http_status,
+                   enum TALER_ErrorCode ec,
+                   const struct TALER_ExchangePublicKeyP *exchange_pub,
+                   const json_t *json,
+                   const struct GNUNET_HashCode *h_wire,
+                   struct GNUNET_TIME_Absolute execution_time,
+                   const struct TALER_Amount *total_amount,
+                   const struct TALER_Amount *wire_fee,
+                   unsigned int details_length,
+                   const struct TALER_TrackTransferDetails *details)
 {
   struct TrackTransferState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
@@ -668,7 +672,7 @@ track_transfer_cb
  * @param cmd the command under execution.
  * @param is the interpreter state.
  */
-void
+static void
 track_transfer_run (void *cls,
                     const struct TALER_TESTING_Command *cmd,
                     struct TALER_TESTING_Interpreter *is)
@@ -733,28 +737,27 @@ track_transfer_run (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transfer_empty
-  (const char *label,
-  const char *wtid_reference,
-  unsigned int index,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_track_transfer_empty (const char *label,
+                                        const char *wtid_reference,
+                                        unsigned int index,
+                                        unsigned int expected_response_code)
 {
   struct TrackTransferState *tts;
 
   tts = GNUNET_new (struct TrackTransferState);
-
   tts->wtid_reference = wtid_reference;
   tts->index = index;
   tts->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = tts,
+      .label = label,
+      .run = &track_transfer_run,
+      .cleanup = &track_transfer_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = tts,
-    .label = label,
-    .run = &track_transfer_run,
-    .cleanup = &track_transfer_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -775,32 +778,31 @@ TALER_TESTING_cmd_track_transfer_empty
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_track_transfer
-  (const char *label,
-  const char *wtid_reference,
-  unsigned int index,
-  unsigned int expected_response_code,
-  const char *expected_total_amount,
-  const char *expected_wire_fee)
+TALER_TESTING_cmd_track_transfer (const char *label,
+                                  const char *wtid_reference,
+                                  unsigned int index,
+                                  unsigned int expected_response_code,
+                                  const char *expected_total_amount,
+                                  const char *expected_wire_fee)
 {
   struct TrackTransferState *tts;
 
   tts = GNUNET_new (struct TrackTransferState);
-
   tts->wtid_reference = wtid_reference;
   tts->index = index;
   tts->expected_response_code = expected_response_code;
   tts->expected_total_amount = expected_total_amount;
   tts->expected_wire_fee = expected_wire_fee;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = tts,
+      .label = label,
+      .run = &track_transfer_run,
+      .cleanup = &track_transfer_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = tts,
-    .label = label,
-    .run = &track_transfer_run,
-    .cleanup = &track_transfer_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

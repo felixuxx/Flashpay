@@ -114,7 +114,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_exchange_sig.c \
   testing_api_trait_fresh_coin.c \
   testing_api_trait_json.c \
-  testing_api_trait_key_peer.c \
+  testing_api_trait_merchant_key.c \
   testing_api_trait_number.c \
   testing_api_trait_process.c \
   testing_api_trait_reserve_pub.c \

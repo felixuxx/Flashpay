@@ -16,14 +16,12 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file exchange/testing_api_cmd_refund.c
  * @brief Implement the /refund test command, plus other
  *        corollary commands (?).
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -137,7 +135,7 @@ refund_run (void *cls,
   struct GNUNET_HashCode h_contract_terms;
   struct TALER_Amount refund_fee;
   struct TALER_Amount refund_amount;
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
+  const struct TALER_MerchantPrivateKeyP *merchant_priv;
   const struct TALER_TESTING_Command *coin_cmd;
 
   rs->exchange = is->exchange;
@@ -168,31 +166,32 @@ refund_run (void *cls,
     return;
   }
 
-  coin_cmd = TALER_TESTING_interpreter_lookup_command
-               (is, rs->coin_reference);
-
+  coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                       rs->coin_reference);
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
-  if (GNUNET_OK != TALER_TESTING_get_trait_contract_terms
-        (coin_cmd, 0, &contract_terms))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_contract_terms (coin_cmd,
+                                              0,
+                                              &contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_hash (contract_terms,
                                   &h_contract_terms));
 
   /* Hunting for a coin .. */
-  if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-        (coin_cmd, 0, &coin_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_coin_priv (coin_cmd,
+                                         0,
+                                         &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -201,24 +200,24 @@ refund_run (void *cls,
 
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin.eddsa_pub);
-  if (GNUNET_OK != TALER_TESTING_get_trait_peer_key
-        (coin_cmd, 0, &merchant_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_merchant_priv (coin_cmd,
+                                             0,
+                                             &merchant_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
-  rs->rh = TALER_EXCHANGE_refund
-             (rs->exchange,
-             &refund_amount,
-             &refund_fee,
-             &h_contract_terms,
-             &coin,
-             rs->refund_transaction_id,
-             (const struct TALER_MerchantPrivateKeyP *) merchant_priv,
-             &refund_cb, rs);
-
+  rs->rh = TALER_EXCHANGE_refund (rs->exchange,
+                                  &refund_amount,
+                                  &refund_fee,
+                                  &h_contract_terms,
+                                  &coin,
+                                  rs->refund_transaction_id,
+                                  merchant_priv,
+                                  &refund_cb,
+                                  rs);
   GNUNET_assert (NULL != rs->rh);
 }
 

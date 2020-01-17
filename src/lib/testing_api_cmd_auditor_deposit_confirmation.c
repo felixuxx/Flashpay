@@ -197,7 +197,7 @@ deposit_confirmation_run (void *cls,
   struct GNUNET_TIME_Absolute refund_deadline;
   struct TALER_Amount amount_without_fee;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
+  const struct TALER_MerchantPrivateKeyP *merchant_priv;
   struct TALER_MerchantPublicKeyP merchant_pub;
   const struct TALER_ExchangePublicKeyP *exchange_pub;
   const struct TALER_ExchangeSignatureP *exchange_sig;
@@ -255,10 +255,10 @@ deposit_confirmation_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_peer_key (deposit_cmd,
-                                                   dcs->coin_index,
-                                                   &merchant_priv));
-  GNUNET_CRYPTO_eddsa_key_get_public (merchant_priv,
+                 TALER_TESTING_get_trait_merchant_priv (deposit_cmd,
+                                                        dcs->coin_index,
+                                                        &merchant_priv));
+  GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &merchant_pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (dcs->amount_without_fee,

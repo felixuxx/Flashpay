@@ -16,9 +16,8 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file exchange-lib/testing_api_trait_key_peer.c
+ * @file lib/testing_api_trait_merchant_key.c
  * @brief traits to offer peer's (private) keys
  * @author Marcello Stanisci
  */
@@ -29,28 +28,28 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
-#define TALER_TESTING_TRAIT_KEY_PEER "key-peer"
-#define TALER_TESTING_TRAIT_KEY_PEER_PUB "key-peer-pub"
+#define TALER_TESTING_TRAIT_MERCHANT_PRIV "merchant-priv"
+#define TALER_TESTING_TRAIT_MERCHANT_PUB "merchant-pub-pub"
 
 /**
  * Obtain a private key from a "peer".  Used e.g. to obtain
  * a merchant's priv to sign a /track request.
  *
  * @param cmd command that is offering the key.
- * @param index (tipically zero) which key to return if there
+ * @param index (typically zero) which key to return if there
  *        are multiple on offer.
  * @param priv[out] set to the key coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_peer_key
+TALER_TESTING_get_trait_merchant_priv
   (const struct TALER_TESTING_Command *cmd,
   unsigned int index,
-  const struct GNUNET_CRYPTO_EddsaPrivateKey **priv)
+  const struct TALER_MerchantPrivateKeyP **priv)
 {
   return cmd->traits (cmd->cls,
                       (const void **) priv,
-                      TALER_TESTING_TRAIT_KEY_PEER,
+                      TALER_TESTING_TRAIT_MERCHANT_PRIV,
                       index);
 }
 
@@ -59,21 +58,22 @@ TALER_TESTING_get_trait_peer_key
  * Offer private key, typically done when CMD_1 needs it to
  * sign a request.
  *
- * @param index (tipically zero) which key to return if there are
+ * @param index (typically zero) which key to return if there are
  *        multiple on offer.
  * @param priv which object should be offered.
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_peer_key
-  (unsigned int index,
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
+TALER_TESTING_make_trait_merchant_priv (unsigned int index,
+                                        const struct
+                                        TALER_MerchantPrivateKeyP *priv)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_KEY_PEER,
+    .trait_name = TALER_TESTING_TRAIT_MERCHANT_PRIV,
     .ptr = (const void *) priv
   };
+
   return ret;
 }
 
@@ -83,21 +83,21 @@ TALER_TESTING_make_trait_peer_key
  * a merchant's public key to use backend's API.
  *
  * @param cmd command offering the key.
- * @param index (tipically zero) which key to return if there
+ * @param index (typically zero) which key to return if there
  *        are multiple on offer.
  * @param pub[out] set to the key coming from @a cmd.
  *
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_peer_key_pub
+TALER_TESTING_get_trait_merchant_pub
   (const struct TALER_TESTING_Command *cmd,
   unsigned int index,
-  const struct GNUNET_CRYPTO_EddsaPublicKey **pub)
+  const struct TALER_MerchantPublicKeyP **pub)
 {
   return cmd->traits (cmd->cls,
                       (const void **) pub,
-                      TALER_TESTING_TRAIT_KEY_PEER_PUB,
+                      TALER_TESTING_TRAIT_MERCHANT_PUB,
                       index);
 }
 
@@ -105,25 +105,24 @@ TALER_TESTING_get_trait_peer_key_pub
 /**
  * Offer public key.
  *
- * @param index (tipically zero) which key to return if there
+ * @param index (typically zero) which key to return if there
  *        are multiple on offer.  NOTE: if one key is offered, it
  *        is mandatory to set this as zero.
  * @param pub which object should be returned.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_peer_key_pub
-  (unsigned int index,
-  struct GNUNET_CRYPTO_EddsaPublicKey *pub)
+TALER_TESTING_make_trait_merchant_pub (unsigned int index,
+                                       struct TALER_MerchantPublicKeyP *pub)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
-    .trait_name = TALER_TESTING_TRAIT_KEY_PEER_PUB,
+    .trait_name = TALER_TESTING_TRAIT_MERCHANT_PUB,
     .ptr = (const void *) pub
   };
+
   return ret;
 }
 
 
-/* end of testing_api_trait_key_peer.c */
+/* end of testing_api_trait_merchant_key.c */
