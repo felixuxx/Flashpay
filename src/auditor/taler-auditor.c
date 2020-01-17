@@ -88,7 +88,7 @@ static char *currency;
 /**
  * How many fractional digits does the currency use?
  */
-static uint8_t currency_rounding_fractional_digits;
+static struct TALER_Amount currency_round_unit;
 
 /**
  * Our configuration.
@@ -2894,7 +2894,7 @@ check_wire_out_cb
 
   /* Round down to amount supported by wire method */
   GNUNET_break (TALER_amount_round_down (&final_amount,
-                                         currency_rounding_fractional_digits));
+                                         &currency_round_unit));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
   if (GNUNET_OK !=
@@ -5205,27 +5205,28 @@ run (void *cls,
     return;
   }
   {
-    unsigned long long num;
+    char *rounding_str;
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_number (cfg,
+        GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "taler",
-                                               "CURRENCY_ROUNDING_FRACTIONAL_DIGITS",
-                                               &num))
+                                               "CURRENCY_ROUND_UNIT",
+                                               &rounding_str))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "No [taler]/CURRENCY_ROUNDING_FRACTIONAL_DIGITS specified, defaulting to 2 digits.\n");
-      currency_rounding_fractional_digits = 2;
+                  "No [taler]/CURRENCY_ROUND_UNIT specified, defaulting to '0.01'.\n");
+      TALER_amount_get_zero (currency, &currency_round_unit);
+      currency_round_unit.fraction = TALER_AMOUNT_FRAC_BASE / 100;
     }
-    else if (num > TALER_AMOUNT_FRAC_LEN)
+    else if (GNUNET_OK !=
+             TALER_string_to_amount (rounding_str,
+                                     &currency_round_unit))
     {
-      global_ret = 1;
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Value of CURRENCY_ROUNDING_FRACTIONAL_DIGITS too big.\n");
+                  "Invalid amount `%s' specified in `TALER' under `CURRENCY_ROUND_UNIT'\n",
+                  rounding_str);
+      GNUNET_free (rounding_str);
+      global_ret = 1;
       return;
-    }
-    else
-    {
-      currency_rounding_fractional_digits = (uint8_t) num;
     }
   }
   if (GNUNET_OK !=

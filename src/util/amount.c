@@ -674,23 +674,27 @@ TALER_amount_divide (struct TALER_Amount *result,
 
 /**
  * Round the amount to something that can be transferred on the wire.
+ * The rounding mode is specified via the smallest transferable unit,
+ * which must only have a fractional part.
  *
  * @param[in,out] amount amount to round down
- * @param max_fractional_digits number of fractional digits to round down to
+ * @param[in] round_unit unit that should be rounded down to,
+ *            the value part of this amount must be zero
  * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
  *         #GNUNET_SYSERR if the amount or currency was invalid
  */
 int
 TALER_amount_round_down (struct TALER_Amount *amount,
-                         uint8_t max_fractional_digits)
+                         const struct TALER_Amount *round_unit)
 {
   uint32_t delta;
-  uint32_t divisor = 1;
 
-  for (unsigned int i = 0; i < max_fractional_digits; i++)
-    divisor *= 10;
+  GNUNET_break (0 == round_unit->value);
 
-  delta = amount->fraction % (TALER_AMOUNT_FRAC_BASE / divisor);
+  if (0 == round_unit->fraction)
+    return GNUNET_OK;
+
+  delta = amount->fraction % round_unit->fraction;
   if (0 == delta)
     return GNUNET_NO;
   amount->fraction -= delta;

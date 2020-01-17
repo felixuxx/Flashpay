@@ -311,15 +311,18 @@ TALER_amount2s (const struct TALER_Amount *amount);
 
 /**
  * Round the amount to something that can be transferred on the wire.
+ * The rounding mode is specified via the smallest transferable unit,
+ * which must only have a fractional part.
  *
  * @param[in,out] amount amount to round down
- * @param max_fractional_digits number of fractional digits to round down to
+ * @param[in] round_unit unit that should be rounded down to,
+ *            the value part of this amount must be zero
  * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
  *         #GNUNET_SYSERR if the amount or currency was invalid
  */
 int
 TALER_amount_round_down (struct TALER_Amount *amount,
-                         uint8_t max_fractional_digits);
+                         const struct TALER_Amount *round_unit);
 
 
 #if 0                           /* keep Emacsens' auto-indent happy */

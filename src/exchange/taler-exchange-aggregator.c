@@ -224,7 +224,7 @@ static char *exchange_currency_string;
 /**
  * How many fractional digits does the currency use?
  */
-static uint8_t currency_rounding_fractional_digits;
+static struct TALER_Amount currency_round_unit;
 
 /**
  * What is the base URL of this exchange?
@@ -615,28 +615,30 @@ exchange_serve_process_config ()
   }
 
   {
-    unsigned long long num;
+    char *rounding_str;
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_number (cfg,
+        GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "taler",
-                                               "CURRENCY_ROUNDING_FRACTIONAL_DIGITS",
-                                               &num))
+                                               "CURRENCY_ROUND_UNIT",
+                                               &rounding_str))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "No [taler]/CURRENCY_ROUNDING_FRACTIONAL_DIGITS specified, defaulting to 2 digits.\n");
-      currency_rounding_fractional_digits = 2;
+                  "No [taler]/CURRENCY_ROUND_UNIT specified, defaulting to '0.01'.\n");
+      TALER_amount_get_zero (exchange_currency_string, &currency_round_unit);
+      currency_round_unit.fraction = TALER_AMOUNT_FRAC_BASE / 100;
     }
-    else if (num > TALER_AMOUNT_FRAC_LEN)
+    else if (GNUNET_OK !=
+             TALER_string_to_amount (rounding_str,
+                                     &currency_round_unit))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Value of CURRENCY_ROUNDING_FRACTIONAL_DIGITS too big.\n");
+                  "Invalid amount `%s' specified in `TALER' under `CURRENCY_ROUND_UNIT'\n",
+                  rounding_str);
+      GNUNET_free (rounding_str);
       return GNUNET_SYSERR;
     }
-    else
-    {
-      currency_rounding_fractional_digits = (uint8_t) num;
-    }
   }
+
 
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
@@ -1120,7 +1122,7 @@ expired_reserve_cb (void *cls,
   /* round down to enable transfer */
   if (GNUNET_SYSERR ==
       TALER_amount_round_down (&amount_without_fee,
-                               currency_rounding_fractional_digits))
+                               &currency_round_unit))
   {
     GNUNET_break (0);
     global_ret = GNUNET_SYSERR;
@@ -1456,7 +1458,7 @@ run_aggregation (void *cls)
                                &au->wire_fee)) ||
        (GNUNET_SYSERR ==
         TALER_amount_round_down (&au->final_amount,
-                                 currency_rounding_fractional_digits)) ||
+                                 &currency_round_unit)) ||
        ( (0 == au->final_amount.value) &&
          (0 == au->final_amount.fraction) ) )
   {

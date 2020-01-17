@@ -31,6 +31,7 @@ main (int argc,
   struct TALER_Amount a1;
   struct TALER_Amount a2;
   struct TALER_Amount a3;
+  struct TALER_Amount r;
   char *c;
 
   GNUNET_log_setup ("test-amout",
@@ -237,17 +238,25 @@ main (int argc,
   /* test rounding #1 */
 
   GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:0.01",
+                                         &r));
+
+  GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4.001",
                                          &a1));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4",
                                          &a2));
 
-  GNUNET_assert (GNUNET_OK == TALER_amount_round_down (&a1, 2));
-  GNUNET_assert (GNUNET_NO == TALER_amount_round_down (&a1, 2));
+  GNUNET_assert (GNUNET_OK == TALER_amount_round_down (&a1, &r));
+  GNUNET_assert (GNUNET_NO == TALER_amount_round_down (&a1, &r));
   GNUNET_assert (0 == TALER_amount_cmp (&a1, &a2));
 
   /* test rounding #2 */
+
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:0.001",
+                                         &r));
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4.001",
@@ -255,7 +264,7 @@ main (int argc,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4.001",
                                          &a2));
-  GNUNET_assert (GNUNET_NO == TALER_amount_round_down (&a1, 3));
+  GNUNET_assert (GNUNET_NO == TALER_amount_round_down (&a1, &r));
   GNUNET_assert (0 == TALER_amount_cmp (&a1, &a2));
 
   return 0;
