@@ -160,6 +160,7 @@ postgres_drop_tables (void *cls,
   int ret;
 
   conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            NULL,
                             es,
                             NULL);
   if (NULL == conn)
@@ -407,6 +408,7 @@ postgres_create_tables (void *cls)
   struct GNUNET_PQ_Context *conn;
 
   conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            NULL,
                             es,
                             NULL);
   if (NULL == conn)
@@ -992,6 +994,7 @@ postgres_get_session (void *cls)
   }
   db_conn = GNUNET_PQ_connect (pc->connection_cfg_str,
                                NULL,
+                               NULL,
                                ps);
   if (NULL == db_conn)
     return NULL;
@@ -1151,6 +1154,7 @@ postgres_gc (void *cls)
 
   now = GNUNET_TIME_absolute_get ();
   conn = GNUNET_PQ_connect (pc->connection_cfg_str,
+                            NULL,
                             NULL,
                             ps);
   if (NULL == conn)
