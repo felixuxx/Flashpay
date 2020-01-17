@@ -529,7 +529,7 @@ report_emergency_by_count (const struct TALER_DenominationKeyValidityPS *issue,
  * @param rowid affected row, UINT64_MAX if row is missing
  * @param exchange amount calculated by exchange
  * @param auditor amount calculated by auditor
- * @param proftable 1 if @a exchange being larger than @a auditor is
+ * @param profitable 1 if @a exchange being larger than @a auditor is
  *           profitable for the exchange for this operation,
  *           -1 if @a exchange being smaller than @a auditor is
  *           profitable for the exchange, and 0 if it is unclear
@@ -3587,7 +3587,6 @@ struct RevealContext
  * Function called with information about a refresh order.
  *
  * @param cls closure
- * @param rowid unique serial ID for the row in our database
  * @param num_newcoins size of the @a rrcs array
  * @param rrcs array of @a num_newcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
@@ -3620,6 +3619,8 @@ reveal_data_cb (void *cls,
  *
  * @param coin_pub public key of a coin
  * @param denom_pub expected denomination of the coin
+ * @param loss_potential how big could the loss be if the coin is
+ *        not properly signed
  * @return database transaction status, on success
  *  #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
  */
@@ -3678,7 +3679,7 @@ check_known_coin (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param noreveal_index which index was picked by the exchange in cut-and-choose
- * @param session_hash what is the session hash
+ * @param rc what is the refresh commitment
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
@@ -4400,7 +4401,7 @@ refund_cb (void *cls,
  * Check that the payback operation was properly initiated by a coin
  * and update the denomination's losses accordingly.
  *
- * @param cls a `struct CoinContext *`
+ * @param cc the context with details about the coin
  * @param rowid row identifier used to uniquely identify the payback operation
  * @param amount how much should be added back to the reserve
  * @param coin public information about the coin
@@ -4516,6 +4517,7 @@ check_payback (struct CoinContext *cc,
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
  * @param coin public information about the coin
+ * @param denom_pub denomination public key of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -4553,6 +4555,7 @@ payback_cb (void *cls,
  * @param amount how much should be added back to the reserve
  * @param old_coin_pub original coin that was refreshed to create @a coin
  * @param coin public information about the coin
+ * @param denom_pub denomination public key of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
