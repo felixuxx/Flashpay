@@ -196,7 +196,6 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                                      &withdraw_purpose.h_coin_envelope),
         GNUNET_JSON_spec_end ()
       };
-      unsigned int i;
 
       rhistory[off].type = TALER_EXCHANGE_RTT_WITHDRAWAL;
       if (GNUNET_OK !=
@@ -236,7 +235,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
          duplicates. */GNUNET_CRYPTO_hash (&withdraw_purpose,
                           ntohl (withdraw_purpose.purpose.size),
                           &uuid[uuid_off]);
-      for (i = 0; i<uuid_off; i++)
+      for (unsigned int i = 0; i<uuid_off; i++)
       {
         if (0 == GNUNET_memcmp (&uuid[uuid_off],
                                 &uuid[i]))
@@ -464,6 +463,91 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
 
 
 /**
+ * We received an #MHD_HTTP_OK status code. Handle the JSON
+ * response.
+ *
+ * @param rsh handle of the request
+ * @param j JSON response
+ * @return #GNUNET_OK on success
+ */
+static int
+handle_reserve_status_ok (struct TALER_EXCHANGE_ReserveStatusHandle *rsh,
+                          const json_t *j)
+{
+  json_t *history;
+  unsigned int len;
+  struct TALER_Amount balance;
+  struct TALER_Amount balance_from_history;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount ("balance", &balance),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (j,
+                         spec,
+                         NULL,
+                         NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  history = json_object_get (j,
+                             "history");
+  if (NULL == history)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  len = json_array_size (history);
+  {
+    struct TALER_EXCHANGE_ReserveHistory *rhistory;
+
+    rhistory = GNUNET_new_array (len,
+                                 struct TALER_EXCHANGE_ReserveHistory);
+    if (GNUNET_OK !=
+        parse_reserve_history (rsh->exchange,
+                               history,
+                               &rsh->reserve_pub,
+                               balance.currency,
+                               &balance_from_history,
+                               len,
+                               rhistory))
+    {
+      GNUNET_break_op (0);
+      free_rhistory (rhistory,
+                     len);
+      return GNUNET_SYSERR;
+    }
+    if (0 !=
+        TALER_amount_cmp (&balance_from_history,
+                          &balance))
+    {
+      /* exchange cannot add up balances!? */
+      GNUNET_break_op (0);
+      free_rhistory (rhistory,
+                     len);
+      return GNUNET_SYSERR;
+    }
+    if (NULL != rsh->cb)
+    {
+      rsh->cb (rsh->cb_cls,
+               MHD_HTTP_OK,
+               TALER_EC_NONE,
+               j,
+               &balance,
+               len,
+               rhistory);
+      rsh->cb = NULL;
+    }
+    free_rhistory (rhistory,
+                   len);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /reserve/status request.
  *
@@ -485,77 +569,10 @@ handle_reserve_status_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    {
-      /* TODO: move into separate function... */
-      json_t *history;
-      unsigned int len;
-      struct TALER_Amount balance;
-      struct TALER_Amount balance_from_history;
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount ("balance", &balance),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL,
-                             NULL))
-      {
-        GNUNET_break_op (0);
-        response_code = 0;
-        break;
-      }
-      history = json_object_get (j,
-                                 "history");
-      if (NULL == history)
-      {
-        GNUNET_break_op (0);
-        response_code = 0;
-        break;
-      }
-      len = json_array_size (history);
-      {
-        struct TALER_EXCHANGE_ReserveHistory *rhistory;
-
-        rhistory = GNUNET_new_array (len,
-                                     struct TALER_EXCHANGE_ReserveHistory);
-        if (GNUNET_OK !=
-            parse_reserve_history (rsh->exchange,
-                                   history,
-                                   &rsh->reserve_pub,
-                                   balance.currency,
-                                   &balance_from_history,
-                                   len,
-                                   rhistory))
-        {
-          GNUNET_break_op (0);
-          response_code = 0;
-        }
-        if ( (0 != response_code) &&
-             (0 !=
-              TALER_amount_cmp (&balance_from_history,
-                                &balance)) )
-        {
-          /* exchange cannot add up balances!? */
-          GNUNET_break_op (0);
-          response_code = 0;
-        }
-        if (0 != response_code)
-        {
-          rsh->cb (rsh->cb_cls,
-                   response_code,
-                   TALER_EC_NONE,
-                   j,
-                   &balance,
-                   len,
-                   rhistory);
-          rsh->cb = NULL;
-        }
-        free_rhistory (rhistory,
-                       len);
-      }
-    }
+    if (GNUNET_OK !=
+        handle_reserve_status_ok (rsh,
+                                  j))
+      response_code = 0;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
