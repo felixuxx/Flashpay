@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Inria and GNUnet e.V.
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -29,96 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-auditor-httpd.h"
-#include "taler-auditor-httpd_db.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
-
-
-/**
- * Send confirmation of deposit-confirmation success to client.
- *
- * @param connection connection to the client
- * @return MHD result code
- */
-static int
-reply_deposit_confirmation_success (struct MHD_Connection *connection)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:s}",
-                                    "status", "DEPOSIT_CONFIRMATION_OK");
-}
-
-
-/**
- * Store exchange's signing key information in the database.
- *
- * @param cls a `struct TALER_AUDITORDB_ExchangeSigningKey *`
- * @param connection MHD request context
- * @param session database session and transaction to use
- * @param[out] mhd_ret set to MHD status on error
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-store_exchange_signing_key_transaction (void *cls,
-                                        struct MHD_Connection *connection,
-                                        struct TALER_AUDITORDB_Session *session,
-                                        int *mhd_ret)
-{
-  const struct TALER_AUDITORDB_ExchangeSigningKey *es = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
-                                            session,
-                                            es);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
-                                           "failed to persist exchange signing key");
-  }
-  return qs;
-}
-
-
-/**
- * Execute database transaction for /deposit-confirmation.  Runs the
- * transaction logic; IF it returns a non-error code, the transaction
- * logic MUST NOT queue a MHD response.  IF it returns an hard error,
- * the transaction logic MUST queue a MHD response and set @a mhd_ret.
- * IF it returns the soft error code, the function MAY be called again
- * to retry and MUST not queue a MHD response.
- *
- * @param cls a `struct DepositConfirmation *`
- * @param connection MHD request context
- * @param session database session and transaction to use -- FIXME: needed?
- * @param[out] mhd_ret set to MHD status on error
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-deposit_confirmation_transaction (void *cls,
-                                  struct MHD_Connection *connection,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  int *mhd_ret)
-{
-  const struct TALER_AUDITORDB_DepositConfirmation *dc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = TAH_plugin->insert_deposit_confirmation (TAH_plugin->cls,
-                                                session,
-                                                dc);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    TALER_LOG_WARNING (
-      "Failed to store /deposit-confirmation information in database\n");
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR,
-                                           "failed to persist deposit-confirmation data");
-  }
-  return qs;
-}
 
 
 /**
@@ -141,7 +52,8 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
 {
   struct TALER_ExchangeSigningKeyValidityPS skv;
   struct TALER_DepositConfirmationPS dcs;
-  int mhd_ret;
+  struct TALER_AUDITORDB_Session *session;
+  enum GNUNET_DB_QueryStatus qs;
 
   /* check exchange signing key signature */
   skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
@@ -164,14 +76,27 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                        "master_sig");
   }
 
+  session = TAH_plugin->get_session (TAH_plugin->cls);
+  if (NULL == session)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_DB_SETUP_FAILED,
+                                       "failed to establish session with database");
+  }
   /* execute transaction */
-  if (GNUNET_OK !=
-      TAH_DB_run_transaction (connection,
-                              "persist exchange signing key",
-                              &mhd_ret,
-                              &store_exchange_signing_key_transaction,
-                              (void *) es))
-    return mhd_ret;
+  qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
+                                            session,
+                                            es);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
+                                       "failed to persist exchange signing key");
+  }
 
   /* check deposit confirmation signature */
   dcs.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
@@ -198,14 +123,21 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   }
 
   /* execute transaction */
-  if (GNUNET_OK !=
-      TAH_DB_run_transaction (connection,
-                              "store deposit confirmation",
-                              &mhd_ret,
-                              &deposit_confirmation_transaction,
-                              (void *) dc))
-    return mhd_ret;
-  return reply_deposit_confirmation_success (connection);
+  qs = TAH_plugin->insert_deposit_confirmation (TAH_plugin->cls,
+                                                session,
+                                                dc);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    TALER_LOG_WARNING ("Failed to store /deposit-confirmation in database\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR,
+                                       "failed to persist deposit-confirmation data");
+  }
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:s}",
+                                    "status", "DEPOSIT_CONFIRMATION_OK");
 }
 
 
