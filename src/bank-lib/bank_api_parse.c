@@ -24,58 +24,6 @@
 
 
 /**
- * Convenience method for parsing configuration section with bank account data.
- *
- * @param cfg configuration to parse
- * @param section the section with the configuration data
- * @param acc[out] set to the account details
- * @return #GNUNET_OK on success
- */
-int
-TALER_BANK_account_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                              const char *section,
-                              struct TALER_Account *acc)
-{
-  char *account_url;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             section,
-                                             "URL",
-                                             &account_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "URL");
-    return GNUNET_SYSERR;
-  }
-  if (TALER_EC_NONE !=
-      TALER_BANK_payto_to_account (account_url,
-                                   acc))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "URL",
-                               "Malformed payto:// URL for x-taler-bank method");
-    GNUNET_free (account_url);
-    return GNUNET_SYSERR;
-  }
-  if (TALER_PAC_X_TALER_BANK != acc->type)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "URL",
-                               "Malformed payto:// URL for x-taler-bank method");
-    GNUNET_free (account_url);
-    TALER_BANK_account_free (acc);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (account_url);
-  return GNUNET_OK;
-}
-
-
-/**
  * Parse configuration section with bank authentication data.
  *
  * @param cfg configuration to parse

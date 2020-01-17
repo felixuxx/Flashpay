@@ -45,11 +45,6 @@ struct WireAccount
   struct WireAccount *prev;
 
   /**
-   * Account information.
-   */
-  struct TALER_Account account;
-
-  /**
    * Authentication data.
    */
   struct TALER_BANK_AuthenticationData auth;
@@ -471,19 +466,6 @@ add_account_cb (void *cls,
     GNUNET_free (wa);
     return;
   }
-  if (GNUNET_OK !=
-      TALER_BANK_account_parse_cfg (cfg,
-                                    ai->section_name,
-                                    &wa->account))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "Failed to load account `%s'\n",
-                ai->section_name);
-    TALER_BANK_auth_free (&wa->auth);
-    GNUNET_free (wa->method);
-    GNUNET_free (wa);
-    return;
-  }
   wa->section_name = GNUNET_strdup (ai->section_name);
   GNUNET_CONTAINER_DLL_insert (wa_head,
                                wa_tail,
@@ -572,7 +554,6 @@ shutdown_task (void *cls)
       GNUNET_CONTAINER_DLL_remove (wa_head,
                                    wa_tail,
                                    wa);
-      TALER_BANK_account_free (&wa->account);
       TALER_BANK_auth_free (&wa->auth);
       TALER_EXCHANGEDB_fees_free (wa->af);
       GNUNET_free (wa->section_name);

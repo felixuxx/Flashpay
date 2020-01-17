@@ -56,14 +56,6 @@ enum BenchmarkError
 
 #define FIRST_INSTRUCTION -1
 
-#define CMD_TRANSFER_TO_EXCHANGE(label, amount) \
-  TALER_TESTING_cmd_admin_add_incoming_retry \
-    (TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                           exchange_bank_account.details. \
-                                           x_taler_bank.account_base_url,    \
-                                           NULL, \
-                                           user_payto_url))
-
 
 /**
  * What mode should the benchmark run in?
@@ -90,7 +82,7 @@ enum BenchmarkMode
 /**
  * Hold information regarding which bank has the exchange account.
  */
-static struct TALER_Account exchange_bank_account;
+static struct TALER_BANK_AuthenticationData exchange_bank_account;
 
 /**
  * Configuration of our exchange.
@@ -188,6 +180,18 @@ static char *remote_dir;
  * requested by the user explicitly.
  */
 static int linger;
+
+
+static struct TALER_TESTING_Command
+CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
+{
+  return TALER_TESTING_cmd_admin_add_incoming_retry
+           (TALER_TESTING_cmd_admin_add_incoming (label, amount,
+                                                  exchange_bank_account.
+                                                  wire_gateway_url,
+                                                  NULL,
+                                                  user_payto_url));
+}
 
 
 /**
@@ -462,7 +466,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                         NULL == loglev ? "INFO" : loglev,
                         logfile);
       GNUNET_SCHEDULER_run (&launch_fakebank,
-                            exchange_bank_account.details.x_taler_bank.hostname);
+                            exchange_bank_account.wire_gateway_url);
       exit (0);
     }
     if (-1 == fakebank)
@@ -853,26 +857,6 @@ main (int argc,
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  bank_details_section,
                                  "url");
-      return BAD_CONFIG_FILE;
-    }
-
-    if (TALER_EC_NONE !=
-        TALER_BANK_payto_to_account (exchange_payto_url,
-                                     &exchange_bank_account))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  _ ("Malformed payto:// URL `%s' in configuration\n"),
-                  exchange_payto_url);
-      GNUNET_free (exchange_payto_url);
-      return BAD_CONFIG_FILE;
-    }
-    if (TALER_PAC_X_TALER_BANK != exchange_bank_account.type)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  _ (
-                    "Malformed payto:// URL `%s' in configuration: x-taler-bank required\n"),
-                  exchange_payto_url);
-      GNUNET_free (exchange_payto_url);
       return BAD_CONFIG_FILE;
     }
   }

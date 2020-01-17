@@ -71,11 +71,6 @@ struct WireAccount
   struct TALER_BANK_AuthenticationData auth;
 
   /**
-   * Our bank account number.
-   */
-  struct TALER_Account account;
-
-  /**
    * Name of the section that configures this account.
    */
   char *section_name;
@@ -651,7 +646,6 @@ do_shutdown (void *cls)
                                  wa_tail,
                                  wa);
     TALER_BANK_auth_free (&wa->auth);
-    TALER_BANK_account_free (&wa->account);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);
   }
@@ -2067,36 +2061,6 @@ process_account_cb (void *cls,
     GNUNET_free (wa);
     fprintf (stderr,
              "Failed to access bank account `%s'\n",
-             wa->section_name);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
-      TALER_BANK_account_parse_cfg (cfg,
-                                    wa->section_name,
-                                    &wa->account))
-  {
-    GNUNET_break (0);
-    TALER_BANK_auth_free (&wa->auth);
-    GNUNET_free (wa->section_name);
-    GNUNET_free (wa);
-    fprintf (stderr,
-             "Failed to access bank account `%s'\n",
-             wa->section_name);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (TALER_PAC_X_TALER_BANK != wa->account.type)
-  {
-    GNUNET_break (0);
-    TALER_BANK_account_free (&wa->account);
-    TALER_BANK_auth_free (&wa->auth);
-    GNUNET_free (wa->section_name);
-    GNUNET_free (wa);
-    fprintf (stderr,
-             "Need x-taler-bank account URL in `%s'\n",
              wa->section_name);
     global_ret = 1;
     GNUNET_SCHEDULER_shutdown ();
