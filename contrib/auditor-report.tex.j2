@@ -142,17 +142,13 @@ be {\bf {{ data.total_escrow_balance }}}.
 The active operational risk stands at
 {\bf {{ data.total_active_risk }}}.
 
-{% if (data.total_payback_loss.value != 0) or (data.total_payback_loss.fraction != 0) %}
 \noindent
 Loss (actualized risk from paybacks) is
 {\bf {{ data.total_payback_loss }}}.
-{% endif %}
 
-{% if (data.total_irregular_paybacks.value != 0) or (data.total_irregular_paybacks.fraction != 0) %}
 \noindent
 Paybacks of non-revoked coins are at
 {\bf {{ data.total_irregular_paybacks }}}.
-{% endif %}
 
 \section{Income}
 
