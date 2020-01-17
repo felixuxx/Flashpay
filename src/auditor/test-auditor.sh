@@ -585,7 +585,7 @@ if test "x$DIAG" != "xwire subject does not match"
 then
     exit_fail "Diagnostic wrong: $DIAG (0)"
 fi
-WTID=`jq -r .reserve_in_amount_inconsistencies[0].wtid < test-wire-audit.json`
+WTID=`jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-wire-audit.json`
 if test x$WTID != x"$OLD_WTID" -a x$WTID != x"$NEW_WTID"
 then
     exit_fail "WTID reported wrong: $WTID"
@@ -604,10 +604,10 @@ if test "x$DIAG" != "xwire subject does not match"
 then
     exit_fail "Diagnostic wrong: $DIAG (1)"
 fi
-WTID=`jq -r .reserve_in_amount_inconsistencies[1].wtid < test-wire-audit.json`
+WTID=`jq -r .reserve_in_amount_inconsistencies[1].reserve_pub < test-wire-audit.json`
 if test $WTID != "$OLD_WTID" -a $WTID != "$NEW_WTID"
 then
-    exit_fail "WTID reported wrong: $WTID"
+    exit_fail "WTID reported wrong: $WTID (wanted: $NEW_WTID or $OLD_WTID)"
 fi
 EX_A=`jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-wire-audit.json`
 if test $WTID = "$OLD_WTID" -a $EX_A != "TESTKUDOS:10"

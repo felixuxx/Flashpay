@@ -725,14 +725,14 @@ account.
   {\bf All incoming wire transfer sender accounts matched up.}
 {% else %}
   \begin{longtable}{p{8.5cm}|r}
-  {\bf Wire transfer identifier} & {\bf Amount} \\
+  {\bf Reserve Public Key} & {\bf Amount} \\
   \hline \hline
 \endfirsthead
-  {\bf Wire transfer identifier} & {\bf Amount} \\
+  {\bf Reserve Public Key} & {\bf Amount} \\
   \hline \hline
 \endhead
   \hline \hline
-  {\bf Wire transfer identifier} & {\bf Amount} \\
+  {\bf Reserve Public Key} & {\bf Amount} \\
 \endfoot
   \hline
   {\bf Total amount}  &
@@ -741,7 +741,7 @@ account.
   \label{table:wire_in:sender_account_inconsistencies}
 \endlastfoot
 {% for item in wire.missattribution_in_inconsistencies %}
-  {\tt \small \truncate{8.3cm}{ {{ item.wtid }} } } &
+  {\tt \small \truncate{8.3cm}{ {{ item.reserve_pub }} } } &
   {{ item.amount }} \\ \hline
 {% endfor %}
   \end{longtable}
