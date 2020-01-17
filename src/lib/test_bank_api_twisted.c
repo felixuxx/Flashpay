@@ -39,7 +39,12 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_bank_api_twisted.conf"
+#define CONFIG_FILE_FAKEBANK "test_bank_api_fakebank_twisted.conf"
+
+/**
+ * Separate config file for running with the pybank.
+ */
+#define CONFIG_FILE_PYBANK "test_bank_api_pybank_twisted.conf"
 
 /**
  * True when the test runs against Fakebank.
@@ -87,7 +92,7 @@ run (void *cls,
   GNUNET_asprintf (&twisted_account_url,
                    "%s%s/",
                    twister_url,
-                   "alice");
+                   "42");
 
   struct TALER_TESTING_Command commands[] = {
     /**
@@ -133,6 +138,7 @@ main (int argc,
       char *const *argv)
 {
   unsigned int ret;
+  const char *cfgfilename;
 
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -140,27 +146,33 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api-with-(fake)bank-twisted",
                     "DEBUG",
                     NULL);
+
+  with_fakebank = TALER_TESTING_has_in_name (argv[0],
+                                             "_with_fakebank");
+
+  if (with_fakebank)
+    cfgfilename = CONFIG_FILE_FAKEBANK;
+  else
+    cfgfilename = CONFIG_FILE_PYBANK;
+
   if (NULL == (twister_url = TALER_TESTING_prepare_twister
-                               (CONFIG_FILE)))
+                               (cfgfilename)))
   {
     GNUNET_break (0);
     return 77;
   }
-  if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
+  if (NULL == (twisterd = TALER_TESTING_run_twister (cfgfilename)))
   {
     GNUNET_break (0);
     GNUNET_free (twister_url);
     return 77;
   }
 
-  with_fakebank = TALER_TESTING_has_in_name (argv[0],
-                                             "_with_fakebank");
-
   if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     if (GNUNET_OK !=
-        TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+        TALER_TESTING_prepare_fakebank (cfgfilename,
                                         "account-1",
                                         &bc))
     {
@@ -173,7 +185,7 @@ main (int argc,
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
     if (GNUNET_OK !=
-        TALER_TESTING_prepare_bank (CONFIG_FILE,
+        TALER_TESTING_prepare_bank (cfgfilename,
                                     &bc))
     {
       GNUNET_break (0);
@@ -181,7 +193,7 @@ main (int argc,
       return 77;
     }
 
-    if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE,
+    if (NULL == (bankd = TALER_TESTING_run_bank (cfgfilename,
                                                  bc.bank_url)))
     {
       GNUNET_break (0);
@@ -192,7 +204,7 @@ main (int argc,
 
   ret = TALER_TESTING_setup (&run,
                              NULL,
-                             CONFIG_FILE,
+                             cfgfilename,
                              NULL,
                              GNUNET_NO);
   purge_process (twisterd);
