@@ -12,6 +12,12 @@ pkgcfg_DATA = \
   exchangedb.conf \
   exchangedb-postgres.conf
 
+sqldir = $(prefix)/share/taler/sql/exchange/
+
+sql_DATA = \
+  0000.sql \
+  0001.sql
+
 EXTRA_DIST = \
   exchangedb.conf \
   exchangedb-postgres.conf \

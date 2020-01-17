@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2019 GNUnet e.V.
+  Copyright (C) 2014--2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -238,7 +238,6 @@ postgres_create_tables (void *cls)
                             ",expiration_date INT8 NOT NULL"
                             ",gc_date INT8 NOT NULL"
                             ");"),
-    /* index on reserves table (TODO: useless due to primary key!?) */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_reserve_pub_index ON "
                                 "reserves (reserve_pub);"),
     /* index for get_expired_reserves */
@@ -264,10 +263,6 @@ postgres_create_tables (void *cls)
     /* Create indices on reserves_in */
     GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_in_execution_index"
                                 " ON reserves_in (exchange_account_section,execution_date);"),
-    /* TODO: verify this actually helps, given the PRIMARY_KEY already includes
-       reserve_pub as the first dimension! */
-    GNUNET_PQ_make_try_execute ("CREATE INDEX reserves_in_reserve_pub"
-                                " ON reserves_in (reserve_pub);"),
     GNUNET_PQ_make_try_execute (
       "CREATE INDEX reserves_in_exchange_account_serial"
       " ON reserves_in (exchange_account_section,reserve_in_serial_id DESC);"),
@@ -450,9 +445,6 @@ postgres_create_tables (void *cls)
                             ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
                             ",PRIMARY KEY (wire_method, start_date)"                                         /* this combo must be unique */
                             ");"),
-    /* Index for lookup_transactions statement on wtid */
-    GNUNET_PQ_make_try_execute ("CREATE INDEX aggregation_tracking_wtid_index "
-                                "ON aggregation_tracking(wtid_raw);"),
     /* Index for gc_wire_fee */
     GNUNET_PQ_make_try_execute ("CREATE INDEX wire_fee_gc_index "
                                 "ON wire_fee(end_date);"),
@@ -471,10 +463,8 @@ postgres_create_tables (void *cls)
                                 "ON payback(coin_pub);"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX payback_by_h_blind_ev "
                                 "ON payback(h_blind_ev);"),
-    GNUNET_PQ_make_try_execute ("CREATE INDEX payback_by_reserve_index "
-                                "ON payback(reserve_pub);"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX payback_for_by_reserve "
-                                "ON payback(coin_pub,denom_pub_hash,h_blind_ev);"),
+                                "ON payback(coin_pub,h_blind_ev);"),
 
     /* Table for /payback-refresh information */
     GNUNET_PQ_make_execute ("CREATE TABLE IF NOT EXISTS payback_refresh "
@@ -491,10 +481,8 @@ postgres_create_tables (void *cls)
                                 "ON payback_refresh(coin_pub);"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX payback_refresh_by_h_blind_ev "
                                 "ON payback_refresh(h_blind_ev);"),
-    GNUNET_PQ_make_try_execute ("CREATE INDEX payback_refresh_by_reserve_index "
-                                "ON payback_refresh(reserve_pub);"),
     GNUNET_PQ_make_try_execute ("CREATE INDEX payback_refresh_for_by_reserve "
-                                "ON payback_refresh(coin_pub,denom_pub_hash,h_blind_ev);"),
+                                "ON payback_refresh(coin_pub,h_blind_ev);"),
 
     /* This table contains the pre-commit data for
        wire transfers the exchange is about to execute. */
