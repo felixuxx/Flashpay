@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Inria and GNUnet e.V.
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -132,6 +132,24 @@ reply_refund_conflict (struct MHD_Connection *connection,
 
 
 /**
+ * Closure for the transaction.
+ */
+struct TALER_EXCHANGEDB_RefundContext
+{
+  /**
+   * Information about the refund.
+   */
+  const struct TALER_EXCHANGEDB_Refund *refund;
+
+  /**
+   * Expected refund fee by the denomination of the coin.
+   */
+  struct TALER_Amount expect_fee;
+
+};
+
+
+/**
  * Execute a "/refund" transaction.  Returns a confirmation that the
  * refund was successful, or a failure if we are not aware of a
  * matching /deposit or if it is too late to do the refund.
@@ -155,20 +173,15 @@ refund_transaction (void *cls,
                     struct TALER_EXCHANGEDB_Session *session,
                     int *mhd_ret)
 {
-  const struct TALER_EXCHANGEDB_Refund *refund = cls;
+  struct TALER_EXCHANGEDB_RefundContext *rc = cls;
+  const struct TALER_EXCHANGEDB_Refund *refund = rc->refund;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   const struct TALER_EXCHANGEDB_DepositListEntry *dep;
   const struct TALER_EXCHANGEDB_RefundListEntry *ref;
-  struct TEH_KS_StateHandle *mks;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TALER_Amount expect_fee;
   enum GNUNET_DB_QueryStatus qs;
   int deposit_found;
   int refund_found;
   int fee_cmp;
-  unsigned int hc;
-  enum TALER_ErrorCode ec;
-  struct TALER_CoinPublicInfo coin_info;
 
   dep = NULL;
   ref = NULL;
@@ -356,64 +369,9 @@ refund_transaction (void *cls,
                                      TALER_EC_REFUND_INSUFFICIENT_FUNDS);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  qs = TEH_plugin->get_known_coin (TEH_plugin->cls,
-                                   session,
-                                   &refund->coin.coin_pub,
-                                   &coin_info);
-  if (0 > qs)
-  {
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0); /* should be impossible by foreign key constraint! */
-      *mhd_ret = reply_refund_failure (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_REFUND_COIN_NOT_FOUND);
-    }
-    return qs;
-  }
-  GNUNET_CRYPTO_rsa_signature_free (coin_info.denom_sig.rsa_signature);
-  coin_info.denom_sig.rsa_signature = NULL; /* just to be safe */
-  // FIXME: do this outside of transaction function?
   /* Check refund fee matches fee of denomination key! */
-  mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-  if (NULL == mks)
-  {
-    TALER_LOG_ERROR ("Lacking keys to operate\n");
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                           "no keys");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  dki = TEH_KS_denomination_key_lookup_by_hash (mks,
-                                                &coin_info.denom_pub_hash,
-                                                TEH_KS_DKU_DEPOSIT,
-                                                &ec,
-                                                &hc);
-  if (NULL == dki)
-  {
-    /* DKI not found, but we do have a coin with this DK in our database;
-       not good... */
-    GNUNET_break (0);
-    TEH_KS_release (mks);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           hc,
-                                           ec,
-                                           "denomination not found, but coin known");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  TALER_amount_ntoh (&expect_fee,
-                     &dki->issue.properties.fee_refund);
   fee_cmp = TALER_amount_cmp (&refund->details.refund_fee,
-                              &expect_fee);
-  TEH_KS_release (mks);
-
+                              &rc->expect_fee);
   if (-1 == fee_cmp)
   {
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
@@ -464,8 +422,9 @@ static int
 verify_and_execute_refund (struct MHD_Connection *connection,
                            const struct TALER_EXCHANGEDB_Refund *refund)
 {
+  struct TALER_EXCHANGEDB_RefundContext rc;
   struct TALER_RefundRequestPS rr;
-  int mhd_ret;
+  struct GNUNET_HashCode denom_hash;
 
   if (GNUNET_YES !=
       TALER_amount_cmp_currency (&refund->details.refund_amount,
@@ -508,13 +467,79 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                        TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
                                        "merchant_sig");
   }
-  if (GNUNET_OK !=
-      TEH_DB_run_transaction (connection,
-                              "run refund",
-                              &mhd_ret,
-                              &refund_transaction,
-                              (void *) refund))
-    return mhd_ret;
+
+  /* Fetch the coin's denomination (hash) */
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->get_coin_denomination (TEH_plugin->cls,
+                                            NULL,
+                                            &refund->coin.coin_pub,
+                                            &denom_hash);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+      return reply_refund_failure (connection,
+                                   MHD_HTTP_NOT_FOUND,
+                                   TALER_EC_REFUND_COIN_NOT_FOUND);
+    }
+  }
+
+  {
+    struct TEH_KS_StateHandle *mks;
+
+    mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
+    if (NULL == mks)
+    {
+      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         "no keys");
+    }
+    /* Obtain information about the coin's denomination! */
+    {
+      struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+      unsigned int hc;
+      enum TALER_ErrorCode ec;
+
+      dki = TEH_KS_denomination_key_lookup_by_hash (mks,
+                                                    &denom_hash,
+                                                    TEH_KS_DKU_DEPOSIT,
+                                                    &ec,
+                                                    &hc);
+      if (NULL == dki)
+      {
+        /* DKI not found, but we do have a coin with this DK in our database;
+           not good... */
+        GNUNET_break (0);
+        TEH_KS_release (mks);
+        return TALER_MHD_reply_with_error (connection,
+                                           hc,
+                                           ec,
+                                           "denomination not found, but coin known");
+      }
+      TALER_amount_ntoh (&rc.expect_fee,
+                         &dki->issue.properties.fee_refund);
+    }
+    TEH_KS_release (mks);
+  }
+
+  /* Finally run the actual transaction logic */
+  {
+    int mhd_ret;
+
+    rc.refund = refund;
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "run refund",
+                                &mhd_ret,
+                                &refund_transaction,
+                                &rc))
+    {
+      return mhd_ret;
+    }
+  }
   return reply_refund_success (connection,
                                &refund->coin.coin_pub,
                                &refund->details);

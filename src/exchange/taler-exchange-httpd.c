@@ -66,6 +66,11 @@ struct ExchangeHttpRequestClosure
    * Opaque parsing context.
    */
   void *opaque_post_parsing_context;
+
+  /**
+   * Cached request handler for this request (once we have found one).
+   */
+  struct TEH_RequestHandler *rh;
 };
 
 
@@ -360,7 +365,6 @@ handle_mhd_request (void *cls,
     "<html><title>404: not found</title></html>", 0,
     &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
   };
-  struct TEH_RequestHandler *rh;
   struct ExchangeHttpRequestClosure *ecls = *con_cls;
   int ret;
   void **inner_cls;
@@ -413,18 +417,28 @@ handle_mhd_request (void *cls,
                 "Handling request (%s) for URL '%s'\n",
                 method,
                 url);
-
+  /* on repeated requests, check our cache first */
+  if (NULL != ecls->rh)
+  {
+    ret = ecls->rh->handler (ecls->rh,
+                             connection,
+                             inner_cls,
+                             upload_data,
+                             upload_data_size);
+    GNUNET_async_scope_restore (&old_scope);
+    return ret;
+  }
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
   for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
-    rh = &handlers[i];
+    struct TEH_RequestHandler *rh = &handlers[i];
+
     if (0 != strcmp (url, rh->url))
       continue;
 
     /* The URL is a match!  What we now do depends on the method. */
-
     if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
     {
       GNUNET_async_scope_restore (&old_scope);
@@ -435,8 +449,9 @@ handle_mhd_request (void *cls,
          (0 == strcasecmp (method,
                            rh->method)) )
     {
-      /* FIXME: consider caching 'rh' in '**connection_cls' to
-         avoid repeated lookup! */
+      /* cache to avoid the loop next time */
+      ecls->rh = rh;
+      /* run handler */
       ret = rh->handler (rh,
                          connection,
                          inner_cls,
@@ -446,6 +461,7 @@ handle_mhd_request (void *cls,
       return ret;
     }
   }
+  /* No handler matches, generate not found */
   ret = TEH_MHD_handler_static_response (&h404,
                                          connection,
                                          inner_cls,

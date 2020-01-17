@@ -1884,6 +1884,23 @@ struct TALER_EXCHANGEDB_Plugin
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     struct TALER_CoinPublicInfo *coin_info);
 
+
+  /**
+   * Retrieve the denomination of a known coin.
+   *
+   * @param cls the plugin closure
+   * @param session the database session handle
+   * @param coin_pub the public key of the coin to search for
+   * @param denom_hash[out] where to store the hash of the coins denomination
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_coin_denomination)(void *cls,
+                           struct TALER_EXCHANGEDB_Session *session,
+                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           struct GNUNET_HashCode *denom_hash);
+
+
   /**
    * Check if we have the specified deposit already in the database.
    *

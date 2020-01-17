@@ -550,6 +550,15 @@ postgres_get_session (void *cls)
                               " WHERE coin_pub=$1"
                               " FOR UPDATE;",
                               1),
+      /* Used in #postgres_get_coin_denomination() to fetch
+         the denomination public key hash for
+         a coin known to the exchange. */
+      GNUNET_PQ_make_prepare ("get_coin_denomination",
+                              "SELECT"
+                              " denom_pub_hash"
+                              " FROM known_coins"
+                              " WHERE coin_pub=$1",
+                              1),
       /* Lock deposit table; NOTE: we may want to eventually shard the
          deposit table to avoid this lock being the main point of
          contention limiting transaction performance. */
@@ -3002,6 +3011,45 @@ postgres_get_known_coin (void *cls,
     session = postgres_get_session (pc);
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_known_coin",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Retrieve the denomination of a known coin.
+ *
+ * @param cls the plugin closure
+ * @param session the database session handle
+ * @param coin_pub the public key of the coin to search for
+ * @param denom_hash[out] where to store the hash of the coins denomination
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_coin_denomination (void *cls,
+                                struct TALER_EXCHANGEDB_Session *session,
+                                const struct
+                                TALER_CoinSpendPublicKeyP *coin_pub,
+                                struct GNUNET_HashCode *denom_hash)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                          denom_hash),
+    GNUNET_PQ_result_spec_end
+  };
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Getting coin denomination of coin %s\n",
+              TALER_B2S (coin_pub));
+  if (NULL == session)
+    session = postgres_get_session (pc);
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "get_coin_denomination",
                                                    params,
                                                    rs);
 }
@@ -7263,6 +7311,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->count_known_coins = &postgres_count_known_coins;
   plugin->ensure_coin_known = &postgres_ensure_coin_known;
   plugin->get_known_coin = &postgres_get_known_coin;
+  plugin->get_coin_denomination = &postgres_get_coin_denomination;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
   plugin->test_deposit_done = &postgres_test_deposit_done;
