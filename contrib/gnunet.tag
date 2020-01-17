@@ -40,46 +40,46 @@
     <name>gnunet_common.h</name>
     <path></path>
     <filename>gnunet_db_lib.h</filename>
-      <member kind="define">
+    <member kind="define">
       <type>#define</type>
       <name>GNUNET_free</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(ptr)</arglist>
     </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_free_non_null</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(ptr)</arglist>
     </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_malloc_large</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(size)</arglist>
     </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_realloc</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(ptr, size)</arglist>
     </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_new</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(type)</arglist>
     </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_malloc</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(size)</arglist>
     </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_new_array</name>
-      <filename>gnunet_common.h</filename>
+      <anchorfile>gnunet_common.h</anchorfile>
       <arglist>(n, type)</arglist>
     </member>
   </compound>
