@@ -887,7 +887,7 @@ postgres_gc (void *cls)
   struct GNUNET_PQ_PreparedStatement ps[] = {
 #if 0
     GNUNET_PQ_make_prepare ("gc_auditor",
-                            "FIXME #4960",
+                            "TODO: #4960",
                             0),
 #endif
     GNUNET_PQ_PREPARED_STATEMENT_END
@@ -901,7 +901,7 @@ postgres_gc (void *cls)
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "FIXME: Auditor GC not implemented (#4960)\n");
+              "TODO: Auditor GC not implemented (#4960)\n");
   qs = GNUNET_PQ_eval_prepared_non_select (conn,
                                            "gc_auditor",
                                            params_time);
