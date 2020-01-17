@@ -89,8 +89,9 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
                                             session,
                                             es);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  if (0 > qs)
   {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
     TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
