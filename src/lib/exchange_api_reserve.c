@@ -224,7 +224,30 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         GNUNET_JSON_parse_free (withdraw_spec);
         return GNUNET_SYSERR;
       }
-      /* TODO: check that withdraw fee matches expectations! */
+      /* check that withdraw fee matches expectations! */
+      {
+        const struct TALER_EXCHANGE_Keys *key_state;
+        const struct TALER_EXCHANGE_DenomPublicKey *dki;
+        struct TALER_Amount fee;
+
+        key_state = TALER_EXCHANGE_get_keys (exchange);
+        dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                           &withdraw_purpose.
+                                                           h_denomination_pub);
+        TALER_amount_ntoh (&fee,
+                           &withdraw_purpose.withdraw_fee);
+        if ( (GNUNET_YES !=
+              TALER_amount_cmp_currency (&fee,
+                                         &dki->fee_withdraw)) ||
+             (0 !=
+              TALER_amount_cmp (&fee,
+                                &dki->fee_withdraw)) )
+        {
+          GNUNET_break_op (0);
+          GNUNET_JSON_parse_free (withdraw_spec);
+          return GNUNET_SYSERR;
+        }
+      }
       rhistory[off].details.out_authorization_sig
         = json_object_get (transaction,
                            "signature");
