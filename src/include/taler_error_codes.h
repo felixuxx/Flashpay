@@ -350,12 +350,12 @@ enum TALER_ErrorCode
   TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN = 1203,
 
   /**
-   * The exchange database is unaware of the denomination key that
-   * signed the coin (however, the exchange process is; this is not
-   * supposed to happen; it can happen if someone decides to purge the
-   * DB behind the back of the exchange process).  Hence the deposit is
-   * being refused.  This response is provided with HTTP status code
-   * MHD_HTTP_NOT_FOUND.  FIXME: This is wrong / copy&paste error.
+   * The exchange was trying to lookup the denomination key for the
+   * purpose of a DEPOSIT operation. However, the denomination key is
+   * unavailable for that purpose. This can be because it is entirely
+   * unknown to the exchange or not in the validity period for the
+   * deposit operation.  Hence the deposit is being refused.  This
+   * response is provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN = 1204,
 
@@ -395,9 +395,12 @@ enum TALER_ErrorCode
 
   /**
    * The exchange failed to canonicalize and hash the given wire format.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST.  FIXME: The naming and description is weird,
-   * as we don't really do JSON anymore for the wire details.
+   * For example, the merchant failed to provide the "salt" or a valid
+   * payto:// URI in the wire details.  Note that while the exchange
+   * will do some basic sanity checking on the wire details, it cannot
+   * warrant that the banking system will ultimately be able to route to
+   * the specified address, even if this check passed. This response is
+   * provided with HTTP status code MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON = 1210,
 
@@ -414,34 +417,6 @@ enum TALER_ErrorCode
    * status code MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_ACCOUNT_NUMBER = 1213,
-
-  /**
-   * The signature over the given wire details is invalid. This response
-   * is provided with HTTP status code MHD_HTTP_BAD_REQUEST.  FIXME:
-   * Seems to be unused.
-   */
-  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE = 1214,
-
-  /**
-   * The bank specified in the wire transfer format is not supported by
-   * this exchange. This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST.  FIXME: Seems to be unused.
-   */
-  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_BANK = 1215,
-
-  /**
-   * No wire format type was specified in the JSON wire format details.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST.  FIXME: Seems to be unused.
-   */
-  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_MISSING = 1216,
-
-  /**
-   * The given wire format type is not supported by this exchange. This
-   * response is provided with HTTP status code MHD_HTTP_BAD_REQUEST.
-   * FIXME: Seems to be unused.
-   */
-  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_UNSUPPORTED = 1217,
 
   /**
    * Timestamp included in deposit permission is intolerably far off
@@ -960,13 +935,6 @@ enum TALER_ErrorCode
   TALER_EC_INSTANCE_UNKNOWN = 2000,
 
   /**
-   * The frontend specified two different instances within the same
-   * order: one in the top level, and the other one within the
-   * 'merchant' object. FIXME: hopefully this one is now obsolete?
-   */
-  TALER_EC_CONTRACT_INSTANCE_INCONSISTENT = 2001,
-
-  /**
    * The backend lacks a wire transfer method configuration option for
    * the given instance.
    */
@@ -1276,7 +1244,7 @@ enum TALER_ErrorCode
   /**
    * The exchange gave conflicting information about a coin which has
    * been wire transferred. The response is provided with HTTP status
-   * code MHD_HTTP_INTERNAL_SERVER_ERROR (FIXME: bad choice!).
+   * code MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
 
@@ -1288,7 +1256,7 @@ enum TALER_ErrorCode
   /**
    * The exchange charged a different wire fee than what it originally
    * advertised, and it is higher.  The response is provied with an HTTP
-   * status of MHD_HTTP_INTERNAL_SERVER_ERROR (FIXME: bad choice!).
+   * status of MHD_HTTP_BAD_DEPENDENCY.
    */
   TALER_EC_TRACK_TRANSFER_JSON_BAD_WIRE_FEE = 2410,
 
