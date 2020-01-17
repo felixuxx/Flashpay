@@ -608,10 +608,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     if (NULL == key_state)
     {
       TALER_LOG_ERROR ("Lacking keys to operate\n");
-      /* FIXME: use correct EC code! */
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_REFRESH_REVEAL_SIGNING_ERROR,
+                                         TALER_EC_REFRESH_REVEAL_KEYS_MISSING,
                                          "exchange lacks keys");
     }
 

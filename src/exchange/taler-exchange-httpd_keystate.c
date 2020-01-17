@@ -2285,11 +2285,6 @@ TEH_KS_free ()
 /**
  * Sign the message in @a purpose with the exchange's signing key.
  *
- * FIXME:
- * - Change API to return status code and do not assert on TEH_KS_acquire()
- *   failures, instead allow caller to handle it (i.e. by returning
- *   #TALER_EC_EXCHANGE_BAD_CONFIGURATION to application).
- *
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
@@ -2451,9 +2446,11 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   }
   if (NULL == krd)
   {
-    /* FIXME: should return 500 response instead... */
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_KEYS_MISSING,
+                                       "no key response found");
   }
   ret = MHD_queue_response (connection,
                             rh->response_code,

@@ -653,6 +653,13 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_REVEAL_LINK_SIGNATURE_INVALID = 1382,
 
   /**
+   * The exchange failed to generate the signature as it could not find
+   * the signing key for the denomination. This response is provided
+   * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_REFRESH_REVEAL_KEYS_MISSING = 1383,
+
+  /**
    * The coin specified in the link request is unknown to the exchange.
    * This response is provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
@@ -938,6 +945,12 @@ enum TALER_ErrorCode
    * provied with an HTTP status code of MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_KEYS_HAVE_NOT_NUMERIC = 1900,
+
+  /**
+   * We currently cannot find any keys. This reponse is provied with an
+   * HTTP status code of MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_KEYS_MISSING = 1901,
 
   /**
    * The backend could not find the merchant instance specified in the
