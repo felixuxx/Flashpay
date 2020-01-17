@@ -47,6 +47,7 @@ TALER_EXCHANGE_verify_coin_history (const struct
 {
   size_t len;
   struct TALER_Amount rtotal;
+  struct TALER_Amount fee;
 
   if (NULL == history)
   {
@@ -135,8 +136,16 @@ TALER_EXCHANGE_verify_coin_history (const struct
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      /* TODO: check that deposit fee and coin value match
-   our expectations from /keys! */
+      /* check that deposit fee matches our expectations from /keys! */
+      TALER_amount_ntoh (&fee,
+                         &dr.deposit_fee);
+      if (0 !=
+          TALER_amount_cmp (&fee,
+                            &dk->fee_deposit))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       add = GNUNET_YES;
     }
     else if (0 == strcasecmp (type,
@@ -176,8 +185,16 @@ TALER_EXCHANGE_verify_coin_history (const struct
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      /* TODO: check that deposit fee and coin value match
-   our expectations from /keys! */
+      /* check that melt fee matches our expectations from /keys! */
+      TALER_amount_ntoh (&fee,
+                         &rm.melt_fee);
+      if (0 !=
+          TALER_amount_cmp (&fee,
+                            &dk->fee_refresh))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       add = GNUNET_YES;
     }
     else if (0 == strcasecmp (type,
@@ -228,8 +245,17 @@ TALER_EXCHANGE_verify_coin_history (const struct
          (an auditor ought to check, though). Then again, we similarly
          had no reason to check the merchant's signature (other than a
          well-formendess check). *///
-      /* TODO: check that deposit fee and coin value match
-         our expectations from /keys! *///
+
+      /* check that refund fee matches our expectations from /keys! */
+      TALER_amount_ntoh (&fee,
+                         &rr.refund_fee);
+      if (0 !=
+          TALER_amount_cmp (&fee,
+                            &dk->fee_refund))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       add = GNUNET_NO;
     }
     else if (0 == strcasecmp (type,

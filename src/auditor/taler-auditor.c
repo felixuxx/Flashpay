@@ -1805,7 +1805,7 @@ verify_reserve_balance (void *cls,
   if ( (0ULL == balance.value) &&
        (0U == balance.fraction) )
   {
-    /* TODO: balance is zero, drop reserve details (and then do not update/insert) */
+    /* balance is zero, drop reserve details (and then do not update/insert) */
     if (rs->had_ri)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
