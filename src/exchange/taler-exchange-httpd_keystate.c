@@ -448,6 +448,7 @@ ks_release (struct TEH_KS_StateHandle *key_state)
   key_state->refcnt--;
   if (0 == key_state->refcnt)
   {
+    GNUNET_assert (key_state != internal_key_state);
     if (NULL != key_state->denomkey_map)
     {
       GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
@@ -476,7 +477,6 @@ ks_release (struct TEH_KS_StateHandle *key_state)
     GNUNET_array_grow (key_state->krd_array,
                        key_state->krd_array_length,
                        0);
-    GNUNET_assert (key_state != internal_key_state);
     GNUNET_free (key_state);
   }
 }
@@ -1261,6 +1261,7 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
     m = GNUNET_TIME_relative_to_absolute (TEH_max_keys_caching);
     m = GNUNET_TIME_absolute_min (m,
                                   key_state->next_reload);
+    m = GNUNET_TIME_UNIT_FOREVER_ABS;
     get_date_string (m,
                      dat);
     // FIXME: setting 'm' to FOREVER here exposes

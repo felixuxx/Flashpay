@@ -256,7 +256,6 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   int mhd_ret;
   struct TALER_Amount amount_without_fee;
   struct DepositContext dc;
-  struct TEH_KS_StateHandle *mks;
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   enum TALER_ErrorCode ec;
   unsigned int hc;
@@ -288,32 +287,35 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   }
 
   /* check denomination */
-  mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-  if (NULL == mks)
   {
-    TALER_LOG_ERROR ("Lacking keys to operate\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                       "no keys");
-  }
-  dki = TEH_KS_denomination_key_lookup_by_hash (mks,
-                                                &deposit->coin.denom_pub_hash,
-                                                TEH_KS_DKU_DEPOSIT,
-                                                &ec,
-                                                &hc);
-  if (NULL == dki)
-  {
-    TEH_KS_release (mks);
-    return TALER_MHD_reply_with_error (connection,
-                                       hc,
-                                       ec,
-                                       "Could not find denomination key used in deposit");
-  }
-  TALER_amount_ntoh (&dc.value,
-                     &dki->issue.properties.value);
-  TEH_KS_release (mks);
+    struct TEH_KS_StateHandle *mks;
 
+    mks = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
+    if (NULL == mks)
+    {
+      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         "no keys");
+    }
+    dki = TEH_KS_denomination_key_lookup_by_hash (mks,
+                                                  &deposit->coin.denom_pub_hash,
+                                                  TEH_KS_DKU_DEPOSIT,
+                                                  &ec,
+                                                  &hc);
+    if (NULL == dki)
+    {
+      TEH_KS_release (mks);
+      return TALER_MHD_reply_with_error (connection,
+                                         hc,
+                                         ec,
+                                         "Could not find denomination key used in deposit");
+    }
+    TALER_amount_ntoh (&dc.value,
+                       &dki->issue.properties.value);
+    TEH_KS_release (mks);
+  }
   /* execute transaction */
   dc.deposit = deposit;
   if (GNUNET_OK !=
@@ -406,7 +408,6 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   unsigned int hc;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TEH_KS_StateHandle *key_state;
   struct GNUNET_HashCode my_h_wire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),
@@ -503,50 +504,53 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   }
 
   /* check denomination exists and is valid */
-  key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-  if (NULL == key_state)
   {
-    TALER_LOG_ERROR ("Lacking keys to operate\n");
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                       "no keys");
-  }
-  dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                &deposit.coin.denom_pub_hash,
-                                                TEH_KS_DKU_DEPOSIT,
-                                                &ec,
-                                                &hc);
-  if (NULL == dki)
-  {
-    TEH_KS_release (key_state);
-    TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       hc,
-                                       ec,
-                                       "Could not find denomination key used in deposit");
-  }
-  TALER_amount_ntoh (&deposit.deposit_fee,
-                     &dki->issue.properties.fee_deposit);
-  /* check coin signature */
-  if (GNUNET_YES !=
-      TALER_test_coin_valid (&deposit.coin,
-                             &dki->denom_pub))
-  {
-    TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
-    TEH_KS_release (key_state);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_UNAUTHORIZED,
-                                       TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
-                                       "ub_sig");
-  }
-  TALER_amount_ntoh (&deposit.deposit_fee,
-                     &dki->issue.properties.fee_deposit);
-  TEH_KS_release (key_state);
+    struct TEH_KS_StateHandle *key_state;
 
+    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
+    if (NULL == key_state)
+    {
+      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         "no keys");
+    }
+    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                  &deposit.coin.denom_pub_hash,
+                                                  TEH_KS_DKU_DEPOSIT,
+                                                  &ec,
+                                                  &hc);
+    if (NULL == dki)
+    {
+      TEH_KS_release (key_state);
+      TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         hc,
+                                         ec,
+                                         "Could not find denomination key used in deposit");
+    }
+    TALER_amount_ntoh (&deposit.deposit_fee,
+                       &dki->issue.properties.fee_deposit);
+    /* check coin signature */
+    if (GNUNET_YES !=
+        TALER_test_coin_valid (&deposit.coin,
+                               &dki->denom_pub))
+    {
+      TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+      TEH_KS_release (key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_UNAUTHORIZED,
+                                         TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
+                                         "ub_sig");
+    }
+    TALER_amount_ntoh (&deposit.deposit_fee,
+                       &dki->issue.properties.fee_deposit);
+    TEH_KS_release (key_state);
+  }
   if (0 < TALER_amount_cmp (&deposit.deposit_fee,
                             &deposit.amount_with_fee))
   {

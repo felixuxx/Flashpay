@@ -420,7 +420,6 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                             int refreshed)
 {
   struct PaybackContext pc;
-  struct TEH_KS_StateHandle *key_state;
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TALER_PaybackRequestPS pr;
   struct GNUNET_HashCode c_hash;
@@ -430,86 +429,88 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   unsigned int hc;
 
   /* check denomination exists and is in payback mode */
-  key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-  if (NULL == key_state)
   {
-    TALER_LOG_ERROR ("Lacking keys to operate\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                       "no keys");
-  }
-  dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                &coin->denom_pub_hash,
-                                                TEH_KS_DKU_PAYBACK,
-                                                &ec,
-                                                &hc);
-  if (NULL == dki)
-  {
+    struct TEH_KS_StateHandle *key_state;
+
+    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
+    if (NULL == key_state)
+    {
+      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         "no keys");
+    }
+    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
+                                                  &coin->denom_pub_hash,
+                                                  TEH_KS_DKU_PAYBACK,
+                                                  &ec,
+                                                  &hc);
+    if (NULL == dki)
+    {
+      TEH_KS_release (key_state);
+      TALER_LOG_WARNING (
+        "Denomination key in /payback request not in payback mode\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         hc,
+                                         ec,
+                                         "denomination not allowing payback");
+    }
+    TALER_amount_ntoh (&pc.value,
+                       &dki->issue.properties.value);
+
+    /* check denomination signature */
+    if (GNUNET_YES !=
+        TALER_test_coin_valid (coin,
+                               &dki->denom_pub))
+    {
+      TALER_LOG_WARNING ("Invalid coin passed for /payback\n");
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
+                                         "denom_sig");
+    }
+
+    /* check payback request signature */
+    pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
+    pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
+    pr.coin_pub = coin->coin_pub;
+    pr.h_denom_pub = dki->issue.properties.denom_hash;
+    pr.coin_blind = *coin_bks;
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
+                                    &pr.purpose,
+                                    &coin_sig->eddsa_signature,
+                                    &coin->coin_pub.eddsa_pub))
+    {
+      TALER_LOG_WARNING ("Invalid signature on /payback request\n");
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_PAYBACK_SIGNATURE_INVALID,
+                                         "coin_sig");
+    }
+    GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
+                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                        &c_hash);
+    if (GNUNET_YES !=
+        GNUNET_CRYPTO_rsa_blind (&c_hash,
+                                 &coin_bks->bks,
+                                 dki->denom_pub.rsa_public_key,
+                                 &coin_ev,
+                                 &coin_ev_size))
+    {
+      GNUNET_break (0);
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_PAYBACK_BLINDING_FAILED,
+                                         "coin_bks");
+    }
     TEH_KS_release (key_state);
-    TALER_LOG_WARNING (
-      "Denomination key in /payback request not in payback mode\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       hc,
-                                       ec,
-                                       "denomination not allowing payback");
   }
-  TALER_amount_ntoh (&pc.value,
-                     &dki->issue.properties.value);
-
-  /* check denomination signature */
-  if (GNUNET_YES !=
-      TALER_test_coin_valid (coin,
-                             &dki->denom_pub))
-  {
-    TALER_LOG_WARNING ("Invalid coin passed for /payback\n");
-    TEH_KS_release (key_state);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
-                                       "denom_sig");
-  }
-
-  /* check payback request signature */
-  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
-  pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
-  pr.coin_pub = coin->coin_pub;
-  pr.h_denom_pub = dki->issue.properties.denom_hash;
-  pr.coin_blind = *coin_bks;
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
-                                  &pr.purpose,
-                                  &coin_sig->eddsa_signature,
-                                  &coin->coin_pub.eddsa_pub))
-  {
-    TALER_LOG_WARNING ("Invalid signature on /payback request\n");
-    TEH_KS_release (key_state);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_PAYBACK_SIGNATURE_INVALID,
-                                       "coin_sig");
-  }
-
-  GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash);
-  if (GNUNET_YES !=
-      GNUNET_CRYPTO_rsa_blind (&c_hash,
-                               &coin_bks->bks,
-                               dki->denom_pub.rsa_public_key,
-                               &coin_ev,
-                               &coin_ev_size))
-  {
-    GNUNET_break (0);
-    TEH_KS_release (key_state);
-
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_PAYBACK_BLINDING_FAILED,
-                                       "coin_bks");
-  }
-  TEH_KS_release (key_state);
   GNUNET_CRYPTO_hash (coin_ev,
                       coin_ev_size,
                       &pc.h_blind);
