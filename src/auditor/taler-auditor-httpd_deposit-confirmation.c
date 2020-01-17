@@ -68,7 +68,7 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                        "master_sig (expired)");
   }
 
-  /* TODO: consider having an in-memory cache of already
+  /* TODO (#6052): consider having an in-memory cache of already
      verified exchange signing keys, this could save us
      a signature check AND a database transaction per
      operation. */
