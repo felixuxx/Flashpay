@@ -2270,9 +2270,6 @@ TALER_TESTING_get_trait_merchant_priv (const struct TALER_TESTING_Command *cmd,
                                        const struct
                                        TALER_MerchantPrivateKeyP **priv);
 
-// FIXME: private get_trait_merchant_priv instead, rather have
-// more traits with precise types than this!
-
 
 /**
  * Offer private key of a merchant, typically done when CMD_1 needs it to
