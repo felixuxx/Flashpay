@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/testing_api_auditor_helpers.c
+ * @file lib/testing_api_helpers_auditor.c
  * @brief helper functions
  * @author Christian Grothoff
  */
