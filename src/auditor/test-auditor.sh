@@ -572,7 +572,7 @@ echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | 
 function test_8() {
 
 echo "===========8: wire-transfer-subject disagreement==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
 OLD_WTID=`echo "SELECT subject FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
 NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
 echo "UPDATE app_banktransaction SET subject='$NEW_WTID' WHERE id='$OLD_ID';" | psql -Aqt $DB
@@ -642,7 +642,7 @@ echo "UPDATE app_banktransaction SET subject='$OLD_WTID' WHERE id='$OLD_ID';" | 
 function test_9() {
 
 echo "===========9: wire-origin disagreement==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
 OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
 echo "UPDATE app_banktransaction SET debit_account_id=1;" | psql -Aqt $DB
 
@@ -671,7 +671,7 @@ echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC;" | psql -Aqt $DB
 function test_10() {
 
 echo "===========10: wire-timestamp disagreement==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
 OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
 echo "UPDATE app_banktransaction SET date=NOW() WHERE id=$OLD_ID;" | psql -Aqt $DB
 
@@ -700,7 +700,7 @@ echo "UPDATE app_banktransaction SET date='$OLD_DATE' WHERE id=$OLD_ID;" | psql 
 function test_11() {
 
 echo "===========11: spurious outgoing transfer ==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10.00' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
+OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
 OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id=$OLD_ID;" | psql $DB -Aqt`
 # Change wire transfer to be FROM the exchange (#2) to elsewhere!
 # (Note: this change also causes a missing incoming wire transfer, but
@@ -1254,7 +1254,7 @@ then
 
 
     # remove transaction from bank DB
-    echo "DELETE FROM app_banktransaction WHERE debit_account_id=2 AND amount='TESTKUDOS:${VAL_DELTA}.00';" | psql -Aqt $DB
+    echo "DELETE FROM app_banktransaction WHERE debit_account_id=2 AND amount='TESTKUDOS:${VAL_DELTA}';" | psql -Aqt $DB
 
     audit_only
     post_audit
