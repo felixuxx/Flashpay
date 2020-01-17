@@ -1727,9 +1727,7 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Insert a incoming transaction into reserves.  New reserves are
-   * also created through this function.  Note that this API call
-   * starts (and stops) its own transaction scope (so the application
-   * must not do so).
+   * also created through this function.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db the database connection handle

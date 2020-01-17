@@ -1847,8 +1847,7 @@ reserves_update (void *cls,
 
 /**
  * Insert an incoming transaction into reserves.  New reserves are also created
- * through this function.  Note that this API call starts (and stops) its
- * own transaction scope (so the application must not do so).
+ * through this function.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session the database connection handle
