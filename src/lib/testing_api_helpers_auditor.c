@@ -165,7 +165,7 @@ auditor_main_wrapper (void *cls,
   cc = GNUNET_new (struct CleanupContext);
   cc->is = is;
   cc->fcb = is->final_cleanup_cb;
-  cc->fcb_cls = is->final_cleanup_cb;
+  cc->fcb_cls = is->final_cleanup_cb_cls;
   is->final_cleanup_cb = cleanup_auditor;
   is->final_cleanup_cb_cls = cc;
   mwc->main_cb (mwc->main_cb_cls,
