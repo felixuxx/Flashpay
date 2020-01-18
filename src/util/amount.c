@@ -549,8 +549,9 @@ amount_to_tail (const struct TALER_Amount *amount,
                 char tail[TALER_AMOUNT_FRAC_LEN + 1])
 {
   uint32_t n = amount->fraction;
+  unsigned int i;
 
-  for (unsigned int i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
+  for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
   {
     tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
     n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);
