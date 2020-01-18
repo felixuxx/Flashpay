@@ -50,6 +50,9 @@ struct FindAccountContext
  * true, call the callback from the context with the
  * rest of the section name.
  *
+ * FIXME(dold): This comment is inaccurate!  Also, why
+ * is the prefix "account-" and not "exchange-account-"?
+ *
  * @param cls our `struct FindEnabledWireContext`
  * @param section name of a section in the configuration
  */
