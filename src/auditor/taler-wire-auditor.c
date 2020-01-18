@@ -523,7 +523,7 @@ do_shutdown (void *cls)
                         " s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:o, s:o,"
                         " s:o, s:o, s:o, s:I, s:I,"
-                        " s:s, s:s, s:o }",
+                        " s:o, s:o, s:o }",
                         /* blocks of 5 */
                         /* Tested in test-auditor.sh #11, #15, #20 */
                         "wire_out_amount_inconsistencies",
@@ -574,24 +574,19 @@ do_shutdown (void *cls)
                         /* Tested in test-auditor.sh #22 */
                         "reserve_lag_details",
                         report_closure_lags,
-                        "wire_auditor_start_time", json_string (
-                          GNUNET_STRINGS_absolute_time_to_string (start_time)),
-                        "wire_auditor_end_time", json_string (
-                          GNUNET_STRINGS_absolute_time_to_string (
-                            GNUNET_TIME_absolute_get ())),
+                        "wire_auditor_start_time",
+                        json_from_time_abs (start_time),
+                        "wire_auditor_end_time",
+                        json_from_time_abs (GNUNET_TIME_absolute_get ()),
                         "start_pp_reserve_close_uuid",
                         (json_int_t) start_pp.last_reserve_close_uuid,
                         "end_pp_reserve_close_uuid",
                         (json_int_t) pp.last_reserve_close_uuid,
                         /* blocks of 5 */
                         "start_pp_last_timestamp",
-                        json_string (
-                          GNUNET_STRINGS_absolute_time_to_string (
-                            start_pp.last_timestamp)),
+                        json_from_time_abs (start_pp.last_timestamp),
                         "end_pp_last_timestamp",
-                        json_string (
-                          GNUNET_STRINGS_absolute_time_to_string (
-                            pp.last_timestamp)),
+                        json_from_time_abs (pp.last_timestamp),
                         "account_progress",
                         report_account_progress
                         );
