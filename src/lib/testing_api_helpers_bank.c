@@ -396,7 +396,6 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long fakebank_port;
   char *exchange_payto_uri;
-  char *exchange_xtalerbank_account;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
@@ -428,21 +427,22 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
-
-  exchange_xtalerbank_account = TALER_xtalerbank_account_from_payto (
-    exchange_payto_uri);
-
-  if (NULL == exchange_xtalerbank_account)
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    char *exchange_xtalerbank_account;
+
+    exchange_xtalerbank_account
+      = TALER_xtalerbank_account_from_payto (exchange_payto_uri);
+    if (NULL == exchange_xtalerbank_account)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_asprintf (&bc->exchange_auth.wire_gateway_url,
+                     "http://localhost:%u/%s/",
+                     (unsigned int) fakebank_port,
+                     exchange_xtalerbank_account);
+    GNUNET_free (exchange_xtalerbank_account);
   }
-
-  GNUNET_asprintf (&bc->exchange_auth.wire_gateway_url,
-                   "http://localhost:%u/%s/",
-                   (unsigned int) fakebank_port,
-                   exchange_xtalerbank_account);
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Using fakebank %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,

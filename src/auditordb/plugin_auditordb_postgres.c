@@ -123,6 +123,7 @@ postgres_drop_tables (void *cls,
                             exec_dir,
                             NULL,
                             NULL);
+  GNUNET_free (exec_dir);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);

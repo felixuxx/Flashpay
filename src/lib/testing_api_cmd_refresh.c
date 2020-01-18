@@ -686,8 +686,8 @@ refresh_link_run (void *cls,
   const struct TALER_TESTING_Command *reveal_cmd;
   const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_TESTING_Command *coin_cmd;
-  rls->is = is;
 
+  rls->is = is;
   reveal_cmd = TALER_TESTING_interpreter_lookup_command
                  (rls->is, rls->reveal_reference);
 
