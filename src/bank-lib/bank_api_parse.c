@@ -28,7 +28,7 @@
  *
  * @param cfg configuration to parse
  * @param section the section with the configuration data
- * @param auth[out] set to the configuration data found
+ * @param[out] auth set to the configuration data found
  * @return #GNUNET_OK on success
  */
 int
@@ -126,7 +126,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * Free memory inside of @a auth (but not auth itself).
  * Dual to #TALER_BANK_auth_parse_cfg().
  *
- * @param auth authentication data to free
+ * @param[in] auth authentication data to free
  */
 void
 TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth)
@@ -149,6 +149,7 @@ TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth)
     break;
   }
   GNUNET_free (auth->wire_gateway_url);
+  auth->wire_gateway_rul = NULL;
 }
 
 

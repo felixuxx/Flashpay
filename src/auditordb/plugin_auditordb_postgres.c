@@ -1949,6 +1949,9 @@ postgres_insert_wire_auditor_account_progress (void *cls,
  * @param session connection to use
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
+ * @param pp where is the auditor in processing
+ * @param in_wire_off how far are we in the incoming wire transaction history
+ * @param out_wire_off how far are we in the outgoing wire transaction history
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2782,6 +2785,7 @@ postgres_get_balance_summary (void *cls,
  * @param revenue_balance what was the total profit made from
  *                        deposit fees, melting fees, refresh fees
  *                        and coins that were never returned?
+ * @param loss_balance total losses suffered by the exchange at the time
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

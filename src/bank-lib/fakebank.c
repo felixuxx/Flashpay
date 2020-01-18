@@ -230,7 +230,7 @@ check_log (struct TALER_FAKEBANK_Handle *h)
  * @param h bank instance
  * @param want_amount transfer amount desired
  * @param want_debit account that should have been debited
- * @param want_debit account that should have been credited
+ * @param want_credit account that should have been credited
  * @param exchange_base_url expected base URL of the exchange,
  *        i.e. "https://example.com/"; may include a port
  * @param[out] wtid set to the wire transfer identifier

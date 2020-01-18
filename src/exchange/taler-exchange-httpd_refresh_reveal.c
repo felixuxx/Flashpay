@@ -181,7 +181,6 @@ struct RevealContext
  * again.
  *
  * @param cls closure with a `struct RevealContext`
- * @param rowid unique serial ID for the row in our database
  * @param num_newcoins size of the @a rrcs array
  * @param rrcs array of @a num_newcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
@@ -523,7 +522,6 @@ refresh_reveal_persist (void *cls,
  * @param key_state the key state
  * @param connection the MHD connection to handle
  * @param rctx context for the operation, partially built at this time
- * @param transfer_pub transfer public key
  * @param link_sigs_json link signatures in JSON format
  * @param new_denoms_h_json requests for fresh coins to be created
  * @param coin_evs envelopes of gamma-selected coins to be signed
@@ -795,7 +793,6 @@ cleanup:
  *
  * @param connection the MHD connection to handle
  * @param rctx context for the operation, partially built at this time
- * @param transfer_pub transfer public key
  * @param tp_json private transfer keys in JSON format
  * @param link_sigs_json link signatures in JSON format
  * @param new_denoms_h_json requests for fresh coins to be created

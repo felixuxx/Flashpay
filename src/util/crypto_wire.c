@@ -28,7 +28,7 @@
  * hash is what is put into the contract.
  *
  * @param payto_url bank account
- * @param hc[out] set to the hash
+ * @param[out] hc set to the hash
  */
 void
 TALER_exchange_wire_signature_hash (const char *payto_url,
