@@ -2894,7 +2894,8 @@ check_wire_out_cb
   GNUNET_free (method);
 
   /* Round down to amount supported by wire method */
-  GNUNET_break (TALER_amount_round_down (&final_amount,
+  GNUNET_break (GNUNET_SYSERR !=
+                TALER_amount_round_down (&final_amount,
                                          &currency_round_unit));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
