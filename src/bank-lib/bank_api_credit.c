@@ -151,6 +151,7 @@ handle_history_finished (void *cls,
   switch (response_code)
   {
   case 0:
+    GNUNET_break_op (0);
     ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
