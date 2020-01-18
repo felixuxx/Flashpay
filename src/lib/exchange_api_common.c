@@ -136,18 +136,21 @@ TALER_EXCHANGE_verify_coin_history (const struct
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      /* check that deposit fee matches our expectations from /keys! */
-      TALER_amount_ntoh (&fee,
-                         &dr.deposit_fee);
-      if ( (GNUNET_YES !=
-            TALER_amount_cmp_currency (&fee,
-                                       &dk->fee_deposit)) ||
-           (0 !=
-            TALER_amount_cmp (&fee,
-                              &dk->fee_deposit)) )
+      if (NULL != dk)
       {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        /* check that deposit fee matches our expectations from /keys! */
+        TALER_amount_ntoh (&fee,
+                           &dr.deposit_fee);
+        if ( (GNUNET_YES !=
+              TALER_amount_cmp_currency (&fee,
+                                         &dk->fee_deposit)) ||
+             (0 !=
+              TALER_amount_cmp (&fee,
+                                &dk->fee_deposit)) )
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
       }
       add = GNUNET_YES;
     }
@@ -188,18 +191,21 @@ TALER_EXCHANGE_verify_coin_history (const struct
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      /* check that melt fee matches our expectations from /keys! */
-      TALER_amount_ntoh (&fee,
-                         &rm.melt_fee);
-      if ( (GNUNET_YES !=
-            TALER_amount_cmp_currency (&fee,
-                                       &dk->fee_refresh)) ||
-           (0 !=
-            TALER_amount_cmp (&fee,
-                              &dk->fee_refresh)) )
+      if (NULL != dk)
       {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        /* check that melt fee matches our expectations from /keys! */
+        TALER_amount_ntoh (&fee,
+                           &rm.melt_fee);
+        if ( (GNUNET_YES !=
+              TALER_amount_cmp_currency (&fee,
+                                         &dk->fee_refresh)) ||
+             (0 !=
+              TALER_amount_cmp (&fee,
+                                &dk->fee_refresh)) )
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
       }
       add = GNUNET_YES;
     }
@@ -253,17 +259,20 @@ TALER_EXCHANGE_verify_coin_history (const struct
          well-formendess check). *///
 
       /* check that refund fee matches our expectations from /keys! */
-      TALER_amount_ntoh (&fee,
-                         &rr.refund_fee);
-      if ( (GNUNET_YES !=
-            TALER_amount_cmp_currency (&fee,
-                                       &dk->fee_refund)) ||
-           (0 !=
-            TALER_amount_cmp (&fee,
-                              &dk->fee_refund)) )
+      if (NULL != dk)
       {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        TALER_amount_ntoh (&fee,
+                           &rr.refund_fee);
+        if ( (GNUNET_YES !=
+              TALER_amount_cmp_currency (&fee,
+                                         &dk->fee_refund)) ||
+             (0 !=
+              TALER_amount_cmp (&fee,
+                                &dk->fee_refund)) )
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
       }
       add = GNUNET_NO;
     }

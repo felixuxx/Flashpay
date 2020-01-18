@@ -149,7 +149,7 @@ TALER_BANK_auth_free (struct TALER_BANK_AuthenticationData *auth)
     break;
   }
   GNUNET_free (auth->wire_gateway_url);
-  auth->wire_gateway_rul = NULL;
+  auth->wire_gateway_url = NULL;
 }
 
 
