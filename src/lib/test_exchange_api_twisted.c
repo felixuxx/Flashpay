@@ -69,8 +69,12 @@ static struct GNUNET_OS_Process *twisterd;
  *
  * @param label label to use for the command.
  */
-#define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+static struct TALER_TESTING_Command
+CMD_EXEC_WIREWATCH (char *label)
+{
+  return TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE);
+}
+
 
 /**
  * Execute the taler-exchange-aggregator command with
@@ -78,8 +82,12 @@ static struct GNUNET_OS_Process *twisterd;
  *
  * @param label label to use for the command.
  */
-#define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
+static struct TALER_TESTING_Command
+CMD_EXEC_AGGREGATOR (char *label)
+{
+  return TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE);
+}
+
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -89,10 +97,14 @@ static struct GNUNET_OS_Process *twisterd;
  * @param amount amount to transfer, i.e. "EUR:1"
  * @param url exchange_url
  */
-#define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
-  TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        &bc.exchange_auth, \
-                                        bc.user42_payto)
+static struct TALER_TESTING_Command
+CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
+{
+  return TALER_TESTING_cmd_admin_add_incoming (label,
+                                               amount,
+                                               &bc.exchange_auth,
+                                               bc.user42_payto);
+}
 
 
 /**
