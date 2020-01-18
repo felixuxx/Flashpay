@@ -13,5 +13,9 @@ fi
 GC=`which gnunet-config`
 ASAN=""
 A=`ldd $GC | grep libasan` && ASAN=`echo $A | awk '{print $3 ":"}'`
+if test -z $ASAN
+then
+   A=`ldd @prefix@/lib/libtalerutil.so | grep libasan` && ASAN=`echo $A | awk '{print $3 ":"}'`
+fi
 export LD_PRELOAD=${ASAN}${LD_PRELOAD:-}:@prefix@/lib/libtalerutil.so
 exec gnunet-config "$@"
