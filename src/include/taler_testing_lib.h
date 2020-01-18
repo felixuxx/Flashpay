@@ -2370,7 +2370,8 @@ TALER_TESTING_get_trait_merchant_pub (const struct TALER_TESTING_Command *cmd,
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_merchant_pub (unsigned int index,
-                                       struct TALER_MerchantPublicKeyP *pub);
+                                       const struct
+                                       TALER_MerchantPublicKeyP *pub);
 
 
 /**
