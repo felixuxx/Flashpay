@@ -42,41 +42,6 @@ main (int argc,
   GNUNET_log_setup ("test-payto",
                     "WARNING",
                     NULL);
-  r = TALER_payto_xtalerbank_make ("https://localhost/",
-                                   "account");
-  CHECK ("payto://x-taler-bank/localhost/account",
-         r);
-  r = TALER_payto_xtalerbank_make ("https://localhost",
-                                   "account");
-  CHECK ("payto://x-taler-bank/localhost/account",
-         r);
-  r = TALER_payto_xtalerbank_make2 ("https://localhost/account");
-  CHECK ("payto://x-taler-bank/localhost/account",
-         r);
-  r = TALER_payto_xtalerbank_make ("http://localhost:80/",
-                                   "account");
-  CHECK ("payto://x-taler-bank/localhost:80/account",
-         r);
-  r = TALER_payto_xtalerbank_make ("http://localhost:80",
-                                   "account");
-  CHECK ("payto://x-taler-bank/localhost:80/account",
-         r);
-  r = TALER_payto_xtalerbank_make ("http://localhost/",
-                                   "account");
-  r = TALER_payto_xtalerbank_make2 ("http://localhost:80/account");
-  CHECK ("payto://x-taler-bank/localhost:80/account",
-         r);
-  r = TALER_payto_xtalerbank_make2 ("http://localhost/account");
-  CHECK ("payto://x-taler-bank/localhost:80/account",
-         r);
-  r = TALER_xtalerbank_base_url_from_payto (
-    "payto://x-taler-bank/localhost/bob");
-  CHECK ("https://localhost/",
-         r);
-  r = TALER_xtalerbank_base_url_from_payto (
-    "payto://x-taler-bank/localhost:1080/bob");
-  CHECK ("http://localhost:1080/",
-         r);
   r = TALER_xtalerbank_account_from_payto (
     "payto://x-taler-bank/localhost:1080/alice");
   CHECK ("alice",

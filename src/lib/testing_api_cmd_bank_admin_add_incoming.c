@@ -59,11 +59,6 @@ struct AdminAddIncomingState
   const char *payto_debit_account;
 
   /**
-   * Money receiver payto URL.
-   */
-  char *payto_credit_account;
-
-  /**
    * Username to use for authentication.
    */
   struct TALER_BANK_AuthenticationData auth;
@@ -381,7 +376,6 @@ admin_add_incoming_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (fts->retry_task);
     fts->retry_task = NULL;
   }
-  GNUNET_free (fts->payto_credit_account);
   GNUNET_free (fts);
 }
 
@@ -407,8 +401,9 @@ admin_add_incoming_traits (void *cls,
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
                                     fts->payto_debit_account),
+    /* Used as a marker, content does not matter */
     TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
-                                    fts->payto_credit_account),
+                                    "payto://void/the-exchange"),
     TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
                                   fts->exchange_credit_url),
     TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
@@ -447,8 +442,6 @@ make_fts (const char *amount,
   fts = GNUNET_new (struct AdminAddIncomingState);
   fts->exchange_credit_url = exchange_base_url;
   fts->payto_debit_account = payto_debit_account;
-  fts->payto_credit_account
-    = TALER_payto_xtalerbank_make2 (exchange_base_url);
   fts->auth = *auth;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
