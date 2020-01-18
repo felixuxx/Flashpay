@@ -29,10 +29,11 @@
 
 
 /**
- * Handle a "/refresh/melt" request.  Parses the request into the JSON
- * components and then hands things of to #handle_refresh_melt_json()
- * to validate the melted coins, the signature and execute the melt
- * using TEH_DB_execute_refresh_melt().
+ * Handle a "/refresh/melt" request after the first parsing has
+ * happened.  We now need to validate the coins being melted and the
+ * session signature and then hand things of to execute the melt
+ * operation.  This function parses the JSON arrays and then passes
+ * processing on to #refresh_melt_transaction().
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle

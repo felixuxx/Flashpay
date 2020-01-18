@@ -316,6 +316,7 @@ find_transfers (void *cls);
  * the bank for the transaction history.
  *
  * @param cls closure with the `struct TALER_EXCHANGEDB_Session *`
+ * @param http_status HTTP status code from the server
  * @param ec taler error code
  * @param serial_id identification of the position at which we are querying
  * @param details details about the wire transfer

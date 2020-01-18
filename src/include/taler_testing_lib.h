@@ -389,8 +389,7 @@ struct TALER_TESTING_Interpreter
 
   /**
    * Handle to the auditor.  NULL unless specifically initialized
-   * as part of libtalertestingauditor's
-   * #TALER_TESTING_AUDITOR_main_wrapper().
+   * as part of #TALER_TESTING_auditor_setup().
    */
   struct TALER_AUDITOR_Handle *auditor;
 

@@ -225,7 +225,7 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
  * (incrementally) process JSON data uploaded to the HTTP
  * server.  It will store the required state in the
  * "connection_cls", which must be cleaned up using
- * #TALER_MHD_post_cleanup_callback().
+ * #TALER_MHD_parse_post_cleanup_callback().
  *
  * @param connection the MHD connection
  * @param con_cls the closure (points to a `struct Buffer *`)

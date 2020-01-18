@@ -38,7 +38,7 @@
  * realizes an MHD POST processor that will (incrementally) process
  * JSON data uploaded to the HTTP server.  It will store the required
  * state in the @a con_cls, which must be cleaned up using
- * #TALER_MHD_post_cleanup_callback().
+ * #TALER_MHD_parse_post_cleanup_callback().
  *
  * @param connection the MHD connection
  * @param con_cls the closure (points to a `struct Buffer *`)
@@ -109,7 +109,7 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
  * to clean up our state.
  *
  * @param con_cls value as it was left by
- *        #TALER_MHD_post_json(), to be cleaned up
+ *        #TALER_MHD_parse_post_json(), to be cleaned up
  */
 void
 TALER_MHD_parse_post_cleanup_callback (void *con_cls)

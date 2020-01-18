@@ -1394,7 +1394,14 @@ run_mhd (void *cls)
 
 
 /**
- * Start the fake bank.
+ * Start the fake bank.  The fake bank will, like the normal bank, listen for
+ * requests for /admin/add/incoming and /transfer. However, instead of
+ * executing or storing those requests, it will simply allow querying whether
+ * such a request has been made via #TALER_FAKEBANK_check_debit() and
+ * #TALER_FAKEBANK_check_credit() as well as the history API.
+ *
+ * This is useful for writing testcases to check whether the exchange
+ * would have issued the correct wire transfer orders.
  *
  * @param port port to listen to
  * @return NULL on error

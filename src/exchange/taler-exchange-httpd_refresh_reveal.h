@@ -29,13 +29,13 @@
 
 
 /**
- * Handle a "/refresh/reveal" request.  This time, the client reveals
- * the private transfer keys except for the cut-and-choose value
- * returned from "/refresh/commit".  This function parses the revealed
- * keys and secrets and ultimately passes everything to
- * #TEH_DB_execute_refresh_reveal() which will verify that the
- * revealed information is valid then returns the signed refreshed
- * coins.
+ * Handle a "/refresh/reveal" request. This time, the client reveals the
+ * private transfer keys except for the cut-and-choose value returned from
+ * "/refresh/melt".  This function parses the revealed keys and secrets and
+ * ultimately passes everything to #resolve_refresh_reveal_denominations()
+ * which will verify that the revealed information is valid then runs the
+ * transaction in #refresh_reveal_transaction() and finally returns the signed
+ * refreshed coins.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle

@@ -46,6 +46,12 @@
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
     </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_OPTION_NOTIFY_COMPLETED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
     <member kind="typedef">
       <type>int</type>
       <name>MHD_AccessHandlerCallback</name>

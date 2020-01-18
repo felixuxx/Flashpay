@@ -16,7 +16,7 @@
 
 /**
  * @file taler-exchange-httpd_validation.c
- * @brief helpers for calling the wire plugins to validate addresses
+ * @brief helpers for getting our wire account information
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -67,11 +67,10 @@ load_fee (const char *method)
 
 /**
  * Initialize account; checks if @a ai has /wire information, and if so,
- * adds the /wire information (if included) to our responses. Also, if
- * the account is debitable, we try to load the plugin.
+ * adds the /wire information (if included) to our responses.
  *
  * @param cls pointer to `int` to set to #GNUNET_SYSERR on errors
- * @param name name of the plugin to load
+ * @param ai details about the account we should load the wire details for
  */
 static void
 load_account (void *cls,
