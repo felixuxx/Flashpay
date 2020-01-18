@@ -1543,7 +1543,7 @@ typedef void
 /**
  * Function called with information about the exchange's denomination keys.
  *
- * @parma cls closure
+ * @param cls closure
  * @param denom_pub public key of the denomination
  * @param issue detailed information about the denomination (value, expiration times, fees)
  */

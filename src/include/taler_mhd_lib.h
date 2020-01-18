@@ -204,7 +204,6 @@ TALER_MHD_reply_agpl (struct MHD_Connection *connection,
  * Function to call to handle the request by sending
  * back static data.
  *
- * @param rh context of the handler
  * @param connection the MHD connection to handle
  * @param http_status status code to return
  * @param mime_type content-type to use

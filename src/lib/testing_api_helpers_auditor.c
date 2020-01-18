@@ -25,7 +25,6 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_testing_lib.h"
-#include "taler_testing_auditor_lib.h"
 #include "taler_auditor_service.h"
 
 
@@ -212,7 +211,7 @@ setup_with_cfg (void *cls,
  *         times.
  */
 int
-TALER_TESTING_AUDITOR_setup (TALER_TESTING_Main main_cb,
+TALER_TESTING_auditor_setup (TALER_TESTING_Main main_cb,
                              void *main_cb_cls,
                              const char *config_filename)
 {

@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/test_auditor_api_version.c
  * @brief testcase to test auditor's HTTP API interface to fetch /version
@@ -34,7 +33,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include "taler_testing_auditor_lib.h"
+
 
 /**
  * Configuration file we use.  One (big) configuration is used

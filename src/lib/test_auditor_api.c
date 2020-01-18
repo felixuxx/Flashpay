@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/test_auditor_api.c
  * @brief testcase to test auditor's HTTP API interface
@@ -34,7 +33,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include "taler_testing_auditor_lib.h"
+
 
 /**
  * Configuration file we use.  One (big) configuration is used
@@ -695,7 +694,7 @@ main (int argc,
          * start/stop the exchange.  It calls TALER_TESTING_setup
          * which creates the 'is' object.
          */
-        TALER_TESTING_AUDITOR_setup (&run,
+        TALER_TESTING_auditor_setup (&run,
                                      NULL,
                                      CONFIG_FILE))
       return 1;

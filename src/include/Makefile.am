@@ -16,7 +16,6 @@ talerinclude_HEADERS = \
   taler_exchangedb_plugin.h \
   taler_fakebank_lib.h \
   taler_json_lib.h \
-  taler_testing_auditor_lib.h \
   taler_testing_lib.h \
   taler_util.h \
   taler_mhd_lib.h \

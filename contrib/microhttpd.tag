@@ -30,7 +30,19 @@
     </member>
     <member kind="define">
       <type>#define</type>
-      <name>MHD_OPTION_NOTIFY_COMPLETED</name>
+      <name>MHD_HTTP_GONE</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_PRECONDITION_FAILED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_CONFLICT</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
     </member>

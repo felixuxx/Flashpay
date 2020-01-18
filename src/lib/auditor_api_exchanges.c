@@ -224,10 +224,10 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
 
 
 /**
- * Cancel a deposit-confirmation permission request.  This function cannot be used
+ * Cancel a list exchanges request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param deposit-confirmation the deposit-confirmation permission request handle
+ * @param leh the list exchanges request handle
  */
 void
 TALER_AUDITOR_list_exchanges_cancel (struct

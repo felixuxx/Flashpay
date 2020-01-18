@@ -657,6 +657,24 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
 
 
 /**
+ * Install signal handlers plus schedules the main wrapper
+ * around the "run" method.
+ *
+ * @param main_cb the "run" method which contains all the
+ *        commands.
+ * @param main_cb_cls a closure for "run", typically NULL.
+ * @param config_filename configuration filename.
+ * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
+ *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
+ *         times.
+ */
+int
+TALER_TESTING_auditor_setup (TALER_TESTING_Main main_cb,
+                             void *main_cb_cls,
+                             const char *config_filename);
+
+
+/**
  * Closure for #TALER_TESTING_setup_with_exchange_cfg().
  */
 struct TALER_TESTING_SetupContext
@@ -866,6 +884,119 @@ TALER_TESTING_cmd_transfer (const char *label,
                             const char *payto_credit_account,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             const char *exchange_base_url);
+
+
+/**
+ * Make the "exec-auditor" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_auditor (const char *label,
+                                const char *config_filename);
+
+
+/**
+ * Make the "exec-auditor-dbinit" CMD. Always run with the "-r" option.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
+                                       const char *config_filename);
+
+
+/**
+ * Make the "exec wire-auditor" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_wire_auditor (const char *label,
+                                     const char *config_filename);
+
+
+/**
+ * Create a "deposit-confirmation" command.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param deposit_reference reference to any operation that can
+ *        provide a coin.
+ * @param coin_index if @a deposit_reference offers an array of
+ *        coins, this parameter selects which one in that array.
+ *        This value is currently ignored, as only one-coin
+ *        deposits are implemented.
+ * @param amount_without_fee deposited amount without the fee
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_confirmation (const char *label,
+                                        struct TALER_AUDITOR_Handle *auditor,
+                                        const char *deposit_reference,
+                                        unsigned int coin_index,
+                                        const char *amount_without_fee,
+                                        unsigned int expected_response_code);
+
+
+/**
+ * Modify a deposit confirmation command to enable retries when we get
+ * transient errors from the auditor.
+ *
+ * @param cmd a deposit confirmation command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command
+                                                   cmd);
+
+
+/**
+ * Create a "list exchanges" command.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges (const char *label,
+                             struct TALER_AUDITOR_Handle *auditor,
+                             unsigned int expected_response_code);
+
+
+/**
+ * Create a "list exchanges" command and check whether
+ * a particular exchange belongs to the returned bundle.
+ *
+ * @param label command label.
+ * @param auditor auditor connection.
+ * @param expected_response_code expected HTTP response code.
+ * @param exchange_url URL of the exchange supposed to
+ *  be included in the response.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges_with_url (const char *label,
+                                      unsigned int expected_response_code,
+                                      const char *exchange_url);
+
+/**
+ * Modify an exchanges command to enable retries when we get
+ * transient errors from the auditor.
+ *
+ * @param cmd a deposit confirmation command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exchanges_with_retry (struct TALER_TESTING_Command cmd);
 
 
 /* ***** Commands ONLY for testing (/admin-API) **** */
