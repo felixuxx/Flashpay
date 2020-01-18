@@ -2835,6 +2835,7 @@ check_wire_out_cb
                                                &wcc.h_wire))
   {
     GNUNET_break (0);
+    GNUNET_free (method);
     return GNUNET_SYSERR;
   }
   qs = edb->lookup_wire_transfer (edb->cls,
@@ -2881,16 +2882,16 @@ check_wire_out_cb
                                     &wcc.total_deposits,
                                     wire_fee))
     {
-      report_amount_arithmetic_inconsistency
-        ("wire out (fee structure)",
-        rowid,
-        &wcc.total_deposits,
-        wire_fee,
-        -1);
+      report_amount_arithmetic_inconsistency ("wire out (fee structure)",
+                                              rowid,
+                                              &wcc.total_deposits,
+                                              wire_fee,
+                                              -1);
       /* If fee arithmetic fails, we just assume the fee is zero */
       final_amount = wcc.total_deposits;
     }
   }
+  GNUNET_free (method);
 
   /* Round down to amount supported by wire method */
   GNUNET_break (TALER_amount_round_down (&final_amount,

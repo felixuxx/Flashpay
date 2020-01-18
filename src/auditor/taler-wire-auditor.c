@@ -1362,6 +1362,7 @@ history_debit_cb (void *cls,
 {
   struct WireAccount *wa = cls;
   struct ReserveOutInfo *roi;
+  size_t slen;
 
   (void) json;
   if (NULL == details)
@@ -1389,14 +1390,19 @@ history_debit_cb (void *cls,
               TALER_B2S (&details->wtid));
   /* Update offset */
   wa->out_wire_off = row_off;
-  roi = GNUNET_new (struct ReserveOutInfo);
+  slen = strlen (details->credit_account_url) + 1;
+  roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
+                       + slen);
   GNUNET_CRYPTO_hash (&details->wtid,
                       sizeof (details->wtid),
                       &roi->subject_hash);
   roi->details.amount = details->amount;
   roi->details.execution_date = details->execution_date;
   roi->details.wtid = details->wtid;
-  roi->details.credit_account_url = GNUNET_strdup (details->credit_account_url);
+  roi->details.credit_account_url = (const char *) &roi[1];
+  memcpy (&roi[1],
+          details->credit_account_url,
+          slen);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (out_map,
                                          &roi->subject_hash,
