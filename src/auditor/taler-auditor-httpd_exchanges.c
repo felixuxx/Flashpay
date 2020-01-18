@@ -79,6 +79,10 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
   struct TALER_AUDITORDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   session = TAH_plugin->get_session (TAH_plugin->cls);
   if (NULL == session)
   {

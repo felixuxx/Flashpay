@@ -833,6 +833,7 @@ free_dk_info (void *cls,
 {
   struct TALER_DenominationKeyValidityPS *issue = value;
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Done with denomination `%s'\n",
               GNUNET_h2s (key));
@@ -1039,6 +1040,7 @@ handle_reserve_in (void *cls,
   struct GNUNET_TIME_Absolute expiry;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) wire_reference;
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_in_serial_id);
   ppr.last_reserve_in_serial_id = rowid + 1;
@@ -1295,6 +1297,7 @@ handle_payback_by_reserve (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   const char *rev;
 
+  (void) denom_pub;
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_payback_serial_id);
   ppr.last_reserve_payback_serial_id = rowid + 1;
@@ -1523,6 +1526,7 @@ handle_reserve_closed (void *cls,
   struct ReserveSummary *rs;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) transfer_details;
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_close_serial_id);
   ppr.last_reserve_close_serial_id = rowid + 1;
@@ -1888,6 +1892,7 @@ analyze_reserves (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsp;
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing reserves\n");
   qsp = adb->get_auditor_progress_reserve (adb->cls,
@@ -2984,6 +2989,7 @@ analyze_aggregations (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   enum GNUNET_DB_QueryStatus qsp;
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
   qsp = adb->get_auditor_progress_aggregation (adb->cls,
@@ -3487,6 +3493,11 @@ withdraw_cb (void *cls,
   struct TALER_Amount value;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) h_blind_ev;
+  (void) reserve_pub;
+  (void) reserve_sig;
+  (void) execution_date;
+  (void) amount_with_fee;
   GNUNET_assert (rowid >= ppc.last_withdraw_serial_id); /* should be monotonically increasing */
   ppc.last_withdraw_serial_id = rowid + 1;
 
@@ -3605,6 +3616,9 @@ reveal_data_cb (void *cls,
 {
   struct RevealContext *rctx = cls;
 
+  (void) num_tprivs;
+  (void) tprivs;
+  (void) tp;
   rctx->num_newcoins = num_newcoins;
   rctx->new_dps = GNUNET_new_array (num_newcoins,
                                     struct TALER_DenominationPublicKey);
@@ -3702,6 +3716,7 @@ refresh_session_cb (void *cls,
   struct TALER_Amount tmp;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) noreveal_index;
   GNUNET_assert (rowid >= ppc.last_melt_serial_id); /* should be monotonically increasing */
   ppc.last_melt_serial_id = rowid + 1;
 
@@ -4079,6 +4094,8 @@ deposit_cb (void *cls,
   struct TALER_Amount tmp;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) wire_deadline;
+  (void) done;
   GNUNET_assert (rowid >= ppc.last_deposit_serial_id); /* should be monotonically increasing */
   ppc.last_deposit_serial_id = rowid + 1;
 
@@ -4537,6 +4554,8 @@ payback_cb (void *cls,
 {
   struct CoinContext *cc = cls;
 
+  (void) timestamp;
+  (void) reserve_pub;
   return check_payback (cc,
                         rowid,
                         amount,
@@ -4575,6 +4594,8 @@ payback_refresh_cb (void *cls,
 {
   struct CoinContext *cc = cls;
 
+  (void) timestamp;
+  (void) old_coin_pub;
   return check_payback (cc,
                         rowid,
                         amount,
@@ -4599,6 +4620,7 @@ analyze_coins (void *cls)
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qsp;
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing coins\n");
   qsp = adb->get_auditor_progress_coin (adb->cls,
@@ -4907,6 +4929,7 @@ analyze_deposit_confirmations (void *cls)
   enum GNUNET_DB_QueryStatus qsx;
   enum GNUNET_DB_QueryStatus qsp;
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing deposit confirmations\n");
   ppdc.last_deposit_confirmation_serial_id = 0;
@@ -5154,6 +5177,9 @@ run (void *cls,
   struct TALER_AUDITORDB_Session *as;
   int found;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   cfg = c;
