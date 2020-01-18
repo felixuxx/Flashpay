@@ -1250,10 +1250,8 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd);
  * Create a "refresh link" command.
  *
  * @param label command label.
- * @param exchange connection to the exchange.
  * @param reveal_reference reference to a "refresh reveal" CMD.
  * @param expected_response_code expected HTTP response code
- *
  * @return the "refresh link" command
  */
 struct TALER_TESTING_Command
@@ -1307,7 +1305,6 @@ TALER_TESTING_cmd_track_transaction (const char *label,
  * @param index index number of the WTID to track, in case there
  *        are multiple on offer.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1327,7 +1324,7 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
  * @param index in case there are multiple WTID offered, this
  *        parameter selects a particular one.
  * @param expected_response_code expected HTTP response code.
- * @param expected_amount how much money we expect being moved
+ * @param expected_total_amount how much money we expect being moved
  *        with this wire-transfer.
  * @param expected_wire_fee expected wire fee.
  * @return the command
@@ -1461,7 +1458,7 @@ TALER_TESTING_cmd_refund (const char *label,
  *        the index of the coin using "$LABEL#$INDEX" syntax.
  *        Here, $INDEX must be a non-negative number.
  * @param amount denomination to pay back.
- * @param NULL if coin was not refreshed, otherwise label of the melt operation
+ * @param melt_reference NULL if coin was not refreshed, otherwise label of the melt operation
  * @return the command.
  */
 struct TALER_TESTING_Command

@@ -80,7 +80,7 @@ struct TALER_MHD_Legal
 /**
  * Check if @a mime matches the @a accept_pattern.
  *
- * @param accept_pattern a mime pattern like text/plain or image/<STAR>
+ * @param accept_pattern a mime pattern like text/plain or image/STAR
  * @param mime the mime type to match
  * @return true if @a mime matches the @a accept_pattern
  */
@@ -307,7 +307,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
  * Load all the terms of service from @a path under language @a lang
  * from file @a name
  *
- * @param legal[in,out] where to write the result
+ * @param[in,out] legal where to write the result
  * @param path where the terms are found
  * @param lang which language directory to crawl
  * @param name specific file to access
@@ -467,7 +467,7 @@ load_terms (struct TALER_MHD_Legal *legal,
 /**
  * Load all the terms of service from @a path under language @a lang.
  *
- * @param legal[in,out] where to write the result
+ * @param[in,out] legal where to write the result
  * @param path where the terms are found
  * @param lang which language directory to crawl
  */
@@ -569,7 +569,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
 /**
  * Free set of legal documents
  *
- * @param leg legal documents to free
+ * @param legal legal documents to free
  */
 void
 TALER_MHD_legal_free (struct TALER_MHD_Legal *legal)

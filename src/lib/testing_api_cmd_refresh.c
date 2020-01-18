@@ -1157,11 +1157,10 @@ parse_amounts (struct RefreshMeltState *rms,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt
-  (const char *label,
-  const char *coin_reference,
-  unsigned int expected_response_code,
-  ...)
+TALER_TESTING_cmd_refresh_melt (const char *label,
+                                const char *coin_reference,
+                                unsigned int expected_response_code,
+                                ...)
 {
   struct RefreshMeltState *rms;
   va_list ap;
@@ -1193,7 +1192,6 @@ TALER_TESTING_cmd_refresh_melt
  * request, see #5312.
  *
  * @param label command label
- * @param exchange connection to the exchange
  * @param coin_reference reference to a command that will provide
  *        a coin to refresh
  * @param expected_response_code expected HTTP code
@@ -1201,11 +1199,10 @@ TALER_TESTING_cmd_refresh_melt
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt_double
-  (const char *label,
-  const char *coin_reference,
-  unsigned int expected_response_code,
-  ...)
+TALER_TESTING_cmd_refresh_melt_double (const char *label,
+                                       const char *coin_reference,
+                                       unsigned int expected_response_code,
+                                       ...)
 {
   struct RefreshMeltState *rms;
   va_list ap;
@@ -1257,7 +1254,6 @@ TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd)
  * @param[out] ret result (could be anything).
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
 static int
@@ -1318,7 +1314,6 @@ refresh_reveal_traits (void *cls,
  * @param exchange connection to the exchange.
  * @param melt_reference reference to a "refresh melt" command.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1369,7 +1364,6 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
  * @param label command label.
  * @param reveal_reference reference to a "refresh reveal" CMD.
  * @param expected_response_code expected HTTP response code
- *
  * @return the "refresh link" command
  */
 struct TALER_TESTING_Command

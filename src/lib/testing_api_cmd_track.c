@@ -768,7 +768,7 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
  * @param index in case there are multiple WTID offered, this
  *        parameter selects a particular one.
  * @param expected_response_code expected HTTP response code.
- * @param expected_amount how much money we expect being moved
+ * @param expected_total_amount how much money we expect being moved
  *        with this wire-transfer.
  * @param expected_wire_fee expected wire fee.
  * @return the command

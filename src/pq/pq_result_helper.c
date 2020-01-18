@@ -161,6 +161,7 @@ extract_amount_nbo (void *cls,
  * Currency amount expected.
  *
  * @param name name of the field in the table
+ * @param currency the currency to use for @a amount
  * @param[out] amount where to store the result
  * @return array entry for the result specification to use
  */
@@ -239,7 +240,7 @@ extract_amount (void *cls,
  * Currency amount expected.
  *
  * @param name name of the field in the table
- * @param currency the currency the amount is in
+ * @param currency the currency to use for @a amount
  * @param[out] amount where to store the result
  * @return array entry for the result specification to use
  */

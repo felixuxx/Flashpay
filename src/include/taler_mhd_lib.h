@@ -422,7 +422,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
 /**
  * Free set of legal documents
  *
- * @param leg legal documents to free
+ * @param legal legal documents to free
  */
 void
 TALER_MHD_legal_free (struct TALER_MHD_Legal *legal);

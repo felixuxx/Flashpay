@@ -224,6 +224,7 @@ TALER_url_absolute_raw_va (const char *proto,
 /**
  * Make an absolute URL for a given MHD connection.
  *
+ * @param connection the connection to get the URL for
  * @param path path of the url
  * @param ... NULL-terminated key-value pairs (char *) for query parameters,
  *        the value will be url-encoded
