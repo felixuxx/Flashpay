@@ -867,8 +867,6 @@ TALER_TESTING_cmd_bank_debits (const char *label,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param bank_base_url base URL of the account that implements this
- *        wire transer (which account gives money).
  * @param auth authentication data to use
  * @param payto_credit_account which account receives money.
  * @param wtid wire transfer identifier to use
@@ -2500,16 +2498,16 @@ enum TALER_TESTING_PaytoType
 
 
 /**
- * Offer PAYTO url in a trait.
+ * Offer a payto uri in a trait.
  *
  * @param pt which url is to be picked,
  *        in case multiple are offered.
- * @param url the url to offer.
+ * @param payto_uri the uri to offer.
  * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_payto (enum TALER_TESTING_PaytoType pt,
-                                const char *url);
+                                const char *payto_uri);
 
 
 /**

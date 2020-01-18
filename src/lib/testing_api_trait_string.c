@@ -209,20 +209,20 @@ TALER_TESTING_get_trait_payto (const struct TALER_TESTING_Command *cmd,
  *
  * @param pt which reference is to be offered,
  *        in case multiple are offered.
- * @param payto the payto URL
+ * @param payto_uri the payto URI
  * @return the trait.
  */
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_payto (enum TALER_TESTING_PaytoType pt,
-                                const char *payto)
+                                const char *payto_uri)
 {
   struct TALER_TESTING_Trait ret = {
     .index = (unsigned int) pt,
     .trait_name = TALER_TESTING_TRAIT_PAYTO,
-    .ptr = (const void *) payto
+    .ptr = (const void *) payto_uri,
   };
 
-  GNUNET_assert (0 == strncasecmp (payto,
+  GNUNET_assert (0 == strncasecmp (payto_uri,
                                    "payto://",
                                    strlen ("payto://")));
   return ret;

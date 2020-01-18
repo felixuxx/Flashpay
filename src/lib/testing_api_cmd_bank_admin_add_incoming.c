@@ -431,14 +431,13 @@ admin_add_incoming_traits (void *cls,
  */
 static struct AdminAddIncomingState *
 make_fts (const char *amount,
-          const char *exchange_base_url,
           const struct TALER_BANK_AuthenticationData *auth,
           const char *payto_debit_account)
 {
   struct AdminAddIncomingState *fts;
 
   fts = GNUNET_new (struct AdminAddIncomingState);
-  fts->exchange_credit_url = exchange_base_url;
+  fts->exchange_credit_url = auth->wire_gateway_url;
   fts->payto_debit_account = payto_debit_account;
   fts->auth = *auth;
   if (GNUNET_OK !=
@@ -495,7 +494,6 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
 {
   return make_command (label,
                        make_fts (amount,
-                                 auth->wire_gateway_url,
                                  auth,
                                  payto_debit_account));
 }
@@ -526,7 +524,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
   struct AdminAddIncomingState *fts;
 
   fts = make_fts (amount,
-                  auth->wire_gateway_url,
                   auth,
                   payto_debit_account);
   fts->reserve_reference = ref;
@@ -566,7 +563,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_instance
   struct AdminAddIncomingState *fts;
 
   fts = make_fts (amount,
-                  auth->wire_gateway_url,
                   auth,
                   payto_debit_account);
   fts->instance = instance;
