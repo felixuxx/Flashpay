@@ -37,7 +37,7 @@
  *
  * @param cmd command to extract the reserve pub from.
  * @param index reserve pub's index number.
- * @param reserve_pub[out] set to the reserve pub.
+ * @param[out] reserve_pub set to the reserve pub.
  * @return #GNUNET_OK on success.
  */
 int

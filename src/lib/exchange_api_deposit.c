@@ -181,8 +181,8 @@ auditor_cb (void *cls,
  *
  * @param dh deposit handle
  * @param json json reply with the signature
- * @param exchange_sig[out] set to the exchange's signature
- * @param exchange_pub[out] set to the exchange's public key
+ * @param[out] exchange_sig set to the exchange's signature
+ * @param[out] exchange_pub set to the exchange's public key
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int

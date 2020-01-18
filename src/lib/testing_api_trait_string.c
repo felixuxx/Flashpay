@@ -56,7 +56,7 @@
  * @param cmd command to extract the subject from.
  * @param index index number associated with the transfer
  *        subject to offer.
- * @param s[out] where to write the offered
+ * @param[out] s where to write the offered
  *        string
  * @return #GNUNET_OK on success.
  */
@@ -99,8 +99,7 @@ TALER_TESTING_make_trait_string (unsigned int index,
  * @param cmd command to extract the url from.
  * @param index which url is to be picked, in case
  *        multiple are offered.
- * @param url[out] where to write the url.
- *
+ * @param[out] url where to write the url.
  * @return #GNUNET_OK on success.
  */
 int
@@ -148,8 +147,7 @@ TALER_TESTING_make_trait_url (unsigned int index,
  * @param cmd command to extract the order id from.
  * @param index which order id is to be picked, in case
  *        multiple are offered.
- * @param order_id[out] where to write the order id.
- *
+ * @param[out] order_id where to write the order id.
  * @return #GNUNET_OK on success.
  */
 int
@@ -170,7 +168,6 @@ TALER_TESTING_get_trait_order_id (const struct TALER_TESTING_Command *cmd,
  * @param index which order id is to be offered,
  *        in case multiple are offered.
  * @param order_id the order id to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -192,7 +189,7 @@ TALER_TESTING_make_trait_order_id (unsigned int index,
  * @param cmd command to extract the url from.
  * @param pt which url is to be picked, in case
  *        multiple are offered.
- * @param url[out] where to write the url.
+ * @param[out] url where to write the url.
  * @return #GNUNET_OK on success.
  */
 int

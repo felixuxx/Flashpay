@@ -37,7 +37,7 @@
  *
  * @param cmd command to extract the reserve priv from.
  * @param index reserve priv's index number.
- * @param reserve_priv[out] set to the reserve priv.
+ * @param[out] reserve_priv set to the reserve priv.
  * @return #GNUNET_OK on success.
  */
 int

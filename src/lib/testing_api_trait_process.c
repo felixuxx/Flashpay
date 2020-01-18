@@ -39,9 +39,8 @@
  * @param cmd command to extract trait from.
  * @param index which process to pick if @a cmd
  *        has multiple on offer.
- * @param coin_priv[out] set to the address of the pointer to the
+ * @param[out] processp set to the address of the pointer to the
  *        process.
- *
  * @return #GNUNET_OK on success.
  */
 int

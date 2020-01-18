@@ -539,20 +539,18 @@ TALER_amount_normalize (struct TALER_Amount *amount)
 
 
 /**
- * Convert the fraction of @a amount to a string
- * in decimals.
+ * Convert the fraction of @a amount to a string in decimals.
  *
  * @param amount value to convert
- * @param tail[out] where to write the reesult
+ * @param[out] tail where to write the reesult
  */
 static void
 amount_to_tail (const struct TALER_Amount *amount,
                 char tail[TALER_AMOUNT_FRAC_LEN + 1])
 {
   uint32_t n = amount->fraction;
-  unsigned int i;
 
-  for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
+  for (unsigned int i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
   {
     tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
     n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);

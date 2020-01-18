@@ -146,7 +146,7 @@ TALER_JSON_get_error_code2 (const void *data,
  * hash is what is put into the contract.
  *
  * @param wire_s wire details to hash
- * @param hc[out] set to the hash
+ * @param[out] hc set to the hash
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
  */
 int

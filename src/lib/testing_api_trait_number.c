@@ -38,7 +38,7 @@
  *
  * @param cmd command to extract the number from.
  * @param index the number's index number.
- * @param n[out] set to the number coming from @a cmd.
+ * @param[out] n set to the number coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -78,8 +78,7 @@ TALER_TESTING_make_trait_uint (unsigned int index,
  *
  * @param cmd command to extract the number from.
  * @param index the number's index number.
- * @param n[out] set to the number coming from @a cmd.
- *
+ * @param[out] n set to the number coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int
@@ -117,7 +116,7 @@ TALER_TESTING_make_trait_uint64 (unsigned int index,
  * Obtain a bank transaction row value from @a cmd.
  *
  * @param cmd command to extract the number from.
- * @param row[out] set to the number coming from @a cmd.
+ * @param[out] row set to the number coming from @a cmd.
  * @return #GNUNET_OK on success.
  */
 int

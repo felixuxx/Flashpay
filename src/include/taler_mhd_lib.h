@@ -381,7 +381,7 @@ TALER_MHD_open_unix_path (const char *unix_path,
  *
  * @param cfg configuration to parse
  * @param section configuration section to use
- * @param port[out] port to set, if TCP without BINDTO
+ * @param[out] port port to set, if TCP without BINDTO
  * @return -1 and a port of zero on error, otherwise
  *    either -1 and a port, or a bound stream socket
  */

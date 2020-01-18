@@ -37,7 +37,7 @@
  * @param cmd command to extract trait from
  * @param index which time stamp to pick if
  *        @a cmd has multiple on offer.
- * @param time[out] set to the wanted WTID.
+ * @param[out] time set to the wanted WTID.
  * @return #GNUNET_OK on success
  */
 int

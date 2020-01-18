@@ -1897,7 +1897,6 @@ TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
  * @param index offered location index number, in case there are
  *        multiple on offer.
  * @param processp process location to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -1910,7 +1909,6 @@ TALER_TESTING_make_trait_process (unsigned int index,
  *
  * @param index index number to associate with offered coin priv.
  * @param coin_priv coin private key to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -1938,7 +1936,6 @@ TALER_TESTING_get_trait_coin_priv (const struct TALER_TESTING_Command *cmd,
  *
  * @param index index number to associate to the offered key.
  * @param blinding_key blinding key to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -1969,7 +1966,6 @@ TALER_TESTING_get_trait_blinding_key (const struct TALER_TESTING_Command *cmd,
  *
  * @param index index number to associate to the offered denom pub.
  * @param denom_pub denom pub to offer with this trait.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -2014,7 +2010,6 @@ TALER_TESTING_get_trait_denom_sig (const struct TALER_TESTING_Command *cmd,
  * @param index index number to associate to the signature on
  *        offer.
  * @param denom_sig the denom sig on offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

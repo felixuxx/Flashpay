@@ -3320,7 +3320,7 @@ get_refunds_cb (void *cls,
  * @param session database handle to use
  * @param coin_pub coin to get refunds for
  * @param merchant_pub merchant to get refunds for
- * @param h_contract_pub contract (hash) to get refunds for
+ * @param h_contract contract (hash) to get refunds for
  * @param cb function to call for each refund found
  * @param cb_cls closure for @a cb
  * @return query result status
@@ -3489,8 +3489,7 @@ postgres_insert_melt (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session database connection
  * @param rc identify commitment and thus refresh operation
- * @param num_rrcs_newcoins number of coins to generate, size of the
- *            @a rrcs array
+ * @param num_rrcs number of coins to generate, size of the @a rrcs array
  * @param rrcs information about the new coins
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
  * @param tprivs transfer private keys to store
@@ -6947,7 +6946,7 @@ postgres_get_reserve_by_h_blind (void *cls,
  * @param cls closure
  * @param session a session
  * @param h_blind_ev hash of the blinded coin
- * @param[out] reserve_pub set to information about the reserve (on success only)
+ * @param[out] old_coin_pub set to information about the old coin (on success only)
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

@@ -170,8 +170,8 @@ TALER_BANK_admin_add_incoming_cancel (struct
  * @param exchange_base_url base URL of this exchange (included in subject
  *        to facilitate use of tracking API by merchant backend)
  * @param wtid wire transfer identifier to use
- * @param buf[out] set to transaction data to persist, NULL on error
- * @param buf_size[out] set to number of bytes in @a buf, 0 on error
+ * @param[out] buf set to transaction data to persist, NULL on error
+ * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
 TALER_BANK_prepare_wire_transfer (const char *destination_account_payto_uri,
@@ -469,7 +469,7 @@ TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
  *
  * @param cfg configuration to parse
  * @param section the section with the configuration data
- * @param auth[out] set to the configuration data found
+ * @param[out] auth set to the configuration data found
  * @return #GNUNET_OK on success
  */
 int

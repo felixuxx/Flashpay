@@ -2126,8 +2126,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param rc identify commitment and thus refresh operation
-   * @param num_rrcs_newcoins number of coins to generate, size of the
-   *            @a rrcs array
+   * @param num_rrcs number of coins to generate, size of the @a rrcs array
    * @param rrcs information about the new coins
    * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
    * @param tprivs transfer private keys to store

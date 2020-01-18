@@ -78,7 +78,7 @@ TALER_exchange_wire_signature_check (const char *payto_url,
  *
  * @param payto_url account specification
  * @param master_priv private key to sign with
- * @param master_sig[out] where to write the signature
+ * @param[out] master_sig where to write the signature
  */
 void
 TALER_exchange_wire_signature_make (const char *payto_url,
@@ -105,7 +105,7 @@ TALER_exchange_wire_signature_make (const char *payto_url,
  *
  * @param payto_url bank account
  * @param salt salt used to eliminate brute-force inversion
- * @param hc[out] set to the hash
+ * @param[out] hc set to the hash
  */
 void
 TALER_merchant_wire_signature_hash (const char *payto_url,
@@ -162,7 +162,7 @@ TALER_merchant_wire_signature_check (const char *payto_url,
  * @param payto_url account specification
  * @param salt the salt used to salt the @a payto_url when hashing
  * @param merchant_priv private key to sign with
- * @param merchant_sig[out] where to write the signature
+ * @param[out] merchant_sig where to write the signature
  */
 void
 TALER_merchant_wire_signature_make (const char *payto_url,

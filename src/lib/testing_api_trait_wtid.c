@@ -37,7 +37,7 @@
  * @param cmd command to extract trait from
  * @param index which WTID to pick if @a cmd has multiple on
  *        offer
- * @param wtid[out] set to the wanted WTID.
+ * @param[out] wtid set to the wanted WTID.
  * @return #GNUNET_OK on success
  */
 int
