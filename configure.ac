@@ -58,7 +58,7 @@ AC_PROG_CC_C99
 CFLAGS="-Wall -Wno-address-of-packed-member $CFLAGS"
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h sys/socket.h sys/un.h netinet/in.h netinet/ip.h])
 
 
 # Require minimum libgcrypt version

@@ -647,7 +647,6 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       GNUNET_JSON_spec_fixed_auto (NULL, &link_sigs[i]),
       GNUNET_JSON_spec_end ()
     };
-    int res;
 
     res = TALER_MHD_parse_json_array (connection,
                                       link_sigs_json,

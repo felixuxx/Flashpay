@@ -578,7 +578,6 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   auditor->denom_keys = GNUNET_new_array (len,
                                           struct
                                           TALER_EXCHANGE_AuditorDenominationInfo);
-  i = 0;
   off = 0;
   json_array_foreach (keys, i, key) {
     struct TALER_AuditorSignatureP auditor_sig;
@@ -911,7 +910,6 @@ decode_keys_json (const json_t *resp_obj,
     key_data->sign_keys
       = GNUNET_new_array (key_data->num_sign_keys,
                           struct TALER_EXCHANGE_SigningPublicKey);
-    index = 0;
     json_array_foreach (sign_keys_array, index, sign_key_obj) {
       EXITIF (GNUNET_SYSERR ==
               parse_json_signkey (&key_data->sign_keys[index],
@@ -933,7 +931,6 @@ decode_keys_json (const json_t *resp_obj,
                                         "denoms")));
     EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
 
-    index = 0;
     json_array_foreach (denom_keys_array, index, denom_key_obj) {
       struct TALER_EXCHANGE_DenomPublicKey dk;
       int found = GNUNET_NO;
@@ -992,7 +989,6 @@ decode_keys_json (const json_t *resp_obj,
     EXITIF (JSON_ARRAY != json_typeof (auditors_array));
 
     /* Merge with the existing auditor information we have (/keys cherry picking) */
-    index = 0;
     json_array_foreach (auditors_array, index, auditor_info) {
       struct TALER_EXCHANGE_AuditorInformation ai;
       int found = GNUNET_NO;

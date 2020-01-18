@@ -818,6 +818,11 @@ main (int argc,
     TALER_LOG_ERROR ("-p option value given is too large\n");
     return BAD_CLI_ARG;
   }
+  if (0 == howmany_clients)
+  {
+    TALER_LOG_ERROR ("-p option value must not be zero\n");
+    return BAD_CLI_ARG;
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string

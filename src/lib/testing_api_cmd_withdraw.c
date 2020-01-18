@@ -275,7 +275,7 @@ withdraw_run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to determine denomination key at %s\n",
-                cmd->label);
+                (NULL != cmd) ? cmd->label : "<retried command>");
     GNUNET_assert (0);
   }
   else

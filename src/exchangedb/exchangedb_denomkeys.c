@@ -69,7 +69,6 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
   int ret;
   struct RevocationFileP rd;
 
-  ret = GNUNET_SYSERR;
   GNUNET_asprintf (&fn,
                    "%s" DIR_SEPARATOR_STR
                    "%s.rev",

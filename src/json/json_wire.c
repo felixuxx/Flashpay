@@ -233,7 +233,6 @@ validate_iban (const char *iban)
   unsigned long long dividend;
   unsigned long long remainder;
   int nread;
-  int ret;
   unsigned int i;
   unsigned int j;
 
@@ -289,10 +288,10 @@ validate_iban (const char *iban)
   for (unsigned int i = 0; i<j; i += 16)
   {
     if (1 !=
-        (ret = sscanf (&nbuf[i],
-                       "%16llu %n",
-                       &dividend,
-                       &nread)))
+        sscanf (&nbuf[i],
+                "%16llu %n",
+                &dividend,
+                &nread))
     {
       GNUNET_free (nbuf);
       GNUNET_break_op (0);

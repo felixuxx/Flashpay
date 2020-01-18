@@ -1140,7 +1140,7 @@ expired_reserve_cb (void *cls,
                                            left,
                                            closing_fee);
   else
-    ret = GNUNET_DB_STATUS_HARD_ERROR;
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Closing reserve %s over %s (%d, %d)\n",
               TALER_B2S (reserve_pub),

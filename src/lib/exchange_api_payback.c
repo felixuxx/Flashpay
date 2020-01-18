@@ -219,6 +219,7 @@ handle_payback_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      break;
     }
     TALER_EXCHANGE_payback_cancel (ph);
     return;

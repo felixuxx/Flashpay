@@ -203,7 +203,8 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
      loop once for 'session=0' in most cases.
 
      num_coins tracks the size of the 1d array we return,
-     whilst 'i' and 'session' track the 2d array. */for (session = 0; session<json_array_size (json); session++)
+     whilst 'i' and 'session' track the 2d array. *///
+  for (session = 0; session<json_array_size (json); session++)
   {
     json_t *jsona;
     struct GNUNET_JSON_Specification spec[] = {
@@ -236,9 +237,9 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   {
     unsigned int off_coin; /* index into 1d array */
     unsigned int i;
-    struct TALER_CoinSpendPrivateKeyP coin_privs[num_coins];
-    struct TALER_DenominationSignature sigs[num_coins];
-    struct TALER_DenominationPublicKey pubs[num_coins];
+    struct TALER_CoinSpendPrivateKeyP coin_privs[GNUNET_NZL (num_coins)];
+    struct TALER_DenominationSignature sigs[GNUNET_NZL (num_coins)];
+    struct TALER_DenominationPublicKey pubs[GNUNET_NZL (num_coins)];
 
     memset (sigs, 0, sizeof (sigs));
     memset (pubs, 0, sizeof (pubs));

@@ -322,6 +322,7 @@ TALER_EXCHANGE_verify_coin_history (const struct
     {
       /* signature not supported, new version on server? */
       GNUNET_break_op (0);
+      GNUNET_assert (GNUNET_SYSERR == add);
       return GNUNET_SYSERR;
     }
     if (GNUNET_YES == add)
