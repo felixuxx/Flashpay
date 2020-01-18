@@ -419,6 +419,8 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
 {
   struct Transaction *t;
 
+  GNUNET_assert (NULL != debit_account);
+  GNUNET_assert (NULL != credit_account);
   GNUNET_break (0 != strncasecmp ("payto://",
                                   debit_account,
                                   strlen ("payto://")));
