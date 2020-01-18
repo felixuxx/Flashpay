@@ -1439,7 +1439,6 @@ process_debits (void *cls)
               wa->section_name);
   GNUNET_assert (NULL == wa->dhh);
   wa->dhh = TALER_BANK_debit_history (ctx,
-                                      wa->auth.wire_gateway_url,
                                       &wa->auth,
                                       wa->out_wire_off,
                                       INT64_MAX,
@@ -1848,7 +1847,6 @@ process_credits (void *cls)
               "Starting bank CREDIT history of account `%s'\n",
               wa->section_name);
   wa->chh = TALER_BANK_credit_history (ctx,
-                                       wa->auth.wire_gateway_url,
                                        &wa->auth,
                                        wa->in_wire_off,
                                        INT64_MAX,

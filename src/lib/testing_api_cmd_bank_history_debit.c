@@ -523,7 +523,6 @@ history_run (void *cls,
   }
   hs->total = build_history (is, &hs->h);
   hs->hh = TALER_BANK_debit_history (is->ctx,
-                                     hs->account_url,
                                      &hs->auth,
                                      row_id,
                                      hs->num_results,

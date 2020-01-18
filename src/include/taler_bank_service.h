@@ -165,7 +165,7 @@ TALER_BANK_admin_add_incoming_cancel (struct
 /**
  * Prepare for exeuction of a wire transfer.
  *
- * @param destination_account_url payto:// URL identifying where to send the money
+ * @param destination_account_uri payto:// URL identifying where to send the money
  * @param amount amount to transfer, already rounded
  * @param exchange_base_url base URL of this exchange (included in subject
  *        to facilitate use of tracking API by merchant backend)
@@ -315,7 +315,6 @@ typedef int
  * Request the wire credit history of an exchange's bank account.
  *
  * @param ctx curl context for the event loop
- * @param account_base_url URL of the base INCLUDING account number
  * @param auth authentication data to use
  * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
  * @param num_results how many results do we want; negative numbers to go into the past,
@@ -329,7 +328,6 @@ typedef int
  */
 struct TALER_BANK_CreditHistoryHandle *
 TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
-                           const char *account_base_url,
                            const struct TALER_BANK_AuthenticationData *auth,
                            uint64_t start_row,
                            int64_t num_results,
@@ -442,7 +440,6 @@ typedef int
  */
 struct TALER_BANK_DebitHistoryHandle *
 TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
-                          const char *bank_base_url,
                           const struct TALER_BANK_AuthenticationData *auth,
                           uint64_t start_row,
                           int64_t num_results,

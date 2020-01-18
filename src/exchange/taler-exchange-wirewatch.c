@@ -524,7 +524,6 @@ find_transfers (void *cls)
               wa_pos->auth.wire_gateway_url);
 
   hh = TALER_BANK_credit_history (ctx,
-                                  wa_pos->auth.wire_gateway_url,
                                   &wa_pos->auth,
                                   last_row_off,
                                   batch_size,

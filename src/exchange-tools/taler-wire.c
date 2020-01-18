@@ -232,7 +232,6 @@ static void
 execute_history ()
 {
   hh = TALER_BANK_credit_history (ctx,
-                                  destination_account_url,
                                   &auth,
                                   start_row,
                                   -10,

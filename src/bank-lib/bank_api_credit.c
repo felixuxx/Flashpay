@@ -218,7 +218,6 @@ handle_history_finished (void *cls,
  * Request the credit history of the exchange's bank account.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the base INCLUDING account number
  * @param auth authentication data to use
  * @param start_row from which row on do we want to get results,
  *        use UINT64_MAX for the latest; exclusive
@@ -235,7 +234,6 @@ handle_history_finished (void *cls,
  */
 struct TALER_BANK_CreditHistoryHandle *
 TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
-                           const char *bank_base_url,
                            const struct TALER_BANK_AuthenticationData *auth,
                            uint64_t start_row,
                            int64_t num_results,
@@ -267,7 +265,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
   hh = GNUNET_new (struct TALER_BANK_CreditHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
-  hh->request_url = TALER_url_join (bank_base_url,
+  hh->request_url = TALER_url_join (auth->wire_gateway_url,
                                     url,
                                     NULL);
   GNUNET_free (url);
@@ -277,7 +275,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     return NULL;
   }
-  hh->bank_base_url = GNUNET_strdup (bank_base_url);
+  hh->bank_base_url = GNUNET_strdup (auth->wire_gateway_url);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting history at `%s'\n",
               hh->request_url);
