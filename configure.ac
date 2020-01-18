@@ -477,6 +477,7 @@ AC_CONFIG_FILES([Makefile
                  contrib/pp/Makefile
                  contrib/tos/Makefile
                  doc/Makefile
+		 doc/doxygen/Makefile
                  src/Makefile
                  src/auditor/Makefile
                  src/auditordb/Makefile

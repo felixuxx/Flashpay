@@ -1,6 +1,6 @@
 # This Makefile.am is in the public domain
 
-SUBDIRS = .
+SUBDIRS = . doxygen
 
 man_MANS = \
   prebuilt/man/taler-auditor.1 \

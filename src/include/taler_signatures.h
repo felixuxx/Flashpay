@@ -955,7 +955,7 @@ struct TALER_MasterWireDetailsPS
 
   /**
    * Hash over the account holder's payto:// URL and
-   * the salt, as done by #TALER_wire_signature_hash().
+   * the salt, as done by #TALER_exchange_wire_signature_hash().
    */
   struct GNUNET_HashCode h_wire_details GNUNET_PACKED;
 
