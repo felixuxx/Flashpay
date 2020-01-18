@@ -278,6 +278,7 @@ TEAH_acc_confirmation_cb (void *cls,
   struct TEAH_AuditorInteractionEntry *aie = cls;
   struct TEAH_AuditorListEntry *ale = aie->ale;
 
+  (void) json;
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

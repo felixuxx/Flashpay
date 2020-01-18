@@ -288,6 +288,9 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
+  (void) cls;
+  (void) connection;
+  (void) toe;
   if (NULL == *con_cls)
     return;
   TALER_MHD_parse_post_cleanup_callback (*con_cls);
@@ -388,11 +391,12 @@ handle_mhd_request (void *cls,
     { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
       NULL, 0,
       &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
-
-    { NULL, NULL, NULL, NULL, 0, 0 }
+    { NULL, NULL, NULL, NULL, 0, NULL, 0 }
   };
   struct TAH_RequestHandler *rh;
 
+  (void) cls;
+  (void) version;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Handling request for URL '%s'\n",
               url);

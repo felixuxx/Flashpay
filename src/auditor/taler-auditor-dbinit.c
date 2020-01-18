@@ -55,6 +55,9 @@ run (void *cls,
 {
   struct TALER_AUDITORDB_Plugin *plugin;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   if (NULL ==
       (plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {

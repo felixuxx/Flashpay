@@ -203,6 +203,10 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   res = TALER_MHD_parse_post_json (connection,
                                    connection_cls,
                                    upload_data,

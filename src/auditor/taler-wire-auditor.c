@@ -431,6 +431,7 @@ free_rii (void *cls,
 {
   struct ReserveInInfo *rii = value;
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (in_map,
                                                        key,
@@ -455,6 +456,7 @@ free_roi (void *cls,
 {
   struct ReserveOutInfo *roi = value;
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (out_map,
                                                        key,
@@ -479,6 +481,7 @@ free_rc (void *cls,
 {
   struct ReserveClosure *rc = value;
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (reserve_closures,
                                                        key,
@@ -499,6 +502,7 @@ do_shutdown (void *cls)
 {
   struct WireAccount *wa;
 
+  (void) cls;
   if (NULL != ctx)
   {
     GNUNET_CURL_fini (ctx);
@@ -699,6 +703,8 @@ check_pending_rc (void *cls,
 {
   struct ReserveClosure *rc = value;
 
+  (void) cls;
+  (void) key;
   GNUNET_break (GNUNET_OK ==
                 TALER_amount_add (&total_closure_amount_lag,
                                   &total_closure_amount_lag,
@@ -905,6 +911,7 @@ wire_missing_cb (void *cls,
                  /* bool? */ int tiny,
                  /* bool? */ int done)
 {
+  (void) cls;
   GNUNET_break (GNUNET_OK ==
                 TALER_amount_add (&total_amount_lag,
                                   &total_amount_lag,
@@ -1251,6 +1258,7 @@ complain_out_not_found (void *cls,
     .found = GNUNET_NO
   };
 
+  (void) key;
   hash_rc (roi->details.credit_account_url,
            &roi->details.wtid,
            &rkey);
@@ -1355,6 +1363,7 @@ history_debit_cb (void *cls,
   struct WireAccount *wa = cls;
   struct ReserveOutInfo *roi;
 
+  (void) json;
   if (NULL == details)
   {
     wa->dhh = NULL;
@@ -1481,7 +1490,7 @@ begin_debit_audit ()
  * processing debits.
  */
 static void
-conclude_credit_history ()
+conclude_credit_history (void)
 {
   GNUNET_CONTAINER_multihashmap_destroy (in_map);
   in_map = NULL;
@@ -1575,6 +1584,7 @@ complain_in_not_found (void *cls,
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii = value;
 
+  (void) key;
   report (report_reserve_in_inconsistencies,
           json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                      "row", (json_int_t) rii->rowid,
@@ -1631,6 +1641,7 @@ history_credit_cb (void *cls,
   struct ReserveInInfo *rii;
   struct GNUNET_HashCode key;
 
+  (void) json;
   if (NULL == details)
   {
     wa->chh = NULL;
@@ -2044,6 +2055,7 @@ process_account_cb (void *cls,
 {
   struct WireAccount *wa;
 
+  (void) cls;
   if ( (GNUNET_NO == ai->debit_enabled) &&
        (GNUNET_NO == ai->credit_enabled) )
     return; /* not an active exchange account */
@@ -2092,6 +2104,9 @@ run (void *cls,
   static const struct TALER_MasterPublicKeyP zeromp;
   char *tinys;
 
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   start_time = GNUNET_TIME_absolute_get ();

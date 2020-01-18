@@ -1289,9 +1289,7 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct
  * to #TALER_EXCHANGE_refresh_melt() that will generate the request.
  *
  * This function does verify that the given request data is internally
- * consistent.  However, the @a melts_sig is only verified if @a
- * check_sig is set to #GNUNET_YES, as this may be relatively
- * expensive and should be redundant.
+ * consistent.  However, the @a melts_sigs are NOT verified.
  *
  * Aside from some non-trivial cryptographic operations that might
  * take a bit of CPU time to complete, this function returns
@@ -1307,7 +1305,6 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct
  * @param melt_pk denomination key information
  *                   record corresponding to the @a melt_sig
  *                   validity of the keys
- * @param check_sig verify the validity of the signatures of @a melt_sig
  * @param fresh_pks_len length of the @a pks array
  * @param fresh_pks array of @a pks_len denominations of fresh coins to create
  * @param[out] res_size set to the size of the return value, or 0 on error
@@ -1325,7 +1322,6 @@ TALER_EXCHANGE_refresh_prepare (const struct
                                 TALER_DenominationSignature *melt_sig,
                                 const struct
                                 TALER_EXCHANGE_DenomPublicKey *melt_pk,
-                                int check_sig,
                                 unsigned int fresh_pks_len,
                                 const struct
                                 TALER_EXCHANGE_DenomPublicKey *fresh_pks,

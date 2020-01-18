@@ -195,14 +195,12 @@ free_version_info (struct TALER_AUDITOR_VersionInformation *vi)
  * in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
- * @param check_sig #GNUNET_YES if we should check the signature
  * @param[out] vi where to store the results we decoded
  * @param[out] vc where to store version compatibility data
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error (malformed JSON)
  */
 static int
 decode_version_json (const json_t *resp_obj,
-                     int check_sig,
                      struct TALER_AUDITOR_VersionInformation *vi,
                      enum TALER_AUDITOR_VersionCompatibility *vc)
 {
@@ -313,7 +311,6 @@ version_completed_cb (void *cls,
     }
     if (GNUNET_OK !=
         decode_version_json (resp_obj,
-                             GNUNET_YES,
                              &auditor->vi,
                              &vc))
     {

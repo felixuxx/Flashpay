@@ -989,14 +989,17 @@ refresh_melt_run (void *cls,
                                        &fresh_pk->fee_withdraw));
       rms->fresh_pks[i] = *fresh_pk;
       /* Make a deep copy of the RSA key */
-      rms->fresh_pks[i].key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
-        fresh_pk->key.rsa_public_key);
+      rms->fresh_pks[i].key.rsa_public_key
+        = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pk->key.rsa_public_key);
     }
-    rms->refresh_data = TALER_EXCHANGE_refresh_prepare
-                          (rms->melt_priv, &melt_amount, melt_sig,
-                          melt_denom_pub,
-                          GNUNET_YES, num_fresh_coins, rms->fresh_pks,
-                          &rms->refresh_data_length);
+    rms->refresh_data
+      = TALER_EXCHANGE_refresh_prepare (rms->melt_priv,
+                                        &melt_amount,
+                                        melt_sig,
+                                        melt_denom_pub,
+                                        num_fresh_coins,
+                                        rms->fresh_pks,
+                                        &rms->refresh_data_length);
 
     if (NULL == rms->refresh_data)
     {
@@ -1004,9 +1007,11 @@ refresh_melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-    rms->rmh = TALER_EXCHANGE_refresh_melt
-                 (is->exchange, rms->refresh_data_length,
-                 rms->refresh_data, &melt_cb, rms);
+    rms->rmh = TALER_EXCHANGE_refresh_melt (is->exchange,
+                                            rms->refresh_data_length,
+                                            rms->refresh_data,
+                                            &melt_cb,
+                                            rms);
 
     if (NULL == rms->rmh)
     {

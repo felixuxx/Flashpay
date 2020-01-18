@@ -124,6 +124,9 @@ TAH_MHD_handler_send_json_pack_error (struct TAH_RequestHandler *rh,
                                       const char *upload_data,
                                       size_t *upload_data_size)
 {
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   return TALER_MHD_reply_json_pack (connection,
                                     rh->response_code,
                                     "{s:s}",
