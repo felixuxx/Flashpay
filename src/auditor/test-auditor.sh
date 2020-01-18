@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 25`
+ALL_TESTS=`seq 0 24`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -1094,65 +1094,9 @@ full_reload
 
 
 
-# Test where outgoing wire transfer subject is malformed
-function test_19() {
-echo "===========19: outgoing wire subject malformed================="
-
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
-
-    # Need to first run the aggregator so the outgoing transfer exists
-    pre_audit aggregator
-
-    # Generate mal-formed wire transfer subject
-    SUBJECT=YDVD2XBQT62553Z2TX8MM
-    # Account #2 = exchange, pick outgoing transfer
-    OLD_SUBJECT=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2;" | psql $DB -Aqt`
-    echo "UPDATE app_banktransaction SET subject='${SUBJECT}' WHERE debit_account_id=2;" | psql -Aqt $DB
-
-    audit_only
-    post_audit
-
-
-    echo -n "Testing wire transfer subject malformed detection... "
-
-    DIAGNOSTIC=`jq -r .wire_format_inconsistencies[0].diagnostic < test-wire-audit.json`
-    WANT="malformed subject \`${SUBJECT}'"
-    if test "x$DIAGNOSTIC" != "x$WANT"
-    then
-        exit_fail "Reported diagnostic: $DIAGNOSTIC, wanted $WANT"
-    fi
-    jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null || exit_fail "Falsly claimed wire transfer not detected"
-
-    DELTA=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
-    if test $DELTA == "TESTKUDOS:0"
-    then
-        exit_fail "Expected total wire delta minus wrong, got $DELTA"
-    fi
-    DELTA=`jq -r .total_wire_format_amount < test-wire-audit.json`
-    if test $DELTA == "TESTKUDOS:0"
-    then
-        exit_fail "Expected total format amount wrong, got $DELTA"
-    fi
-
-    echo "PASS"
-
-    # cannot easily undo aggregator, hence full reload
-    full_reload
-else
-    echo "Test skipped (database too new)"
-fi
-}
-
-
 # Test where reserve closure was done properly
-function test_20() {
-echo "===========20: reserve closure done properly ================="
+function test_19() {
+echo "===========19: reserve closure done properly ================="
 
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
@@ -1196,8 +1140,8 @@ fi
 
 
 # Test where reserve closure was not done properly
-function test_21() {
-echo "===========21: reserve closure missing ================="
+function test_20() {
+echo "===========20: reserve closure missing ================="
 
 OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
@@ -1228,8 +1172,8 @@ echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE rese
 
 
 # Test reserve closure reported but wire transfer missing detection
-function test_22() {
-echo "===========22: reserve closure missreported ================="
+function test_21() {
+echo "===========21: reserve closure missreported ================="
 
 # Check wire transfer lag reported (no aggregator!)
 # NOTE: This test is EXPECTED to fail for ~1h after
@@ -1286,8 +1230,8 @@ fi
 
 
 # Test use of withdraw-expired denomination key
-function test_23() {
-echo "===========23: denomination key expired ================="
+function test_22() {
+echo "===========22: denomination key expired ================="
 
 H_DENOM=`echo 'SELECT denom_pub_hash FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
 
@@ -1315,8 +1259,8 @@ echo "UPDATE auditor_denominations SET expire_withdraw=${OLD_WEXP} WHERE denom_p
 
 
 # Test calculation of wire-out amounts
-function test_24() {
-echo "===========24: wire out calculations ================="
+function test_23() {
+echo "===========23: wire out calculations ================="
 
 # Check wire transfer lag reported (no aggregator!)
 # NOTE: This test is EXPECTED to fail for ~1h after
@@ -1396,9 +1340,9 @@ fi
 
 
 # Test for missing deposits in exchange database.
-function test_25() {
+function test_24() {
 
-echo "===========25: deposits missing ==========="
+echo "===========24: deposits missing ==========="
 # Modify denom_sig, so it is wrong
 echo "DELETE FROM deposits;" | psql -Aqt $DB
 echo "DELETE FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
