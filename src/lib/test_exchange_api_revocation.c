@@ -68,7 +68,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_admin_add_incoming ("create-reserve-1",
                                           "EUR:5.01",
-                                          bc.exchange_account_url,
+                                          bc.exchange_auth.wire_gateway_url,
                                           &bc.exchange_auth,
                                           bc.user42_payto),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",

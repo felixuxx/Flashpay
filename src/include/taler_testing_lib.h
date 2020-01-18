@@ -268,13 +268,6 @@ TALER_TESTING_url_port_free (const char *url);
  */
 struct TALER_TESTING_BankConfiguration
 {
-  /**
-   * Base URL of the exchange's bank account. Basically
-   * @e bank_url plus the exchange account.
-   *
-   * FIXME: remove? This duplicates exchange_auth.wire_gateway_url!
-   */
-  char *exchange_account_url;
 
   /**
    * Authentication data for the exchange user at the bank.
