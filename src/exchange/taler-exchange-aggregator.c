@@ -303,13 +303,14 @@ static unsigned int aggregation_limit =
 
 
 /**
- * Advance the "af" pointer in @a wp to point to the
- * currently valid record.
+ * Find the record valid at time @a now in the fee
+ * structure.
  *
  * @param wa wire transfer fee data structure to update
  * @param now timestamp to update fees to
+ * @return fee valid at @a now, or NULL if unknown
  */
-static void
+static struct TALER_EXCHANGEDB_AggregateFees *
 advance_fees (struct WireAccount *wa,
               struct GNUNET_TIME_Absolute now)
 {
@@ -319,13 +320,8 @@ advance_fees (struct WireAccount *wa,
   af = wa->af;
   while ( (NULL != af) &&
           (af->end_date.abs_value_us < now.abs_value_us) )
-  {
-    struct TALER_EXCHANGEDB_AggregateFees *n = af->next;
-
-    GNUNET_free (af);
-    af = n;
-  }
-  wa->af = af;
+    af = af->next;
+  return af;
 }
 
 
@@ -335,28 +331,30 @@ advance_fees (struct WireAccount *wa,
  * @param wa wire account data structure to update
  * @param now timestamp to update fees to
  * @param session DB session to use
- * @return transaction status
+ * @return fee valid at @a now, or NULL if unknown
  */
-static enum GNUNET_DB_QueryStatus
+static struct TALER_EXCHANGEDB_AggregateFees *
 update_fees (struct WireAccount *wa,
              struct GNUNET_TIME_Absolute now,
              struct TALER_EXCHANGEDB_Session *session)
 {
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_AggregateFees *af;
 
-  advance_fees (wa,
-                now);
-  if (NULL != wa->af)
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  af = advance_fees (wa,
+                     now);
+  if (NULL != af)
+    return af;
   /* Let's try to load it from disk... */
   wa->af = TALER_EXCHANGEDB_fees_read (cfg,
                                        wa->method);
-  advance_fees (wa,
-                now);
   for (struct TALER_EXCHANGEDB_AggregateFees *p = wa->af;
        NULL != p;
        p = p->next)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Persisting fees starting at %s in database\n",
+                GNUNET_STRINGS_absolute_time_to_string (p->start_date));
     qs = db_plugin->insert_wire_fee (db_plugin->cls,
                                      session,
                                      wa->method,
@@ -369,15 +367,17 @@ update_fees (struct WireAccount *wa,
     {
       TALER_EXCHANGEDB_fees_free (wa->af);
       wa->af = NULL;
-      return qs;
+      return NULL;
     }
   }
-  if (NULL != wa->af)
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  af = advance_fees (wa,
+                     now);
+  if (NULL != af)
+    return af;
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Failed to find current wire transfer fees for `%s'\n",
               wa->method);
-  return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return NULL;
 }
 
 
@@ -785,17 +785,21 @@ deposit_cb (void *cls,
   /* make sure we have current fees */
   au->execution_time = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&au->execution_time);
-  qs = update_fees (au->wa,
-                    au->execution_time,
-                    au->session);
-  if (qs <= 0)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      qs = GNUNET_DB_STATUS_HARD_ERROR;
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
+    struct TALER_EXCHANGEDB_AggregateFees *af;
+
+    af = update_fees (au->wa,
+                      au->execution_time,
+                      au->session);
+    if (NULL == af)
+    {
+      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+        qs = GNUNET_DB_STATUS_HARD_ERROR;
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
+    au->wire_fee = af->wire_fee;
   }
-  au->wire_fee = au->wa->af->wire_fee;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Aggregator starts aggregation for deposit %llu to %s with wire fee %s\n",
@@ -1055,8 +1059,10 @@ expired_reserve_cb (void *cls,
 
   /* NOTE: potential optimization: use custom SQL API to not
      fetch this: */
-  (void) expiration_date; /* we know it expired */
   GNUNET_assert (NULL == ctc);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Processing reserve closure at %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (expiration_date));
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
 
@@ -1070,21 +1076,22 @@ expired_reserve_cb (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* lookup `closing_fee` */
-  qs = update_fees (wa,
-                    now,
-                    session);
-  if (qs <= 0)
+  /* lookup `closing_fee` from time of actual reserve expiration
+     (we may be lagging behind!) */
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      qs = GNUNET_DB_STATUS_HARD_ERROR;
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    global_ret = GNUNET_SYSERR;
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    struct TALER_EXCHANGEDB_AggregateFees *af;
+
+    af = update_fees (wa,
+                      expiration_date,
+                      session);
+    if (NULL == af)
+    {
+      global_ret = GNUNET_SYSERR;
       GNUNET_SCHEDULER_shutdown ();
-    return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    closing_fee = &af->closing_fee;
   }
-  closing_fee = &wa->af->closing_fee;
 
   /* calculate transfer amount */
   ret = TALER_amount_subtract (&amount_without_fee,

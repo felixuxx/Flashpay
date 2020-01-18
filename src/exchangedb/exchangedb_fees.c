@@ -115,6 +115,9 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
     struct TALER_EXCHANGEDB_AggregateFees *n;
 
     n = wd2af (&wd);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Loaded wire fees starting at %s from file\n",
+                GNUNET_STRINGS_absolute_time_to_string (n->start_date));
     if ( ( (NULL == af) ||
            (endp->end_date.abs_value_us == n->start_date.abs_value_us) ) &&
          (n->start_date.abs_value_us < n->end_date.abs_value_us) )
