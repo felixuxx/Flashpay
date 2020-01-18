@@ -40,14 +40,11 @@ static char *credit_account;
 static char *subject;
 
 /**
- * Username for authentication.
+ * Authentication data.
  */
-static char *username;
-
-/**
- * Password for authentication.
- */
-static char *password;
+static struct TALER_BANK_AuthenticationData auth = {
+  .method = TALER_BANK_AUTH_BASIC
+};
 
 /**
  * Return value from main().
@@ -157,7 +154,6 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  struct TALER_BANK_AuthenticationData auth;
   struct TALER_ReservePublicKeyP reserve_pub;
 
   (void) cls;
@@ -180,9 +176,6 @@ run (void *cls,
   GNUNET_assert (NULL != ctx);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
 
-  auth.method = TALER_BANK_AUTH_BASIC;
-  auth.details.basic.username = username;
-  auth.details.basic.password = password;
   op = TALER_BANK_admin_add_incoming (ctx,
                                       &auth,
                                       &reserve_pub,
@@ -238,13 +231,13 @@ main (int argc, char *const *argv)
                                     "user",
                                     "USERNAME",
                                     "username to use for authentication",
-                                    &username)),
+                                    &auth.details.basic.username)),
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_string ('p',
                                     "pass",
                                     "PASSPHRASE",
                                     "passphrase to use for authentication",
-                                    &password)),
+                                    &auth.details.basic.password)),
     GNUNET_GETOPT_OPTION_END
   };
 
