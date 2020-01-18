@@ -278,20 +278,26 @@ int
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
 {
   struct MHD_Response *resp;
+  int ret;
 
-  GNUNET_assert (NULL != (resp = MHD_create_response_from_buffer (0, NULL,
-                                                                  MHD_RESPMEM_PERSISTENT)));
+  resp = MHD_create_response_from_buffer (0,
+                                          NULL,
+                                          MHD_RESPMEM_PERSISTENT);
+  if (NULL == resp)
+    return MHD_NO;
   /* This adds the Access-Control-Allow-Origin header.
    * All endpoints of the exchange allow CORS. */
   TALER_MHD_add_global_headers (resp);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
-                                         // Not available as MHD constant yet
+                                         /* Not available as MHD constant yet */
                                          "Access-Control-Allow-Headers",
                                          "*"));
-  GNUNET_assert (MHD_YES == MHD_queue_response (connection, MHD_HTTP_NO_CONTENT,
-                                                resp));
-  return MHD_YES;
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_NO_CONTENT,
+                            resp);
+  MHD_destroy_response (resp);
+  return ret;
 }
 
 

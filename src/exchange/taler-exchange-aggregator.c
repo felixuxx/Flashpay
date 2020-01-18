@@ -605,7 +605,9 @@ exchange_serve_process_config ()
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "No [taler]/CURRENCY_ROUND_UNIT specified, defaulting to '0.01'.\n");
-      TALER_amount_get_zero (exchange_currency_string, &currency_round_unit);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_get_zero (exchange_currency_string,
+                                            &currency_round_unit));
       currency_round_unit.fraction = TALER_AMOUNT_FRAC_BASE / 100;
     }
     else if (GNUNET_OK !=

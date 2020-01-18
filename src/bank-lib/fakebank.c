@@ -933,7 +933,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     if (0 > ha.delta)
       pos = pos->prev;
     else
-      pos = pos->prev;
+      pos = pos->tail;
   }
   else
   {

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017 GNUnet e.V.
+  Copyright (C) 2017-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,11 +23,6 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include "taler_bank_service.h"
-
-/**
- * Account base URL.
- */
-static char *account_base_url;
 
 /**
  * Amount to transfer.
@@ -203,7 +198,7 @@ run (void *cls,
 
 
 /**
- * The main function of the reservemod tool
+ * The main function of the taler-bank-transfer tool
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
@@ -223,8 +218,8 @@ main (int argc, char *const *argv)
       (GNUNET_GETOPT_option_string ('b',
                                     "bank",
                                     "URL",
-                                    "base URL of the account at the bank",
-                                    &account_base_url)),
+                                    "Wire gateway URL to use to talk to the bank",
+                                    &auth.wire_gateway_url)),
     GNUNET_GETOPT_option_help ("Deposit funds into a Taler reserve"),
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_string ('C',
@@ -261,7 +256,7 @@ main (int argc, char *const *argv)
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-bank-transfer",
-                          "Execute bank transfer",
+                          "Execute bank transfer to the exchange",
                           options,
                           &run, NULL))
     return 1;
