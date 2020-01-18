@@ -644,7 +644,7 @@ function test_9() {
 echo "===========9: wire-origin disagreement==========="
 OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
 OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
-echo "UPDATE app_banktransaction SET debit_account_id=1;" | psql -Aqt $DB
+echo "UPDATE app_banktransaction SET debit_account_id=1 WHERE id='$OLD_ID';" | psql -Aqt $DB
 
 run_audit
 
@@ -662,7 +662,7 @@ fi
 echo PASS
 
 # Undo database modification
-echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC;" | psql -Aqt $DB
+echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC WHERE id='$OLD_ID';" | psql -Aqt $DB
 
 }
 
@@ -759,13 +759,13 @@ echo -n "Testing hung refresh detection... "
 
 HANG=`jq -er .refresh_hanging[0].amount < test-audit.json`
 TOTAL_HANG=`jq -er .total_refresh_hanging < test-audit.json`
-if test x$HANG != x$TOTAL_HANG
+if test x$HANG = TESTKUDOS:0
 then
-    exit_fail "Hanging amount inconsistent, got $HANG and $TOTAL_HANG"
+    exit_fail "Hanging amount zero"
 fi
 if test x$TOTAL_HANG = TESTKUDOS:0
 then
-    exit_fail "Hanging amount zero"
+    exit_fail "Total hanging amount zero"
 fi
 
 echo PASS
@@ -1063,18 +1063,8 @@ jq -e .amount_arithmetic_inconsistencies[0] < test-audit.json > /dev/null || exi
 
 echo PASS
 
-echo -n "Testing risk/loss calculation... "
+echo -n "Testing loss calculation... "
 
-AMOUNT=`jq -r .emergencies_risk_by_amount < test-audit.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .emergencies_risk_by_count < test-audit.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported amount wrong: $AMOUNT"
-fi
 AMOUNT=`jq -r .emergencies_loss < test-audit.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
