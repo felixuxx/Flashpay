@@ -43,7 +43,7 @@
  * when fetching amounts from the database.
  *
  * @param field name of the database field to fetch amount from
- * @param amountp[out] pointer to amount to set
+ * @param[out] amountp pointer to amount to set
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount ( \
     field,pg->currency,amountp)
@@ -53,7 +53,7 @@
  * when fetching amounts from the database.  NBO variant.
  *
  * @param field name of the database field to fetch amount from
- * @param amountp[out] pointer to amount to set
+ * @param[out] amountp pointer to amount to set
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field,                          \
                                         amountp) TALER_PQ_result_spec_amount_nbo ( \
@@ -1990,7 +1990,7 @@ postgres_reserves_in_insert (void *cls,
  * @param session the database session handle
  * @param exchange_account_name name of the section in the exchange's configuration
  *                       for the account that we are tracking here
- * @param[out] wire_ref set to unique reference identifying the wire transfer
+ * @param[out] wire_reference set to unique reference identifying the wire transfer
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -3015,7 +3015,7 @@ postgres_get_known_coin (void *cls,
  * @param cls the plugin closure
  * @param session the database session handle
  * @param coin_pub the public key of the coin to search for
- * @param denom_hash[out] where to store the hash of the coins denomination
+ * @param[out] denom_hash where to store the hash of the coins denomination
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -3422,7 +3422,9 @@ postgres_get_melt (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use
  * @param rc commitment hash to use to locate the operation
- * @param[out] refresh_melt where to store the result
+ * @param[out] noreveal_index returns the "gamma" value selected by the
+ *             exchange which is the index of the transfer key that is
+ *             not to be revealed to the exchange
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -4388,6 +4390,7 @@ struct Work
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param coin_pub coin to investigate
+ * @param include_payback should payback transactions be included in the @a tlp
  * @param[out] tlp set to list of transactions, NULL if coin is fresh
  * @return database transaction status
  */

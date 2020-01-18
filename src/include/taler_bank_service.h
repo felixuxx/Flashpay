@@ -210,6 +210,7 @@ typedef void
  * Execute a wire transfer.
  *
  * @param ctx context for HTTP interaction
+ * @param auth authentication data to authenticate with the bank
  * @param buf buffer with the prepared execution details
  * @param buf_size number of bytes in @a buf
  * @param cc function to call upon success

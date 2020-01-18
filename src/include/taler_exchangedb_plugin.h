@@ -1713,7 +1713,7 @@ struct TALER_EXCHANGEDB_Plugin
    * Get the summary of a reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db the database connection handle
+   * @param session the database connection handle
    * @param[in,out] reserve the reserve data.  The public key of the reserve should be set
    *          in this structure; it is used to query the database.  The balance
    *          and expiration are then filled accordingly.
@@ -1721,7 +1721,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*reserve_get)(void *cls,
-                 struct TALER_EXCHANGEDB_Session *db,
+                 struct TALER_EXCHANGEDB_Session *session,
                  struct TALER_EXCHANGEDB_Reserve *reserve);
 
 
@@ -1730,7 +1730,7 @@ struct TALER_EXCHANGEDB_Plugin
    * also created through this function.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db the database connection handle
+   * @param session the database session handle
    * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
@@ -1740,7 +1740,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*reserves_in_insert)(void *cls,
-                        struct TALER_EXCHANGEDB_Session *db,
+                        struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_ReservePublicKeyP *reserve_pub,
                         const struct TALER_Amount *balance,
                         struct GNUNET_TIME_Absolute execution_time,
@@ -1753,15 +1753,17 @@ struct TALER_EXCHANGEDB_Plugin
    * Obtain the most recent @a wire_reference that was inserted via @e reserves_in_insert.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db the database connection handle
-   * @param[out] wire_ref set to unique reference identifying the wire transfer
+   * @param session the database connection handle
+   * @param exchange_account_name name of the section in the exchange's configuration
+   *                       for the account that we are tracking here
+   * @param[out] wire_reference set to unique reference identifying the wire transfer
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_latest_reserve_in_reference)(void *cls,
-                                     struct TALER_EXCHANGEDB_Session *db,
+                                     struct TALER_EXCHANGEDB_Session *session,
                                      const char *exchange_account_name,
-                                     uint64_t *wire_ref);
+                                     uint64_t *wire_reference);
 
 
   /**
@@ -1877,7 +1879,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the plugin closure
    * @param session the database session handle
    * @param coin_pub the public key of the coin to search for
-   * @param denom_hash[out] where to store the hash of the coins denomination
+   * @param[out] denom_hash where to store the hash of the coins denomination
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -2104,7 +2106,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the `struct PostgresClosure` with the plugin-specific state
    * @param session database handle to use
    * @param rc commitment hash to use to locate the operation
-   * @param[out] refresh_melt where to store the result
+   * @param[out] noreveal_index returns the "gamma" value selected by the
+   *             exchange which is the index of the transfer key that is
+   *             not to be revealed to the exchange
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus

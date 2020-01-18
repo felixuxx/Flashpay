@@ -240,7 +240,8 @@ handle_transfer_finished (void *cls,
 /**
  * Execute a wire transfer.
  *
- * @param cls the @e cls of this struct with the plugin-specific state
+ * @param ctx curl context for our event loop
+ * @param auth authentication data to authenticate with the bank
  * @param buf buffer with the prepared execution details
  * @param buf_size number of bytes in @a buf
  * @param cc function to call upon success
