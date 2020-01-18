@@ -317,6 +317,8 @@ refund_transaction (void *cls,
                                    &dep->deposit_fee)) )
   {
     GNUNET_break_op (0); /* currency missmatch */
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
     *mhd_ret = reply_refund_failure (connection,
                                      MHD_HTTP_PRECONDITION_FAILED,
                                      TALER_EC_REFUND_CURRENCY_MISSMATCH);

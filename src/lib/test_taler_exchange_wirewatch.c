@@ -117,7 +117,6 @@ main (int argc,
       char *const argv[])
 {
   const char *plugin_name;
-  char *testname;
 
   /* these might get in the way */
   unsetenv ("XDG_DATA_HOME");
@@ -132,13 +131,17 @@ main (int argc,
     return -1;
   }
   plugin_name++;
-  (void) GNUNET_asprintf (&testname,
-                          "test-taler-exchange-wirewatch-%s",
-                          plugin_name);
-  (void) GNUNET_asprintf (&config_filename,
-                          "%s.conf",
-                          testname);
+  {
+    char *testname;
 
+    GNUNET_asprintf (&testname,
+                     "test-taler-exchange-wirewatch-%s",
+                     plugin_name);
+    GNUNET_asprintf (&config_filename,
+                     "%s.conf",
+                     testname);
+    GNUNET_free (testname);
+  }
   /* check database is working */
   {
     struct GNUNET_PQ_Context *conn;
