@@ -508,26 +508,25 @@ TALER_TESTING_cmd_deposit (const char *label,
                                    NULL);
   if (NULL == ds->contract_terms)
   {
-    GNUNET_log
-      (GNUNET_ERROR_TYPE_ERROR,
-      "Failed to parse contract terms `%s' for CMD `%s'\n",
-      contract_terms,
-      label);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse contract terms `%s' for CMD `%s'\n",
+                contract_terms,
+                label);
     GNUNET_assert (0);
   }
   ds->timestamp = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&ds->timestamp);
 
-  json_object_set (ds->contract_terms,
-                   "timestamp",
-                   GNUNET_JSON_from_time_abs (ds->timestamp));
+  json_object_set_new (ds->contract_terms,
+                       "timestamp",
+                       GNUNET_JSON_from_time_abs (ds->timestamp));
   if (0 != refund_deadline.rel_value_us)
   {
     ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);
     (void) GNUNET_TIME_round_abs (&ds->refund_deadline);
-    json_object_set (ds->contract_terms,
-                     "refund_deadline",
-                     GNUNET_JSON_from_time_abs (ds->refund_deadline));
+    json_object_set_new (ds->contract_terms,
+                         "refund_deadline",
+                         GNUNET_JSON_from_time_abs (ds->refund_deadline));
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (amount,
