@@ -157,6 +157,7 @@ main (int argc,
     cfgfilename = CONFIG_FILE_PYBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_bank (CONFIG_FILE_PYBANK,
+                                    "account-2",
                                     &bc))
     {
       GNUNET_break (0);

@@ -27,8 +27,6 @@
 #include "taler_testing_lib.h"
 #include "taler_fakebank_lib.h"
 
-#define EXCHANGE_ACCOUNT_NAME "2"
-
 #define BANK_FAIL() \
   do {GNUNET_break (0); return NULL; } while (0)
 
@@ -227,6 +225,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  */
 int
 TALER_TESTING_prepare_bank (const char *config_filename,
+                            const char *config_section,
                             struct TALER_TESTING_BankConfiguration *bc)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -235,6 +234,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
   char *database;
+  char *exchange_payto_uri;
 
   cfg = GNUNET_CONFIGURATION_create ();
 
@@ -256,6 +256,19 @@ TALER_TESTING_prepare_bank (const char *config_filename,
                                "DATABASE");
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             config_section,
+                                             "URL", /* FIXME: config should be renamed to payto_uri, it's not an url even! */
+                                             &exchange_payto_uri))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               config_section,
+                               "URL");
+    GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
 
@@ -340,7 +353,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   GNUNET_OS_process_destroy (dbreset_proc);
   if (GNUNET_OK !=
       TALER_BANK_auth_parse_cfg (cfg,
-                                 "account-" EXCHANGE_ACCOUNT_NAME,
+                                 config_section,
                                  &bc->exchange_auth))
   {
     GNUNET_break (0);
@@ -350,7 +363,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->bank_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
   bc->exchange_account_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
-  bc->exchange_payto = "payto://x-taler-bank/localhost/2";
+  bc->exchange_payto = exchange_payto_uri;
   bc->user42_payto = "payto://x-taler-bank/localhost/42";
   bc->user43_payto = "payto://x-taler-bank/localhost/43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -384,6 +397,8 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long fakebank_port;
+  char *exchange_payto_uri;
+  char *exchange_xtalerbank_account;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load (cfg,
@@ -402,20 +417,37 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             config_section,
+                                             "URL", /* FIXME: config should be renamed to payto_uri, it's not an url even! */
+                                             &exchange_payto_uri))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               config_section,
+                               "URL");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_SYSERR;
+  }
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
+
+  exchange_xtalerbank_account = TALER_xtalerbank_account_from_payto (
+    exchange_payto_uri);
+
+  if (NULL == exchange_xtalerbank_account)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 
   GNUNET_asprintf (&bc->exchange_auth.wire_gateway_url,
                    "http://localhost:%u/%s/",
                    (unsigned int) fakebank_port,
-                   EXCHANGE_ACCOUNT_NAME);
+                   exchange_xtalerbank_account);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Using fakebank %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
-              (unsigned int) fakebank_port);
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Fakebank port from config: %u\n",
               (unsigned int) fakebank_port);
 
   GNUNET_CONFIGURATION_destroy (cfg);
@@ -428,17 +460,14 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   /* FIXME: this duplicates bc->exchange_auth.wire_gateway_url */
-  GNUNET_asprintf (&bc->exchange_account_url,
-                   "http://localhost:%u/%s/",
-                   fakebank_port,
-                   EXCHANGE_ACCOUNT_NAME);
+  bc->exchange_account_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
   GNUNET_assert (NULL != bc->exchange_account_url);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "fakebank account URL: %s\n",
               bc->exchange_account_url);
   /* Now we know it's the fake bank, for purpose of authentication, we
    * don't have any auth. */
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
-  bc->exchange_payto = "payto://x-taler-bank/localhost/2";
+  bc->exchange_payto = exchange_payto_uri;
   bc->user42_payto = "payto://x-taler-bank/localhost/42";
   bc->user43_payto = "payto://x-taler-bank/localhost/43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",

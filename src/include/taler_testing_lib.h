@@ -801,6 +801,7 @@ TALER_TESTING_run_fakebank (const char *bank_url);
  */
 int
 TALER_TESTING_prepare_bank (const char *config_filename,
+                            const char *config_section,
                             struct TALER_TESTING_BankConfiguration *bc);
 
 

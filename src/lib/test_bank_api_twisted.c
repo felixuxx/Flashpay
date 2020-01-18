@@ -178,6 +178,7 @@ main (int argc,
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
     if (GNUNET_OK !=
         TALER_TESTING_prepare_bank (cfgfilename,
+                                    "account-2",
                                     &bc))
     {
       GNUNET_break (0);
