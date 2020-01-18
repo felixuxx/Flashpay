@@ -137,6 +137,10 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
   int res;
   int mhd_ret;
 
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   res = TALER_MHD_parse_request_arg_data (connection,
                                           "reserve_pub",
                                           &rsc.reserve_pub,

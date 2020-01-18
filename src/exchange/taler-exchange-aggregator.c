@@ -1639,6 +1639,7 @@ wire_confirm_cb (void *cls,
 
   (void) cls;
   (void) row_id;
+  (void) wire_timestamp;
   wpd->eh = NULL;
   if (MHD_HTTP_OK != http_status_code)
   {

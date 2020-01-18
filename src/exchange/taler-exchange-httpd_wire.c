@@ -137,7 +137,7 @@ TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
                        size_t *upload_data_size)
 {
   (void) rh;
-  (void) connection;
+  (void) connection_cls;
   (void) upload_data;
   (void) upload_data_size;
   GNUNET_assert (NULL != wire_methods);

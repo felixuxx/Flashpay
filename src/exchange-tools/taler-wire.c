@@ -119,6 +119,7 @@ history_cb (void *cls,
   (void) cls;
   (void) ec;
   (void) http_status;
+  (void) json;
   if (NULL == details)
   {
     fprintf (stdout,
@@ -129,8 +130,13 @@ history_cb (void *cls,
   }
 
   fprintf (stdout,
-           "%llu\n",
-           (unsigned long long) serial_id);
+           "%llu: %s->%s (%s) over %s at %s\n",
+           (unsigned long long) serial_id,
+           details->debit_account_url,
+           details->credit_account_url,
+           TALER_B2S (&details->reserve_pub),
+           TALER_amount2s (&details->amount),
+           GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
   return GNUNET_OK;
 }
 
@@ -152,6 +158,7 @@ confirmation_cb (void *cls,
                  uint64_t row_id,
                  struct GNUNET_TIME_Absolute timestamp)
 {
+  (void) cls;
   if (MHD_HTTP_OK != response_code)
   {
     fprintf (stderr,
@@ -162,7 +169,9 @@ confirmation_cb (void *cls,
   }
 
   fprintf (stdout,
-           "Wire transfer executed successfully.\n");
+           "Wire transfer #%llu executed successfully at %s.\n",
+           (unsigned long long) row_id,
+           GNUNET_STRINGS_absolute_time_to_string (timestamp));
   global_ret = 0;
   GNUNET_SCHEDULER_shutdown ();
 }
@@ -255,6 +264,7 @@ execute_history ()
 static void
 do_shutdown (void *cls)
 {
+  (void) cls;
   if (NULL != ctx)
   {
     GNUNET_CURL_fini (ctx);
@@ -294,6 +304,9 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  (void) cls;
+  (void) args;
+  (void) cfgfile;
   if (NULL == account_section)
   {
     fprintf (stderr,

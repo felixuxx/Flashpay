@@ -334,6 +334,7 @@ history_cb (void *cls,
   struct TALER_EXCHANGEDB_Session *session = cls;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) json;
   if (NULL == details)
   {
     hh = NULL;

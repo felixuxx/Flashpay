@@ -838,6 +838,7 @@ postgres_rollback (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  (void) cls;
   GNUNET_break (GNUNET_OK ==
                 GNUNET_PQ_exec_statements (session->conn,
                                            es));
@@ -859,6 +860,7 @@ postgres_commit (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "do_commit",
                                              params);
@@ -936,6 +938,7 @@ postgres_insert_exchange (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_insert_exchange",
                                              params);
@@ -962,6 +965,7 @@ postgres_delete_exchange (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_delete_exchange",
                                              params);
@@ -1007,6 +1011,7 @@ exchange_info_cb (void *cls,
 {
   struct ExchangeInfoContext *eic = cls;
 
+  (void) cls;
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct TALER_MasterPublicKeyP master_pub;
@@ -1059,6 +1064,7 @@ postgres_list_exchanges (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
                                              "auditor_list_exchanges",
                                              params,
@@ -1095,6 +1101,7 @@ postgres_insert_exchange_signkey (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_insert_exchange_signkey",
                                              params);
@@ -1130,6 +1137,7 @@ postgres_insert_deposit_confirmation (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_deposit_confirmation_insert",
                                              params);
@@ -1314,6 +1322,7 @@ postgres_insert_denomination_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   /* check fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->value,
@@ -1456,6 +1465,7 @@ postgres_select_denomination_info (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) cls;
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
                                              "auditor_denominations_select",
                                              params,
@@ -1497,6 +1507,7 @@ postgres_insert_auditor_progress_reserve (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_insert_reserve",
                                              params);
@@ -1532,6 +1543,7 @@ postgres_update_auditor_progress_reserve (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_update_reserve",
                                              params);
@@ -1571,6 +1583,7 @@ postgres_get_auditor_progress_reserve (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_progress_select_reserve",
                                                    params,
@@ -1604,6 +1617,7 @@ postgres_insert_auditor_progress_aggregation (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_insert_aggregation",
                                              params);
@@ -1636,6 +1650,7 @@ postgres_update_auditor_progress_aggregation (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_update_aggregation",
                                              params);
@@ -1671,6 +1686,7 @@ postgres_get_auditor_progress_aggregation (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_progress_select_aggregation",
                                                    params,
@@ -1706,6 +1722,7 @@ postgres_insert_auditor_progress_deposit_confirmation (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_insert_deposit_confirmation",
                                              params);
@@ -1740,6 +1757,7 @@ postgres_update_auditor_progress_deposit_confirmation (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_update_deposit_confirmation",
                                              params);
@@ -1777,6 +1795,7 @@ postgres_get_auditor_progress_deposit_confirmation (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_progress_select_deposit_confirmation",
                                                    params,
@@ -1813,6 +1832,7 @@ postgres_insert_auditor_progress_coin (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_insert_coin",
                                              params);
@@ -1848,6 +1868,7 @@ postgres_update_auditor_progress_coin (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_progress_update_coin",
                                              params);
@@ -1891,6 +1912,7 @@ postgres_get_auditor_progress_coin (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_progress_select_coin",
                                                    params,
@@ -1935,6 +1957,7 @@ postgres_insert_wire_auditor_account_progress (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_auditor_account_progress_insert",
                                              params);
@@ -1978,6 +2001,7 @@ postgres_update_wire_auditor_account_progress (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_auditor_account_progress_update",
                                              params);
@@ -2026,6 +2050,7 @@ postgres_get_wire_auditor_account_progress (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "wire_auditor_account_progress_select",
                                                    params,
@@ -2058,6 +2083,7 @@ postgres_insert_wire_auditor_progress (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_auditor_progress_insert",
                                              params);
@@ -2089,6 +2115,7 @@ postgres_update_wire_auditor_progress (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_auditor_progress_update",
                                              params);
@@ -2123,6 +2150,7 @@ postgres_get_wire_auditor_progress (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "wire_auditor_progress_select",
                                                    params,
@@ -2165,6 +2193,7 @@ postgres_insert_reserve_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (reserve_balance,
                                             withdraw_fee_balance));
@@ -2207,6 +2236,7 @@ postgres_update_reserve_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (reserve_balance,
                                             withdraw_fee_balance));
@@ -2238,6 +2268,7 @@ postgres_del_reserve_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_reserves_delete",
                                              params);
@@ -2285,6 +2316,7 @@ postgres_get_reserve_info (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_reserves_select",
                                                    params,
@@ -2320,6 +2352,7 @@ postgres_insert_reserve_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (reserve_balance,
                                             withdraw_fee_balance));
@@ -2358,6 +2391,7 @@ postgres_update_reserve_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_reserve_balance_update",
                                              params);
@@ -2394,6 +2428,7 @@ postgres_get_reserve_summary (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_reserve_balance_select",
                                                    params,
@@ -2424,6 +2459,7 @@ postgres_insert_wire_fee_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_wire_fee_balance_insert",
                                              params);
@@ -2453,6 +2489,7 @@ postgres_update_wire_fee_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_wire_fee_balance_update",
                                              params);
@@ -2485,6 +2522,7 @@ postgres_get_wire_fee_summary (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_wire_fee_balance_select",
                                                    params,
@@ -2527,6 +2565,7 @@ postgres_insert_denomination_balance (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_denomination_pending_insert",
                                              params);
@@ -2568,6 +2607,7 @@ postgres_update_denomination_balance (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_denomination_pending_update",
                                              params);
@@ -2611,6 +2651,7 @@ postgres_get_denomination_balance (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "auditor_denomination_pending_select",
                                                    params,
@@ -2659,6 +2700,7 @@ postgres_insert_balance_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (denom_balance,
                                             deposit_fee_balance));
@@ -2717,6 +2759,7 @@ postgres_update_balance_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_balance_summary_update",
                                              params);
@@ -2810,6 +2853,7 @@ postgres_insert_historic_denom_revenue (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_historic_denomination_revenue_insert",
                                              params);
@@ -2971,6 +3015,7 @@ postgres_insert_historic_reserve_revenue (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_historic_reserve_summary_insert",
                                              params);
@@ -3119,6 +3164,7 @@ postgres_insert_predicted_result (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_predicted_result_insert",
                                              params);
@@ -3148,6 +3194,7 @@ postgres_update_predicted_result (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "auditor_predicted_result_update",
                                              params);

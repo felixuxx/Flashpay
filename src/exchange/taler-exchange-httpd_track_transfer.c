@@ -502,6 +502,10 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
   int res;
   int mhd_ret;
 
+  (void) rh;
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   memset (&ctx, 0, sizeof (ctx));
   res = TALER_MHD_parse_request_arg_data (connection,
                                           "wtid",
