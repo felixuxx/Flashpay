@@ -1301,10 +1301,11 @@ then
     fi
     echo PASS
 
-    # Second pass, this time accounting is wrong in the OTHER direction
+    echo "Second pass: changing how amount is wrong to other direction"
     NEW_AMOUNT=`expr $OLD_AMOUNT + 1000000 || true`
     echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
 
+    pre_audit
     audit_only
     post_audit
 
