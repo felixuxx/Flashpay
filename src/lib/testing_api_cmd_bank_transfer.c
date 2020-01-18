@@ -294,7 +294,7 @@ transfer_cleanup (void *cls,
  * commands.
  *
  * @param cls closure.
- * @param ret[out] result
+ * @param[out] ret result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -340,14 +340,13 @@ transfer_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_transfer
-  (const char *label,
-  const char *amount,
-  const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
-  const char *payto_credit_account,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  const char *exchange_base_url)
+TALER_TESTING_cmd_transfer (const char *label,
+                            const char *amount,
+                            const struct TALER_BANK_AuthenticationData *auth,
+                            const char *payto_debit_account,
+                            const char *payto_credit_account,
+                            const struct TALER_WireTransferIdentifierRawP *wtid,
+                            const char *exchange_base_url)
 {
   struct TransferState *fts;
 

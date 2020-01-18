@@ -141,7 +141,7 @@ insert_deposit_run (void *cls,
     return;
   }
 
-  // prepare and store deposit now.
+  /* prepare and store deposit now. */
   memset (&deposit,
           0,
           sizeof (deposit));
@@ -250,7 +250,7 @@ insert_deposit_cleanup (void *cls,
  * Offer "insert-deposit" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result
+ * @param[out] ret result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -261,6 +261,10 @@ insert_deposit_traits (void *cls,
                        const char *trait,
                        unsigned int index)
 {
+  (void) cls;
+  (void) ret;
+  (void) trait;
+  (void) index;
   return GNUNET_NO;
 }
 
@@ -288,7 +292,6 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
                                   const char *amount_with_fee,
                                   const char *deposit_fee)
 {
-  struct TALER_TESTING_Command cmd;
   struct InsertDepositState *ids;
 
   ids = GNUNET_new (struct InsertDepositState);
@@ -299,13 +302,17 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
   ids->amount_with_fee = amount_with_fee;
   ids->deposit_fee = deposit_fee;
 
-  cmd.cls = ids;
-  cmd.label = label;
-  cmd.run = &insert_deposit_run;
-  cmd.cleanup = &insert_deposit_cleanup;
-  cmd.traits = &insert_deposit_traits;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ids,
+      .label = label,
+      .run = &insert_deposit_run,
+      .cleanup = &insert_deposit_cleanup,
+      .traits = &insert_deposit_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 

@@ -384,7 +384,7 @@ admin_add_incoming_cleanup (void *cls,
  * commands.
  *
  * @param cls closure.
- * @param ret[out] result
+ * @param[out] ret result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -488,11 +488,11 @@ make_command (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming
-  (const char *label,
-  const char *amount,
-  const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account)
+TALER_TESTING_cmd_admin_add_incoming (const char *label,
+                                      const char *amount,
+                                      const struct
+                                      TALER_BANK_AuthenticationData *auth,
+                                      const char *payto_debit_account)
 {
   return make_command (label,
                        make_fts (amount,

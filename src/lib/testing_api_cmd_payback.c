@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_payback.c
  * @brief Implement the /revoke and /payback test commands.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -112,8 +110,8 @@ struct PaybackState
  * Parser reference to a coin.
  *
  * @param coin_reference of format $LABEL['#' $INDEX]?
- * @param cref[out] where we return a copy of $LABEL
- * @param idx[out] where we set $INDEX
+ * @param[out] cref where we return a copy of $LABEL
+ * @param[out] idx where we set $INDEX
  * @return #GNUNET_SYSERR if $INDEX is present but not numeric
  */
 static int
@@ -459,7 +457,7 @@ payback_cleanup (void *cls,
  * Offer internal data from a "revoke" CMD to other CMDs.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -470,7 +468,6 @@ revoke_traits (void *cls,
                const char *trait,
                unsigned int index)
 {
-
   struct RevokeState *rs = cls;
   struct TALER_TESTING_Trait traits[] = {
     /* Needed by the handler which waits the proc'
@@ -596,7 +593,6 @@ TALER_TESTING_cmd_payback (const char *label,
  * @param coin_reference reference to a CMD that will offer the
  *        denomination to revoke.
  * @param config_filename configuration file name.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command

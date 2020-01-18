@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_exec_aggregator.c
  * @brief run the taler-exchange-aggregator command
@@ -111,7 +110,7 @@ aggregator_cleanup (void *cls,
  * Offer "aggregator" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -151,16 +150,17 @@ TALER_TESTING_cmd_exec_aggregator (const char *label,
 
   as = GNUNET_new (struct AggregatorState);
   as->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = as,
+      .label = label,
+      .run = &aggregator_run,
+      .cleanup = &aggregator_cleanup,
+      .traits = &aggregator_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = as,
-    .label = label,
-    .run = &aggregator_run,
-    .cleanup = &aggregator_cleanup,
-    .traits = &aggregator_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

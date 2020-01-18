@@ -219,7 +219,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  * and reset database.
  *
  * @param config_filename configuration file name.
- * @param bc[out] set to the bank's configuration data
+ * @param[out] bc set to the bank's configuration data
  * @return the base url, or NULL upon errors.  Must be freed
  *         by the caller.
  */
@@ -385,7 +385,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
  *
  * @param config_filename configuration file to use
  * @param config_section which account to use (must match x-taler-bank)
- * @param bc[out] set to the bank's configuration data
+ * @param[out] bc set to the bank's configuration data
  * @return #GNUNET_OK on success
  */
 int

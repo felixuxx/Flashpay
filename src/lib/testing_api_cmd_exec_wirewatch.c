@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_exec_wirewatch.c
  * @brief run the taler-exchange-wirewatch command
@@ -111,7 +110,7 @@ wirewatch_cleanup (void *cls,
  * Offer "wirewatch" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -152,16 +151,17 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
   ws = GNUNET_new (struct WirewatchState);
   ws->config_filename = config_filename;
 
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ws,
+      .label = label,
+      .run = &wirewatch_run,
+      .cleanup = &wirewatch_cleanup,
+      .traits = &wirewatch_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ws,
-    .label = label,
-    .run = &wirewatch_run,
-    .cleanup = &wirewatch_cleanup,
-    .traits = &wirewatch_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

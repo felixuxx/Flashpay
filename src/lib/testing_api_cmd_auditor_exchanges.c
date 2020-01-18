@@ -253,10 +253,9 @@ exchanges_cleanup (void *cls,
  * Offer internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] set to the wanted data.
+ * @param[out] ret set to the wanted data.
  * @param trait name of the trait.
  * @param index index number of the traits to be returned.
- *
  * @return #GNUNET_OK on success
  */
 static int
@@ -280,25 +279,27 @@ exchanges_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_exchanges
-  (const char *label,
-  struct TALER_AUDITOR_Handle *auditor,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_exchanges (const char *label,
+                             struct TALER_AUDITOR_Handle *auditor,
+                             unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct ExchangesState *es;
 
   es = GNUNET_new (struct ExchangesState);
   es->auditor = auditor;
   es->expected_response_code = expected_response_code;
 
-  cmd.cls = es;
-  cmd.label = label;
-  cmd.run = &exchanges_run;
-  cmd.cleanup = &exchanges_cleanup;
-  cmd.traits = &exchanges_traits;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = es,
+      .label = label,
+      .run = &exchanges_run,
+      .cleanup = &exchanges_cleanup,
+      .traits = &exchanges_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -314,25 +315,26 @@ TALER_TESTING_cmd_exchanges
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_exchanges_with_url
-  (const char *label,
-  unsigned int expected_response_code,
-  const char *exchange_url)
+TALER_TESTING_cmd_exchanges_with_url (const char *label,
+                                      unsigned int expected_response_code,
+                                      const char *exchange_url)
 {
-  struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct ExchangesState *es;
 
   es = GNUNET_new (struct ExchangesState);
   es->expected_response_code = expected_response_code;
   es->exchange_url = exchange_url;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = es,
+      .label = label,
+      .run = &exchanges_run,
+      .cleanup = &exchanges_cleanup,
+      .traits = &exchanges_traits
+    };
 
-  cmd.cls = es;
-  cmd.label = label;
-  cmd.run = &exchanges_run;
-  cmd.cleanup = &exchanges_cleanup;
-  cmd.traits = &exchanges_traits;
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

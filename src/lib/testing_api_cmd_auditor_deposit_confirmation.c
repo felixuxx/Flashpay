@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_auditor_deposit_confirmation.c
  * @brief command for testing /deposit_confirmation.
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -359,7 +357,7 @@ deposit_confirmation_cleanup (void *cls,
  * Offer internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] set to the wanted data.
+ * @param[out] ret set to the wanted data.
  * @param trait name of the trait.
  * @param index index number of the traits to be returned.
  *
@@ -393,15 +391,13 @@ deposit_confirmation_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation
-  (const char *label,
-  struct TALER_AUDITOR_Handle *auditor,
-  const char *deposit_reference,
-  unsigned int coin_index,
-  const char *amount_without_fee,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_deposit_confirmation (const char *label,
+                                        struct TALER_AUDITOR_Handle *auditor,
+                                        const char *deposit_reference,
+                                        unsigned int coin_index,
+                                        const char *amount_without_fee,
+                                        unsigned int expected_response_code)
 {
-  struct TALER_TESTING_Command cmd = {0}; /* need explicit zeroing..*/
   struct DepositConfirmationState *dcs;
 
   dcs = GNUNET_new (struct DepositConfirmationState);
@@ -411,13 +407,17 @@ TALER_TESTING_cmd_deposit_confirmation
   dcs->amount_without_fee = amount_without_fee;
   dcs->expected_response_code = expected_response_code;
 
-  cmd.cls = dcs;
-  cmd.label = label;
-  cmd.run = &deposit_confirmation_run;
-  cmd.cleanup = &deposit_confirmation_cleanup;
-  cmd.traits = &deposit_confirmation_traits;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = dcs,
+      .label = label,
+      .run = &deposit_confirmation_run,
+      .cleanup = &deposit_confirmation_cleanup,
+      .traits = &deposit_confirmation_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 

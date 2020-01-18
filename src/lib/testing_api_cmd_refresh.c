@@ -1063,7 +1063,7 @@ refresh_melt_cleanup (void *cls,
  * Offer internal data to the "refresh melt" CMD.
  *
  * @param cls closure.
- * @param ret[out] result (could be anything).
+ * @param[out] ret result (could be anything).
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -1254,7 +1254,7 @@ TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd)
  * Offer internal data from a "refresh reveal" CMD.
  *
  * @param cls closure.
- * @param ret[out] result (could be anything).
+ * @param[out] ret result (could be anything).
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  *
@@ -1322,10 +1322,9 @@ refresh_reveal_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_reveal
-  (const char *label,
-  const char *melt_reference,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_refresh_reveal (const char *label,
+                                  const char *melt_reference,
+                                  unsigned int expected_response_code)
 {
   struct RefreshRevealState *rrs;
 
@@ -1374,25 +1373,25 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
  * @return the "refresh link" command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_link
-  (const char *label,
-  const char *reveal_reference,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_refresh_link (const char *label,
+                                const char *reveal_reference,
+                                unsigned int expected_response_code)
 {
   struct RefreshLinkState *rrs;
 
   rrs = GNUNET_new (struct RefreshLinkState);
   rrs->reveal_reference = reveal_reference;
   rrs->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = rrs,
+      .label = label,
+      .run = &refresh_link_run,
+      .cleanup = &refresh_link_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = rrs,
-    .label = label,
-    .run = &refresh_link_run,
-    .cleanup = &refresh_link_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

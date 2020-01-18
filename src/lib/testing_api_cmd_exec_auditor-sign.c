@@ -175,7 +175,7 @@ auditor_sign_cleanup (void *cls,
  * Offer "auditor sign" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.

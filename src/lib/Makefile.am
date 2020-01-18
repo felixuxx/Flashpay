@@ -95,6 +95,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_sleep.c \
   testing_api_cmd_status.c \
   testing_api_cmd_track.c \
+  testing_api_cmd_wait.c \
   testing_api_cmd_wire.c \
   testing_api_cmd_withdraw.c \
   testing_api_cmd_insert_deposit.c \

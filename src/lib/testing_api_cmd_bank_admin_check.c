@@ -162,7 +162,7 @@ check_bank_admin_transfer_cleanup (void *cls,
  * Offer internal data from a "bank admin check" CMD state.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.

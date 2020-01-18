@@ -105,7 +105,7 @@ batch_cleanup (void *cls,
  * Offer internal data from a "batch" CMD, to other commands.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -168,16 +168,17 @@ TALER_TESTING_cmd_batch (const char *label,
   memcpy (bs->batch,
           batch,
           sizeof (struct TALER_TESTING_Command) * i);
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = bs,
+      .label = label,
+      .run = &batch_run,
+      .cleanup = &batch_cleanup,
+      .traits = &batch_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = bs,
-    .label = label,
-    .run = &batch_run,
-    .cleanup = &batch_cleanup,
-    .traits = &batch_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -187,8 +188,7 @@ TALER_TESTING_cmd_batch (const char *label,
  * @param is interpreter state.
  */
 void
-TALER_TESTING_cmd_batch_next
-  (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is)
 {
   struct BatchState *bs = is->commands[is->ip].cls;
 
@@ -208,8 +208,7 @@ TALER_TESTING_cmd_batch_next
  * @return false if not, true if it is a batch command
  */
 int
-TALER_TESTING_cmd_is_batch
-  (const struct TALER_TESTING_Command *cmd)
+TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd)
 {
   return cmd->run == &batch_run;
 }
@@ -221,8 +220,7 @@ TALER_TESTING_cmd_is_batch
  * @return cmd current batch command
  */
 struct TALER_TESTING_Command *
-TALER_TESTING_cmd_batch_get_current
-  (const struct TALER_TESTING_Command *cmd)
+TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd)
 {
   struct BatchState *bs = cmd->cls;
 

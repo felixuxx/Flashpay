@@ -369,10 +369,9 @@ track_transaction_cleanup (void *cls,
  * Offer internal data from a "track transaction" CMD.
  *
  * @param cls closure.
- * @param ret[out] result (could be anything).
+ * @param[out] ret result (could be anything).
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
 static int
@@ -405,7 +404,6 @@ track_transaction_traits (void *cls,
  * @param bank_transfer_reference reference to a command that
  *        can offer a WTID so as to check that against what WTID
  *        the tracked operation has.  Set as NULL if not needed.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -733,7 +731,6 @@ track_transfer_run (void *cls,
  * @param index index number of the WTID to track, in case there
  *        are multiple on offer.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -774,7 +771,6 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
  * @param expected_amount how much money we expect being moved
  *        with this wire-transfer.
  * @param expected_wire_fee expected wire fee.
- *
  * @return the command
  */
 struct TALER_TESTING_Command

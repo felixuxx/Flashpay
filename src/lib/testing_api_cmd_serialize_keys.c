@@ -16,13 +16,11 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_serialize_keys.c
  * @brief Lets tests use the keys serialization API.
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include <jansson.h>
 #include "exchange_api_handle.h"
@@ -129,10 +127,9 @@ serialize_keys_cleanup (void *cls,
  * Offer serialized keys as trait.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
 static int
@@ -253,15 +250,17 @@ TALER_TESTING_cmd_serialize_keys (const char *label)
   struct SerializeKeysState *sks;
 
   sks = GNUNET_new (struct SerializeKeysState);
-  struct TALER_TESTING_Command cmd = {
-    .cls = sks,
-    .label = label,
-    .run = serialize_keys_run,
-    .cleanup = serialize_keys_cleanup,
-    .traits = serialize_keys_traits
-  };
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = sks,
+      .label = label,
+      .run = serialize_keys_run,
+      .cleanup = serialize_keys_cleanup,
+      .traits = serialize_keys_traits
+    };
 
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -284,13 +283,14 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
   cwss = GNUNET_new (struct ConnectWithStateState);
   cwss->state_reference = state_reference;
   cwss->consumed = GNUNET_NO;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = cwss,
+      .label = label,
+      .run = connect_with_state_run,
+      .cleanup = connect_with_state_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = cwss,
-    .label = label,
-    .run = connect_with_state_run,
-    .cleanup = connect_with_state_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

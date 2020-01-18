@@ -115,7 +115,7 @@ struct HistoryState
  * Offer internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] set to the wanted data.
+ * @param[out] ret set to the wanted data.
  * @param trait name of the trait.
  * @param index index number of the traits to be returned.
  *

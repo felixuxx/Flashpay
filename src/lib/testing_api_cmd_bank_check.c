@@ -190,9 +190,8 @@ check_bank_transfer_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-check_bank_transfer_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+check_bank_transfer_cleanup (void *cls,
+                             const struct TALER_TESTING_Command *cmd)
 {
   struct BankCheckState *bcs = cls;
 
@@ -204,7 +203,7 @@ check_bank_transfer_cleanup
  * Offer internal data from a "bank check" CMD state.
  *
  * @param cls closure.
- * @param ret[out] result.
+ * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -246,12 +245,11 @@ check_bank_transfer_traits (void *cls,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_transfer
-  (const char *label,
-  const char *exchange_base_url,
-  const char *amount,
-  const char *debit_payto,
-  const char *credit_payto)
+TALER_TESTING_cmd_check_bank_transfer (const char *label,
+                                       const char *exchange_base_url,
+                                       const char *amount,
+                                       const char *debit_payto,
+                                       const char *credit_payto)
 {
   struct BankCheckState *bcs;
 

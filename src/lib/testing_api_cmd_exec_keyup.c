@@ -143,7 +143,7 @@ keyup_cleanup (void *cls,
  * Offer "keyup" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result
+ * @param[out] ret result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  *
@@ -189,16 +189,17 @@ TALER_TESTING_cmd_exec_keyup_with_now
   ks->config_filename = config_filename;
   ks->now = now;
   ks->with_now = GNUNET_YES;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ks,
+      .label = label,
+      .run = &keyup_run,
+      .cleanup = &keyup_cleanup,
+      .traits = &keyup_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ks,
-    .label = label,
-    .run = &keyup_run,
-    .cleanup = &keyup_cleanup,
-    .traits = &keyup_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -218,16 +219,17 @@ TALER_TESTING_cmd_exec_keyup (const char *label,
 
   ks = GNUNET_new (struct KeyupState);
   ks->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ks,
+      .label = label,
+      .run = &keyup_run,
+      .cleanup = &keyup_cleanup,
+      .traits = &keyup_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ks,
-    .label = label,
-    .run = &keyup_run,
-    .cleanup = &keyup_cleanup,
-    .traits = &keyup_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

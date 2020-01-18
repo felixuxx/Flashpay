@@ -347,7 +347,7 @@ withdraw_cleanup (void *cls,
  * commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  *

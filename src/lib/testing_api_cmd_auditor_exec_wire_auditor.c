@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_auditor_exec_wire_auditor.c
  * @brief run the taler-wire-auditor command
@@ -111,7 +110,7 @@ wire_auditor_cleanup (void *cls,
  * Offer "wire-auditor" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result
+ * @param[out] ret result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -146,17 +145,21 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_wire_auditor (const char *label,
                                      const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct WireAuditorState *ks;
 
   ks = GNUNET_new (struct WireAuditorState);
   ks->config_filename = config_filename;
-  cmd.cls = ks;
-  cmd.label = label;
-  cmd.run = &wire_auditor_run;
-  cmd.cleanup = &wire_auditor_cleanup;
-  cmd.traits = &wire_auditor_traits;
-  return cmd;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ks,
+      .label = label,
+      .run = &wire_auditor_run,
+      .cleanup = &wire_auditor_cleanup,
+      .traits = &wire_auditor_traits
+    };
+
+    return cmd;
+  }
 }
 
 

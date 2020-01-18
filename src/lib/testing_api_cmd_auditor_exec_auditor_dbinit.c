@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not,
   see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_auditor_exec_auditor_dbinit.c
  * @brief run the taler-auditor-dbinit "-r" command
@@ -112,7 +111,7 @@ auditor_dbinit_cleanup (void *cls,
  * Offer "auditor-dbinit" CMD internal data to other commands.
  *
  * @param cls closure.
- * @param ret[out] result
+ * @param[out] ret result
  * @param trait name of the trait.
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
@@ -147,17 +146,21 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
                                        const char *config_filename)
 {
-  struct TALER_TESTING_Command cmd;
   struct AuditorDbinitState *ks;
 
   ks = GNUNET_new (struct AuditorDbinitState);
   ks->config_filename = config_filename;
-  cmd.cls = ks;
-  cmd.label = label;
-  cmd.run = &auditor_dbinit_run;
-  cmd.cleanup = &auditor_dbinit_cleanup;
-  cmd.traits = &auditor_dbinit_traits;
-  return cmd;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ks,
+      .label = label.
+               .run = &auditor_dbinit_run,
+      .cleanup = &auditor_dbinit_cleanup,
+      .traits = &auditor_dbinit_traits
+    };
+
+    return cmd;
+  }
 }
 
 
