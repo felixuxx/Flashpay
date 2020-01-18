@@ -313,7 +313,7 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
  * @param[out] rc set to the value the wallet must commit to
  * @param kappa number of transfer public keys involved (must be #TALER_CNC_KAPPA)
  * @param num_new_coins number of new coins to be created
- * @param commitments array of @a kappa commitments
+ * @param rcs commitments array of @a kappa commitments
  * @param coin_pub public key of the coin to be melted
  * @param amount_with_fee amount to be melted, including fee
  */

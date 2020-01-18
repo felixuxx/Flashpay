@@ -418,7 +418,7 @@ TALER_url_absolute_raw_va (const char *proto,
  * @param host hostname for the URL
  * @param prefix prefix for the URL
  * @param path path for the URL
- * @param args NULL-terminated key-value pairs (char *) for query parameters,
+ * @param ... NULL-terminated key-value pairs (char *) for query parameters,
  *        the value will be url-encoded
  * @returns the URL, must be freed with #GNUNET_free
  */

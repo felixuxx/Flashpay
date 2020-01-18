@@ -29,9 +29,9 @@
  *
  * @param result the result to extract the amount from
  * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
+ * @param currency currency to use for @a r_amount_nbo
  * @param val_name name of the column with the amount's "value", must include the substring "_val".
  * @param frac_name name of the column with the amount's "fractional" value, must include the substring "_frac".
- * @param curr_name name of the column with the amount's currency name, must include the substring "_curr".
  * @param[out] r_amount_nbo where to store the amount, in network byte order
  * @return
  *   #GNUNET_YES if all results could be extracted
@@ -376,7 +376,7 @@ TALER_PQ_result_spec_json (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row the row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -459,7 +459,7 @@ TALER_PQ_result_spec_absolute_time (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row the row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
