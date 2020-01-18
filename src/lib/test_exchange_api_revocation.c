@@ -178,7 +178,7 @@ run (void *cls,
 
   TALER_TESTING_run_with_fakebank (is,
                                    revocation,
-                                   bc.bank_url);
+                                   bc.exchange_auth.wire_gateway_url);
 }
 
 

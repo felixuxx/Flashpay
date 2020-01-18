@@ -259,7 +259,7 @@ run (void *cls,
 
   TALER_TESTING_run_with_fakebank (is,
                                    commands,
-                                   bc.bank_url);
+                                   bc.exchange_auth.wire_gateway_url);
 }
 
 

@@ -361,7 +361,6 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     return GNUNET_SYSERR;
   }
   GNUNET_CONFIGURATION_destroy (cfg);
-  bc->bank_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
   bc->exchange_account_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
   bc->exchange_payto = exchange_payto_uri;
   bc->user42_payto = "payto://x-taler-bank/localhost/42";
@@ -451,12 +450,11 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
               (unsigned int) fakebank_port);
 
   GNUNET_CONFIGURATION_destroy (cfg);
-  bc->bank_url = GNUNET_strdup (bc->exchange_auth.wire_gateway_url);
   if (GNUNET_OK !=
-      TALER_TESTING_url_port_free (bc->bank_url))
+      TALER_TESTING_url_port_free (bc->exchange_auth.wire_gateway_url))
   {
-    GNUNET_free (bc->bank_url);
-    bc->bank_url = NULL;
+    GNUNET_free (bc->exchange_auth.wire_gateway_url);
+    bc->exchange_auth.wire_gateway_url = NULL;
     return GNUNET_SYSERR;
   }
   /* FIXME: this duplicates bc->exchange_auth.wire_gateway_url */

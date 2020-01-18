@@ -101,7 +101,7 @@ run (void *cls,
   if (GNUNET_YES == with_fakebank)
     TALER_TESTING_run_with_fakebank (is,
                                      commands,
-                                     bc.bank_url);
+                                     bc.exchange_auth.wire_gateway_url);
   else
     TALER_TESTING_run (is,
                        commands);
@@ -187,7 +187,8 @@ main (int argc,
     }
 
     if (NULL == (bankd = TALER_TESTING_run_bank (cfgfilename,
-                                                 bc.bank_url)))
+                                                 bc.exchange_auth.
+                                                 wire_gateway_url)))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);

@@ -269,11 +269,6 @@ TALER_TESTING_url_port_free (const char *url);
 struct TALER_TESTING_BankConfiguration
 {
   /**
-   * Bank base URL.
-   */
-  char *bank_url;
-
-  /**
    * Base URL of the exchange's bank account. Basically
    * @e bank_url plus the exchange account.
    *

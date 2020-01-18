@@ -111,11 +111,11 @@ run (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Bank serves at `%s'\n",
-                bc.bank_url);
+                bc.exchange_auth.wire_gateway_url);
     if (GNUNET_YES == with_fakebank)
       TALER_TESTING_run_with_fakebank (is,
                                        commands,
-                                       bc.bank_url);
+                                       bc.exchange_auth.wire_gateway_url);
     else
       TALER_TESTING_run (is,
                          commands);
@@ -165,7 +165,8 @@ main (int argc,
     }
 
     if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE_PYBANK,
-                                                 bc.bank_url)))
+                                                 bc.exchange_auth.
+                                                 wire_gateway_url)))
     {
       GNUNET_break (0);
       return 77;
