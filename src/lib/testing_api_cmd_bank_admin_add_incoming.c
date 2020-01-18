@@ -425,7 +425,6 @@ admin_add_incoming_traits (void *cls,
  * Create internal state for "/admin/add-incoming" CMD.
  *
  * @param amount the amount to transfer.
- * @param account_bank_url base URL of the exchange account receiving the money
  * @param payto_debit_account which account sends money
  * @param auth authentication data
  * @return the internal state
@@ -510,7 +509,6 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
  *
  * @param label command label.
  * @param amount the amount to transfer.
- * @param account_bank_url base URL of the exchange account receiving the money
  * @param payto_debit_account which account sends money
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve

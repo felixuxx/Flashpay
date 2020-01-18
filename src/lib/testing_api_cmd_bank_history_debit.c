@@ -402,7 +402,6 @@ check_result (struct TALER_TESTING_Interpreter *is,
  *        success the last callback is always of this status
  *        (even if `abs(num_results)` were already returned).
  * @param ec taler status code.
- * @param dir direction of the transfer.
  * @param row_id monotonically increasing counter corresponding to
  *        the transaction.
  * @param details details about the wire transfer.

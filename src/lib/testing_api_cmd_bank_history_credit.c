@@ -340,7 +340,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
  * @param total length of @a h
  * @param off the offset (of the CMD list) where the command
  *        to check is.
- * @param dir the expected direction of the transaction.
  * @param details the expected transaction details.
  * @return #GNUNET_OK if the transaction is what we expect.
  */
@@ -401,7 +400,6 @@ check_result (struct TALER_TESTING_Interpreter *is,
  *        success the last callback is always of this status
  *        (even if `abs(num_results)` were already returned).
  * @param ec taler status code.
- * @param dir direction of the transfer.
  * @param row_id monotonically increasing counter corresponding to
  *        the transaction.
  * @param details details about the wire transfer.
@@ -563,6 +561,7 @@ history_cleanup (void *cls,
  * Make a "history" CMD.
  *
  * @param label command label.
+ * @param auth authentication data to talk with the wire gateway
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
