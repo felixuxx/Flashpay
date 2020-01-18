@@ -18,7 +18,7 @@
 */
 /**
  * @file taler-wire.c
- * @brief Utility performing wire transfers.
+ * @brief Utility for performing wire transfers.
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
@@ -47,10 +47,9 @@ static unsigned int global_ret = 1;
 
 /**
  * When a wire transfer is being performed, this value
- * specifies the amount to wire-transfer.  It's given in
- * the usual CURRENCY:X[.Y] format.
+ * specifies the amount to transfer.
  */
-static char *amount;
+static struct TALER_Amount amount;
 
 /**
  * Starting row.
@@ -183,36 +182,15 @@ confirmation_cb (void *cls,
 static void
 execute_wire_transfer ()
 {
-  struct TALER_Amount a;
   struct TALER_WireTransferIdentifierRawP wtid;
   void *buf;
   size_t buf_size;
 
-  if (NULL == amount)
-  {
-    fprintf (stderr,
-             "The option -a: AMOUNT, is mandatory.\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK != TALER_string_to_amount (amount,
-                                           &a))
-  {
-    fprintf (stderr,
-             "Amount string incorrect.\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (NULL == destination_account_url)
-  {
-    fprintf (stderr,
-             "Please give destination"
-             " account URL (--destination/-d)\n");
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &wtid,
+                              sizeof (wtid));
   TALER_BANK_prepare_wire_transfer (destination_account_url,
-                                    &a,
+                                    &amount,
                                     "http://exchange.example.com/",
                                     &wtid,
                                     &buf,
@@ -387,16 +365,18 @@ main (int argc,
                                     "ACCOUNT-SECTION",
                                     "Which config section has the credentials to access the bank.  Mandatory.\n",
                                     &account_section)),
-    GNUNET_GETOPT_option_string ('a',
-                                 "amount",
-                                 "AMOUNT",
-                                 "Specify the amount to transfer.",
-                                 &amount),
-    GNUNET_GETOPT_option_string ('d',
-                                 "destination",
-                                 "PAYTO-URL",
-                                 "Destination account for the wire transfer.",
-                                 &destination_account_url),
+    GNUNET_GETOPT_option_mandatory
+      (TALER_getopt_get_amount ('a',
+                                "amount",
+                                "AMOUNT",
+                                "Specify the amount to transfer.",
+                                &amount)),
+    GNUNET_GETOPT_option_mandatory
+      (GNUNET_GETOPT_option_string ('d',
+                                    "destination",
+                                    "PAYTO-URL",
+                                    "Destination account for the wire transfer.",
+                                    &destination_account_url)),
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
