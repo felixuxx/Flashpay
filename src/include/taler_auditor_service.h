@@ -206,7 +206,7 @@ typedef void
  * @param master_pub master public key of the exchange
  * @param ep_start when does @a exchange_pub validity start
  * @param ep_expire when does @a exchange_pub usage end
- * @param ep_legal_end when does @a exchange_pub legal validity end
+ * @param ep_end when does @a exchange_pub legal validity end
  * @param master_sig master signature affirming validity of @a exchange_pub
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
@@ -234,7 +234,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
                                     TALER_MasterPublicKeyP *master_pub,
                                     struct GNUNET_TIME_Absolute ep_start,
                                     struct GNUNET_TIME_Absolute ep_expire,
-                                    struct GNUNET_TIME_Absolute ep_legal_end,
+                                    struct GNUNET_TIME_Absolute ep_end,
                                     const struct
                                     TALER_MasterSignatureP *master_sig,
                                     TALER_AUDITOR_DepositConfirmationResultCallback

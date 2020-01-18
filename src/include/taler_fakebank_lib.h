@@ -52,7 +52,8 @@ TALER_FAKEBANK_start (uint16_t port);
 
 /**
  * Check that no wire transfers were ordered (or at least none
- * that have not been taken care of via #TALER_FAKEBANK_check()).
+ * that have not been taken care of via #TALER_FAKEBANK_check_debit()
+ * or #TALER_FAKEBANK_check_credit()).
  * If any transactions are onrecord, return #GNUNET_SYSERR.
  *
  * @param h bank instance

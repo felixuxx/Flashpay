@@ -203,13 +203,11 @@ wire_cleanup (void *cls,
  * Create a "wire" command.
  *
  * @param label the command label.
- * @param exchange the exchange to connect to.
  * @param expected_method which wire-transfer method is expected
  *        to be offered by the exchange.
  * @param expected_fee the fee the exchange should charge.
  * @param expected_response_code the HTTP response the exchange
  *        should return.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -224,13 +222,14 @@ TALER_TESTING_cmd_wire (const char *label,
   ws->expected_method = expected_method;
   ws->expected_fee = expected_fee;
   ws->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ws,
+      .label = label,
+      .run = &wire_run,
+      .cleanup = &wire_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ws,
-    .label = label,
-    .run = &wire_run,
-    .cleanup = &wire_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }

@@ -16,7 +16,6 @@
   License along with TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/testing_api_cmd_check_keys.c
  * @brief Implementation of "check keys" test command.  XXX-NOTE:
@@ -29,7 +28,6 @@
  *
  * @author Marcello Stanisci
  */
-
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -142,7 +140,8 @@ check_keys_run (void *cls,
    * a "maybe" basis, so it can get quite hard to track /keys
    * request.  Rather, this CMD should just check if /keys was
    * requested AT LEAST n times before going ahead with checks.
-   */if (is->key_generation > cks->generation)
+   *///
+  if (is->key_generation > cks->generation)
   {
     /* We got /keys too often, strange. Fatal. May theoretically
        happen if somehow we were really unlucky and /keys expired
@@ -207,18 +206,16 @@ check_keys_cleanup (void *cls,
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
  * @param last_denom_date date to be set in the "last_denom_issue"
  *        URL parameter of /keys.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_last_denom
-  (const char *label,
-  unsigned int generation,
-  unsigned int num_denom_keys,
-  struct GNUNET_TIME_Absolute last_denom_date)
+TALER_TESTING_cmd_check_keys_with_last_denom (const char *label,
+                                              unsigned int generation,
+                                              unsigned int num_denom_keys,
+                                              struct GNUNET_TIME_Absolute
+                                              last_denom_date)
 {
   struct CheckKeysState *cks;
 
@@ -227,15 +224,16 @@ TALER_TESTING_cmd_check_keys_with_last_denom
   cks->num_denom_keys = num_denom_keys;
   cks->set_last_denom = GNUNET_YES;
   cks->last_denom_date = last_denom_date;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = cks,
+      .label = label,
+      .run = &check_keys_run,
+      .cleanup = &check_keys_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = cks,
-    .label = label,
-    .run = &check_keys_run,
-    .cleanup = &check_keys_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -251,30 +249,28 @@ TALER_TESTING_cmd_check_keys_with_last_denom
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys
-  (const char *label,
-  unsigned int generation,
-  unsigned int num_denom_keys)
+TALER_TESTING_cmd_check_keys (const char *label,
+                              unsigned int generation,
+                              unsigned int num_denom_keys)
 {
   struct CheckKeysState *cks;
 
   cks = GNUNET_new (struct CheckKeysState);
   cks->generation = generation;
   cks->num_denom_keys = num_denom_keys;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = cks,
+      .label = label,
+      .run = &check_keys_run,
+      .cleanup = &check_keys_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = cks,
-    .label = label,
-    .run = &check_keys_run,
-    .cleanup = &check_keys_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -290,16 +286,14 @@ TALER_TESTING_cmd_check_keys
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
- *
+ * @param now timestamp to use when fetching keys
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_now
-  (const char *label,
-  unsigned int generation,
-  unsigned int num_denom_keys,
-  struct GNUNET_TIME_Absolute now)
+TALER_TESTING_cmd_check_keys_with_now (const char *label,
+                                       unsigned int generation,
+                                       unsigned int num_denom_keys,
+                                       struct GNUNET_TIME_Absolute now)
 {
   struct CheckKeysState *cks;
 
@@ -311,15 +305,16 @@ TALER_TESTING_cmd_check_keys_with_now
 
   /* Force to NOT cherry pick, otherwise they conflict.  */
   cks->pull_all_keys = GNUNET_YES;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = cks,
+      .label = label,
+      .run = &check_keys_run,
+      .cleanup = &check_keys_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = cks,
-    .label = label,
-    .run = &check_keys_run,
-    .cleanup = &check_keys_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -335,15 +330,12 @@ TALER_TESTING_cmd_check_keys_with_now
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_pull_all_keys
-  (const char *label,
-  unsigned int generation,
-  unsigned int num_denom_keys)
+TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
+                                            unsigned int generation,
+                                            unsigned int num_denom_keys)
 {
   struct CheckKeysState *cks;
 
@@ -351,15 +343,16 @@ TALER_TESTING_cmd_check_keys_pull_all_keys
   cks->generation = generation;
   cks->num_denom_keys = num_denom_keys;
   cks->pull_all_keys = GNUNET_YES;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = cks,
+      .label = label,
+      .run = &check_keys_run,
+      .cleanup = &check_keys_cleanup
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = cks,
-    .label = label,
-    .run = &check_keys_run,
-    .cleanup = &check_keys_cleanup
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 

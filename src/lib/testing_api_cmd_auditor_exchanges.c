@@ -308,7 +308,6 @@ TALER_TESTING_cmd_exchanges (const char *label,
  * a particular exchange belongs to the returned bundle.
  *
  * @param label command label.
- * @param auditor auditor connection.
  * @param expected_response_code expected HTTP response code.
  * @param exchange_url URL of the exchange supposed to
  *  be included in the response.

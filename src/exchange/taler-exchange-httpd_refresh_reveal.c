@@ -787,7 +787,7 @@ cleanup:
 /**
  * Handle a "/refresh/reveal" request.   Parses the given JSON
  * transfer private keys and if successful, passes everything to
- * #TEH_DB_execute_refresh_reveal() which will verify that the
+ * #resolve_refresh_reveal_denominations() which will verify that the
  * revealed information is valid then returns the signed refreshed
  * coins.
  *

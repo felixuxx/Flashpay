@@ -45,9 +45,8 @@ static struct GNUNET_DISK_PipeHandle *sigpipe;
  * @return NULL if command was not found
  */
 const struct TALER_TESTING_Command *
-TALER_TESTING_interpreter_lookup_command
-  (struct TALER_TESTING_Interpreter *is,
-  const char *label)
+TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
+                                          const char *label)
 {
   if (NULL == label)
   {
@@ -106,8 +105,7 @@ TALER_TESTING_interpreter_get_context
 
 
 struct TALER_FAKEBANK_Handle *
-TALER_TESTING_interpreter_get_fakebank
-  (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_get_fakebank (struct TALER_TESTING_Interpreter *is)
 {
   return is->fakebank;
 }
@@ -123,10 +121,9 @@ TALER_TESTING_interpreter_get_fakebank
  * @param bank_url the url the fakebank is supposed to run on
  */
 void
-TALER_TESTING_run_with_fakebank
-  (struct TALER_TESTING_Interpreter *is,
-  struct TALER_TESTING_Command *commands,
-  const char *bank_url)
+TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
+                                 struct TALER_TESTING_Command *commands,
+                                 const char *bank_url)
 {
   const char *port;
   long pnum;
@@ -200,8 +197,7 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
  * @param is interpreter of the test
  */
 void
-TALER_TESTING_interpreter_fail
-  (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
@@ -239,8 +235,8 @@ TALER_TESTING_cmd_end (void)
  * Obtain current label.
  */
 const char *
-TALER_TESTING_interpreter_get_current_label
-  (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_get_current_label (struct
+                                             TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
@@ -452,8 +448,7 @@ maint_child_death (void *cls)
  * with the next command.
  */
 void
-TALER_TESTING_wait_for_sigchld
-  (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is)
 {
   const struct GNUNET_DISK_FileHandle *pr;
 
@@ -592,10 +587,9 @@ sighandler_child_death ()
  * @param compat protocol compatibility information.
  */
 void
-TALER_TESTING_cert_cb
-  (void *cls,
-  const struct TALER_EXCHANGE_Keys *keys,
-  enum TALER_EXCHANGE_VersionCompatibility compat)
+TALER_TESTING_cert_cb (void *cls,
+                       const struct TALER_EXCHANGE_Keys *keys,
+                       enum TALER_EXCHANGE_VersionCompatibility compat)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
@@ -706,9 +700,8 @@ do_abort (void *cls)
  * @param cfg configuration to use
  */
 static int
-main_exchange_connect_with_cfg
-  (void *cls,
-  const struct GNUNET_CONFIGURATION_Handle *cfg)
+main_exchange_connect_with_cfg (void *cls,
+                                const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;

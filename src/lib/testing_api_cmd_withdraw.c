@@ -336,7 +336,6 @@ withdraw_cleanup (void *cls,
     TALER_EXCHANGE_destroy_denomination_key (ws->pk);
     ws->pk = NULL;
   }
-
   GNUNET_free_non_null (ws->exchange_url);
   GNUNET_free (ws);
 }
@@ -438,11 +437,10 @@ withdraw_traits (void *cls,
  * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_amount
-  (const char *label,
-  const char *reserve_reference,
-  const char *amount,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_withdraw_amount (const char *label,
+                                   const char *reserve_reference,
+                                   const char *amount,
+                                   unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 
@@ -461,16 +459,17 @@ TALER_TESTING_cmd_withdraw_amount
   }
 
   ws->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ws,
+      .label = label,
+      .run = &withdraw_run,
+      .cleanup = &withdraw_cleanup,
+      .traits = &withdraw_traits
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .cls = ws,
-    .label = label,
-    .run = &withdraw_run,
-    .cleanup = &withdraw_cleanup,
-    .traits = &withdraw_traits
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -479,7 +478,6 @@ TALER_TESTING_cmd_withdraw_amount
  * amount by a denomination key.
  *
  * @param label command label.
- * @param exchange connection handle to the exchange.
  * @param reserve_reference reference to the reserve to withdraw
  *        from; will provide reserve priv to sign the request.
  * @param dk denomination public key.
@@ -488,11 +486,11 @@ TALER_TESTING_cmd_withdraw_amount
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_denomination
-  (const char *label,
-  const char *reserve_reference,
-  const struct TALER_EXCHANGE_DenomPublicKey *dk,
-  unsigned int expected_response_code)
+TALER_TESTING_cmd_withdraw_denomination (const char *label,
+                                         const char *reserve_reference,
+                                         const struct
+                                         TALER_EXCHANGE_DenomPublicKey *dk,
+                                         unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 

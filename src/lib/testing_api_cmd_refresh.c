@@ -1311,7 +1311,6 @@ refresh_reveal_traits (void *cls,
  * Create a "refresh reveal" command.
  *
  * @param label command label.
- * @param exchange connection to the exchange.
  * @param melt_reference reference to a "refresh melt" command.
  * @param expected_response_code expected HTTP response code.
  * @return the command.

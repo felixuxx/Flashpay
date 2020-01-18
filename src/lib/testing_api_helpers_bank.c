@@ -71,28 +71,29 @@ TALER_TESTING_run_fakebank (const char *bank_url)
  *
  * @param prog program's name to look into
  * @param marker chunk to find in @a prog
+ * @return #GNUNET_YES if @a marker is present, otherwise #GNUNET_NO
  */
 int
-TALER_TESTING_has_in_name (const char *prog_name,
+TALER_TESTING_has_in_name (const char *prog,
                            const char *marker)
 {
   size_t name_pos;
   size_t pos;
 
-  if (! prog_name || ! marker)
+  if (! prog || ! marker)
     return GNUNET_NO;
 
   pos = 0;
   name_pos = 0;
-  while (prog_name[pos])
+  while (prog[pos])
   {
-    if ('/' == prog_name[pos])
+    if ('/' == prog[pos])
       name_pos = pos + 1;
     pos++;
   }
   if (name_pos == pos)
     return GNUNET_YES;
-  return strstr (prog_name + name_pos, marker) != NULL;
+  return (NULL != strstr (prog + name_pos, marker));
 }
 
 
@@ -104,7 +105,6 @@ TALER_TESTING_has_in_name (const char *prog_name,
  * @param config_filename configuration filename.
  * @param bank_url base URL of the bank, used by `wget' to check
  *        that the bank was started right.
- *
  * @return the process, or NULL if the process could not
  *         be started.
  */

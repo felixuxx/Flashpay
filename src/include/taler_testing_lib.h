@@ -976,7 +976,6 @@ TALER_TESTING_cmd_exchanges (const char *label,
  * a particular exchange belongs to the returned bundle.
  *
  * @param label command label.
- * @param auditor auditor connection.
  * @param expected_response_code expected HTTP response code.
  * @param exchange_url URL of the exchange supposed to
  *  be included in the response.
@@ -1153,8 +1152,7 @@ TALER_TESTING_cmd_exec_keyup_with_now (const char *label,
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
- *
+ * @param now timestamp to use when fetching keys
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1354,10 +1352,8 @@ TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd);
  * Create a "refresh reveal" command.
  *
  * @param label command label.
- * @param exchange connection to the exchange.
  * @param melt_reference reference to a "refresh melt" command.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1686,8 +1682,6 @@ TALER_TESTING_cmd_check_keys (const char *label,
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1710,10 +1704,8 @@ TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
  * @param num_denom_keys expected number of denomination keys.
- * @param exchange connection handle to the exchange to test.
  * @param last_denom_date date to be set in the "last_denom_issue"
  *        URL parameter of /keys.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
