@@ -1059,13 +1059,14 @@ wire_out_cb (void *cls,
        This is moderately harmless, it might just be that the aggreator
        has not yet fully caught up with the transfers it should do. */
     report (report_wire_out_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                        "row", (json_int_t) rowid,
                        "amount_wired", TALER_JSON_from_amount (&zero),
                        "amount_justified", TALER_JSON_from_amount (amount),
                        "wtid", GNUNET_JSON_from_data_auto (wtid),
                        "timestamp", json_from_time_abs (date),
-                       "diagnostic", "wire transfer not made (yet?)"));
+                       "diagnostic", "wire transfer not made (yet?)",
+                       "account_section", wa->section_name));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_bad_amount_out_minus,
                                     &total_bad_amount_out_minus,
@@ -1083,26 +1084,28 @@ wire_out_cb (void *cls,
          we should count the wire transfer as entirely spurious, and
          additionally consider the justified wire transfer as missing. */
       report (report_wire_out_inconsistencies,
-              json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
+              json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                          "row", (json_int_t) rowid,
                          "amount_wired", TALER_JSON_from_amount (
                            &roi->details.amount),
                          "amount_justified", TALER_JSON_from_amount (&zero),
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "timestamp", json_from_time_abs (date),
-                         "diagnostic", "recevier account missmatch"));
+                         "diagnostic", "recevier account missmatch",
+                         "account_section", wa->section_name));
       GNUNET_break (GNUNET_OK ==
                     TALER_amount_add (&total_bad_amount_out_plus,
                                       &total_bad_amount_out_plus,
                                       &roi->details.amount));
       report (report_wire_out_inconsistencies,
-              json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
+              json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                          "row", (json_int_t) rowid,
                          "amount_wired", TALER_JSON_from_amount (&zero),
                          "amount_justified", TALER_JSON_from_amount (amount),
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "timestamp", json_from_time_abs (date),
-                         "diagnostic", "receiver account missmatch"));
+                         "diagnostic", "receiver account missmatch",
+                         "account_section", wa->section_name));
       GNUNET_break (GNUNET_OK ==
                     TALER_amount_add (&total_bad_amount_out_minus,
                                       &total_bad_amount_out_minus,
@@ -1116,14 +1119,15 @@ wire_out_cb (void *cls,
                              amount))
   {
     report (report_wire_out_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s}",
+            json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                        "row", (json_int_t) rowid,
                        "amount_justified", TALER_JSON_from_amount (amount),
                        "amount_wired", TALER_JSON_from_amount (
                          &roi->details.amount),
                        "wtid", GNUNET_JSON_from_data_auto (wtid),
                        "timestamp", json_from_time_abs (date),
-                       "diagnostic", "wire amount does not match"));
+                       "diagnostic", "wire amount does not match",
+                       "account_section", wa->section_name));
     if (0 < TALER_amount_cmp (amount,
                               &roi->details.amount))
     {
