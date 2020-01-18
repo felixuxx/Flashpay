@@ -161,7 +161,6 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param account_base_url URL of the bank (money flows into this account)
  * @param auth authentication data to send to the bank
  * @param reserve_pub wire transfer subject for the transfer
  * @param amount amount that was deposited
@@ -174,7 +173,6 @@ handle_admin_add_incoming_finished (void *cls,
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const char *account_base_url,
                                const struct TALER_BANK_AuthenticationData *auth,
                                const struct
                                TALER_ReservePublicKeyP *reserve_pub,
@@ -202,7 +200,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
-  aai->request_url = TALER_url_join (account_base_url,
+  aai->request_url = TALER_url_join (auth->wire_gateway_url,
                                      "admin/add-incoming",
                                      NULL);
   if (NULL == aai->request_url)

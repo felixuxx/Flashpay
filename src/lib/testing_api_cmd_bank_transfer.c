@@ -243,7 +243,6 @@ transfer_run (void *cls,
   fts->weh
     = TALER_BANK_execute_wire_transfer
         (TALER_TESTING_interpreter_get_context (is),
-        fts->account_debit_url,
         &fts->auth,
         buf,
         buf_size,

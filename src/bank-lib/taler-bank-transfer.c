@@ -189,7 +189,6 @@ run (void *cls,
   auth.details.basic.username = username;
   auth.details.basic.password = password;
   op = TALER_BANK_admin_add_incoming (ctx,
-                                      account_base_url,
                                       &auth,
                                       &reserve_pub,
                                       &amount,

@@ -334,7 +334,6 @@ admin_add_incoming_run (void *cls,
   fts->aih
     = TALER_BANK_admin_add_incoming
         (TALER_TESTING_interpreter_get_context (is),
-        fts->exchange_credit_url,
         &fts->auth,
         &fts->reserve_pub,
         &fts->amount,

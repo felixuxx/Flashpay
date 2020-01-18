@@ -209,7 +209,6 @@ execute_wire_transfer ()
                                     &buf,
                                     &buf_size);
   eh = TALER_BANK_execute_wire_transfer (ctx,
-                                         destination_account_url,
                                          &auth,
                                          buf,
                                          buf_size,

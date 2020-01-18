@@ -68,7 +68,7 @@ GNUNET_NETWORK_STRUCT_END
 /**
  * Prepare for exeuction of a wire transfer.
  *
- * @param destination_account_url payto:// URL identifying where to send the money
+ * @param destination_account_payto_uri payto:// URL identifying where to send the money
  * @param amount amount to transfer, already rounded
  * @param exchange_base_url base URL of this exchange (included in subject
  *        to facilitate use of tracking API by merchant backend)
@@ -77,7 +77,7 @@ GNUNET_NETWORK_STRUCT_END
  * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
-TALER_BANK_prepare_wire_transfer (const char *destination_account_url,
+TALER_BANK_prepare_wire_transfer (const char *destination_account_payto_uri,
                                   const struct TALER_Amount *amount,
                                   const char *exchange_base_url,
                                   const struct
@@ -86,7 +86,7 @@ TALER_BANK_prepare_wire_transfer (const char *destination_account_url,
                                   size_t *buf_size)
 {
   struct WirePackP *wp;
-  size_t d_len = strlen (destination_account_url) + 1;
+  size_t d_len = strlen (destination_account_payto_uri) + 1;
   size_t u_len = strlen (exchange_base_url) + 1;
   char *end;
 
@@ -101,7 +101,7 @@ TALER_BANK_prepare_wire_transfer (const char *destination_account_url,
   wp->exchange_url_len = htonl ((uint32_t) u_len);
   end = (char *) &wp[1];
   memcpy (end,
-          destination_account_url,
+          destination_account_payto_uri,
           d_len);
   memcpy (end + d_len,
           exchange_base_url,
@@ -249,7 +249,6 @@ handle_transfer_finished (void *cls,
  */
 struct TALER_BANK_WireExecuteHandle *
 TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
-                                  const char *bank_base_url,
                                   const struct
                                   TALER_BANK_AuthenticationData *auth,
                                   const void *buf,
@@ -263,7 +262,7 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   const struct WirePackP *wp = buf;
   uint32_t d_len;
   uint32_t u_len;
-  const char *destination_account_url;
+  const char *destination_account_uri;
   const char *exchange_base_url;
   struct TALER_Amount amount;
 
@@ -279,9 +278,9 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     return NULL;
   }
-  destination_account_url = (const char *) &wp[1];
-  exchange_base_url = destination_account_url + d_len;
-  if (NULL == bank_base_url)
+  destination_account_uri = (const char *) &wp[1];
+  exchange_base_url = destination_account_uri + d_len;
+  if (NULL == auth->wire_gateway_url)
   {
     GNUNET_break (0);
     return NULL;
@@ -291,7 +290,7 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   weh = GNUNET_new (struct TALER_BANK_WireExecuteHandle);
   weh->cb = cc;
   weh->cb_cls = cc_cls;
-  weh->request_url = TALER_url_join (bank_base_url,
+  weh->request_url = TALER_url_join (auth->wire_gateway_url,
                                      "transfer",
                                      NULL);
   if (NULL == weh->request_url)
@@ -306,7 +305,7 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
                             "amount", TALER_JSON_from_amount (&amount),
                             "exchange_base_url", exchange_base_url,
                             "wtid", GNUNET_JSON_from_data_auto (&wp->wtid),
-                            "credit_account", destination_account_url);
+                            "credit_account", destination_account_uri);
   if (NULL == transfer_obj)
   {
     GNUNET_break (0);

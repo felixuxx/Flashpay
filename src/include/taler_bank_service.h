@@ -128,7 +128,6 @@ typedef void
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param account_base_url URL of the bank (money flows into this account)
  * @param auth authentication data to send to the bank
  * @param reserve_pub wire transfer subject for the transfer
  * @param amount amount that was deposited
@@ -141,7 +140,6 @@ typedef void
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const char *account_base_url,
                                const struct TALER_BANK_AuthenticationData *auth,
                                const struct
                                TALER_ReservePublicKeyP *reserve_pub,
@@ -176,7 +174,7 @@ TALER_BANK_admin_add_incoming_cancel (struct
  * @param buf_size[out] set to number of bytes in @a buf, 0 on error
  */
 void
-TALER_BANK_prepare_wire_transfer (const char *destination_account_url,
+TALER_BANK_prepare_wire_transfer (const char *destination_account_payto_uri,
                                   const struct TALER_Amount *amount,
                                   const char *exchange_base_url,
                                   const struct
@@ -212,7 +210,6 @@ typedef void
  * Execute a wire transfer.
  *
  * @param ctx context for HTTP interaction
- * @param bank_base_url URL of the base INCLUDING account number
  * @param buf buffer with the prepared execution details
  * @param buf_size number of bytes in @a buf
  * @param cc function to call upon success
@@ -221,7 +218,6 @@ typedef void
  */
 struct TALER_BANK_WireExecuteHandle *
 TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
-                                  const char *bank_base_url,
                                   const struct
                                   TALER_BANK_AuthenticationData *auth,
                                   const void *buf,
