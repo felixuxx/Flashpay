@@ -68,6 +68,7 @@ struct StatusState
  * @param cls closure.
  * @param http_status HTTP response code.
  * @param ec taler-specific error code.
+ * @param json original JSON response from the exchange
  * @param balance current balance in the reserve, NULL on error.
  * @param history_length number of entries in the transaction
  *        history, 0 on error.

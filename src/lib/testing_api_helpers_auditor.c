@@ -105,10 +105,9 @@ struct MainWrapperContext
  * @param compat protocol compatibility information
  */
 static void
-auditor_version_cb
-  (void *cls,
-  const struct TALER_AUDITOR_VersionInformation *vi,
-  enum TALER_AUDITOR_VersionCompatibility compat)
+auditor_version_cb (void *cls,
+                    const struct TALER_AUDITOR_VersionInformation *vi,
+                    enum TALER_AUDITOR_VersionCompatibility compat)
 {
   struct TALER_TESTING_Interpreter *is = cls;
 
@@ -126,7 +125,7 @@ auditor_version_cb
  * Setup the @a is 'auditor' member before running the main test loop.
  *
  * @param cls must be a `struct MainWrapperContext *`
- * @param is[in,out] interpreter state to setup
+ * @param[in,out] is interpreter state to setup
  */
 static void
 auditor_main_wrapper (void *cls,

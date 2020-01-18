@@ -143,17 +143,15 @@ struct TrackTransferState
  * @param cls closure.
  * @param http_status HTTP status code we got.
  * @param ec taler-specific error code.
+ * @param exchange_pub public key of the exchange
  * @param json original json reply (may include signatures, those
  *        have then been validated already).
  * @param wtid wire transfer identifier, NULL if exchange did not
  *        execute the transaction yet.
  * @param execution_time actual or planned execution time for the
  *        wire transfer.
- * @param coin_contribution contribution to the @a total_amount of
+ * @param coin_contribution contribution to the total amount of
  *        the deposited coin (can be NULL).
- * @param total_amount total amount of the wire transfer, or NULL
- *        if the exchange could not provide any @a wtid (set only
- *        if @a http_status is #MHD_HTTP_OK).
  */
 static void
 deposit_wtid_cb (void *cls,
@@ -169,6 +167,8 @@ deposit_wtid_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
+  (void) coin_contribution;
+  (void) exchange_pub;
   tts->tth = NULL;
   if (tts->expected_response_code != http_status)
   {
@@ -503,6 +503,7 @@ track_transfer_cb (void *cls,
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   struct TALER_Amount expected_amount;
 
+  (void) exchange_pub;
   tts->tth = NULL;
   if (tts->expected_response_code != http_status)
   {

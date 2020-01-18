@@ -92,7 +92,7 @@ TEAH_acc_confirmation_cb (void *cls,
 
 /**
  * Iterate over all available auditors for @a h, calling
- * @param ah and giving it a chance to start a deposit
+ * @a ac and giving it a chance to start a deposit
  * confirmation interaction.
  *
  * @param h exchange to go over auditors for

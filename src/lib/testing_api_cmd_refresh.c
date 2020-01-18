@@ -1022,7 +1022,7 @@ refresh_melt_run (void *cls,
  * Free the "refresh melt" CMD state, and possibly cancel a
  * pending operation thereof.
  *
- * @param cls closure, typically a #struct RefreshMeltState.
+ * @param cls closure, must be a `struct RefreshMeltState`.
  * @param cmd the command which is being cleaned up.
  */
 static void
@@ -1099,7 +1099,7 @@ refresh_melt_traits (void *cls,
 /**
  * Parse list of amounts for melt operation.
  *
- * @param rms[in,out] where to store the list
+ * @param[in,out] rms where to store the list
  * @param ap NULL-termianted list of amounts to be melted (one per fresh coin)
  * @return #GNUNET_OK on success
  */

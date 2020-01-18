@@ -115,7 +115,9 @@ do_retry (void *cls)
  * @param cls closure.
  * @param http_status HTTP response code.
  * @param ec taler-specific error code.
- * @param obj raw response from the auditor.
+ * @param num_exchanges length of the @a ei array
+ * @param ei array with information about the exchanges
+ * @param raw_response raw response from the auditor.
  */
 static void
 exchanges_cb (void *cls,

@@ -349,7 +349,6 @@ withdraw_cleanup (void *cls,
  * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success
  */
 static int
@@ -430,10 +429,10 @@ withdraw_traits (void *cls,
  * the desired amount as string.
  *
  * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
  * @param amount how much we withdraw.
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
- *
  * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
@@ -446,7 +445,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
   ws = GNUNET_new (struct WithdrawState);
   ws->reserve_reference = reserve_reference;
-
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &ws->amount))
@@ -457,7 +455,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
                 label);
     GNUNET_assert (0);
   }
-
   ws->expected_response_code = expected_response_code;
   {
     struct TALER_TESTING_Command cmd = {

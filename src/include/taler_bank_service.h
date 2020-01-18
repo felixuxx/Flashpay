@@ -236,11 +236,11 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
  * or ultimately fails. Until this has been done, the transaction is
  * in limbo (i.e. may or may not have been committed).
  *
- * @param eh execution to cancel
+ * @param weh execution to cancel
  */
 void
 TALER_BANK_execute_wire_transfer_cancel (struct
-                                         TALER_BANK_WireExecuteHandle *eh);
+                                         TALER_BANK_WireExecuteHandle *weh);
 
 
 /* ********************* /taler/credits *********************** */

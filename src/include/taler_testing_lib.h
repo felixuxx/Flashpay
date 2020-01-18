@@ -499,12 +499,12 @@ struct TALER_TESTING_Command
 /**
  * Lookup command by label.
  *
- * @param i interpreter state.
+ * @param is interpreter state.
  * @param label label of the command to lookup.
  * @return the command, if it is found, or NULL.
  */
 const struct TALER_TESTING_Command *
-TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *i,
+TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
                                           const char *label);
 
 /**
@@ -717,7 +717,7 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
  *
  * @param main_cb main method.
  * @param main_cb_cls main method closure.
- * @param config_filename configuration file name.  Is is used
+ * @param config_file configuration file name.  Is is used
  *        by both this function and the exchange itself.  In the
  *        first case it gives out the exchange port number and
  *        the exchange base URL so as to check whether the port
@@ -754,7 +754,7 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
  *
  * @param main_cb main method.
  * @param main_cb_cls main method closure.
- * @param config_filename configuration file name.  Is is used
+ * @param config_file configuration file name.  Is is used
  *        by both this function and the exchange itself.  In the
  *        first case it gives out the exchange port number and
  *        the exchange base URL so as to check whether the port
@@ -1180,10 +1180,10 @@ TALER_TESTING_cmd_exec_auditor_sign (const char *label,
  * the desired amount as string.
  *
  * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
  * @param amount how much we withdraw.
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
- *
  * @return the withdraw command to be executed by the interpreter.
  */
 struct TALER_TESTING_Command
@@ -1884,7 +1884,6 @@ TALER_TESTING_make_trait_bank_row (const uint64_t *row);
  *
  * @param index reserve priv's index number.
  * @param reserve_priv reserve private key to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait
@@ -1912,7 +1911,7 @@ TALER_TESTING_get_trait_reserve_priv (const struct TALER_TESTING_Command *cmd,
  * Offer a reserve public key.
  *
  * @param index reserve pubs's index number.
- * @param reserve_priv reserve public key to offer.
+ * @param reserve_pub reserve public key to offer.
  * @return the trait.
  */
 struct TALER_TESTING_Trait

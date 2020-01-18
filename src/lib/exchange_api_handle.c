@@ -296,7 +296,7 @@ TEAH_acc_confirmation_cb (void *cls,
 
 /**
  * Iterate over all available auditors for @a h, calling
- * @param ah and giving it a chance to start a deposit
+ * @a ac and giving it a chance to start a deposit
  * confirmation interaction.
  *
  * @param h exchange to go over auditors for
@@ -529,7 +529,7 @@ EXITIF_exit:
  * Parse a exchange's auditor information encoded in JSON.
  *
  * @param[out] auditor where to return the result
- * @param check_sig should we check signatures
+ * @param check_sigs should we check signatures
  * @param[in] auditor_obj json to parse
  * @param key_data information about denomination keys
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
@@ -758,14 +758,14 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
 /**
  * Compare two denomination keys.
  *
- * @param denoma first denomination key
- * @param denomb second denomination key
+ * @param denom1 first denomination key
+ * @param denom2 second denomination key
  * @return 0 if the two keys are equal (not necessarily
  *  the same object), 1 otherwise.
  */
 static unsigned int
-TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
-                  struct TALER_EXCHANGE_DenomPublicKey *denom2)
+denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
+            struct TALER_EXCHANGE_DenomPublicKey *denom2)
 {
   struct GNUNET_CRYPTO_RsaPublicKey *tmp1;
   struct GNUNET_CRYPTO_RsaPublicKey *tmp2;
@@ -806,7 +806,7 @@ TALER_denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
  * @param[in] resp_obj JSON object to parse
  * @param check_sig #GNUNET_YES if we should check the signature
  * @param[out] key_data where to store the results we decoded
- * @param[out] where to store version compatibility data
+ * @param[out] vc where to store version compatibility data
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  * (malformed JSON)
  */
@@ -948,8 +948,8 @@ decode_keys_json (const json_t *resp_obj,
            j<key_data->num_denom_keys;
            j++)
       {
-        if (0 == TALER_denoms_cmp (&dk,
-                                   &key_data->denom_keys[j]))
+        if (0 == denoms_cmp (&dk,
+                             &key_data->denom_keys[j]))
         {
           found = GNUNET_YES;
           break;
@@ -1521,7 +1521,7 @@ header_cb (char *buffer,
  * tolerated (i.e. by re-downloading instead).
  *
  * @param exchange which exchange's key and wire data should be deserialized
- * @return data the data to deserialize
+ * @param data the data to deserialize
  */
 static void
 deserialize_data (struct TALER_EXCHANGE_Handle *exchange,

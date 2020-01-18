@@ -1110,7 +1110,7 @@ struct TALER_EXCHANGE_ReserveHistory
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param[in] json original response in JSON format (useful only for diagnostics)
+ * @param json original response in JSON format (useful only for diagnostics)
  * @param balance current balance in the reserve, NULL on error
  * @param history_length number of entries in the transaction history, 0 on error
  * @param history detailed transaction history, NULL on error
@@ -1648,7 +1648,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle;
  * @param wtid wire transfer identifier used by the exchange, NULL if exchange did not
  *                  yet execute the transaction
  * @param execution_time actual or planned execution time for the wire transfer
- * @param coin_contribution contribution to the @a total_amount of the deposited coin (may be NULL)
+ * @param coin_contribution contribution to the total amount by this coin (can be NULL)
  */
 typedef void
 (*TALER_EXCHANGE_TrackTransactionCallback)(void *cls,
@@ -1667,7 +1667,9 @@ typedef void
 
 
 /**
- * Obtain the wire transfer details for a given transaction.
+ * Obtain the wire transfer details for a given transaction.  Tells the client
+ * which aggregate wire transfer the deposit operation identified by @a coin_pub,
+ * @a merchant_priv and @a h_contract_terms contributed to.
  *
  * @param exchange the exchange to query
  * @param merchant_priv the merchant's private key

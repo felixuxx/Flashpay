@@ -376,8 +376,7 @@ struct SignInfo
  * Sign the keys for an exchange given configuration @a cfg.
  * The information to be signed must be in a file "auditor.in".
  *
- * @param cls[in,out] a `struct SignInfo` with
- *       further paramters
+ * @param[in,out] cls a `struct SignInfo` with further paramters
  * @param cfg configuration to use
  * @return #GNUNET_OK on success
  */
@@ -680,17 +679,17 @@ TALER_TESTING_wait_auditor_ready (const char *base_url)
 int
 TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                    void *main_cb_cls,
-                                   const char *config_filename)
+                                   const char *config_file)
 {
   struct TALER_TESTING_SetupContext setup_ctx = {
-    .config_filename = config_filename,
+    .config_filename = config_file,
     .main_cb = main_cb,
     .main_cb_cls = main_cb_cls
   };
   int result;
 
   result =
-    GNUNET_CONFIGURATION_parse_and_run (config_filename,
+    GNUNET_CONFIGURATION_parse_and_run (config_file,
                                         &TALER_TESTING_setup_with_exchange_cfg,
                                         &setup_ctx);
   if (GNUNET_OK != result)
@@ -917,7 +916,7 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
  *
  * @param main_cb main method.
  * @param main_cb_cls main method closure.
- * @param config_filename configuration file name.  Is is used
+ * @param config_file configuration file name.  Is is used
  *        by both this function and the exchange itself.  In the
  *        first case it gives out the exchange port number and
  *        the exchange base URL so as to check whether the port

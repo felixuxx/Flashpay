@@ -40,14 +40,13 @@
  *        kind of traits do not need this index.  For
  *        example, a "batch" CMD returns always the
  *        CMD currently being executed.
- * @param[out] cmd_ where to write the wire details.
+ * @param[out] _cmd where to write the wire details.
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_cmd
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  struct TALER_TESTING_Command **_cmd)
+TALER_TESTING_get_trait_cmd (const struct TALER_TESTING_Command *cmd,
+                             unsigned int index,
+                             struct TALER_TESTING_Command **_cmd)
 {
   return cmd->traits (cmd->cls,
                       (const void **) _cmd,

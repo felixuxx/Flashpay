@@ -363,7 +363,7 @@ deposit_run (void *cls,
  * Free the state of a "deposit" CMD, and possibly cancel a
  * pending operation thereof.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure, must be a `struct DepositState`.
  * @param cmd the command which is being cleaned up.
  */
 static void

@@ -408,14 +408,13 @@ payback_run (void *cls,
 /**
  * Cleanup the state.
  *
- * @param cls closure, typically a #struct WireState.
+ * @param cls closure, must be a `struct RevokeState`.
  * @param cmd the command which is being cleaned up.
  */
 static void
 revoke_cleanup (void *cls,
                 const struct TALER_TESTING_Command *cmd)
 {
-
   struct RevokeState *rs = cls;
 
   if (NULL != rs->revoke_proc)
@@ -426,7 +425,6 @@ revoke_cleanup (void *cls,
     GNUNET_OS_process_destroy (rs->revoke_proc);
     rs->revoke_proc = NULL;
   }
-
   GNUNET_free_non_null (rs->dhks);
   GNUNET_free (rs);
 }

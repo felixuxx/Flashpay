@@ -274,7 +274,7 @@ request_version (void *cls);
  *
  * @param cls the `struct VersionRequest`
  * @param response_code HTTP response code, 0 on error
- * @param resp_obj parsed JSON result, NULL on error
+ * @param gresp_obj parsed JSON result, NULL on error, must be a `const json_t *`
  */
 static void
 version_completed_cb (void *cls,
