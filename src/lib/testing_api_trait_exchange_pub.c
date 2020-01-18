@@ -36,7 +36,7 @@
  *
  * @param cmd command to extract trait from
  * @param index index number of the exchange to obtain.
- * @param exchange_pub[out] set to the offered exchange pub.
+ * @param[out] exchange_pub set to the offered exchange pub.
  * @return #GNUNET_OK on success.
  */
 int

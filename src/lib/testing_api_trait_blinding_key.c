@@ -37,8 +37,7 @@
  *
  * @param cmd command to extract trait from
  * @param index which coin to pick if @a cmd has multiple on offer.
- * @param blinding_key[out] set to the offered blinding key.
- *
+ * @param[out] blinding_key set to the offered blinding key.
  * @return #GNUNET_OK on success.
  */
 int
@@ -59,7 +58,6 @@ TALER_TESTING_get_trait_blinding_key
  *
  * @param index index number to associate to the offered key.
  * @param blinding_key blinding key to offer.
- *
  * @return the trait.
  */
 struct TALER_TESTING_Trait

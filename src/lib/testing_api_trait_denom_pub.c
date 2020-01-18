@@ -37,15 +37,14 @@
  *
  * @param cmd command to extract trait from
  * @param index index number of the denom to obtain.
- * @param denom_pub[out] set to the offered denom pub.
- *
+ * @param[out] denom_pub set to the offered denom pub.
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_denom_pub
-  (const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_EXCHANGE_DenomPublicKey **denom_pub)
+TALER_TESTING_get_trait_denom_pub (const struct TALER_TESTING_Command *cmd,
+                                   unsigned int index,
+                                   const struct
+                                   TALER_EXCHANGE_DenomPublicKey **denom_pub)
 {
   return cmd->traits (cmd->cls,
                       (const void **) denom_pub,
@@ -62,9 +61,9 @@ TALER_TESTING_get_trait_denom_pub
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_pub
-  (unsigned int index,
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub)
+TALER_TESTING_make_trait_denom_pub (unsigned int index,
+                                    const struct
+                                    TALER_EXCHANGE_DenomPublicKey *denom_pub)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,

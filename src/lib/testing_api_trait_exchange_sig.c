@@ -36,7 +36,7 @@
  *
  * @param cmd command to extract trait from
  * @param index index number of the exchange to obtain.
- * @param exchange_sig[out] set to the offered exchange signature.
+ * @param[out] exchange_sig set to the offered exchange signature.
  * @return #GNUNET_OK on success.
  */
 int

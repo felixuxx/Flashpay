@@ -38,7 +38,7 @@
  *
  * @param cmd command to extract the denom sig from.
  * @param index index number associated with the denom sig.
- * @param denom_sig[out] set to the offered signature.
+ * @param[out] denom_sig set to the offered signature.
  * @return #GNUNET_OK on success.
  */
 int

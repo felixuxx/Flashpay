@@ -33,13 +33,13 @@
  */
 #define TALER_TESTING_TRAIT_CONTRACT_TERMS "contract-terms"
 
+
 /**
  * Obtain contract terms from @a cmd.
  *
  * @param cmd command to extract the contract terms from.
  * @param index contract terms index number.
- * @param contract_terms[out] where to write the contract
- *        terms.
+ * @param[out] contract_terms where to write the contract terms.
  * @return #GNUNET_OK on success.
  */
 int

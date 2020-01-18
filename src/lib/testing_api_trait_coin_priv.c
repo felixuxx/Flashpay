@@ -38,7 +38,7 @@
  *
  * @param cmd command to extract trait from.
  * @param index index of the coin priv to obtain.
- * @param coin_priv[out] set to the private key of the coin.
+ * @param[out] coin_priv set to the private key of the coin.
  * @return #GNUNET_OK on success.
  */
 int

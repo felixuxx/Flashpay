@@ -492,7 +492,7 @@ fail:
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
- * @param ec[out] will be set to the exchange configuration data
+ * @param[out] ec will be set to the exchange configuration data
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */

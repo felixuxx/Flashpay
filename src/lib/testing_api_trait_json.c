@@ -37,7 +37,7 @@
  *
  * @param cmd command to extract the keys from.
  * @param index index number associate with the keys on offer.
- * @param keys[out] where to write the serialized keys.
+ * @param[out] keys where to write the serialized keys.
  * @return #GNUNET_OK on success.
  */
 int
@@ -82,7 +82,7 @@ TALER_TESTING_make_trait_exchange_keys
  * @param index index number associate with the wire details
  *        on offer; usually zero, as one command sticks to
  *        one bank account.
- * @param wire_details[out] where to write the wire details.
+ * @param[out] wire_details where to write the wire details.
  * @return #GNUNET_OK on success.
  */
 int

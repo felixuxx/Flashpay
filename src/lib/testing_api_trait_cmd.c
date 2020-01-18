@@ -31,6 +31,7 @@
 
 #define TALER_TESTING_TRAIT_CMD "cmd"
 
+
 /**
  * Obtain a command from @a cmd.
  *
@@ -39,8 +40,7 @@
  *        kind of traits do not need this index.  For
  *        example, a "batch" CMD returns always the
  *        CMD currently being executed.
- * @param cmd_[out] where to write the wire details.
- *
+ * @param[out] cmd_ where to write the wire details.
  * @return #GNUNET_OK on success.
  */
 int
@@ -67,9 +67,8 @@ TALER_TESTING_get_trait_cmd
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_cmd
-  (unsigned int index,
-  const struct TALER_TESTING_Command *cmd)
+TALER_TESTING_make_trait_cmd (unsigned int index,
+                              const struct TALER_TESTING_Command *cmd)
 {
   struct TALER_TESTING_Trait ret = {
     .index = index,
