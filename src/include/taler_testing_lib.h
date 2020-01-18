@@ -811,8 +811,6 @@ TALER_TESTING_has_in_name (const char *prog,
  * Make a credit "history" CMD.
  *
  * @param label command label.
- * @param account_url base URL of the account offering the "history"
- *        operation.
  * @param auth login data to use
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
@@ -823,7 +821,6 @@ TALER_TESTING_has_in_name (const char *prog,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_credits (const char *label,
-                                const char *account_url,
                                 const struct
                                 TALER_BANK_AuthenticationData *auth,
                                 const char *start_row_reference,

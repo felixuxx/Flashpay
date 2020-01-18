@@ -564,8 +564,6 @@ history_cleanup (void *cls,
  * Make a "history" CMD.
  *
  * @param label command label.
- * @param account_url base URL of the account offering the "history"
- *        operation.
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
  *        to accept in the result.
@@ -574,7 +572,6 @@ history_cleanup (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_credits (const char *label,
-                                const char *account_url,
                                 const struct
                                 TALER_BANK_AuthenticationData *auth,
                                 const char *start_row_reference,
@@ -583,7 +580,7 @@ TALER_TESTING_cmd_bank_credits (const char *label,
   struct HistoryState *hs;
 
   hs = GNUNET_new (struct HistoryState);
-  hs->account_url = GNUNET_strdup (account_url);
+  hs->account_url = GNUNET_strdup (auth->wire_gateway_url);
   hs->start_row_reference = start_row_reference;
   hs->num_results = num_results;
   hs->auth = *auth;
