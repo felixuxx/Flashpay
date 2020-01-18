@@ -153,8 +153,8 @@ TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ks,
-      .label = label.
-               .run = &auditor_dbinit_run,
+      .label = label,
+      .run = &auditor_dbinit_run,
       .cleanup = &auditor_dbinit_cleanup,
       .traits = &auditor_dbinit_traits
     };
