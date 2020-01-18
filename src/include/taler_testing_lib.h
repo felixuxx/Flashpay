@@ -831,8 +831,6 @@ TALER_TESTING_cmd_bank_credits (const char *label,
  * Make a debit "history" CMD.
  *
  * @param label command label.
- * @param account_url base URL of the account offering the "history"
- *        operation.
  * @param auth authentication data
  * @param start_row_reference reference to a command that can
  *        offer a row identifier, to be used as the starting row
@@ -842,7 +840,6 @@ TALER_TESTING_cmd_bank_credits (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_debits (const char *label,
-                               const char *account_url,
                                const struct TALER_BANK_AuthenticationData *auth,
                                const char *start_row_reference,
                                long long num_results);
@@ -864,7 +861,6 @@ TALER_TESTING_cmd_bank_debits (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer (const char *label,
                             const char *amount,
-                            const char *bank_base_url,
                             const struct TALER_BANK_AuthenticationData *auth,
                             const char *payto_debit_account,
                             const char *payto_credit_account,
@@ -879,8 +875,6 @@ TALER_TESTING_cmd_transfer (const char *label,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param exchange_base_url base URL of the exchange account that receives this
- *        wire transer (which account receives money).
  * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @return the command.
@@ -888,7 +882,6 @@ TALER_TESTING_cmd_transfer (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming (const char *label,
                                       const char *amount,
-                                      const char *exchange_base_url,
                                       const struct
                                       TALER_BANK_AuthenticationData *auth,
                                       const char *payto_debit_account);

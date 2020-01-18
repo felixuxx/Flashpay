@@ -334,8 +334,6 @@ transfer_traits (void *cls,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param account_base_url base URL of the account that implements this
- *        wire transer (which account gives money).
  * @param auth authentication data to use
  * @param payto_credit_account which account receives money.
  * @param wtid wire transfer identifier to use
@@ -346,7 +344,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer
   (const char *label,
   const char *amount,
-  const char *account_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account,
   const char *payto_credit_account,
@@ -356,7 +353,7 @@ TALER_TESTING_cmd_transfer
   struct TransferState *fts;
 
   fts = GNUNET_new (struct TransferState);
-  fts->account_debit_url = account_base_url;
+  fts->account_debit_url = auth->wire_gateway_url;
   fts->exchange_base_url = exchange_base_url;
   fts->payto_debit_account = GNUNET_strdup (payto_debit_account);
   fts->payto_credit_account = payto_credit_account;

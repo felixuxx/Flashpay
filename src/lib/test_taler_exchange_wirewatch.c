@@ -54,7 +54,6 @@ transfer_to_exchange (const char *label,
 {
   return TALER_TESTING_cmd_admin_add_incoming (label,
                                                amount,
-                                               bc.exchange_auth.wire_gateway_url,
                                                &bc.exchange_auth,
                                                bc.user42_payto);
 }

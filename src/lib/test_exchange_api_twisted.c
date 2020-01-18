@@ -91,7 +91,6 @@ static struct GNUNET_OS_Process *twisterd;
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
   TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        bc.exchange_auth.wire_gateway_url,   \
                                         &bc.exchange_auth, \
                                         bc.user42_payto)
 

@@ -187,9 +187,7 @@ CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
 {
   return TALER_TESTING_cmd_admin_add_incoming_retry
            (TALER_TESTING_cmd_admin_add_incoming (label, amount,
-                                                  exchange_bank_account.
-                                                  wire_gateway_url,
-                                                  NULL,
+                                                  &exchange_bank_account,
                                                   user_payto_url));
 }
 

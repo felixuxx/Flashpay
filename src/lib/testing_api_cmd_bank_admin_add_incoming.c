@@ -484,8 +484,6 @@ make_command (const char *label,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param exchange_base_url base URL of the account that receives this
- *        wire transer (which account receives money).
  * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @return the command.
@@ -494,13 +492,12 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming
   (const char *label,
   const char *amount,
-  const char *exchange_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account)
 {
   return make_command (label,
                        make_fts (amount,
-                                 exchange_base_url,
+                                 auth->wire_gateway_url,
                                  auth,
                                  payto_debit_account));
 }
