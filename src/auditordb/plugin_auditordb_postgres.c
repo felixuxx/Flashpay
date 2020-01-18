@@ -307,7 +307,7 @@ postgres_get_session (void *cls)
                             "UPDATE auditor_progress_reserve SET "
                             " last_reserve_in_serial_id=$1"
                             ",last_reserve_out_serial_id=$2"
-                            ",last_reserve_payback_serial_id=$3"
+                            ",last_reserve_recoup_serial_id=$3"
                             ",last_reserve_close_serial_id=$4"
                             " WHERE master_pub=$5",
                             5),
@@ -316,7 +316,7 @@ postgres_get_session (void *cls)
                             "SELECT"
                             " last_reserve_in_serial_id"
                             ",last_reserve_out_serial_id"
-                            ",last_reserve_payback_serial_id"
+                            ",last_reserve_recoup_serial_id"
                             ",last_reserve_close_serial_id"
                             " FROM auditor_progress_reserve"
                             " WHERE master_pub=$1;",
@@ -327,7 +327,7 @@ postgres_get_session (void *cls)
                             "(master_pub"
                             ",last_reserve_in_serial_id"
                             ",last_reserve_out_serial_id"
-                            ",last_reserve_payback_serial_id"
+                            ",last_reserve_recoup_serial_id"
                             ",last_reserve_close_serial_id"
                             ") VALUES ($1,$2,$3,$4,$5);",
                             5),
@@ -378,8 +378,8 @@ postgres_get_session (void *cls)
                             ",last_deposit_serial_id=$2"
                             ",last_melt_serial_id=$3"
                             ",last_refund_serial_id=$4"
-                            ",last_payback_serial_id=$5"
-                            ",last_payback_refresh_serial_id=$6"
+                            ",last_recoup_serial_id=$5"
+                            ",last_recoup_refresh_serial_id=$6"
                             " WHERE master_pub=$7",
                             7),
     /* Used in #postgres_get_auditor_progress_coin() */
@@ -389,8 +389,8 @@ postgres_get_session (void *cls)
                             ",last_deposit_serial_id"
                             ",last_melt_serial_id"
                             ",last_refund_serial_id"
-                            ",last_payback_serial_id"
-                            ",last_payback_refresh_serial_id"
+                            ",last_recoup_serial_id"
+                            ",last_recoup_refresh_serial_id"
                             " FROM auditor_progress_coin"
                             " WHERE master_pub=$1;",
                             1),
@@ -402,8 +402,8 @@ postgres_get_session (void *cls)
                             ",last_deposit_serial_id"
                             ",last_melt_serial_id"
                             ",last_refund_serial_id"
-                            ",last_payback_serial_id"
-                            ",last_payback_refresh_serial_id"
+                            ",last_recoup_serial_id"
+                            ",last_recoup_refresh_serial_id"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
                             7),
     /* Used in #postgres_insert_wire_auditor_account_progress() */
@@ -564,8 +564,8 @@ postgres_get_session (void *cls)
                             ",num_issued"
                             ",denom_risk_val"
                             ",denom_risk_frac"
-                            ",payback_loss_val"
-                            ",payback_loss_frac"
+                            ",recoup_loss_val"
+                            ",recoup_loss_frac"
                             ") VALUES ("
                             "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10"
                             ");",
@@ -580,8 +580,8 @@ postgres_get_session (void *cls)
                             ",num_issued=$5"
                             ",denom_risk_val=$6"
                             ",denom_risk_frac=$7"
-                            ",payback_loss_val=$8"
-                            ",payback_loss_frac=$9"
+                            ",recoup_loss_val=$8"
+                            ",recoup_loss_frac=$9"
                             " WHERE denom_pub_hash=$10",
                             10),
     /* Used in #postgres_get_denomination_balance() */
@@ -594,8 +594,8 @@ postgres_get_session (void *cls)
                             ",num_issued"
                             ",denom_risk_val"
                             ",denom_risk_frac"
-                            ",payback_loss_val"
-                            ",payback_loss_frac"
+                            ",recoup_loss_val"
+                            ",recoup_loss_frac"
                             " FROM auditor_denomination_pending"
                             " WHERE denom_pub_hash=$1",
                             1),
@@ -615,8 +615,8 @@ postgres_get_session (void *cls)
                             ",risk_frac"
                             ",loss_val"
                             ",loss_frac"
-                            ",irregular_payback_val"
-                            ",irregular_payback_frac"
+                            ",irregular_recoup_val"
+                            ",irregular_recoup_frac"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
                             "          $11,$12,$13,$14,$15);",
                             15),
@@ -635,8 +635,8 @@ postgres_get_session (void *cls)
                             ",risk_frac=$10"
                             ",loss_val=$11"
                             ",loss_frac=$12"
-                            ",irregular_payback_val=$13"
-                            ",irregular_payback_frac=$14"
+                            ",irregular_recoup_val=$13"
+                            ",irregular_recoup_frac=$14"
                             " WHERE master_pub=$15;",
                             15),
     /* Used in #postgres_get_balance_summary() */
@@ -654,8 +654,8 @@ postgres_get_session (void *cls)
                             ",risk_frac"
                             ",loss_val"
                             ",loss_frac"
-                            ",irregular_payback_val"
-                            ",irregular_payback_frac"
+                            ",irregular_recoup_val"
+                            ",irregular_recoup_frac"
                             " FROM auditor_balance_summary"
                             " WHERE master_pub=$1;",
                             1),
@@ -1503,7 +1503,7 @@ postgres_insert_auditor_progress_reserve (void *cls,
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_recoup_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_end
   };
@@ -1538,7 +1538,7 @@ postgres_update_auditor_progress_reserve (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_recoup_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1577,8 +1577,8 @@ postgres_get_auditor_progress_reserve (void *cls,
                                   &ppr->last_reserve_in_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id",
                                   &ppr->last_reserve_out_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_payback_serial_id",
-                                  &ppr->last_reserve_payback_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_recoup_serial_id",
+                                  &ppr->last_reserve_recoup_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_close_serial_id",
                                   &ppr->last_reserve_close_serial_id),
     GNUNET_PQ_result_spec_end
@@ -1828,8 +1828,8 @@ postgres_insert_auditor_progress_coin (void *cls,
     GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_refund_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_refresh_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -1863,8 +1863,8 @@ postgres_update_auditor_progress_coin (void *cls,
     GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_refund_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppc->last_payback_refresh_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -1906,10 +1906,10 @@ postgres_get_auditor_progress_coin (void *cls,
                                   &ppc->last_melt_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id",
                                   &ppc->last_refund_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_payback_serial_id",
-                                  &ppc->last_payback_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_payback_refresh_serial_id",
-                                  &ppc->last_payback_refresh_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_recoup_serial_id",
+                                  &ppc->last_recoup_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_recoup_refresh_serial_id",
+                                  &ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2541,7 +2541,7 @@ postgres_get_wire_fee_summary (void *cls,
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
  * @param denom_risk value of coins issued with this denomination key
- * @param payback_loss losses from payback (if this denomination was revoked)
+ * @param recoup_loss losses from recoup (if this denomination was revoked)
  * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
@@ -2553,7 +2553,7 @@ postgres_insert_denomination_balance (void *cls,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *denom_loss,
                                       const struct TALER_Amount *denom_risk,
-                                      const struct TALER_Amount *payback_loss,
+                                      const struct TALER_Amount *recoup_loss,
                                       uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2562,7 +2562,7 @@ postgres_insert_denomination_balance (void *cls,
     TALER_PQ_query_param_amount (denom_loss),
     GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
-    TALER_PQ_query_param_amount (payback_loss),
+    TALER_PQ_query_param_amount (recoup_loss),
     GNUNET_PQ_query_param_end
   };
 
@@ -2583,7 +2583,7 @@ postgres_insert_denomination_balance (void *cls,
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
 * @param denom_risk value of coins issued with this denomination key
- * @param payback_loss losses from payback (if this denomination was revoked)
+ * @param recoup_loss losses from recoup (if this denomination was revoked)
  * @param num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
@@ -2595,7 +2595,7 @@ postgres_update_denomination_balance (void *cls,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *denom_loss,
                                       const struct TALER_Amount *denom_risk,
-                                      const struct TALER_Amount *payback_loss,
+                                      const struct TALER_Amount *recoup_loss,
                                       uint64_t num_issued)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2603,7 +2603,7 @@ postgres_update_denomination_balance (void *cls,
     TALER_PQ_query_param_amount (denom_loss),
     GNUNET_PQ_query_param_uint64 (&num_issued),
     TALER_PQ_query_param_amount (denom_risk),
-    TALER_PQ_query_param_amount (payback_loss),
+    TALER_PQ_query_param_amount (recoup_loss),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
@@ -2624,7 +2624,7 @@ postgres_update_denomination_balance (void *cls,
  * @param[out] denom_balance value of coins outstanding with this denomination key
  * @param[out] denom_risk value of coins issued with this denomination key
  * @param[out] denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
- * @param[out] payback_loss losses from payback (if this denomination was revoked)
+ * @param[out] recoup_loss losses from recoup (if this denomination was revoked)
  * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
  * @return transaction status code
  */
@@ -2635,7 +2635,7 @@ postgres_get_denomination_balance (void *cls,
                                    struct TALER_Amount *denom_balance,
                                    struct TALER_Amount *denom_loss,
                                    struct TALER_Amount *denom_risk,
-                                   struct TALER_Amount *payback_loss,
+                                   struct TALER_Amount *recoup_loss,
                                    uint64_t *num_issued)
 {
   struct PostgresClosure *pg = cls;
@@ -2647,7 +2647,7 @@ postgres_get_denomination_balance (void *cls,
     TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance", denom_balance),
     TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss", denom_loss),
     TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk", denom_risk),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("payback_loss", payback_loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("recoup_loss", recoup_loss),
     GNUNET_PQ_result_spec_uint64 ("num_issued", num_issued),
     GNUNET_PQ_result_spec_end
   };
@@ -2672,8 +2672,8 @@ postgres_get_denomination_balance (void *cls,
  * @param melt_fee_balance total melt fees collected for this DK
  * @param refund_fee_balance total refund fees collected for this DK
  * @param risk maximum risk exposure of the exchange
- * @param loss materialized @a risk from payback
- * @param irregular_payback paybacks on non-revoked coins
+ * @param loss materialized @a risk from recoup
+ * @param irregular_recoup recoups on non-revoked coins
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2687,7 +2687,7 @@ postgres_insert_balance_summary (void *cls,
                                  const struct TALER_Amount *refund_fee_balance,
                                  const struct TALER_Amount *risk,
                                  const struct TALER_Amount *loss,
-                                 const struct TALER_Amount *irregular_payback)
+                                 const struct TALER_Amount *irregular_recoup)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2697,7 +2697,7 @@ postgres_insert_balance_summary (void *cls,
     TALER_PQ_query_param_amount (refund_fee_balance),
     TALER_PQ_query_param_amount (risk),
     TALER_PQ_query_param_amount (loss),
-    TALER_PQ_query_param_amount (irregular_payback),
+    TALER_PQ_query_param_amount (irregular_recoup),
     GNUNET_PQ_query_param_end
   };
 
@@ -2731,8 +2731,8 @@ postgres_insert_balance_summary (void *cls,
  * @param melt_fee_balance total melt fees collected for this DK
  * @param refund_fee_balance total refund fees collected for this DK
  * @param risk maximum risk exposure of the exchange
- * @param loss materialized @a risk from payback
- * @param irregular_payback paybacks made on non-revoked coins
+ * @param loss materialized @a risk from recoup
+ * @param irregular_recoup recoups made on non-revoked coins
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2746,7 +2746,7 @@ postgres_update_balance_summary (void *cls,
                                  const struct TALER_Amount *refund_fee_balance,
                                  const struct TALER_Amount *risk,
                                  const struct TALER_Amount *loss,
-                                 const struct TALER_Amount *irregular_payback)
+                                 const struct TALER_Amount *irregular_recoup)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
@@ -2755,7 +2755,7 @@ postgres_update_balance_summary (void *cls,
     TALER_PQ_query_param_amount (refund_fee_balance),
     TALER_PQ_query_param_amount (risk),
     TALER_PQ_query_param_amount (loss),
-    TALER_PQ_query_param_amount (irregular_payback),
+    TALER_PQ_query_param_amount (irregular_recoup),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2778,8 +2778,8 @@ postgres_update_balance_summary (void *cls,
  * @param[out] melt_fee_balance total melt fees collected for this DK
  * @param[out] refund_fee_balance total refund fees collected for this DK
  * @param[out] risk maximum risk exposure of the exchange
- * @param[out] loss losses from payback (on revoked denominations)
- * @param[out] irregular_payback paybacks on NOT revoked denominations
+ * @param[out] loss losses from recoup (on revoked denominations)
+ * @param[out] irregular_recoup recoups on NOT revoked denominations
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2792,7 +2792,7 @@ postgres_get_balance_summary (void *cls,
                               struct TALER_Amount *refund_fee_balance,
                               struct TALER_Amount *risk,
                               struct TALER_Amount *loss,
-                              struct TALER_Amount *irregular_payback)
+                              struct TALER_Amount *irregular_recoup)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2806,7 +2806,7 @@ postgres_get_balance_summary (void *cls,
     TALER_PQ_RESULT_SPEC_AMOUNT ("refund_fee_balance", refund_fee_balance),
     TALER_PQ_RESULT_SPEC_AMOUNT ("risk", risk),
     TALER_PQ_RESULT_SPEC_AMOUNT ("loss", loss),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("irregular_payback", irregular_payback),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("irregular_recoup", irregular_recoup),
     GNUNET_PQ_result_spec_end
   };
 

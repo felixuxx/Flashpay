@@ -249,19 +249,19 @@ TEH_RESPONSE_compile_transaction_history (const struct
         }
       }
       break;
-    case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
       {
-        struct TALER_EXCHANGEDB_PaybackRefreshListEntry *pr =
-          pos->details.old_coin_payback;
-        struct TALER_PaybackRefreshConfirmationPS pc;
+        struct TALER_EXCHANGEDB_RecoupRefreshListEntry *pr =
+          pos->details.old_coin_recoup;
+        struct TALER_RecoupRefreshConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
 
         pc.purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
         pc.purpose.size = htonl (sizeof (pc));
         pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
-        TALER_amount_hton (&pc.payback_amount,
+        TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
         pc.coin_pub = *coin_pub;
         pc.old_coin_pub = pr->old_coin_pub;
@@ -281,7 +281,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
            strictly unnecessary. */if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "OLD-COIN-PAYBACK",
+                                              "type", "OLD-COIN-RECOUP",
                                               "amount", TALER_JSON_from_amount (
                                                 &pr->value),
                                               "exchange_sig",
@@ -303,21 +303,21 @@ TEH_RESPONSE_compile_transaction_history (const struct
         }
         break;
       }
-    case TALER_EXCHANGEDB_TT_PAYBACK:
+    case TALER_EXCHANGEDB_TT_RECOUP:
       {
-        const struct TALER_EXCHANGEDB_PaybackListEntry *payback =
-          pos->details.payback;
-        struct TALER_PaybackConfirmationPS pc;
+        const struct TALER_EXCHANGEDB_RecoupListEntry *recoup =
+          pos->details.recoup;
+        struct TALER_RecoupConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
 
-        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
+        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
         pc.purpose.size = htonl (sizeof (pc));
-        pc.timestamp = GNUNET_TIME_absolute_hton (payback->timestamp);
-        TALER_amount_hton (&pc.payback_amount,
-                           &payback->value);
+        pc.timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp);
+        TALER_amount_hton (&pc.recoup_amount,
+                           &recoup->value);
         pc.coin_pub = *coin_pub;
-        pc.reserve_pub = payback->reserve_pub;
+        pc.reserve_pub = recoup->reserve_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
                          &epub,
@@ -330,9 +330,9 @@ TEH_RESPONSE_compile_transaction_history (const struct
         if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "PAYBACK",
+                                              "type", "RECOUP",
                                               "amount", TALER_JSON_from_amount (
-                                                &payback->value),
+                                                &recoup->value),
                                               "exchange_sig",
                                               GNUNET_JSON_from_data_auto (
                                                 &esig),
@@ -341,10 +341,10 @@ TEH_RESPONSE_compile_transaction_history (const struct
                                                 &epub),
                                               "reserve_pub",
                                               GNUNET_JSON_from_data_auto (
-                                                &payback->reserve_pub),
+                                                &recoup->reserve_pub),
                                               "timestamp",
                                               GNUNET_JSON_from_time_abs (
-                                                payback->timestamp))))
+                                                recoup->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -352,19 +352,19 @@ TEH_RESPONSE_compile_transaction_history (const struct
         }
       }
       break;
-    case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+    case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
       {
-        struct TALER_EXCHANGEDB_PaybackRefreshListEntry *pr =
-          pos->details.payback_refresh;
-        struct TALER_PaybackRefreshConfirmationPS pc;
+        struct TALER_EXCHANGEDB_RecoupRefreshListEntry *pr =
+          pos->details.recoup_refresh;
+        struct TALER_RecoupRefreshConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
 
         pc.purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
         pc.purpose.size = htonl (sizeof (pc));
         pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
-        TALER_amount_hton (&pc.payback_amount,
+        TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
         pc.coin_pub = *coin_pub;
         pc.old_coin_pub = pr->old_coin_pub;
@@ -384,7 +384,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
            strictly unnecessary. */if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "PAYBACK-REFRESH",
+                                              "type", "RECOUP-REFRESH",
                                               "amount", TALER_JSON_from_amount (
                                                 &pr->value),
                                               "exchange_sig",
@@ -566,33 +566,33 @@ TEH_RESPONSE_compile_reserve_history (const struct
         }
       }
       break;
-    case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
+    case TALER_EXCHANGEDB_RO_RECOUP_COIN:
       {
-        const struct TALER_EXCHANGEDB_Payback *payback;
-        struct TALER_PaybackConfirmationPS pc;
+        const struct TALER_EXCHANGEDB_Recoup *recoup;
+        struct TALER_RecoupConfirmationPS pc;
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
-        payback = pos->details.payback;
+        recoup = pos->details.recoup;
         if (0 == (1 & ret))
-          deposit_total = payback->value;
+          deposit_total = recoup->value;
         else if (GNUNET_OK !=
                  TALER_amount_add (&deposit_total,
                                    &deposit_total,
-                                   &payback->value))
+                                   &recoup->value))
         {
           GNUNET_break (0);
           json_decref (json_history);
           return NULL;
         }
         ret |= 1;
-        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
-        pc.purpose.size = htonl (sizeof (struct TALER_PaybackConfirmationPS));
-        pc.timestamp = GNUNET_TIME_absolute_hton (payback->timestamp);
-        TALER_amount_hton (&pc.payback_amount,
-                           &payback->value);
-        pc.coin_pub = payback->coin.coin_pub;
-        pc.reserve_pub = payback->reserve_pub;
+        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
+        pc.purpose.size = htonl (sizeof (struct TALER_RecoupConfirmationPS));
+        pc.timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp);
+        TALER_amount_hton (&pc.recoup_amount,
+                           &recoup->value);
+        pc.coin_pub = recoup->coin.coin_pub;
+        pc.reserve_pub = recoup->reserve_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
                          &pub,
@@ -606,19 +606,19 @@ TEH_RESPONSE_compile_reserve_history (const struct
         if (0 !=
             json_array_append_new (json_history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "PAYBACK",
+                                              "type", "RECOUP",
                                               "exchange_pub",
                                               GNUNET_JSON_from_data_auto (&pub),
                                               "exchange_sig",
                                               GNUNET_JSON_from_data_auto (&sig),
                                               "timestamp",
                                               GNUNET_JSON_from_time_abs (
-                                                payback->timestamp),
+                                                recoup->timestamp),
                                               "amount", TALER_JSON_from_amount (
-                                                &payback->value),
+                                                &recoup->value),
                                               "coin_pub",
                                               GNUNET_JSON_from_data_auto (
-                                                &payback->coin.coin_pub))))
+                                                &recoup->coin.coin_pub))))
         {
           GNUNET_break (0);
           json_decref (json_history);

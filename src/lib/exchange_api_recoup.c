@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_payback.c
- * @brief Implementation of the /payback request of the exchange's HTTP API
+ * @file lib/exchange_api_recoup.c
+ * @brief Implementation of the /recoup request of the exchange's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -33,9 +33,9 @@
 
 
 /**
- * @brief A Payback Handle
+ * @brief A Recoup Handle
  */
-struct TALER_EXCHANGE_PaybackHandle
+struct TALER_EXCHANGE_RecoupHandle
 {
 
   /**
@@ -67,7 +67,7 @@ struct TALER_EXCHANGE_PaybackHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_PaybackResultCallback cb;
+  TALER_EXCHANGE_RecoupResultCallback cb;
 
   /**
    * Closure for @a cb.
@@ -92,17 +92,17 @@ struct TALER_EXCHANGE_PaybackHandle
  * from the exchange is valid. If it is, call the
  * callback.
  *
- * @param ph payback handle
+ * @param ph recoup handle
  * @param json json reply with the signature
  * @return #GNUNET_OK if the signature is valid and we called the callback;
  *         #GNUNET_SYSERR if not (callback must still be called)
  */
 static int
-verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
-                             const json_t *json)
+verify_recoup_signature_ok (const struct TALER_EXCHANGE_RecoupHandle *ph,
+                            const json_t *json)
 {
-  struct TALER_PaybackConfirmationPS pc;
-  struct TALER_PaybackRefreshConfirmationPS pr;
+  struct TALER_RecoupConfirmationPS pc;
+  struct TALER_RecoupRefreshConfirmationPS pr;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_Amount amount;
@@ -144,15 +144,15 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
   if (ph->was_refreshed)
   {
     pr.purpose.purpose = htonl (
-      TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
+      TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
     pr.purpose.size = htonl (sizeof (pr));
     pr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-    TALER_amount_hton (&pr.payback_amount,
+    TALER_amount_hton (&pr.recoup_amount,
                        &amount);
     pr.coin_pub = ph->coin_pub;
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH,
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH,
           &pr.purpose,
           &exchange_sig.eddsa_signature,
           &exchange_pub.eddsa_pub))
@@ -163,14 +163,14 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
   }
   else
   {
-    pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
+    pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
     pc.purpose.size = htonl (sizeof (pc));
     pc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-    TALER_amount_hton (&pc.payback_amount,
+    TALER_amount_hton (&pc.recoup_amount,
                        &amount);
     pc.coin_pub = ph->coin_pub;
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK,
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
                                     &pc.purpose,
                                     &exchange_sig.eddsa_signature,
                                     &exchange_pub.eddsa_pub))
@@ -193,18 +193,18 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
 
 /**
  * Function called when we're done processing the
- * HTTP /payback request.
+ * HTTP /recoup request.
  *
- * @param cls the `struct TALER_EXCHANGE_PaybackHandle`
+ * @param cls the `struct TALER_EXCHANGE_RecoupHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_payback_finished (void *cls,
-                         long response_code,
-                         const void *response)
+handle_recoup_finished (void *cls,
+                        long response_code,
+                        const void *response)
 {
-  struct TALER_EXCHANGE_PaybackHandle *ph = cls;
+  struct TALER_EXCHANGE_RecoupHandle *ph = cls;
   const json_t *j = response;
 
   ph->job = NULL;
@@ -214,14 +214,14 @@ handle_payback_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        verify_payback_signature_ok (ph,
-                                     j))
+        verify_recoup_signature_ok (ph,
+                                    j))
     {
       GNUNET_break_op (0);
       response_code = 0;
       break;
     }
-    TALER_EXCHANGE_payback_cancel (ph);
+    TALER_EXCHANGE_recoup_cancel (ph);
     return;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -255,7 +255,7 @@ handle_payback_finished (void *cls,
               NULL,
               NULL,
               j);
-      TALER_EXCHANGE_payback_cancel (ph);
+      TALER_EXCHANGE_recoup_cancel (ph);
       return;
     }
   case MHD_HTTP_FORBIDDEN:
@@ -292,13 +292,13 @@ handle_payback_finished (void *cls,
           NULL,
           NULL,
           j);
-  TALER_EXCHANGE_payback_cancel (ph);
+  TALER_EXCHANGE_recoup_cancel (ph);
 }
 
 
 /**
  * Ask the exchange to pay back a coin due to the exchange triggering
- * the emergency payback protocol for a given denomination.  The value
+ * the emergency recoup protocol for a given denomination.  The value
  * of the coin will be refunded to the original customer (without fees).
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
@@ -306,33 +306,33 @@ handle_payback_finished (void *cls,
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param ps secret internals of the original planchet
  * @param was_refreshed #GNUNET_YES if the coin in @a ps was refreshed
- * @param payback_cb the callback to call when the final result for this request is available
- * @param payback_cb_cls closure for @a payback_cb
+ * @param recoup_cb the callback to call when the final result for this request is available
+ * @param recoup_cb_cls closure for @a recoup_cb
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_PaybackHandle *
-TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
-                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                        const struct TALER_DenominationSignature *denom_sig,
-                        const struct TALER_PlanchetSecretsP *ps,
-                        int was_refreshed,
-                        TALER_EXCHANGE_PaybackResultCallback payback_cb,
-                        void *payback_cb_cls)
+struct TALER_EXCHANGE_RecoupHandle *
+TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
+                       const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                       const struct TALER_DenominationSignature *denom_sig,
+                       const struct TALER_PlanchetSecretsP *ps,
+                       int was_refreshed,
+                       TALER_EXCHANGE_RecoupResultCallback recoup_cb,
+                       void *recoup_cb_cls)
 {
-  struct TALER_EXCHANGE_PaybackHandle *ph;
+  struct TALER_EXCHANGE_RecoupHandle *ph;
   struct GNUNET_CURL_Context *ctx;
-  struct TALER_PaybackRequestPS pr;
+  struct TALER_RecoupRequestPS pr;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_HashCode h_denom_pub;
-  json_t *payback_obj;
+  json_t *recoup_obj;
   CURL *eh;
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
-  pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
+  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP);
+  pr.purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &pr.coin_pub.eddsa_pub);
   GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
@@ -344,70 +344,70 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                                            &pr.purpose,
                                            &coin_sig.eddsa_signature));
 
-  payback_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
-                           " s:o, s:o," /* coin pub/sig */
-                           " s:o, s:o}", /* coin_bks */
-                           "denom_pub_hash", GNUNET_JSON_from_data_auto (
-                             &h_denom_pub),
-                           "denom_sig", GNUNET_JSON_from_rsa_signature (
-                             denom_sig->rsa_signature),
-                           "coin_pub", GNUNET_JSON_from_data_auto (
-                             &pr.coin_pub),
-                           "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
-                           "coin_blind_key_secret", GNUNET_JSON_from_data_auto (
-                             &ps->blinding_key),
-                           "refreshed", json_boolean (was_refreshed)
-                           );
-  if (NULL == payback_obj)
+  recoup_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
+                          " s:o, s:o,"  /* coin pub/sig */
+                          " s:o, s:o}",  /* coin_bks */
+                          "denom_pub_hash", GNUNET_JSON_from_data_auto (
+                            &h_denom_pub),
+                          "denom_sig", GNUNET_JSON_from_rsa_signature (
+                            denom_sig->rsa_signature),
+                          "coin_pub", GNUNET_JSON_from_data_auto (
+                            &pr.coin_pub),
+                          "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
+                          "coin_blind_key_secret", GNUNET_JSON_from_data_auto (
+                            &ps->blinding_key),
+                          "refreshed", json_boolean (was_refreshed)
+                          );
+  if (NULL == recoup_obj)
   {
     GNUNET_break (0);
     return NULL;
   }
 
-  ph = GNUNET_new (struct TALER_EXCHANGE_PaybackHandle);
+  ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
   ph->coin_pub = pr.coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
   ph->pk.key.rsa_public_key = NULL; /* zero out, as lifetime cannot be warranted */
-  ph->cb = payback_cb;
-  ph->cb_cls = payback_cb_cls;
-  ph->url = TEAH_path_to_url (exchange, "/payback");
+  ph->cb = recoup_cb;
+  ph->cb_cls = recoup_cb_cls;
+  ph->url = TEAH_path_to_url (exchange, "/recoup");
   ph->was_refreshed = was_refreshed;
   eh = TEL_curl_easy_get (ph->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ph->ctx,
                             eh,
-                            payback_obj))
+                            recoup_obj))
   {
     GNUNET_break (0);
     curl_easy_cleanup (eh);
-    json_decref (payback_obj);
+    json_decref (recoup_obj);
     GNUNET_free (ph->url);
     GNUNET_free (ph);
     return NULL;
   }
-  json_decref (payback_obj);
+  json_decref (recoup_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "URL for payback: `%s'\n",
+              "URL for recoup: `%s'\n",
               ph->url);
   ctx = TEAH_handle_to_context (exchange);
   ph->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   ph->ctx.headers,
-                                  &handle_payback_finished,
+                                  &handle_recoup_finished,
                                   ph);
   return ph;
 }
 
 
 /**
- * Cancel a payback request.  This function cannot be used on a
+ * Cancel a recoup request.  This function cannot be used on a
  * request handle if the callback was already invoked.
  *
- * @param ph the payback handle
+ * @param ph the recoup handle
  */
 void
-TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph)
+TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph)
 {
   if (NULL != ph->job)
   {
@@ -420,4 +420,4 @@ TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph)
 }
 
 
-/* end of exchange_api_payback.c */
+/* end of exchange_api_recoup.c */

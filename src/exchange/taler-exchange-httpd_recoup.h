@@ -14,12 +14,12 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_payback.h
- * @brief Handle /payback requests
+ * @file taler-exchange-httpd_recoup.h
+ * @brief Handle /recoup requests
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_PAYBACK_H
-#define TALER_EXCHANGE_HTTPD_PAYBACK_H
+#ifndef TALER_EXCHANGE_HTTPD_RECOUP_H
+#define TALER_EXCHANGE_HTTPD_RECOUP_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -27,8 +27,8 @@
 
 
 /**
- * Handle a "/payback" request.  Parses the JSON, and, if successful,
- * passes the JSON data to #verify_and_execute_payback() to
+ * Handle a "/recoup" request.  Parses the JSON, and, if successful,
+ * passes the JSON data to #verify_and_execute_recoup() to
  * further check the details of the operation specified.  If
  * everything checks out, this will ultimately lead to the "/refund"
  * being executed, or rejected.
@@ -41,11 +41,11 @@
  * @return MHD result code
   */
 int
-TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
-                             struct MHD_Connection *connection,
-                             void **connection_cls,
-                             const char *upload_data,
-                             size_t *upload_data_size);
+TEH_RECOUP_handler_recoup (struct TEH_RequestHandler *rh,
+                           struct MHD_Connection *connection,
+                           void **connection_cls,
+                           const char *upload_data,
+                           size_t *upload_data_size);
 
 
 #endif

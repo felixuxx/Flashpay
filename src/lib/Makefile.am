@@ -24,7 +24,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_deposit.c \
-  exchange_api_payback.c \
+  exchange_api_recoup.c \
   exchange_api_refresh.c \
   exchange_api_refresh_link.c \
   exchange_api_refund.c \
@@ -87,7 +87,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_exec_keyup.c \
   testing_api_cmd_exec_auditor-sign.c \
-  testing_api_cmd_payback.c \
+  testing_api_cmd_recoup.c \
   testing_api_cmd_refund.c \
   testing_api_cmd_refresh.c \
   testing_api_cmd_serialize_keys.c \

@@ -176,10 +176,10 @@ struct TALER_AUDITORDB_ProgressPointReserve
   uint64_t last_reserve_out_serial_id;
 
   /**
-   * serial ID of the last payback entry the auditor processed when
+   * serial ID of the last recoup entry the auditor processed when
    * considering reserves.
    */
-  uint64_t last_reserve_payback_serial_id;
+  uint64_t last_reserve_recoup_serial_id;
 
   /**
    * serial ID of the last reserve_close
@@ -246,14 +246,14 @@ struct TALER_AUDITORDB_ProgressPointCoin
   uint64_t last_refund_serial_id;
 
   /**
-   * Serial ID of the last payback operation the auditor processed.
+   * Serial ID of the last recoup operation the auditor processed.
    */
-  uint64_t last_payback_serial_id;
+  uint64_t last_recoup_serial_id;
 
   /**
-   * Serial ID of the last payback-of-refresh operation the auditor processed.
+   * Serial ID of the last recoup-of-refresh operation the auditor processed.
    */
-  uint64_t last_payback_refresh_serial_id;
+  uint64_t last_recoup_refresh_serial_id;
 
 };
 
@@ -1211,7 +1211,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
    * @param denom_risk value of coins issued with this denomination key
-   * @param denom_payback value of coins paid back if this denomination key was revoked
+   * @param denom_recoup value of coins paid back if this denomination key was revoked
    * @param num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
@@ -1222,7 +1222,7 @@ struct TALER_AUDITORDB_Plugin
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *denom_loss,
                                  const struct TALER_Amount *denom_risk,
-                                 const struct TALER_Amount *payback_loss,
+                                 const struct TALER_Amount *recoup_loss,
                                  uint64_t num_issued);
 
 
@@ -1236,7 +1236,7 @@ struct TALER_AUDITORDB_Plugin
    * @param denom_balance value of coins outstanding with this denomination key
    * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
    * @param denom_risk value of coins issued with this denomination key
-   * @param denom_payback value of coins paid back if this denomination key was revoked
+   * @param denom_recoup value of coins paid back if this denomination key was revoked
    * @param num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
@@ -1247,7 +1247,7 @@ struct TALER_AUDITORDB_Plugin
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *denom_loss,
                                  const struct TALER_Amount *denom_risk,
-                                 const struct TALER_Amount *payback_loss,
+                                 const struct TALER_Amount *recoup_loss,
                                  uint64_t num_issued);
 
 
@@ -1260,7 +1260,7 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] denom_balance value of coins outstanding with this denomination key
    * @param[out] denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
    * @param[out] denom_risk value of coins issued with this denomination key
-   * @param[out] denom_payback value of coins paid back if this denomination key was revoked
+   * @param[out] denom_recoup value of coins paid back if this denomination key was revoked
    * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
    * @return transaction status code
    */
@@ -1271,7 +1271,7 @@ struct TALER_AUDITORDB_Plugin
                               struct TALER_Amount *denom_balance,
                               struct TALER_Amount *denom_loss,
                               struct TALER_Amount *denom_risk,
-                              struct TALER_Amount *payback_loss,
+                              struct TALER_Amount *recoup_loss,
                               uint64_t *num_issued);
 
 
@@ -1301,8 +1301,8 @@ struct TALER_AUDITORDB_Plugin
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
-   * @param payback_loss actual losses from payback (actualized @a risk)
-   * @param irregular_paybacks paybacks made of non-revoked coins (reduces
+   * @param recoup_loss actual losses from recoup (actualized @a risk)
+   * @param irregular_recoups recoups made of non-revoked coins (reduces
    *             risk, but should never happen)
    * @return transaction status code
    */
@@ -1315,8 +1315,8 @@ struct TALER_AUDITORDB_Plugin
                             const struct TALER_Amount *melt_fee_balance,
                             const struct TALER_Amount *refund_fee_balance,
                             const struct TALER_Amount *risk,
-                            const struct TALER_Amount *payback_loss,
-                            const struct TALER_Amount *irregular_paybacks);
+                            const struct TALER_Amount *recoup_loss,
+                            const struct TALER_Amount *irregular_recoups);
 
 
   /**
@@ -1331,8 +1331,8 @@ struct TALER_AUDITORDB_Plugin
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
    * @param risk maximum risk exposure of the exchange
-   * @param payback_loss actual losses from payback (actualized @a risk)
-   * @param irregular_paybacks paybacks made of non-revoked coins (reduces
+   * @param recoup_loss actual losses from recoup (actualized @a risk)
+   * @param irregular_recoups recoups made of non-revoked coins (reduces
    *             risk, but should never happen)
    * @return transaction status code
    */
@@ -1345,8 +1345,8 @@ struct TALER_AUDITORDB_Plugin
                             const struct TALER_Amount *melt_fee_balance,
                             const struct TALER_Amount *refund_fee_balance,
                             const struct TALER_Amount *risk,
-                            const struct TALER_Amount *payback_loss,
-                            const struct TALER_Amount *irregular_paybacks);
+                            const struct TALER_Amount *recoup_loss,
+                            const struct TALER_Amount *irregular_recoups);
 
 
   /**
@@ -1360,8 +1360,8 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] melt_fee_balance total melt fees collected for this DK
    * @param[out] refund_fee_balance total refund fees collected for this DK
    * @param[out] risk maximum risk exposure of the exchange
-   * @param[out] payback_loss actual losses from payback (actualized @a risk)
-   * @param[out] irregular_paybacks paybacks made of non-revoked coins (reduces
+   * @param[out] recoup_loss actual losses from recoup (actualized @a risk)
+   * @param[out] irregular_recoups recoups made of non-revoked coins (reduces
    *             risk, but should never happen)
    * @return transaction status code
    */
@@ -1374,8 +1374,8 @@ struct TALER_AUDITORDB_Plugin
                          struct TALER_Amount *melt_fee_balance,
                          struct TALER_Amount *refund_fee_balance,
                          struct TALER_Amount *risk,
-                         struct TALER_Amount *payback_loss,
-                         struct TALER_Amount *irregular_payback);
+                         struct TALER_Amount *recoup_loss,
+                         struct TALER_Amount *irregular_recoup);
 
 
   /**
@@ -1390,7 +1390,7 @@ struct TALER_AUDITORDB_Plugin
    * @param revenue_balance what was the total profit made from
    *                        deposit fees, melting fees, refresh fees
    *                        and coins that were never returned?
-   * @param payback_loss_balance total losses from paybacks of revoked denominations
+   * @param recoup_loss_balance total losses from recoups of revoked denominations
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1403,7 +1403,7 @@ struct TALER_AUDITORDB_Plugin
                                    revenue_timestamp,
                                    const struct TALER_Amount *revenue_balance,
                                    const struct
-                                   TALER_Amount *payback_loss_balance);
+                                   TALER_Amount *recoup_loss_balance);
 
 
   /**

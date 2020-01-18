@@ -230,7 +230,7 @@ struct ResponseFactoryContext
    * always returns the full list (cherry picking does not apply
    * for key revocations, as we cannot sort those by issue date).
    */
-  json_t *payback_array;
+  json_t *recoup_array;
 
   /**
    * JSON array with signing keys.  Every response includes the full
@@ -356,10 +356,10 @@ static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void
 destroy_response_factory (struct ResponseFactoryContext *rfc)
 {
-  if (NULL != rfc->payback_array)
+  if (NULL != rfc->recoup_array)
   {
-    json_decref (rfc->payback_array);
-    rfc->payback_array = NULL;
+    json_decref (rfc->recoup_array);
+    rfc->recoup_array = NULL;
   }
   if (NULL != rfc->sign_keys_array)
   {
@@ -912,7 +912,7 @@ revocations_iter (void *cls,
     return GNUNET_SYSERR;
   }
   GNUNET_assert (0 ==
-                 json_array_append_new (rfc->payback_array,
+                 json_array_append_new (rfc->recoup_array,
                                         GNUNET_JSON_from_data_auto (
                                           denom_hash)));
   return GNUNET_OK;
@@ -1491,7 +1491,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                     "reserve_closing_delay", GNUNET_JSON_from_time_rel (
                       reserve_closing_delay),
                     "signkeys", rfc->sign_keys_array,
-                    "payback", rfc->payback_array,
+                    "recoup", rfc->recoup_array,
                     /* 6-10 */
                     "denoms", rbc.denom_keys_array,
                     "auditors", rbc.auditors_array,
@@ -1660,8 +1660,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
   memset (&rfc,
           0,
           sizeof (rfc));
-  rfc.payback_array = json_array ();
-  if (NULL == rfc.payback_array)
+  rfc.recoup_array = json_array ();
+  if (NULL == rfc.recoup_array)
   {
     GNUNET_break (0);
     return NULL;
@@ -1670,7 +1670,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
   if (NULL == rfc.sign_keys_array)
   {
     GNUNET_break (0);
-    json_decref (rfc.payback_array);
+    json_decref (rfc.recoup_array);
     return NULL;
   }
 
@@ -1689,7 +1689,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
               "Loading keys from `%s'\n",
               TEH_exchange_directory);
   /* Initialize the 'denomkey_map' and the 'revoked_map' and
-     'rfc.payback_array' */
+     'rfc.recoup_array' */
   if (-1 ==
       TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
                                                   &reload_keys_denom_iter,
@@ -1700,7 +1700,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
                 TEH_exchange_directory);
     key_state->refcnt = 1;
     ks_release (key_state);
-    json_decref (rfc.payback_array);
+    json_decref (rfc.recoup_array);
     json_decref (rfc.sign_keys_array);
     return NULL;
   }
@@ -1726,7 +1726,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
                 TEH_exchange_directory);
     key_state->refcnt = 1;
     ks_release (key_state);
-    json_decref (rfc.payback_array);
+    json_decref (rfc.recoup_array);
     json_decref (rfc.sign_keys_array);
     return NULL;
   }
@@ -1982,7 +1982,7 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
   struct GNUNET_TIME_Absolute now;
   const struct GNUNET_CONTAINER_MultiHashMap *map;
 
-  map = (TEH_KS_DKU_PAYBACK == use) ? key_state->revoked_map :
+  map = (TEH_KS_DKU_RECOUP == use) ? key_state->revoked_map :
         key_state->denomkey_map;
   dki = GNUNET_CONTAINER_multihashmap_get (map,
                                            denom_pub_hash);
@@ -1994,11 +1994,11 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
     *hc = MHD_HTTP_NOT_FOUND;
     switch (use)
     {
-    case TEH_KS_DKU_PAYBACK:
-      *ec = TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN;
+    case TEH_KS_DKU_RECOUP:
+      *ec = TALER_EC_RECOUP_DENOMINATION_KEY_UNKNOWN;
       break;
     case TEH_KS_DKU_ZOMBIE:
-      *ec = TALER_EC_REFRESH_PAYBACK_DENOMINATION_KEY_NOT_FOUND;
+      *ec = TALER_EC_REFRESH_RECOUP_DENOMINATION_KEY_NOT_FOUND;
       break;
     case TEH_KS_DKU_WITHDRAW:
       *ec = TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND;
@@ -2019,11 +2019,11 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
     *hc = MHD_HTTP_PRECONDITION_FAILED;
     switch (use)
     {
-    case TEH_KS_DKU_PAYBACK:
-      *ec = TALER_EC_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE;
+    case TEH_KS_DKU_RECOUP:
+      *ec = TALER_EC_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE;
       break;
     case TEH_KS_DKU_ZOMBIE:
-      *ec = TALER_EC_REFRESH_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE;
+      *ec = TALER_EC_REFRESH_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE;
       break;
     case TEH_KS_DKU_WITHDRAW:
       *ec = TALER_EC_WITHDRAW_VALIDITY_IN_FUTURE;
@@ -2072,15 +2072,15 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
       return NULL;
     }
     break;
-  case TEH_KS_DKU_PAYBACK:
+  case TEH_KS_DKU_RECOUP:
     if (now.abs_value_us >
         GNUNET_TIME_absolute_ntoh (
           dki->issue.properties.expire_deposit).abs_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Not returning DKI for %s, as time to payback coin has passed\n",
+                  "Not returning DKI for %s, as time to recoup coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_REFRESH_PAYBACK_DENOMINATION_EXPIRED;
+      *ec = TALER_EC_REFRESH_RECOUP_DENOMINATION_EXPIRED;
       *hc = MHD_HTTP_GONE;
       return NULL;
     }

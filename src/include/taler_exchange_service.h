@@ -965,9 +965,9 @@ enum TALER_EXCHANGE_ReserveTransactionType
   TALER_EXCHANGE_RTT_WITHDRAWAL,
 
   /**
-   * /payback operation.
+   * /recoup operation.
    */
-  TALER_EXCHANGE_RTT_PAYBACK,
+  TALER_EXCHANGE_RTT_RECOUP,
 
   /**
    * Reserve closed operation.
@@ -1034,8 +1034,8 @@ struct TALER_EXCHANGE_ReserveHistory
     json_t *out_authorization_sig;
 
     /**
-     * Information provided if the reserve was filled via /payback.
-     * @e type is #TALER_EXCHANGE_RTT_PAYBACK.
+     * Information provided if the reserve was filled via /recoup.
+     * @e type is #TALER_EXCHANGE_RTT_RECOUP.
      */
     struct
     {
@@ -1047,7 +1047,7 @@ struct TALER_EXCHANGE_ReserveHistory
 
       /**
        * Signature of the coin of type
-       * #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK.
+       * #TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP.
        */
       struct TALER_ExchangeSignatureP exchange_sig;
 
@@ -1057,11 +1057,11 @@ struct TALER_EXCHANGE_ReserveHistory
       struct TALER_ExchangePublicKeyP exchange_pub;
 
       /**
-       * When did the /payback operation happen?
+       * When did the /recoup operation happen?
        */
       struct GNUNET_TIME_Absolute timestamp;
 
-    } payback_details;
+    } recoup_details;
 
     /**
      * Information about a close operation of the reserve.
@@ -1722,13 +1722,13 @@ TALER_EXCHANGE_verify_coin_history (const struct
                                     struct TALER_Amount *total);
 
 
-/* ********************* /payback *********************** */
+/* ********************* /recoup *********************** */
 
 
 /**
- * @brief A /payback Handle
+ * @brief A /recoup Handle
  */
-struct TALER_EXCHANGE_PaybackHandle;
+struct TALER_EXCHANGE_RecoupHandle;
 
 
 /**
@@ -1745,27 +1745,27 @@ struct TALER_EXCHANGE_PaybackHandle;
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param amount amount the exchange will wire back for this coin,
  *        on error the total balance remaining, or NULL
- * @param timestamp what time did the exchange receive the /payback request
- * @param reserve_pub public key of the reserve receiving the payback, NULL if refreshed or on error
+ * @param timestamp what time did the exchange receive the /recoup request
+ * @param reserve_pub public key of the reserve receiving the recoup, NULL if refreshed or on error
  * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
-(*TALER_EXCHANGE_PaybackResultCallback) (void *cls,
-                                         unsigned int http_status,
-                                         enum TALER_ErrorCode ec,
-                                         const struct TALER_Amount *amount,
-                                         struct GNUNET_TIME_Absolute timestamp,
-                                         const struct
-                                         TALER_ReservePublicKeyP *reserve_pub,
-                                         const struct
-                                         TALER_CoinSpendPublicKeyP *old_coin_pub,
-                                         const json_t *full_response);
+(*TALER_EXCHANGE_RecoupResultCallback) (void *cls,
+                                        unsigned int http_status,
+                                        enum TALER_ErrorCode ec,
+                                        const struct TALER_Amount *amount,
+                                        struct GNUNET_TIME_Absolute timestamp,
+                                        const struct
+                                        TALER_ReservePublicKeyP *reserve_pub,
+                                        const struct
+                                        TALER_CoinSpendPublicKeyP *old_coin_pub,
+                                        const json_t *full_response);
 
 
 /**
  * Ask the exchange to pay back a coin due to the exchange triggering
- * the emergency payback protocol for a given denomination.  The value
+ * the emergency recoup protocol for a given denomination.  The value
  * of the coin will be refunded to the original customer (without fees).
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
@@ -1773,30 +1773,30 @@ typedef void
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param ps secret internals of the original planchet
  * @param was_refreshed #GNUNET_YES if the coin in @a ps was refreshed
- * @param payback_cb the callback to call when the final result for this request is available
- * @param payback_cb_cls closure for @a payback_cb
+ * @param recoup_cb the callback to call when the final result for this request is available
+ * @param recoup_cb_cls closure for @a recoup_cb
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_PaybackHandle *
-TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
-                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                        const struct TALER_DenominationSignature *denom_sig,
-                        const struct TALER_PlanchetSecretsP *ps,
-                        int was_refreshed,
-                        TALER_EXCHANGE_PaybackResultCallback payback_cb,
-                        void *payback_cb_cls);
+struct TALER_EXCHANGE_RecoupHandle *
+TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
+                       const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                       const struct TALER_DenominationSignature *denom_sig,
+                       const struct TALER_PlanchetSecretsP *ps,
+                       int was_refreshed,
+                       TALER_EXCHANGE_RecoupResultCallback recoup_cb,
+                       void *recoup_cb_cls);
 
 
 /**
- * Cancel a payback request.  This function cannot be used on a
+ * Cancel a recoup request.  This function cannot be used on a
  * request handle if the callback was already invoked.
  *
- * @param ph the payback handle
+ * @param ph the recoup handle
  */
 void
-TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph);
+TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph);
 
 
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

@@ -305,10 +305,10 @@ CREATE TABLE IF NOT EXISTS wire_fee
 CREATE INDEX wire_fee_gc_index
   ON wire_fee
   (end_date);
--- Table for /payback information
+-- Table for /recoup information
 -- Do not cascade on the coin_pub, as we may keep the coin alive! */
-CREATE TABLE IF NOT EXISTS payback
-  (payback_uuid BIGSERIAL UNIQUE
+CREATE TABLE IF NOT EXISTS recoup
+  (recoup_uuid BIGSERIAL UNIQUE
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)
   ,coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)
   ,coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)
@@ -317,21 +317,21 @@ CREATE TABLE IF NOT EXISTS payback
   ,timestamp INT8 NOT NULL
   ,h_blind_ev BYTEA NOT NULL REFERENCES reserves_out (h_blind_ev) ON DELETE CASCADE
   );
-CREATE INDEX payback_by_coin_index
-  ON payback
+CREATE INDEX recoup_by_coin_index
+  ON recoup
   (coin_pub);
-CREATE INDEX payback_by_h_blind_ev
-  ON payback
+CREATE INDEX recoup_by_h_blind_ev
+  ON recoup
   (h_blind_ev);
-CREATE INDEX payback_for_by_reserve
-  ON payback
+CREATE INDEX recoup_for_by_reserve
+  ON recoup
   (coin_pub
   ,h_blind_ev
   );
--- Table for /payback-refresh information
+-- Table for /recoup-refresh information
 -- Do not cascade on the coin_pub, as we may keep the coin alive! */
-CREATE TABLE IF NOT EXISTS payback_refresh
-  (payback_refresh_uuid BIGSERIAL UNIQUE
+CREATE TABLE IF NOT EXISTS recoup_refresh
+  (recoup_refresh_uuid BIGSERIAL UNIQUE
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)
   ,coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)
   ,coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)
@@ -340,14 +340,14 @@ CREATE TABLE IF NOT EXISTS payback_refresh
   ,timestamp INT8 NOT NULL
   ,h_blind_ev BYTEA NOT NULL REFERENCES refresh_revealed_coins (h_coin_ev) ON DELETE CASCADE
   );
-CREATE INDEX payback_refresh_by_coin_index
-  ON payback_refresh
+CREATE INDEX recoup_refresh_by_coin_index
+  ON recoup_refresh
   (coin_pub);
-CREATE INDEX payback_refresh_by_h_blind_ev
-  ON payback_refresh
+CREATE INDEX recoup_refresh_by_h_blind_ev
+  ON recoup_refresh
   (h_blind_ev);
-CREATE INDEX payback_refresh_for_by_reserve
-  ON payback_refresh
+CREATE INDEX recoup_refresh_for_by_reserve
+  ON recoup_refresh
   (coin_pub
   ,h_blind_ev
   );

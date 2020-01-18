@@ -1567,7 +1567,7 @@ TALER_TESTING_cmd_refund (const char *label,
 
 
 /**
- * Make a "payback" command.
+ * Make a "recoup" command.
  *
  * @param label the command label
  * @param expected_response_code expected HTTP status code
@@ -1580,11 +1580,11 @@ TALER_TESTING_cmd_refund (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_payback (const char *label,
-                           unsigned int expected_response_code,
-                           const char *coin_reference,
-                           const char *amount,
-                           const char *melt_reference);
+TALER_TESTING_cmd_recoup (const char *label,
+                          unsigned int expected_response_code,
+                          const char *coin_reference,
+                          const char *amount,
+                          const char *melt_reference);
 
 
 /**

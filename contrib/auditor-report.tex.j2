@@ -77,8 +77,8 @@ In that time, the auditor processed the following table ranges:
                           & {{ data.end_ppr_reserve_in_serial_id }} \\ \hline
   Reserves Out (withdraw) & {{ data.start_ppr_reserve_out_serial_id }}
                           & {{ data.end_ppr_reserve_out_serial_id }} \\ \hline
-  Reserves Payback        & {{ data.start_ppr_reserve_payback_serial_id }}
-                          & {{ data.end_ppr_reserve_payback_serial_id }} \\ \hline
+  Reserves Recoup        & {{ data.start_ppr_reserve_recoup_serial_id }}
+                          & {{ data.end_ppr_reserve_recoup_serial_id }} \\ \hline
   Reserves Close          & {{ data.start_ppr_reserve_close_serial_id }}
                           & {{ data.end_ppr_reserve_close_serial_id }} \\ \hline
   Aggregation             & {{ data.start_ppa_wire_out_serial_id }}
@@ -91,10 +91,10 @@ In that time, the auditor processed the following table ranges:
                           & {{ data.end_ppc_melt_serial_id }} \\ \hline
   Coin refund             & {{ data.start_ppc_refund_serial_id }}
                           & {{ data.end_ppc_refund_serial_id }} \\ \hline
-  Coin payback            & {{ data.start_ppc_payback_serial_id }}
-                          & {{ data.end_ppc_payback_serial_id }} \\ \hline
-  Coin payback refresh    & {{ data.start_ppc_payback_refresh_serial_id }}
-                          & {{ data.end_ppc_payback_refresh_serial_id }} \\
+  Coin recoup            & {{ data.start_ppc_recoup_serial_id }}
+                          & {{ data.end_ppc_recoup_serial_id }} \\ \hline
+  Coin recoup refresh    & {{ data.start_ppc_recoup_refresh_serial_id }}
+                          & {{ data.end_ppc_recoup_refresh_serial_id }} \\
 \end{tabular}
 \end{center}
 \caption{Serial number ranges of the tables processed by the audit.}
@@ -143,12 +143,12 @@ The active operational risk stands at
 {\bf {{ data.total_active_risk }}}.
 
 \noindent
-Loss (actualized risk from paybacks) is
-{\bf {{ data.total_payback_loss }}}.
+Loss (actualized risk from recoups) is
+{\bf {{ data.total_recoup_loss }}}.
 
 \noindent
-Paybacks of non-revoked coins are at
-{\bf {{ data.total_irregular_paybacks }}}.
+Recoups of non-revoked coins are at
+{\bf {{ data.total_irregular_recoups }}}.
 
 \section{Income}
 
@@ -612,8 +612,8 @@ step failed. This is the reserve public key for ``withdraw''
 operations, the coin public key for ``deposit'' and ``melt''
 operations, the merchant's public key for ``melt'' operations,
 the (hash of the) denomination public key for
-``payback-verify'' and ``deposit-verify'' operations, and the master
-public key for ``payback-master'' operations.
+``recoup-verify'' and ``deposit-verify'' operations, and the master
+public key for ``recoup-master'' operations.
 
 % Table generation tested by testcase #4/#5/#6/#7/#13 in test-auditor.sh
 

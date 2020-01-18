@@ -156,7 +156,7 @@ struct RefreshMeltContext
   /**
    * Set to #GNUNET_YES if this coin's denomination was revoked and the operation
    * is thus only allowed for zombie coins where the transaction
-   * history includes a #TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK.
+   * history includes a #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP.
    */
   int zombie_required;
 
@@ -186,7 +186,7 @@ refresh_check_melt (struct MHD_Connection *connection,
   /* Start with cost of this melt transaction */
   spent = rmc->refresh_session.amount_with_fee;
 
-  /* add historic transaction costs of this coin, including paybacks as
+  /* add historic transaction costs of this coin, including recoups as
      we might be a zombie coin */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
@@ -208,7 +208,7 @@ refresh_check_melt (struct MHD_Connection *connection,
          NULL != tp;
          tp = tp->next)
     {
-      if (TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK == tp->type)
+      if (TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP == tp->type)
       {
         rmc->zombie_required = GNUNET_NO; /* was satisfied! */
         break;
@@ -471,7 +471,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
       dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                     &rmc->refresh_session.coin.
                                                     denom_pub_hash,
-                                                    TEH_KS_DKU_PAYBACK,
+                                                    TEH_KS_DKU_RECOUP,
                                                     &ec,
                                                     &hc);
       if (NULL != dki)
@@ -504,7 +504,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
     }
 
     /* Consider the case that the denomination expired for deposits,
-       but /refresh/payback refilled the balance of the 'zombie' coin
+       but /refresh/recoup refilled the balance of the 'zombie' coin
        and we should thus allow the refresh during the legal period. */
     if (NULL == dki)
     {

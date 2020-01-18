@@ -17,8 +17,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/testing_api_cmd_payback.c
- * @brief Implement the /revoke and /payback test commands.
+ * @file lib/testing_api_cmd_recoup.c
+ * @brief Implement the /revoke and /recoup test commands.
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -69,7 +69,7 @@ struct RevokeState
 /**
  * State for a "pay back" CMD.
  */
-struct PaybackState
+struct RecoupState
 {
   /**
    * Expected HTTP status code.
@@ -95,7 +95,7 @@ struct PaybackState
   /**
    * Handle to the ongoing operation.
    */
-  struct TALER_EXCHANGE_PaybackHandle *ph;
+  struct TALER_EXCHANGE_RecoupHandle *ph;
 
   /**
    * NULL if coin was not refreshed, otherwise reference
@@ -151,7 +151,7 @@ parse_coin_reference (const char *coin_reference,
 
 
 /**
- * Check the result of the payback request: checks whether
+ * Check the result of the recoup request: checks whether
  * the HTTP response code is good, and that the coin that
  * was paid back belonged to the right reserve.
  *
@@ -160,22 +160,22 @@ parse_coin_reference (const char *coin_reference,
  * @param ec taler-specific error code.
  * @param amount amount the exchange will wire back for this coin.
  * @param timestamp what time did the exchange receive the
- *        /payback request
- * @param reserve_pub public key of the reserve receiving the payback, NULL if refreshed or on error
+ *        /recoup request
+ * @param reserve_pub public key of the reserve receiving the recoup, NULL if refreshed or on error
  * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
  * @param full_response raw response from the exchange.
  */
 static void
-payback_cb (void *cls,
-            unsigned int http_status,
-            enum TALER_ErrorCode ec,
-            const struct TALER_Amount *amount,
-            struct GNUNET_TIME_Absolute timestamp,
-            const struct TALER_ReservePublicKeyP *reserve_pub,
-            const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-            const json_t *full_response)
+recoup_cb (void *cls,
+           unsigned int http_status,
+           enum TALER_ErrorCode ec,
+           const struct TALER_Amount *amount,
+           struct GNUNET_TIME_Absolute timestamp,
+           const struct TALER_ReservePublicKeyP *reserve_pub,
+           const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+           const json_t *full_response)
 {
-  struct PaybackState *ps = cls;
+  struct RecoupState *ps = cls;
   struct TALER_TESTING_Interpreter *is = ps->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct TALER_TESTING_Command *reserve_cmd;
@@ -321,11 +321,11 @@ payback_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
-payback_run (void *cls,
-             const struct TALER_TESTING_Command *cmd,
-             struct TALER_TESTING_Interpreter *is)
+recoup_run (void *cls,
+            const struct TALER_TESTING_Command *cmd,
+            struct TALER_TESTING_Interpreter *is)
 {
-  struct PaybackState *ps = cls;
+  struct RecoupState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_DenominationBlindingKeyP *blinding_key;
@@ -394,13 +394,13 @@ payback_run (void *cls,
               "Trying to get '%s..' paid back\n",
               TALER_B2S (&denom_pub->h_key));
 
-  ps->ph = TALER_EXCHANGE_payback (is->exchange,
-                                   denom_pub,
-                                   coin_sig,
-                                   &planchet,
-                                   NULL != ps->melt_reference,
-                                   payback_cb,
-                                   ps);
+  ps->ph = TALER_EXCHANGE_recoup (is->exchange,
+                                  denom_pub,
+                                  coin_sig,
+                                  &planchet,
+                                  NULL != ps->melt_reference,
+                                  recoup_cb,
+                                  ps);
   GNUNET_assert (NULL != ps->ph);
 }
 
@@ -431,20 +431,20 @@ revoke_cleanup (void *cls,
 
 
 /**
- * Cleanup the "payback" CMD state, and possibly cancel
+ * Cleanup the "recoup" CMD state, and possibly cancel
  * a pending operation thereof.
  *
  * @param cls closure.
  * @param cmd the command which is being cleaned up.
  */
 static void
-payback_cleanup (void *cls,
-                 const struct TALER_TESTING_Command *cmd)
+recoup_cleanup (void *cls,
+                const struct TALER_TESTING_Command *cmd)
 {
-  struct PaybackState *ps = cls;
+  struct RecoupState *ps = cls;
   if (NULL != ps->ph)
   {
-    TALER_EXCHANGE_payback_cancel (ps->ph);
+    TALER_EXCHANGE_recoup_cancel (ps->ph);
     ps->ph = NULL;
   }
   GNUNET_free (ps);
@@ -546,7 +546,7 @@ revoke_run (void *cls,
 
 
 /**
- * Make a "payback" command.
+ * Make a "recoup" command.
  *
  * @param label the command label
  * @param expected_response_code expected HTTP status code
@@ -557,15 +557,15 @@ revoke_run (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_payback (const char *label,
-                           unsigned int expected_response_code,
-                           const char *coin_reference,
-                           const char *amount,
-                           const char *melt_reference)
+TALER_TESTING_cmd_recoup (const char *label,
+                          unsigned int expected_response_code,
+                          const char *coin_reference,
+                          const char *amount,
+                          const char *melt_reference)
 {
-  struct PaybackState *ps;
+  struct RecoupState *ps;
 
-  ps = GNUNET_new (struct PaybackState);
+  ps = GNUNET_new (struct RecoupState);
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
   ps->amount = amount;
@@ -574,8 +574,8 @@ TALER_TESTING_cmd_payback (const char *label,
     struct TALER_TESTING_Command cmd = {
       .cls = ps,
       .label = label,
-      .run = &payback_run,
-      .cleanup = &payback_cleanup
+      .run = &recoup_run,
+      .cleanup = &recoup_cleanup
     };
 
     return cmd;

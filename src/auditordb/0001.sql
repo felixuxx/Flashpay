@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0
-  ,last_reserve_payback_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_reserve_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0
   );
 CREATE TABLE IF NOT EXISTS auditor_progress_aggregation
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS auditor_progress_coin
   ,last_deposit_serial_id INT8 NOT NULL DEFAULT 0
   ,last_melt_serial_id INT8 NOT NULL DEFAULT 0
   ,last_refund_serial_id INT8 NOT NULL DEFAULT 0
-  ,last_payback_serial_id INT8 NOT NULL DEFAULT 0
-  ,last_payback_refresh_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_recoup_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_recoup_refresh_serial_id INT8 NOT NULL DEFAULT 0
   );
 CREATE TABLE IF NOT EXISTS wire_auditor_account_progress
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
@@ -149,8 +149,8 @@ CREATE TABLE IF NOT EXISTS auditor_denomination_pending
   ,num_issued INT8 NOT NULL
   ,denom_risk_val INT8 NOT NULL
   ,denom_risk_frac INT4 NOT NULL
-  ,payback_loss_val INT8 NOT NULL
-  ,payback_loss_frac INT4 NOT NULL
+  ,recoup_loss_val INT8 NOT NULL
+  ,recoup_loss_frac INT4 NOT NULL
   );
 -- Table with the sum of the outstanding coins from
 -- auditor_denomination_pending (denom_pubs must belong to the
@@ -172,8 +172,8 @@ CREATE TABLE IF NOT EXISTS auditor_balance_summary
   ,risk_frac INT4 NOT NULL
   ,loss_val INT8 NOT NULL
   ,loss_frac INT4 NOT NULL
-  ,irregular_payback_val INT8 NOT NULL
-  ,irregular_payback_frac INT4 NOT NULL
+  ,irregular_recoup_val INT8 NOT NULL
+  ,irregular_recoup_frac INT4 NOT NULL
   );
 -- Table with historic profits; basically, when a denom_pub has
 -- expired and everything associated with it is garbage collected,

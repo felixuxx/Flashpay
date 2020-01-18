@@ -148,7 +148,7 @@ enum TALER_ErrorCode
   /**
    * The exchange failed to obtain the transaction history of the given
    * coin from the database while generating an insufficient funds
-   * errors.  This can happen during /deposit or /payback requests. This
+   * errors.  This can happen during /deposit or /recoup requests. This
    * response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
@@ -505,7 +505,7 @@ enum TALER_ErrorCode
   /**
    * The denomination of the given coin has past its expiration date and
    * it is also not a valid zombie (that is, was not refreshed with the
-   * fresh coin being subjected to payback).
+   * fresh coin being subjected to recoup).
    */
   TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE = 1309,
 
@@ -514,19 +514,19 @@ enum TALER_ErrorCode
    * sign the melted zombie coin.  This response is provided with HTTP
    * status code MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_REFRESH_PAYBACK_DENOMINATION_KEY_NOT_FOUND = 1351,
+  TALER_EC_REFRESH_RECOUP_DENOMINATION_KEY_NOT_FOUND = 1351,
 
   /**
    * Validity period of the denomination key is in the future.  Returned
    * with an HTTP status of #MHD_HTTP_PRECONDITION_FAILED.
    */
-  TALER_EC_REFRESH_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE = 1352,
+  TALER_EC_REFRESH_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE = 1352,
 
   /**
    * Denomination key of the coin is past the deposit deadline.
    * Returned with an HTTP status of #MHD_HTTP_GONE.
    */
-  TALER_EC_REFRESH_PAYBACK_DENOMINATION_EXPIRED = 1353,
+  TALER_EC_REFRESH_RECOUP_DENOMINATION_EXPIRED = 1353,
 
   /**
    * Denomination key of the coin is past the deposit deadline.
@@ -841,79 +841,79 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID = 1804,
 
   /**
-   * The given denomination key is not in the "payback" set of the
+   * The given denomination key is not in the "recoup" set of the
    * exchange right now.  This response is provided with an HTTP status
    * code of MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN = 1850,
+  TALER_EC_RECOUP_DENOMINATION_KEY_UNKNOWN = 1850,
 
   /**
    * The given coin signature is invalid for the request. This response
    * is provided with an HTTP status code of MHD_HTTP_FORBIDDEN.
    */
-  TALER_EC_PAYBACK_SIGNATURE_INVALID = 1851,
+  TALER_EC_RECOUP_SIGNATURE_INVALID = 1851,
 
   /**
    * The signature of the denomination key over the coin is not valid.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID = 1852,
+  TALER_EC_RECOUP_DENOMINATION_SIGNATURE_INVALID = 1852,
 
   /**
    * The exchange failed to access its own database about reserves. This
    * response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_PAYBACK_DB_FETCH_FAILED = 1853,
+  TALER_EC_RECOUP_DB_FETCH_FAILED = 1853,
 
   /**
    * The exchange could not find the corresponding withdraw operation.
    * The request is denied.  This response is provided with an HTTP
    * status code of MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND = 1854,
+  TALER_EC_RECOUP_WITHDRAW_NOT_FOUND = 1854,
 
   /**
    * The exchange obtained an internally inconsistent transaction
    * history for the given coin. This response is provided with HTTP
    * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_PAYBACK_HISTORY_DB_ERROR = 1855,
+  TALER_EC_RECOUP_HISTORY_DB_ERROR = 1855,
 
   /**
-   * The exchange failed to store information about the payback to be
+   * The exchange failed to store information about the recoup to be
    * performed in the database. This response is provided with HTTP
    * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_PAYBACK_DB_PUT_FAILED = 1856,
+  TALER_EC_RECOUP_DB_PUT_FAILED = 1856,
 
   /**
    * The coin's remaining balance is zero.  The request is denied. This
    * response is provided with an HTTP status code of
    * MHD_HTTP_FORBIDDEN.
    */
-  TALER_EC_PAYBACK_COIN_BALANCE_ZERO = 1857,
+  TALER_EC_RECOUP_COIN_BALANCE_ZERO = 1857,
 
   /**
    * The exchange failed to reproduce the coin's blinding. This response
    * is provided with an HTTP status code of
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_PAYBACK_BLINDING_FAILED = 1858,
+  TALER_EC_RECOUP_BLINDING_FAILED = 1858,
 
   /**
    * The coin's remaining balance is zero.  The request is denied. This
    * response is provided with an HTTP status code of
    * MHD_HTTP_INTERNAL_SERVER_ERROR
    */
-  TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE = 1859,
+  TALER_EC_RECOUP_COIN_BALANCE_NEGATIVE = 1859,
 
   /**
    * Validity period of the denomination key is in the future.  Returned
    * with an HTTP status of #MHD_HTTP_PRECONDITION_FAILED.
    */
-  TALER_EC_PAYBACK_DENOMINATION_VALIDITY_IN_FUTURE = 1860,
+  TALER_EC_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE = 1860,
 
   /**
    * The "have" parameter was not a natural number. This reponse is

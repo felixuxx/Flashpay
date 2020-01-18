@@ -1133,7 +1133,7 @@ create_wire_fees ()
 
 
 /**
- * Revoke the denomination key matching @a hc and request /payback to be
+ * Revoke the denomination key matching @a hc and request /recoup to be
  * initiated.
  *
  * @param hc denomination key hash to revoke
@@ -1443,7 +1443,7 @@ main (int argc,
     GNUNET_GETOPT_option_base32_auto ('r',
                                       "revoke",
                                       "DKH",
-                                      "revoke denomination key hash (DKH) and request wallets to initiate /payback",
+                                      "revoke denomination key hash (DKH) and request wallets to initiate /recoup",
                                       &revoke_dkh),
     GNUNET_GETOPT_option_absolute_time ('t',
                                         "time",

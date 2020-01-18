@@ -1309,28 +1309,28 @@ drop:
 
 
 /**
- * Function called about paybacks the exchange has to perform.
+ * Function called about recoups the exchange has to perform.
  *
  * @param cls closure with the expected value for @a coin_blind
- * @param rowid row identifier used to uniquely identify the payback operation
- * @param timestamp when did we receive the payback request
+ * @param rowid row identifier used to uniquely identify the recoup operation
+ * @param timestamp when did we receive the recoup request
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
  * @param coin public information about the coin
- * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
-payback_cb (void *cls,
-            uint64_t rowid,
-            struct GNUNET_TIME_Absolute timestamp,
-            const struct TALER_Amount *amount,
-            const struct TALER_ReservePublicKeyP *reserve_pub,
-            const struct TALER_CoinPublicInfo *coin,
-            const struct TALER_DenominationPublicKey *denom_pub,
-            const struct TALER_CoinSpendSignatureP *coin_sig,
-            const struct TALER_DenominationBlindingKeyP *coin_blind)
+recoup_cb (void *cls,
+           uint64_t rowid,
+           struct GNUNET_TIME_Absolute timestamp,
+           const struct TALER_Amount *amount,
+           const struct TALER_ReservePublicKeyP *reserve_pub,
+           const struct TALER_CoinPublicInfo *coin,
+           const struct TALER_DenominationPublicKey *denom_pub,
+           const struct TALER_CoinSpendSignatureP *coin_sig,
+           const struct TALER_DenominationBlindingKeyP *coin_blind)
 {
   const struct TALER_DenominationBlindingKeyP *cb = cls;
 
@@ -1504,11 +1504,11 @@ run (void *cls)
 
   /* test DB is empty */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->select_payback_above_serial_id (plugin->cls,
-                                                  session,
-                                                  0,
-                                                  &payback_cb,
-                                                  NULL));
+          plugin->select_recoup_above_serial_id (plugin->cls,
+                                                 session,
+                                                 0,
+                                                 &recoup_cb,
+                                                 NULL));
   RND_BLK (&reserve_pub);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
@@ -1656,21 +1656,21 @@ run (void *cls)
                                      session,
                                      &deposit.coin));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_payback_request (plugin->cls,
-                                          session,
-                                          &reserve_pub,
-                                          &deposit.coin,
-                                          &coin_sig,
-                                          &coin_blind,
-                                          &value,
-                                          &cbc.h_coin_envelope,
-                                          deadline));
+          plugin->insert_recoup_request (plugin->cls,
+                                         session,
+                                         &reserve_pub,
+                                         &deposit.coin,
+                                         &coin_sig,
+                                         &coin_blind,
+                                         &value,
+                                         &cbc.h_coin_envelope,
+                                         deadline));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->select_payback_above_serial_id (plugin->cls,
-                                                  session,
-                                                  0,
-                                                  &payback_cb,
-                                                  &coin_blind));
+          plugin->select_recoup_above_serial_id (plugin->cls,
+                                                 session,
+                                                 0,
+                                                 &recoup_cb,
+                                                 &coin_blind));
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_add (&amount_with_fee,
@@ -1729,23 +1729,23 @@ run (void *cls)
                            &cbc.h_coin_envelope,
                            sizeof (cbc.h_coin_envelope)));
       break;
-    case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
+    case TALER_EXCHANGEDB_RO_RECOUP_COIN:
       {
-        struct TALER_EXCHANGEDB_Payback *payback = rh_head->details.payback;
+        struct TALER_EXCHANGEDB_Recoup *recoup = rh_head->details.recoup;
 
-        FAILIF (0 != memcmp (&payback->coin_sig,
+        FAILIF (0 != memcmp (&recoup->coin_sig,
                              &coin_sig,
                              sizeof (coin_sig)));
-        FAILIF (0 != memcmp (&payback->coin_blind,
+        FAILIF (0 != memcmp (&recoup->coin_blind,
                              &coin_blind,
                              sizeof (coin_blind)));
-        FAILIF (0 != memcmp (&payback->reserve_pub,
+        FAILIF (0 != memcmp (&recoup->reserve_pub,
                              &reserve_pub,
                              sizeof (reserve_pub)));
-        FAILIF (0 != memcmp (&payback->coin.coin_pub,
+        FAILIF (0 != memcmp (&recoup->coin.coin_pub,
                              &deposit.coin.coin_pub,
                              sizeof (deposit.coin.coin_pub)));
-        FAILIF (0 != TALER_amount_cmp (&payback->value,
+        FAILIF (0 != TALER_amount_cmp (&recoup->value,
                                        &value));
       }
       break;
@@ -1954,7 +1954,7 @@ run (void *cls)
                                           &check_refund_cb,
                                           &refund));
 
-  /* test payback / revocation */
+  /* test recoup / revocation */
   RND_BLK (&master_sig);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_revocation (plugin->cls,
@@ -2001,15 +2001,15 @@ run (void *cls)
   RND_BLK (&coin_sig);
   RND_BLK (&coin_blind);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_payback_request (plugin->cls,
-                                          session,
-                                          &reserve_pub,
-                                          &deposit.coin,
-                                          &coin_sig,
-                                          &coin_blind,
-                                          &value,
-                                          &cbc.h_coin_envelope,
-                                          deadline));
+          plugin->insert_recoup_request (plugin->cls,
+                                         session,
+                                         &reserve_pub,
+                                         &deposit.coin,
+                                         &coin_sig,
+                                         &coin_blind,
+                                         &value,
+                                         &cbc.h_coin_envelope,
+                                         deadline));
 
   auditor_row_cnt = 0;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -2094,18 +2094,18 @@ run (void *cls)
         matched |= 4;
         break;
       }
-    case TALER_EXCHANGEDB_TT_PAYBACK:
+    case TALER_EXCHANGEDB_TT_RECOUP:
       {
-        struct TALER_EXCHANGEDB_PaybackListEntry *payback =
-          tlp->details.payback;
+        struct TALER_EXCHANGEDB_RecoupListEntry *recoup =
+          tlp->details.recoup;
 
-        FAILIF (0 != GNUNET_memcmp (&payback->coin_sig,
+        FAILIF (0 != GNUNET_memcmp (&recoup->coin_sig,
                                     &coin_sig));
-        FAILIF (0 != GNUNET_memcmp (&payback->coin_blind,
+        FAILIF (0 != GNUNET_memcmp (&recoup->coin_blind,
                                     &coin_blind));
-        FAILIF (0 != GNUNET_memcmp (&payback->reserve_pub,
+        FAILIF (0 != GNUNET_memcmp (&recoup->reserve_pub,
                                     &reserve_pub));
-        FAILIF (0 != TALER_amount_cmp (&payback->value,
+        FAILIF (0 != TALER_amount_cmp (&recoup->value,
                                        &value));
         matched |= 8;
         break;

@@ -32,7 +32,7 @@
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserve_status.h"
 #include "taler-exchange-httpd_reserve_withdraw.h"
-#include "taler-exchange-httpd_payback.h"
+#include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_refresh_link.h"
 #include "taler-exchange-httpd_refresh_melt.h"
 #include "taler-exchange-httpd_refresh_reveal.h"
@@ -341,9 +341,9 @@ handle_mhd_request (void *cls,
       "Only POST is allowed", 0,
       &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-    { "/payback", MHD_HTTP_METHOD_POST, "application/json",
+    { "/recoup", MHD_HTTP_METHOD_POST, "application/json",
       NULL, 0,
-      &TEH_PAYBACK_handler_payback, MHD_HTTP_OK },
+      &TEH_RECOUP_handler_recoup, MHD_HTTP_OK },
     { "/refresh/link", NULL, "text/plain",
       "Only GET is allowed", 0,
       &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },

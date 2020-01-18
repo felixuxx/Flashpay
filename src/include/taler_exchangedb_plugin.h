@@ -275,10 +275,10 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
 
 
 /**
- * Information the exchange records about a /payback request
+ * Information the exchange records about a /recoup request
  * in a reserve history.
  */
-struct TALER_EXCHANGEDB_Payback
+struct TALER_EXCHANGEDB_Recoup
 {
 
   /**
@@ -294,7 +294,7 @@ struct TALER_EXCHANGEDB_Payback
 
   /**
    * Signature of the coin of type
-   * #TALER_SIGNATURE_WALLET_COIN_PAYBACK.
+   * #TALER_SIGNATURE_WALLET_COIN_RECOUP.
    */
   struct TALER_CoinSpendSignatureP coin_sig;
 
@@ -309,7 +309,7 @@ struct TALER_EXCHANGEDB_Payback
   struct TALER_Amount value;
 
   /**
-   * When did the /payback operation happen?
+   * When did the /recoup operation happen?
    */
   struct GNUNET_TIME_Absolute timestamp;
 
@@ -317,10 +317,10 @@ struct TALER_EXCHANGEDB_Payback
 
 
 /**
- * Information the exchange records about a /payback request
+ * Information the exchange records about a /recoup request
  * in a coin history.
  */
-struct TALER_EXCHANGEDB_PaybackListEntry
+struct TALER_EXCHANGEDB_RecoupListEntry
 {
 
   /**
@@ -331,7 +331,7 @@ struct TALER_EXCHANGEDB_PaybackListEntry
 
   /**
    * Signature of the coin of type
-   * #TALER_SIGNATURE_WALLET_COIN_PAYBACK.
+   * #TALER_SIGNATURE_WALLET_COIN_RECOUP.
    */
   struct TALER_CoinSpendSignatureP coin_sig;
 
@@ -346,7 +346,7 @@ struct TALER_EXCHANGEDB_PaybackListEntry
   struct TALER_Amount value;
 
   /**
-   * When did the /payback operation happen?
+   * When did the /recoup operation happen?
    */
   struct GNUNET_TIME_Absolute timestamp;
 
@@ -354,10 +354,10 @@ struct TALER_EXCHANGEDB_PaybackListEntry
 
 
 /**
- * Information the exchange records about a /payback-refresh request in
+ * Information the exchange records about a /recoup-refresh request in
  * a coin transaction history.
  */
-struct TALER_EXCHANGEDB_PaybackRefreshListEntry
+struct TALER_EXCHANGEDB_RecoupRefreshListEntry
 {
 
   /**
@@ -374,7 +374,7 @@ struct TALER_EXCHANGEDB_PaybackRefreshListEntry
 
   /**
    * Signature of the coin of type
-   * #TALER_SIGNATURE_WALLET_COIN_PAYBACK.
+   * #TALER_SIGNATURE_WALLET_COIN_RECOUP.
    */
   struct TALER_CoinSpendSignatureP coin_sig;
 
@@ -389,7 +389,7 @@ struct TALER_EXCHANGEDB_PaybackRefreshListEntry
   struct TALER_Amount value;
 
   /**
-   * When did the /payback operation happen?
+   * When did the /recoup operation happen?
    */
   struct GNUNET_TIME_Absolute timestamp;
 
@@ -413,9 +413,9 @@ enum TALER_EXCHANGEDB_ReserveOperation
   TALER_EXCHANGEDB_RO_WITHDRAW_COIN = 1,
 
   /**
-   * A coin was returned to the reserve using /payback.
+   * A coin was returned to the reserve using /recoup.
    */
-  TALER_EXCHANGEDB_RO_PAYBACK_COIN = 2,
+  TALER_EXCHANGEDB_RO_RECOUP_COIN = 2,
 
   /**
    * The exchange send inactive funds back from the reserve to the
@@ -463,9 +463,9 @@ struct TALER_EXCHANGEDB_ReserveHistory
     struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw;
 
     /**
-     * Details about a /payback operation.
+     * Details about a /recoup operation.
      */
-    struct TALER_EXCHANGEDB_Payback *payback;
+    struct TALER_EXCHANGEDB_Recoup *recoup;
 
     /**
      * Details about a bank transfer from the exchange (reserve
@@ -875,19 +875,19 @@ enum TALER_EXCHANGEDB_TransactionType
   TALER_EXCHANGEDB_TT_REFUND = 2,
 
   /**
-   * /payback-refresh operation (on the old coin, adding to the old coin's value)
+   * /recoup-refresh operation (on the old coin, adding to the old coin's value)
    */
-  TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK = 3,
+  TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP = 3,
 
   /**
-   * /payback operation.
+   * /recoup operation.
    */
-  TALER_EXCHANGEDB_TT_PAYBACK = 4,
+  TALER_EXCHANGEDB_TT_RECOUP = 4,
 
   /**
-   * /payback-refresh operation (on the new coin, eliminating its value)
+   * /recoup-refresh operation (on the new coin, eliminating its value)
    */
-  TALER_EXCHANGEDB_TT_PAYBACK_REFRESH = 5
+  TALER_EXCHANGEDB_TT_RECOUP_REFRESH = 5
 
 };
 
@@ -938,24 +938,24 @@ struct TALER_EXCHANGEDB_TransactionList
     struct TALER_EXCHANGEDB_RefundListEntry *refund;
 
     /**
-     * Details if transaction was a /payback-refund operation where
+     * Details if transaction was a /recoup-refund operation where
      * this coin was the OLD coin.
-     * (#TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK).
+     * (#TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP).
      */
-    struct TALER_EXCHANGEDB_PaybackRefreshListEntry *old_coin_payback;
+    struct TALER_EXCHANGEDB_RecoupRefreshListEntry *old_coin_recoup;
 
     /**
-     * Details if transaction was a /payback operation.
-     * (#TALER_EXCHANGEDB_TT_PAYBACK)
+     * Details if transaction was a /recoup operation.
+     * (#TALER_EXCHANGEDB_TT_RECOUP)
      */
-    struct TALER_EXCHANGEDB_PaybackListEntry *payback;
+    struct TALER_EXCHANGEDB_RecoupListEntry *recoup;
 
     /**
-     * Details if transaction was a /payback-refund operation where
+     * Details if transaction was a /recoup-refund operation where
      * this coin was the REFRESHED coin.
-     * (#TALER_EXCHANGEDB_TT_PAYBACK_REFRESH)
+     * (#TALER_EXCHANGEDB_TT_RECOUP_REFRESH)
      */
-    struct TALER_EXCHANGEDB_PaybackRefreshListEntry *payback_refresh;
+    struct TALER_EXCHANGEDB_RecoupRefreshListEntry *recoup_refresh;
 
   } details;
 
@@ -1373,67 +1373,67 @@ typedef int
 
 
 /**
- * Function called about paybacks the exchange has to perform.
+ * Function called about recoups the exchange has to perform.
  *
  * @param cls closure
- * @param rowid row identifier used to uniquely identify the payback operation
- * @param timestamp when did we receive the payback request
+ * @param rowid row identifier used to uniquely identify the recoup operation
+ * @param timestamp when did we receive the recoup request
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
  * @param coin public information about the coin
- * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_PaybackCallback)(void *cls,
-                                    uint64_t rowid,
-                                    struct GNUNET_TIME_Absolute timestamp,
-                                    const struct TALER_Amount *amount,
-                                    const struct
-                                    TALER_ReservePublicKeyP *reserve_pub,
-                                    const struct TALER_CoinPublicInfo *coin,
-                                    const struct
-                                    TALER_DenominationPublicKey *denom_pub,
-                                    const struct
-                                    TALER_CoinSpendSignatureP *coin_sig,
-                                    const struct
-                                    TALER_DenominationBlindingKeyP *coin_blind);
+(*TALER_EXCHANGEDB_RecoupCallback)(void *cls,
+                                   uint64_t rowid,
+                                   struct GNUNET_TIME_Absolute timestamp,
+                                   const struct TALER_Amount *amount,
+                                   const struct
+                                   TALER_ReservePublicKeyP *reserve_pub,
+                                   const struct TALER_CoinPublicInfo *coin,
+                                   const struct
+                                   TALER_DenominationPublicKey *denom_pub,
+                                   const struct
+                                   TALER_CoinSpendSignatureP *coin_sig,
+                                   const struct
+                                   TALER_DenominationBlindingKeyP *coin_blind);
 
 
 /**
- * Function called about paybacks on refreshed coins the exchange has to
+ * Function called about recoups on refreshed coins the exchange has to
  * perform.
  *
  * @param cls closure
- * @param rowid row identifier used to uniquely identify the payback operation
- * @param timestamp when did we receive the payback request
+ * @param rowid row identifier used to uniquely identify the recoup operation
+ * @param timestamp when did we receive the recoup request
  * @param amount how much should be added back to the reserve
  * @param old_coin_pub original coin that was refreshed to create @a coin
  * @param coin public information about the coin
- * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_PaybackRefreshCallback)(void *cls,
-                                           uint64_t rowid,
-                                           struct GNUNET_TIME_Absolute
-                                           timestamp,
-                                           const struct TALER_Amount *amount,
-                                           const struct
-                                           TALER_CoinSpendPublicKeyP *
-                                           old_coin_pub,
-                                           const struct
-                                           TALER_CoinPublicInfo *coin,
-                                           const struct
-                                           TALER_DenominationPublicKey *
-                                           denom_pub,
-                                           const struct
-                                           TALER_CoinSpendSignatureP *coin_sig,
-                                           const struct
-                                           TALER_DenominationBlindingKeyP *
-                                           coin_blind);
+(*TALER_EXCHANGEDB_RecoupRefreshCallback)(void *cls,
+                                          uint64_t rowid,
+                                          struct GNUNET_TIME_Absolute
+                                          timestamp,
+                                          const struct TALER_Amount *amount,
+                                          const struct
+                                          TALER_CoinSpendPublicKeyP *
+                                          old_coin_pub,
+                                          const struct
+                                          TALER_CoinPublicInfo *coin,
+                                          const struct
+                                          TALER_DenominationPublicKey *
+                                          denom_pub,
+                                          const struct
+                                          TALER_CoinSpendSignatureP *coin_sig,
+                                          const struct
+                                          TALER_DenominationBlindingKeyP *
+                                          coin_blind);
 
 
 /**
@@ -1487,32 +1487,32 @@ typedef enum GNUNET_DB_QueryStatus
 
 
 /**
- * Function called with information justifying an aggregate payback.
- * (usually implemented by the auditor when verifying losses from paybacks).
+ * Function called with information justifying an aggregate recoup.
+ * (usually implemented by the auditor when verifying losses from recoups).
  *
  * @param cls closure
- * @param rowid row identifier used to uniquely identify the payback operation
+ * @param rowid row identifier used to uniquely identify the recoup operation
  * @param coin information about the coin
- * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding key of the coin
  * @param h_blind_ev blinded envelope, as calculated by the exchange
  * @param amount total amount to be paid back
  */
 typedef void
-(*TALER_EXCHANGEDB_PaybackJustificationCallback)(void *cls,
-                                                 uint64_t rowid,
-                                                 const struct
-                                                 TALER_CoinPublicInfo *coin,
-                                                 const struct
-                                                 TALER_CoinSpendSignatureP *
-                                                 coin_sig,
-                                                 const struct
-                                                 TALER_DenominationBlindingKeyP
-                                                 *coin_blind,
-                                                 const struct
-                                                 GNUNET_HashCode *h_blinded_ev,
-                                                 const struct
-                                                 TALER_Amount *amount);
+(*TALER_EXCHANGEDB_RecoupJustificationCallback)(void *cls,
+                                                uint64_t rowid,
+                                                const struct
+                                                TALER_CoinPublicInfo *coin,
+                                                const struct
+                                                TALER_CoinSpendSignatureP *
+                                                coin_sig,
+                                                const struct
+                                                TALER_DenominationBlindingKeyP
+                                                *coin_blind,
+                                                const struct
+                                                GNUNET_HashCode *h_blinded_ev,
+                                                const struct
+                                                TALER_Amount *amount);
 
 
 /**
@@ -2192,7 +2192,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param coin_pub coin to investigate
-   * @param include_payback include payback transactions of the coin?
+   * @param include_recoup include recoup transactions of the coin?
    * @param[out] tlp set to list of transactions, NULL if coin is fresh
    * @return database transaction status
    */
@@ -2200,7 +2200,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_coin_transactions)(void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           int include_payback,
+                           int include_recoup,
                            struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 
@@ -2630,7 +2630,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to select payback requests the exchange
+   * Function called to select recoup requests the exchange
    * received, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
@@ -2641,15 +2641,15 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_payback_above_serial_id)(void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
-                                    uint64_t serial_id,
-                                    TALER_EXCHANGEDB_PaybackCallback cb,
-                                    void *cb_cls);
+  (*select_recoup_above_serial_id)(void *cls,
+                                   struct TALER_EXCHANGEDB_Session *session,
+                                   uint64_t serial_id,
+                                   TALER_EXCHANGEDB_RecoupCallback cb,
+                                   void *cb_cls);
 
 
   /**
-   * Function called to select payback requests the exchange received for
+   * Function called to select recoup requests the exchange received for
    * refreshed coins, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
@@ -2660,13 +2660,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_payback_refresh_above_serial_id)(void *cls,
-                                            struct TALER_EXCHANGEDB_Session *
-                                            session,
-                                            uint64_t serial_id,
-                                            TALER_EXCHANGEDB_PaybackRefreshCallback
-                                            cb,
-                                            void *cb_cls);
+  (*select_recoup_refresh_above_serial_id)(void *cls,
+                                           struct TALER_EXCHANGEDB_Session *
+                                           session,
+                                           uint64_t serial_id,
+                                           TALER_EXCHANGEDB_RecoupRefreshCallback
+                                           cb,
+                                           void *cb_cls);
 
 
   /**
@@ -2691,14 +2691,14 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to add a request for an emergency payback for a
+   * Function called to add a request for an emergency recoup for a
    * coin.  The funds are to be added back to the reserve.
    *
    * @param cls closure
    * @param session database connection
    * @param reserve_pub public key of the reserve that is being refunded
    * @param coin public information about a coin
-   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
    * @param coin_blind blinding key of the coin
    * @param h_blind_ev blinded envelope, as calculated by the exchange
    * @param amount total amount to be paid back
@@ -2707,26 +2707,26 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction result status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_payback_request)(void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            const struct TALER_CoinPublicInfo *coin,
-                            const struct TALER_CoinSpendSignatureP *coin_sig,
-                            const struct
-                            TALER_DenominationBlindingKeyP *coin_blind,
-                            const struct TALER_Amount *amount,
-                            const struct GNUNET_HashCode *h_blind_ev,
-                            struct GNUNET_TIME_Absolute timestamp);
+  (*insert_recoup_request)(void *cls,
+                           struct TALER_EXCHANGEDB_Session *session,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           const struct TALER_CoinPublicInfo *coin,
+                           const struct TALER_CoinSpendSignatureP *coin_sig,
+                           const struct
+                           TALER_DenominationBlindingKeyP *coin_blind,
+                           const struct TALER_Amount *amount,
+                           const struct GNUNET_HashCode *h_blind_ev,
+                           struct GNUNET_TIME_Absolute timestamp);
 
 
   /**
-   * Function called to add a request for an emergency payback for a
+   * Function called to add a request for an emergency recoup for a
    * refreshed coin.  The funds are to be added back to the original coin.
    *
    * @param cls closure
    * @param session database connection
    * @param coin public information about the refreshed coin
-   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
    * @param coin_blind blinding key of the coin
    * @param h_blind_ev blinded envelope, as calculated by the exchange
    * @param amount total amount to be paid back
@@ -2735,16 +2735,16 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction result status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_payback_refresh_request)(void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
-                                    const struct TALER_CoinPublicInfo *coin,
-                                    const struct
-                                    TALER_CoinSpendSignatureP *coin_sig,
-                                    const struct
-                                    TALER_DenominationBlindingKeyP *coin_blind,
-                                    const struct TALER_Amount *amount,
-                                    const struct GNUNET_HashCode *h_blind_ev,
-                                    struct GNUNET_TIME_Absolute timestamp);
+  (*insert_recoup_refresh_request)(void *cls,
+                                   struct TALER_EXCHANGEDB_Session *session,
+                                   const struct TALER_CoinPublicInfo *coin,
+                                   const struct
+                                   TALER_CoinSpendSignatureP *coin_sig,
+                                   const struct
+                                   TALER_DenominationBlindingKeyP *coin_blind,
+                                   const struct TALER_Amount *amount,
+                                   const struct GNUNET_HashCode *h_blind_ev,
+                                   struct GNUNET_TIME_Absolute timestamp);
 
 
   /**

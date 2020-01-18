@@ -263,14 +263,14 @@ refund_transaction (void *cls,
         }
       }
       break;
-    case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
-      /* Paybacks cannot be refunded, ignore here */
+    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
+      /* Recoups cannot be refunded, ignore here */
       break;
-    case TALER_EXCHANGEDB_TT_PAYBACK:
-      /* Paybacks cannot be refunded, ignore here */
+    case TALER_EXCHANGEDB_TT_RECOUP:
+      /* Recoups cannot be refunded, ignore here */
       break;
-    case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
-      /* Paybacks cannot be refunded, ignore here */
+    case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
+      /* Recoups cannot be refunded, ignore here */
       break;
     }
   }

@@ -110,14 +110,14 @@ enum TEH_KS_DenominationKeyUse
   TEH_KS_DKU_DEPOSIT,
 
   /**
-   * The key is to be used for a /payback operation.
+   * The key is to be used for a /recoup operation.
    */
-  TEH_KS_DKU_PAYBACK,
+  TEH_KS_DKU_RECOUP,
 
   /**
-   * The key is to be used for a /refresh/payback operation,
+   * The key is to be used for a /refresh/recoup operation,
    * i.e. it is an old coin that regained value from a
-   * payback on a new coin derived from the old coin.
+   * recoup on a new coin derived from the old coin.
    */
   TEH_KS_DKU_ZOMBIE
 

@@ -382,12 +382,12 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  struct TALER_TESTING_Command payback[] = {
+  struct TALER_TESTING_Command recoup[] = {
     /**
      * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
      * config.
      */
-    CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-1",
+    CMD_TRANSFER_TO_EXCHANGE ("recoup-create-reserve-1",
                               "EUR:5.01"),
     /**
      * Run wire-watch to trigger the reserve creation.
@@ -396,24 +396,24 @@ run (void *cls,
     /**
      * Withdraw a 5 EUR coin, at fee of 1 ct
      */
-    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-1",
-                                       "payback-create-reserve-1",
+    TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-1",
+                                       "recoup-create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_revoke ("revoke-1",
                               MHD_HTTP_OK,
-                              "payback-withdraw-coin-1",
+                              "recoup-withdraw-coin-1",
                               CONFIG_FILE),
-    TALER_TESTING_cmd_payback ("payback-1",
-                               MHD_HTTP_OK,
-                               "payback-withdraw-coin-1",
-                               "EUR:5",
-                               NULL),
+    TALER_TESTING_cmd_recoup ("recoup-1",
+                              MHD_HTTP_OK,
+                              "recoup-withdraw-coin-1",
+                              "EUR:5",
+                              NULL),
     /**
      * Re-withdraw from this reserve
      */
-    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2",
-                                       "payback-create-reserve-1",
+    TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2",
+                                       "recoup-create-reserve-1",
                                        "EUR:1",
                                        MHD_HTTP_OK),
     /**
@@ -432,7 +432,7 @@ run (void *cls,
      * then have the rest paid back.  Check deposit of other coin
      * fails.  (Do not use EUR:5 here as the EUR:5 coin was
      * revoked and we did not bother to create a new one...)
-     */CMD_TRANSFER_TO_EXCHANGE ("payback-create-reserve-2",
+     */CMD_TRANSFER_TO_EXCHANGE ("recoup-create-reserve-2",
                               "EUR:2.02"),
     /**
      * Make previous command effective.
@@ -441,19 +441,19 @@ run (void *cls,
     /**
      * Withdraw a 1 EUR coin, at fee of 1 ct
      */
-    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2a",
-                                       "payback-create-reserve-2",
+    TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2a",
+                                       "recoup-create-reserve-2",
                                        "EUR:1",
                                        MHD_HTTP_OK),
     /**
      * Withdraw a 1 EUR coin, at fee of 1 ct
      */
-    TALER_TESTING_cmd_withdraw_amount ("payback-withdraw-coin-2b",
-                                       "payback-create-reserve-2",
+    TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2b",
+                                       "recoup-create-reserve-2",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit ("payback-deposit-partial",
-                               "payback-withdraw-coin-2a",
+    TALER_TESTING_cmd_deposit ("recoup-deposit-partial",
+                               "recoup-withdraw-coin-2a",
                                0,
                                bc.user42_payto,
                                "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
@@ -462,13 +462,13 @@ run (void *cls,
                                MHD_HTTP_OK),
     TALER_TESTING_cmd_revoke ("revoke-2",
                               MHD_HTTP_OK,
-                              "payback-withdraw-coin-2a",
+                              "recoup-withdraw-coin-2a",
                               CONFIG_FILE),
-    TALER_TESTING_cmd_payback ("payback-2",
-                               MHD_HTTP_OK,
-                               "payback-withdraw-coin-2a",
-                               "EUR:0.5",
-                               NULL),
+    TALER_TESTING_cmd_recoup ("recoup-2",
+                              MHD_HTTP_OK,
+                              "recoup-withdraw-coin-2a",
+                              "EUR:0.5",
+                              NULL),
     TALER_TESTING_cmd_end ()
   };
 
@@ -647,8 +647,8 @@ run (void *cls,
                              unaggregation),
     TALER_TESTING_cmd_batch ("refund",
                              refund),
-    TALER_TESTING_cmd_batch ("payback",
-                             payback),
+    TALER_TESTING_cmd_batch ("recoup",
+                             recoup),
     CMD_RUN_AUDITOR ("normal-auditor"),
     CMD_RUN_WIRE_AUDITOR ("normal-wire-auditor"),
     TALER_TESTING_cmd_end ()

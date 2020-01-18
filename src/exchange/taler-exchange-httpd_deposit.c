@@ -182,7 +182,7 @@ deposit_transaction (void *cls,
 
   /* Start with fee for THIS transaction */
   spent = deposit->amount_with_fee;
-  /* add cost of all previous transactions; skip PAYBACK as revoked
+  /* add cost of all previous transactions; skip RECOUP as revoked
      denominations are not eligible for deposit, and if we are the old coin
      pub of a revoked coin (aka a zombie), then ONLY refresh is allowed. */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,

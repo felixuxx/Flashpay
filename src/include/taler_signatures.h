@@ -115,9 +115,9 @@
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND 1038
 
 /**
- * Signature where the Exchange confirms a payback.
+ * Signature where the Exchange confirms a recoup.
  */
-#define TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK 1039
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP 1039
 
 /**
  * Signature where the Exchange confirms it closed a reserve.
@@ -125,9 +125,9 @@
 #define TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED 1040
 
 /**
- * Signature where the Exchange confirms a payback-refresh operation.
+ * Signature where the Exchange confirms a recoup-refresh operation.
  */
-#define TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH 1041
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH 1041
 
 
 /**********************/
@@ -205,9 +205,9 @@
 #define TALER_SIGNATURE_WALLET_COIN_MELT 1202
 
 /**
- * Signature using a coin key requesting payback.
+ * Signature using a coin key requesting recoup.
  */
-#define TALER_SIGNATURE_WALLET_COIN_PAYBACK 1203
+#define TALER_SIGNATURE_WALLET_COIN_RECOUP 1203
 
 /**
  * Signature using a coin key authenticating link data.
@@ -1223,13 +1223,13 @@ struct TALER_ConfirmWirePS
 
 /**
  * Signed data to request that a coin should be refunded as part of
- * the "emergency" /payback protocol.  The refund will go back to the bank
+ * the "emergency" /recoup protocol.  The refund will go back to the bank
  * account that created the reserve.
  */
-struct TALER_PaybackRequestPS
+struct TALER_RecoupRequestPS
 {
   /**
-   * Purpose is #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+   * Purpose is #TALER_SIGNATURE_WALLET_COIN_RECOUP
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -1252,20 +1252,20 @@ struct TALER_PaybackRequestPS
 
 /**
  * Response by which the exchange affirms that it will
- * refund a coin as part of the emergency /payback
- * protocol.  The payback will go back to the bank
+ * refund a coin as part of the emergency /recoup
+ * protocol.  The recoup will go back to the bank
  * account that created the reserve.
  */
-struct TALER_PaybackConfirmationPS
+struct TALER_RecoupConfirmationPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * When did the exchange receive the payback request?
+   * When did the exchange receive the recoup request?
    * Indirectly determines when the wire transfer is (likely)
    * to happen.
    */
@@ -1275,7 +1275,7 @@ struct TALER_PaybackConfirmationPS
    * How much of the coin's value will the exchange transfer?
    * (Needed in case the coin was partially spent.)
    */
-  struct TALER_AmountNBO payback_amount;
+  struct TALER_AmountNBO recoup_amount;
 
   /**
    * Public key of the coin.
@@ -1283,7 +1283,7 @@ struct TALER_PaybackConfirmationPS
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Public key of the reserve that will receive the payback.
+   * Public key of the reserve that will receive the recoup.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 };
@@ -1291,19 +1291,19 @@ struct TALER_PaybackConfirmationPS
 
 /**
  * Response by which the exchange affirms that it will refund a refreshed coin
- * as part of the emergency /payback protocol.  The payback will go back to the
+ * as part of the emergency /recoup protocol.  The recoup will go back to the
  * old coin's balance.
  */
-struct TALER_PaybackRefreshConfirmationPS
+struct TALER_RecoupRefreshConfirmationPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * When did the exchange receive the payback request?
+   * When did the exchange receive the recoup request?
    * Indirectly determines when the wire transfer is (likely)
    * to happen.
    */
@@ -1313,7 +1313,7 @@ struct TALER_PaybackRefreshConfirmationPS
    * How much of the coin's value will the exchange transfer?
    * (Needed in case the coin was partially spent.)
    */
-  struct TALER_AmountNBO payback_amount;
+  struct TALER_AmountNBO recoup_amount;
 
   /**
    * Public key of the refreshed coin.
@@ -1321,7 +1321,7 @@ struct TALER_PaybackRefreshConfirmationPS
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Public key of the old coin that will receive the payback.
+   * Public key of the old coin that will receive the recoup.
    */
   struct TALER_CoinSpendPublicKeyP old_coin_pub;
 };
@@ -1355,7 +1355,7 @@ struct TALER_ReserveCloseConfirmationPS
   struct TALER_AmountNBO closing_fee;
 
   /**
-   * Public key of the reserve that received the payback.
+   * Public key of the reserve that received the recoup.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 

@@ -93,34 +93,34 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (struct
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK:
+    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
       /* refunded += pos->value */
       if (GNUNET_OK !=
           TALER_amount_add (&refunded,
                             &refunded,
-                            &pos->details.old_coin_payback->value))
+                            &pos->details.old_coin_recoup->value))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_EXCHANGEDB_TT_PAYBACK:
+    case TALER_EXCHANGEDB_TT_RECOUP:
       /* spent += pos->value */
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
-                            &pos->details.payback->value))
+                            &pos->details.recoup->value))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_EXCHANGEDB_TT_PAYBACK_REFRESH:
+    case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
       /* spent += pos->value */
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
-                            &pos->details.payback_refresh->value))
+                            &pos->details.recoup_refresh->value))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;

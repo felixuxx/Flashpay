@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_payback.c
- * @brief Handle /payback requests; parses the POST and JSON and
+ * @file taler-exchange-httpd_recoup.c
+ * @brief Handle /recoup requests; parses the POST and JSON and
  *        verifies the coin signature before handing things off
  *        to the database.
  * @author Christian Grothoff
@@ -28,38 +28,38 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_payback.h"
+#include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_validation.h"
 
 
 /**
- * A wallet asked for /payback, return the successful response.
+ * A wallet asked for /recoup, return the successful response.
  *
  * @param connection connection to the client
- * @param coin_pub coin for which we are processing the payback request
- * @param old_coin_pub public key of the old coin that will receive the payback
+ * @param coin_pub coin for which we are processing the recoup request
+ * @param old_coin_pub public key of the old coin that will receive the recoup
  * @param amount the amount we will wire back
- * @param timestamp when did the exchange receive the /payback request
+ * @param timestamp when did the exchange receive the /recoup request
  * @return MHD result code
  */
 static int
-reply_payback_refresh_success (struct MHD_Connection *connection,
-                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                               const struct
-                               TALER_CoinSpendPublicKeyP *old_coin_pub,
-                               const struct TALER_Amount *amount,
-                               struct GNUNET_TIME_Absolute timestamp)
+reply_recoup_refresh_success (struct MHD_Connection *connection,
+                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                              const struct
+                              TALER_CoinSpendPublicKeyP *old_coin_pub,
+                              const struct TALER_Amount *amount,
+                              struct GNUNET_TIME_Absolute timestamp)
 {
-  struct TALER_PaybackRefreshConfirmationPS pc;
+  struct TALER_RecoupRefreshConfirmationPS pc;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
 
-  pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK_REFRESH);
-  pc.purpose.size = htonl (sizeof (struct TALER_PaybackRefreshConfirmationPS));
+  pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
+  pc.purpose.size = htonl (sizeof (struct TALER_RecoupRefreshConfirmationPS));
   pc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  TALER_amount_hton (&pc.payback_amount,
+  TALER_amount_hton (&pc.recoup_amount,
                      amount);
   pc.coin_pub = *coin_pub;
   pc.old_coin_pub = *old_coin_pub;
@@ -91,30 +91,30 @@ reply_payback_refresh_success (struct MHD_Connection *connection,
 
 
 /**
- * A wallet asked for /payback, return the successful response.
+ * A wallet asked for /recoup, return the successful response.
  *
  * @param connection connection to the client
- * @param coin_pub coin for which we are processing the payback request
- * @param reserve_pub public key of the reserve that will receive the payback
+ * @param coin_pub coin for which we are processing the recoup request
+ * @param reserve_pub public key of the reserve that will receive the recoup
  * @param amount the amount we will wire back
- * @param timestamp when did the exchange receive the /payback request
+ * @param timestamp when did the exchange receive the /recoup request
  * @return MHD result code
  */
 static int
-reply_payback_success (struct MHD_Connection *connection,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct TALER_ReservePublicKeyP *reserve_pub,
-                       const struct TALER_Amount *amount,
-                       struct GNUNET_TIME_Absolute timestamp)
+reply_recoup_success (struct MHD_Connection *connection,
+                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                      const struct TALER_ReservePublicKeyP *reserve_pub,
+                      const struct TALER_Amount *amount,
+                      struct GNUNET_TIME_Absolute timestamp)
 {
-  struct TALER_PaybackConfirmationPS pc;
+  struct TALER_RecoupConfirmationPS pc;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
 
-  pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
-  pc.purpose.size = htonl (sizeof (struct TALER_PaybackConfirmationPS));
+  pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
+  pc.purpose.size = htonl (sizeof (struct TALER_RecoupConfirmationPS));
   pc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  TALER_amount_hton (&pc.payback_amount,
+  TALER_amount_hton (&pc.recoup_amount,
                      amount);
   pc.coin_pub = *coin_pub;
   pc.reserve_pub = *reserve_pub;
@@ -145,9 +145,9 @@ reply_payback_success (struct MHD_Connection *connection,
 
 
 /**
- * Closure for #payback_transaction.
+ * Closure for #recoup_transaction.
  */
-struct PaybackContext
+struct RecoupContext
 {
   /**
    * Hash of the blinded coin.
@@ -170,32 +170,32 @@ struct PaybackContext
   const struct TALER_DenominationBlindingKeyP *coin_bks;
 
   /**
-   * Signature of the coin requesting payback.
+   * Signature of the coin requesting recoup.
    */
   const struct TALER_CoinSpendSignatureP *coin_sig;
 
   union
   {
     /**
-     * Set by #payback_transaction() to the reserve that will
-     * receive the payback, if #refreshed is #GNUNET_NO.
+     * Set by #recoup_transaction() to the reserve that will
+     * receive the recoup, if #refreshed is #GNUNET_NO.
      */
     struct TALER_ReservePublicKeyP reserve_pub;
 
     /**
-     * Set by #payback_transaction() to the old coin that will
-     * receive the payback, if #refreshed is #GNUNET_YES.
+     * Set by #recoup_transaction() to the old coin that will
+     * receive the recoup, if #refreshed is #GNUNET_YES.
      */
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
   } target;
 
   /**
-   * Set by #payback_transaction() to the amount that will be paid back
+   * Set by #recoup_transaction() to the amount that will be paid back
    */
   struct TALER_Amount amount;
 
   /**
-   * Set by #payback_transaction to the timestamp when the payback
+   * Set by #recoup_transaction to the timestamp when the recoup
    * was accepted.
    */
   struct GNUNET_TIME_Absolute now;
@@ -209,7 +209,7 @@ struct PaybackContext
 
 
 /**
- * Execute a "/payback".  The validity of the coin and signature have
+ * Execute a "/recoup".  The validity of the coin and signature have
  * already been checked.  The database must now check that the coin is
  * not (double) spent, and execute the transaction.
  *
@@ -219,7 +219,7 @@ struct PaybackContext
  * it returns the soft error code, the function MAY be called again to
  * retry and MUST not queue a MHD response.
  *
- * @param cls the `struct PaybackContext *`
+ * @param cls the `struct RecoupContext *`
  * @param connection MHD request which triggered the transaction
  * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
@@ -227,17 +227,17 @@ struct PaybackContext
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-payback_transaction (void *cls,
-                     struct MHD_Connection *connection,
-                     struct TALER_EXCHANGEDB_Session *session,
-                     int *mhd_ret)
+recoup_transaction (void *cls,
+                    struct MHD_Connection *connection,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    int *mhd_ret)
 {
-  struct PaybackContext *pc = cls;
+  struct RecoupContext *pc = cls;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Check whether a payback is allowed, and if so, to which
+  /* Check whether a recoup is allowed, and if so, to which
      reserve / account the money should go */
   if (pc->refreshed)
   {
@@ -252,7 +252,7 @@ payback_transaction (void *cls,
         GNUNET_break (0);
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_PAYBACK_DB_FETCH_FAILED,
+                                               TALER_EC_RECOUP_DB_FETCH_FAILED,
                                                "failed to fetch old coin of blind coin");
       }
       return qs;
@@ -271,7 +271,7 @@ payback_transaction (void *cls,
         GNUNET_break (0);
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_PAYBACK_DB_FETCH_FAILED,
+                                               TALER_EC_RECOUP_DB_FETCH_FAILED,
                                                "failed to fetch reserve of blinded coin");
       }
       return qs;
@@ -280,16 +280,16 @@ payback_transaction (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Payback requested for unknown envelope %s\n",
+                "Recoup requested for unknown envelope %s\n",
                 GNUNET_h2s (&pc->h_blind));
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND,
+                                           TALER_EC_RECOUP_WITHDRAW_NOT_FOUND,
                                            "blind coin unknown");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* Calculate remaining balance, including paybacks already applied. */
+  /* Calculate remaining balance, including recoups already applied. */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
                                           &pc->coin->coin_pub,
@@ -302,7 +302,7 @@ payback_transaction (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_PAYBACK_DB_FETCH_FAILED,
+                                             TALER_EC_RECOUP_DB_FETCH_FAILED,
                                              "failed to fetch old coin transaction history");
     }
     return qs;
@@ -321,7 +321,7 @@ payback_transaction (void *cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_PAYBACK_HISTORY_DB_ERROR,
+                                           TALER_EC_RECOUP_HISTORY_DB_ERROR,
                                            "failed to calculate old coin transaction history");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -335,7 +335,7 @@ payback_transaction (void *cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE,
+                                           TALER_EC_RECOUP_COIN_BALANCE_NEGATIVE,
                                            "calculated negative old coin balance");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -345,7 +345,7 @@ payback_transaction (void *cls,
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-                                                           TALER_EC_PAYBACK_COIN_BALANCE_ZERO,
+                                                           TALER_EC_RECOUP_COIN_BALANCE_ZERO,
                                                            &pc->coin->coin_pub,
                                                            tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
@@ -357,39 +357,39 @@ payback_transaction (void *cls,
   pc->now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&pc->now);
 
-  /* add coin to list of wire transfers for payback */
+  /* add coin to list of wire transfers for recoup */
   if (pc->refreshed)
   {
-    qs = TEH_plugin->insert_payback_refresh_request (TEH_plugin->cls,
-                                                     session,
-                                                     pc->coin,
-                                                     pc->coin_sig,
-                                                     pc->coin_bks,
-                                                     &pc->amount,
-                                                     &pc->h_blind,
-                                                     pc->now);
+    qs = TEH_plugin->insert_recoup_refresh_request (TEH_plugin->cls,
+                                                    session,
+                                                    pc->coin,
+                                                    pc->coin_sig,
+                                                    pc->coin_bks,
+                                                    &pc->amount,
+                                                    &pc->h_blind,
+                                                    pc->now);
   }
   else
   {
-    qs = TEH_plugin->insert_payback_request (TEH_plugin->cls,
-                                             session,
-                                             &pc->target.reserve_pub,
-                                             pc->coin,
-                                             pc->coin_sig,
-                                             pc->coin_bks,
-                                             &pc->amount,
-                                             &pc->h_blind,
-                                             pc->now);
+    qs = TEH_plugin->insert_recoup_request (TEH_plugin->cls,
+                                            session,
+                                            &pc->target.reserve_pub,
+                                            pc->coin,
+                                            pc->coin_sig,
+                                            pc->coin_bks,
+                                            &pc->amount,
+                                            &pc->h_blind,
+                                            pc->now);
   }
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
-      TALER_LOG_WARNING ("Failed to store /payback information in database\n");
+      TALER_LOG_WARNING ("Failed to store /recoup information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_PAYBACK_DB_PUT_FAILED,
-                                             "failed to persist payback data");
+                                             TALER_EC_RECOUP_DB_PUT_FAILED,
+                                             "failed to persist recoup data");
     }
     return qs;
   }
@@ -398,9 +398,9 @@ payback_transaction (void *cls,
 
 
 /**
- * We have parsed the JSON information about the payback request. Do
+ * We have parsed the JSON information about the recoup request. Do
  * some basic sanity checks (especially that the signature on the
- * request and coin is valid) and then execute the payback operation.
+ * request and coin is valid) and then execute the recoup operation.
  * Note that we need the DB to check the fee structure, so this is not
  * done here.
  *
@@ -412,23 +412,23 @@ payback_transaction (void *cls,
  * @return MHD result code
  */
 static int
-verify_and_execute_payback (struct MHD_Connection *connection,
-                            const struct TALER_CoinPublicInfo *coin,
-                            const struct
-                            TALER_DenominationBlindingKeyP *coin_bks,
-                            const struct TALER_CoinSpendSignatureP *coin_sig,
-                            int refreshed)
+verify_and_execute_recoup (struct MHD_Connection *connection,
+                           const struct TALER_CoinPublicInfo *coin,
+                           const struct
+                           TALER_DenominationBlindingKeyP *coin_bks,
+                           const struct TALER_CoinSpendSignatureP *coin_sig,
+                           int refreshed)
 {
-  struct PaybackContext pc;
+  struct RecoupContext pc;
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TALER_PaybackRequestPS pr;
+  struct TALER_RecoupRequestPS pr;
   struct GNUNET_HashCode c_hash;
   char *coin_ev;
   size_t coin_ev_size;
   enum TALER_ErrorCode ec;
   unsigned int hc;
 
-  /* check denomination exists and is in payback mode */
+  /* check denomination exists and is in recoup mode */
   {
     struct TEH_KS_StateHandle *key_state;
 
@@ -443,18 +443,18 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     }
     dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
                                                   &coin->denom_pub_hash,
-                                                  TEH_KS_DKU_PAYBACK,
+                                                  TEH_KS_DKU_RECOUP,
                                                   &ec,
                                                   &hc);
     if (NULL == dki)
     {
       TEH_KS_release (key_state);
       TALER_LOG_WARNING (
-        "Denomination key in /payback request not in payback mode\n");
+        "Denomination key in /recoup request not in recoup mode\n");
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "denomination not allowing payback");
+                                         "denomination not allowing recoup");
     }
     TALER_amount_ntoh (&pc.value,
                        &dki->issue.properties.value);
@@ -464,32 +464,32 @@ verify_and_execute_payback (struct MHD_Connection *connection,
         TALER_test_coin_valid (coin,
                                &dki->denom_pub))
     {
-      TALER_LOG_WARNING ("Invalid coin passed for /payback\n");
+      TALER_LOG_WARNING ("Invalid coin passed for /recoup\n");
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID,
+                                         TALER_EC_RECOUP_DENOMINATION_SIGNATURE_INVALID,
                                          "denom_sig");
     }
 
-    /* check payback request signature */
-    pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
-    pr.purpose.size = htonl (sizeof (struct TALER_PaybackRequestPS));
+    /* check recoup request signature */
+    pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP);
+    pr.purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS));
     pr.coin_pub = coin->coin_pub;
     pr.h_denom_pub = dki->issue.properties.denom_hash;
     pr.coin_blind = *coin_bks;
 
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
                                     &pr.purpose,
                                     &coin_sig->eddsa_signature,
                                     &coin->coin_pub.eddsa_pub))
     {
-      TALER_LOG_WARNING ("Invalid signature on /payback request\n");
+      TALER_LOG_WARNING ("Invalid signature on /recoup request\n");
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_PAYBACK_SIGNATURE_INVALID,
+                                         TALER_EC_RECOUP_SIGNATURE_INVALID,
                                          "coin_sig");
     }
     GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
@@ -506,7 +506,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_PAYBACK_BLINDING_FAILED,
+                                         TALER_EC_RECOUP_BLINDING_FAILED,
                                          "coin_bks");
     }
     TEH_KS_release (key_state);
@@ -525,7 +525,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
     kcc.connection = connection;
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
-                                "know coin for payback",
+                                "know coin for recoup",
                                 &mhd_ret,
                                 &TEH_DB_know_coin_transaction,
                                 &kcc))
@@ -541,29 +541,29 @@ verify_and_execute_payback (struct MHD_Connection *connection,
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
-                                "run payback",
+                                "run recoup",
                                 &mhd_ret,
-                                &payback_transaction,
+                                &recoup_transaction,
                                 &pc))
       return mhd_ret;
   }
   return (refreshed)
-         ? reply_payback_refresh_success (connection,
-                                          &coin->coin_pub,
-                                          &pc.target.old_coin_pub,
-                                          &pc.amount,
-                                          pc.now)
-         : reply_payback_success (connection,
-                                  &coin->coin_pub,
-                                  &pc.target.reserve_pub,
-                                  &pc.amount,
-                                  pc.now);
+         ? reply_recoup_refresh_success (connection,
+                                         &coin->coin_pub,
+                                         &pc.target.old_coin_pub,
+                                         &pc.amount,
+                                         pc.now)
+         : reply_recoup_success (connection,
+                                 &coin->coin_pub,
+                                 &pc.target.reserve_pub,
+                                 &pc.amount,
+                                 pc.now);
 }
 
 
 /**
- * Handle a "/payback" request.  Parses the JSON, and, if successful,
- * passes the JSON data to #verify_and_execute_payback() to
+ * Handle a "/recoup" request.  Parses the JSON, and, if successful,
+ * passes the JSON data to #verify_and_execute_recoup() to
  * further check the details of the operation specified.  If
  * everything checks out, this will ultimately lead to the "/refund"
  * being executed, or rejected.
@@ -576,11 +576,11 @@ verify_and_execute_payback (struct MHD_Connection *connection,
  * @return MHD result code
   */
 int
-TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
-                             struct MHD_Connection *connection,
-                             void **connection_cls,
-                             const char *upload_data,
-                             size_t *upload_data_size)
+TEH_RECOUP_handler_recoup (struct TEH_RequestHandler *rh,
+                           struct MHD_Connection *connection,
+                           void **connection_cls,
+                           const char *upload_data,
+                           size_t *upload_data_size)
 {
   json_t *json;
   int res;
@@ -623,14 +623,14 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
-  res = verify_and_execute_payback (connection,
-                                    &coin,
-                                    &coin_bks,
-                                    &coin_sig,
-                                    refreshed);
+  res = verify_and_execute_recoup (connection,
+                                   &coin,
+                                   &coin_bks,
+                                   &coin_sig,
+                                   refreshed);
   GNUNET_JSON_parse_free (spec);
   return res;
 }
 
 
-/* end of taler-exchange-httpd_payback.c */
+/* end of taler-exchange-httpd_recoup.c */

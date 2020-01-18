@@ -277,9 +277,9 @@ TALER_EXCHANGE_verify_coin_history (const struct
       add = GNUNET_NO;
     }
     else if (0 == strcasecmp (type,
-                              "PAYBACK"))
+                              "RECOUP"))
     {
-      struct TALER_PaybackConfirmationPS pc;
+      struct TALER_RecoupConfirmationPS pc;
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct GNUNET_JSON_Specification spec[] = {
@@ -303,12 +303,12 @@ TALER_EXCHANGE_verify_coin_history (const struct
         return GNUNET_SYSERR;
       }
       pc.purpose.size = htonl (sizeof (pc));
-      pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
+      pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
       pc.coin_pub = *coin_pub;
-      TALER_amount_hton (&pc.payback_amount,
+      TALER_amount_hton (&pc.recoup_amount,
                          &amount);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK,
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
                                       &pc.purpose,
                                       &exchange_sig.eddsa_signature,
                                       &exchange_pub.eddsa_pub))

@@ -284,59 +284,59 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       /* end type==WITHDRAW */
     }
     else if (0 == strcasecmp (type,
-                              "PAYBACK"))
+                              "RECOUP"))
     {
-      struct TALER_PaybackConfirmationPS pc;
+      struct TALER_RecoupConfirmationPS pc;
       struct GNUNET_TIME_Absolute timestamp;
       const struct TALER_EXCHANGE_Keys *key_state;
-      struct GNUNET_JSON_Specification payback_spec[] = {
+      struct GNUNET_JSON_Specification recoup_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_pub",
                                      &pc.coin_pub),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &rhistory[off].details.payback_details.
+                                     &rhistory[off].details.recoup_details.
                                      exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &rhistory[off].details.payback_details.
+                                     &rhistory[off].details.recoup_details.
                                      exchange_pub),
         GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
                                             &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
-      rhistory[off].type = TALER_EXCHANGE_RTT_PAYBACK;
+      rhistory[off].type = TALER_EXCHANGE_RTT_RECOUP;
       rhistory[off].amount = amount;
       if (GNUNET_OK !=
           GNUNET_JSON_parse (transaction,
-                             payback_spec,
+                             recoup_spec,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      rhistory[off].details.payback_details.coin_pub = pc.coin_pub;
-      TALER_amount_hton (&pc.payback_amount,
+      rhistory[off].details.recoup_details.coin_pub = pc.coin_pub;
+      TALER_amount_hton (&pc.recoup_amount,
                          &amount);
       pc.purpose.size = htonl (sizeof (pc));
-      pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
+      pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
       pc.reserve_pub = *reserve_pub;
       timestamp = GNUNET_TIME_absolute_ntoh (pc.timestamp);
-      rhistory[off].details.payback_details.timestamp = timestamp;
+      rhistory[off].details.recoup_details.timestamp = timestamp;
 
       key_state = TALER_EXCHANGE_get_keys (exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
                                            &rhistory[off].details.
-                                           payback_details.exchange_pub))
+                                           recoup_details.exchange_pub))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK,
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
                                       &pc.purpose,
-                                      &rhistory[off].details.payback_details.
+                                      &rhistory[off].details.recoup_details.
                                       exchange_sig.eddsa_signature,
-                                      &rhistory[off].details.payback_details.
+                                      &rhistory[off].details.recoup_details.
                                       exchange_pub.eddsa_pub))
       {
         GNUNET_break_op (0);
@@ -351,7 +351,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      /* end type==PAYBACK */
+      /* end type==RECOUP */
     }
     else if (0 == strcasecmp (type,
                               "CLOSING"))
@@ -475,7 +475,7 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
       break;
     case TALER_EXCHANGE_RTT_WITHDRAWAL:
       break;
-    case TALER_EXCHANGE_RTT_PAYBACK:
+    case TALER_EXCHANGE_RTT_RECOUP:
       break;
     case TALER_EXCHANGE_RTT_CLOSE:
       // should we free "receiver_account_details" ?

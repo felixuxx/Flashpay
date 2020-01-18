@@ -56,7 +56,7 @@ struct TALER_TESTING_FreshCoinData
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * The blinding key (needed for payback operations).
+   * The blinding key (needed for recoup operations).
    */
   struct TALER_DenominationBlindingKeyP blinding_key;
 

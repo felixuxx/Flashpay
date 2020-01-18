@@ -50,7 +50,7 @@ GNUNET_NETWORK_STRUCT_END
 
 /**
  * Mark the given denomination key as revoked and request the wallets
- * to initiate /payback.
+ * to initiate /recoup.
  *
  * @param revocation_dir where to write the revocation certificate
  * @param denom_hash hash of the denomination key to revoke

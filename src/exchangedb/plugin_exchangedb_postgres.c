@@ -1134,10 +1134,10 @@ postgres_get_session (void *cls)
                               " WHERE wireout_uuid>=$1 AND exchange_account_section=$2"
                               " ORDER BY wireout_uuid ASC;",
                               2),
-      /* Used in #postgres_insert_payback_request() to store payback
+      /* Used in #postgres_insert_recoup_request() to store recoup
          information */
-      GNUNET_PQ_make_prepare ("payback_insert",
-                              "INSERT INTO payback "
+      GNUNET_PQ_make_prepare ("recoup_insert",
+                              "INSERT INTO recoup "
                               "(coin_pub"
                               ",coin_sig"
                               ",coin_blind"
@@ -1148,10 +1148,10 @@ postgres_get_session (void *cls)
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6, $7);",
                               7),
-      /* Used in #postgres_insert_payback_request() to store payback-refresh
+      /* Used in #postgres_insert_recoup_request() to store recoup-refresh
          information */
-      GNUNET_PQ_make_prepare ("payback_refresh_insert",
-                              "INSERT INTO payback_refresh "
+      GNUNET_PQ_make_prepare ("recoup_refresh_insert",
+                              "INSERT INTO recoup_refresh "
                               "(coin_pub"
                               ",coin_sig"
                               ",coin_blind"
@@ -1162,10 +1162,10 @@ postgres_get_session (void *cls)
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6, $7);",
                               7),
-      /* Used in #postgres_select_payback_above_serial_id() to obtain payback transactions */
-      GNUNET_PQ_make_prepare ("payback_get_incr",
+      /* Used in #postgres_select_recoup_above_serial_id() to obtain recoup transactions */
+      GNUNET_PQ_make_prepare ("recoup_get_incr",
                               "SELECT"
-                              " payback_uuid"
+                              " recoup_uuid"
                               ",timestamp"
                               ",ro.reserve_pub"
                               ",coin_pub"
@@ -1177,21 +1177,21 @@ postgres_get_session (void *cls)
                               ",coins.denom_sig"
                               ",amount_val"
                               ",amount_frac"
-                              " FROM payback"
+                              " FROM recoup"
                               "    JOIN known_coins coins"
                               "      USING (coin_pub)"
                               "    JOIN reserves_out ro"
                               "      USING (h_blind_ev)"
                               "    JOIN denominations denoms"
                               "      ON (coins.denom_pub_hash = denoms.denom_pub_hash)"
-                              " WHERE payback_uuid>=$1"
-                              " ORDER BY payback_uuid ASC;",
+                              " WHERE recoup_uuid>=$1"
+                              " ORDER BY recoup_uuid ASC;",
                               1),
-      /* Used in #postgres_select_payback_refresh_above_serial_id() to obtain
-         payback-refresh transactions */
-      GNUNET_PQ_make_prepare ("payback_refresh_get_incr",
+      /* Used in #postgres_select_recoup_refresh_above_serial_id() to obtain
+         recoup-refresh transactions */
+      GNUNET_PQ_make_prepare ("recoup_refresh_get_incr",
                               "SELECT"
-                              " payback_refresh_uuid"
+                              " recoup_refresh_uuid"
                               ",timestamp"
                               ",rc.old_coin_pub"
                               ",coin_pub"
@@ -1203,7 +1203,7 @@ postgres_get_session (void *cls)
                               ",coins.denom_sig"
                               ",amount_val"
                               ",amount_frac"
-                              " FROM payback_refresh"
+                              " FROM recoup_refresh"
                               "    JOIN refresh_revealed_coins rrc"
                               "      ON (rrc.coin_ev = h_blind_ev)"
                               "    JOIN refresh_commitments rc"
@@ -1212,8 +1212,8 @@ postgres_get_session (void *cls)
                               "      USING (coin_pub)"
                               "    JOIN denominations denoms"
                               "      ON (coins.denom_pub_hash = denoms.denom_pub_hash)"
-                              " WHERE payback_refresh_uuid>=$1"
-                              " ORDER BY payback_refresh_uuid ASC;",
+                              " WHERE recoup_refresh_uuid>=$1"
+                              " ORDER BY recoup_refresh_uuid ASC;",
                               1),
       /* Used in #postgres_select_reserve_closed_above_serial_id() to
          obtain information about closed reserves */
@@ -1232,9 +1232,9 @@ postgres_get_session (void *cls)
                               " WHERE close_uuid>=$1"
                               " ORDER BY close_uuid ASC;",
                               1),
-      /* Used in #postgres_get_reserve_history() to obtain payback transactions
+      /* Used in #postgres_get_reserve_history() to obtain recoup transactions
          for a reserve */
-      GNUNET_PQ_make_prepare ("payback_by_reserve",
+      GNUNET_PQ_make_prepare ("recoup_by_reserve",
                               "SELECT"
                               " coin_pub"
                               ",coin_sig"
@@ -1244,7 +1244,7 @@ postgres_get_session (void *cls)
                               ",timestamp"
                               ",coins.denom_pub_hash"
                               ",coins.denom_sig"
-                              " FROM payback"
+                              " FROM recoup"
                               "    JOIN known_coins coins"
                               "      USING (coin_pub)"
                               "    JOIN reserves_out ro"
@@ -1252,9 +1252,9 @@ postgres_get_session (void *cls)
                               " WHERE ro.reserve_pub=$1"
                               " FOR UPDATE;",
                               1),
-      /* Used in #postgres_get_coin_transactions() to obtain payback transactions
+      /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
          affecting old coins of refreshed coins */
-      GNUNET_PQ_make_prepare ("payback_by_old_coin",
+      GNUNET_PQ_make_prepare ("recoup_by_old_coin",
                               "SELECT"
                               " coin_pub"
                               ",coin_sig"
@@ -1264,8 +1264,8 @@ postgres_get_session (void *cls)
                               ",timestamp"
                               ",coins.denom_pub_hash"
                               ",coins.denom_sig"
-                              ",payback_refresh_uuid"
-                              " FROM payback_refresh"
+                              ",recoup_refresh_uuid"
+                              " FROM recoup_refresh"
                               "    JOIN known_coins coins"
                               "      USING (coin_pub)"
                               " WHERE h_blind_ev IN"
@@ -1305,9 +1305,9 @@ postgres_get_session (void *cls)
                               " ORDER BY expiration_date ASC"
                               " LIMIT 1;",
                               1),
-      /* Used in #postgres_get_coin_transactions() to obtain payback transactions
+      /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
          for a coin */
-      GNUNET_PQ_make_prepare ("payback_by_coin",
+      GNUNET_PQ_make_prepare ("recoup_by_coin",
                               "SELECT"
                               " ro.reserve_pub"
                               ",coin_sig"
@@ -1315,16 +1315,16 @@ postgres_get_session (void *cls)
                               ",amount_val"
                               ",amount_frac"
                               ",timestamp"
-                              ",payback_uuid"
-                              " FROM payback"
+                              ",recoup_uuid"
+                              " FROM recoup"
                               "    JOIN reserves_out ro"
                               "      USING (h_blind_ev)"
-                              " WHERE payback.coin_pub=$1"
+                              " WHERE recoup.coin_pub=$1"
                               " FOR UPDATE;",
                               1),
-      /* Used in #postgres_get_coin_transactions() to obtain payback transactions
+      /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
          for a refreshed coin */
-      GNUNET_PQ_make_prepare ("payback_by_refreshed_coin",
+      GNUNET_PQ_make_prepare ("recoup_by_refreshed_coin",
                               "SELECT"
                               " rc.old_coin_pub"
                               ",coin_sig"
@@ -1334,8 +1334,8 @@ postgres_get_session (void *cls)
                               ",timestamp"
                               ",coins.denom_pub_hash"
                               ",coins.denom_sig"
-                              ",payback_refresh_uuid"
-                              " FROM payback_refresh"
+                              ",recoup_refresh_uuid"
+                              " FROM recoup_refresh"
                               "    JOIN refresh_revealed_coins rrc"
                               "      ON (rrc.coin_ev = h_blind_ev)"
                               "    JOIN refresh_commitments rc"
@@ -2335,42 +2335,42 @@ add_withdraw_coin (void *cls,
 
 
 /**
- * Add paybacks to result set for #postgres_get_reserve_history.
+ * Add recoups to result set for #postgres_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
  * @param num_results number of rows in @a result
  */
 static void
-add_payback (void *cls,
-             PGresult *result,
-             unsigned int num_results)
+add_recoup (void *cls,
+            PGresult *result,
+            unsigned int num_results)
 {
   struct ReserveHistoryContext *rhc = cls;
   struct PostgresClosure *pg = rhc->pg;
 
   while (0 < num_results)
   {
-    struct TALER_EXCHANGEDB_Payback *payback;
+    struct TALER_EXCHANGEDB_Recoup *recoup;
     struct TALER_EXCHANGEDB_ReserveHistory *tail;
 
-    payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
+    recoup = GNUNET_new (struct TALER_EXCHANGEDB_Recoup);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                     &payback->value),
+                                     &recoup->value),
         GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                              &payback->coin.coin_pub),
+                                              &recoup->coin.coin_pub),
         GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
-                                              &payback->coin_blind),
+                                              &recoup->coin_blind),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                              &payback->coin_sig),
+                                              &recoup->coin_sig),
         TALER_PQ_result_spec_absolute_time ("timestamp",
-                                            &payback->timestamp),
+                                            &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                              &payback->coin.denom_pub_hash),
+                                              &recoup->coin.denom_pub_hash),
         GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &payback->coin.denom_sig.
+                                             &recoup->coin.denom_sig.
                                              rsa_signature),
         GNUNET_PQ_result_spec_end
       };
@@ -2381,15 +2381,15 @@ add_payback (void *cls,
                                     --num_results))
       {
         GNUNET_break (0);
-        GNUNET_free (payback);
+        GNUNET_free (recoup);
         rhc->status = GNUNET_SYSERR;
         return;
       }
     }
-    payback->reserve_pub = *rhc->reserve_pub;
+    recoup->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
-    tail->type = TALER_EXCHANGEDB_RO_PAYBACK_COIN;
-    tail->details.payback = payback;
+    tail->type = TALER_EXCHANGEDB_RO_RECOUP_COIN;
+    tail->details.recoup = recoup;
   }   /* end of 'while (0 < rows)' */
 }
 
@@ -2485,9 +2485,9 @@ postgres_get_reserve_history (void *cls,
     /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
     { "get_reserves_out",
       &add_withdraw_coin },
-    /** #TALER_EXCHANGEDB_RO_PAYBACK_COIN */
-    { "payback_by_reserve",
-      &add_payback },
+    /** #TALER_EXCHANGEDB_RO_RECOUP_COIN */
+    { "recoup_by_reserve",
+      &add_recoup },
     /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
     { "close_by_reserve",
       &add_exchange_to_bank },
@@ -4179,38 +4179,38 @@ add_coin_refund (void *cls,
  * @param num_results the number of results in @a result
  */
 static void
-add_old_coin_payback (void *cls,
-                      PGresult *result,
-                      unsigned int num_results)
+add_old_coin_recoup (void *cls,
+                     PGresult *result,
+                     unsigned int num_results)
 {
   struct CoinHistoryContext *chc = cls;
   struct PostgresClosure *pg = chc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_EXCHANGEDB_PaybackRefreshListEntry *payback;
+    struct TALER_EXCHANGEDB_RecoupRefreshListEntry *recoup;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    payback = GNUNET_new (struct TALER_EXCHANGEDB_PaybackRefreshListEntry);
+    recoup = GNUNET_new (struct TALER_EXCHANGEDB_RecoupRefreshListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                              &payback->coin.coin_pub),
+                                              &recoup->coin.coin_pub),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                              &payback->coin_sig),
+                                              &recoup->coin_sig),
         GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
-                                              &payback->coin_blind),
+                                              &recoup->coin_blind),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                     &payback->value),
+                                     &recoup->value),
         TALER_PQ_result_spec_absolute_time ("timestamp",
-                                            &payback->timestamp),
+                                            &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                              &payback->coin.denom_pub_hash),
+                                              &recoup->coin.denom_pub_hash),
         GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &payback->coin.denom_sig.
+                                             &recoup->coin.denom_sig.
                                              rsa_signature),
-        GNUNET_PQ_result_spec_uint64 ("payback_refresh_uuid",
+        GNUNET_PQ_result_spec_uint64 ("recoup_refresh_uuid",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
       };
@@ -4221,16 +4221,16 @@ add_old_coin_payback (void *cls,
                                     i))
       {
         GNUNET_break (0);
-        GNUNET_free (payback);
+        GNUNET_free (recoup);
         chc->status = GNUNET_DB_STATUS_HARD_ERROR;
         return;
       }
-      payback->old_coin_pub = *chc->coin_pub;
+      recoup->old_coin_pub = *chc->coin_pub;
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;
-    tl->type = TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK;
-    tl->details.old_coin_payback = payback;
+    tl->type = TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP;
+    tl->details.old_coin_recoup = recoup;
     tl->serial_id = serial_id;
     chc->head = tl;
   }
@@ -4246,33 +4246,33 @@ add_old_coin_payback (void *cls,
  * @param num_results the number of results in @a result
  */
 static void
-add_coin_payback (void *cls,
-                  PGresult *result,
-                  unsigned int num_results)
+add_coin_recoup (void *cls,
+                 PGresult *result,
+                 unsigned int num_results)
 {
   struct CoinHistoryContext *chc = cls;
   struct PostgresClosure *pg = chc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_EXCHANGEDB_PaybackListEntry *payback;
+    struct TALER_EXCHANGEDB_RecoupListEntry *recoup;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    payback = GNUNET_new (struct TALER_EXCHANGEDB_PaybackListEntry);
+    recoup = GNUNET_new (struct TALER_EXCHANGEDB_RecoupListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                              &payback->reserve_pub),
+                                              &recoup->reserve_pub),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                              &payback->coin_sig),
+                                              &recoup->coin_sig),
         GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
-                                              &payback->coin_blind),
+                                              &recoup->coin_blind),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                     &payback->value),
+                                     &recoup->value),
         TALER_PQ_result_spec_absolute_time ("timestamp",
-                                            &payback->timestamp),
-        GNUNET_PQ_result_spec_uint64 ("payback_uuid",
+                                            &recoup->timestamp),
+        GNUNET_PQ_result_spec_uint64 ("recoup_uuid",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
       };
@@ -4283,15 +4283,15 @@ add_coin_payback (void *cls,
                                     i))
       {
         GNUNET_break (0);
-        GNUNET_free (payback);
+        GNUNET_free (recoup);
         chc->status = GNUNET_DB_STATUS_HARD_ERROR;
         return;
       }
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;
-    tl->type = TALER_EXCHANGEDB_TT_PAYBACK;
-    tl->details.payback = payback;
+    tl->type = TALER_EXCHANGEDB_TT_RECOUP;
+    tl->details.recoup = recoup;
     tl->serial_id = serial_id;
     chc->head = tl;
   }
@@ -4307,38 +4307,38 @@ add_coin_payback (void *cls,
  * @param num_results the number of results in @a result
  */
 static void
-add_coin_payback_refresh (void *cls,
-                          PGresult *result,
-                          unsigned int num_results)
+add_coin_recoup_refresh (void *cls,
+                         PGresult *result,
+                         unsigned int num_results)
 {
   struct CoinHistoryContext *chc = cls;
   struct PostgresClosure *pg = chc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_EXCHANGEDB_PaybackRefreshListEntry *payback;
+    struct TALER_EXCHANGEDB_RecoupRefreshListEntry *recoup;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    payback = GNUNET_new (struct TALER_EXCHANGEDB_PaybackRefreshListEntry);
+    recoup = GNUNET_new (struct TALER_EXCHANGEDB_RecoupRefreshListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
-                                              &payback->old_coin_pub),
+                                              &recoup->old_coin_pub),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                              &payback->coin_sig),
+                                              &recoup->coin_sig),
         GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
-                                              &payback->coin_blind),
+                                              &recoup->coin_blind),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                     &payback->value),
+                                     &recoup->value),
         TALER_PQ_result_spec_absolute_time ("timestamp",
-                                            &payback->timestamp),
+                                            &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                              &payback->coin.denom_pub_hash),
+                                              &recoup->coin.denom_pub_hash),
         GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &payback->coin.denom_sig.
+                                             &recoup->coin.denom_sig.
                                              rsa_signature),
-        GNUNET_PQ_result_spec_uint64 ("payback_refresh_uuid",
+        GNUNET_PQ_result_spec_uint64 ("recoup_refresh_uuid",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
       };
@@ -4349,16 +4349,16 @@ add_coin_payback_refresh (void *cls,
                                     i))
       {
         GNUNET_break (0);
-        GNUNET_free (payback);
+        GNUNET_free (recoup);
         chc->status = GNUNET_DB_STATUS_HARD_ERROR;
         return;
       }
-      payback->coin.coin_pub = *chc->coin_pub;
+      recoup->coin.coin_pub = *chc->coin_pub;
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;
-    tl->type = TALER_EXCHANGEDB_TT_PAYBACK_REFRESH;
-    tl->details.payback_refresh = payback;
+    tl->type = TALER_EXCHANGEDB_TT_RECOUP_REFRESH;
+    tl->details.recoup_refresh = recoup;
     tl->serial_id = serial_id;
     chc->head = tl;
   }
@@ -4384,12 +4384,12 @@ struct Work
 
 /**
  * Compile a list of all (historic) transactions performed with the given coin
- * (/refresh/melt, /deposit, /refund and /payback operations).
+ * (/refresh/melt, /deposit, /refund and /recoup operations).
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param coin_pub coin to investigate
- * @param include_payback should payback transactions be included in the @a tlp
+ * @param include_recoup should recoup transactions be included in the @a tlp
  * @param[out] tlp set to list of transactions, NULL if coin is fresh
  * @return database transaction status
  */
@@ -4398,7 +4398,7 @@ postgres_get_coin_transactions (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
                                 const struct
                                 TALER_CoinSpendPublicKeyP *coin_pub,
-                                int include_payback,
+                                int include_recoup,
                                 struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
   struct PostgresClosure *pg = cls;
@@ -4424,15 +4424,15 @@ postgres_get_coin_transactions (void *cls,
     /** #TALER_EXCHANGEDB_TT_REFUND */
     { "get_refunds_by_coin",
       &add_coin_refund },
-    /** #TALER_EXCHANGEDB_TT_OLD_COIN_PAYBACK */
-    { "payback_by_old_coin",
-      &add_old_coin_payback },
-    /** #TALER_EXCHANGEDB_TT_PAYBACK */
-    { "payback_by_coin",
-      &add_coin_payback },
-    /** #TALER_EXCHANGEDB_TT_PAYBACK_REFRESH */
-    { "payback_by_refreshed_coin",
-      &add_coin_payback_refresh },
+    /** #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP */
+    { "recoup_by_old_coin",
+      &add_old_coin_recoup },
+    /** #TALER_EXCHANGEDB_TT_RECOUP */
+    { "recoup_by_coin",
+      &add_coin_recoup },
+    /** #TALER_EXCHANGEDB_TT_RECOUP_REFRESH */
+    { "recoup_by_refreshed_coin",
+      &add_coin_recoup_refresh },
     { NULL, NULL }
   };
   struct CoinHistoryContext chc;
@@ -4443,7 +4443,7 @@ postgres_get_coin_transactions (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   const struct Work *work;
 
-  work = (GNUNET_YES == include_payback) ? work_wp : work_op;
+  work = (GNUNET_YES == include_recoup) ? work_wp : work_op;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting transactions for coin %s\n",
               TALER_B2S (coin_pub));
@@ -5367,7 +5367,7 @@ postgres_gc (void *cls)
                                                 params_ancient_time)) )
     ret = GNUNET_SYSERR;
   /* This one may fail due to foreign key constraints from
-     payback and reserves_out tables to known_coins; these
+     recoup and reserves_out tables to known_coins; these
      are NOT using 'ON DROP CASCADE' and might keep denomination
      keys alive for a bit longer, thus causing this statement
      to fail. */(void) GNUNET_PQ_eval_prepared_non_select (conn,
@@ -6312,15 +6312,15 @@ postgres_select_wire_out_above_serial_id_by_account (void *cls,
 
 
 /**
- * Closure for #payback_serial_helper_cb().
+ * Closure for #recoup_serial_helper_cb().
  */
-struct PaybackSerialContext
+struct RecoupSerialContext
 {
 
   /**
    * Callback to call.
    */
-  TALER_EXCHANGEDB_PaybackCallback cb;
+  TALER_EXCHANGEDB_RecoupCallback cb;
 
   /**
    * Closure for @e cb.
@@ -6343,16 +6343,16 @@ struct PaybackSerialContext
  * Helper function to be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
- * @param cls closure of type `struct PaybackSerialContext`
+ * @param cls closure of type `struct RecoupSerialContext`
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-payback_serial_helper_cb (void *cls,
-                          PGresult *result,
-                          unsigned int num_results)
+recoup_serial_helper_cb (void *cls,
+                         PGresult *result,
+                         unsigned int num_results)
 {
-  struct PaybackSerialContext *psc = cls;
+  struct RecoupSerialContext *psc = cls;
   struct PostgresClosure *pg = psc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
@@ -6367,7 +6367,7 @@ payback_serial_helper_cb (void *cls,
     struct GNUNET_HashCode h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("payback_uuid",
+      GNUNET_PQ_result_spec_uint64 ("recoup_uuid",
                                     &rowid),
       TALER_PQ_result_spec_absolute_time ("timestamp",
                                           &timestamp),
@@ -6419,7 +6419,7 @@ payback_serial_helper_cb (void *cls,
 
 
 /**
- * Function called to select payback requests the exchange
+ * Function called to select recoup requests the exchange
  * received, ordered by serial ID (monotonically increasing).
  *
  * @param cls closure
@@ -6430,19 +6430,19 @@ payback_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_payback_above_serial_id (void *cls,
-                                         struct TALER_EXCHANGEDB_Session *
-                                         session,
-                                         uint64_t serial_id,
-                                         TALER_EXCHANGEDB_PaybackCallback cb,
-                                         void *cb_cls)
+postgres_select_recoup_above_serial_id (void *cls,
+                                        struct TALER_EXCHANGEDB_Session *
+                                        session,
+                                        uint64_t serial_id,
+                                        TALER_EXCHANGEDB_RecoupCallback cb,
+                                        void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&serial_id),
     GNUNET_PQ_query_param_end
   };
-  struct PaybackSerialContext psc = {
+  struct RecoupSerialContext psc = {
     .cb = cb,
     .cb_cls = cb_cls,
     .pg = pg,
@@ -6451,9 +6451,9 @@ postgres_select_payback_above_serial_id (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-                                             "payback_get_incr",
+                                             "recoup_get_incr",
                                              params,
-                                             &payback_serial_helper_cb,
+                                             &recoup_serial_helper_cb,
                                              &psc);
   if (GNUNET_OK != psc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -6462,15 +6462,15 @@ postgres_select_payback_above_serial_id (void *cls,
 
 
 /**
- * Closure for #payback_refresh_serial_helper_cb().
+ * Closure for #recoup_refresh_serial_helper_cb().
  */
-struct PaybackRefreshSerialContext
+struct RecoupRefreshSerialContext
 {
 
   /**
    * Callback to call.
    */
-  TALER_EXCHANGEDB_PaybackRefreshCallback cb;
+  TALER_EXCHANGEDB_RecoupRefreshCallback cb;
 
   /**
    * Closure for @e cb.
@@ -6493,16 +6493,16 @@ struct PaybackRefreshSerialContext
  * Helper function to be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
- * @param cls closure of type `struct PaybackRefreshSerialContext`
+ * @param cls closure of type `struct RecoupRefreshSerialContext`
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-payback_refresh_serial_helper_cb (void *cls,
-                                  PGresult *result,
-                                  unsigned int num_results)
+recoup_refresh_serial_helper_cb (void *cls,
+                                 PGresult *result,
+                                 unsigned int num_results)
 {
-  struct PaybackRefreshSerialContext *psc = cls;
+  struct RecoupRefreshSerialContext *psc = cls;
   struct PostgresClosure *pg = psc->pg;
 
   for (unsigned int i = 0; i<num_results; i++)
@@ -6517,7 +6517,7 @@ payback_refresh_serial_helper_cb (void *cls,
     struct GNUNET_HashCode h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("payback_uuid",
+      GNUNET_PQ_result_spec_uint64 ("recoup_uuid",
                                     &rowid),
       TALER_PQ_result_spec_absolute_time ("timestamp",
                                           &timestamp),
@@ -6569,7 +6569,7 @@ payback_refresh_serial_helper_cb (void *cls,
 
 
 /**
- * Function called to select payback requests the exchange received for
+ * Function called to select recoup requests the exchange received for
  * refreshed coins, ordered by serial ID (monotonically increasing).
  *
  * @param cls closure
@@ -6580,20 +6580,20 @@ payback_refresh_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_payback_refresh_above_serial_id (void *cls,
-                                                 struct TALER_EXCHANGEDB_Session
-                                                 *session,
-                                                 uint64_t serial_id,
-                                                 TALER_EXCHANGEDB_PaybackRefreshCallback
-                                                 cb,
-                                                 void *cb_cls)
+postgres_select_recoup_refresh_above_serial_id (void *cls,
+                                                struct TALER_EXCHANGEDB_Session
+                                                *session,
+                                                uint64_t serial_id,
+                                                TALER_EXCHANGEDB_RecoupRefreshCallback
+                                                cb,
+                                                void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&serial_id),
     GNUNET_PQ_query_param_end
   };
-  struct PaybackRefreshSerialContext psc = {
+  struct RecoupRefreshSerialContext psc = {
     .cb = cb,
     .cb_cls = cb_cls,
     .pg = pg,
@@ -6602,9 +6602,9 @@ postgres_select_payback_refresh_above_serial_id (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
-                                             "payback_refresh_get_incr",
+                                             "recoup_refresh_get_incr",
                                              params,
-                                             &payback_refresh_serial_helper_cb,
+                                             &recoup_refresh_serial_helper_cb,
                                              &psc);
   if (GNUNET_OK != psc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -6753,7 +6753,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
 
 
 /**
- * Function called to add a request for an emergency payback for a
+ * Function called to add a request for an emergency recoup for a
  * coin.  The funds are to be added back to the reserve.  The function
  * should return the @a deadline by which the exchange will trigger a
  * wire transfer back to the customer's account for the reserve.
@@ -6762,7 +6762,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
  * @param session database connection
  * @param reserve_pub public key of the reserve that is being refunded
  * @param coin information about the coin
- * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding key of the coin
  * @param amount total amount to be paid back
  * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
@@ -6770,18 +6770,18 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
  * @return transaction result status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_payback_request (void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
-                                 const struct
-                                 TALER_ReservePublicKeyP *reserve_pub,
-                                 const struct TALER_CoinPublicInfo *coin,
-                                 const struct
-                                 TALER_CoinSpendSignatureP *coin_sig,
-                                 const struct
-                                 TALER_DenominationBlindingKeyP *coin_blind,
-                                 const struct TALER_Amount *amount,
-                                 const struct GNUNET_HashCode *h_blind_ev,
-                                 struct GNUNET_TIME_Absolute timestamp)
+postgres_insert_recoup_request (void *cls,
+                                struct TALER_EXCHANGEDB_Session *session,
+                                const struct
+                                TALER_ReservePublicKeyP *reserve_pub,
+                                const struct TALER_CoinPublicInfo *coin,
+                                const struct
+                                TALER_CoinSpendSignatureP *coin_sig,
+                                const struct
+                                TALER_DenominationBlindingKeyP *coin_blind,
+                                const struct TALER_Amount *amount,
+                                const struct GNUNET_HashCode *h_blind_ev,
+                                struct GNUNET_TIME_Absolute timestamp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute expiry;
@@ -6797,9 +6797,9 @@ postgres_insert_payback_request (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  /* now store actual payback information */
+  /* now store actual recoup information */
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                           "payback_insert",
+                                           "recoup_insert",
                                            params);
   if (0 > qs)
   {
@@ -6848,15 +6848,15 @@ postgres_insert_payback_request (void *cls,
 
 
 /**
- * Function called to add a request for an emergency payback for a
+ * Function called to add a request for an emergency recoup for a
  * refreshed coin.  The funds are to be added back to the original coin
  * (which is implied via @a h_blind_ev, see the prepared statement
- * "payback_by_old_coin" used in #postgres_get_coin_transactions()).
+ * "recoup_by_old_coin" used in #postgres_get_coin_transactions()).
  *
  * @param cls closure
  * @param session database connection
  * @param coin public information about the refreshed coin
- * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding key of the coin
  * @param h_blind_ev blinded envelope, as calculated by the exchange
  * @param amount total amount to be paid back
@@ -6865,20 +6865,20 @@ postgres_insert_payback_request (void *cls,
  * @return transaction result status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_payback_refresh_request (void *cls,
-                                         struct TALER_EXCHANGEDB_Session *
-                                         session,
-                                         const struct
-                                         TALER_CoinPublicInfo *coin,
-                                         const struct
-                                         TALER_CoinSpendSignatureP *coin_sig,
-                                         const struct
-                                         TALER_DenominationBlindingKeyP *
-                                         coin_blind,
-                                         const struct TALER_Amount *amount,
-                                         const struct
-                                         GNUNET_HashCode *h_blind_ev,
-                                         struct GNUNET_TIME_Absolute timestamp)
+postgres_insert_recoup_refresh_request (void *cls,
+                                        struct TALER_EXCHANGEDB_Session *
+                                        session,
+                                        const struct
+                                        TALER_CoinPublicInfo *coin,
+                                        const struct
+                                        TALER_CoinSpendSignatureP *coin_sig,
+                                        const struct
+                                        TALER_DenominationBlindingKeyP *
+                                        coin_blind,
+                                        const struct TALER_Amount *amount,
+                                        const struct
+                                        GNUNET_HashCode *h_blind_ev,
+                                        struct GNUNET_TIME_Absolute timestamp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
@@ -6892,9 +6892,9 @@ postgres_insert_payback_refresh_request (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   (void) cls;
-  /* now store actual payback information */
+  /* now store actual recoup information */
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                           "payback_refresh_insert",
+                                           "recoup_refresh_insert",
                                            params);
   if (0 > qs)
   {
@@ -7342,16 +7342,16 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_wire_out_above_serial_id;
   plugin->select_wire_out_above_serial_id_by_account
     = &postgres_select_wire_out_above_serial_id_by_account;
-  plugin->select_payback_above_serial_id
-    = &postgres_select_payback_above_serial_id;
-  plugin->select_payback_refresh_above_serial_id
-    = &postgres_select_payback_refresh_above_serial_id;
+  plugin->select_recoup_above_serial_id
+    = &postgres_select_recoup_above_serial_id;
+  plugin->select_recoup_refresh_above_serial_id
+    = &postgres_select_recoup_refresh_above_serial_id;
   plugin->select_reserve_closed_above_serial_id
     = &postgres_select_reserve_closed_above_serial_id;
-  plugin->insert_payback_request
-    = &postgres_insert_payback_request;
-  plugin->insert_payback_refresh_request
-    = &postgres_insert_payback_refresh_request;
+  plugin->insert_recoup_request
+    = &postgres_insert_recoup_request;
+  plugin->insert_recoup_refresh_request
+    = &postgres_insert_recoup_refresh_request;
   plugin->get_reserve_by_h_blind
     = &postgres_get_reserve_by_h_blind;
   plugin->get_old_coin_by_h_blind
