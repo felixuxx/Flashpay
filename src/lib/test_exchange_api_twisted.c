@@ -77,19 +77,6 @@ CMD_EXEC_WIREWATCH (char *label)
 
 
 /**
- * Execute the taler-exchange-aggregator command with
- * our configuration file.
- *
- * @param label label to use for the command.
- */
-static struct TALER_TESTING_Command
-CMD_EXEC_AGGREGATOR (char *label)
-{
-  return TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE);
-}
-
-
-/**
  * Run wire transfer of funds from some user's account to the
  * exchange.
  *
