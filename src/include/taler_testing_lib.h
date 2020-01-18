@@ -1024,8 +1024,6 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
  *
  * @param label command label.
  * @param amount the amount to transfer.
- * @param account_base_url base URL of the account that implements this
- *        wire transer (which account receives money).
  * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
@@ -1035,7 +1033,6 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
                                                const char *amount,
-                                               const char *account_base_url,
                                                const struct
                                                TALER_BANK_AuthenticationData *
                                                auth,
@@ -1052,8 +1049,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param account_base_url base URL of the account that implements this
- *        wire transer (which account receives money).
  * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @param instance the instance that runs the tipping.  Under this
@@ -1066,7 +1061,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming_with_instance (const char *label,
                                                     const char *amount,
-                                                    const char *account_base_url,
                                                     const struct
                                                     TALER_BANK_AuthenticationData
                                                     *auth,

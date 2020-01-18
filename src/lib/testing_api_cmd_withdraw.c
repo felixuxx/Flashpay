@@ -233,10 +233,6 @@ reserve_withdraw_cb (void *cls,
 
 /**
  * Run the command.
- *
- * @param cls closure.
- * @param cmd the command being run, NULL when called from #do_retry()
- * @param is interpreter state.
  */
 static void
 withdraw_run (void *cls,

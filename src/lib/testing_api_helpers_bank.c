@@ -219,6 +219,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  * and reset database.
  *
  * @param config_filename configuration file name.
+ * @param config_section section of the configuration with the exchange's account
  * @param[out] bc set to the bank's configuration data
  * @return the base url, or NULL upon errors.  Must be freed
  *         by the caller.

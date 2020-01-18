@@ -521,7 +521,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming_with_ref
   (const char *label,
   const char *amount,
-  const char *account_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account,
   const char *ref)
@@ -529,7 +528,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
   struct AdminAddIncomingState *fts;
 
   fts = make_fts (amount,
-                  account_base_url,
+                  auth->wire_gateway_url,
                   auth,
                   payto_debit_account);
   fts->reserve_reference = ref;
@@ -547,8 +546,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
  *
  * @param label command label.
  * @param amount amount to transfer.
- * @param account_bank_url base URL of the exchange bank account
- *        that receives the wire transfer
  * @param payto_debit_account which account (expressed as a number)
  *        gives money
  * @param auth authentication data
@@ -563,7 +560,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming_with_instance
   (const char *label,
   const char *amount,
-  const char *account_base_url,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account,
   const char *instance,
@@ -572,7 +568,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_instance
   struct AdminAddIncomingState *fts;
 
   fts = make_fts (amount,
-                  account_base_url,
+                  auth->wire_gateway_url,
                   auth,
                   payto_debit_account);
   fts->instance = instance;
