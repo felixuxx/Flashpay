@@ -608,11 +608,13 @@ exchange_serve_process_config ()
                                    "taler",
                                    "CURRENCY_ROUND_UNIT",
                                    &currency_round_unit)) ||
+         (0 != strcasecmp (exchange_currency_string,
+                           currency_round_unit.currency)) ||
          ( (0 != currency_round_unit.fraction) &&
            (0 != currency_round_unit.value) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid value specified in `TALER' under `CURRENCY_ROUND_UNIT'\n");
+                  "Invalid value specified in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
       return GNUNET_SYSERR;
     }
   }
