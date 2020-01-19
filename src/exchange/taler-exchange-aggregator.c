@@ -308,6 +308,36 @@ static unsigned int aggregation_limit =
 
 
 /**
+ * Main work function that finds and triggers transfers for reserves
+ * closures.
+ *
+ * @param cls closure
+ */
+static void
+run_reserve_closures (void *cls);
+
+
+/**
+ * Main work function that queries the DB and aggregates transactions
+ * into larger wire transfers.
+ *
+ * @param cls NULL
+ */
+static void
+run_aggregation (void *cls);
+
+
+/**
+ * Execute the wire transfers that we have committed to
+ * do.
+ *
+ * @param cls pointer to an `int` which we will return from main()
+ */
+static void
+run_transfers (void *cls);
+
+
+/**
  * Find the record valid at time @a now in the fee
  * structure.
  *
@@ -409,9 +439,8 @@ find_account_by_method (const char *method)
  * @param url wire address we need an account for
  * @return NULL on error
  */
-// FIXME(dold): should be find_account_by_uri
 static struct WireAccount *
-find_account_by_url (const char *url)
+find_account_by_payto_uri (const char *url)
 {
   char *method;
   struct WireAccount *wa;
@@ -575,15 +604,25 @@ shutdown_task (void *cls)
 
 
 /**
- * Parse configuration parameters for the exchange server into the
- * corresponding global variables.
+ * Parse the configuration for wirewatch.
  *
  * @return #GNUNET_OK on success
  */
-// FIXME(dold): Why is this called exchange_serve when this is not then httpd?
 static int
-exchange_serve_process_config ()
+parse_wirewatch_config ()
 {
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (c,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &exchange_base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    global_ret = 1;
+    return;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -777,7 +816,7 @@ deposit_cb (void *cls,
     char *url;
 
     url = TALER_JSON_wire_to_payto (au->wire);
-    au->wa = find_account_by_url (url);
+    au->wa = find_account_by_payto_uri (url);
     GNUNET_free (url);
   }
   if (NULL == au->wa)
@@ -961,38 +1000,6 @@ aggregate_cb (void *cls,
 }
 
 
-// FIXME(dold): we should move these to the top
-
-/**
- * Main work function that finds and triggers transfers for reserves
- * closures.
- *
- * @param cls closure
- */
-static void
-run_reserve_closures (void *cls);
-
-
-/**
- * Main work function that queries the DB and aggregates transactions
- * into larger wire transfers.
- *
- * @param cls NULL
- */
-static void
-run_aggregation (void *cls);
-
-
-/**
- * Execute the wire transfers that we have committed to
- * do.
- *
- * @param cls pointer to an `int` which we will return from main()
- */
-static void
-run_transfers (void *cls);
-
-
 /**
  * Perform a database commit. If it fails, print a warning.
  *
@@ -1044,8 +1051,8 @@ struct ExpiredReserveContext
  * @param cls a `struct ExpiredReserveContext *`
  * @param reserve_pub public key of the reserve
  * @param left amount left in the reserve
- * // FIXME(dold):  So the following parameter is a payto URI?
- * @param account_details information about the reserve's bank account
+ * @param account_payto_uri information about the bank account that initially
+ *        caused the reserve to be created
  * @param expiration_date when did the reserve expire
  * @return transaction status code
  */
@@ -1053,7 +1060,7 @@ static enum GNUNET_DB_QueryStatus
 expired_reserve_cb (void *cls,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_Amount *left,
-                    const char *account_details,
+                    const char *account_payto_uri,
                     struct GNUNET_TIME_Absolute expiration_date)
 {
   struct ExpiredReserveContext *erc = cls;
@@ -1078,7 +1085,7 @@ expired_reserve_cb (void *cls,
   (void) GNUNET_TIME_round_abs (&now);
 
   /* lookup account we should use */
-  wa = find_account_by_url (account_details);
+  wa = find_account_by_payto_uri (account_payto_uri);
   if (NULL == wa)
   {
     GNUNET_break (0);
@@ -1146,7 +1153,7 @@ expired_reserve_cb (void *cls,
                                            session,
                                            reserve_pub,
                                            now,
-                                           account_details,
+                                           account_payto_uri,
                                            &wtid,
                                            left,
                                            closing_fee);
@@ -1186,8 +1193,8 @@ expired_reserve_cb (void *cls,
   ctc = GNUNET_new (struct CloseTransferContext);
   ctc->wa = wa;
   ctc->session = session;
-  ctc->method = TALER_payto_get_method (account_details);
-  TALER_BANK_prepare_wire_transfer (account_details,
+  ctc->method = TALER_payto_get_method (account_payto_uri);
+  TALER_BANK_prepare_wire_transfer (account_payto_uri,
                                     &amount_without_fee,
                                     exchange_base_url,
                                     &wtid,
@@ -1406,8 +1413,7 @@ run_aggregation (void *cls)
         task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                          NULL);
       else
-        // FIXME(dold): Why a minute?  Maybe for some giant "wallet integration test" we want this
-        // to be configurable to something much faster?
+        /* FIXME(dold): We might want to read the duration to sleep from the config */
         /* nothing to do, sleep for a minute and try again */
         task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
                                              &run_aggregation,
@@ -1876,21 +1882,8 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
 
-  // FIXME(dold): why is this not in exchange_serve_process_config?
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (c,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_base_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "BASE_URL");
-    global_ret = 1;
-    return;
-  }
   cfg = GNUNET_CONFIGURATION_dup (c);
-  if (GNUNET_OK != exchange_serve_process_config ())
+  if (GNUNET_OK != parse_wirewatch_config ())
   {
     GNUNET_CONFIGURATION_destroy (cfg);
     cfg = NULL;
