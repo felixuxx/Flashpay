@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This file is part of TALER
-# Copyright (C) 2015 GNUnet e.V.
+# Copyright (C) 2015, 2020 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU Affero General Public License as published by the Free Software
@@ -21,21 +21,22 @@
 #
 # We read the JSON snippets from afl-tests/
 #
+set -eu
+
 PREFIX=
 # Uncomment this line to run with valgrind...
-PREFIX="valgrind --leak-check=yes --log-file=valgrind.%p"
+# PREFIX="valgrind --leak-check=yes --log-file=valgrind.%p"
 # Setup keys.
-taler-exchange-keyup -d test-exchange-home -m test-exchange-home/master.priv
+taler-exchange-keyup -c test_taler_exchange_httpd.conf
 # Setup database (just to be sure)
-taler-exchange-dbinit -d test-exchange-home &> /dev/null || true
+taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
 # Only log hard errors, we expect lots of warnings...
 export GNUNET_FORCE_LOG="taler-exchange-httpd;;;;ERROR/libmicrohttpd;;;;ERROR/util;;;;ERROR/"
 # Run test...
 for n in afl-tests/*
 do
   echo -n "Test $n "
-  $PREFIX taler-exchange-httpd -d test-exchange-home/ -t 1 -f $n -C > /dev/null || { echo "FAIL!"; }
-#  $PREFIX taler-exchange-httpd -d test-exchange-home/ -t 1 -f $n -C > /dev/null || { echo "FAIL!"; exit 1; }
+  $PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf -t 1 -f $n -C > /dev/null || { echo "FAIL!"; }
   echo "OK"
 done
 exit 0

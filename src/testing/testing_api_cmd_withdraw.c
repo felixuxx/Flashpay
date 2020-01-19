@@ -263,23 +263,23 @@ withdraw_run (void *cls,
   }
   TALER_planchet_setup_random (&ws->ps);
   ws->is = is;
-
-  dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
-                               &ws->amount);
-  if (NULL == dpk)
+  if (NULL == ws->pk)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to determine denomination key at %s\n",
-                (NULL != cmd) ? cmd->label : "<retried command>");
-    GNUNET_assert (0);
-  }
-  else
-  {
+    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+                                 &ws->amount);
+    if (NULL == dpk)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to determine denomination key at %s\n",
+                  (NULL != cmd) ? cmd->label : "<retried command>");
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
     /* We copy the denomination key, as re-querying /keys
      * would free the old one. */
     ws->pk = TALER_EXCHANGE_copy_denomination_key (dpk);
   }
-
   ws->wsh = TALER_EXCHANGE_reserve_withdraw (is->exchange,
                                              ws->pk,
                                              rp,

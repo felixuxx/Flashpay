@@ -2156,7 +2156,6 @@ TALER_EXCHANGE_destroy_denomination_key (struct
                                          TALER_EXCHANGE_DenomPublicKey *key)
 {
   GNUNET_CRYPTO_rsa_public_key_free (key->key.rsa_public_key);;
-  key->key.rsa_public_key = NULL;
   GNUNET_free (key);
 }
 

@@ -176,14 +176,48 @@ static char *remote_host;
 static char *remote_dir;
 
 /**
+ * Array of command labels.
+ */
+static char **labels;
+
+/**
+ * Length of #labels.
+ */
+static unsigned int label_len;
+
+/**
+ * Offset in #labels.
+ */
+static unsigned int label_off;
+
+/**
  * Don't kill exchange/fakebank/wirewatch until
  * requested by the user explicitly.
  */
 static int linger;
 
 
+/**
+ * Add label to the #labels table and return it.
+ *
+ * @param label string to add to the table
+ * @return same string, now stored in the table
+ */
+const char *
+add_label (char *label)
+{
+  if (label_off == label_len)
+    GNUNET_array_grow (labels,
+                       label_len,
+                       label_len * 2 + 4);
+  labels[label_off++] = label;
+  return label;
+}
+
+
 static struct TALER_TESTING_Command
-CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
+cmd_transfer_to_exchange (const char *label,
+                          const char *amount)
 {
   return TALER_TESTING_cmd_admin_add_incoming_retry
            (TALER_TESTING_cmd_admin_add_incoming (label,
@@ -283,9 +317,8 @@ run (void *cls,
                      j);
     {
       struct TALER_TESTING_Command make_reserve[] = {
-        CMD_TRANSFER_TO_EXCHANGE (create_reserve_label,
-                                  TALER_amount_to_string
-                                    (&total_reserve_amount)),
+        cmd_transfer_to_exchange (add_label (create_reserve_label),
+                                  TALER_amount2s (&total_reserve_amount)),
         TALER_TESTING_cmd_end ()
       };
       char *batch_label;
@@ -294,7 +327,7 @@ run (void *cls,
                        "batch-start-%u",
                        j);
       all_commands[j * (howmany_coins + 1)]
-        = TALER_TESTING_cmd_batch (batch_label,
+        = TALER_TESTING_cmd_batch (add_label (batch_label),
                                    make_reserve);
     }
     for (unsigned int i = 0; i < howmany_coins; i++)
@@ -313,17 +346,17 @@ run (void *cls,
                        i + (howmany_coins * j));
       unit[0] =
         TALER_TESTING_cmd_withdraw_with_retry
-          (TALER_TESTING_cmd_withdraw_amount (withdraw_label,
+          (TALER_TESTING_cmd_withdraw_amount (add_label (withdraw_label),
                                               create_reserve_label,
                                               amount_5,
                                               MHD_HTTP_OK));
       unit[1] =
         TALER_TESTING_cmd_deposit_with_retry
           (TALER_TESTING_cmd_deposit ("deposit",
-                                      withdraw_label,
+                                      add_label (withdraw_label),
                                       0, /* Index of the one withdrawn coin in the traits.  */
                                       user_payto_uri,
-                                      order_enc,
+                                      add_label (order_enc),
                                       GNUNET_TIME_UNIT_ZERO,
                                       amount_1,
                                       MHD_HTTP_OK));
@@ -341,16 +374,16 @@ run (void *cls,
                          i,
                          j);
         unit[2] =
-          TALER_TESTING_cmd_refresh_melt_with_retry (
-            TALER_TESTING_cmd_refresh_melt
-              (melt_label,
+          TALER_TESTING_cmd_refresh_melt_with_retry
+            (TALER_TESTING_cmd_refresh_melt
+              (add_label (melt_label),
               withdraw_label,
               MHD_HTTP_OK,
               NULL));
         unit[3] =
           TALER_TESTING_cmd_refresh_reveal_with_retry
             (TALER_TESTING_cmd_refresh_reveal
-              (reveal_label,
+              (add_label (reveal_label),
               melt_label,
               MHD_HTTP_OK));
         unit[4] =
@@ -369,7 +402,7 @@ run (void *cls,
                        i,
                        j);
       all_commands[j * (howmany_coins + 1) + (1 + i)]
-        = TALER_TESTING_cmd_batch (unit_label,
+        = TALER_TESTING_cmd_batch (add_label (unit_label),
                                    unit);
     }
   }
@@ -962,5 +995,10 @@ main (int argc,
              (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000
                                    + usage.ru_utime.tv_usec));
   }
+  for (unsigned int i = 0; i<label_off; i++)
+    GNUNET_free (labels[i]);
+  GNUNET_array_grow (labels,
+                     label_len,
+                     0);
   return (GNUNET_OK == result) ? 0 : result;
 }
