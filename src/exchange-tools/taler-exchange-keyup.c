@@ -676,10 +676,10 @@ get_cointype_params (const char *ct,
   }
   params->rsa_keysize = (unsigned int) rsa_keysize;
   if (GNUNET_OK !=
-      TALER_config_get_denom (kcfg,
-                              ct,
-                              "value",
-                              &params->value))
+      TALER_config_get_amount (kcfg,
+                               ct,
+                               "value",
+                               &params->value))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
@@ -687,10 +687,10 @@ get_cointype_params (const char *ct,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_config_get_denom (kcfg,
-                              ct,
-                              "fee_withdraw",
-                              &params->fee_withdraw))
+      TALER_config_get_amount (kcfg,
+                               ct,
+                               "fee_withdraw",
+                               &params->fee_withdraw))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
@@ -698,10 +698,10 @@ get_cointype_params (const char *ct,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_config_get_denom (kcfg,
-                              ct,
-                              "fee_deposit",
-                              &params->fee_deposit))
+      TALER_config_get_amount (kcfg,
+                               ct,
+                               "fee_deposit",
+                               &params->fee_deposit))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
@@ -709,10 +709,10 @@ get_cointype_params (const char *ct,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_config_get_denom (kcfg,
-                              ct,
-                              "fee_refresh",
-                              &params->fee_refresh))
+      TALER_config_get_amount (kcfg,
+                               ct,
+                               "fee_refresh",
+                               &params->fee_refresh))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
@@ -720,10 +720,10 @@ get_cointype_params (const char *ct,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_config_get_denom (kcfg,
-                              ct,
-                              "fee_refund",
-                              &params->fee_refund))
+      TALER_config_get_amount (kcfg,
+                               ct,
+                               "fee_refund",
+                               &params->fee_refund))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
