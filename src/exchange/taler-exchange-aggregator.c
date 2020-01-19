@@ -331,7 +331,7 @@ advance_fees (struct WireAccount *wa,
 
 
 /**
- * Update wire transfer fee data structure in @a wp.
+ * Update wire transfer fee data structure in @a wa.
  *
  * @param wa wire account data structure to update
  * @param now timestamp to update fees to
@@ -409,6 +409,7 @@ find_account_by_method (const char *method)
  * @param url wire address we need an account for
  * @return NULL on error
  */
+// FIXME(dold): should be find_account_by_uri
 static struct WireAccount *
 find_account_by_url (const char *url)
 {
@@ -603,23 +604,20 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
 
+  if ( (GNUNET_OK !=
+        TALER_config_get_amount (cfg,
+                                 "taler",
+                                 "CURRENCY_ROUND_UNIT",
+                                 &currency_round_unit)) ||
+       (0 != strcasecmp (exchange_currency_string,
+                         currency_round_unit.currency)) ||
+       ( (0 != currency_round_unit.fraction) &&
+         (0 != currency_round_unit.value) ) )
   {
-    if ( (GNUNET_OK !=
-          TALER_config_get_amount (cfg,
-                                   "taler",
-                                   "CURRENCY_ROUND_UNIT",
-                                   &currency_round_unit)) ||
-         (0 != strcasecmp (exchange_currency_string,
-                           currency_round_unit.currency)) ||
-         ( (0 != currency_round_unit.fraction) &&
-           (0 != currency_round_unit.value) ) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid value specified in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
-      return GNUNET_SYSERR;
-    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid value specified in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
+    return GNUNET_SYSERR;
   }
-
 
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
@@ -744,6 +742,9 @@ deposit_cb (void *cls,
                                amount_with_fee,
                                deposit_fee))
     {
+      // FIXME(dold): Shouldn't we somehow survive this?  Of course it should show up in the auditor's report,
+      // but due to some misconfiguration with restarts in between deposit fees could have changed.
+      // That's bad, but should we really refuse to continue completely?
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Fatally malformed record at row %llu over %s\n",
                   (unsigned long long) row_id,
@@ -963,6 +964,8 @@ aggregate_cb (void *cls,
 }
 
 
+// FIXME(dold): we should move these to the top
+
 /**
  * Main work function that finds and triggers transfers for reserves
  * closures.
@@ -1044,6 +1047,7 @@ struct ExpiredReserveContext
  * @param cls a `struct ExpiredReserveContext *`
  * @param reserve_pub public key of the reserve
  * @param left amount left in the reserve
+ * // FIXME(dold):  So the following parameter is a payto URI?
  * @param account_details information about the reserve's bank account
  * @param expiration_date when did the reserve expire
  * @return transaction status code
@@ -1310,6 +1314,8 @@ run_reserve_closures (void *cls)
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
     return;
+    // FIXME(dold): shouldn't we at least GNUNET_break on the case where
+    // we have more than one result?  Not clear that get_expired reserves can't return more results?
   }
 }
 
@@ -1323,6 +1329,7 @@ run_reserve_closures (void *cls)
 static void
 run_aggregation (void *cls)
 {
+  // FIXME(dold): This should be unsigned, as behavior on signed overflow is undefined ;-)
   static int swap;
   struct TALER_EXCHANGEDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
@@ -1404,6 +1411,8 @@ run_aggregation (void *cls)
         task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                          NULL);
       else
+        // FIXME(dold): Why a minute?  Maybe for some giant "wallet integration test" we want this
+        // to be configurable to something much faster?
         /* nothing to do, sleep for a minute and try again */
         task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
                                              &run_aggregation,
@@ -1746,7 +1755,7 @@ wire_prepare_cb (void *cls,
   if (NULL == wpd->wa)
   {
     /* Should really never happen here, as when we get
-       here the plugin should be in the cache. */
+       here the wire account should be in the cache. */
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
@@ -1765,6 +1774,7 @@ wire_prepare_cb (void *cls,
                                               NULL);
   if (NULL == wpd->eh)
   {
+    // FIXME(dold): Comment below is a fixme, but without a marker!
     GNUNET_break (0); /* why? how to best recover? */
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
@@ -1822,6 +1832,8 @@ run_transfers (void *cls)
                                          session,
                                          &wire_prepare_cb,
                                          NULL);
+  // FIXME(dold): comment below is misleading, should't that be wire_confirm_cb,
+  // as wire_prepare_cb is already called?
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     return;  /* continues in #wire_prepare_cb() */
   db_plugin->rollback (db_plugin->cls,

@@ -298,6 +298,7 @@ TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin);
 
 
 /**
+ * FIXME(dold): Sorted by what, start or end?
  * Sorted list of fees to be paid for aggregate wire transfers.
  */
 struct TALER_EXCHANGEDB_AggregateFees

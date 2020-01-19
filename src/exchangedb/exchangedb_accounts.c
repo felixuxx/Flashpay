@@ -121,6 +121,7 @@ check_for_account (void *cls,
  * @param cb callback to invoke
  * @param cb_cls closure for @a cb
  */
+// FIXME(dold): why is this part of the exchange database?  Does this really belong here?
 void
 TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                 TALER_EXCHANGEDB_AccountCallback cb,
