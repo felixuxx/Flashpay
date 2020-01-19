@@ -42,10 +42,10 @@ src/bank-lib/test_bank_api_with_fakebank_twisted
 src/bank-lib/test_bank_api_with_pybank_twisted
 src/lib/test_exchange_api
 
-src/lib/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
-src/lib/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
-src/lib/test_taler_exchange_httpd_home/.local/share/taler/auditor/
-src/lib/test_taler_exchange_httpd_home/.local/share/taler/auditors/
+src/testing/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
+src/testing/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
+src/testing/test_taler_exchange_httpd_home/.local/share/taler/auditor/
+src/testing/test_taler_exchange_httpd_home/.local/share/taler/auditors/
 
 src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
 src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
@@ -55,7 +55,7 @@ src/testing/test_exchange_api_home/.local/share/taler/exchange/live-keys/
 src/testing/test_exchange_api_home/.local/share/taler/exchange/wirefees/
 src/testing/test_exchange_api_home/.local/share/taler/auditor/
 src/testing/test_exchange_api_home/.local/share/taler/auditors/
-src/lib/auditor.in
+src/testing/auditor.in
 src/testing/test_exchange_api_twisted
 src/exchange/taler-exchange-aggregator
 src/exchange/test_taler_exchange_aggregator-postgres
@@ -109,7 +109,7 @@ doc/manual/manual.vr
 doc/prebuilt/*
 contrib/taler-exchange.tag
 doxygen-doc/
-src/lib/test_exchange_api_keys_cherry_picking
+src/testing/test_exchange_api_keys_cherry_picking
 src/auditor/taler-wire-auditor
 contrib/auditor-report.aux
 contrib/auditor-report.log
@@ -117,10 +117,10 @@ contrib/auditor-report.tex
 contrib/auditor-report.pdf
 src/bank-lib/taler-bank-transfer
 src/bank-lib/test_bank_api_twisted
-src/lib/test_exchange_api
-src/lib/test_auditor_api
-src/lib/test_exchange_api_overlapping_keys_bug
-src/lib/test_exchange_api_home/.local/share/taler/exchange/revocations/
+src/testing/test_exchange_api
+src/testing/test_auditor_api
+src/testing/test_exchange_api_overlapping_keys_bug
+src/testing/test_exchange_api_home/.local/share/taler/exchange/revocations/
 src/wire-plugins/test_wire_plugin_legacy_taler_bank
 uncrustify.cfg
 vgcore.*
