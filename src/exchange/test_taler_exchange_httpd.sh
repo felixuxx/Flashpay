@@ -24,19 +24,39 @@
 unset XDG_DATA_HOME
 unset XDG_CONFIG_HOME
 #
+echo -n "Launching exchange ..."
+
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
 # Setup wire accounts.
-taler-exchange-wire -c test_taler_exchange_httpd.conf || exit 1
+taler-exchange-wire -c test_taler_exchange_httpd.conf > /dev/null || exit 1
 # Run Exchange HTTPD (in background)
-taler-exchange-httpd -c test_taler_exchange_httpd.conf -i &
+taler-exchange-httpd -c test_taler_exchange_httpd.conf -i 2> test-exchange.log &
+
 # Give HTTP time to start
-# FIXME: replace with while-loop waiting for wget to succeed as in test-auditor.sh!
-sleep 5
+
+for n in `seq 1 20`
+do
+    echo -n "."
+    sleep 0.1
+    OK=1
+    wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null && break
+    OK=0
+done
+if [ 1 != $OK ]
+then
+    echo "Failed to launch exchange"
+    exit 77
+fi
+echo " DONE"
+
 # Finally run test...
 # We read the JSON snippets to POST from test_taler_exchange_httpd.data
-cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d \47"  $2 "\47 http://localhost:8081" $1 }' | bash
-# Stop HTTP server
-kill -TERM %%
-# FIXME: not sure this is the 'correct' return code...
+cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d \47"  $2 "\47 http://localhost:8081" $1 }' | bash &> /dev/null
+
+echo "Terminating exchange"
+# $! is the last backgrounded process, hence the exchange
+kill -TERM $!
+wait $!
+# Return status code from exchange for this script
 exit $?

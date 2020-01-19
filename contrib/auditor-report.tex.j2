@@ -279,14 +279,14 @@ Note that some minimal lag may be normal as transactions may be in-flight.
 
 This section analyzes the lag, which is by how much the exchange's
 database reporting is behind in providing us with information about
-deposit confirmations. Merchants probabilisitcally report deposit
+deposit confirmations. Merchants probabilistically report deposit
 confirmations to the auditor directly, so if the exchange is slow at
 synchronizing its database with the auditor, some deposit
 confirmations may be known at the auditor only directly. However, any
 delta not accounted for by database synchronization delays is an
 indicator of a malicious exchange (or online singing key compromise)
 and should be answered by revoking the exchange's online siging keys.
-% FIXME: reference PhD thesis?
+% TODO: maybe reference PhD thesis on this?
 
 The total amount the exchange currently lags behind is
 {\bf {{ data.missing_deposit_confirmation_total }} } from a total number of

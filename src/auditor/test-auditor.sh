@@ -152,8 +152,8 @@ jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpecte
 jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
 
-# FIXME: check operation balances are correct (once we have more transaction types)
-# FIXME: check revenue summaries are correct (once we have more transaction types)
+# TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
+# TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
 echo PASS
 
@@ -210,8 +210,6 @@ echo -n "Checking for unexpected wire out differences "
 jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
 echo PASS
 
-# FIXME: check NO lag reported
-
 # cannot easily undo aggregator, hence full reload
 full_reload
 
@@ -240,8 +238,8 @@ jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "U
 jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
 jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
-# FIXME: check operation balances are correct (once we have more transaction types)
-# FIXME: check revenue summaries are correct (once we have more transaction types)
+# TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
+# TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
 echo PASS
 
@@ -1256,7 +1254,6 @@ echo "UPDATE auditor_denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_p
 run_audit
 
 echo -n "Testing inconsistency detection... "
-# FIXME
 jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Denomination key withdraw inconsistency not detected"
 
 echo PASS
@@ -1434,10 +1431,7 @@ fi
 
 
 # **************************************************
-# FIXME: Add more tests here! :-)
-# Specifically:
-# - revocation (payback, accepting
-#   of coins despite denomination revocation)
+# TODO: Add tests for revocation (payback, accepting of coins despite revocation) HERE!
 # **************************************************
 
 

@@ -29,10 +29,6 @@ BASEDB=${1:-"auditor-basedb"}
 # elsewhere
 TARGET_DB=taler-auditor-basedb
 
-# FIXME: try to generate DB from scratch, fall back
-# to pre-generated DB if generate-auditor-basedb.sh
-# fails with status code 77!
-
 # Configuation file will be edited, so we create one
 # from the template.
 CONF=generate-auditor-basedb-prod.conf
