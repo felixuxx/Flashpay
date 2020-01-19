@@ -223,7 +223,11 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
 \nopagebreak
   \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
 \nopagebreak
-  \multicolumn{4}{l}{ {\tt {{ item.account.url }} } } \\ \hline
+  \multicolumn{4}{l}{ {\tt
+    {% if 'payto_uri' in item.account %}
+       {{ item.account.payto_uri }}
+    {% endif %}
+  } } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}
@@ -269,7 +273,11 @@ Note that some minimal lag may be normal as transactions may be in-flight.
 \nopagebreak
   \multicolumn{3}{l}{ {\tt \small {{ item.wtid }} } } \\
 \nopagebreak
-  \multicolumn{3}{l}{ {\tt {{ item.account }} } } \\ \hline
+  \multicolumn{3}{l}{ {\tt
+    {% if 'payto_uri' in item.account %}
+       {{ item.account.payto_uri }}
+    {% endif %}
+  } } \\ \hline
 {% endfor %}
   \end{longtable}
 {% endif %}

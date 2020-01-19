@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 25`
+ALL_TESTS=`seq 0 26`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -408,9 +408,9 @@ function test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
-SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=0 AND amount_with_fee_frac=10000000 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
 OLD_WIRE=`echo "SELECT wire FROM deposits WHERE deposit_serial_id=${SERIAL};" | psql $DB -Aqt`
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE deposits SET wire='{\"payto_uri\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -425,7 +425,7 @@ then
 fi
 
 LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
@@ -437,7 +437,7 @@ then
 fi
 
 LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi
@@ -455,7 +455,7 @@ echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=${SERIAL}" | 
 function test_5() {
 echo "===========5: deposit contract hash wrong================="
 # Modify h_wire hash, so it is inconsistent with 'wire'
-SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=0 AND amount_with_fee_frac=10000000 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
 OLD_H=`echo "SELECT h_contract_terms FROM deposits WHERE deposit_serial_id=$SERIAL;" | psql $DB -Aqt`
 echo "UPDATE deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
 
@@ -469,7 +469,7 @@ then
 fi
 
 LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
@@ -481,7 +481,7 @@ then
 fi
 
 LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi
@@ -511,7 +511,7 @@ then
 fi
 
 LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS == "TESTKUDOS:0"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
@@ -523,7 +523,7 @@ then
 fi
 
 LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS == "TESTKUDOS:0"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi
@@ -1429,9 +1429,54 @@ fi
 }
 
 
+# Test for deposit wire target malformed
+function test_26() {
+echo "===========26: deposit wire target malformed ================="
+# Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
+SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+OLD_WIRE=`echo "SELECT wire FROM deposits WHERE deposit_serial_id=${SERIAL};" | psql $DB -Aqt`
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Testing inconsistency detection... "
+
+jq -e .bad_sig_losses[0] < test-audit.json > /dev/null || exit_fail "Bad signature not detected"
+
+ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+if test $ROW != ${SERIAL}
+then
+    exit_fail "Row wrong, got $ROW"
+fi
+
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:3"
+then
+    exit_fail "Wrong deposit bad signature loss, got $LOSS"
+fi
+
+OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+if test $OP != "deposit"
+then
+    exit_fail "Wrong operation, got $OP"
+fi
+
+LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+if test $LOSS != "TESTKUDOS:3"
+then
+    exit_fail "Wrong total bad sig loss, got $LOSS"
+fi
+
+echo PASS
+# Undo:
+echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+
+}
+
+
 
 # **************************************************
-# TODO: Add tests for revocation (payback, accepting of coins despite revocation) HERE!
+# TODO: Add tests for revocation (payback, accepting of coins despite revocation) HERE! #6053
 # **************************************************
 
 

@@ -4158,9 +4158,17 @@ deposit_cb (void *cls,
       TALER_JSON_merchant_wire_signature_hash (receiver_wire_account,
                                                &dr.h_wire))
   {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
+    report (report_bad_sig_losses,
+            json_pack ("{s:s, s:I, s:o, s:o}",
+                       "operation", "deposit",
+                       "row", (json_int_t) rowid,
+                       "loss", TALER_JSON_from_amount (amount_with_fee),
+                       "key_pub", GNUNET_JSON_from_data_auto (coin_pub)));
+    GNUNET_break (GNUNET_OK ==
+                  TALER_amount_add (&total_bad_sig_loss,
+                                    &total_bad_sig_loss,
+                                    amount_with_fee));
+    return GNUNET_OK;
   }
   dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
@@ -4704,6 +4712,8 @@ analyze_coins (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (0 > cc.qs)
+    return cc.qs;
 
   /* process refunds */
   if (0 >
@@ -4716,6 +4726,8 @@ analyze_coins (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (0 > cc.qs)
+    return cc.qs;
 
   /* process refreshs */
   if (0 >
@@ -4728,6 +4740,8 @@ analyze_coins (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (0 > cc.qs)
+    return cc.qs;
 
   /* process deposits */
   if (0 >
@@ -4740,6 +4754,8 @@ analyze_coins (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (0 > cc.qs)
+    return cc.qs;
 
   /* process recoups */
   if (0 >
@@ -4752,6 +4768,8 @@ analyze_coins (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (0 > cc.qs)
+    return cc.qs;
   if (0 >
       (qs = edb->select_recoup_refresh_above_serial_id (edb->cls,
                                                         esession,
@@ -4763,6 +4781,8 @@ analyze_coins (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  if (0 > cc.qs)
+    return cc.qs;
 
   /* sync 'cc' back to disk */
   cc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
