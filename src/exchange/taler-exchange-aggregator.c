@@ -85,7 +85,7 @@ struct WirePrepareData
   struct TALER_BANK_WireExecuteHandle *eh;
 
   /**
-   * Wire plugin used for this preparation.
+   * Wire account used for this preparation.
    */
   struct WireAccount *wa;
 
@@ -242,12 +242,12 @@ static struct GNUNET_CONFIGURATION_Handle *cfg;
 static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 
 /**
- * Head of list of loaded wire plugins.
+ * Head of list wire accounts of the exchange.
  */
 static struct WireAccount *wa_head;
 
 /**
- * Tail of list of loaded wire plugins.
+ * Head of list wire accounts of the exchange.
  */
 static struct WireAccount *wa_tail;
 
