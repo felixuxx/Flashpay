@@ -1386,37 +1386,49 @@ full_reload
 function test_25() {
 
 echo "=========25: inconsistent coin history========="
-# Drop refund, so coin history is bogus.
-echo "DELETE FROM refunds WHERE refund_serial_id=1;" | psql -Aqt $DB
 
-run_audit aggregator
-
-echo -n "Testing inconsistency detection... "
-
-jq -e .coin_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
-
-jq -e .row_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin history verification failure NOT reported"
-
-# Note: if the wallet withdrew much more than it spent, this might indeed
-# go legitimately unnoticed.
-jq -e .emergencies[0] < test-audit.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
-
-AMOUNT=`jq -er .total_coin_delta_minus < test-audit.json`
-if test x$AMOUNT = xTESTKUDOS:0
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+if [ $DATABASE_AGE -gt 3600 ]
 then
-    exit_fail "Expected non-zero total inconsistency amount from coins"
-fi
-# Note: if the wallet withdrew much more than it spent, this might indeed
-# go legitimately unnoticed.
-COUNT=`jq -er .emergencies_risk_by_amount < test-audit.json`
-if test x$AMOUNT = xTESTKUDOS:0
-then
-    exit_fail "Expected non-zero emergency-by-amount"
-fi
-echo PASS
 
-# cannot easily undo DELETE, hence full reload
-full_reload
+    # Drop refund, so coin history is bogus.
+    echo "DELETE FROM refunds WHERE refund_serial_id=1;" | psql -Aqt $DB
+
+    run_audit aggregator
+
+    echo -n "Testing inconsistency detection... "
+
+    jq -e .coin_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
+
+    jq -e .row_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin history verification failure NOT reported"
+
+    # Note: if the wallet withdrew much more than it spent, this might indeed
+    # go legitimately unnoticed.
+    jq -e .emergencies[0] < test-audit.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
+
+    AMOUNT=`jq -er .total_coin_delta_minus < test-audit.json`
+    if test x$AMOUNT = xTESTKUDOS:0
+    then
+        exit_fail "Expected non-zero total inconsistency amount from coins"
+    fi
+    # Note: if the wallet withdrew much more than it spent, this might indeed
+    # go legitimately unnoticed.
+    COUNT=`jq -er .emergencies_risk_by_amount < test-audit.json`
+    if test x$AMOUNT = xTESTKUDOS:0
+    then
+        exit_fail "Expected non-zero emergency-by-amount"
+    fi
+    echo PASS
+
+    # cannot easily undo DELETE, hence full reload
+    full_reload
+else
+    echo "Test skipped (database too new)"
+fi
 }
 
 
