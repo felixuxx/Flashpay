@@ -156,11 +156,6 @@ static enum BenchmarkMode mode;
 static char *cfg_filename;
 
 /**
- * payto://-URL of the exchange's bank account.
- */
-static char *exchange_payto_url;
-
-/**
  * Currency used.
  */
 static char *currency;
@@ -186,7 +181,8 @@ static struct TALER_TESTING_Command
 CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
 {
   return TALER_TESTING_cmd_admin_add_incoming_retry
-           (TALER_TESTING_cmd_admin_add_incoming (label, amount,
+           (TALER_TESTING_cmd_admin_add_incoming (label,
+                                                  amount,
                                                   &exchange_bank_account,
                                                   user_payto_url));
 }
@@ -322,7 +318,7 @@ run (void *cls,
             ("deposit",
             withdraw_label,
             0, /* Index of the one withdrawn coin in the traits.  */
-            exchange_payto_url,
+            user_payto_url,
             order_enc,
             GNUNET_TIME_UNIT_ZERO,
             AMOUNT_1,
@@ -400,27 +396,16 @@ stop_fakebank (void *cls)
 /**
  * Start the fakebank.
  *
- * @param cls the URL of the fakebank
+ * @param cls NULL
  */
 static void
 launch_fakebank (void *cls)
 {
-  const char *hostname = cls;
-  const char *port;
-  long pnum;
   struct TALER_FAKEBANK_Handle *fakebank;
 
-  port = strrchr (hostname,
-                  (unsigned char) ':');
-  if (NULL == port)
-    pnum = 80;
-  else
-    pnum = strtol (port + 1, NULL, 10);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting Fakebank on port %u (%s)\n",
-              (unsigned int) pnum,
-              hostname);
-  fakebank = TALER_FAKEBANK_start ((uint16_t) pnum);
+  (void) cls;
+  fakebank
+    = TALER_TESTING_run_fakebank (exchange_bank_account.wire_gateway_url);
   if (NULL == fakebank)
   {
     GNUNET_break (0);
@@ -464,7 +449,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                         NULL == loglev ? "INFO" : loglev,
                         logfile);
       GNUNET_SCHEDULER_run (&launch_fakebank,
-                            exchange_bank_account.wire_gateway_url);
+                            NULL);
       exit (0);
     }
     if (-1 == fakebank)
@@ -642,8 +627,9 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   if (MODE_EXCHANGE == mode)
     (void) getchar ();
 
-  if ( (GNUNET_YES == linger) && ( ((mode == MODE_BOTH) || (mode ==
-                                                            MODE_CLIENT) ) ) )
+  if ( (GNUNET_YES == linger) &&
+       ( ((mode == MODE_BOTH) ||
+          (mode == MODE_CLIENT) ) ) )
   {
     printf ("press ENTER to stop\n");
     (void) getchar ();
@@ -823,17 +809,15 @@ main (int argc,
     TALER_LOG_ERROR ("-p option value must not be zero\n");
     return BAD_CLI_ARG;
   }
-
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string
-        (cfg,
-        "benchmark",
-        "user-url",
-        &user_payto_url))
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "benchmark",
+                                             "USER_PAYTO_URI",
+                                             &user_payto_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "benchmark",
-                               "user-url");
+                               "USER_PAYTO_URI");
     return BAD_CONFIG_FILE;
   }
 
@@ -846,20 +830,17 @@ main (int argc,
     if (NULL == bank_details_section)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  _ (
-                    "Missing specification of bank account in configuration\n"));
+                  "Missing specification of bank account in configuration\n");
       return BAD_CONFIG_FILE;
     }
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string
-          (cfg,
-          bank_details_section,
-          "url",
-          &exchange_payto_url))
+        TALER_BANK_auth_parse_cfg (cfg,
+                                   bank_details_section,
+                                   &exchange_bank_account))
     {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 bank_details_section,
-                                 "url");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Configuration fails to provide exchange bank details in section `%s'\n",
+                  bank_details_section);
       return BAD_CONFIG_FILE;
     }
   }
@@ -867,19 +848,18 @@ main (int argc,
   {
     struct GNUNET_OS_Process *compute_wire_response;
 
-    compute_wire_response = GNUNET_OS_start_process
-                              (GNUNET_NO,
-                              GNUNET_OS_INHERIT_STD_ALL,
-                              NULL, NULL, NULL,
-                              "taler-exchange-wire",
-                              "taler-exchange-wire",
-                              "-c", cfg_filename,
-                              NULL);
+    compute_wire_response
+      = GNUNET_OS_start_process (GNUNET_NO,
+                                 GNUNET_OS_INHERIT_STD_ALL,
+                                 NULL, NULL, NULL,
+                                 "taler-exchange-wire",
+                                 "taler-exchange-wire",
+                                 "-c", cfg_filename,
+                                 NULL);
     if (NULL == compute_wire_response)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to run `taler-exchange-wire`,"
-                  " is your PATH correct?\n");
+                  "Failed to run `taler-exchange-wire`, is your PATH correct?\n");
       return GNUNET_NO;
     }
     GNUNET_OS_process_wait (compute_wire_response);
