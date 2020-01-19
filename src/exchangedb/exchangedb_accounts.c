@@ -78,15 +78,12 @@ check_for_account (void *cls,
                                "PAYTO_URI");
     return;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (ctx->cfg,
-                                             section,
-                                             "METHOD",
-                                             &method))
+  method = TALER_payto_get_method (payto_uri);
+  if (NULL == method)
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                               section,
-                               "METHOD");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "payto URI in config ([%s]/PAYTO_URI) malformed\n",
+                section);
     GNUNET_free (payto_uri);
     return;
   }

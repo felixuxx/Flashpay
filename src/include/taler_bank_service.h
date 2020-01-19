@@ -462,8 +462,7 @@ TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
 
 /**
  * Convenience method for parsing configuration section with bank
- * authentication data.  The section must contain an option
- * "METHOD", plus other options that depend on the METHOD specified.
+ * authentication data.
  *
  * @param cfg configuration to parse
  * @param section the section with the configuration data

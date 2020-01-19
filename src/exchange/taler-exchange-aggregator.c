@@ -431,8 +431,7 @@ find_account_by_url (const char *url)
 
 /**
  * Function called with information about a wire account.  Adds
- * the account to our list (if it is enabled and we can load the
- * plugin).
+ * the account to our list.
  *
  * @param cls closure, NULL
  * @param ai account information
@@ -442,6 +441,7 @@ add_account_cb (void *cls,
                 const struct TALER_EXCHANGEDB_AccountInfo *ai)
 {
   struct WireAccount *wa;
+  char *payto_uri;
 
   (void) cls;
   if (GNUNET_YES != ai->debit_enabled)
@@ -450,22 +450,24 @@ add_account_cb (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              ai->section_name,
-                                             "METHOD",
-                                             &wa->method))
+                                             "PAYTO_URI",
+                                             &payto_uri))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ai->section_name,
-                               "METHOD");
+                               "PAYTO_URI");
     GNUNET_free (wa);
     return;
   }
+  wa->method = TALER_payto_get_method (payto_uri);
+  GNUNET_free (payto_uri);
   if (GNUNET_OK !=
       TALER_BANK_auth_parse_cfg (cfg,
                                  ai->section_name,
                                  &wa->auth))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "Failed to load account `%s'\n",
+                "Failed to load exchange account `%s'\n",
                 ai->section_name);
     GNUNET_free (wa->method);
     GNUNET_free (wa);
