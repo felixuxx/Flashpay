@@ -66,8 +66,8 @@ BANK_URL=http://localhost:${BANK_PORT}/
 AUDITOR_URL=http://localhost:8083/
 
 # patch configuration
-taler-config -c $CONF -s EXCHANGE -o MASTER_PUBLIC_KEY -V $MASTER_PUB
-taler-config -c $CONF -s EXCHANGE-DEFAULT -o MASTER_KEY -V $MASTER_PUB
+taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
+taler-config -c $CONF -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
 taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB

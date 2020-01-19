@@ -61,13 +61,11 @@ int
 TALER_string_to_amount (const char *str,
                         struct TALER_Amount *denom)
 {
-  size_t i;
   int n;
   uint32_t b;
   const char *colon;
   const char *value;
 
-  invalidate (denom);
   /* skip leading whitespace */
   while (isspace ( (unsigned char) str[0]))
     str++;
@@ -75,8 +73,10 @@ TALER_string_to_amount (const char *str,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Null before currency\n");
+    invalidate (denom);
     return GNUNET_SYSERR;
   }
+
   /* parse currency */
   colon = strchr (str, (int) ':');
   if ( (NULL == colon) ||
@@ -85,91 +85,103 @@ TALER_string_to_amount (const char *str,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid currency specified before colon: `%s'\n",
                 str);
-    goto fail;
+    invalidate (denom);
+    return GNUNET_SYSERR;
   }
+
+  GNUNET_assert (TALER_CURRENCY_LEN > (colon - str));
   memcpy (denom->currency,
           str,
           colon - str);
+  /* 0-terminate *and* normalize buffer by setting everything to '\0' */
+  memset (&denom->currency [colon - str],
+          0,
+          TALER_CURRENCY_LEN - (colon - str));
+
   /* skip colon */
   value = colon + 1;
   if ('\0' == value[0])
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Null before value\n");
-    goto fail;
+                "Actual value missing in amount `%s'\n",
+                str);
+    invalidate (denom);
+    return GNUNET_SYSERR;
   }
 
+  denom->value = 0;
+  denom->fraction = 0;
+
   /* parse value */
-  i = 0;
-  while ('.' != value[i])
+  while ('.' != *value)
   {
-    if ('\0' == value[i])
+    if ('\0' == *value)
     {
+      /* we are done */
       return GNUNET_OK;
     }
-    if ( (value[i] < '0') || (value[i] > '9') )
+    if ( (*value < '0') ||
+         (*value > '9') )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Invalid character `%c'\n",
-                  value[i]);
-      goto fail;
+                  "Invalid character `%c' in amount `%s'\n",
+                  (int) *value,
+                  str);
+      invalidate (denom);
+      return GNUNET_SYSERR;
     }
-    n = value[i] - '0';
-    if (denom->value * 10 + n < denom->value)
+    n = *value - '0';
+    if ( (denom->value * 10 + n < denom->value) ||
+         (denom->value > MAX_AMOUNT_VALUE) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Value too large\n");
-      goto fail;
+                  "Value specified in amount `%s' is too large\n",
+                  str);
+      invalidate (denom);
+      return GNUNET_SYSERR;
     }
     denom->value = (denom->value * 10) + n;
-    i++;
+    value++;
   }
 
   /* skip the dot */
-  i++;
+  value++;
 
   /* parse fraction */
-  if ('\0' == value[i])
+  if ('\0' == *value)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Null after dot\n");
-    goto fail;
+                "Amount `%s' ends abruptly after `.'\n",
+                str);
+    invalidate (denom);
+    return GNUNET_SYSERR;
   }
   b = TALER_AMOUNT_FRAC_BASE / 10;
-  while ('\0' != value[i])
+  while ('\0' != *value)
   {
     if (0 == b)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Fractional value too small (only %u digits supported)\n",
-                  (unsigned int) TALER_AMOUNT_FRAC_LEN);
-      goto fail;
+                  "Fractional value too small (only %u digits supported) in amount `%s'\n",
+                  (unsigned int) TALER_AMOUNT_FRAC_LEN,
+                  str);
+      invalidate (denom);
+      return GNUNET_SYSERR;
     }
-    if ( (value[i] < '0') || (value[i] > '9') )
+    if ( (*value < '0') ||
+         (*value > '9') )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Error after dot\n");
-      goto fail;
+      invalidate (denom);
+      return GNUNET_SYSERR;
     }
-    n = value[i] - '0';
+    n = *value - '0';
     denom->fraction += n * b;
     b /= 10;
-    i++;
-  }
-  if (denom->value > MAX_AMOUNT_VALUE)
-  {
-    /* too large to be legal */
-    invalidate (denom);
-    return GNUNET_SYSERR;
+    value++;
   }
   return GNUNET_OK;
-
-fail:
-  /* set currency to 'invalid' to prevent accidental use */
-  memset (denom->currency,
-          0,
-          TALER_CURRENCY_LEN);
-  return GNUNET_SYSERR;
 }
 
 
