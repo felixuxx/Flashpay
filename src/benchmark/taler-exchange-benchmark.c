@@ -106,6 +106,11 @@ static struct GNUNET_TIME_Absolute start_time;
 static struct GNUNET_TIME_Relative duration;
 
 /**
+ * Array of all the commands the benchmark is running.
+ */
+static struct TALER_TESTING_Command *all_commands;
+
+/**
  * Exit code.
  */
 static int result;
@@ -231,7 +236,10 @@ eval_probability (float probability)
 
 
 /**
- * Actual commands collection.
+ * Actual commands construction and execution.
+ *
+ * @param cls unused
+ * @param is interpreter to run commands with
  */
 static void
 run (void *cls,
@@ -240,23 +248,21 @@ run (void *cls,
   struct TALER_Amount total_reserve_amount;
   struct TALER_Amount withdraw_fee;
   char *withdraw_fee_str;
-  struct TALER_TESTING_Command all_commands
-  [howmany_reserves * (1     /* Withdraw block */
-                       + howmany_coins)   /* All units */
-   + 1 /* End CMD */];
-  char *AMOUNT_5;
-  char *AMOUNT_4;
-  char *AMOUNT_1;
+  char *amount_5;
+  char *amount_4;
+  char *amount_1;
 
   (void) cls;
-  GNUNET_asprintf (&AMOUNT_5, "%s:5", currency);
-  GNUNET_asprintf (&AMOUNT_4, "%s:4", currency);
-  GNUNET_asprintf (&AMOUNT_1, "%s:1", currency);
-
+  all_commands = GNUNET_new_array (howmany_reserves * (1     /* Withdraw block */
+                                                       + howmany_coins)   /* All units */
+                                   + 1 /* End CMD */,
+                                   struct TALER_TESTING_Command);
+  GNUNET_asprintf (&amount_5, "%s:5", currency);
+  GNUNET_asprintf (&amount_4, "%s:4", currency);
+  GNUNET_asprintf (&amount_1, "%s:1", currency);
   GNUNET_assert (GNUNET_OK == TALER_amount_get_zero (currency,
                                                      &total_reserve_amount));
   total_reserve_amount.value = 5 * howmany_coins;
-
   GNUNET_asprintf (&withdraw_fee_str,
                    "%s:0.1",
                    currency);
@@ -277,9 +283,9 @@ run (void *cls,
                      j);
     {
       struct TALER_TESTING_Command make_reserve[] = {
-        CMD_TRANSFER_TO_EXCHANGE
-          (create_reserve_label,
-          TALER_amount_to_string (&total_reserve_amount)),
+        CMD_TRANSFER_TO_EXCHANGE (create_reserve_label,
+                                  TALER_amount_to_string
+                                    (&total_reserve_amount)),
         TALER_TESTING_cmd_end ()
       };
       char *batch_label;
@@ -306,23 +312,21 @@ run (void *cls,
                        "{\"nonce\": %llu}",
                        i + (howmany_coins * j));
       unit[0] =
-        TALER_TESTING_cmd_withdraw_with_retry
-          (TALER_TESTING_cmd_withdraw_amount
-            (withdraw_label,
-            create_reserve_label,
-            AMOUNT_5,
-            MHD_HTTP_OK));
+        TALER_TESTING_cmd_withdraw_with_retry (TALER_TESTING_cmd_withdraw_amount
+                                                 (withdraw_label,
+                                                 create_reserve_label,
+                                                 amount_5,
+                                                 MHD_HTTP_OK));
       unit[1] =
         TALER_TESTING_cmd_deposit_with_retry
-          (TALER_TESTING_cmd_deposit
-            ("deposit",
-            withdraw_label,
-            0, /* Index of the one withdrawn coin in the traits.  */
-            user_payto_url,
-            order_enc,
-            GNUNET_TIME_UNIT_ZERO,
-            AMOUNT_1,
-            MHD_HTTP_OK));
+          (TALER_TESTING_cmd_deposit ("deposit",
+                                      withdraw_label,
+                                      0, /* Index of the one withdrawn coin in the traits.  */
+                                      user_payto_url,
+                                      order_enc,
+                                      GNUNET_TIME_UNIT_ZERO,
+                                      amount_1,
+                                      MHD_HTTP_OK));
 
       if (eval_probability (refresh_rate / 100.0))
       {
@@ -338,8 +342,8 @@ run (void *cls,
                          i,
                          j);
         unit[2] =
-          TALER_TESTING_cmd_refresh_melt_with_retry
-            (TALER_TESTING_cmd_refresh_melt
+          TALER_TESTING_cmd_refresh_melt_with_retry (
+            TALER_TESTING_cmd_refresh_melt
               (melt_label,
               withdraw_label,
               MHD_HTTP_OK,
