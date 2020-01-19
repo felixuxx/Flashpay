@@ -100,7 +100,9 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
   else
     proto = "http";
 
-  host = MHD_lookup_connection_value (connection, MHD_HEADER_KIND, "Host");
+  host = MHD_lookup_connection_value (connection,
+                                      MHD_HEADER_KIND,
+                                      "Host");
   forwarded_host = MHD_lookup_connection_value (connection,
                                                 MHD_HEADER_KIND,
                                                 "X-Forwarded-Host");
