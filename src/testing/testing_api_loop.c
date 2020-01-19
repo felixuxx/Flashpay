@@ -124,20 +124,7 @@ TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
                                  struct TALER_TESTING_Command *commands,
                                  const char *bank_url)
 {
-  const char *port;
-  long pnum;
-
-  port = strrchr (bank_url,
-                  (unsigned char) ':');
-  if (NULL == port)
-    pnum = 80;
-  else
-    pnum = strtol (port + 1, NULL, 10);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting Fakebank on port %u (%s)\n",
-              (unsigned int) pnum,
-              bank_url);
-  is->fakebank = TALER_FAKEBANK_start ((uint16_t) pnum);
+  is->fakebank = TALER_TESTING_run_fakebank (bank_url);
   if (NULL == is->fakebank)
   {
     GNUNET_break (0);
