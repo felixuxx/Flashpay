@@ -38,7 +38,7 @@
 /**
  * Set @a a to "invalid".
  *
- * @param a amount to set to invalid
+ * @param[out] a amount to set to invalid
  */
 static void
 invalidate (struct TALER_Amount *a)
