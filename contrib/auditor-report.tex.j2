@@ -565,7 +565,11 @@ would be reported separately in Section~\ref{sec:wire_check_out}.
   \label{table:reserve:wire_out_balance_inconsistencies}
 \endlastfoot
 {% for item in data.wire_out_inconsistencies %}
-  \multicolumn{3}{l}{ {\tt \truncate{0.95\textwidth}{ {{ item.destination_account.url }} } } } \\
+  \multicolumn{3}{l}{ {\tt \truncate{0.95\textwidth}{
+    {% if 'payto_uri' in item.destination_account %}
+        {{ item.destination_account.payto_uri }}
+    {% endif %}
+   } } } \\
 \nopagebreak
   {{ item.rowid }} &
   {{ item.expected }} &
@@ -913,6 +917,7 @@ This section describes issues found by the wire auditor that
 relate to outgoing wire transfers subjects being duplicated.
 
 % Table generation tested by testcase #XX in test-auditor.sh
+% TODO: test this! #6054
 
 {% if wire.wire_format_inconsistencies|length() == 0 %}
   {\bf No wire format inconsistencies found.}
