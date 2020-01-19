@@ -739,7 +739,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 
 /**
  * Compute the hash of the given wire details.   The resulting
- * hash is what is put into the contract.
+ * hash is what is signed by the master key.
  *
  * @param payto_uri bank account
  * @param[out] hc set to the hash
@@ -750,7 +750,7 @@ TALER_exchange_wire_signature_hash (const char *payto_uri,
 
 
 /**
- * Check the signature in @a wire_s.
+ * Check the signature in @a master_sig.
  *
  * @param payto_uri URL that is signed
  * @param master_pub master public key of the exchange
@@ -781,7 +781,8 @@ TALER_exchange_wire_signature_make (const char *payto_uri,
 
 /**
  * Compute the hash of the given wire details.   The resulting
- * hash is what is put into the contract.
+ * @a hc is what will be put into the contract between customer
+ * and merchant for signing by both parties.
  *
  * @param payto_uri bank account
  * @param salt salt used to eliminate brute-force inversion

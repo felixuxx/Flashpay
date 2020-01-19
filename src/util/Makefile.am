@@ -24,8 +24,12 @@ lib_LTLIBRARIES = \
 
 libtalerutil_la_SOURCES = \
   amount.c \
+  config.c \
   crypto.c \
   crypto_wire.c \
+  getopt.c \
+  payto.c \
+  url.c \
   util.c \
   os_installation.c
 
