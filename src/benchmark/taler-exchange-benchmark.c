@@ -205,9 +205,9 @@ static void
 pick_exchange_account_cb (void *cls,
                           const char *section)
 {
-  if (0 == strncasecmp ("account-",
+  if (0 == strncasecmp ("exchange-account-",
                         section,
-                        strlen ("account-")))
+                        strlen ("exchange-account-")))
   {
     const char **s = cls;
 

@@ -137,7 +137,7 @@ main (int argc,
     cfgfilename = CONFIG_FILE_FAKEBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_fakebank (CONFIG_FILE_FAKEBANK,
-                                        "account-2",
+                                        "exchange-account-2",
                                         &bc))
     {
       GNUNET_break (0);
@@ -150,7 +150,7 @@ main (int argc,
     cfgfilename = CONFIG_FILE_PYBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_bank (CONFIG_FILE_PYBANK,
-                                    "account-2",
+                                    "exchange-account-2",
                                     &bc))
     {
       GNUNET_break (0);

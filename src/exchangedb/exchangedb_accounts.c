@@ -50,9 +50,6 @@ struct FindAccountContext
  * true, call the callback from the context with the
  * rest of the section name.
  *
- * FIXME(dold): This comment is inaccurate!  Also, why
- * is the prefix "account-" and not "exchange-account-"?
- *
  * @param cls our `struct FindEnabledWireContext`
  * @param section name of a section in the configuration
  */
@@ -67,8 +64,8 @@ check_for_account (void *cls,
   struct TALER_EXCHANGEDB_AccountInfo ai;
 
   if (0 != strncasecmp (section,
-                        "account-",
-                        strlen ("account-")))
+                        "exchange-account-",
+                        strlen ("exchange-account-")))
     return;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ctx->cfg,

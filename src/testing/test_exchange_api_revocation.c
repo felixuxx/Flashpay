@@ -194,7 +194,7 @@ main (int argc,
   /* Check fakebank port is available and get config */
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                      "account-2",
+                                      "exchange-account-2",
                                       &bc))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);

@@ -389,7 +389,7 @@ struct TALER_EXCHANGEDB_AccountInfo
 {
   /**
    * Section in the configuration file that specifies the
-   * account. Must start with "account-".
+   * account. Must start with "exchange-account-".
    */
   const char *section_name;
 

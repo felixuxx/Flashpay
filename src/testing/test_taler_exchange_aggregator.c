@@ -492,7 +492,7 @@ main (int argc,
   }
 
   if (GNUNET_OK != TALER_TESTING_prepare_fakebank (config_filename,
-                                                   "account-1",
+                                                   "exchange-account-1",
                                                    &bc))
   {
     TALER_LOG_WARNING ("Could not prepare the fakebank\n");

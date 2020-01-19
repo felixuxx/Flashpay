@@ -288,7 +288,7 @@ main (int argc,
 
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (CONFIG_FILE,
-                                      "account-2",
+                                      "exchange-account-2",
                                       &bc))
     return 77;
 

@@ -1533,7 +1533,7 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
-                                                   "account-1",
+                                                   "exchange-account-1",
                                                    &rr));
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -1544,12 +1544,12 @@ run (void *cls)
                                       &value,
                                       now,
                                       sndr,
-                                      "account-1",
+                                      "exchange-account-1",
                                       4));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
-                                                   "account-1",
+                                                   "exchange-account-1",
                                                    &rr));
   FAILIF (4 != rr);
   FAILIF (GNUNET_OK !=
@@ -1567,17 +1567,17 @@ run (void *cls)
                                       &value,
                                       now,
                                       sndr,
-                                      "account-1",
+                                      "exchange-account-1",
                                       5));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
-                                                   "account-1",
+                                                   "exchange-account-1",
                                                    &rr));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    session,
-                                                   "account-1",
+                                                   "exchange-account-1",
                                                    &rr));
   FAILIF (5 != rr);
   FAILIF (GNUNET_OK !=
