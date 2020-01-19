@@ -113,42 +113,43 @@ struct TALER_Amount
 
 
 /**
- * Parse denomination description, in the format "T:V.F".
+ * Parse monetary amount, in the format "T:V.F".
  *
- * @param str denomination description
- * @param[out] denom denomination to write the result to
- * @return #GNUNET_OK if the string is a valid denomination specification,
+ * @param str amount string
+ * @param[out] amount amount to write the result to
+ * @return #GNUNET_OK if the string is a valid monetary amount specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
 int
 TALER_string_to_amount (const char *str,
-                        struct TALER_Amount *denom);
+                        struct TALER_Amount *amount);
 
 
 /**
- * Parse denomination description, in the format "T:V.F".
+ * Parse monetary amount, in the format "T:V.F".
+ * The result is stored in network byte order (NBO).
  *
- * @param str denomination description
- * @param[out] denom denomination to write the result to, in NBO
- * @return #GNUNET_OK if the string is a valid denomination specification,
+ * @param str amount string
+ * @param[out] amount_nbo amount to write the result to
+ * @return #GNUNET_OK if the string is a valid amount specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
 int
 TALER_string_to_amount_nbo (const char *str,
-                            struct TALER_AmountNBO *denom);
+                            struct TALER_AmountNBO *amount_nbo);
 
 
 /**
  * Get the value of "zero" in a particular currency.
  *
  * @param cur currency description
- * @param[out] denom denomination to write the result to
+ * @param[out] amount amount to write the result to
  * @return #GNUNET_OK if @a cur is a valid currency specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
 int
 TALER_amount_get_zero (const char *cur,
-                       struct TALER_Amount *denom);
+                       struct TALER_Amount *amount);
 
 
 /**
