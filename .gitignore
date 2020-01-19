@@ -125,3 +125,4 @@ src/wire-plugins/test_wire_plugin_legacy_taler_bank
 uncrustify.cfg
 vgcore.*
 tags
+/.vscode
