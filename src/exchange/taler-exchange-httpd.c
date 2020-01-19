@@ -632,7 +632,11 @@ run_fake_client ()
   int ret;
   int status;
 
-  fd = open (input_filename, O_RDONLY);
+  if (0 == strcmp (input_filename,
+                   "-"))
+    fd = 0;
+  else
+    fd = open (input_filename, O_RDONLY);
   if (-1 == fd)
   {
     fprintf (stderr,
@@ -672,9 +676,13 @@ run_fake_client ()
     _exit (1);
   }
   /* parent process */
-  GNUNET_break (0 == close (fd));
+  if (0 != strcmp (input_filename,
+                   "-"))
+    GNUNET_break (0 == close (fd));
   ret = TEH_KS_loop ();
-  if (cld != waitpid (cld, &status, 0))
+  if (cld != waitpid (cld,
+                      &status,
+                      0))
     fprintf (stderr,
              "Waiting for `nc' child failed: %s\n",
              strerror (errno));
@@ -802,7 +810,7 @@ main (int argc,
     GNUNET_GETOPT_option_filename ('f',
                                    "file-input",
                                    "FILENAME",
-                                   "run in test-mode using FILENAME as the HTTP request to process",
+                                   "run in test-mode using FILENAME as the HTTP request to process, use '-' to read from stdin",
                                    &input_filename),
 #endif
     GNUNET_GETOPT_option_help (
