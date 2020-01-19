@@ -574,17 +574,21 @@ any effects on its own balance, those entries are excluded from the total.
 {% if data.coin_inconsistencies|length() == 0 %}
   {\bf All coin histories were unproblematic.}
 {% else %}
-  \begin{longtable}{p{1.8cm}|p{3cm}|r|r}
-  {\bf Operation} & {\bf Coin public key} & {\bf Exchange } & {\bf Auditor} \\
+  \begin{longtable}{p{1.8cm}|r|r}
+  {\bf Operation} & \multicolumn{2}{|c}{\bf Coin public key} \\
+                  & {\bf Exchange } & {\bf Auditor} \\
   \hline \hline
 \endfirsthead
-  {\bf Operation} & {\bf Coin public key} & {\bf Exchange} & {\bf Auditor} \\ \hline \hline
+  {\bf Operation} & \multicolumn{2}{|r}{\bf Coin public key} \\
+                  & {\bf Exchange } & {\bf Auditor} \\
+  \hline \hline
 \endhead
   \hline \hline
-  {\bf Operation} & {\bf Coin public key} & {\bf Exchange} & {\bf Auditor} \\
+  {\bf Operation} & \multicolumn{2}{|r}{\bf Coin public key} \\
+                  & {\bf Exchange } & {\bf Auditor} \\
 \endfoot
   \hline
-  \multicolumn{2}{l|}{ $\sum$ {\bf Delta (Auditor-Exchange)} } &
+  $\sum$ {\bf Delta (Auditor-Exchange)} &
   {{ data.total_coin_delta_plus }} &
   - {{ data.total_coin_delta_minus }} \\
     \caption{Arithmetic inconsistencies of amount calculations involving a coin.}
@@ -592,8 +596,8 @@ any effects on its own balance, those entries are excluded from the total.
 \endlastfoot
 {% for item in data.coin_inconsistencies %}
   {{ item.operation }} &
-  \multicolumn{5}{l}{ {\tt \small {{ item.coin_pub }} } } \\
-\nopagebreak & &
+  \multicolumn{2}{l}{ {\tt \small {{ item.coin_pub }} } } \\
+\nopagebreak &
   {{ item.exchange }} &
   {{ item.auditor }} \\ \hline
 {% endfor %}

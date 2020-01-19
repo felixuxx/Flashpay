@@ -179,6 +179,11 @@ struct AggregationUnit
    */
   int failed;
 
+  /**
+   * Set to #GNUNET_YES if we encountered a refund during #refund_by_coin_cb.
+   * Used to wave the deposit fee.
+   */
+  int have_refund;
 };
 
 
@@ -670,6 +675,7 @@ refund_by_coin_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Aggregator subtracts applicable refund of amount %s\n",
               TALER_amount2s (amount_with_fee));
+  aux->have_refund = GNUNET_YES;
   if (GNUNET_OK !=
       TALER_amount_subtract (&aux->total_amount,
                              &aux->total_amount,
@@ -716,25 +722,13 @@ deposit_cb (void *cls,
      fetch this one: */
   (void) wire_deadline; /* already checked by SQL query */
   au->merchant_pub = *merchant_pub;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Discovered ready transaction, starting by subtracting deposit fee %s\n",
-              TALER_amount2s (deposit_fee));
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&au->total_amount,
-                             amount_with_fee,
-                             deposit_fee))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fatally malformed record at row %llu over %s\n",
-                (unsigned long long) row_id,
-                TALER_amount2s (amount_with_fee));
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Aggregator processing payment %s with amount %s after fee subtraction\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Aggregator processing payment %s with amount %s\n",
               TALER_B2S (coin_pub),
-              TALER_amount2s (&au->total_amount));
+              TALER_amount2s (amount_with_fee));
   au->row_id = row_id;
+  au->total_amount = *amount_with_fee;
+  au->have_refund = GNUNET_NO;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           au->session,
                                           coin_pub,
@@ -746,6 +740,23 @@ deposit_cb (void *cls,
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
+  }
+  if (GNUNET_NO == au->have_refund)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Non-refunded transaction, subtracting deposit fee %s\n",
+                TALER_amount2s (deposit_fee));
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&au->total_amount,
+                               amount_with_fee,
+                               deposit_fee))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fatally malformed record at row %llu over %s\n",
+                  (unsigned long long) row_id,
+                  TALER_amount2s (amount_with_fee));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
   }
 
   GNUNET_assert (NULL == au->wire);
@@ -870,29 +881,15 @@ aggregate_cb (void *cls,
   GNUNET_break (0 == GNUNET_memcmp (&au->merchant_pub,
                                     merchant_pub));
   /* compute contribution of this coin after fees */
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Subtracting deposit fee %s\n",
-              TALER_amount2s (deposit_fee));
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&delta,
-                             amount_with_fee,
-                             deposit_fee))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fatally malformed record at %llu over amount %s\n",
-                (unsigned long long) row_id,
-                TALER_amount2s (amount_with_fee));
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
   /* add to total */
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Adding transaction amount %s from row %llu to aggregation\n",
-              TALER_amount2s (&delta),
+              TALER_amount2s (amount_with_fee),
               (unsigned long long) row_id);
   if (GNUNET_OK !=
       TALER_amount_add (&au->total_amount,
                         &au->total_amount,
-                        &delta))
+                        amount_with_fee))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Overflow or currency incompatibility during aggregation at %llu\n",
@@ -900,7 +897,7 @@ aggregate_cb (void *cls,
     /* Skip this one, but keep going! */
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
-
+  au->have_refund = GNUNET_NO;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           au->session,
                                           coin_pub,
@@ -912,6 +909,24 @@ aggregate_cb (void *cls,
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
+  }
+  if (GNUNET_NO == au->have_refund)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Subtracting deposit fee %s for non-refunded coin\n",
+                TALER_amount2s (deposit_fee));
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&delta,
+                               &au->total_amount,
+                               deposit_fee))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fatally malformed record at %llu over amount %s\n",
+                  (unsigned long long) row_id,
+                  TALER_amount2s (&au->total_amount));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    au->total_amount = delta;
   }
 
   if (au->rows_offset >= aggregation_limit)

@@ -151,6 +151,7 @@ jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_f
 jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
 jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
+
 # FIXME: check operation balances are correct (once we have more transaction types)
 # FIXME: check revenue summaries are correct (once we have more transaction types)
 
@@ -188,7 +189,26 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
 fi
-echo " OK"
+echo PASS
+
+echo -n "Checking for unexpected arithmetic differences "
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta, got unexpected plus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta, got unexpected minus of $LOSS"
+fi
+
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies detected in ordinary run"
+echo PASS
+
+echo -n "Checking for unexpected wire out differences "
+jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
+echo PASS
 
 # FIXME: check NO lag reported
 
@@ -331,13 +351,13 @@ echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql 
 run_audit
 
 EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit.json`
-if test $EXPECTED != "TESTKUDOS:5.01"
+if test $EXPECTED != "TESTKUDOS:5"
 then
     exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
 fi
 
 EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit.json`
-if test $EXPECTED != "TESTKUDOS:0.01"
+if test $EXPECTED != "TESTKUDOS:0"
 then
     exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
 fi
@@ -493,7 +513,7 @@ then
 fi
 
 LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS != "TESTKUDOS:1"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
@@ -505,7 +525,7 @@ then
 fi
 
 LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:0.1"
+if test $LOSS != "TESTKUDOS:1"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi

@@ -2151,6 +2151,7 @@ struct WireCheckContext
  * @param issue denomination information about the coin
  * @param tl_head head of transaction history to verify
  * @param[out] merchant_gain amount the coin contributes to the wire transfer to the merchant
+ * @param[out] deposit_gain amount the coin contributes excluding refunds
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -2164,14 +2165,15 @@ check_transaction_history_for_deposit (const struct
                                        TALER_DenominationKeyValidityPS *issue,
                                        const struct
                                        TALER_EXCHANGEDB_TransactionList *tl_head,
-                                       struct TALER_Amount *merchant_gain)
+                                       struct TALER_Amount *merchant_gain,
+                                       struct TALER_Amount *deposit_gain)
 {
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
   struct TALER_Amount spent;
   struct TALER_Amount value;
   struct TALER_Amount merchant_loss;
-  struct TALER_Amount merchant_delta;
+  struct TALER_Amount final_gain;
   const struct TALER_Amount *deposit_fee;
   int refund_deposit_fee;
 
@@ -2336,6 +2338,9 @@ check_transaction_history_for_deposit (const struct
            (0 == GNUNET_memcmp (h_contract_terms,
                                 &tl->details.refund->h_contract_terms)) )
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Detected applicable refund of %s\n",
+                    TALER_amount2s (amount_with_fee));
         if (GNUNET_OK !=
             TALER_amount_add (&merchant_loss,
                               &merchant_loss,
@@ -2344,9 +2349,6 @@ check_transaction_history_for_deposit (const struct
           GNUNET_break (0);
           return GNUNET_SYSERR;
         }
-        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                    "Detected applicable refund of %s\n",
-                    TALER_amount2s (amount_with_fee));
         refund_deposit_fee = GNUNET_YES;
       }
       /* Check that the fees given in the transaction list and in dki match */
@@ -2397,19 +2399,15 @@ check_transaction_history_for_deposit (const struct
     }
   } /* for 'tl' */
 
-  if ( (GNUNET_YES == refund_deposit_fee) &&
-       (NULL != deposit_fee) )
-  {
-    /* We had a /deposit operation AND a /refund operation,
-       and should thus not charge the merchant the /deposit fee */
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (merchant_gain,
-                                     merchant_gain,
-                                     deposit_fee));
-  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Deposits without fees are %s\n",
+              TALER_amount2s (merchant_gain));
 
   /* Calculate total balance change, i.e. expenditures (recoup, deposit, refresh)
      minus refunds (refunds, recoup-to-old) */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Subtracting refunds of %s from coin value loss\n",
+              TALER_amount2s (&refunds));
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&spent,
                              &expenditures,
@@ -2441,8 +2439,22 @@ check_transaction_history_for_deposit (const struct
 
   /* Finally, update @a merchant_gain by subtracting what he "lost"
      from refunds */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Merchant 'loss' due to refunds is %s\n",
+              TALER_amount2s (&merchant_loss));
+  *deposit_gain = *merchant_gain;
+  if ( (GNUNET_YES == refund_deposit_fee) &&
+       (NULL != deposit_fee) )
+  {
+    /* We had a /deposit operation AND a /refund operation,
+       and should thus not charge the merchant the /deposit fee */
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (merchant_gain,
+                                     merchant_gain,
+                                     deposit_fee));
+  }
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&merchant_delta,
+      TALER_amount_subtract (&final_gain,
                              merchant_gain,
                              &merchant_loss))
   {
@@ -2454,7 +2466,10 @@ check_transaction_history_for_deposit (const struct
                                           1);
     return GNUNET_SYSERR;
   }
-  *merchant_gain = merchant_delta;
+  *merchant_gain = final_gain;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Final merchant gain after refunds is %s\n",
+              TALER_amount2s (deposit_gain));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Coin %s contributes %s to contract %s\n",
               TALER_B2S (coin_pub),
@@ -2477,7 +2492,8 @@ check_transaction_history_for_deposit (const struct
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination of @a coin_pub
  * @param coin_pub which public key was this payment about
- * @param coin_value amount contributed by this coin in total (with fee)
+ * @param coin_value amount contributed by this coin in total (with fee),
+ *                   but excluding refunds by this coin
  * @param deposit_fee applicable deposit fee for this coin, actual
  *        fees charged may differ if coin was refunded
  */
@@ -2500,6 +2516,7 @@ wire_transfer_information_cb (void *cls,
   const struct TALER_DenominationKeyValidityPS *issue;
   struct TALER_Amount computed_value;
   struct TALER_Amount coin_value_without_fee;
+  struct TALER_Amount total_deposit_without_refunds;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
@@ -2600,7 +2617,8 @@ wire_transfer_information_cb (void *cls,
                                              merchant_pub,
                                              issue,
                                              tl,
-                                             &computed_value))
+                                             &computed_value,
+                                             &total_deposit_without_refunds))
   {
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("coin history",
@@ -2608,6 +2626,9 @@ wire_transfer_information_cb (void *cls,
                               "failed to verify coin history (for deposit)");
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Coin contributes %s to aggregate (deposits after fees and refunds)\n",
+              TALER_amount2s (&computed_value));
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&coin_value_without_fee,
                              coin_value,
@@ -2622,14 +2643,17 @@ wire_transfer_information_cb (void *cls,
     return;
   }
   if (0 !=
-      TALER_amount_cmp (&computed_value,
+      TALER_amount_cmp (&total_deposit_without_refunds,
                         &coin_value_without_fee))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Expected coin contribution of %s to aggregate\n",
+                TALER_amount2s (&coin_value_without_fee));
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_amount_arithmetic_inconsistency ("aggregation (contribution)",
                                             rowid,
                                             &coin_value_without_fee,
-                                            &computed_value,
+                                            &total_deposit_without_refunds,
                                             -1);
   }
   edb->free_coin_transaction_list (edb->cls,
@@ -2661,7 +2685,7 @@ wire_transfer_information_cb (void *cls,
     if (GNUNET_OK !=
         TALER_amount_add (&res,
                           &wcc->total_deposits,
-                          &coin_value_without_fee))
+                          &computed_value))
     {
       GNUNET_break (0);
       wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
@@ -2797,13 +2821,12 @@ get_wire_fee (struct AggregationContext *ac,
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
 static int
-check_wire_out_cb
-  (void *cls,
-  uint64_t rowid,
-  struct GNUNET_TIME_Absolute date,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  const json_t *wire,
-  const struct TALER_Amount *amount)
+check_wire_out_cb (void *cls,
+                   uint64_t rowid,
+                   struct GNUNET_TIME_Absolute date,
+                   const struct TALER_WireTransferIdentifierRawP *wtid,
+                   const json_t *wire,
+                   const struct TALER_Amount *amount)
 {
   struct AggregationContext *ac = cls;
   struct WireCheckContext wcc;
