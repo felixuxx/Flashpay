@@ -316,7 +316,9 @@ struct TEH_KS_StateHandle
   struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP current_sign_key_issue;
 
   /**
-   * Reference count.  The struct is released when the RC hits zero.
+   * Reference count.  The struct is released when the RC hits zero.  Once
+   * this object is aliased, the reference counter must only be changed while
+   * holding the #internal_key_state_mutex.
    */
   unsigned int refcnt;
 
@@ -336,6 +338,9 @@ struct TEH_KS_StateHandle
  *
  * Thus, this instance should never be used directly, instead reserve
  * access via #TEH_KS_acquire() and release it via #TEH_KS_release().
+ *
+ * As long as MHD threads are running, access to this field requires
+ * locking the #internal_key_state_mutex.
  */
 static struct TEH_KS_StateHandle *internal_key_state;
 
@@ -432,56 +437,46 @@ free_denom_key (void *cls,
 
 
 /**
- * Release key state, free if necessary (if reference count gets to zero).
- * Internal method used when the mutex is already held.
+ * Internal function to free key state. Reference count must be at zero.
  *
- * @param key_state the key state to release
- * @param locked do we hold the lock and can check #internal_key_state
+ * @param key_state the key state to free
  */
 static void
-ks_release (struct TEH_KS_StateHandle *key_state,
-            int locked)
+ks_free (struct TEH_KS_StateHandle *key_state)
 {
-  GNUNET_assert (0 < key_state->refcnt);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "KS release called (%p/%d)\n",
-              key_state,
-              key_state->refcnt);
-  key_state->refcnt--;
-  if (0 == key_state->refcnt)
+              "KS release called (%p)\n",
+              key_state);
+  GNUNET_assert (0 == key_state->refcnt);
+  if (NULL != key_state->denomkey_map)
   {
-    if (locked)
-      GNUNET_assert (key_state != internal_key_state);
-    if (NULL != key_state->denomkey_map)
-    {
-      GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
-                                             &free_denom_key,
-                                             key_state);
-      GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
-      key_state->denomkey_map = NULL;
-    }
-    if (NULL != key_state->revoked_map)
-    {
-      GNUNET_CONTAINER_multihashmap_iterate (key_state->revoked_map,
-                                             &free_denom_key,
-                                             key_state);
-      GNUNET_CONTAINER_multihashmap_destroy (key_state->revoked_map);
-      key_state->revoked_map = NULL;
-    }
-    for (unsigned int i = 0; i<key_state->krd_array_length; i++)
-    {
-      struct KeysResponseData *krd = &key_state->krd_array[i];
-
-      if (NULL != krd->response_compressed)
-        MHD_destroy_response (krd->response_compressed);
-      if (NULL != krd->response_uncompressed)
-        MHD_destroy_response (krd->response_uncompressed);
-    }
-    GNUNET_array_grow (key_state->krd_array,
-                       key_state->krd_array_length,
-                       0);
-    GNUNET_free (key_state);
+    GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
+                                           &free_denom_key,
+                                           key_state);
+    GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
+    key_state->denomkey_map = NULL;
   }
+  if (NULL != key_state->revoked_map)
+  {
+    GNUNET_CONTAINER_multihashmap_iterate (key_state->revoked_map,
+                                           &free_denom_key,
+                                           key_state);
+    GNUNET_CONTAINER_multihashmap_destroy (key_state->revoked_map);
+    key_state->revoked_map = NULL;
+  }
+  for (unsigned int i = 0; i<key_state->krd_array_length; i++)
+  {
+    struct KeysResponseData *krd = &key_state->krd_array[i];
+
+    if (NULL != krd->response_compressed)
+      MHD_destroy_response (krd->response_compressed);
+    if (NULL != krd->response_uncompressed)
+      MHD_destroy_response (krd->response_uncompressed);
+  }
+  GNUNET_array_grow (key_state->krd_array,
+                     key_state->krd_array_length,
+                     0);
+  GNUNET_free (key_state);
 }
 
 
@@ -1266,7 +1261,7 @@ setup_general_response_headers (const struct TEH_KS_StateHandle *key_state,
     get_date_string (m,
                      dat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "settings /keys 'Expires' header to '%s'\n",
+                "Setting /keys 'Expires' header to '%s'\n",
                 dat);
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (response,
@@ -1649,6 +1644,9 @@ reload_public_denoms_cb (void *cls,
  * lookup tables, and (2) HTTP responses to be returned from
  * /keys.
  *
+ * State returned is to be freed with #ks_free() -- but only
+ * once the reference counter has again hit zero.
+ *
  * @return NULL on error (usually pretty fatal...)
  */
 static struct TEH_KS_StateHandle *
@@ -1701,9 +1699,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to load denomination keys from `%s'.\n",
                 TEH_exchange_directory);
-    key_state->refcnt = 1;
-    ks_release (key_state,
-                GNUNET_NO);
+    ks_free (key_state);
     json_decref (rfc.recoup_array);
     json_decref (rfc.sign_keys_array);
     return NULL;
@@ -1728,9 +1724,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to load denomination keys from `%s'.\n",
                 TEH_exchange_directory);
-    key_state->refcnt = 1;
-    ks_release (key_state,
-                GNUNET_NO);
+    ks_free (key_state);
     json_decref (rfc.recoup_array);
     json_decref (rfc.sign_keys_array);
     return NULL;
@@ -1747,9 +1741,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Have no signing key. Bad configuration.\n");
-    key_state->refcnt = 1;
-    ks_release (key_state,
-                GNUNET_NO);
+    ks_free (key_state);
     destroy_response_factory (&rfc);
     return NULL;
   }
@@ -1759,9 +1751,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Have no denomination keys. Bad configuration.\n");
-    key_state->refcnt = 1;
-    ks_release (key_state,
-                GNUNET_NO);
+    ks_free (key_state);
     destroy_response_factory (&rfc);
     return NULL;
   }
@@ -1864,9 +1854,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
                              last)) )
   {
     GNUNET_break (0);
-    key_state->refcnt = 1;
-    ks_release (key_state,
-                GNUNET_NO);
+    ks_free (key_state);
     destroy_response_factory (&rfc);
     return NULL;
   }
@@ -1890,15 +1878,22 @@ void
 TEH_KS_release_ (const char *location,
                  struct TEH_KS_StateHandle *key_state)
 {
+  int do_free;
+
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "KS released at %s (%p/%d)\n",
               location,
               key_state,
               key_state->refcnt);
-  ks_release (key_state,
-              GNUNET_YES);
+  GNUNET_assert (0 < key_state->refcnt);
+  key_state->refcnt--;
+  do_free = (0 == key_state->refcnt);
+  GNUNET_assert ( (! do_free) ||
+                  (key_state != internal_key_state) );
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
+  if (do_free)
+    ks_free (key_state);
 }
 
 
@@ -1916,53 +1911,49 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
                  const char *location)
 {
   struct TEH_KS_StateHandle *key_state;
-  unsigned int rcd;
+  struct TEH_KS_StateHandle *os;
 
+  os = NULL;
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  rcd = 0;
-  if ( (NULL != internal_key_state) &&
-       (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
+  /* If the current internal key state is missing (failed to load one on
+     startup?) or expired, we try to setup a fresh one even without having
+     gotten SIGUSR1 */
+  if ( ( (NULL != internal_key_state) &&
+         (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) ) ||
+       (NULL == internal_key_state) )
   {
-    struct TEH_KS_StateHandle *ks = internal_key_state;
+    struct TEH_KS_StateHandle *os = internal_key_state;
 
-    internal_key_state = NULL;
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "KS released in acquire due to expiration\n");
-    ks_release (ks,
-                GNUNET_YES);
-    rcd = 1; /* remember that we released 'internal_key_state' */
+    internal_key_state = make_fresh_key_state (now);
+    internal_key_state->refcnt = 1; /* alias from #internal_key_state */
+    if (NULL != os)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "KS released in acquire due to expiration\n");
+      GNUNET_assert (0 < os->refcnt);
+      os->refcnt--; /* #internal_key_state alias dropped */
+      if (0 != os->refcnt)
+        os = NULL; /* do NOT release yet, otherwise release after unlocking */
+    }
   }
   if (NULL == internal_key_state)
   {
-    internal_key_state = make_fresh_key_state (now);
-    /* bump RC by 1 if we released internal_key_state above */
-    if (NULL == internal_key_state)
-    {
-      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to initialize key state\n");
-      return NULL;
-    }
-    internal_key_state->refcnt += rcd;
+    /* We tried and failed (again) to setup #internal_key_state */
+    GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize key state\n");
+    return NULL;
   }
   key_state = internal_key_state;
-  if (NULL != key_state)
-  {
-    key_state->refcnt++;
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "KS acquired at %s (%p/%d)\n",
-                location,
-                key_state,
-                key_state->refcnt);
-  }
-  else
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "KS acquire failed at %s\n",
-                location);
-  }
+  key_state->refcnt++; /* returning an alias, increment RC */
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "KS acquired at %s (%p/%d)\n",
+              location,
+              key_state,
+              key_state->refcnt);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-
+  if (NULL != os)
+    ks_free (os);
   return key_state;
 }
 
@@ -2210,22 +2201,6 @@ TEH_KS_loop (void)
     char c;
     ssize_t res;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "(re-)loading keys\n");
-    if (NULL != internal_key_state)
-    {
-      struct TEH_KS_StateHandle *ks = internal_key_state;
-
-      internal_key_state = NULL;
-      TEH_KS_release (ks);
-    }
-    /* This will re-initialize 'internal_key_state' with
-       an initial refcnt of 1 */
-    if (NULL == TEH_KS_acquire (GNUNET_TIME_absolute_get ()))
-    {
-      ret = GNUNET_SYSERR;
-      break;
-    }
 read_again:
     errno = 0;
     res = read (reload_pipe[0],
@@ -2242,7 +2217,36 @@ read_again:
     switch (c)
     {
     case SIGUSR1:
-      /* reload internal key state, we do this in the loop */
+      {
+        struct TEH_KS_StateHandle *fs;
+        struct TEH_KS_StateHandle *os;
+
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "(re-)loading keys\n");
+        /* Create fresh key state before critical region */
+        fs = make_fresh_key_state (GNUNET_TIME_absolute_get ());
+        if (NULL == fs)
+        {
+          /* Ok, that went badly, terminate process */
+          ret = GNUNET_SYSERR;
+          break;
+        }
+        fs->refcnt = 1; /* we'll alias from #internal_key_state soon */
+        /* swap active key state in critical region */
+        GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
+        os = internal_key_state;
+        internal_key_state = fs;
+        if (NULL != os)
+        {
+          GNUNET_assert (0 < os->refcnt);
+          os->refcnt--; /* removed #internal_key_state reference */
+        }
+        if (0 != os->refcnt)
+          os = NULL; /* other aliases are still active, do not yet free */
+        GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
+        if (NULL != os)
+          ks_free (os); /* RC did hit zero, free */
+      }
       break;
     case SIGTERM:
     case SIGINT:
@@ -2277,24 +2281,35 @@ read_again:
 
 
 /**
+ * Setup initial #internal_key_state.
+ */
+void
+TEH_KS_init (void)
+{
+  /* no need to lock here, as we are still single-threaded */
+  internal_key_state = make_fresh_key_state (GNUNET_TIME_absolute_get ());
+  if (NULL == internal_key_state)
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to setup initial key state. This exchange cannot work.\n");
+}
+
+
+/**
  * Finally release #internal_key_state.
  */
 void
 TEH_KS_free ()
 {
-  GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  if (NULL != internal_key_state)
-  {
-    struct TEH_KS_StateHandle *ks = internal_key_state;
+  struct TEH_KS_StateHandle *ks;
 
-    internal_key_state = NULL;
-    GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-    TEH_KS_release (ks);
-  }
-  else
-  {
-    GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
-  }
+  /* Note: locking is no longer be required, as we are again
+     single-threaded. */
+  ks = internal_key_state;
+  if (NULL == ks)
+    return;
+  GNUNET_assert (0 < ks->refcnt);
+  ks->refcnt--;
+  ks_free (ks);
 }
 
 
@@ -2375,7 +2390,6 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                      const char *upload_data,
                      size_t *upload_data_size)
 {
-  struct TEH_KS_StateHandle *key_state;
   int ret;
   const char *have_cherrypick;
   const char *have_fakenow;
@@ -2431,49 +2445,57 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
     }
     now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
   }
-
-  key_state = TEH_KS_acquire (now);
-  if (NULL == key_state)
-  {
-    TALER_LOG_ERROR ("Lacking keys to operate\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                       "no keys");
-  }
-  krd = bsearch (&last_issue_date,
-                 key_state->krd_array,
-                 key_state->krd_array_length,
-                 sizeof (struct KeysResponseData),
-                 &krd_search_comparator);
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Filtering /keys by cherry pick date %s found entry %u/%u\n",
-              GNUNET_STRINGS_absolute_time_to_string (last_issue_date),
-              (unsigned int) (krd - key_state->krd_array),
-              key_state->krd_array_length);
-  if ( (NULL == krd) &&
-       (key_state->krd_array_length > 0) )
+              "Handling request for /keys (%s/%s)\n",
+              have_cherrypick,
+              have_fakenow);
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Client provided invalid cherry picking timestamp %s, returning full response\n",
-                GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
-    krd = &key_state->krd_array[0];
+    struct TEH_KS_StateHandle *key_state;
+
+    key_state = TEH_KS_acquire (now);
+    if (NULL == key_state)
+    {
+      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         "no keys");
+    }
+    krd = bsearch (&last_issue_date,
+                   key_state->krd_array,
+                   key_state->krd_array_length,
+                   sizeof (struct KeysResponseData),
+                   &krd_search_comparator);
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Filtering /keys by cherry pick date %s found entry %u/%u\n",
+                GNUNET_STRINGS_absolute_time_to_string (last_issue_date),
+                (unsigned int) (krd - key_state->krd_array),
+                key_state->krd_array_length);
+    if ( (NULL == krd) &&
+         (key_state->krd_array_length > 0) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Client provided invalid cherry picking timestamp %s, returning full response\n",
+                  GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
+      krd = &key_state->krd_array[0];
+    }
+    if (NULL == krd)
+    {
+      GNUNET_break (0);
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_KEYS_MISSING,
+                                         "no key response found");
+    }
+    ret = MHD_queue_response (connection,
+                              rh->response_code,
+                              (MHD_YES == TALER_MHD_can_compress (connection))
+                              ? krd->response_compressed
+                              : krd->response_uncompressed);
+    TEH_KS_release (key_state);
   }
-  if (NULL == krd)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_KEYS_MISSING,
-                                       "no key response found");
-  }
-  ret = MHD_queue_response (connection,
-                            rh->response_code,
-                            (MHD_YES == TALER_MHD_can_compress (connection))
-                            ? krd->response_compressed
-                            : krd->response_uncompressed);
-  TEH_KS_release (key_state);
   return ret;
 }
 

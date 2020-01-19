@@ -83,6 +83,13 @@ TEH_KS_release_ (const char *location,
 
 
 /**
+ * Setup initial #internal_key_state.
+ */
+void
+TEH_KS_init (void);
+
+
+/**
  * Finally, release #internal_key_state.
  */
 void

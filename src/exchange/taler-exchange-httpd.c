@@ -882,6 +882,9 @@ main (int argc,
                            "fcntl");
   }
 
+  /* initialize #internal_key_state with an RC of 1 */
+  TEH_KS_init ();
+
   /* consider unix path */
   if ( (-1 == fh) &&
        (NULL != serve_unixpath) )
@@ -891,7 +894,6 @@ main (int argc,
     if (-1 == fh)
       return 1;
   }
-
   mhd
     = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
                         | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
@@ -1004,6 +1006,8 @@ main (int argc,
     MHD_stop_daemon (mhd);
     break;
   }
+
+  /* release #internal_key_state */
   TEH_KS_free ();
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
   TEH_VALIDATION_done ();
