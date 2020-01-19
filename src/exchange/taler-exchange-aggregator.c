@@ -612,7 +612,7 @@ static int
 parse_wirewatch_config ()
 {
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (c,
+      GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "BASE_URL",
                                              &exchange_base_url))
@@ -620,8 +620,7 @@ parse_wirewatch_config ()
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    global_ret = 1;
-    return;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
