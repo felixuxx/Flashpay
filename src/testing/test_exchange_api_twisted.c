@@ -292,7 +292,7 @@ main (int argc,
                                       &bc))
     return 77;
 
-  if (NULL == (twister_url = TALER_TESTING_prepare_twister
+  if (NULL == (twister_url = TALER_TWISTER_prepare_twister
                                (CONFIG_FILE)))
     return 77;
 
@@ -309,7 +309,7 @@ main (int argc,
 
   case GNUNET_OK:
 
-    if (NULL == (twisterd = TALER_TESTING_run_twister (CONFIG_FILE)))
+    if (NULL == (twisterd = TALER_TWISTER_run_twister (CONFIG_FILE)))
       return 77;
 
     ret = TALER_TESTING_setup_with_exchange (&run,

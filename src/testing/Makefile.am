@@ -16,6 +16,21 @@ endif
 lib_LTLIBRARIES = \
   libtalertesting.la
 
+if HAVE_TWISTER
+lib_LTLIBRARIES += libtalertwistertesting.la
+libtalertwistertesting_la_SOURCES = \
+  testing_api_twister_helpers.c \
+  testing_api_cmd_twister_exec_client.c
+libtalertwistertesting_la_LIBADD = \
+  -lgnunetutil \
+  libtalertesting.la \
+  -ltalertwister \
+  $(XLIB)
+libtalertwistertesting_la_LDFLAGS = \
+  $(GN_LIB_LDFLAGS) $(WINFLAGS) \
+  -version-info 0:0:0
+endif
+
 libtalertesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
@@ -116,9 +131,9 @@ TESTS = \
 test_auditor_api_SOURCES = \
   test_auditor_api.c
 test_auditor_api_LDADD = \
-  libtalerauditor.la \
+  $(top_builddir)/src/lib/libtalerauditor.la \
   libtalertesting.la \
-  libtalerexchange.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
@@ -131,7 +146,7 @@ test_auditor_api_LDADD = \
 test_auditor_api_version_SOURCES = \
   test_auditor_api_version.c
 test_auditor_api_version_LDADD = \
-  libtalerauditor.la \
+  $(top_builddir)/src/lib/libtalerauditor.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
@@ -141,7 +156,7 @@ test_auditor_api_version_LDADD = \
 test_bank_api_with_fakebank_SOURCES = \
   test_bank_api.c
 test_bank_api_with_fakebank_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalertesting.la \
   -ltalerexchange \
   -lgnunetutil \
   $(top_builddir)/src/bank-lib/libtalerbank.la
@@ -150,7 +165,7 @@ test_bank_api_with_pybank_SOURCES = \
   test_bank_api.c
 test_bank_api_with_pybank_LDADD = \
   libtalertesting.la \
-  libtalerexchange.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   -lgnunetutil \
   $(top_builddir)/src/bank-lib/libtalerbank.la
 
@@ -158,7 +173,7 @@ test_exchange_api_SOURCES = \
   test_exchange_api.c
 test_exchange_api_LDADD = \
   libtalertesting.la \
-  libtalerexchange.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
@@ -172,7 +187,7 @@ test_exchange_api_revocation_SOURCES = \
   test_exchange_api_revocation.c
 test_exchange_api_revocation_LDADD = \
   libtalertesting.la \
-  libtalerexchange.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
@@ -186,7 +201,7 @@ test_exchange_api_keys_cherry_picking_SOURCES = \
   test_exchange_api_keys_cherry_picking.c
 test_exchange_api_keys_cherry_picking_LDADD = \
   libtalertesting.la \
-  libtalerexchange.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -199,7 +214,7 @@ test_exchange_api_overlapping_keys_bug_SOURCES = \
   test_exchange_api_overlapping_keys_bug.c
 test_exchange_api_overlapping_keys_bug_LDADD = \
   libtalertesting.la \
-  libtalerexchange.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -216,7 +231,7 @@ test_taler_exchange_aggregator_postgres_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalertesting.la \
   -lmicrohttpd \
   -lgnunetutil \
   -lgnunetjson \
@@ -231,7 +246,7 @@ test_taler_exchange_wirewatch_postgres_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalertesting.la \
   -lmicrohttpd \
   -lgnunetutil \
   -lgnunetjson \
@@ -244,12 +259,12 @@ test_exchange_api_twisted_SOURCES = \
 test_exchange_api_twisted_LDADD = \
   $(LIBGCRYPT_LIBS) \
   libtalertesting.la \
-  libtalerexchange.la \
+  libtalertwistertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -ltalertwistertesting \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
@@ -258,12 +273,12 @@ test_exchange_api_twisted_LDADD = \
 test_bank_api_with_fakebank_twisted_SOURCES = \
   test_bank_api_twisted.c
 test_bank_api_with_fakebank_twisted_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalertesting.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
-  -ltalertwistertesting \
+  libtalertwistertesting.la \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
@@ -272,12 +287,12 @@ test_bank_api_with_fakebank_twisted_LDADD = \
 test_bank_api_with_pybank_twisted_SOURCES = \
   test_bank_api_twisted.c
 test_bank_api_with_pybank_twisted_LDADD = \
-  $(top_builddir)/src/lib/libtalertesting.la \
+  libtalertesting.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
-  -ltalertwistertesting \
+  libtalertwistertesting.la \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \

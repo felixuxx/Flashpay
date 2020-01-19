@@ -143,7 +143,7 @@ main (int argc,
   else
     cfgfilename = CONFIG_FILE_PYBANK;
 
-  if (NULL == (twister_url = TALER_TESTING_prepare_twister
+  if (NULL == (twister_url = TALER_TWISTER_prepare_twister
                                (cfgfilename)))
   {
     GNUNET_break (0);
@@ -152,7 +152,7 @@ main (int argc,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "twister_url is %s\n",
               twister_url);
-  if (NULL == (twisterd = TALER_TESTING_run_twister (cfgfilename)))
+  if (NULL == (twisterd = TALER_TWISTER_run_twister (cfgfilename)))
   {
     GNUNET_break (0);
     GNUNET_free (twister_url);
