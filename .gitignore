@@ -47,16 +47,16 @@ src/lib/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
 src/lib/test_taler_exchange_httpd_home/.local/share/taler/auditor/
 src/lib/test_taler_exchange_httpd_home/.local/share/taler/auditors/
 
-src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
-src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
-src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditor/
-src/lib/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditors/
-src/lib/test_exchange_api_home/.local/share/taler/exchange/live-keys/
-src/lib/test_exchange_api_home/.local/share/taler/exchange/wirefees/
-src/lib/test_exchange_api_home/.local/share/taler/auditor/
-src/lib/test_exchange_api_home/.local/share/taler/auditors/
+src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
+src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
+src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditor/
+src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditors/
+src/testing/test_exchange_api_home/.local/share/taler/exchange/live-keys/
+src/testing/test_exchange_api_home/.local/share/taler/exchange/wirefees/
+src/testing/test_exchange_api_home/.local/share/taler/auditor/
+src/testing/test_exchange_api_home/.local/share/taler/auditors/
 src/lib/auditor.in
-src/lib/test_exchange_api_twisted
+src/testing/test_exchange_api_twisted
 src/exchange/taler-exchange-aggregator
 src/exchange/test_taler_exchange_aggregator-postgres
 src/exchange/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/

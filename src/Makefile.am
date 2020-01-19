@@ -25,4 +25,5 @@ SUBDIRS = \
   auditordb \
   auditor \
   lib \
+  testing \
   benchmark
