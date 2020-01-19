@@ -2291,6 +2291,7 @@ TEH_KS_init (void)
   if (NULL == internal_key_state)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to setup initial key state. This exchange cannot work.\n");
+  internal_key_state->refcnt = 1;
 }
 
 
@@ -2307,7 +2308,7 @@ TEH_KS_free ()
   ks = internal_key_state;
   if (NULL == ks)
     return;
-  GNUNET_assert (0 < ks->refcnt);
+  GNUNET_assert (1 == ks->refcnt);
   ks->refcnt--;
   ks_free (ks);
 }
