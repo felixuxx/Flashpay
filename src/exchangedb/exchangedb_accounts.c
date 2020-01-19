@@ -62,7 +62,7 @@ check_for_account (void *cls,
 {
   struct FindAccountContext *ctx = cls;
   char *method;
-  char *payto_url;
+  char *payto_uri;
   char *wire_response_filename;
   struct TALER_EXCHANGEDB_AccountInfo ai;
 
@@ -73,12 +73,12 @@ check_for_account (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ctx->cfg,
                                              section,
-                                             "URL",
-                                             &payto_url))
+                                             "PAYTO_URI",
+                                             &payto_uri))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
-                               "URL");
+                               "PAYTO_URI");
     return;
   }
   if (GNUNET_OK !=
@@ -90,7 +90,7 @@ check_for_account (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
                                "METHOD");
-    GNUNET_free (payto_url);
+    GNUNET_free (payto_uri);
     return;
   }
   if (GNUNET_OK !=
@@ -101,7 +101,7 @@ check_for_account (void *cls,
     wire_response_filename = NULL;
   ai.section_name = section;
   ai.method = method;
-  ai.payto_url = payto_url;
+  ai.payto_uri = payto_uri;
   ai.wire_response_filename = wire_response_filename;
 
   ai.debit_enabled = (GNUNET_YES ==
@@ -114,7 +114,7 @@ check_for_account (void *cls,
                                                              "ENABLE_CREDIT"));
   ctx->cb (ctx->cb_cls,
            &ai);
-  GNUNET_free (payto_url);
+  GNUNET_free (payto_uri);
   GNUNET_free (method);
   GNUNET_free_non_null (wire_response_filename);
 }

@@ -760,7 +760,7 @@ cb_wt_check (void *cls,
   GNUNET_assert (0 == GNUNET_memcmp (merchant_pub,
                                      &merchant_pub_wt));
   GNUNET_assert (0 == strcmp (json_string_value (json_object_get (wire,
-                                                                  "url")),
+                                                                  "payto_uri")),
                               "payto://sepa/DE67830654080004822650"));
   GNUNET_assert (0 == GNUNET_memcmp (h_wire,
                                      &h_wire_wt));
@@ -1257,7 +1257,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
     json_t *wire_out_account;
 
     wire_out_account = json_pack ("{s:s,s:s}",
-                                  "url",
+                                  "payto_uri",
                                   "payto://x-taler-bank/localhost:8080/1",
                                   "salt", "this-is-my-salt");
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1473,7 +1473,7 @@ run (void *cls)
   session = NULL;
   deposit.coin.denom_sig.rsa_signature = NULL;
   wire = json_pack ("{s:s, s:s}",
-                    "url", "payto://sepa/DE67830654080004822650",
+                    "payto_uri", "payto://sepa/DE67830654080004822650",
                     "salt", "this-is-a-salt-value");
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);

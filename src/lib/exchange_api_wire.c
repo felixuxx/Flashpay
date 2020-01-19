@@ -271,7 +271,7 @@ handle_wire_finished (void *cls,
           struct TALER_EXCHANGE_WireAccount *wa = &was[i];
           json_t *account;
           struct GNUNET_JSON_Specification spec_account[] = {
-            GNUNET_JSON_spec_string ("url", &wa->url),
+            GNUNET_JSON_spec_string ("payto_uri", &wa->payto_uri),
             GNUNET_JSON_spec_fixed_auto ("master_sig", &wa->master_sig),
             GNUNET_JSON_spec_end ()
           };
@@ -300,7 +300,7 @@ handle_wire_finished (void *cls,
             ec = TALER_EC_SERVER_JSON_INVALID;
             break;
           }
-          if (NULL == (method = TALER_payto_get_method (wa->url)))
+          if (NULL == (method = TALER_payto_get_method (wa->payto_uri)))
           {
             /* bogus reply */
             GNUNET_break_op (0);

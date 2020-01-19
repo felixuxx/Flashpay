@@ -1076,10 +1076,10 @@ wire_out_cb (void *cls,
     return GNUNET_OK;
   }
   {
-    char *payto_url;
+    char *payto_uri;
 
-    payto_url = TALER_JSON_wire_to_payto (wire);
-    if (0 != strcasecmp (payto_url,
+    payto_uri = TALER_JSON_wire_to_payto (wire);
+    if (0 != strcasecmp (payto_uri,
                          roi->details.credit_account_url))
     {
       /* Destination bank account is wrong in actual wire transfer, so
@@ -1112,10 +1112,10 @@ wire_out_cb (void *cls,
                     TALER_amount_add (&total_bad_amount_out_minus,
                                       &total_bad_amount_out_minus,
                                       amount));
-      GNUNET_free (payto_url);
+      GNUNET_free (payto_uri);
       goto cleanup;
     }
-    GNUNET_free (payto_url);
+    GNUNET_free (payto_uri);
   }
   if (0 != TALER_amount_cmp (&roi->details.amount,
                              amount))

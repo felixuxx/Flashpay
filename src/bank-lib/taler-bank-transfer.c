@@ -218,7 +218,7 @@ main (int argc, char *const *argv)
       (GNUNET_GETOPT_option_string ('C',
                                     "credit",
                                     "ACCOUNT",
-                                    "payto URL of the bank account to credit",
+                                    "payto URI of the bank account to credit",
                                     &credit_account)),
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_string ('s',

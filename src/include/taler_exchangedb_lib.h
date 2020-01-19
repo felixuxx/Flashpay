@@ -401,7 +401,7 @@ struct TALER_EXCHANGEDB_AccountInfo
   /**
    * payto://-URL of the account.
    */
-  const char *payto_url;
+  const char *payto_uri;
 
   /**
    * Filename containing the signed /wire response, or NULL

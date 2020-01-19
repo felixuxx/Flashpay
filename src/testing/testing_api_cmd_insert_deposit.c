@@ -184,7 +184,7 @@ insert_deposit_run (void *cls,
     deposit.receiver_wire_account
       = json_pack ("{s:s, s:s}",
                    "salt", "this-is-a-salt-value",
-                   "url", str);
+                   "payto_uri", str);
     GNUNET_free (str);
   }
 

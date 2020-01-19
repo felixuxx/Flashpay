@@ -1,4 +1,4 @@
 {
-  "url": "payto://x-taler-bank/localhost/2",
+  "payto_uri": "payto://x-taler-bank/localhost/2",
   "master_sig": "HEWC1XDS0QZ53YQR451VRKD4N968NXWGZXS30HJ59MJ0PESACK1ZYPYCAT15P08WD58C7D7F6EVN26D59JKA75XEBDQCM8VYFETK82R"
 }

@@ -110,13 +110,13 @@ load_account (void *cls,
       return;
     }
     if (0 != strcasecmp (url,
-                         ai->payto_url))
+                         ai->payto_uri))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "URL in Wire response file `%s' does not match URL in configuration (%s vs %s)!\n",
                   ai->wire_response_filename,
                   url,
-                  ai->payto_url);
+                  ai->payto_uri);
       json_decref (wire_s);
       GNUNET_free (url);
       *ret = GNUNET_SYSERR;
@@ -146,7 +146,7 @@ load_account (void *cls,
       *ret = GNUNET_SYSERR;
       return;
     }
-    method = TALER_payto_get_method (ai->payto_url);
+    method = TALER_payto_get_method (ai->payto_uri);
     if (GNUNET_OK ==
         load_fee (method))
     {

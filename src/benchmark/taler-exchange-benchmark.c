@@ -92,7 +92,7 @@ static struct TALER_TESTING_ExchangeConfiguration ec;
 /**
  * Hold information about a user at the bank.
  */
-static char *user_payto_url;
+static char *user_payto_uri;
 
 /**
  * Time snapshot taken right before executing the CMDs.
@@ -189,7 +189,7 @@ CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
            (TALER_TESTING_cmd_admin_add_incoming (label,
                                                   amount,
                                                   &exchange_bank_account,
-                                                  user_payto_url));
+                                                  user_payto_uri));
 }
 
 
@@ -322,12 +322,11 @@ run (void *cls,
           (TALER_TESTING_cmd_deposit ("deposit",
                                       withdraw_label,
                                       0, /* Index of the one withdrawn coin in the traits.  */
-                                      user_payto_url,
+                                      user_payto_uri,
                                       order_enc,
                                       GNUNET_TIME_UNIT_ZERO,
                                       amount_1,
                                       MHD_HTTP_OK));
-
       if (eval_probability (refresh_rate / 100.0))
       {
         char *melt_label;
@@ -817,7 +816,7 @@ main (int argc,
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "benchmark",
                                              "USER_PAYTO_URI",
-                                             &user_payto_url))
+                                             &user_payto_uri))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "benchmark",
