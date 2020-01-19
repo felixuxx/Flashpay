@@ -756,14 +756,10 @@ connection_done (void *cls,
   (void) connection;
   (void) socket_context;
   /* We only act if the connection is closed. */
-  fprintf (stderr,
-           "Connection done!\n");
   if (MHD_CONNECTION_NOTIFY_CLOSED != toe)
     return;
-  /* This callback is also present if the option wasn't, so
-     make sure the option was actually set. */
-  if (NULL == input_filename)
-    return;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Connection done!\n");
   do_terminate = GNUNET_YES;
 }
 
@@ -771,11 +767,10 @@ connection_done (void *cls,
 /**
  * Run the exchange to serve a single request only, without threads.
  *
- * @param fh listen socket
  * @return #GNUNET_OK on success
  */
 static int
-run_single_request (int fh)
+run_single_request ()
 {
   int ret;
   pid_t cld;
@@ -786,10 +781,9 @@ run_single_request (int fh)
     = MHD_start_daemon (MHD_USE_PIPE_FOR_SHUTDOWN
                         | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
                         | MHD_USE_TCP_FASTOPEN,
-                        (-1 == fh) ? serve_port : 0,
+                        0, /* pick free port */
                         NULL, NULL,
                         &handle_mhd_request, NULL,
-                        MHD_OPTION_LISTEN_SOCKET, fh,
                         MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 10,
                         MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
                         NULL,
@@ -804,6 +798,8 @@ run_single_request (int fh)
              "Failed to start HTTP server.\n");
     return GNUNET_SYSERR;
   }
+  serve_port = MHD_get_daemon_info (mhd,
+                                    MHD_DAEMON_INFO_BIND_PORT)->port;
   cld = run_fake_client ();
   if (-1 == cld)
     return GNUNET_SYSERR;
@@ -1100,7 +1096,11 @@ main (int argc,
   }
 #if HAVE_DEVELOPER
   if (NULL != input_filename)
-    ret = run_single_request (fh);
+  {
+    if (-1 != fh)
+      close (fh);
+    ret = run_single_request ();
+  }
   else
 #endif
   ret = run_main_loop (fh,
