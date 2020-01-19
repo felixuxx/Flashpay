@@ -436,9 +436,11 @@ free_denom_key (void *cls,
  * Internal method used when the mutex is already held.
  *
  * @param key_state the key state to release
+ * @param locked do we hold the lock and can check #internal_key_state
  */
 static void
-ks_release (struct TEH_KS_StateHandle *key_state)
+ks_release (struct TEH_KS_StateHandle *key_state,
+            int locked)
 {
   GNUNET_assert (0 < key_state->refcnt);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -448,7 +450,8 @@ ks_release (struct TEH_KS_StateHandle *key_state)
   key_state->refcnt--;
   if (0 == key_state->refcnt)
   {
-    GNUNET_assert (key_state != internal_key_state);
+    if (locked)
+      GNUNET_assert (key_state != internal_key_state);
     if (NULL != key_state->denomkey_map)
     {
       GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
@@ -1699,7 +1702,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
                 "Failed to load denomination keys from `%s'.\n",
                 TEH_exchange_directory);
     key_state->refcnt = 1;
-    ks_release (key_state);
+    ks_release (key_state,
+                GNUNET_NO);
     json_decref (rfc.recoup_array);
     json_decref (rfc.sign_keys_array);
     return NULL;
@@ -1725,7 +1729,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
                 "Failed to load denomination keys from `%s'.\n",
                 TEH_exchange_directory);
     key_state->refcnt = 1;
-    ks_release (key_state);
+    ks_release (key_state,
+                GNUNET_NO);
     json_decref (rfc.recoup_array);
     json_decref (rfc.sign_keys_array);
     return NULL;
@@ -1743,7 +1748,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Have no signing key. Bad configuration.\n");
     key_state->refcnt = 1;
-    ks_release (key_state);
+    ks_release (key_state,
+                GNUNET_NO);
     destroy_response_factory (&rfc);
     return NULL;
   }
@@ -1754,7 +1760,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Have no denomination keys. Bad configuration.\n");
     key_state->refcnt = 1;
-    ks_release (key_state);
+    ks_release (key_state,
+                GNUNET_NO);
     destroy_response_factory (&rfc);
     return NULL;
   }
@@ -1858,7 +1865,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
   {
     GNUNET_break (0);
     key_state->refcnt = 1;
-    ks_release (key_state);
+    ks_release (key_state,
+                GNUNET_NO);
     destroy_response_factory (&rfc);
     return NULL;
   }
@@ -1888,7 +1896,8 @@ TEH_KS_release_ (const char *location,
               location,
               key_state,
               key_state->refcnt);
-  ks_release (key_state);
+  ks_release (key_state,
+              GNUNET_YES);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
 
@@ -1919,7 +1928,8 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
     internal_key_state = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "KS released in acquire due to expiration\n");
-    ks_release (ks);
+    ks_release (ks,
+                GNUNET_YES);
     rcd = 1; /* remember that we released 'internal_key_state' */
   }
   if (NULL == internal_key_state)
