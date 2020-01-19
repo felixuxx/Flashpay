@@ -170,11 +170,11 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
 /**
  * Create a signed wire statement for the given account.
  *
- * @param payto_url account specification
+ * @param payto_uri account specification
  * @param master_priv private key to sign with, NULL to not sign
  */
 json_t *
-TALER_JSON_exchange_wire_signature_make (const char *payto_url,
+TALER_JSON_exchange_wire_signature_make (const char *payto_uri,
                                          const struct
                                          TALER_MasterPrivateKeyP *master_priv);
 

@@ -367,10 +367,10 @@ int
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct GNUNET_HashCode *hc)
 {
-  const char *payto_url;
+  const char *payto_uri;
   const char *salt;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("url", &payto_url),
+    GNUNET_JSON_spec_string ("payto_uri", &payto_uri),
     GNUNET_JSON_spec_string ("salt", &salt),
     GNUNET_JSON_spec_end ()
   };
@@ -383,7 +383,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  TALER_merchant_wire_signature_hash (payto_url,
+  TALER_merchant_wire_signature_hash (payto_uri,
                                       salt,
                                       hc);
   return GNUNET_OK;
@@ -402,10 +402,10 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
                                           const struct
                                           TALER_MasterPublicKeyP *master_pub)
 {
-  const char *payto_url;
+  const char *payto_uri;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("url", &payto_url),
+    GNUNET_JSON_spec_string ("payto_uri", &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("master_sig", &master_sig),
     GNUNET_JSON_spec_end ()
   };
@@ -419,13 +419,13 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
     return GNUNET_SYSERR;
   }
 
-  if (GNUNET_SYSERR == validate_payto_iban (payto_url))
+  if (GNUNET_SYSERR == validate_payto_iban (payto_uri))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
 
-  return TALER_exchange_wire_signature_check (payto_url,
+  return TALER_exchange_wire_signature_check (payto_uri,
                                               master_pub,
                                               &master_sig);
 }
@@ -434,21 +434,21 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
 /**
  * Create a signed wire statement for the given account.
  *
- * @param payto_url account specification
+ * @param payto_uri account specification
  * @param master_priv private key to sign with, NULL to not sign
  */
 json_t *
-TALER_JSON_exchange_wire_signature_make (const char *payto_url,
+TALER_JSON_exchange_wire_signature_make (const char *payto_uri,
                                          const struct
                                          TALER_MasterPrivateKeyP *master_priv)
 {
   struct TALER_MasterSignatureP master_sig;
 
-  TALER_exchange_wire_signature_make (payto_url,
+  TALER_exchange_wire_signature_make (payto_uri,
                                       master_priv,
                                       &master_sig);
   return json_pack ("{s:s, s:o}",
-                    "url", payto_url,
+                    "payto_uri", payto_uri,
                     "master_sig", GNUNET_JSON_from_data_auto (&master_sig));
 }
 
@@ -467,7 +467,7 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
   const char *payto_str;
 
   payto_o = json_object_get (wire_s,
-                             "url");
+                             "payto_uri");
   if ( (NULL == payto_o) ||
        (NULL == (payto_str = json_string_value (payto_o))) )
   {
@@ -493,7 +493,7 @@ TALER_JSON_wire_to_method (const json_t *wire_s)
   const char *payto_str;
 
   payto_o = json_object_get (wire_s,
-                             "url");
+                             "payto_uri");
   if ( (NULL == payto_o) ||
        (NULL == (payto_str = json_string_value (payto_o))) )
   {

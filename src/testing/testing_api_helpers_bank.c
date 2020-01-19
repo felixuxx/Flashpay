@@ -263,12 +263,12 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              config_section,
-                                             "URL", /* FIXME: config should be renamed to payto_uri, it's not an url even! */
+                                             "PAYTO_URI",
                                              &exchange_payto_uri))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                config_section,
-                               "URL");
+                               "PAYTO_URI");
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
@@ -418,12 +418,12 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              config_section,
-                                             "URL", /* FIXME: config should be renamed to payto_uri, it's not an url even! */
+                                             "PAYTO_URI",
                                              &exchange_payto_uri))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                config_section,
-                               "URL");
+                               "PAYTO_URI");
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
@@ -485,7 +485,7 @@ json_t *
 TALER_TESTING_make_wire_details (const char *payto)
 {
   return json_pack ("{s:s, s:s}",
-                    "url", payto,
+                    "payto_uri", payto,
                     "salt",
                     "test-salt (must be constant for aggregation tests)");
 }

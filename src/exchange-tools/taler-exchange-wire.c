@@ -72,7 +72,7 @@ sign_account_data (void *cls,
     return;
   }
 
-  wire = TALER_JSON_exchange_wire_signature_make (ai->payto_url,
+  wire = TALER_JSON_exchange_wire_signature_make (ai->payto_uri,
                                                   &master_priv);
   GNUNET_assert (NULL != wire);
   json_out = json_dumps (wire,

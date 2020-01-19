@@ -546,22 +546,22 @@ TALER_url_absolute_mhd (struct MHD_Connection *connection,
 
 
 /**
- * Obtain the payment method from a @a payto_url
+ * Obtain the payment method from a @a payto_uri
  *
- * @param payto_url the URL to parse
- * @return NULL on error (malformed @a payto_url)
+ * @param payto_uri the URL to parse
+ * @return NULL on error (malformed @a payto_uri)
  */
 char *
-TALER_payto_get_method (const char *payto_url)
+TALER_payto_get_method (const char *payto_uri)
 {
   const char *start;
   const char *end;
 
-  if (0 != strncmp (payto_url,
+  if (0 != strncmp (payto_uri,
                     PAYTO,
                     strlen (PAYTO)))
     return NULL;
-  start = &payto_url[strlen (PAYTO)];
+  start = &payto_uri[strlen (PAYTO)];
   end = strchr (start,
                 (unsigned char) '/');
   if (NULL == end)

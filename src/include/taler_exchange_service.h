@@ -628,9 +628,9 @@ struct TALER_EXCHANGE_WireAggregateFees
 struct TALER_EXCHANGE_WireAccount
 {
   /**
-   * payto://-URL of the exchange.
+   * payto://-URI of the exchange.
    */
-  const char *url;
+  const char *payto_uri;
 
   /**
    * Signature of the exchange over the account (was checked by the API).
@@ -639,7 +639,7 @@ struct TALER_EXCHANGE_WireAccount
 
   /**
    * Linked list of wire fees the exchange charges for
-   * accounts of the wire method matching @e url.
+   * accounts of the wire method matching @e payto_uri.
    */
   const struct TALER_EXCHANGE_WireAggregateFees *fees;
 

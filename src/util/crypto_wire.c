@@ -27,18 +27,18 @@
  * Compute the hash of the given wire details.   The resulting
  * hash is what is put into the contract.
  *
- * @param payto_url bank account
+ * @param payto_uri bank account
  * @param[out] hc set to the hash
  */
 void
-TALER_exchange_wire_signature_hash (const char *payto_url,
+TALER_exchange_wire_signature_hash (const char *payto_uri,
                                     struct GNUNET_HashCode *hc)
 {
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (hc,
                                     sizeof (*hc),
-                                    payto_url,
-                                    strlen (payto_url) + 1,
+                                    payto_uri,
+                                    strlen (payto_uri) + 1,
                                     "exchange-wire-signature",
                                     strlen ("exchange-wire-signature"),
                                     NULL, 0));
@@ -48,13 +48,13 @@ TALER_exchange_wire_signature_hash (const char *payto_url,
 /**
  * Check the signature in @a wire_s.
  *
- * @param payto_url URL that is signed
+ * @param payto_uri URL that is signed
  * @param master_pub master public key of the exchange
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_exchange_wire_signature_check (const char *payto_url,
+TALER_exchange_wire_signature_check (const char *payto_uri,
                                      const struct
                                      TALER_MasterPublicKeyP *master_pub,
                                      const struct
@@ -64,7 +64,7 @@ TALER_exchange_wire_signature_check (const char *payto_url,
 
   wd.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_DETAILS);
   wd.purpose.size = htonl (sizeof (wd));
-  TALER_exchange_wire_signature_hash (payto_url,
+  TALER_exchange_wire_signature_hash (payto_uri,
                                       &wd.h_wire_details);
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_DETAILS,
                                      &wd.purpose,
@@ -76,12 +76,12 @@ TALER_exchange_wire_signature_check (const char *payto_url,
 /**
  * Create a signed wire statement for the given account.
  *
- * @param payto_url account specification
+ * @param payto_uri account specification
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
 void
-TALER_exchange_wire_signature_make (const char *payto_url,
+TALER_exchange_wire_signature_make (const char *payto_uri,
                                     const struct
                                     TALER_MasterPrivateKeyP *master_priv,
                                     struct TALER_MasterSignatureP *master_sig)
@@ -90,7 +90,7 @@ TALER_exchange_wire_signature_make (const char *payto_url,
 
   wd.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_DETAILS);
   wd.purpose.size = htonl (sizeof (wd));
-  TALER_exchange_wire_signature_hash (payto_url,
+  TALER_exchange_wire_signature_hash (payto_uri,
                                       &wd.h_wire_details);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
@@ -103,12 +103,12 @@ TALER_exchange_wire_signature_make (const char *payto_url,
  * Compute the hash of the given wire details.   The resulting
  * hash is what is put into the contract.
  *
- * @param payto_url bank account
+ * @param payto_uri bank account
  * @param salt salt used to eliminate brute-force inversion
  * @param[out] hc set to the hash
  */
 void
-TALER_merchant_wire_signature_hash (const char *payto_url,
+TALER_merchant_wire_signature_hash (const char *payto_uri,
                                     const char *salt,
                                     struct GNUNET_HashCode *hc)
 {
@@ -117,8 +117,8 @@ TALER_merchant_wire_signature_hash (const char *payto_url,
                                     sizeof (*hc),
                                     salt,
                                     strlen (salt) + 1,
-                                    payto_url,
-                                    strlen (payto_url) + 1,
+                                    payto_uri,
+                                    strlen (payto_uri) + 1,
                                     "merchant-wire-signature",
                                     strlen ("merchant-wire-signature"),
                                     NULL, 0));
@@ -128,14 +128,14 @@ TALER_merchant_wire_signature_hash (const char *payto_url,
 /**
  * Check the signature in @a merch_sig. (Not yet used anywhere.)
  *
- * @param payto_url URL that is signed
- * @param salt the salt used to salt the @a payto_url when hashing
+ * @param payto_uri URL that is signed
+ * @param salt the salt used to salt the @a payto_uri when hashing
  * @param merch_pub master public key of the merchant
  * @param merch_sig signature of the merchant
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_merchant_wire_signature_check (const char *payto_url,
+TALER_merchant_wire_signature_check (const char *payto_uri,
                                      const char *salt,
                                      const struct
                                      TALER_MerchantPublicKeyP *merch_pub,
@@ -146,7 +146,7 @@ TALER_merchant_wire_signature_check (const char *payto_url,
 
   wd.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_WIRE_DETAILS);
   wd.purpose.size = htonl (sizeof (wd));
-  TALER_merchant_wire_signature_hash (payto_url,
+  TALER_merchant_wire_signature_hash (payto_uri,
                                       salt,
                                       &wd.h_wire_details);
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_WIRE_DETAILS,
@@ -159,13 +159,13 @@ TALER_merchant_wire_signature_check (const char *payto_url,
 /**
  * Create a signed wire statement for the given account. (Not yet used anywhere.)
  *
- * @param payto_url account specification
- * @param salt the salt used to salt the @a payto_url when hashing
+ * @param payto_uri account specification
+ * @param salt the salt used to salt the @a payto_uri when hashing
  * @param merch_priv private key to sign with
  * @param[out] merch_sig where to write the signature
  */
 void
-TALER_merchant_wire_signature_make (const char *payto_url,
+TALER_merchant_wire_signature_make (const char *payto_uri,
                                     const char *salt,
                                     const struct
                                     TALER_MerchantPrivateKeyP *merch_priv,
@@ -175,7 +175,7 @@ TALER_merchant_wire_signature_make (const char *payto_url,
 
   wd.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_WIRE_DETAILS);
   wd.purpose.size = htonl (sizeof (wd));
-  TALER_merchant_wire_signature_hash (payto_url,
+  TALER_merchant_wire_signature_hash (payto_uri,
                                       salt,
                                       &wd.h_wire_details);
   GNUNET_assert (GNUNET_OK ==

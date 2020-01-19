@@ -105,7 +105,7 @@ wire_cb (void *cls,
     {
       char *method;
 
-      method = TALER_payto_get_method (accounts[i].url);
+      method = TALER_payto_get_method (accounts[i].payto_uri);
       if (0 == strcmp (ws->expected_method,
                        method))
       {
