@@ -21,6 +21,14 @@
 #
 # We read the JSON snippets from afl-tests/
 #
+# The afl-tests are generated as follows:
+# 1) Capture all TCP traffic from 'test-auditor.sh'
+# 2) Use 'tcpflow -e http -r $PCAP -o $OUTPUT' to get the HTTP streams
+# 3) Remove HTTP streams unrelated to the exchange as well as the replies
+# 4) Compile the exchange with AFL instrumentation
+# 5) Run afl-fuzz -i $OUTPUT/ -o afl-tests/ ~/bin/taler-exchange-httpd \
+#     -c test_taler_exchange_httpd.conf -t 1 -f @@
+
 set -eu
 
 PREFIX=

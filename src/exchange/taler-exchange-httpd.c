@@ -606,6 +606,56 @@ exchange_serve_process_config ()
 }
 
 
+/**
+ * Called when the main thread exits, writes out performance
+ * stats if requested.
+ */
+static void
+write_stats ()
+{
+  struct GNUNET_DISK_FileHandle *fh;
+  pid_t pid = getpid ();
+  char *benchmark_dir;
+  char *s;
+  struct rusage usage;
+
+  benchmark_dir = getenv ("GNUNET_BENCHMARK_DIR");
+  if (NULL == benchmark_dir)
+    return;
+  GNUNET_asprintf (&s,
+                   "%s/taler-exchange-%llu-%llu.txt",
+                   benchmark_dir,
+                   (unsigned long long) pid);
+  fh = GNUNET_DISK_file_open (s,
+                              (GNUNET_DISK_OPEN_WRITE
+                               | GNUNET_DISK_OPEN_TRUNCATE
+                               | GNUNET_DISK_OPEN_CREATE),
+                              (GNUNET_DISK_PERM_USER_READ
+                               | GNUNET_DISK_PERM_USER_WRITE));
+  GNUNET_free (s);
+  if (NULL == fh)
+    return; /* permission denied? */
+
+  /* Collect stats, summed up for all threads */
+  GNUNET_assert (0 ==
+                 getrusage (RUSAGE_SELF,
+                            &usage));
+  GNUNET_asprintf (&s,
+                   "time_exchange sys %llu user %llu\n",
+                   (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000
+                                         + usage.ru_stime.tv_usec),
+                   (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000
+                                         + usage.ru_utime.tv_usec));
+  GNUNET_assert (GNUNET_SYSERR !=
+                 GNUNET_DISK_file_write_blocking (fh,
+                                                  s,
+                                                  strlen (s)));
+  GNUNET_free (s);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_DISK_file_close (fh));
+}
+
+
 /* Developer logic for supporting the `-f' option. */
 #if HAVE_DEVELOPER
 
@@ -615,22 +665,24 @@ exchange_serve_process_config ()
  */
 static char *input_filename;
 
+/**
+ * We finished handling the request and should now terminate.
+ */
+static int do_terminate;
 
 /**
  * Run 'nc' or 'ncat' as a fake HTTP client using #input_filename
  * as the input for the request.  If launching the client worked,
  * run the #TEH_KS_loop() event loop as usual.
  *
- * @return #GNUNET_OK
+ * @return child pid
  */
-static int
+static pid_t
 run_fake_client ()
 {
   pid_t cld;
   char ports[6];
   int fd;
-  int ret;
-  int status;
 
   if (0 == strcmp (input_filename,
                    "-"))
@@ -643,7 +695,7 @@ run_fake_client ()
              "Failed to open `%s': %s\n",
              input_filename,
              strerror (errno));
-    return GNUNET_SYSERR;
+    return -1;
   }
   /* Fake HTTP client request with #input_filename as input.
      We do this using the nc tool. */
@@ -679,14 +731,7 @@ run_fake_client ()
   if (0 != strcmp (input_filename,
                    "-"))
     GNUNET_break (0 == close (fd));
-  ret = TEH_KS_loop ();
-  if (cld != waitpid (cld,
-                      &status,
-                      0))
-    fprintf (stderr,
-             "Waiting for `nc' child failed: %s\n",
-             strerror (errno));
-  return ret;
+  return cld;
 }
 
 
@@ -711,17 +756,103 @@ connection_done (void *cls,
   (void) connection;
   (void) socket_context;
   /* We only act if the connection is closed. */
+  fprintf (stderr,
+           "Connection done!\n");
   if (MHD_CONNECTION_NOTIFY_CLOSED != toe)
     return;
   /* This callback is also present if the option wasn't, so
      make sure the option was actually set. */
   if (NULL == input_filename)
     return;
-  /* We signal ourselves to terminate. */
-  if (0 != kill (getpid (),
-                 SIGTERM))
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "kill");
+  do_terminate = GNUNET_YES;
+}
+
+
+/**
+ * Run the exchange to serve a single request only, without threads.
+ *
+ * @param fh listen socket
+ * @return #GNUNET_OK on success
+ */
+static int
+run_single_request (int fh)
+{
+  int ret;
+  pid_t cld;
+  int status;
+
+  /* run only the testfile input, then terminate */
+  mhd
+    = MHD_start_daemon (MHD_USE_PIPE_FOR_SHUTDOWN
+                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                        | MHD_USE_TCP_FASTOPEN,
+                        (-1 == fh) ? serve_port : 0,
+                        NULL, NULL,
+                        &handle_mhd_request, NULL,
+                        MHD_OPTION_LISTEN_SOCKET, fh,
+                        MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 10,
+                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
+                        NULL,
+                        MHD_OPTION_NOTIFY_COMPLETED,
+                        &handle_mhd_completion_callback, NULL,
+                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+                        MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+                        MHD_OPTION_END);
+  if (NULL == mhd)
+  {
+    fprintf (stderr,
+             "Failed to start HTTP server.\n");
+    return GNUNET_SYSERR;
+  }
+  cld = run_fake_client ();
+  if (-1 == cld)
+    return GNUNET_SYSERR;
+  /* run the event loop until #connection_done() was called */
+  while (GNUNET_NO == do_terminate)
+  {
+    fd_set rs;
+    fd_set ws;
+    fd_set es;
+    struct timeval tv;
+    MHD_UNSIGNED_LONG_LONG timeout;
+    int maxsock = -1;
+    int have_tv;
+
+    FD_ZERO (&rs);
+    FD_ZERO (&ws);
+    FD_ZERO (&es);
+    if (MHD_YES !=
+        MHD_get_fdset (mhd,
+                       &rs,
+                       &ws,
+                       &es,
+                       &maxsock))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    have_tv = MHD_get_timeout (mhd,
+                               &timeout);
+    tv.tv_sec = timeout / 1000;
+    tv.tv_usec = 1000 * (timeout % 1000);
+    if (-1 == select (maxsock + 1,
+                      &rs,
+                      &ws,
+                      &es,
+                      have_tv ? &tv : NULL))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    MHD_run (mhd);
+  }
+  if (cld != waitpid (cld,
+                      &status,
+                      0))
+    fprintf (stderr,
+             "Waiting for `nc' child failed: %s\n",
+             strerror (errno));
+  return ret;
 }
 
 
@@ -730,49 +861,114 @@ connection_done (void *cls,
 
 
 /**
- * Called when the main thread exits, writes out performance
- * stats if requested.
+ * Run the ordinary multi-threaded main loop and the logic to
+ * wait for CTRL-C.
+ *
+ * @param fh listen socket
+ * @param argv command line arguments
+ * @return #GNUNET_OK on success
  */
-static void
-write_stats ()
+static int
+run_main_loop (int fh,
+               char *const *argv)
 {
-  struct GNUNET_DISK_FileHandle *fh;
-  pid_t pid = getpid ();
-  char *benchmark_dir;
-  char *s;
-  struct rusage usage;
+  int ret;
 
-  benchmark_dir = getenv ("GNUNET_BENCHMARK_DIR");
+  mhd
+    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
+                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                        | MHD_USE_INTERNAL_POLLING_THREAD
+                        | MHD_USE_TCP_FASTOPEN,
+                        (-1 == fh) ? serve_port : 0,
+                        NULL, NULL,
+                        &handle_mhd_request, NULL,
+                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
+                        MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
+                        MHD_OPTION_LISTEN_SOCKET, fh,
+                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
+                        NULL,
+                        MHD_OPTION_NOTIFY_COMPLETED,
+                        &handle_mhd_completion_callback, NULL,
+                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+                        MHD_OPTION_END);
+  if (NULL == mhd)
+  {
+    fprintf (stderr,
+             "Failed to start HTTP server.\n");
+    return GNUNET_SYSERR;
+  }
 
-  if (NULL == benchmark_dir)
-    return;
+  atexit (&write_stats);
+  ret = TEH_KS_loop ();
+  switch (ret)
+  {
+  case GNUNET_OK:
+  case GNUNET_SYSERR:
+    MHD_stop_daemon (mhd);
+    break;
+  case GNUNET_NO:
+    {
+      MHD_socket sock = MHD_quiesce_daemon (mhd);
+      pid_t chld;
+      int flags;
 
-  GNUNET_asprintf (&s, "%s/taler-exchange-%llu-%llu.txt",
-                   benchmark_dir,
-                   (unsigned long long) pid);
+      /* Set flags to make 'sock' inherited by child */
+      flags = fcntl (sock, F_GETFD);
+      GNUNET_assert (-1 != flags);
+      flags &= ~FD_CLOEXEC;
+      GNUNET_assert (-1 != fcntl (sock, F_SETFD, flags));
+      chld = fork ();
+      if (-1 == chld)
+      {
+        /* fork() failed, continue clean up, unhappily */
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fork");
+      }
+      if (0 == chld)
+      {
+        char pids[12];
 
-  fh = GNUNET_DISK_file_open (s,
-                              (GNUNET_DISK_OPEN_WRITE
-                               | GNUNET_DISK_OPEN_TRUNCATE
-                               | GNUNET_DISK_OPEN_CREATE),
-                              (GNUNET_DISK_PERM_USER_READ
-                               | GNUNET_DISK_PERM_USER_WRITE));
-  GNUNET_assert (NULL != fh);
-  GNUNET_free (s);
+        /* exec another taler-exchange-httpd, passing on the listen socket;
+           as in systemd it is expected to be on FD #3 */
+        if (3 != dup2 (sock, 3))
+        {
+          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                               "dup2");
+          _exit (1);
+        }
+        /* Tell the child that it is the desired recipient for FD #3 */
+        GNUNET_snprintf (pids,
+                         sizeof (pids),
+                         "%u",
+                         getpid ());
+        setenv ("LISTEN_PID", pids, 1);
+        setenv ("LISTEN_FDS", "1", 1);
+        /* Finally, exec the (presumably) more recent exchange binary */
+        execvp ("taler-exchange-httpd",
+                argv);
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "execvp");
+        _exit (1);
+      }
+      /* we're the original process, handle remaining contextions
+         before exiting; as the listen socket is no longer used,
+         close it here */
+      GNUNET_break (0 == close (sock));
+      while (0 != MHD_get_daemon_info (mhd,
+                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->
+             num_connections)
+        sleep (1);
+      /* Now we're really done, practice clean shutdown */
+      MHD_stop_daemon (mhd);
+    }
+    break;
+  default:
+    GNUNET_break (0);
+    MHD_stop_daemon (mhd);
+    break;
+  }
 
-  /* Collect stats, summed up for all threads */
-  GNUNET_assert (0 == getrusage (RUSAGE_SELF, &usage));
-
-  GNUNET_asprintf (&s, "time_exchange sys %llu user %llu\n", \
-                   (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000
-                                         + usage.ru_stime.tv_usec),
-                   (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000
-                                         + usage.ru_utime.tv_usec));
-  GNUNET_assert (GNUNET_SYSERR != GNUNET_DISK_file_write_blocking (fh, s,
-                                                                   strlen (s)));
-  GNUNET_free (s);
-
-  GNUNET_assert (GNUNET_OK == GNUNET_DISK_file_close (fh));
+  return ret;
 }
 
 
@@ -902,118 +1098,13 @@ main (int argc,
     if (-1 == fh)
       return 1;
   }
-  mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
-                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                        | MHD_USE_INTERNAL_POLLING_THREAD
-                        | MHD_USE_TCP_FASTOPEN,
-                        (-1 == fh) ? serve_port : 0,
-                        NULL, NULL,
-                        &handle_mhd_request, NULL,
-                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
-                        MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
-                        MHD_OPTION_LISTEN_SOCKET, fh,
-                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
-                        NULL,
-                        MHD_OPTION_NOTIFY_COMPLETED,
-                        &handle_mhd_completion_callback, NULL,
-                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-#if HAVE_DEVELOPER
-                        MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
-#endif
-                        MHD_OPTION_END);
-  if (NULL == mhd)
-  {
-    fprintf (stderr,
-             "Failed to start HTTP server.\n");
-    return 1;
-  }
-
-  atexit (write_stats);
-
 #if HAVE_DEVELOPER
   if (NULL != input_filename)
-  {
-    /* run only the testfile input, then terminate */
-    ret = run_fake_client ();
-  }
+    ret = run_single_request (fh);
   else
-  {
-    /* normal behavior */
-    ret = TEH_KS_loop ();
-  }
-#else
-  /* normal behavior */
-  ret = TEH_KS_loop ();
 #endif
-
-  switch (ret)
-  {
-  case GNUNET_OK:
-  case GNUNET_SYSERR:
-    MHD_stop_daemon (mhd);
-    break;
-  case GNUNET_NO:
-    {
-      MHD_socket sock = MHD_quiesce_daemon (mhd);
-      pid_t chld;
-      int flags;
-
-      /* Set flags to make 'sock' inherited by child */
-      flags = fcntl (sock, F_GETFD);
-      GNUNET_assert (-1 != flags);
-      flags &= ~FD_CLOEXEC;
-      GNUNET_assert (-1 != fcntl (sock, F_SETFD, flags));
-      chld = fork ();
-      if (-1 == chld)
-      {
-        /* fork() failed, continue clean up, unhappily */
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fork");
-      }
-      if (0 == chld)
-      {
-        char pids[12];
-
-        /* exec another taler-exchange-httpd, passing on the listen socket;
-           as in systemd it is expected to be on FD #3 */
-        if (3 != dup2 (sock, 3))
-        {
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                               "dup2");
-          _exit (1);
-        }
-        /* Tell the child that it is the desired recipient for FD #3 */
-        GNUNET_snprintf (pids,
-                         sizeof (pids),
-                         "%u",
-                         getpid ());
-        setenv ("LISTEN_PID", pids, 1);
-        setenv ("LISTEN_FDS", "1", 1);
-        /* Finally, exec the (presumably) more recent exchange binary */
-        execvp ("taler-exchange-httpd",
-                argv);
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "execvp");
-        _exit (1);
-      }
-      /* we're the original process, handle remaining contextions
-         before exiting; as the listen socket is no longer used,
-         close it here */
-      GNUNET_break (0 == close (sock));
-      while (0 != MHD_get_daemon_info (mhd,
-                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->
-             num_connections)
-        sleep (1);
-      /* Now we're really done, practice clean shutdown */
-      MHD_stop_daemon (mhd);
-    }
-    break;
-  default:
-    GNUNET_break (0);
-    MHD_stop_daemon (mhd);
-    break;
-  }
+  ret = run_main_loop (fh,
+                       argv);
 
   /* release #internal_key_state */
   TEH_KS_free ();
