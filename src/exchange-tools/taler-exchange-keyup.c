@@ -164,6 +164,11 @@ struct CoinTypeParams
 
 
 /**
+ * The configured currency.
+ */
+static char *currency;
+
+/**
  * Filename of the master private key.
  */
 static char *masterkeyfile;
@@ -987,7 +992,6 @@ create_wire_fee_for_method (void *cls,
   {
     struct TALER_EXCHANGEDB_AggregateFees *af;
     char *opt;
-    char *amounts;
 
     GNUNET_snprintf (yearstr,
                      sizeof (yearstr),
@@ -1002,68 +1006,44 @@ create_wire_fee_for_method (void *cls,
     GNUNET_asprintf (&opt,
                      "wire-fee-%u",
                      year);
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                               section,
-                                               opt,
-                                               &amounts))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 opt);
-      *ret = GNUNET_SYSERR;
-      GNUNET_free (opt);
-      break;
-    }
-    if (GNUNET_OK !=
-        TALER_string_to_amount (amounts,
-                                &af->wire_fee))
+    if ( (GNUNET_OK !=
+          TALER_config_get_amount (kcfg,
+                                   section,
+                                   opt,
+                                   &af->wire_fee)) ||
+         (0 != strcasecmp (currency,
+                           af->wire_fee.currency)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid amount `%s' specified in `%s' under `%s'\n",
-                  amounts,
+                  "Invalid or missing amount in `%s' under `%s'\n",
                   wiremethod,
                   opt);
       *ret = GNUNET_SYSERR;
-      GNUNET_free (amounts);
       GNUNET_free (opt);
       break;
     }
-    GNUNET_free (amounts);
     GNUNET_free (opt);
 
     /* handle closing fee */
     GNUNET_asprintf (&opt,
                      "closing-fee-%u",
                      year);
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                               section,
-                                               opt,
-                                               &amounts))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 section,
-                                 opt);
-      *ret = GNUNET_SYSERR;
-      GNUNET_free (opt);
-      break;
-    }
-    if (GNUNET_OK !=
-        TALER_string_to_amount (amounts,
-                                &af->closing_fee))
+    if ( (GNUNET_OK !=
+          TALER_config_get_amount (kcfg,
+                                   section,
+                                   opt,
+                                   &af->closing_fee)) ||
+         (0 != strcasecmp (currency,
+                           af->wire_fee.currency)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid amount `%s' specified in `%s' under `%s'\n",
-                  amounts,
+                  "Invalid or missing amount in `%s' under `%s'\n",
                   wiremethod,
                   opt);
       *ret = GNUNET_SYSERR;
-      GNUNET_free (amounts);
       GNUNET_free (opt);
       break;
     }
-    GNUNET_free (amounts);
 
     GNUNET_free (opt);
     sign_af (af,
@@ -1193,6 +1173,18 @@ run (void *cls,
   (void) cfgfile;
   kcfg = cfg;
 
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "taler",
+                                             "CURRENCY",
+                                             &currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
+    global_ret = 1;
+    return;
+  }
   if (now.abs_value_us != now_tmp.abs_value_us)
   {
     /* The user gave "--now", use it */

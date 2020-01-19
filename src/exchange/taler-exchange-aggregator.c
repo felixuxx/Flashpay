@@ -603,28 +603,16 @@ exchange_serve_process_config ()
   }
 
   {
-    char *rounding_str;
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "taler",
-                                               "CURRENCY_ROUND_UNIT",
-                                               &rounding_str))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "No [taler]/CURRENCY_ROUND_UNIT specified, defaulting to '0.01'.\n");
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_get_zero (exchange_currency_string,
-                                            &currency_round_unit));
-      currency_round_unit.fraction = TALER_AMOUNT_FRAC_BASE / 100;
-    }
-    else if (GNUNET_OK !=
-             TALER_string_to_amount (rounding_str,
-                                     &currency_round_unit))
+    if ( (GNUNET_OK !=
+          TALER_config_get_amount (cfg,
+                                   "taler",
+                                   "CURRENCY_ROUND_UNIT",
+                                   &currency_round_unit)) ||
+         ( (0 != currency_round_unit.fraction) &&
+           (0 != currency_round_unit.value) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid amount `%s' specified in `TALER' under `CURRENCY_ROUND_UNIT'\n",
-                  rounding_str);
-      GNUNET_free (rounding_str);
+                  "Invalid value specified in `TALER' under `CURRENCY_ROUND_UNIT'\n");
       return GNUNET_SYSERR;
     }
   }

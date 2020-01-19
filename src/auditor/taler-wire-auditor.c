@@ -2103,7 +2103,6 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
   static const struct TALER_MasterPublicKeyP zeromp;
-  char *tinys;
 
   (void) cls;
   (void) args;
@@ -2113,22 +2112,11 @@ run (void *cls,
   start_time = GNUNET_TIME_absolute_get ();
   cfg = c;
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "auditor",
-                                             "TINY_AMOUNT",
-                                             &tinys))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+      TALER_config_get_amount (cfg,
                                "auditor",
-                               "TINY_AMOUNT");
-    global_ret = 1;
-    return;
-  }
-  if (GNUNET_OK !=
-      TALER_string_to_amount (tinys,
-                              &tiny_amount))
+                               "TINY_AMOUNT",
+                               &tiny_amount))
   {
-    GNUNET_free (tinys);
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "auditor",
                                "TINY_AMOUNT",
@@ -2136,7 +2124,6 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  GNUNET_free (tinys);
   if (0 == GNUNET_memcmp (&zeromp,
                           &master_pub))
   {
