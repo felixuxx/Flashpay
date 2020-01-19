@@ -3,7 +3,8 @@
 # testing from a 'correct' interaction between exchange,
 # wallet and merchant.
 #
-# Creates $BASEDB.sql, $BASEDB.fees and $BASEDB.mpub.
+# Creates $BASEDB.sql, $BASEDB.fees, $BASEDB.mpub and
+# $BASEDB.age.
 # Default $BASEDB is "auditor-basedb", override via $1.
 #
 # Currently must be run online as it interacts with
@@ -144,6 +145,7 @@ echo $MASTER_PUB > ${BASEDB}.mpub
 
 WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
 cp $WIRE_FEE_DIR/x-taler-bank.fee ${BASEDB}.fees
+date +%s > ${BASEDB}.age
 
 # clean up
 echo "Final clean up"

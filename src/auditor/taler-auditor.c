@@ -2422,7 +2422,7 @@ check_transaction_history_for_deposit (const struct
     return GNUNET_SYSERR;
   }
 
-  /* Now check that 'spent' is less or equal than total coin value */
+  /* Now check that 'spent' is less or equal than the total coin value */
   TALER_amount_ntoh (&value,
                      &issue->value);
   if (1 == TALER_amount_cmp (&spent,
@@ -4658,14 +4658,13 @@ analyze_coins (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _ (
-                  "First analysis using this auditor, starting audit from scratch\n"));
+                "First analysis using this auditor, starting from scratch\n");
   }
   else
   {
     ppc_start = ppc;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _ ("Resuming coin audit at %llu/%llu/%llu/%llu/%llu\n"),
+                "Resuming coin audit at %llu/%llu/%llu/%llu/%llu\n",
                 (unsigned long long) ppc.last_deposit_serial_id,
                 (unsigned long long) ppc.last_melt_serial_id,
                 (unsigned long long) ppc.last_refund_serial_id,

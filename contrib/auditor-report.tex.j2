@@ -236,7 +236,7 @@ The total amount the exchange currently lags behind in reserve closures is
 
 Note that some minimal lag may be normal as transactions may be in-flight.
 
-% Table generation tested by testcase #22 in test-auditor.sh
+% Table generation tested by testcase #21 in test-auditor.sh
 
 {% if wire.reserve_lag_details|length() == 0 %}
   {\bf No closure transfers that are lagging behind detected.}
@@ -295,7 +295,7 @@ The total amount the exchange currently lags behind is
 Note that some lag is perfectly normal.
 Below, we report {\em all} deposit confirmations that are lagging behind.
 
-% Table generation tested by testcase #25 in test-auditor.sh
+% Table generation tested by testcase #24 in test-auditor.sh
 
 {% if data.deposit_confirmation_inconsistencies|length() == 0 %}
   {\bf No deposit confirmations that are lagging behind detected.}
@@ -400,7 +400,13 @@ The total loss from emergencies detected by counting coins could be up to
 
 \subsubsection{Emergencies by value deposited}
 
-% Table generation tested by testcase #18 in test-auditor.sh
+Note that emergencies by value deposited can {\em also} arise if the exchange
+fails to properly detect double spending (or simply fails to properly account
+for the remaining balance of a coin).  So in combintation with arithmetic
+problems (Section~\ref{sec:arithmetic}) issues in this section are not a clear
+indicator that the exchange's private signing key was compromised.
+
+% Table generation tested by testcases #18, #25 in test-auditor.sh
 
 {% if data.emergencies|length() == 0 %}
   {\bf No emergencies by value detected.}
@@ -434,7 +440,7 @@ The total loss from emergencies detected by counting coins could be up to
 {% endif %}
 
 
-\subsection{Arithmetic problems}
+\subsection{Arithmetic problems} \label{sec:arithmetic}
 
 This section lists cases where the arithmetic of the exchange
 involving amounts disagrees with the arithmetic of the auditor.
@@ -527,7 +533,7 @@ violations do not imply that the wire transfer was actually made (as
 that is a separate check).  Note that not making the wire transfer
 would be reported separately in Section~\ref{sec:wire_check_out}.
 
-% Table generation tested by testcase #24 in test-auditor.sh
+% Table generation tested by testcase #23 in test-auditor.sh
 
 {% if data.wire_out_inconsistencies|length() == 0 %}
   {\bf All aggregations matched up.}
@@ -569,7 +575,7 @@ in amounts that matter for profit/loss calculations of the exchange. When an
 exchange merely shifted money from customers to merchants (or vice versa) without
 any effects on its own balance, those entries are excluded from the total.
 
-% Table generation tested by testcase #XX in test-auditor.sh
+% Table generation tested by testcase #25 in test-auditor.sh
 
 {% if data.coin_inconsistencies|length() == 0 %}
   {\bf All coin histories were unproblematic.}
@@ -896,11 +902,9 @@ have a clear financial impact.
 \subsection{Outgoing wire transfer subject issues}
 
 This section describes issues found by the wire auditor that
-relate to outgoing wire transfers being malformed.
-This happens if the exchange somehow creates wire transfers
-with duplicate or malformed wire transfer subjects.
+relate to outgoing wire transfers subjects being duplicated.
 
-% Table generation tested by testcase #19 in test-auditor.sh
+% Table generation tested by testcase #XX in test-auditor.sh
 
 {% if wire.wire_format_inconsistencies|length() == 0 %}
   {\bf No wire format inconsistencies found.}
@@ -972,7 +976,7 @@ with respect to what wire fee it charges at what time.
 This section describes issues found that do not have a clear financial
 impact.
 
-% Table generation tested by testcase #13/#15 in test-auditor.sh
+% Table generation tested by testcase #13/#15/#25 in test-auditor.sh
 
 {% if data.row_inconsistencies|length() == 0 %}
   {\bf No row inconsistencies found.}
@@ -1013,7 +1017,7 @@ This section describes cases where the exchange did not
 close a reserve and wire back the remaining funds when the
 reserve expired.
 
-% Table generation tested by testcase #21 in test-auditor.sh
+% Table generation tested by testcase #20 in test-auditor.sh
 
 {% if data.reserve_not_closed_inconsistencies|length() == 0 %}
   {\bf All expired reserves were closed.}
@@ -1085,7 +1089,7 @@ withdrawal at the time when the exchange claims to have signed a coin
 with it.  This would be irregular, but has no obvious financial
 implications.
 
-% Table generation tested by testcase #23 in test-auditor.sh
+% Table generation tested by testcase #22 in test-auditor.sh
 
 {% if data.denomination_key_validity_withdraw_inconsistencies|length() == 0 %}
   {\bf All denomination keys were valid at the time of withdrawals.}

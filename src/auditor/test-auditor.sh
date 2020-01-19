@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 24`
+ALL_TESTS=`seq 0 25`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -118,7 +118,7 @@ function run_audit () {
 # Do a full reload of the (original) database
 full_reload()
 {
-    echo "Doing full reload of the database..."
+    echo -n "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
     createdb -T template0 $DB || exit_skip "could not create database"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
@@ -1382,14 +1382,50 @@ full_reload
 }
 
 
+# Test for inconsistent coin history.
+function test_25() {
+
+echo "=========25: inconsistent coin history========="
+# Drop refund, so coin history is bogus.
+echo "DELETE FROM refunds WHERE refund_serial_id=1;" | psql -Aqt $DB
+
+run_audit aggregator
+
+echo -n "Testing inconsistency detection... "
+
+jq -e .coin_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
+
+jq -e .row_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin history verification failure NOT reported"
+
+# Note: if the wallet withdrew much more than it spent, this might indeed
+# go legitimately unnoticed.
+jq -e .emergencies[0] < test-audit.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
+
+AMOUNT=`jq -er .total_coin_delta_minus < test-audit.json`
+if test x$AMOUNT = xTESTKUDOS:0
+then
+    exit_fail "Expected non-zero total inconsistency amount from coins"
+fi
+# Note: if the wallet withdrew much more than it spent, this might indeed
+# go legitimately unnoticed.
+COUNT=`jq -er .emergencies_risk_by_amount < test-audit.json`
+if test x$AMOUNT = xTESTKUDOS:0
+then
+    exit_fail "Expected non-zero emergency-by-amount"
+fi
+echo PASS
+
+# cannot easily undo DELETE, hence full reload
+full_reload
+}
+
+
 
 # **************************************************
 # FIXME: Add more tests here! :-)
 # Specifically:
 # - revocation (payback, accepting
 #   of coins despite denomination revocation)
-# - refunds
-# - arithmetic problems
 # **************************************************
 
 
@@ -1413,8 +1449,8 @@ check_with_database()
     cp ${BASEDB}.fees $WIRE_FEE_DIR/x-taler-bank.fee
 
     # Determine database age
-    echo "Calculating database age based on ${BASEDB}.fees"
-    AGE=`stat -c %Y ${BASEDB}.fees`
+    echo "Calculating database age based on ${BASEDB}.age"
+    AGE=`cat ${BASEDB}.age`
     NOW=`date +%s`
     # NOTE: expr "fails" if the result is zero.
     DATABASE_AGE=`expr ${NOW} - ${AGE} || true`
