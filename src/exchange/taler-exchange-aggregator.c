@@ -742,9 +742,6 @@ deposit_cb (void *cls,
                                amount_with_fee,
                                deposit_fee))
     {
-      // FIXME(dold): Shouldn't we somehow survive this?  Of course it should show up in the auditor's report,
-      // but due to some misconfiguration with restarts in between deposit fees could have changed.
-      // That's bad, but should we really refuse to continue completely?
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Fatally malformed record at row %llu over %s\n",
                   (unsigned long long) row_id,
@@ -1283,6 +1280,7 @@ run_reserve_closures (void *cls)
                                         now,
                                         &expired_reserve_cb,
                                         &erc);
+  GNUNET_assert (1 >= qs);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
@@ -1314,8 +1312,6 @@ run_reserve_closures (void *cls)
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
     return;
-    // FIXME(dold): shouldn't we at least GNUNET_break on the case where
-    // we have more than one result?  Not clear that get_expired reserves can't return more results?
   }
 }
 
@@ -1329,8 +1325,7 @@ run_reserve_closures (void *cls)
 static void
 run_aggregation (void *cls)
 {
-  // FIXME(dold): This should be unsigned, as behavior on signed overflow is undefined ;-)
-  static int swap;
+  static unsigned int swap;
   struct TALER_EXCHANGEDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
@@ -1774,8 +1769,7 @@ wire_prepare_cb (void *cls,
                                               NULL);
   if (NULL == wpd->eh)
   {
-    // FIXME(dold): Comment below is a fixme, but without a marker!
-    GNUNET_break (0); /* why? how to best recover? */
+    GNUNET_break (0); /* Irrecoverable */
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
     global_ret = GNUNET_SYSERR;
@@ -1832,10 +1826,8 @@ run_transfers (void *cls)
                                          session,
                                          &wire_prepare_cb,
                                          NULL);
-  // FIXME(dold): comment below is misleading, should't that be wire_confirm_cb,
-  // as wire_prepare_cb is already called?
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-    return;  /* continues in #wire_prepare_cb() */
+    return;  /* continued via continuation set in #wire_prepare_cb() */
   db_plugin->rollback (db_plugin->cls,
                        session);
   GNUNET_free (wpd);
@@ -1905,7 +1897,6 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  // FIXME(dold): why don't we call this after 'rc' is initialized?  Doesn't matter to much but ...
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
