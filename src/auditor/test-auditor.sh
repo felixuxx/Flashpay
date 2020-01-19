@@ -351,13 +351,13 @@ echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql 
 run_audit
 
 EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit.json`
-if test $EXPECTED != "TESTKUDOS:5"
+if test $EXPECTED != "TESTKUDOS:5.01"
 then
     exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
 fi
 
 EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit.json`
-if test $EXPECTED != "TESTKUDOS:0"
+if test $EXPECTED != "TESTKUDOS:0.01"
 then
     exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
 fi
@@ -513,7 +513,7 @@ then
 fi
 
 LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:1"
+if test $LOSS != "TESTKUDOS:0.1"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
@@ -525,7 +525,7 @@ then
 fi
 
 LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
-if test $LOSS != "TESTKUDOS:1"
+if test $LOSS != "TESTKUDOS:0.1"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
 fi
