@@ -579,6 +579,7 @@ shutdown_task (void *cls)
  *
  * @return #GNUNET_OK on success
  */
+// FIXME(dold): Why is this called exchange_serve when this is not then httpd?
 static int
 exchange_serve_process_config ()
 {
@@ -1871,6 +1872,7 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
 
+  // FIXME(dold): why is this not in exchange_serve_process_config?
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (c,
                                              "exchange",
@@ -1891,6 +1893,7 @@ run (void *cls,
     global_ret = 1;
     return;
   }
+  // FIXME(dold): why don't we call this after 'rc' is initialized?  Doesn't matter to much but ...
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);

@@ -1580,7 +1580,7 @@ struct TALER_EXCHANGEDB_Plugin
    * Connect to the db if the connection does not exist yet.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param the database connection, or NULL on error
+   * @returns the database connection, or NULL on error
    */
   struct TALER_EXCHANGEDB_Session *
   (*get_session) (void *cls);
