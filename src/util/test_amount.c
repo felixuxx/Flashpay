@@ -236,24 +236,25 @@ main (int argc,
   GNUNET_assert (1 == a2.fraction);
 
   /* test rounding #1 */
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:0.01",
                                          &r));
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4.001",
                                          &a1));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4",
                                          &a2));
-
-  GNUNET_assert (GNUNET_OK == TALER_amount_round_down (&a1, &r));
-  GNUNET_assert (GNUNET_NO == TALER_amount_round_down (&a1, &r));
-  GNUNET_assert (0 == TALER_amount_cmp (&a1, &a2));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_round_down (&a1,
+                                          &r));
+  GNUNET_assert (GNUNET_NO ==
+                 TALER_amount_round_down (&a1,
+                                          &r));
+  GNUNET_assert (0 == TALER_amount_cmp (&a1,
+                                        &a2));
 
   /* test rounding #2 */
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:0.001",
                                          &r));
@@ -264,9 +265,27 @@ main (int argc,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount ("EUR:4.001",
                                          &a2));
-  GNUNET_assert (GNUNET_NO == TALER_amount_round_down (&a1, &r));
-  GNUNET_assert (0 == TALER_amount_cmp (&a1, &a2));
+  GNUNET_assert (GNUNET_NO ==
+                 TALER_amount_round_down (&a1,
+                                          &r));
+  GNUNET_assert (0 == TALER_amount_cmp (&a1,
+                                        &a2));
 
+  /* test rounding #3 */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:5",
+                                         &r));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:12.3",
+                                         &a1));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:10",
+                                         &a2));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_round_down (&a1,
+                                          &r));
+  GNUNET_assert (0 == TALER_amount_cmp (&a1,
+                                        &a2));
   return 0;
 }
 

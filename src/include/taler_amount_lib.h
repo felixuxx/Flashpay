@@ -116,7 +116,7 @@ struct TALER_Amount
  * Parse denomination description, in the format "T:V.F".
  *
  * @param str denomination description
- * @param denom denomination to write the result to
+ * @param[out] denom denomination to write the result to
  * @return #GNUNET_OK if the string is a valid denomination specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
@@ -129,7 +129,7 @@ TALER_string_to_amount (const char *str,
  * Parse denomination description, in the format "T:V.F".
  *
  * @param str denomination description
- * @param denom denomination to write the result to, in NBO
+ * @param[out] denom denomination to write the result to, in NBO
  * @return #GNUNET_OK if the string is a valid denomination specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
@@ -142,7 +142,7 @@ TALER_string_to_amount_nbo (const char *str,
  * Get the value of "zero" in a particular currency.
  *
  * @param cur currency description
- * @param denom denomination to write the result to
+ * @param[out] denom denomination to write the result to
  * @return #GNUNET_OK if @a cur is a valid currency specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
@@ -164,7 +164,7 @@ TALER_amount_is_valid (const struct TALER_Amount *amount);
 /**
  * Convert amount from host to network representation.
  *
- * @param res where to store amount in network representation
+ * @param[out] res where to store amount in network representation
  * @param d amount in host representation
  */
 void
@@ -175,7 +175,7 @@ TALER_amount_hton (struct TALER_AmountNBO *res,
 /**
  * Convert amount from network to host representation.
  *
- * @param res where to store amount in host representation
+ * @param[out] res where to store amount in host representation
  * @param dn amount in network representation
  */
 void
@@ -232,7 +232,7 @@ TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
 /**
  * Perform saturating subtraction of amounts.
  *
- * @param diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1
+ * @param[out] diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1
  * @param a1 amount to subtract from
  * @param a2 amount to subtract
  * @return #GNUNET_OK if the subtraction worked,
@@ -249,7 +249,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
 /**
  * Perform addition of amounts.
  *
- * @param sum where to store @a a1 + @a a2, set to "invalid" on overflow
+ * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
  * @param a1 first amount to add
  * @param a2 second amount to add
  * @return #GNUNET_OK if the addition worked,
@@ -262,10 +262,10 @@ TALER_amount_add (struct TALER_Amount *sum,
 
 
 /**
- * Divide an amount by a float.  Note that this function
+ * Divide an amount by a @ divisor.  Note that this function
  * may introduce a rounding error!
  *
- * @param result where to store @a dividend / @a divisor
+ * @param[out] result where to store @a dividend / @a divisor
  * @param dividend amount to divide
  * @param divisor by what to divide, must be positive
  */
@@ -278,7 +278,7 @@ TALER_amount_divide (struct TALER_Amount *result,
 /**
  * Normalize the given amount.
  *
- * @param amount amount to normalize
+ * @param[in,out] amount amount to normalize
  * @return #GNUNET_OK if normalization worked
  *         #GNUNET_NO if value was already normalized
  *         #GNUNET_SYSERR if value was invalid or could not be normalized
@@ -312,13 +312,14 @@ TALER_amount2s (const struct TALER_Amount *amount);
 /**
  * Round the amount to something that can be transferred on the wire.
  * The rounding mode is specified via the smallest transferable unit,
- * which must only have a fractional part.
+ * which must only have a fractional part *or* only a value (either
+ * of the two must be zero!).
  *
  * @param[in,out] amount amount to round down
- * @param[in] round_unit unit that should be rounded down to,
- *            the value part of this amount must be zero
+ * @param[in] round_unit unit that should be rounded down to, and
+ *            either value part or the faction must be zero (but not both)
  * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
- *         #GNUNET_SYSERR if the amount or currency was invalid
+ *         #GNUNET_SYSERR if the amount or currency or @a round_unit was invalid
  */
 int
 TALER_amount_round_down (struct TALER_Amount *amount,
