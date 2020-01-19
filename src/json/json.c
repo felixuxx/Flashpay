@@ -25,7 +25,13 @@
 
 
 /**
- * Hash a JSON for binary signing.
+ * Hash a JSON object for binary signing.
+ *
+ * See https://tools.ietf.org/html/draft-rundgren-json-canonicalization-scheme-15
+ * for fun JSON canonicalization problems.  Callers must ensure that
+ * those are avoided in the input. We will use libjanson's "JSON_COMPACT"
+ * encoding for whitespace and "JSON_SORT_KEYS" to canonicalize as best
+ * as we can.
  *
  * @param[in] json some JSON value
  * @param[out] hc resulting hash code
