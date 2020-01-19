@@ -634,7 +634,7 @@ run_fake_client ()
 
   if (0 == strcmp (input_filename,
                    "-"))
-    fd = 0;
+    fd = STDIN_FILENO;
   else
     fd = open (input_filename, O_RDONLY);
   if (-1 == fd)
