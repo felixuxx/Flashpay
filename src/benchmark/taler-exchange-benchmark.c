@@ -312,11 +312,11 @@ run (void *cls,
                        "{\"nonce\": %llu}",
                        i + (howmany_coins * j));
       unit[0] =
-        TALER_TESTING_cmd_withdraw_with_retry (TALER_TESTING_cmd_withdraw_amount
-                                                 (withdraw_label,
-                                                 create_reserve_label,
-                                                 amount_5,
-                                                 MHD_HTTP_OK));
+        TALER_TESTING_cmd_withdraw_with_retry
+          (TALER_TESTING_cmd_withdraw_amount (withdraw_label,
+                                              create_reserve_label,
+                                              amount_5,
+                                              MHD_HTTP_OK));
       unit[1] =
         TALER_TESTING_cmd_deposit_with_retry
           (TALER_TESTING_cmd_deposit ("deposit",
@@ -378,6 +378,10 @@ run (void *cls,
   TALER_TESTING_run2 (is,
                       all_commands,
                       GNUNET_TIME_UNIT_FOREVER_REL); /* no timeout */
+  GNUNET_free (amount_1);
+  GNUNET_free (amount_4);
+  GNUNET_free (amount_5);
+  GNUNET_free (withdraw_fee_str);
   result = 1;
 }
 
