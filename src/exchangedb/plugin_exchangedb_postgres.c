@@ -134,6 +134,16 @@ struct PostgresClosure
    * Which currency should we assume all amounts to be in?
    */
   char *currency;
+
+  /**
+   * Session to be used if the thread is @e main_self.
+   */
+  struct TALER_EXCHANGEDB_Session *main_session;
+
+  /**
+   * Handle for the main() thread of the program.
+   */
+  pthread_t main_self;
 };
 
 
@@ -223,7 +233,12 @@ postgres_get_session (void *cls)
   struct GNUNET_PQ_Context *db_conn;
   struct TALER_EXCHANGEDB_Session *session;
 
-  if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
+  if (pthread_equal (pc->main_self,
+                     pthread_self ()))
+    session = pc->main_session;
+  else
+    session = pthread_getspecific (pc->db_conn_threadlocal);
+  if (NULL != session)
   {
     GNUNET_PQ_reconnect_if_down (session->conn);
     return session;
@@ -1381,13 +1396,21 @@ postgres_get_session (void *cls)
     return NULL;
   session = GNUNET_new (struct TALER_EXCHANGEDB_Session);
   session->conn = db_conn;
-  if (0 != pthread_setspecific (pc->db_conn_threadlocal,
-                                session))
+  if (pthread_equal (pc->main_self,
+                     pthread_self ()))
   {
-    GNUNET_break (0);
-    GNUNET_PQ_disconnect (db_conn);
-    GNUNET_free (session);
-    return NULL;
+    pc->main_session = session;
+  }
+  else
+  {
+    if (0 != pthread_setspecific (pc->db_conn_threadlocal,
+                                  session))
+    {
+      GNUNET_break (0);
+      GNUNET_PQ_disconnect (db_conn);
+      GNUNET_free (session);
+      return NULL;
+    }
   }
   return session;
 }
@@ -7195,6 +7218,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   const char *ec;
 
   pg = GNUNET_new (struct PostgresClosure);
+  pg->main_self = pthread_self (); /* loaded while single-threaded! */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchangedb-postgres",
@@ -7379,6 +7403,10 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
   struct TALER_EXCHANGEDB_Plugin *plugin = cls;
   struct PostgresClosure *pg = plugin->cls;
 
+  /* If we launched a session for the main thread,
+     kill it here before we unload */
+  if (NULL != pg->main_session)
+    db_conn_destroy (pg->main_session);
   GNUNET_free (pg->connection_cfg_str);
   GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
