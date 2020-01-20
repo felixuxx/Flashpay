@@ -1034,7 +1034,7 @@ create_wire_fee_for_method (void *cls,
                                    opt,
                                    &af->closing_fee)) ||
          (0 != strcasecmp (currency,
-                           af->wire_fee.currency)) )
+                           af->closing_fee.currency)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid or missing amount in `%s' under `%s'\n",

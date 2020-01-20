@@ -2240,9 +2240,9 @@ read_again:
         {
           GNUNET_assert (0 < os->refcnt);
           os->refcnt--; /* removed #internal_key_state reference */
+          if (0 != os->refcnt)
+            os = NULL; /* other aliases are still active, do not yet free */
         }
-        if (0 != os->refcnt)
-          os = NULL; /* other aliases are still active, do not yet free */
         GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
         if (NULL != os)
           ks_free (os); /* RC did hit zero, free */
