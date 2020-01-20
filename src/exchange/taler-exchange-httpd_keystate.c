@@ -2289,8 +2289,11 @@ TEH_KS_init (void)
   /* no need to lock here, as we are still single-threaded */
   internal_key_state = make_fresh_key_state (GNUNET_TIME_absolute_get ());
   if (NULL == internal_key_state)
+  {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to setup initial key state. This exchange cannot work.\n");
+    return;
+  }
   internal_key_state->refcnt = 1;
 }
 
