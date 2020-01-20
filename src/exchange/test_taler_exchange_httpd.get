@@ -1,0 +1,27 @@
+# This file is part of TALER
+# Copyright (C) 2020 Taler Systems SA
+#
+#  TALER is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free Software
+#  Foundation; either version 3, or (at your option) any later version.
+#
+#  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License along with
+#  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+#
+#
+# This is a resource file for test_taler_exchange_httpd.sh.
+# Lines starting with '#' (must be first character in line) are comments.
+#
+# Each non-comment line must contain the URL on the HTTP server.
+#
+/
+/agpl
+/keys
+/robots.txt
+/terms
+/privacy
+/wire

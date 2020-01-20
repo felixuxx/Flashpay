@@ -97,5 +97,7 @@ TESTS = \
 EXTRA_DIST = \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_taler_exchange_httpd.conf \
+  test_taler_exchange_httpd.get \
+  test_taler_exchange_httpd.post \
   exchange.conf \
   $(check_SCRIPTS)

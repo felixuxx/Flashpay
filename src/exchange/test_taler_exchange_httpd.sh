@@ -25,13 +25,16 @@ unset XDG_DATA_HOME
 unset XDG_CONFIG_HOME
 #
 echo -n "Launching exchange ..."
+PREFIX=
+# Uncomment this line to run with valgrind...
+#PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
 # Setup wire accounts.
 taler-exchange-wire -c test_taler_exchange_httpd.conf > /dev/null || exit 1
 # Run Exchange HTTPD (in background)
-taler-exchange-httpd -c test_taler_exchange_httpd.conf -i 2> test-exchange.log &
+$PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf -i 2> test-exchange.log &
 
 # Give HTTP time to start
 
@@ -51,10 +54,14 @@ fi
 echo " DONE"
 
 # Finally run test...
-# We read the JSON snippets to POST from test_taler_exchange_httpd.data
-cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d \47"  $2 "\47 http://localhost:8081" $1 }' | bash &> /dev/null
+echo -n "Running tests ..."
+# We read the JSON snippets to POST from test_taler_exchange_httpd.post
+cat test_taler_exchange_httpd.post | grep -v ^\# | awk '{ print "curl -d \47"  $2 "\47 http://localhost:8081" $1 }' | bash &> /dev/null
 
-echo "Terminating exchange"
+# We read the JSON snippets to GET from test_taler_exchange_httpd.get
+cat test_taler_exchange_httpd.get | grep -v ^\# | awk '{ print "curl http://localhost:8081" $1 }' | bash &> /dev/null
+
+echo " DONE"
 # $! is the last backgrounded process, hence the exchange
 kill -TERM $!
 wait $!
