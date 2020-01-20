@@ -34,13 +34,13 @@ set -eu
 
 PREFIX=
 # Uncomment this line to run with valgrind...
-# PREFIX="valgrind --leak-check=yes --log-file=valgrind.%p"
+PREFIX="valgrind --leak-check=yes --log-file=valgrind.%p"
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf
 # Setup database (just to be sure)
 taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
 # Only log hard errors, we expect lots of warnings...
-export GNUNET_FORCE_LOG="taler-exchange-httpd;;;;ERROR/libmicrohttpd;;;;ERROR/util;;;;ERROR/"
+export GNUNET_FORCE_LOG=";;;;ERROR"
 # Run test...
 for n in afl-tests/*
 do

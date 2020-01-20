@@ -1,5 +1,0 @@
-GET /refresh/link?coin_pub=WQHES0X5XK43VBG1Y8FXR2YEJM04HQVMDTCS07MH691XWADG8QCG HTTP/1.1
-Host: localhost\8081
-Accept: */*
-Content-Type: application/json
-

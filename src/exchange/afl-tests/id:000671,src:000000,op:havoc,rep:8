@@ -1,7 +1,0 @@
-POST /admin/add/incoming 1TTP/1.1
-Host: 81
-Accept: */*
-Content-Type: application/json
-Coåtent-Length: 220
-
-{"reserve_pub":"TMZCK5CFM1KZQGY1WTF069RF79PA5106ARTR","value":5,"fractio":10000},"execution_date":"/Date(1412821651)&","wire":{"type":"TEST","bank":"source bank","account":42}}

@@ -1,7 +1,0 @@
-POST /admin/add/incoming HTTP/1.1
-Host: localhost:8081
-Accept: */*
-Content-Type: ap^lication/json
-Content-Length: 220
-
-{"reserve_pub":"TMZCK5CFM1KZQGY1WTF0CEZZPGA0670G94969RF79PA5106ARTK0","amount":{"currency":"EUR","value":5,"fraction":10000},"execution_date":"/Date(1442821651)/","wire":{"type":"TEST","bank":"source bank","account":42}}

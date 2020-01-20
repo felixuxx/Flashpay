@@ -1,0 +1,6 @@
+GET /terms?cacheBreaker=3 HTTP/1.1
+Accept: text/plain
+User-Agent: axios/0.19.0
+Host: localhost:8081
+Connection: close
+

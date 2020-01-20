@@ -1,7 +1,0 @@
-POGT /admin/add/incoming HTTP/1.1
-ost: localho
-Accept: */*
-Content-Ty_e: app@ication/json
-Content-Ïength: 220
-
-{"reserve_pub":"TMZCK5CFM1ZQGY1WTF0CEVZPGA0670G9469RF79PA5106ARTK0","amount":{"currencg","frJction"810000},"execution_date":"/Date(1442821651)/","wire":{"type":"TEST","bank":"source Oank","account":42}}

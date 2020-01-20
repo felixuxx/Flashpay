@@ -1,7 +1,0 @@
-POST /admin/add/incoming HTT:/1.1
-Host: localhost:8081
-Accept: */*
-CopuO"nntent-Type: application/json
-Content-Length: 220
-"exec
-{"reserve_puO":"TMZCK5CFM1KZQ!!!!!GY1WTF0CEZZPGA0670G9/969RF79PA51admRTK0","amount":{"currencyCFM1KZQGY1WTF0CEZZPGA067on":10000},"execution_date":"/in/a(144281651)/","wire":{"iype":"TEST","bank":"source bank","ccouse†ve_puO"nt":42}}

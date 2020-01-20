@@ -1,0 +1,9 @@
+POST /deposit HTTP/1.1
+Host: localhost:8081
+Accept: */*
+Content-Encoding: deflate
+Content-Type: application/json
+Content-Length: 816
+
+xœ“Koã6Fÿ‹×3I‰"•%¾ Bªø()rcxOc4±¶‚¶Ì¯œi7]uG\\~‡¸<÷ûîér^¯§/ïëérŞ=î‚ğÁüÊñd÷i÷ÇézÜ=~ß};üµ^öï×ÓÖñq~|xøóózx=^?9œx½<f_.·õ¡FÛ½ÛáuİZgñTMµÉƒi"!§š a4E#<Ñ%	ã  skˆ3±Sš§ÅT0ÌœuÆ†b9ä$0ÔnÁÙPÖl«ªk¯İîÇ§İËşç[w7"Ã	Ó¢çI¨ĞPïWÑ¼´U„V+à{ÉŒ’¤RB/·‚J¨İX1Aİ”`˜DËM°Î„x†ë$Yi”ÀX„îîÈÙÖız¼¾İ6xîŒé;×º*MÂNg6Fä“HŠ¥¨›¡c(ÑCÖ+g€tfÑc‘¡ÇÑ&ß8Šs# 2-F›i²-çãQfµÁŸ.§óşÛû—
+’Î6€…5z”[éµP'­îº‘¼dU-4ıØ¨XİšçËÛ=bÿr¸½l9¨	Á•‚µÒò2ÔªÂ¶`X´pî’Á	m*Hƒ×,Ä"²S8×®´‚bË·Ò©Ï¢>·5¨efund_fee":"TESTKUDOS:0.01","rtransaction_id":1}

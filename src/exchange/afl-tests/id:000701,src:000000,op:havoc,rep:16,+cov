@@ -1,7 +1,0 @@
-POST /admin:add/incoming HTTP/1.1
-Host: localhost:8081
-AcF0CEZZPGA0670G94£69RF79PA5106ARcept: */*
-Content-Typx: jpplication/json
-	ontent-Length: 220
-
-{"reser=e_pub":"TMZ(K5CFM1KsQGY1WTF0CEZZPGA0670G94"type":"TEST","bank":"source £69RF79PA5106ARTK0","amount":{"currency":"EUR","value":5,"fraction":10000},"execution_date":"/Date(1442821651)/","^^^^^^^"type":"TEST","bank":"source bank","account":42}}

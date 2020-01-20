@@ -1,0 +1,7 @@
+GET /keys HUTP/1.1
+Host: loWget/1.20.1 HTTP/x-gnu)
+Accept: */*
+Accept-Encoding: identity
+Host: localhost:8081
+Connection: Keep-Alive
+

@@ -1,0 +1,6 @@
+GET /terms?c.1
+User-Agent———————————————————Accept:*/*
+Accept-Encoding: identity
+Host: localhst:8081
+Connection: Keep-Alive
+

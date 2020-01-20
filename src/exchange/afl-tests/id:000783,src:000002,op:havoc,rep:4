@@ -1,7 +1,0 @@
-GET /1
-Connection: Keep-Alivkeys HTTP/1.1
-User-Agent: Wget/1.16.3 (linux-gnu)
-Accept: */*
-Ac: identity
-Host: 1tion: èep-Alive
-

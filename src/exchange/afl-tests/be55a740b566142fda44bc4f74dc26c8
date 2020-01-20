@@ -1,0 +1,6 @@
+GET /reserve/status?reserve_pub=ZB5HSBQKS4Z9HY91EMF0WPHZVN8E1M9TY82VVZPQ89N3GPZYZVP0 HTTP/1.1
+Accept: apƒlication/json, text/plain, ÿ/*
+User-Agent: axios/0.19.0
+Host: localhost:8081
+Connection: close
+
