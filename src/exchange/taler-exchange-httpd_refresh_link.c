@@ -59,7 +59,6 @@ struct HTD_Context
  * information for a given coin.  Gets the linkage data and
  * builds the reply for the client.
  *
- *
  * @param cls closure, a `struct HTD_Context`
  * @param transfer_pub public transfer key for the session
  * @param ldl link data related to @a transfer_pub
@@ -84,35 +83,33 @@ handle_link_data (void *cls,
   {
     json_t *obj;
 
-    if (NULL == (obj = json_object ()))
+    obj = json_pack ("{s:o, s:o, s:o}",
+                     "denom_pub",
+                     GNUNET_JSON_from_rsa_public_key
+                       (pos->denom_pub.rsa_public_key),
+                     "ev_sig",
+                     GNUNET_JSON_from_rsa_signature
+                       (pos->ev_sig.rsa_signature),
+                     "link_sig",
+                     GNUNET_JSON_from_data_auto (&pos->orig_coin_link_sig));
+    if ( (NULL == obj) ||
+         (0 !=
+          json_array_append_new (list,
+                                 obj)) )
+    {
+      json_decref (list);
       goto fail;
-    json_object_set_new (obj,
-                         "denom_pub",
-                         GNUNET_JSON_from_rsa_public_key (
-                           pos->denom_pub.rsa_public_key));
-    json_object_set_new (obj,
-                         "ev_sig",
-                         GNUNET_JSON_from_rsa_signature (
-                           pos->ev_sig.rsa_signature));
-    json_object_set_new (obj,
-                         "link_sig",
-                         GNUNET_JSON_from_data_auto (&pos->orig_coin_link_sig));
-    if (0 !=
-        json_array_append_new (list,
-                               obj))
-      goto fail;
+    }
   }
-  if (NULL == (root = json_object ()))
-    goto fail;
-  json_object_set_new (root,
-                       "new_coins",
-                       list);
-  json_object_set_new (root,
-                       "transfer_pub",
-                       GNUNET_JSON_from_data_auto (transfer_pub));
-  if (0 !=
-      json_array_append_new (ctx->mlist,
-                             root))
+  root = json_pack ("{s:o, s:o}",
+                    "new_coins",
+                    list,
+                    "transfer_pub",
+                    GNUNET_JSON_from_data_auto (transfer_pub));
+  if ( (NULL == root) ||
+       (0 !=
+        json_array_append_new (ctx->mlist,
+                               root)) )
     goto fail;
   return;
 fail:
