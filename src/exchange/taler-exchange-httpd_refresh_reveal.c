@@ -203,13 +203,14 @@ check_exists_cb (void *cls,
     return;
   }
   GNUNET_break (TALER_CNC_KAPPA - 1 == num_tprivs);
-  GNUNET_break_op (0 == memcmp (tp,
-                                &rctx->gamma_tp,
-                                sizeof (struct TALER_TransferPublicKeyP)));
-  GNUNET_break_op (0 == memcmp (tprivs,
-                                &rctx->transfer_privs,
-                                sizeof (struct TALER_TransferPrivateKeyP)
-                                * num_tprivs));
+  GNUNET_break_op (0 ==
+                   GNUNET_memcmp (tp,
+                                  &rctx->gamma_tp));
+  GNUNET_break_op (0 ==
+                   memcmp (tprivs,
+                           &rctx->transfer_privs,
+                           sizeof (struct TALER_TransferPrivateKeyP)
+                           * num_tprivs));
   /* We usually sign early (optimistic!), but in case we change that *and*
      we do find the operation in the database, we could use this: */
   if (NULL == rctx->ev_sigs)

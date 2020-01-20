@@ -1492,6 +1492,7 @@ check_with_database()
 
     # Setup database-specific globals
     MASTER_PUB=`cat ${BASEDB}.mpub`
+    EXCHANGE_BASE_URL=`taler-config -c generate-auditor-basedb.conf -s exchange -o BASE_URL`
 
     # Where to store wire fee details for aggregator
     echo "Storing wire fees"
@@ -1509,6 +1510,7 @@ check_with_database()
 
     # Load database
     full_reload
+    taler-auditor-exchange -m $MASTER_PUB -u $EXCHANGE_BASE_URL
 
     # Run test suite
     fail=0

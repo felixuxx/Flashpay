@@ -34,7 +34,7 @@ set -eu
 
 PREFIX=
 # Uncomment this line to run with valgrind...
-PREFIX="valgrind --leak-check=yes --log-file=valgrind.%p"
+PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf
 # Setup database (just to be sure)
@@ -45,7 +45,6 @@ export GNUNET_FORCE_LOG=";;;;ERROR"
 for n in afl-tests/*
 do
   echo -n "Test $n "
-  $PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf -t 1 -f $n -C > /dev/null || { echo "FAIL!"; }
-  echo "OK"
+  $PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf -t 1 -f $n -C > /dev/null && echo "OK" || echo "FAIL $!!"
 done
 exit 0
