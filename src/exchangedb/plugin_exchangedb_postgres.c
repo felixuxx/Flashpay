@@ -7405,8 +7405,7 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
 
   /* If we launched a session for the main thread,
      kill it here before we unload */
-  if (NULL != pg->main_session)
-    db_conn_destroy (pg->main_session);
+  db_conn_destroy (pg->main_session);
   GNUNET_free (pg->connection_cfg_str);
   GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);

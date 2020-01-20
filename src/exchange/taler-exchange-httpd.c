@@ -983,7 +983,7 @@ main (int argc,
   char *cfgfile = NULL;
   char *loglev = NULL;
   char *logfile = NULL;
-  int connection_close;
+  int connection_close = GNUNET_NO;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('C',
                                "connection-close",
@@ -1084,31 +1084,32 @@ main (int argc,
   }
 
   /* initialize #internal_key_state with an RC of 1 */
-  TEH_KS_init ();
-
-  /* consider unix path */
-  if ( (-1 == fh) &&
-       (NULL != serve_unixpath) )
+  if (GNUNET_OK ==
+      TEH_KS_init ())
   {
-    fh = TALER_MHD_open_unix_path (serve_unixpath,
-                                   unixpath_mode);
-    if (-1 == fh)
-      return 1;
-  }
 #if HAVE_DEVELOPER
-  if (NULL != input_filename)
-  {
-    if (-1 != fh)
-      GNUNET_break (0 == close (fh));
-    ret = run_single_request ();
-  }
-  else
+    if (NULL != input_filename)
+    {
+      ret = run_single_request ();
+    }
+    else
 #endif
-  ret = run_main_loop (fh,
-                       argv);
-
-  /* release #internal_key_state */
-  TEH_KS_free ();
+    {
+      /* consider unix path */
+      if ( (-1 == fh) &&
+           (NULL != serve_unixpath) )
+      {
+        fh = TALER_MHD_open_unix_path (serve_unixpath,
+                                       unixpath_mode);
+        if (-1 == fh)
+          return 1;
+      }
+      ret = run_main_loop (fh,
+                           argv);
+    }
+    /* release #internal_key_state */
+    TEH_KS_free ();
+  }
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
   TEH_VALIDATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;

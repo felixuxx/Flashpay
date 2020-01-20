@@ -84,8 +84,10 @@ TEH_KS_release_ (const char *location,
 
 /**
  * Setup initial #internal_key_state.
+ *
+ * @return #GNUNET_OK on success
  */
-void
+int
 TEH_KS_init (void);
 
 

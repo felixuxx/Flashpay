@@ -485,7 +485,10 @@ load_language (struct TALER_MHD_Legal *legal,
                    lang);
   d = opendir (dname);
   if (NULL == d)
+  {
+    GNUNET_free (dname);
     return;
+  }
   for (struct dirent *de = readdir (d);
        NULL != de;
        de = readdir (d))
@@ -497,7 +500,7 @@ load_language (struct TALER_MHD_Legal *legal,
     load_terms (legal, path, lang, fn);
   }
   closedir (d);
-  free (dname);
+  GNUNET_free (dname);
 }
 
 

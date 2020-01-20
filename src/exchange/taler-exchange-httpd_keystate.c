@@ -2170,29 +2170,7 @@ handle_sigchld ()
 int
 TEH_KS_loop (void)
 {
-  struct GNUNET_SIGNAL_Context *sigusr1;
-  struct GNUNET_SIGNAL_Context *sigterm;
-  struct GNUNET_SIGNAL_Context *sigint;
-  struct GNUNET_SIGNAL_Context *sighup;
-  struct GNUNET_SIGNAL_Context *sigchld;
   int ret;
-
-  if (0 != pipe (reload_pipe))
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "pipe");
-    return GNUNET_SYSERR;
-  }
-  sigusr1 = GNUNET_SIGNAL_handler_install (SIGUSR1,
-                                           &handle_sigusr1);
-  sigterm = GNUNET_SIGNAL_handler_install (SIGTERM,
-                                           &handle_sigterm);
-  sigint = GNUNET_SIGNAL_handler_install (SIGINT,
-                                          &handle_sigint);
-  sighup = GNUNET_SIGNAL_handler_install (SIGHUP,
-                                          &handle_sighup);
-  sigchld = GNUNET_SIGNAL_handler_install (SIGCHLD,
-                                           &handle_sigchld);
 
   ret = 2;
   while (2 == ret)
@@ -2267,32 +2245,48 @@ TEH_KS_loop (void)
       break;
     }
   }
-  GNUNET_SIGNAL_handler_uninstall (sigusr1);
-  GNUNET_SIGNAL_handler_uninstall (sigterm);
-  GNUNET_SIGNAL_handler_uninstall (sigint);
-  GNUNET_SIGNAL_handler_uninstall (sighup);
-  GNUNET_SIGNAL_handler_uninstall (sigchld);
-  GNUNET_break (0 == close (reload_pipe[0]));
-  GNUNET_break (0 == close (reload_pipe[1]));
   return ret;
 }
 
 
+static struct GNUNET_SIGNAL_Context *sigusr1;
+static struct GNUNET_SIGNAL_Context *sigterm;
+static struct GNUNET_SIGNAL_Context *sigint;
+static struct GNUNET_SIGNAL_Context *sighup;
+static struct GNUNET_SIGNAL_Context *sigchld;
+
 /**
  * Setup initial #internal_key_state.
  */
-void
+int
 TEH_KS_init (void)
 {
+  if (0 != pipe (reload_pipe))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "pipe");
+    return GNUNET_SYSERR;
+  }
+  sigusr1 = GNUNET_SIGNAL_handler_install (SIGUSR1,
+                                           &handle_sigusr1);
+  sigterm = GNUNET_SIGNAL_handler_install (SIGTERM,
+                                           &handle_sigterm);
+  sigint = GNUNET_SIGNAL_handler_install (SIGINT,
+                                          &handle_sigint);
+  sighup = GNUNET_SIGNAL_handler_install (SIGHUP,
+                                          &handle_sighup);
+  sigchld = GNUNET_SIGNAL_handler_install (SIGCHLD,
+                                           &handle_sigchld);
   /* no need to lock here, as we are still single-threaded */
   internal_key_state = make_fresh_key_state (GNUNET_TIME_absolute_get ());
   if (NULL == internal_key_state)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to setup initial key state. This exchange cannot work.\n");
-    return;
+    return GNUNET_SYSERR;
   }
   internal_key_state->refcnt = 1;
+  return GNUNET_OK;
 }
 
 
@@ -2312,6 +2306,13 @@ TEH_KS_free ()
   GNUNET_assert (1 == ks->refcnt);
   ks->refcnt--;
   ks_free (ks);
+  GNUNET_SIGNAL_handler_uninstall (sigusr1);
+  GNUNET_SIGNAL_handler_uninstall (sigterm);
+  GNUNET_SIGNAL_handler_uninstall (sigint);
+  GNUNET_SIGNAL_handler_uninstall (sighup);
+  GNUNET_SIGNAL_handler_uninstall (sigchld);
+  GNUNET_break (0 == close (reload_pipe[0]));
+  GNUNET_break (0 == close (reload_pipe[1]));
 }
 
 

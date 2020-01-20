@@ -27,7 +27,7 @@ unset XDG_CONFIG_HOME
 echo -n "Launching exchange ..."
 PREFIX=
 # Uncomment this line to run with valgrind...
-#PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
+# PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
@@ -38,7 +38,7 @@ $PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf -i 2> test-exchan
 
 # Give HTTP time to start
 
-for n in `seq 1 20`
+for n in `seq 1 100`
 do
     echo -n "."
     sleep 0.1
@@ -49,6 +49,9 @@ done
 if [ 1 != $OK ]
 then
     echo "Failed to launch exchange"
+    kill -TERM $!
+    wait $!
+    echo Process status: $?
     exit 77
 fi
 echo " DONE"
