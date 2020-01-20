@@ -32,6 +32,8 @@
 
 set -eu
 
+unset XDG_DATA_HOME
+unset XDG_CONFIG_HOME
 PREFIX=
 # Uncomment this line to run with valgrind...
 PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
