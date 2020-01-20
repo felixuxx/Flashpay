@@ -2200,7 +2200,6 @@ TEH_KS_loop (void)
     char c;
     ssize_t res;
 
-read_again:
     errno = 0;
     res = read (reload_pipe[0],
                 &c,
@@ -2212,7 +2211,7 @@ read_again:
       break;
     }
     if (EINTR == errno)
-      goto read_again;
+      continue;
     switch (c)
     {
     case SIGUSR1:
