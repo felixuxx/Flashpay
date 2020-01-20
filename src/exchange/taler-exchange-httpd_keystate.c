@@ -1922,8 +1922,7 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
          (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) ) ||
        (NULL == internal_key_state) )
   {
-    struct TEH_KS_StateHandle *os = internal_key_state;
-
+    os = internal_key_state;
     internal_key_state = make_fresh_key_state (now);
     internal_key_state->refcnt = 1; /* alias from #internal_key_state */
     if (NULL != os)
