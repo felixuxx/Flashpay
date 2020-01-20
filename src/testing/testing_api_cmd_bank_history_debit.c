@@ -146,7 +146,7 @@ history_traits (void *cls,
  *
  * @param h what we expected.
  * @param h_len number of entries in @a h.
- * @param off position of the missmatch.
+ * @param off position of the mismatch.
  */
 static void
 print_expected (struct History *h,

@@ -125,7 +125,7 @@ wire_cb (void *cls,
                                        &expected_fee))
             {
               GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                          "Wire fee missmatch to command %s\n",
+                          "Wire fee mismatch to command %s\n",
                           cmd->label);
               TALER_TESTING_interpreter_fail (ws->is);
               GNUNET_free (method);

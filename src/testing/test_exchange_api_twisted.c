@@ -187,7 +187,7 @@ run (void *cls,
       "EUR:5",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_refund
-      ("refund-currency-missmatch",
+      ("refund-currency-mismatch",
       MHD_HTTP_PRECONDITION_FAILED,
       "USD:5",
       "USD:0.01",
@@ -220,7 +220,7 @@ run (void *cls,
       bc.user42_payto,
       /* This parameter will make any comparison about
          h_contract_terms fail, when /refund will be handled.
-         So in other words, this is h_contract missmatch.  */
+         So in other words, this is h_contract mismatch.  */
       "{\"items\":[{\"name\":\"ice skate\","
       "\"value\":\"EUR:5\"}]}",
       GNUNET_TIME_UNIT_MINUTES,

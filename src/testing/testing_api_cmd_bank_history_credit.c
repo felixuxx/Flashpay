@@ -142,7 +142,7 @@ history_traits (void *cls,
  *
  * @param h what we expected.
  * @param h_len number of entries in @a h.
- * @param off position of the missmatch.
+ * @param off position of the mismatch.
  */
 static void
 print_expected (struct History *h,
@@ -296,7 +296,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
       continue; /* skip until we find the marker */
     if (0 != strcasecmp (hs->account_url,
                          exchange_credit_url))
-      continue; /* account missmatch */
+      continue; /* account mismatch */
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
     {

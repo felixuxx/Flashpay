@@ -102,8 +102,8 @@ reply_refresh_reveal_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 static int
-reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
-                                const struct TALER_RefreshCommitmentP *rc)
+reply_refresh_reveal_mismatch (struct MHD_Connection *connection,
+                               const struct TALER_RefreshCommitmentP *rc)
 {
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
@@ -410,8 +410,8 @@ refresh_reveal_transaction (void *cls,
                             &rc_expected))
     {
       GNUNET_break_op (0);
-      *mhd_ret = reply_refresh_reveal_missmatch (connection,
-                                                 &rc_expected);
+      *mhd_ret = reply_refresh_reveal_mismatch (connection,
+                                                &rc_expected);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   } /* end of checking "rc_expected" */

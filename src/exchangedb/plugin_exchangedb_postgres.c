@@ -2140,7 +2140,7 @@ postgres_insert_withdraw_info (void *cls,
        left before we tried this; however, concurrent operations may have changed
        the situation by now.  We should re-try the transaction.  */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Withdrawal from reserve `%s' refused due to balance missmatch. Retrying.\n",
+                "Withdrawal from reserve `%s' refused due to balance mismatch. Retrying.\n",
                 TALER_B2S (&collectable->reserve_pub));
     return GNUNET_DB_STATUS_SOFT_ERROR;
   }
@@ -5085,7 +5085,7 @@ postgres_insert_reserve_closed (void *cls,
        left before we tried this; however, concurrent operations may have changed
        the situation by now.  We should re-try the transaction.  */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Closing of reserve `%s' refused due to balance missmatch. Retrying.\n",
+                "Closing of reserve `%s' refused due to balance mismatch. Retrying.\n",
                 TALER_B2S (reserve_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

@@ -233,7 +233,7 @@ recoup_cb (void *cls,
       if (0 != TALER_amount_cmp (amount, &expected_amount))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Total amount missmatch to command %s\n",
+                    "Total amount mismatch to command %s\n",
                     cmd->label);
         json_dumpf (full_response, stderr, 0);
         TALER_TESTING_interpreter_fail (is);

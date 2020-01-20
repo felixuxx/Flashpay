@@ -1008,7 +1008,7 @@ check_time_difference (const char *table,
     return;
 
   GNUNET_asprintf (&details,
-                   "execution date missmatch (%s)",
+                   "execution date mismatch (%s)",
                    GNUNET_STRINGS_relative_time_to_string (delta,
                                                            GNUNET_YES));
   report (report_row_minor_inconsistencies,
@@ -1093,7 +1093,7 @@ wire_out_cb (void *cls,
                          "amount_justified", TALER_JSON_from_amount (&zero),
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "timestamp", json_from_time_abs (date),
-                         "diagnostic", "recevier account missmatch",
+                         "diagnostic", "recevier account mismatch",
                          "account_section", wa->section_name));
       GNUNET_break (GNUNET_OK ==
                     TALER_amount_add (&total_bad_amount_out_plus,
@@ -1106,7 +1106,7 @@ wire_out_cb (void *cls,
                          "amount_justified", TALER_JSON_from_amount (amount),
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "timestamp", json_from_time_abs (date),
-                         "diagnostic", "receiver account missmatch",
+                         "diagnostic", "receiver account mismatch",
                          "account_section", wa->section_name));
       GNUNET_break (GNUNET_OK ==
                     TALER_amount_add (&total_bad_amount_out_minus,
@@ -1805,7 +1805,7 @@ history_credit_cb (void *cls,
                        "table", "reserves_in",
                        "row", (json_int_t) rii->rowid,
                        "bank_row", (json_int_t) row_off,
-                       "diagnostic", "execution date missmatch"));
+                       "diagnostic", "execution date mismatch"));
   }
 cleanup:
   GNUNET_assert (GNUNET_OK ==

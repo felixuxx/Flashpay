@@ -114,7 +114,7 @@ main (int argc,
                  TALER_amount_cmp_currency (&a1,
                                             &a2));
 
-  /* test subtraction failure (currency missmatch) */
+  /* test subtraction failure (currency mismatch) */
   GNUNET_assert (GNUNET_SYSERR ==
                  TALER_amount_subtract (&a3,
                                         &a3,

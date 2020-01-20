@@ -545,7 +545,7 @@ track_transfer_cb (void *cls,
                                &expected_amount))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Total amount missmatch to command %s - "
+                  "Total amount mismatch to command %s - "
                   "%s vs %s\n",
                   cmd->label,
                   TALER_amount_to_string (total_amount),
@@ -569,7 +569,7 @@ track_transfer_cb (void *cls,
                                &expected_amount))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Wire fee missmatch to command %s\n",
+                  "Wire fee mismatch to command %s\n",
                   cmd->label);
       json_dumpf (json, stderr, 0);
       TALER_TESTING_interpreter_fail (is);

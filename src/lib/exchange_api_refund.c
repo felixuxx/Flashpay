@@ -183,7 +183,7 @@ handle_refund_finished (void *cls,
        (it was too late for the refund). */
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
-    /* Client request was inconsistent; might be a currency missmatch
+    /* Client request was inconsistent; might be a currency mismatch
        problem.  */
     break;
   case MHD_HTTP_CONFLICT:

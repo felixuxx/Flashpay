@@ -697,7 +697,7 @@ run_audit
 
 echo -n "Testing inconsistency detection... "
 DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
-if test "x$DIAG" != "xexecution date missmatch"
+if test "x$DIAG" != "xexecution date mismatch"
 then
     exit_fail "Reported diagnostic wrong: $DIAG"
 fi
@@ -1045,7 +1045,7 @@ then
     fi
     DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
     DIAG=`echo "$DIAG" | awk '{print $1 " " $2 " " $3}'`
-    if test "x$DIAG" != "xexecution date missmatch"
+    if test "x$DIAG" != "xexecution date mismatch"
     then
         exit_fail "Reported diagnostic wrong: $DIAG"
     fi
