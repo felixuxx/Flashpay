@@ -180,6 +180,11 @@ shutdown_task (void *cls)
   struct WireAccount *wa;
 
   (void) cls;
+  if (NULL != hh)
+  {
+    TALER_BANK_credit_history_cancel (hh);
+    hh = NULL;
+  }
   if (NULL != ctx)
   {
     GNUNET_CURL_fini (ctx);
@@ -194,11 +199,6 @@ shutdown_task (void *cls)
   {
     GNUNET_SCHEDULER_cancel (task);
     task = NULL;
-  }
-  if (NULL != hh)
-  {
-    TALER_BANK_credit_history_cancel (hh);
-    hh = NULL;
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   db_plugin = NULL;
