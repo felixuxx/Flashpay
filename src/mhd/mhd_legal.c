@@ -484,6 +484,8 @@ load_language (struct TALER_MHD_Legal *legal,
                    path,
                    lang);
   d = opendir (dname);
+  if (NULL == d)
+    return;
   for (struct dirent *de = readdir (d);
        NULL != de;
        de = readdir (d))
