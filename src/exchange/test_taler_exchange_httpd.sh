@@ -68,8 +68,7 @@ echo -n .
 cat test_taler_exchange_httpd.get | grep -v ^\# | awk '{ print "curl -H \"Accept: text/*\" http://localhost:8081" $1 }' | bash &> /dev/null
 echo -n .
 # Also try them with various headers: Accept encoding (wildcard #2)
-cat test_taler_exchange_httpd.get | grep -v ^\# | awk '{ print "curl -H \"Accept: */html\" http://localhost:8081" $1 }' | bash &> /dev/null
-bash
+cat test_taler_exchange_httpd.get | grep -v ^\# | awk '{ print "curl -H \"Accept: */plain\" http://localhost:8081" $1 }' | bash &> /dev/null
 
 echo " DONE"
 # $! is the last backgrounded process, hence the exchange
