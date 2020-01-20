@@ -772,7 +772,6 @@ connection_done (void *cls,
 static int
 run_single_request ()
 {
-  int ret;
   pid_t cld;
   int status;
 
@@ -848,7 +847,7 @@ run_single_request ()
     fprintf (stderr,
              "Waiting for `nc' child failed: %s\n",
              strerror (errno));
-  return ret;
+  return GNUNET_OK;
 }
 
 
