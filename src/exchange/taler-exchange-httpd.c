@@ -1098,7 +1098,7 @@ main (int argc,
   if (NULL != input_filename)
   {
     if (-1 != fh)
-      close (fh);
+      GNUNET_break (0 == close (fh));
     ret = run_single_request ();
   }
   else

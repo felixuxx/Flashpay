@@ -686,7 +686,8 @@ TALER_amount_divide (struct TALER_Amount *result,
   modr = (modr * TALER_AMOUNT_FRAC_BASE) + result->fraction;
   result->fraction = (uint32_t) (modr / divisor);
   /* 'fraction' could now be larger than #TALER_AMOUNT_FRAC_BASE, so we must normalize */
-  TALER_amount_normalize (result);
+  GNUNET_assert (GNUNET_SYSERR !=
+                 TALER_amount_normalize (result));
 }
 
 
