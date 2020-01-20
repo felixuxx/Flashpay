@@ -841,6 +841,8 @@ run_single_request ()
     }
     MHD_run (mhd);
   }
+  MHD_stop_daemon (mhd);
+  mhd = NULL;
   if (cld != waitpid (cld,
                       &status,
                       0))
