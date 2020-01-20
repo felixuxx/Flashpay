@@ -61,7 +61,6 @@ check_for_account (void *cls,
   char *method;
   char *payto_uri;
   char *wire_response_filename;
-  struct TALER_EXCHANGEDB_AccountInfo ai;
 
   if (0 != strncasecmp (section,
                         "exchange-account-",
@@ -93,21 +92,26 @@ check_for_account (void *cls,
                                                "WIRE_RESPONSE",
                                                &wire_response_filename))
     wire_response_filename = NULL;
-  ai.section_name = section;
-  ai.method = method;
-  ai.payto_uri = payto_uri;
-  ai.wire_response_filename = wire_response_filename;
+  {
+    struct TALER_EXCHANGEDB_AccountInfo ai = {
+      .section_name = section,
+      .method = method,
+      .payto_uri = payto_uri,
+      .wire_response_filename = wire_response_filename,
+      .debit_enabled = (GNUNET_YES ==
+                        GNUNET_CONFIGURATION_get_value_yesno (
+                          ctx->cfg,
+                          section,
+                          "ENABLE_DEBIT")),
+      .credit_enabled = (GNUNET_YES ==
+                         GNUNET_CONFIGURATION_get_value_yesno (ctx->cfg,
+                                                               section,
+                                                               "ENABLE_CREDIT"))
+    };
 
-  ai.debit_enabled = (GNUNET_YES ==
-                      GNUNET_CONFIGURATION_get_value_yesno (ctx->cfg,
-                                                            section,
-                                                            "ENABLE_DEBIT"));
-  ai.credit_enabled = (GNUNET_YES ==
-                       GNUNET_CONFIGURATION_get_value_yesno (ctx->cfg,
-                                                             section,
-                                                             "ENABLE_CREDIT"));
-  ctx->cb (ctx->cb_cls,
-           &ai);
+    ctx->cb (ctx->cb_cls,
+             &ai);
+  }
   GNUNET_free (payto_uri);
   GNUNET_free (method);
   GNUNET_free_non_null (wire_response_filename);
@@ -121,7 +125,6 @@ check_for_account (void *cls,
  * @param cb callback to invoke
  * @param cb_cls closure for @a cb
  */
-// FIXME(dold): why is this part of the exchange database?  Does this really belong here?
 void
 TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                 TALER_EXCHANGEDB_AccountCallback cb,

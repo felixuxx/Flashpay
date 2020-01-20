@@ -38,9 +38,9 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount)
   char *amount_str = TALER_amount_to_string (amount);
 
   GNUNET_assert (NULL != amount_str);
-
   {
     json_t *j = json_string (amount_str);
+
     GNUNET_free (amount_str);
     return j;
   }

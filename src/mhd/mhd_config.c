@@ -208,7 +208,6 @@ TALER_MHD_open_unix_path (const char *unix_path,
 {
   struct GNUNET_NETWORK_Handle *nh;
   struct sockaddr_un *un;
-  int fd;
 
   if (sizeof (un->sun_path) <= strlen (unix_path))
   {
@@ -281,9 +280,13 @@ TALER_MHD_open_unix_path (const char *unix_path,
               "set socket '%s' to mode %o\n",
               unix_path,
               unix_mode);
-  fd = GNUNET_NETWORK_get_fd (nh);
-  GNUNET_NETWORK_socket_free_memory_only_ (nh);
-  return fd;
+  {
+    int fd;
+
+    fd = GNUNET_NETWORK_get_fd (nh);
+    GNUNET_NETWORK_socket_free_memory_only_ (nh);
+    return fd;
+  }
 }
 
 
@@ -308,7 +311,6 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *bind_to;
   char *serve_unixpath;
   mode_t unixpath_mode;
-  int fh;
   char port_str[6];
   struct addrinfo hints;
   struct addrinfo *res;
@@ -390,7 +392,11 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_SCHEDULER_shutdown ();
     return -1;
   }
-  fh = GNUNET_NETWORK_get_fd (nh);
-  GNUNET_NETWORK_socket_free_memory_only_ (nh);
-  return fh;
+  {
+    int fh;
+
+    fh = GNUNET_NETWORK_get_fd (nh);
+    GNUNET_NETWORK_socket_free_memory_only_ (nh);
+    return fh;
+  }
 }

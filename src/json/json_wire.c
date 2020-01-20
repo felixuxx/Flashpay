@@ -232,7 +232,6 @@ validate_iban (const char *iban)
   char *nbuf;
   unsigned long long dividend;
   unsigned long long remainder;
-  int nread;
   unsigned int i;
   unsigned int j;
 
@@ -287,6 +286,8 @@ validate_iban (const char *iban)
   remainder = 0;
   for (unsigned int i = 0; i<j; i += 16)
   {
+    int nread;
+
     if (1 !=
         sscanf (&nbuf[i],
                 "%16llu %n",
@@ -311,7 +312,7 @@ validate_iban (const char *iban)
 
 
 /**
- * Valudate payto://iban/ account URL (only account information,
+ * Validate payto://iban/ account URL (only account information,
  * wire subject and amount are ignored).
  *
  * @param account_url URL to parse
@@ -319,7 +320,7 @@ validate_iban (const char *iban)
  *         #GNUNET_NO if @a account_url is a payto URI of a different type,
  *         #GNUNET_SYSERR if the IBAN (checksum) is incorrect
  */
-int
+static int
 validate_payto_iban (const char *account_url)
 {
   const char *iban;
