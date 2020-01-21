@@ -1736,6 +1736,12 @@ enum TALER_ErrorCode
   TALER_EC_BANK_SOFT_EXCEPTION = 5400,
 
   /**
+   * The request UID for a request to transfer funds has already been
+   * used, but with different details for the transfer.
+   */
+  TALER_EC_BANK_TRANSFER_REQUEST_UID_REUSED = 5500,
+
+  /**
    * The sync service failed to access its database. This response is
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */

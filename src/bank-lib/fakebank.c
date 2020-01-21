@@ -325,18 +325,20 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Tell the fakebank to create another wire transfer.
+ * Tell the fakebank to create another wire transfer *from* an exchange.
  *
  * @param h fake bank handle
- * @param debit_account account to debit, not payto://!
- * @param credit_account account to credit, not payto://!
+ * @param debit_account account to debit
+ * @param credit_account account to credit
  * @param amount amount to transfer
  * @param subject wire transfer subject to use
  * @param exchange_base_url exchange URL
  * @param request_uid unique number to make the request unique, or NULL to create one
- * @return row_id of the transfer
+ * @param[out] ret_row_id pointer to store the row ID of this transaction
+ * @return GNUNET_YES if the transfer was successful,
+ *         GNUNET_SYSERR if the request_uid was reused for a different transfer
  */
-uint64_t
+int
 TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                               const char *debit_account,
                               const char *credit_account,
@@ -344,7 +346,8 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
                               const struct
                               TALER_WireTransferIdentifierRawP *subject,
                               const char *exchange_base_url,
-                              const struct GNUNET_HashCode *request_uid)
+                              const struct GNUNET_HashCode *request_uid,
+                              uint64_t *ret_row_id)
 {
   struct Transaction *t;
 
@@ -357,18 +360,26 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
   if (NULL != request_uid)
   {
     for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
-      if ( (0 == GNUNET_memcmp (request_uid,
-                                &t->request_uid)) &&
-           (0 == strcasecmp (debit_account,
-                             t->debit_account)) &&
-           (0 == strcasecmp (credit_account,
-                             t->credit_account)) &&
-           (0 == TALER_amount_cmp (amount,
-                                   &t->amount)) &&
-           (T_DEBIT == t->type) &&
-           (0 == GNUNET_memcmp (subject,
+    {
+      if (0 != GNUNET_memcmp (request_uid, &t->request_uid))
+        continue;
+      if ( (0 != strcasecmp (debit_account,
+                             t->debit_account)) ||
+           (0 != strcasecmp (credit_account,
+                             t->credit_account)) ||
+           (0 != TALER_amount_cmp (amount,
+                                   &t->amount)) ||
+           (T_DEBIT != t->type) ||
+           (0 != GNUNET_memcmp (subject,
                                 &t->subject.debit.wtid)) )
-        return t->row_id;
+      {
+        /* Transaction exists, but with different details. */
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      *ret_row_id = t->row_id;
+      return GNUNET_OK;
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Making transfer from %s to %s over %s and subject %s; for exchange: %s\n",
@@ -395,7 +406,8 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
   GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
                                     h->transactions_tail,
                                     t);
-  return t->row_id;
+  *ret_row_id = t->row_id;
+  return GNUNET_OK;
 }
 
 
@@ -717,14 +729,28 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     {
+      int ret;
+
       credit = TALER_xtalerbank_account_from_payto (credit_account);
-      row_id = TALER_FAKEBANK_make_transfer (h,
-                                             account,
-                                             credit,
-                                             &amount,
-                                             &wtid,
-                                             base_url,
-                                             &uuid);
+      ret = TALER_FAKEBANK_make_transfer (h,
+                                          account,
+                                          credit,
+                                          &amount,
+                                          &wtid,
+                                          base_url,
+                                          &uuid,
+                                          &row_id);
+      if (GNUNET_OK != ret)
+      {
+        GNUNET_break (0);
+        json_decref (json);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_CONFLICT,
+                                           TALER_EC_BANK_TRANSFER_REQUEST_UID_REUSED,
+                                           "transfer request UID was reused");
+
+
+      }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",
                   account,
@@ -743,8 +769,9 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
                                     "{s:I, s:o}",
                                     "row_id",
                                     (json_int_t) row_id,
+                                    /* dummy timestamp */
                                     "timestamp", GNUNET_JSON_from_time_abs (
-                                      GNUNET_TIME_UNIT_ZERO_ABS));                                       /*dummy tmp */
+                                      GNUNET_TIME_UNIT_ZERO_ABS));
 }
 
 
