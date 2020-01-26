@@ -30,7 +30,7 @@
 
 
 /**
- * @brief A /history Handle
+ * @brief A /history/incoming Handle
  */
 struct TALER_BANK_CreditHistoryHandle
 {
@@ -173,30 +173,21 @@ handle_credit_history_finished (void *cls,
     GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
     break;
-  case MHD_HTTP_FORBIDDEN:
-    /* Access denied */
-    GNUNET_break_op (0);
-    ec = TALER_JSON_get_error_code (j);
-    break;
   case MHD_HTTP_UNAUTHORIZED:
-    /* FIXME(dold): I don't get this comment below.  What signatures would the
-       bank even verify?! */
-    /* Nothing really to verify, bank says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
-    GNUNET_break_op (0);
+    /* Nothing really to verify, bank says the HTTP Authentication
+       failed. May happen if HTTP authentication is used and the
+       user supplied a wrong username/password combination. */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
-    GNUNET_break_op (0);
+    /* Nothing really to verify: the bank is either unaware
+       of the endpoint (not a bank), or of the account.
+       We should pass the JSON (?) reply to the application */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
     break;
   default:

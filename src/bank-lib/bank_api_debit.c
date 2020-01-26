@@ -30,7 +30,7 @@
 
 
 /**
- * @brief A /history Handle
+ * @brief A /history/outgoing Handle
  */
 struct TALER_BANK_DebitHistoryHandle
 {
@@ -129,16 +129,16 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
 
 /**
  * Function called when we're done processing the
- * HTTP /history request.
+ * HTTP /history/outgoing request.
  *
  * @param cls the `struct TALER_BANK_DebitHistoryHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_history_finished (void *cls,
-                         long response_code,
-                         const void *response)
+handle_debit_history_finished (void *cls,
+                               long response_code,
+                               const void *response)
 {
   struct TALER_BANK_DebitHistoryHandle *hh = cls;
   enum TALER_ErrorCode ec;
@@ -169,21 +169,19 @@ handle_history_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
-    break;
-  case MHD_HTTP_FORBIDDEN:
-    /* Access denied */
+    GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_UNAUTHORIZED:
-    /* Nothing really to verify, bank says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
+    /* Nothing really to verify, bank says the HTTP Authentication
+       failed. May happen if HTTP authentication is used and the
+       user supplied a wrong username/password combination. */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
+    /* Nothing really to verify: the bank is either unaware
+       of the endpoint (not a bank), or of the account.
+       We should pass the JSON (?) reply to the application */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
@@ -196,7 +194,7 @@ handle_history_finished (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
     response_code = 0;
     break;
@@ -292,7 +290,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
   hh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   NULL,
-                                  &handle_history_finished,
+                                  &handle_debit_history_finished,
                                   hh);
   return hh;
 }
