@@ -340,7 +340,7 @@ history_cb (void *cls,
     hh = NULL;
     if (TALER_EC_NONE != ec)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching history: ec=%u, http_status=%u\n",
                   (unsigned int) ec,
                   http_status);
