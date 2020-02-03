@@ -582,6 +582,7 @@ shutdown_task (void *cls)
     ctc = NULL;
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
+  db_plugin = NULL;
 
   {
     struct WireAccount *wa;
@@ -670,6 +671,7 @@ parse_wirewatch_config ()
     fprintf (stderr,
              "Failed to initialize DB tables\n");
     TALER_EXCHANGEDB_plugin_unload (db_plugin);
+    db_plugin = NULL;
     return GNUNET_SYSERR;
   }
   TALER_EXCHANGEDB_find_accounts (cfg,
@@ -680,6 +682,7 @@ parse_wirewatch_config ()
     fprintf (stderr,
              "No wire accounts configured for debit!\n");
     TALER_EXCHANGEDB_plugin_unload (db_plugin);
+    db_plugin = NULL;
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -1179,10 +1182,7 @@ expired_reserve_cb (void *cls,
     /* Reserve balance was almost zero OR soft error */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reserve was virtually empty, moving on\n");
-    (void) commit_or_warn (ctc->session);
-    GNUNET_free (ctc->method);
-    GNUNET_free (ctc);
-    ctc = NULL;
+    (void) commit_or_warn (session);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
     return qs;

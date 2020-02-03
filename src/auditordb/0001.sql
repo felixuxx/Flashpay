@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS auditor_reserves
   ,auditor_reserves_rowid BIGSERIAL UNIQUE
   ,origin_account TEXT
   );
-CREATE INDEX auditor_reserves_by_reserve_pub
+CREATE INDEX IF NOT EXISTS auditor_reserves_by_reserve_pub
   ON auditor_reserves
   (reserve_pub);
 -- Table with the sum of the balances of all customer reserves
@@ -203,7 +203,7 @@ CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary
   ,reserve_profits_val INT8 NOT NULL
   ,reserve_profits_frac INT4 NOT NULL
   );
-CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date
+CREATE INDEX IF NOT EXISTS auditor_historic_reserve_summary_by_master_pub_start_date
   ON auditor_historic_reserve_summary
   (master_pub
   ,start_date);
