@@ -1183,6 +1183,8 @@ expired_reserve_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reserve was virtually empty, moving on\n");
     (void) commit_or_warn (session);
+    erc->async_cont = GNUNET_YES;
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
     return qs;
@@ -1223,6 +1225,7 @@ expired_reserve_cb (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   erc->async_cont = GNUNET_YES;
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
   GNUNET_free (ctc->method);
@@ -1299,6 +1302,7 @@ run_reserve_closures (void *cls)
   case GNUNET_DB_STATUS_SOFT_ERROR:
     db_plugin->rollback (db_plugin->cls,
                          session);
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
     return;
@@ -1308,6 +1312,7 @@ run_reserve_closures (void *cls)
     reserves_idle = GNUNET_YES;
     db_plugin->rollback (db_plugin->cls,
                          session);
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1315,6 +1320,7 @@ run_reserve_closures (void *cls)
     (void) commit_or_warn (session);
     if (GNUNET_YES == erc.async_cont)
       break;
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
     return;
@@ -1345,6 +1351,7 @@ run_aggregation (void *cls)
     return;
   if (0 == (++swap % 2))
   {
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
     return;
@@ -1392,6 +1399,7 @@ run_aggregation (void *cls)
     {
       /* should re-try immediately */
       swap--; /* do not count failed attempts */
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                        NULL);
       return;
@@ -1408,15 +1416,21 @@ run_aggregation (void *cls)
     {
       if ( (GNUNET_NO == reserves_idle) ||
            (GNUNET_YES == test_mode) )
+      {
         /* Possibly more to on reserves, go for it immediately */
+        GNUNET_assert (NULL == task);
         task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                          NULL);
+      }
       else
+      {
         /* FIXME(dold): We might want to read the duration to sleep from the config */
         /* nothing to do, sleep for a minute and try again */
+        GNUNET_assert (NULL == task);
         task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
                                              &run_aggregation,
                                              NULL);
+      }
     }
     return;
   }
@@ -1451,6 +1465,7 @@ run_aggregation (void *cls)
                 "Serialization issue, trying again later!\n");
     db_plugin->rollback (db_plugin->cls,
                          session);
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1515,6 +1530,7 @@ run_aggregation (void *cls)
                            session);
       cleanup_au ();
       /* start again */
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                        NULL);
       return;
@@ -1531,6 +1547,7 @@ run_aggregation (void *cls)
     (void) commit_or_warn (session);
     cleanup_au ();
     /* start again */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1587,6 +1604,7 @@ run_aggregation (void *cls)
     db_plugin->rollback (db_plugin->cls,
                          session);
     /* start again */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1613,6 +1631,7 @@ run_aggregation (void *cls)
     /* try again */
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Commit issue for prepared wire data; trying again later!\n");
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1625,6 +1644,7 @@ run_aggregation (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Preparation complete, switching to transfer mode\n");
     /* run alternative task: actually do wire transfer! */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
     return;
@@ -1685,6 +1705,7 @@ wire_confirm_cb (void *cls,
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       /* try again */
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                        NULL);
     }
@@ -1703,6 +1724,7 @@ wire_confirm_cb (void *cls,
   {
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1716,6 +1738,7 @@ wire_confirm_cb (void *cls,
                 "Wire transfer complete\n");
     /* continue with #run_transfers(), just to guard
        against the unlikely case that there are more. */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
     return;
@@ -1846,6 +1869,7 @@ run_transfers (void *cls)
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
     return;
@@ -1853,6 +1877,7 @@ run_transfers (void *cls)
     /* no more prepared wire transfers, go back to aggregation! */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "No more pending wire transfers, starting aggregation\n");
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
@@ -1898,6 +1923,7 @@ run (void *cls,
     return;
   }
 
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
   GNUNET_SCHEDULER_add_shutdown (&shutdown_task,
