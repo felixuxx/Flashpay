@@ -1,7 +1,8 @@
 SUBDIRS = . tos pp
 
 bin_SCRIPTS = \
-  taler-bank-manage-testing
+  taler-bank-manage-testing \
+  taler-exchange-revoke
 
 EXTRA_DIST = \
   $(bin_SCRIPTS) \

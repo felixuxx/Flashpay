@@ -10,6 +10,12 @@
 
 set -eu
 
+if [ "$#" -ne 3 ];
+then
+    echo "illegal number of parameters"
+    exit 1
+fi
+
 # Ensure starting accounts exist
 taler-bank-manage -c $1 --with-db $2 django provide_accounts
 taler-bank-manage -c $1 --with-db $2 django add_bank_account 42
