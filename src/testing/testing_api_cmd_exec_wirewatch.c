@@ -67,7 +67,7 @@ wirewatch_run (void *cls,
                                "taler-exchange-wirewatch",
                                "taler-exchange-wirewatch",
                                "-c", ws->config_filename,
-                               "-T", /* exit when done */
+                               "-t", /* exit when done */
                                NULL);
   if (NULL == ws->wirewatch_proc)
   {
