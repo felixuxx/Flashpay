@@ -27,6 +27,24 @@
 #include "taler_mhd_lib.h"
 
 /**
+ * Taler protocol version in the format CURRENT:REVISION:AGE
+ * as used by GNU libtool.  See
+ * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
+ *
+ * Please be very careful when updating and follow
+ * https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html#Updating-version-info
+ * precisely.  Note that this version has NOTHING to do with the
+ * release version, and the format is NOT the same that semantic
+ * versioning uses either.
+ *
+ * When changing this version, you likely want to also update
+ * #BANK_PROTOCOL_CURRENT and #BANK_PROTOCOL_AGE in
+ * bank_api_config.c!
+ */
+#define BANK_PROTOCOL_VERSION "0:0:0"
+
+
+/**
  * Maximum POST request size (for /admin/add-incoming)
  */
 #define REQUEST_BUFFER_MAX (4 * 1024)
@@ -171,6 +189,11 @@ struct TALER_FAKEBANK_Handle
    * Number of transactions.
    */
   uint64_t serial_counter;
+
+  /**
+   * Currency used by the fakebank.
+   */
+  char *currency;
 
   /**
    * BaseURL of the fakebank.
@@ -527,6 +550,7 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_bank = NULL;
   }
   GNUNET_free (h->my_baseurl);
+  GNUNET_free (h->currency);
   GNUNET_free (h);
 }
 
@@ -776,7 +800,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Handle incoming HTTP request for /history
+ * Handle incoming HTTP request for / (home page).
  *
  * @param h the fakebank handle
  * @param connection the connection
@@ -805,6 +829,29 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
 
   MHD_destroy_response (resp);
   return ret;
+}
+
+
+/**
+ * Handle incoming HTTP request for /config
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @param con_cls place to store state, not used
+ * @return MHD result code
+ */
+static int
+handle_config (struct TALER_FAKEBANK_Handle *h,
+               struct MHD_Connection *connection,
+               void **con_cls)
+{
+  return TALER_MHD_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:s, s:s}",
+                                    "currency",
+                                    h->currency,
+                                    "version"
+                                    BANK_PROTOCOL_VERSION);
 }
 
 
@@ -1203,6 +1250,13 @@ serve (struct TALER_FAKEBANK_Handle *h,
                              connection,
                              con_cls);
   if ( (0 == strcmp (url,
+                     "/config")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_config (h,
+                          connection,
+                          con_cls);
+  if ( (0 == strcmp (url,
                      "/admin/add-incoming")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_POST)) )
@@ -1433,15 +1487,19 @@ run_mhd (void *cls)
  * would have issued the correct wire transfer orders.
  *
  * @param port port to listen to
+ * @param currency currency the bank uses
  * @return NULL on error
  */
 struct TALER_FAKEBANK_Handle *
-TALER_FAKEBANK_start (uint16_t port)
+TALER_FAKEBANK_start (uint16_t port,
+                      const char *currency)
 {
   struct TALER_FAKEBANK_Handle *h;
 
+  GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->port = port;
+  h->currency = GNUNET_strdup (currency);
   GNUNET_asprintf (&h->my_baseurl,
                    "http://localhost:%u/",
                    (unsigned int) port);
@@ -1462,6 +1520,7 @@ TALER_FAKEBANK_start (uint16_t port)
                                   MHD_OPTION_END);
   if (NULL == h->mhd_bank)
   {
+    GNUNET_free (h->currency);
     GNUNET_free (h);
     return NULL;
   }

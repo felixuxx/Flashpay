@@ -124,7 +124,33 @@ TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
                                  struct TALER_TESTING_Command *commands,
                                  const char *bank_url)
 {
-  is->fakebank = TALER_TESTING_run_fakebank (bank_url);
+  char *currency;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (is->cfg,
+                                             "taler",
+                                             "CURRENCY",
+                                             &currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
+    is->result = GNUNET_SYSERR;
+    return;
+  }
+  if (strlen (currency) >= TALER_CURRENCY_LEN)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY",
+                               "Value is too long");
+    GNUNET_free (currency);
+    is->result = GNUNET_SYSERR;
+    return;
+  }
+  is->fakebank = TALER_TESTING_run_fakebank (bank_url,
+                                             currency);
+  GNUNET_free (currency);
   if (NULL == is->fakebank)
   {
     GNUNET_break (0);
@@ -530,14 +556,6 @@ struct MainContext
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * Configuration filename.  The wrapper uses it to fetch
-   * the exchange port number; We could have passed the port
-   * number here, but having the config filename seems more
-   * generic.
-   */
-  const char *config_filename;
-
-  /**
    * URL of the exchange.
    */
   char *exchange_url;
@@ -683,18 +701,16 @@ do_abort (void *cls)
  * and responsible to run the "run" method.
  *
  * @param cls a `struct MainContext *`
- * @param cfg configuration to use
  */
-static int
-main_exchange_connect_with_cfg (void *cls,
-                                const struct GNUNET_CONFIGURATION_Handle *cfg)
+static void
+main_wrapper_exchange_connect (void *cls)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
   char *exchange_url;
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
+      GNUNET_CONFIGURATION_get_value_string (is->cfg,
                                              "exchange",
                                              "BASE_URL",
                                              &exchange_url))
@@ -702,40 +718,18 @@ main_exchange_connect_with_cfg (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    return GNUNET_SYSERR;
+    return;
   }
   main_ctx->exchange_url = exchange_url;
-  is->cfg = cfg;
   is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
                                                     main_ctx);
   GNUNET_break
-    (NULL != (is->exchange = TALER_EXCHANGE_connect
-                               (is->ctx,
-                               exchange_url,
-                               &TALER_TESTING_cert_cb,
-                               main_ctx,
-                               TALER_EXCHANGE_OPTION_END)));
-  is->cfg = NULL;
-  return GNUNET_OK;
-}
-
-
-/**
- * Initialize scheduler loop and curl context for the testcase,
- * and responsible to run the "run" method.
- *
- * @param cls a `struct MainContext *`
- */
-static void
-main_wrapper_exchange_connect (void *cls)
-{
-  struct MainContext *main_ctx = cls;
-
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_CONFIGURATION_parse_and_run (main_ctx->config_filename,
-                                                    &
-                                                    main_exchange_connect_with_cfg,
-                                                    main_ctx));
+    (NULL != (is->exchange =
+                TALER_EXCHANGE_connect (is->ctx,
+                                        exchange_url,
+                                        &TALER_TESTING_cert_cb,
+                                        main_ctx,
+                                        TALER_EXCHANGE_OPTION_END)));
 }
 
 
@@ -746,7 +740,7 @@ main_wrapper_exchange_connect (void *cls)
  * @param main_cb the "run" method which contains all the
  *        commands.
  * @param main_cb_cls a closure for "run", typically NULL.
- * @param config_filename configuration filename.
+ * @param cfg configuration to use
  * @param exchanged exchange process handle: will be put in the
  *        state as some commands - e.g. revoke - need to send
  *        signal to it, for example to let it know to reload the
@@ -761,7 +755,7 @@ main_wrapper_exchange_connect (void *cls)
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,
-                     const char *config_filename,
+                     const struct GNUNET_CONFIGURATION_Handle *cfg,
                      struct GNUNET_OS_Process *exchanged,
                      int exchange_connect)
 {
@@ -771,9 +765,6 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     .main_cb_cls = main_cb_cls,
     /* needed to init the curl ctx */
     .is = &is,
-    /* needed to read values like exchange port
-     * number to construct the exchange url.*/
-    .config_filename = config_filename
   };
   struct GNUNET_SIGNAL_Context *shc_chld;
 
@@ -781,6 +772,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
           0,
           sizeof (is));
   is.exchanged = exchanged;
+  is.cfg = cfg;
   sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO,
                               GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);

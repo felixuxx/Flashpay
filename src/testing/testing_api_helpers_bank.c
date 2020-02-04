@@ -36,11 +36,13 @@
  * from the base URL.
  *
  * @param bank_url bank's base URL.
+ * @param currency currency the bank uses
  * @return the fakebank process handle, or NULL if any
  *         error occurs.
  */
 struct TALER_FAKEBANK_Handle *
-TALER_TESTING_run_fakebank (const char *bank_url)
+TALER_TESTING_run_fakebank (const char *bank_url,
+                            const char *currency)
 {
   const char *port;
   long pnum;
@@ -56,7 +58,8 @@ TALER_TESTING_run_fakebank (const char *bank_url)
               "Starting Fakebank on port %u (%s)\n",
               (unsigned int) pnum,
               bank_url);
-  fakebankd = TALER_FAKEBANK_start ((uint16_t) pnum);
+  fakebankd = TALER_FAKEBANK_start ((uint16_t) pnum,
+                                    currency);
   if (NULL == fakebankd)
   {
     GNUNET_break (0);

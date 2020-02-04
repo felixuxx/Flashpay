@@ -635,7 +635,7 @@ typedef void
  * @param main_cb the "run" method which coontains all the
  *        commands.
  * @param main_cb_cls a closure for "run", typically NULL.
- * @param config_filename configuration filename.
+ * @param cfg configuration to use
  * @param exchanged exchange process handle: will be put in the
  *        state as some commands - e.g. revoke - need to send
  *        signal to it, for example to let it know to reload the
@@ -650,7 +650,7 @@ typedef void
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,
-                     const char *config_filename,
+                     const struct GNUNET_CONFIGURATION_Handle *cfg,
                      struct GNUNET_OS_Process *exchanged,
                      int exchange_connect);
 
@@ -789,11 +789,13 @@ TALER_TESTING_run_bank (const char *config_filename,
  * from the base URL.
  *
  * @param bank_url bank's base URL.
+ * @param currency currency the bank uses
  * @return the fakebank process handle, or NULL if any
  *         error occurs.
  */
 struct TALER_FAKEBANK_Handle *
-TALER_TESTING_run_fakebank (const char *bank_url);
+TALER_TESTING_run_fakebank (const char *bank_url,
+                            const char *currency);
 
 
 /**
