@@ -597,7 +597,9 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_flag ('T',
+    GNUNET_GETOPT_option_timetravel ('T',
+                                     "timetravel"),
+    GNUNET_GETOPT_option_flag ('t',
                                "test",
                                "run in test mode and exit when idle",
                                &test_mode),

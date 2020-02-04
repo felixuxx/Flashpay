@@ -999,6 +999,8 @@ main (int argc,
                                "SECONDS",
                                "after how long do connections timeout by default (in seconds)",
                                &connection_timeout),
+    GNUNET_GETOPT_option_timetravel ('T',
+                                     "timetravel"),
 #if HAVE_DEVELOPER
     GNUNET_GETOPT_option_filename ('f',
                                    "file-input",

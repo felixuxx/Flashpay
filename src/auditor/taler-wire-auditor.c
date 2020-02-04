@@ -2312,6 +2312,8 @@ main (int argc,
                                "restart",
                                "restart audit from the beginning (required on first run)",
                                &restart),
+    GNUNET_GETOPT_option_timetravel ('T',
+                                     "timetravel"),
     GNUNET_GETOPT_OPTION_END
   };
 
