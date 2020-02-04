@@ -81,6 +81,11 @@ enum TALER_ErrorCode
   TALER_EC_JSON_ALLOCATION_FAILURE = 7,
 
   /**
+   * HTTP method invalid for this URL.
+   */
+  TALER_EC_METHOD_INVALID = 8,
+
+  /**
    * The exchange failed to even just initialize its connection to the
    * database.  This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.

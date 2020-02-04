@@ -83,28 +83,6 @@ reply_refund_success (struct MHD_Connection *connection,
 
 
 /**
- * Generate generic refund failure message. All the details
- * are in the @a response_code.  The body can be empty.
- *
- * @param connection connection to the client
- * @param response_code response code to generate
- * @param ec taler error code to include
- * @return MHD result code
- */
-static int
-reply_refund_failure (struct MHD_Connection *connection,
-                      unsigned int response_code,
-                      enum TALER_ErrorCode ec)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    response_code,
-                                    "{s:s, s:I}",
-                                    "hint", "refund failure",
-                                    "code", (json_int_t) ec);
-}
-
-
-/**
  * Generate refund conflict failure message. Returns the
  * transaction list @a tl with the details about the conflict.
  *
@@ -194,9 +172,10 @@ refund_transaction (void *cls,
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = reply_refund_failure (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_REFUND_COIN_NOT_FOUND);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_NOT_FOUND,
+                                             TALER_EC_REFUND_COIN_NOT_FOUND,
+                                             "database transaction failure");
     return qs;
   }
   deposit_found = GNUNET_NO;
@@ -319,9 +298,10 @@ refund_transaction (void *cls,
     GNUNET_break_op (0); /* currency mismatch */
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = reply_refund_failure (connection,
-                                     MHD_HTTP_PRECONDITION_FAILED,
-                                     TALER_EC_REFUND_CURRENCY_MISSMATCH);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_PRECONDITION_FAILED,
+                                           TALER_EC_REFUND_CURRENCY_MISSMATCH,
+                                           "currencies involved do not match");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -353,9 +333,10 @@ refund_transaction (void *cls,
     /* money was already transferred to merchant, can no longer refund */
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = reply_refund_failure (connection,
-                                     MHD_HTTP_GONE,
-                                     TALER_EC_REFUND_MERCHANT_ALREADY_PAID);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_GONE,
+                                           TALER_EC_REFUND_MERCHANT_ALREADY_PAID,
+                                           "money already sent to merchant");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -366,9 +347,10 @@ refund_transaction (void *cls,
     GNUNET_break_op (0); /* cannot refund more than original value */
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = reply_refund_failure (connection,
-                                     MHD_HTTP_PRECONDITION_FAILED,
-                                     TALER_EC_REFUND_INSUFFICIENT_FUNDS);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_PRECONDITION_FAILED,
+                                           TALER_EC_REFUND_INSUFFICIENT_FUNDS,
+                                           "refund requested exceeds original value");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* Check refund fee matches fee of denomination key! */
@@ -481,9 +463,10 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-      return reply_refund_failure (connection,
-                                   MHD_HTTP_NOT_FOUND,
-                                   TALER_EC_REFUND_COIN_NOT_FOUND);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_REFUND_COIN_NOT_FOUND,
+                                         "denomination of coin to be refunded not found in DB");
     }
   }
 

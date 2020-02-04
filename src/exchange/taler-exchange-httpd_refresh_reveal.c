@@ -108,7 +108,7 @@ reply_refresh_reveal_mismatch (struct MHD_Connection *connection,
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o}",
-                                    "error", "commitment violation",
+                                    "hint", "commitment violation",
                                     "code",
                                     (json_int_t)
                                     TALER_EC_REFRESH_REVEAL_COMMITMENT_VIOLATION,
