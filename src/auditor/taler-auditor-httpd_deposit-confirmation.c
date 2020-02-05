@@ -33,6 +33,19 @@
 
 
 /**
+ * Cache of already verified exchange signing keys.  Maps the hash of the
+ * `struct TALER_ExchangeSigningKeyValidityPS` to the (static) string
+ * "verified".  Access to this map is guarded by the #lock.
+ */
+static struct GNUNET_CONTAINER_MultiHashMap *cache;
+
+/**
+ * Lock for operations on #cache.
+ */
+static pthread_mutex_t lock;
+
+
+/**
  * We have parsed the JSON information about the deposit, do some
  * basic sanity checks (especially that the signature on the coin is
  * valid, and that this type of coin exists) and then execute the
@@ -55,6 +68,8 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   struct TALER_AUDITORDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
+  struct GNUNET_HashCode h;
+  int cached;
 
   now = GNUNET_TIME_absolute_get ();
   if ( (es->ep_start.abs_value_us > now.abs_value_us) ||
@@ -68,10 +83,6 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                        "master_sig (expired)");
   }
 
-  /* TODO (#6052): consider having an in-memory cache of already
-     verified exchange signing keys, this could save us
-     a signature check AND a database transaction per
-     operation. */
   /* check exchange signing key signature */
   skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   skv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
@@ -80,40 +91,64 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   skv.expire = GNUNET_TIME_absolute_hton (es->ep_expire);
   skv.end = GNUNET_TIME_absolute_hton (es->ep_end);
   skv.signkey_pub = es->exchange_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                  &skv.purpose,
-                                  &es->master_sig.eddsa_signature,
-                                  &es->master_public_key.eddsa_pub))
-  {
-    TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                       "master_sig");
-  }
 
-  session = TAH_plugin->get_session (TAH_plugin->cls);
-  if (NULL == session)
+  /* check our cache */
+  GNUNET_CRYPTO_hash (&skv,
+                      sizeof (skv),
+                      &h);
+  GNUNET_assert (0 == pthread_mutex_lock (&lock));
+  cached = GNUNET_CONTAINER_multihashmap_contains (cache,
+                                                   &h);
+  GNUNET_assert (0 == pthread_mutex_unlock (&lock));
+
+  if (! cached)
   {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_DB_SETUP_FAILED,
-                                       "failed to establish session with database");
-  }
-  /* execute transaction */
-  qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
-                                            session,
-                                            es);
-  if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-    TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
-                                       "failed to persist exchange signing key");
+    /* Not in cache, need to verify the signature, persist it, and possibly cache it */
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
+                                    &skv.purpose,
+                                    &es->master_sig.eddsa_signature,
+                                    &es->master_public_key.eddsa_pub))
+    {
+      TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                         "master_sig");
+    }
+
+    session = TAH_plugin->get_session (TAH_plugin->cls);
+    if (NULL == session)
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_DB_SETUP_FAILED,
+                                         "failed to establish session with database");
+    }
+    /* execute transaction */
+    qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
+                                              session,
+                                              es);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+      TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
+                                         "failed to persist exchange signing key");
+    }
+
+    /* Cache it, due to concurreny it might already be in the cache,
+       so we do not cache it twice but also don't insist on the 'put' to
+       succeed. */
+    GNUNET_assert (0 == pthread_mutex_lock (&lock));
+    (void) GNUNET_CONTAINER_multihashmap_put (cache,
+                                              &h,
+                                              "verified",
+                                              GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
+    GNUNET_assert (0 == pthread_mutex_unlock (&lock));
   }
 
   /* check deposit confirmation signature */
@@ -234,6 +269,30 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                                  &es);
   GNUNET_JSON_parse_free (spec);
   return res;
+}
+
+
+/**
+ * Initialize subsystem.
+ */
+void
+TEAH_DEPOSIT_CONFIRMATION_init (void)
+{
+  cache = GNUNET_CONTAINER_multihashmap_create (32,
+                                                GNUNET_NO);
+  GNUNET_assert (0 == pthread_mutex_init (&lock, NULL));
+}
+
+
+/**
+ * Shut down subsystem.
+ */
+void
+TEAH_DEPOSIT_CONFIRMATION_done (void)
+{
+  GNUNET_CONTAINER_multihashmap_destroy (cache);
+  cache = NULL;
+  GNUNET_assert (0 == pthread_mutex_destroy (&lock));
 }
 
 

@@ -594,7 +594,7 @@ main (int argc,
   if (GNUNET_OK !=
       auditor_serve_process_config ())
     return 1;
-
+  TEAH_DEPOSIT_CONFIRMATION_init ();
   /* check for systemd-style FD passing */
   listen_pid = getenv ("LISTEN_PID");
   listen_fds = getenv ("LISTEN_FDS");
@@ -635,7 +635,10 @@ main (int argc,
     fh = TALER_MHD_open_unix_path (serve_unixpath,
                                    unixpath_mode);
     if (-1 == fh)
+    {
+      TEAH_DEPOSIT_CONFIRMATION_done ();
       return 1;
+    }
   }
 
   mhd
@@ -659,6 +662,7 @@ main (int argc,
   {
     fprintf (stderr,
              "Failed to start HTTP server.\n");
+    TEAH_DEPOSIT_CONFIRMATION_done ();
     return 1;
   }
 
@@ -732,6 +736,7 @@ main (int argc,
     break;
   }
   TALER_AUDITORDB_plugin_unload (TAH_plugin);
+  TEAH_DEPOSIT_CONFIRMATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
 

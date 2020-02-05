@@ -25,6 +25,18 @@
 #include <microhttpd.h>
 #include "taler-auditor-httpd.h"
 
+/**
+ * Initialize subsystem.
+ */
+void
+TEAH_DEPOSIT_CONFIRMATION_init (void);
+
+/**
+ * Shut down subsystem.
+ */
+void
+TEAH_DEPOSIT_CONFIRMATION_done (void);
+
 
 /**
  * Handle a "/deposit-confirmation" request.  Parses the JSON, and, if
