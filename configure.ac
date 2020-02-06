@@ -474,7 +474,6 @@ AM_CONDITIONAL([HAVE_TWISTER], [false])
 
 AC_CONFIG_FILES([Makefile
                  contrib/Makefile
-                 contrib/pp/Makefile
                  doc/Makefile
                  doc/doxygen/Makefile
                  src/Makefile
