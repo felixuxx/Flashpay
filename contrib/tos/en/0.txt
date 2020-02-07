@@ -268,7 +268,7 @@ you. This paragraph gives you specific legal rights and you may also
 have other legal rights that vary from state to state.
 
 
-Indemntiy
+Indemnity
 =========
 
 To the extent permitted by applicable law, you agree to defend,

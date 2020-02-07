@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: tos 0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-02-07 00:35+0100\n"
+"POT-Creation-Date: 2020-02-07 01:00+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -368,7 +368,7 @@ msgid ""
 msgstr ""
 
 #: ../../tos.rst:229
-msgid "Indemntiy"
+msgid "Indemnity"
 msgstr ""
 
 #: ../../tos.rst:231
@@ -511,4 +511,7 @@ msgid ""
 "We welcome comments, questions, concerns, or suggestions. Please send us "
 "a message on our contact page at legal@taler-systems.com."
 msgstr ""
+
+#~ msgid "Indemntiy"
+#~ msgstr ""
 
