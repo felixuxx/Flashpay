@@ -19,6 +19,6 @@ fi
 taler-exchange-keyup -c $1 -r $2
 
 EXCHANGE_PID=`ps x | grep taler-exchange-httpd | awk '{print $1}'`
-kill -HUP $EXCHANGE_PID
+kill -SIGUSR1 $EXCHANGE_PID
 
 exit 0
