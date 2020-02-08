@@ -101,6 +101,15 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                                    &h);
   GNUNET_assert (0 == pthread_mutex_unlock (&lock));
 
+  session = TAH_plugin->get_session (TAH_plugin->cls);
+  if (NULL == session)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_DB_SETUP_FAILED,
+                                       "failed to establish session with database");
+  }
   if (! cached)
   {
     /* Not in cache, need to verify the signature, persist it, and possibly cache it */
@@ -117,15 +126,6 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                          "master_sig");
     }
 
-    session = TAH_plugin->get_session (TAH_plugin->cls);
-    if (NULL == session)
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_DB_SETUP_FAILED,
-                                         "failed to establish session with database");
-    }
     /* execute transaction */
     qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
                                               session,
