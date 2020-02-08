@@ -49,7 +49,7 @@ unset XDG_CONFIG_HOME
 echo -n "Launching exchange ..."
 PREFIX=
 # Uncomment this line to run with valgrind...
-# PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
+# PREFIX="valgrind --trace-children=yes --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_unix.conf || exit 1
@@ -73,11 +73,7 @@ do
 done
 if [ 1 != $OK ]
 then
-    echo "Failed to launch exchange"
-    kill -TERM $!
-    wait $!
-    echo Process status: $?
-    exit 77
+    exit_fail "Failed to launch exchange"
 fi
 echo " DONE"
 
@@ -110,6 +106,7 @@ kill -TERM $CPID
 while true
 do
     ps x | grep -v grep | grep taler-exchange-httpd > /dev/null || break
+    sleep 0.1
 done
 echo " DONE"
 
