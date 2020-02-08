@@ -1473,6 +1473,49 @@ echo "UPDATE deposits SET wire='$OLD_WIRE' WHERE deposit_serial_id=${SERIAL}" | 
 
 }
 
+# Test for duplicate wire transfer subject
+function test_27() {
+echo "===========27: duplicate WTID detection ================="
+
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-wire-auditor.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
+
+    pre_audit aggregator
+
+    # Obtain data to duplicate.
+    ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 LIMIT 1" | psql $DB -Aqt`
+    WTID=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2 LIMIT 1" | psql $DB -Aqt`
+    echo "INSERT INTO app_banktransaction (amount,subject,date,credit_account_id,debit_account_id,cancelled) VALUES ('TESTKUDOS:1','$WTID',NOW(),12,2,'f')" | psql -Aqt $DB
+
+    audit_only
+    post_audit
+
+    echo -n "Testing inconsistency detection... "
+
+    AMOUNT=`jq -r .wire_format_inconsistencies[0].amount < test-wire-audit.json`
+    if test "${AMOUNT}" != "TESTKUDOS:1"
+    then
+        exit_fail "Amount wrong, got ${AMOUNT}"
+    fi
+
+    AMOUNT=`jq -r .total_wire_format_amount < test-wire-audit.json`
+    if test "${AMOUNT}" != "TESTKUDOS:1"
+    then
+        exit_fail "Wrong total wire format amount, got $AMOUNT"
+    fi
+
+    # cannot easily undo aggregator, hence full reload
+    full_reload
+else
+    echo "Test skipped (database too new)"
+fi
+
+}
 
 
 # **************************************************
