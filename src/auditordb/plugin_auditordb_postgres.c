@@ -80,15 +80,9 @@ struct PostgresClosure
   pthread_key_t db_conn_threadlocal;
 
   /**
-   * Directory with SQL statements to run to create tables.
+   * Our configuration.
    */
-  char *sql_dir;
-
-  /**
-   * Database connection string, as read from
-   * the configuration.
-   */
-  char *connection_cfg_str;
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
 
   /**
    * Which currency should we assume all amounts to be in?
@@ -114,16 +108,12 @@ postgres_drop_tables (void *cls,
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_Context *conn;
-  char *exec_dir;
 
-  GNUNET_asprintf (&exec_dir,
-                   (drop_exchangelist) ? "%sdrop" : "%srestart",
-                   pc->sql_dir);
-  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                            exec_dir,
-                            NULL,
-                            NULL);
-  GNUNET_free (exec_dir);
+  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                     "auditordb-postgres",
+                                     (drop_exchangelist) ? "drop" : "restart",
+                                     NULL,
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
@@ -143,10 +133,11 @@ postgres_create_tables (void *cls)
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_Context *conn;
 
-  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                            pc->sql_dir,
-                            NULL,
-                            NULL);
+  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                     "auditordb-postgres",
+                                     "auditor-",
+                                     NULL,
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
@@ -734,10 +725,11 @@ postgres_get_session (void *cls)
     GNUNET_PQ_reconnect_if_down (session->conn);
     return session;
   }
-  db_conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                               NULL,
-                               NULL,
-                               ps);
+  db_conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                        "auditordb-postgres",
+                                        NULL,
+                                        NULL,
+                                        ps);
   if (NULL == db_conn)
     return NULL;
   session = GNUNET_new (struct TALER_AUDITORDB_Session);
@@ -897,10 +889,11 @@ postgres_gc (void *cls)
   };
 
   now = GNUNET_TIME_absolute_get ();
-  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                            NULL,
-                            NULL,
-                            ps);
+  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                     "auditordb-postgres",
+                                     NULL,
+                                     NULL,
+                                     ps);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -3247,49 +3240,15 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct PostgresClosure *pg;
   struct TALER_AUDITORDB_Plugin *plugin;
-  const char *ec;
 
   pg = GNUNET_new (struct PostgresClosure);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "auditordb-postgres",
-                                               "SQL_DIR",
-                                               &pg->sql_dir))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "auditordb-postgres",
-                               "SQL_DIR");
-    GNUNET_free (pg);
-    return NULL;
-  }
+  pg->cfg = cfg;
   if (0 != pthread_key_create (&pg->db_conn_threadlocal,
                                &db_conn_destroy))
   {
     TALER_LOG_ERROR ("Cannnot create pthread key.\n");
-    GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
-  }
-  ec = getenv ("TALER_AUDITORDB_POSTGRES_CONFIG");
-  if (NULL != ec)
-  {
-    pg->connection_cfg_str = GNUNET_strdup (ec);
-  }
-  else
-  {
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "auditordb-postgres",
-                                               "CONFIG",
-                                               &pg->connection_cfg_str))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "auditordb-postgres",
-                                 "CONFIG");
-      GNUNET_free (pg->sql_dir);
-      GNUNET_free (pg);
-      return NULL;
-    }
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -3300,8 +3259,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "CURRENCY");
-    GNUNET_free (pg->connection_cfg_str);
-    GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
   }
@@ -3407,8 +3364,6 @@ libtaler_plugin_auditordb_postgres_done (void *cls)
   struct TALER_AUDITORDB_Plugin *plugin = cls;
   struct PostgresClosure *pg = plugin->cls;
 
-  GNUNET_free (pg->connection_cfg_str);
-  GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
   GNUNET_free (pg);
   GNUNET_free (plugin);
