@@ -3244,7 +3244,7 @@ postgres_get_predicted_balance (void *cls,
 void *
 libtaler_plugin_auditordb_postgres_init (void *cls)
 {
-  struct GNUNET_CONFIGURATION_Handle *cfg = cls;
+  const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct PostgresClosure *pg;
   struct TALER_AUDITORDB_Plugin *plugin;
   const char *ec;

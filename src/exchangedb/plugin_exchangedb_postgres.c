@@ -109,6 +109,11 @@ struct PostgresClosure
   pthread_key_t db_conn_threadlocal;
 
   /**
+   * Our configuration.
+   */
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
    * Database connection string, as read from
    * the configuration.
    */
@@ -187,10 +192,11 @@ postgres_create_tables (void *cls)
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_Context *conn;
 
-  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                            pc->sql_dir,
-                            NULL,
-                            NULL);
+  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                     "exchangedb-postgres",
+                                     "",
+                                     NULL,
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
@@ -7212,12 +7218,13 @@ postgres_select_deposits_missing_wire (void *cls,
 void *
 libtaler_plugin_exchangedb_postgres_init (void *cls)
 {
-  struct GNUNET_CONFIGURATION_Handle *cfg = cls;
+  const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct PostgresClosure *pg;
   struct TALER_EXCHANGEDB_Plugin *plugin;
   const char *ec;
 
   pg = GNUNET_new (struct PostgresClosure);
+  pg->cfg = cfg;
   pg->main_self = pthread_self (); /* loaded while single-threaded! */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
