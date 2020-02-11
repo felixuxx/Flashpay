@@ -697,9 +697,9 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
   {
     rctx->ev_sigs[i].rsa_signature
       = GNUNET_CRYPTO_rsa_sign_blinded (
-      rctx->dkis[i]->denom_priv.rsa_private_key,
-      rctx->rcds[i].coin_ev,
-      rctx->rcds[i].coin_ev_size);
+          rctx->dkis[i]->denom_priv.rsa_private_key,
+          rctx->rcds[i].coin_ev,
+          rctx->rcds[i].coin_ev_size);
     if (NULL == rctx->ev_sigs[i].rsa_signature)
     {
       GNUNET_break (0);
