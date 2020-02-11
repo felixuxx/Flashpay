@@ -972,7 +972,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                       const char *account)
 {
   struct HistoryArgs ha;
-  struct Transaction *pos;
+  const struct Transaction *pos;
   json_t *history;
 
   if (GNUNET_OK !=
@@ -1087,7 +1087,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                        const char *account)
 {
   struct HistoryArgs ha;
-  struct Transaction *pos;
+  const struct Transaction *pos;
   json_t *history;
 
   if (GNUNET_OK !=
