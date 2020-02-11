@@ -776,7 +776,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Handle incoming HTTP request for /history
+ * Handle incoming HTTP request for /
  *
  * @param h the fakebank handle
  * @param connection the connection
@@ -925,8 +925,13 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                       const char *account)
 {
   struct HistoryArgs ha;
-  struct Transaction *pos;
+  const struct Transaction *pos;
   json_t *history;
+  struct TALER_Amount total_incoming;
+  struct TALER_Amount start_outgoing;
+  struct TALER_Amount end_outgoing;
+  const struct Transaction *start_pos;
+  const struct Transaction *end_pos;
 
   if (GNUNET_OK !=
       parse_history_common_args (connection,
@@ -967,6 +972,11 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     /* list is empty */
     pos = NULL;
   }
+  if (0 > ha.delta)
+    end_pos = pos;
+  else
+    start_pos = pos;
+
   history = json_array ();
   while ( (0 != ha.delta) &&
           (NULL != pos) )
@@ -1018,6 +1028,14 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     if (0 < ha.delta)
       pos = pos->next;
   }
+  if (0 > ha.delta)
+    start_pos = pos;
+  else
+    end_pos = pos;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (fb->currency,
+                                        &));
+
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o}",
