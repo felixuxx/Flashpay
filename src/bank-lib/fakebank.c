@@ -973,6 +973,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
 {
   struct HistoryArgs ha;
   const struct Transaction *pos;
+  const struct Transaction *spos;
   json_t *history;
   struct TALER_Amount total_incoming;
   struct TALER_Amount start_outgoing;
@@ -1019,10 +1020,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     /* list is empty */
     pos = NULL;
   }
-  if (0 > ha.delta)
-    end_pos = pos;
-  else
-    start_pos = pos;
+  spos = pos;
 
   history = json_array ();
   while ( (0 != ha.delta) &&
@@ -1076,18 +1074,80 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       pos = pos->next;
   }
   if (0 > ha.delta)
+  {
     start_pos = pos;
+    end_pos = spos;
+  }
   else
-    end_pos = pos;
+  {
+    start_pos = spos;
+    if (NULL == pos)
+      end_pos = h->transactions_tail;
+    else
+      end_pos = pos;
+  }
+  /* now calculate balances at beginning end end of
+     transaction history */
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (fb->currency,
-                                        &));
-
+                 TALER_amount_get_zero (h->currency,
+                                        &total_incoming));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (h->currency,
+                                        &start_outgoing));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (h->currency,
+                                        &end_outgoing));
+  for (pos = h->transactions_head;
+       NULL != pos;
+       pos = pos->next)
+  {
+    if ( (0 == strcasecmp (pos->debit_account,
+                           account)) &&
+         (T_DEBIT == pos->type) )
+    {
+      if (pos == start_pos)
+        start_pos = NULL;
+      if (NULL != start_pos)
+      {
+        /* we are *before* the start position (exclusive), add to balances */
+        GNUNET_break (GNUNET_OK ==
+                      TALER_amount_add (&start_outgoing,
+                                        &start_outgoing,
+                                        &pos->amount));
+      }
+      if (NULL != end_pos)
+      {
+        /* we are *before* the end position (inclusive),
+           add to balances */
+        GNUNET_break (GNUNET_OK ==
+                      TALER_amount_add (&end_outgoing,
+                                        &end_outgoing,
+                                        &pos->amount));
+      }
+      if (pos == end_pos)
+        end_pos = NULL;
+    }
+    if ( (0 == strcasecmp (pos->credit_account,
+                           account)) &&
+         (T_CREDIT == pos->type) )
+    {
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_incoming,
+                                      &total_incoming,
+                                      &pos->amount));
+    }
+  }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
-                                    "{s:o}",
+                                    "{s:o, s:o, s:o, s:o}",
                                     "outgoing_transactions",
-                                    history);
+                                    history,
+                                    "current_incoming",
+                                    TALER_JSON_from_amount (&total_incoming),
+                                    "total_incoming_start",
+                                    TALER_JSON_from_amount (&start_outgoing),
+                                    "total_incoming_end",
+                                    TALER_JSON_from_amount (&end_outgoing));
 }
 
 
@@ -1105,8 +1165,14 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                        const char *account)
 {
   struct HistoryArgs ha;
-  struct Transaction *pos;
+  const struct Transaction *pos;
+  const struct Transaction *spos;
   json_t *history;
+  struct TALER_Amount end_incoming;
+  struct TALER_Amount start_incoming;
+  struct TALER_Amount total_outgoing;
+  const struct Transaction *start_pos;
+  const struct Transaction *end_pos;
 
   if (GNUNET_OK !=
       parse_history_common_args (connection,
@@ -1161,6 +1227,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     /* list is empty */
     pos = NULL;
   }
+  spos = pos;
+
   history = json_array ();
   while ( (0 != ha.delta) &&
           (NULL != pos) )
@@ -1225,11 +1293,82 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     if (0 < ha.delta)
       pos = pos->next;
   }
+  if (0 > ha.delta)
+  {
+    start_pos = pos;
+    end_pos = spos;
+  }
+  else
+  {
+    start_pos = spos;
+    if (NULL == pos)
+      end_pos = h->transactions_tail;
+    else
+      end_pos = pos;
+  }
+  /* now calculate balances at beginning end end of
+     transaction history */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (h->currency,
+                                        &total_outgoing));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (h->currency,
+                                        &start_incoming));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (h->currency,
+                                        &end_incoming));
+  for (pos = h->transactions_head;
+       NULL != pos;
+       pos = pos->next)
+  {
+    if ( (0 == strcasecmp (pos->credit_account,
+                           account)) &&
+         (T_CREDIT == pos->type) )
+    {
+      if (pos == start_pos)
+        start_pos = NULL;
+      if (NULL != start_pos)
+      {
+        /* we are *before* the start position (exclusive), add to balances */
+        GNUNET_break (GNUNET_OK ==
+                      TALER_amount_add (&start_incoming,
+                                        &start_incoming,
+                                        &pos->amount));
+      }
+      if (NULL != end_pos)
+      {
+        /* we are *before* the end position (inclusive),
+           add to balances */
+        GNUNET_break (GNUNET_OK ==
+                      TALER_amount_add (&end_incoming,
+                                        &end_incoming,
+                                        &pos->amount));
+      }
+      if (pos == end_pos)
+        end_pos = NULL;
+    }
+    if ( (0 == strcasecmp (pos->debit_account,
+                           account)) &&
+         (T_DEBIT == pos->type) )
+    {
+      GNUNET_break (GNUNET_OK ==
+                    TALER_amount_add (&total_outgoing,
+                                      &total_outgoing,
+                                      &pos->amount));
+    }
+  }
+
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
-                                    "{s:o}",
+                                    "{s:o, s:o, s:o, s:o}",
                                     "incoming_transactions",
-                                    history);
+                                    history,
+                                    "current_outgoing",
+                                    TALER_JSON_from_amount (&total_outgoing),
+                                    "total_incoming_start",
+                                    TALER_JSON_from_amount (&start_incoming),
+                                    "total_incoming_end",
+                                    TALER_JSON_from_amount (&end_incoming));
 }
 
 
