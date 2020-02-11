@@ -128,11 +128,10 @@ TEH_MHD_handler_send_json_pack_error (struct TEH_RequestHandler *rh,
   (void) connection_cls;
   (void) upload_data;
   (void) upload_data_size;
-  return TALER_MHD_reply_json_pack (connection,
-                                    rh->response_code,
-                                    "{s:s}",
-                                    "error",
-                                    rh->data);
+  return TALER_MHD_reply_with_error (connection,
+                                     rh->response_code,
+                                     TALER_EC_METHOD_INVALID,
+                                     rh->data);
 }
 
 

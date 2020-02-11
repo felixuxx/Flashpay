@@ -704,13 +704,15 @@ check_pending_rc (void *cls,
                 TALER_amount_add (&total_closure_amount_lag,
                                   &total_closure_amount_lag,
                                   &rc->amount));
-  report (report_closure_lags,
-          json_pack ("{s:I, s:o, s:o, s:o, s:s}",
-                     "row", (json_int_t) rc->rowid,
-                     "amount", TALER_JSON_from_amount (&rc->amount),
-                     "deadline", json_from_time_abs (rc->execution_date),
-                     "wtid", GNUNET_JSON_from_data_auto (&rc->wtid),
-                     "account", rc->receiver_account));
+  if ( (0 != rc->amount.value) ||
+       (0 != rc->amount.fraction) )
+    report (report_closure_lags,
+            json_pack ("{s:I, s:o, s:o, s:o, s:s}",
+                       "row", (json_int_t) rc->rowid,
+                       "amount", TALER_JSON_from_amount (&rc->amount),
+                       "deadline", json_from_time_abs (rc->execution_date),
+                       "wtid", GNUNET_JSON_from_data_auto (&rc->wtid),
+                       "account", rc->receiver_account));
   pp.last_reserve_close_uuid
     = GNUNET_MIN (pp.last_reserve_close_uuid,
                   rc->rowid);
@@ -2312,6 +2314,8 @@ main (int argc,
                                "restart",
                                "restart audit from the beginning (required on first run)",
                                &restart),
+    GNUNET_GETOPT_option_timetravel ('T',
+                                     "timetravel"),
     GNUNET_GETOPT_OPTION_END
   };
 

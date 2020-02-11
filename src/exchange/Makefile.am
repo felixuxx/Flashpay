@@ -83,7 +83,8 @@ taler_exchange_httpd_LDADD = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 check_SCRIPTS = \
-  test_taler_exchange_httpd.sh
+  test_taler_exchange_httpd.sh \
+  test_taler_exchange_httpd_restart.sh
 if HAVE_EXPENSIVE_TESTS
 check_SCRIPTS += \
   test_taler_exchange_httpd_afl.sh
@@ -97,6 +98,7 @@ TESTS = \
 EXTRA_DIST = \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_taler_exchange_httpd.conf \
+  test_taler_exchange_unix.conf \
   test_taler_exchange_httpd.get \
   test_taler_exchange_httpd.post \
   exchange.conf \

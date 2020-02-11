@@ -52,6 +52,7 @@ static struct GNUNET_OS_Process *bankd;
  */
 static int with_fakebank;
 
+
 /**
  * Main function that will tell the interpreter what commands to
  * run.
@@ -116,12 +117,32 @@ run (void *cls,
 }
 
 
+/**
+ * Runs #TALER_TESTING_setup() using the configuration.
+ *
+ * @param cls unused
+ * @param cfg configuration to use
+ * @return status code
+ */
+static int
+setup_with_cfg (void *cls,
+                const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  (void) cls;
+  return TALER_TESTING_setup (&run,
+                              NULL,
+                              cfg,
+                              NULL,
+                              GNUNET_NO);
+}
+
+
 int
 main (int argc,
       char *const *argv)
 {
-  int rv;
   const char *cfgfilename;
+  int rv;
 
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -165,12 +186,13 @@ main (int argc,
       return 77;
     }
   }
-
-  rv = (GNUNET_OK == TALER_TESTING_setup (&run,
-                                          NULL,
-                                          cfgfilename,
-                                          NULL,
-                                          GNUNET_NO)) ? 0 : 1;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_parse_and_run (cfgfilename,
+                                          &setup_with_cfg,
+                                          NULL))
+    rv = 1;
+  else
+    rv = 0;
   if (GNUNET_NO == with_fakebank)
   {
 

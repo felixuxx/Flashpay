@@ -35,7 +35,6 @@ TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   char *plugin_name;
   char *lib_name;
-  struct GNUNET_CONFIGURATION_Handle *cfg_dup;
   struct TALER_AUDITORDB_Plugin *plugin;
 
   if (GNUNET_SYSERR ==
@@ -53,14 +52,12 @@ TALER_AUDITORDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
                           "libtaler_plugin_auditordb_%s",
                           plugin_name);
   GNUNET_free (plugin_name);
-  cfg_dup = GNUNET_CONFIGURATION_dup (cfg);
   plugin = GNUNET_PLUGIN_load (lib_name,
-                               cfg_dup);
+                               (void *) cfg);
   if (NULL != plugin)
     plugin->library_name = lib_name;
   else
     GNUNET_free (lib_name);
-  GNUNET_CONFIGURATION_destroy (cfg_dup);
   return plugin;
 }
 

@@ -788,7 +788,7 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
   /* NOTE: this call blocks.  */
   result = TALER_TESTING_setup (setup_ctx->main_cb,
                                 setup_ctx->main_cb_cls,
-                                setup_ctx->config_filename,
+                                cfg,
                                 exchanged,
                                 GNUNET_YES);
   GNUNET_break (0 ==

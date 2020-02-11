@@ -14,8 +14,8 @@ pkgcfg_DATA = \
 sqldir = $(prefix)/share/taler/sql/auditor/
 
 sql_DATA = \
-  0000.sql \
-  0001.sql \
+  auditor-0000.sql \
+  auditor-0001.sql \
   drop0000.sql \
   restart0000.sql
 

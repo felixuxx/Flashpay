@@ -74,7 +74,7 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o, s:o}",
-                                    "error", "Insufficient funds",
+                                    "hint", "insufficient funds",
                                     "code",
                                     (json_int_t)
                                     TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,

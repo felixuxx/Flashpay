@@ -164,7 +164,7 @@ TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_json_pack (connection,
                                       MHD_HTTP_NOT_FOUND,
                                       "{s:s, s:s, s:I}",
-                                      "error", "Reserve not found",
+                                      "hint", "Reserve not found",
                                       "parameter", "reserve_pub",
                                       "code",
                                       (json_int_t)

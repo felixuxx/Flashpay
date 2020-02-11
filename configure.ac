@@ -474,10 +474,8 @@ AM_CONDITIONAL([HAVE_TWISTER], [false])
 
 AC_CONFIG_FILES([Makefile
                  contrib/Makefile
-                 contrib/pp/Makefile
-                 contrib/tos/Makefile
                  doc/Makefile
-		 doc/doxygen/Makefile
+                 doc/doxygen/Makefile
                  src/Makefile
                  src/auditor/Makefile
                  src/auditordb/Makefile

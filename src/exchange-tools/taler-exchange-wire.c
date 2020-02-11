@@ -228,6 +228,8 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_timetravel ('T',
+                                     "timetravel"),
     GNUNET_GETOPT_option_filename ('m',
                                    "master-key",
                                    "FILENAME",

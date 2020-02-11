@@ -156,9 +156,9 @@ static char *mode_str;
 static enum BenchmarkMode mode;
 
 /**
- * Config filename.
+ * Configuration.
  */
-static char *cfg_filename;
+static struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Currency used.
@@ -445,7 +445,8 @@ launch_fakebank (void *cls)
 
   (void) cls;
   fakebank
-    = TALER_TESTING_run_fakebank (exchange_bank_account.wire_gateway_url);
+    = TALER_TESTING_run_fakebank (exchange_bank_account.wire_gateway_url,
+                                  currency);
   if (NULL == fakebank)
   {
     GNUNET_break (0);
@@ -624,12 +625,11 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                           NULL == loglev ? "INFO" : loglev,
                           logfile);
 
-        result = TALER_TESTING_setup
-                   (main_cb,
-                   main_cb_cls,
-                   cfg_filename,
-                   exchanged,
-                   GNUNET_YES);
+        result = TALER_TESTING_setup (main_cb,
+                                      main_cb_cls,
+                                      cfg,
+                                      exchanged,
+                                      GNUNET_YES);
         if (GNUNET_OK != result)
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                       "Failure in child process test suite!\n");
@@ -746,7 +746,7 @@ int
 main (int argc,
       char *const *argv)
 {
-  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *cfg_filename = NULL;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_cfgfile (&cfg_filename)),
@@ -798,6 +798,7 @@ main (int argc,
                                    argc,
                                    argv)))
   {
+    GNUNET_free_non_null (cfg_filename);
     return BAD_CLI_ARG;
   }
   GNUNET_log_setup ("taler-exchange-benchmark",
@@ -814,6 +815,7 @@ main (int argc,
   else
   {
     TALER_LOG_ERROR ("Unknown mode given: '%s'\n", mode_str);
+    GNUNET_free_non_null (cfg_filename);
     return BAD_CONFIG_FILE;
   }
   if (NULL == cfg_filename)
@@ -825,8 +827,10 @@ main (int argc,
                                  cfg_filename))
   {
     TALER_LOG_ERROR ("Could not parse configuration\n");
+    GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
+  GNUNET_free (cfg_filename);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -836,6 +840,16 @@ main (int argc,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "currency");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return BAD_CONFIG_FILE;
+  }
+
+  if (strlen (currency) >= TALER_CURRENCY_LEN)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY",
+                               "Value is too long");
     GNUNET_CONFIGURATION_destroy (cfg);
     return BAD_CONFIG_FILE;
   }
@@ -950,11 +964,11 @@ main (int argc,
       return BAD_CONFIG_FILE;
     }
   }
-  GNUNET_CONFIGURATION_destroy (cfg);
 
   result = parallel_benchmark (&run,
                                NULL,
                                cfg_filename);
+  GNUNET_CONFIGURATION_destroy (cfg);
 
   /* If we're the exchange worker, we're done now.  No need to print results */
   if (MODE_EXCHANGE == mode)

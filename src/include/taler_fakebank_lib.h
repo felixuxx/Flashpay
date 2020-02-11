@@ -44,10 +44,12 @@ struct TALER_FAKEBANK_Handle;
  * would have issued the correct wire transfer orders.
  *
  * @param port port to listen to
+ * @param currency which currency should the bank offer
  * @return NULL on error
  */
 struct TALER_FAKEBANK_Handle *
-TALER_FAKEBANK_start (uint16_t port);
+TALER_FAKEBANK_start (uint16_t port,
+                      const char *currency);
 
 
 /**

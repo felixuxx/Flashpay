@@ -15,8 +15,8 @@ pkgcfg_DATA = \
 sqldir = $(prefix)/share/taler/sql/exchange/
 
 sql_DATA = \
-  0000.sql \
-  0001.sql \
+  exchange-0000.sql \
+  exchange-0001.sql \
   drop0000.sql
 
 EXTRA_DIST = \

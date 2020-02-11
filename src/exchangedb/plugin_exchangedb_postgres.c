@@ -109,10 +109,9 @@ struct PostgresClosure
   pthread_key_t db_conn_threadlocal;
 
   /**
-   * Database connection string, as read from
-   * the configuration.
+   * Our configuration.
    */
-  char *connection_cfg_str;
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
 
   /**
    * Directory with SQL statements to run to create tables.
@@ -158,16 +157,12 @@ postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_Context *conn;
-  char *drop_dir;
 
-  GNUNET_asprintf (&drop_dir,
-                   "%sdrop",
-                   pc->sql_dir);
-  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                            drop_dir,
-                            NULL,
-                            NULL);
-  GNUNET_free (drop_dir);
+  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                     "exchangedb-postgres",
+                                     "drop",
+                                     NULL,
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
@@ -187,10 +182,11 @@ postgres_create_tables (void *cls)
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_Context *conn;
 
-  conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                            pc->sql_dir,
-                            NULL,
-                            NULL);
+  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                     "exchangedb-postgres",
+                                     "exchange-",
+                                     NULL,
+                                     NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
@@ -1387,10 +1383,11 @@ postgres_get_session (void *cls)
       GNUNET_PQ_PREPARED_STATEMENT_END
     };
 
-    db_conn = GNUNET_PQ_connect (pc->connection_cfg_str,
-                                 NULL,
-                                 es,
-                                 ps);
+    db_conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+                                          "exchangedb-postgres",
+                                          NULL,
+                                          es,
+                                          ps);
   }
   if (NULL == db_conn)
     return NULL;
@@ -5371,10 +5368,11 @@ postgres_gc (void *cls)
       GNUNET_PQ_PREPARED_STATEMENT_END
     };
 
-    conn = GNUNET_PQ_connect (pg->connection_cfg_str,
-                              NULL,
-                              NULL,
-                              ps);
+    conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
+                                       "exchangedb-postgres",
+                                       NULL,
+                                       NULL,
+                                       ps);
   }
   if (NULL == conn)
     return GNUNET_SYSERR;
@@ -7212,12 +7210,12 @@ postgres_select_deposits_missing_wire (void *cls,
 void *
 libtaler_plugin_exchangedb_postgres_init (void *cls)
 {
-  struct GNUNET_CONFIGURATION_Handle *cfg = cls;
+  const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct PostgresClosure *pg;
   struct TALER_EXCHANGEDB_Plugin *plugin;
-  const char *ec;
 
   pg = GNUNET_new (struct PostgresClosure);
+  pg->cfg = cfg;
   pg->main_self = pthread_self (); /* loaded while single-threaded! */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
@@ -7239,28 +7237,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
-  ec = getenv ("TALER_EXCHANGEDB_POSTGRES_CONFIG");
-  if (NULL != ec)
-  {
-    pg->connection_cfg_str = GNUNET_strdup (ec);
-  }
-  else
-  {
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchangedb-postgres",
-                                               "CONFIG",
-                                               &pg->connection_cfg_str))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchangedb-postgres",
-                                 "CONFIG");
-      GNUNET_free (pg->sql_dir);
-      GNUNET_free (pg);
-      return NULL;
-    }
-  }
-
   if ( (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_time (cfg,
                                              "exchangedb",
@@ -7276,7 +7252,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
                                "LEGAL/IDLE_RESERVE_EXPIRATION_TIME");
-    GNUNET_free (pg->connection_cfg_str);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
@@ -7290,7 +7265,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "CURRENCY");
-    GNUNET_free (pg->connection_cfg_str);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
@@ -7406,7 +7380,6 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
   /* If we launched a session for the main thread,
      kill it here before we unload */
   db_conn_destroy (pg->main_session);
-  GNUNET_free (pg->connection_cfg_str);
   GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
   GNUNET_free (pg);

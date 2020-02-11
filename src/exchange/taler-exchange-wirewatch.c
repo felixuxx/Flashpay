@@ -340,7 +340,7 @@ history_cb (void *cls,
     hh = NULL;
     if (TALER_EC_NONE != ec)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching history: ec=%u, http_status=%u\n",
                   (unsigned int) ec,
                   http_status);
@@ -597,7 +597,9 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_flag ('T',
+    GNUNET_GETOPT_option_timetravel ('T',
+                                     "timetravel"),
+    GNUNET_GETOPT_option_flag ('t',
                                "test",
                                "run in test mode and exit when idle",
                                &test_mode),

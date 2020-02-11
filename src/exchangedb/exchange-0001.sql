@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS denominations
   ,fee_refund_val INT8 NOT NULL
   ,fee_refund_frac INT4 NOT NULL
   );
-CREATE INDEX denominations_expire_legal_index
+CREATE INDEX IF NOT EXISTS denominations_expire_legal_index
   ON denominations
   (expire_legal);
 
@@ -65,18 +65,18 @@ CREATE TABLE IF NOT EXISTS reserves
   ,gc_date INT8 NOT NULL
   );
 -- index on reserves table (TODO: useless due to primary key!?)
-CREATE INDEX reserves_reserve_pub_index
+CREATE INDEX IF NOT EXISTS reserves_reserve_pub_index
   ON reserves
   (reserve_pub);
 -- index for get_expired_reserves
-CREATE INDEX reserves_expiration_index
+CREATE INDEX IF NOT EXISTS reserves_expiration_index
   ON reserves
   (expiration_date
   ,current_balance_val
   ,current_balance_frac
   );
 -- index for reserve GC operations
-CREATE INDEX reserves_gc_index
+CREATE INDEX IF NOT EXISTS reserves_gc_index
   ON reserves
   (gc_date);
 -- reserves_in table collects the transactions which transfer funds
@@ -94,12 +94,12 @@ CREATE TABLE IF NOT EXISTS reserves_in
   ,PRIMARY KEY (reserve_pub, wire_reference)
   );
 -- Create indices on reserves_in
-CREATE INDEX reserves_in_execution_index
+CREATE INDEX IF NOT EXISTS reserves_in_execution_index
   ON reserves_in
   (exchange_account_section
   ,execution_date
   );
-CREATE INDEX reserves_in_exchange_account_serial
+CREATE INDEX IF NOT EXISTS reserves_in_exchange_account_serial
   ON reserves_in
   (exchange_account_section,
   reserve_in_serial_id DESC
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS reserves_close
   ,amount_frac INT4 NOT NULL
   ,closing_fee_val INT8 NOT NULL
   ,closing_fee_frac INT4 NOT NULL);
-CREATE INDEX reserves_close_by_reserve
+CREATE INDEX IF NOT EXISTS reserves_close_by_reserve
   ON reserves_close
   (reserve_pub);
 -- Table with the withdraw operations that have been performed on a reserve.
@@ -137,13 +137,13 @@ CREATE TABLE IF NOT EXISTS reserves_out
   ,amount_with_fee_frac INT4 NOT NULL
   );
 -- Index blindcoins(reserve_pub) for get_reserves_out statement
-CREATE INDEX reserves_out_reserve_pub_index
+CREATE INDEX IF NOT EXISTS reserves_out_reserve_pub_index
   ON reserves_out
   (reserve_pub);
-CREATE INDEX reserves_out_execution_date
+CREATE INDEX IF NOT EXISTS reserves_out_execution_date
   ON reserves_out
   (execution_date);
-CREATE INDEX reserves_out_for_get_withdraw_info
+CREATE INDEX IF NOT EXISTS reserves_out_for_get_withdraw_info
   ON reserves_out
   (denom_pub_hash
   ,h_blind_ev
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS known_coins
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,denom_sig BYTEA NOT NULL
   );
-CREATE INDEX known_coins_by_denomination
+CREATE INDEX IF NOT EXISTS known_coins_by_denomination
   ON known_coins
   (denom_pub_hash);
 -- Table with the commitments made when melting a coin. */
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS refresh_commitments
   ,amount_with_fee_frac INT4 NOT NULL
   ,noreveal_index INT4 NOT NULL
   );
-CREATE INDEX refresh_commitments_old_coin_pub_index
+CREATE INDEX IF NOT EXISTS refresh_commitments_old_coin_pub_index
   ON refresh_commitments
   (old_coin_pub);
 -- Table with the revelations about the new coins that are to be created
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS refresh_revealed_coins
   ,PRIMARY KEY (rc, newcoin_index)
   ,UNIQUE (h_coin_ev)
   );
-CREATE INDEX refresh_revealed_coins_coin_pub_index
+CREATE INDEX IF NOT EXISTS refresh_revealed_coins_coin_pub_index
   ON refresh_revealed_coins
   (denom_pub_hash);
 -- Table with the transfer keys of a refresh operation; includes
@@ -203,7 +203,7 @@ CREATE TABLE IF NOT EXISTS refresh_transfer_keys
 -- for get_link (not sure if this helps, as there should be very few
 -- transfer_pubs per rc, but at least in theory this helps the ORDER BY
 -- clause.
-CREATE INDEX refresh_transfer_keys_coin_tpub
+CREATE INDEX IF NOT EXISTS refresh_transfer_keys_coin_tpub
   ON refresh_transfer_keys
   (rc
   ,transfer_pub
@@ -228,14 +228,14 @@ CREATE TABLE IF NOT EXISTS deposits
   ,UNIQUE (coin_pub, merchant_pub, h_contract_terms)
   );
 -- Index for get_deposit_for_wtid and get_deposit_statement */
-CREATE INDEX deposits_coin_pub_merchant_contract_index
+CREATE INDEX IF NOT EXISTS deposits_coin_pub_merchant_contract_index
   ON deposits
   (coin_pub
   ,merchant_pub
   ,h_contract_terms
   );
 -- Index for deposits_get_ready
-CREATE INDEX deposits_get_ready_index
+CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ON deposits
   (tiny
   ,done
@@ -243,7 +243,7 @@ CREATE INDEX deposits_get_ready_index
   ,refund_deadline
   );
 -- Index for deposits_iterate_matching
-CREATE INDEX deposits_iterate_matching
+CREATE INDEX IF NOT EXISTS deposits_iterate_matching
   ON deposits
   (merchant_pub
   ,h_wire
@@ -265,7 +265,7 @@ CREATE TABLE IF NOT EXISTS refunds
   ,amount_with_fee_frac INT4 NOT NULL
   ,PRIMARY KEY (coin_pub, merchant_pub, h_contract_terms, rtransaction_id)
   );
-CREATE INDEX refunds_coin_pub_index
+CREATE INDEX IF NOT EXISTS refunds_coin_pub_index
   ON refunds
   (coin_pub);
 -- This table contains the data for
@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS aggregation_tracking
   ,wtid_raw BYTEA  CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE
   );
 -- Index for lookup_transactions statement on wtid
-CREATE INDEX aggregation_tracking_wtid_index
+CREATE INDEX IF NOT EXISTS aggregation_tracking_wtid_index
   ON aggregation_tracking
   (wtid_raw);
 -- Table for the wire fees.
@@ -302,7 +302,7 @@ CREATE TABLE IF NOT EXISTS wire_fee
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,PRIMARY KEY (wire_method, start_date)
   );
-CREATE INDEX wire_fee_gc_index
+CREATE INDEX IF NOT EXISTS wire_fee_gc_index
   ON wire_fee
   (end_date);
 -- Table for /recoup information
@@ -317,13 +317,13 @@ CREATE TABLE IF NOT EXISTS recoup
   ,timestamp INT8 NOT NULL
   ,h_blind_ev BYTEA NOT NULL REFERENCES reserves_out (h_blind_ev) ON DELETE CASCADE
   );
-CREATE INDEX recoup_by_coin_index
+CREATE INDEX IF NOT EXISTS recoup_by_coin_index
   ON recoup
   (coin_pub);
-CREATE INDEX recoup_by_h_blind_ev
+CREATE INDEX IF NOT EXISTS recoup_by_h_blind_ev
   ON recoup
   (h_blind_ev);
-CREATE INDEX recoup_for_by_reserve
+CREATE INDEX IF NOT EXISTS recoup_for_by_reserve
   ON recoup
   (coin_pub
   ,h_blind_ev
@@ -340,13 +340,13 @@ CREATE TABLE IF NOT EXISTS recoup_refresh
   ,timestamp INT8 NOT NULL
   ,h_blind_ev BYTEA NOT NULL REFERENCES refresh_revealed_coins (h_coin_ev) ON DELETE CASCADE
   );
-CREATE INDEX recoup_refresh_by_coin_index
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_coin_index
   ON recoup_refresh
   (coin_pub);
-CREATE INDEX recoup_refresh_by_h_blind_ev
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_h_blind_ev
   ON recoup_refresh
   (h_blind_ev);
-CREATE INDEX recoup_refresh_for_by_reserve
+CREATE INDEX IF NOT EXISTS recoup_refresh_for_by_reserve
   ON recoup_refresh
   (coin_pub
   ,h_blind_ev
@@ -360,7 +360,7 @@ CREATE TABLE IF NOT EXISTS prewire
   ,buf BYTEA NOT NULL
   );
 -- Index for wire_prepare_data_get and gc_prewire statement
-CREATE INDEX prepare_iteration_index
+CREATE INDEX IF NOT EXISTS prepare_iteration_index
   ON prewire
   (finished);
 
