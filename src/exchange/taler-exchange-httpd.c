@@ -1086,8 +1086,8 @@ main (int argc,
   }
 
   /* initialize #internal_key_state with an RC of 1 */
-  if (GNUNET_OK ==
-      TEH_KS_init ())
+  ret = TEH_KS_init ();
+  if (GNUNET_OK == ret)
   {
 #if HAVE_DEVELOPER
     if (NULL != input_filename)
