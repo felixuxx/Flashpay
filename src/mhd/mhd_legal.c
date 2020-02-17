@@ -563,6 +563,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "Could not open directory");
     GNUNET_free (legal->terms_etag);
     GNUNET_free (legal);
+    GNUNET_free (path);
     return NULL;
   }
   for (struct dirent *de = readdir (d);
@@ -576,7 +577,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
     load_language (legal, path, lang);
   }
   closedir (d);
-  free (path);
+  GNUNET_free (path);
   return legal;
 }
 
