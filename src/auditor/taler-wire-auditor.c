@@ -2034,12 +2034,19 @@ begin_transaction ()
                 GNUNET_STRINGS_absolute_time_to_string (pp.last_timestamp),
                 (unsigned long long) pp.last_reserve_close_uuid);
   }
-  edb->select_reserve_closed_above_serial_id (edb->cls,
-                                              esession,
-                                              pp.
-                                              last_reserve_close_uuid,
-                                              &reserve_closed_cb,
-                                              NULL);
+  qsx = edb->select_reserve_closed_above_serial_id (edb->cls,
+                                                    esession,
+                                                    pp.
+                                                    last_reserve_close_uuid,
+                                                    &reserve_closed_cb,
+                                                    NULL);
+  if (0 > qsx)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qsx);
+    global_ret = 1;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   begin_credit_audit ();
 }
 
