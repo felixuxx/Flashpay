@@ -331,6 +331,8 @@ load_terms (struct TALER_MHD_Legal *legal,
     { .ext = ".jpeg", .mime = "image/jpeg" },
     { .ext = ".png", .mime = "image/png" },
     { .ext = ".gif", .mime = "image/gif" },
+    { .ext = ".epub", .mime = "application/epub+zip" },
+    { .ext = ".xml", .mime = "text/xml" },
     { .ext = NULL, .mime = NULL }
   };
   const char *ext = strrchr (name, '.');
