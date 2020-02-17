@@ -555,6 +555,16 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
     return NULL;
   }
   d = opendir (path);
+  if (NULL == d)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_WARNING,
+                               section,
+                               diroption,
+                               "Could not open directory");
+    GNUNET_free (legal->terms_etag);
+    GNUNET_free (legal);
+    return NULL;
+  }
   for (struct dirent *de = readdir (d);
        NULL != de;
        de = readdir (d))
