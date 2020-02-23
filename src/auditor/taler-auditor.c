@@ -1153,8 +1153,7 @@ handle_reserve_out (void *cls,
   {
     report_row_inconsistency ("withdraw",
                               rowid,
-                              "denomination key not found (foreign key constraint violated)");
-    rc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+                              "denomination key not found");
     return GNUNET_OK;
   }
 
@@ -2577,11 +2576,12 @@ wire_transfer_information_cb (void *cls,
     GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
     edb->free_coin_transaction_list (edb->cls,
                                      tl);
-    wcc->qs = qs;
     if (0 == qs)
       report_row_inconsistency ("aggregation",
                                 rowid,
                                 "could not find denomination key for coin claimed in aggregation");
+    else
+      wcc->qs = qs;
     return;
   }
   if (GNUNET_OK !=
@@ -3538,8 +3538,7 @@ withdraw_cb (void *cls,
   {
     report_row_inconsistency ("withdraw",
                               rowid,
-                              "denomination key not found (foreign key constraint violated)");
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+                              "denomination key not found");
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -3757,8 +3756,7 @@ refresh_session_cb (void *cls,
   {
     report_row_inconsistency ("refresh_melt",
                               rowid,
-                              "denomination key not found (foreign key constraint violated)");
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+                              "denomination key not found");
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -3855,7 +3853,7 @@ refresh_session_cb (void *cls,
 
       /* Update outstanding amounts for all new coin's denominations, and check
          that the resulting amounts are consistent with the value being refreshed. */
-      err = GNUNET_NO;
+      err = GNUNET_OK;
       for (unsigned int i = 0; i<reveal_ctx.num_newcoins; i++)
       {
         /* lookup new coin denomination key */
@@ -3866,15 +3864,14 @@ refresh_session_cb (void *cls,
         {
           report_row_inconsistency ("refresh_reveal",
                                     rowid,
-                                    "denomination key not found (foreign key constraint violated)");
-          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-          err = GNUNET_YES;
+                                    "denomination key not found");
+          err = GNUNET_NO; /* terminate, but return "OK" */
         }
         else if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
         {
           GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
           cc->qs = qs;
-          err = GNUNET_YES;
+          err = GNUNET_SYSERR; /* terminate, return GNUNET_SYSERR */
         }
         GNUNET_CRYPTO_rsa_public_key_free (
           reveal_ctx.new_dps[i].rsa_public_key);
@@ -3883,8 +3880,8 @@ refresh_session_cb (void *cls,
       GNUNET_free (reveal_ctx.new_dps);
       reveal_ctx.new_dps = NULL;
 
-      if (err)
-        return GNUNET_SYSERR;
+      if (GNUNET_OK != err)
+        return (GNUNET_SYSERR == err) ? GNUNET_SYSERR : GNUNET_OK;
 
       /* calculate total refresh cost */
       for (unsigned int i = 0; i<reveal_ctx.num_newcoins; i++)
@@ -4136,9 +4133,8 @@ deposit_cb (void *cls,
   {
     report_row_inconsistency ("deposits",
                               rowid,
-                              "denomination key not found (foreign key constraint violated)");
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
+                              "denomination key not found");
+    return GNUNET_OK;
   }
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -4328,8 +4324,7 @@ refund_cb (void *cls,
   {
     report_row_inconsistency ("refunds",
                               rowid,
-                              "denomination key not found (foreign key constraint violated)");
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+                              "denomination key not found");
     return GNUNET_SYSERR;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -4504,9 +4499,8 @@ check_recoup (struct CoinContext *cc,
   {
     report_row_inconsistency ("recoup",
                               rowid,
-                              "denomination key not found (foreign key constraint violated)");
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
+                              "denomination key not found");
+    return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
