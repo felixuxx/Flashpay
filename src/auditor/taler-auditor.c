@@ -786,9 +786,11 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
     *issue = i;
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
-  /* This should be impossible; hard error */
-  GNUNET_break (0);
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  /* We found more keys, but not the denomination we are looking for :-( */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Denomination %s not found\n",
+              TALER_B2S (dh));
+  return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
 
 
@@ -2927,13 +2929,12 @@ check_wire_out_cb (void *cls,
                                          &currency_round_unit));
 
   /* Calculate the exchange's gain as the fees plus rounding differences! */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_amount_subtract (&exchange_gain,
                              &wcc.total_deposits,
                              &final_amount))
   {
     GNUNET_break (0);
-    // FIXME: we should report an arithmetic error here!
     ac->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
