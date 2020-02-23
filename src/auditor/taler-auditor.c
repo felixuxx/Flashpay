@@ -2572,14 +2572,14 @@ wire_transfer_information_cb (void *cls,
                                       &issue);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
     edb->free_coin_transaction_list (edb->cls,
                                      tl);
     wcc->qs = qs;
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "could not find denomination key for coin claimed in aggregation");
+    if (0 == qs)
+      report_row_inconsistency ("aggregation",
+                                rowid,
+                                "could not find denomination key for coin claimed in aggregation");
     return;
   }
   if (GNUNET_OK !=
@@ -2933,6 +2933,7 @@ check_wire_out_cb (void *cls,
                              &final_amount))
   {
     GNUNET_break (0);
+    // FIXME: we should report an arithmetic error here!
     ac->qs = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_SYSERR;
   }
@@ -3067,6 +3068,11 @@ analyze_aggregations (void *cls)
                                  ac.fee_tail,
                                  wfi);
     GNUNET_free (wfi);
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    /* there were no wire out entries to be looked at, we are done */
+    return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
   {
@@ -5132,14 +5138,25 @@ transact (Analysis analysis,
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Processing failed, rolling back transaction\n");
+                "Processing failed (or no changes), rolling back transaction\n");
     adb->rollback (adb->cls,
                    asession);
     edb->rollback (edb->cls,
                    esession);
   }
   clear_transaction_state_cache ();
-  return qs;
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    return GNUNET_OK;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    return GNUNET_OK;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return GNUNET_NO;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
 }
 
 
@@ -5166,14 +5183,18 @@ setup_sessions_and_run ()
     return;
   }
 
-  transact (&analyze_reserves,
-            NULL);
-  transact (&analyze_aggregations,
-            NULL);
-  transact (&analyze_coins,
-            NULL);
-  transact (&analyze_deposit_confirmations,
-            NULL);
+  GNUNET_break (GNUNET_SYSERR !=
+                transact (&analyze_reserves,
+                          NULL));
+  GNUNET_break (GNUNET_SYSERR !=
+                transact (&analyze_aggregations,
+                          NULL));
+  GNUNET_break (GNUNET_SYSERR !=
+                transact (&analyze_coins,
+                          NULL));
+  GNUNET_break (GNUNET_SYSERR !=
+                transact (&analyze_deposit_confirmations,
+                          NULL));
 }
 
 
