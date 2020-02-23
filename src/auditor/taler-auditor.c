@@ -1471,7 +1471,7 @@ get_closing_fee (const char *receiver_account,
   char *method;
 
   method = TALER_payto_get_method (receiver_account);
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Method is `%s'\n",
               method);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
