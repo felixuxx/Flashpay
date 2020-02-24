@@ -67,14 +67,17 @@ CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   ,last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0
+  ,PRIMARY KEY (master_pub)
   );
 CREATE TABLE IF NOT EXISTS auditor_progress_aggregation
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_wire_out_serial_id INT8 NOT NULL DEFAULT 0
+  ,PRIMARY KEY (master_pub)
   );
 CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0
+  ,PRIMARY KEY (master_pub)
   );
 CREATE TABLE IF NOT EXISTS auditor_progress_coin
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
@@ -84,6 +87,7 @@ CREATE TABLE IF NOT EXISTS auditor_progress_coin
   ,last_refund_serial_id INT8 NOT NULL DEFAULT 0
   ,last_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_recoup_refresh_serial_id INT8 NOT NULL DEFAULT 0
+  ,PRIMARY KEY (master_pub)
   );
 CREATE TABLE IF NOT EXISTS wire_auditor_account_progress
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
@@ -92,11 +96,13 @@ CREATE TABLE IF NOT EXISTS wire_auditor_account_progress
   ,last_wire_wire_out_serial_id INT8 NOT NULL DEFAULT 0
   ,wire_in_off INT8
   ,wire_out_off INT8
+  ,PRIMARY KEY (master_pub,account_name)
   );
 CREATE TABLE IF NOT EXISTS wire_auditor_progress
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_timestamp INT8 NOT NULL
   ,last_reserve_close_uuid INT8 NOT NULL
+  ,PRIMARY KEY (master_pub)
   );
 -- Table with all of the customer reserves and their respective
 -- balances that the auditor is aware of.
