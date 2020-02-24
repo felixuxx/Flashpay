@@ -16,8 +16,8 @@ sqldir = $(prefix)/share/taler/sql/auditor/
 sql_DATA = \
   auditor-0000.sql \
   auditor-0001.sql \
-  drop0000.sql \
-  restart0000.sql
+  drop0001.sql \
+  restart0001.sql
 
 EXTRA_DIST = \
   auditordb-postgres.conf \
