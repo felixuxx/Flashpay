@@ -35,6 +35,7 @@ DROP TABLE IF EXISTS auditor_progress_reserve;
 DROP TABLE IF EXISTS auditor_progress_aggregation;
 DROP TABLE IF EXISTS auditor_progress_deposit_confirmation;
 DROP TABLE IF EXISTS auditor_progress_coin;
+DROP TABLE IF EXISTS auditor_exchange_signkeys;
 DROP TABLE IF EXISTS wire_auditor_progress;
 DROP TABLE IF EXISTS wire_auditor_account_progress;
 DROP TABLE IF EXISTS auditor_historic_reserve_summary CASCADE;
