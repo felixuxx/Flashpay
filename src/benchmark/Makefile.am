@@ -26,7 +26,8 @@ taler_exchange_benchmark_LDADD = \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 EXTRA_DIST = \
   benchmark.conf \
