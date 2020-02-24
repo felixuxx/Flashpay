@@ -1334,6 +1334,7 @@ recoup_cb (void *cls,
 {
   const struct TALER_DenominationBlindingKeyP *cb = cls;
 
+  FAILIF (NULL == cb);
   FAILIF (0 != GNUNET_memcmp (cb,
                               coin_blind));
   return GNUNET_OK;
