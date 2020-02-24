@@ -24,6 +24,7 @@ BEGIN;
 -- * the list of audited exchanges
 -- * deposit confirmation reports the auditor received from merchants
 -- * schema versioning information
+-- * signing keys of exchanges we have downloaded
 --
 -- Unlike the other SQL files, it SHOULD be updated to reflect the
 -- latest requirements for dropping tables.
