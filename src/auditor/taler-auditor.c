@@ -1083,6 +1083,8 @@ handle_reserve_in (void *cls,
                    TALER_amount_add (&rs->total_in,
                                      &rs->total_in,
                                      credit));
+    if (NULL == rs->sender_account)
+      rs->sender_account = GNUNET_strdup (sender_account_details);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional incoming wire transfer for reserve `%s' of %s\n",
@@ -1590,8 +1592,15 @@ handle_reserve_closed (void *cls,
                                               1);
     }
   }
-  if (0 != strcmp (rs->sender_account,
-                   receiver_account))
+  if (NULL == rs->sender_account)
+  {
+    GNUNET_break (GNUNET_NO == rs->had_ri);
+    report_row_inconsistency ("reserves_close",
+                              rowid,
+                              "target account not verified, auditor does not know reserve");
+  }
+  else if (0 != strcmp (rs->sender_account,
+                        receiver_account))
   {
     report_row_inconsistency ("reserves_close",
                               rowid,
