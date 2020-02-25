@@ -115,6 +115,10 @@ struct WireAccount
    */
   int watch_debit;
 
+  /**
+   * Return value when we got this account's progress point.
+   */
+  enum GNUNET_DB_QueryStatus qsx;
 };
 
 
@@ -230,8 +234,9 @@ static struct WireAccount *wa_tail;
 
 /**
  * Query status for the incremental processing status in the auditordb.
+ * Return value from our call to the "get_wire_auditor_progress" function.
  */
-static enum GNUNET_DB_QueryStatus qsx;
+static enum GNUNET_DB_QueryStatus qsx_gwap;
 
 /**
  * Last reserve_in / wire_out serial IDs seen.
@@ -798,7 +803,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
                                             last_wire_out_serial_id
                                             ))
                    );
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx)
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == wa->qsx)
       qs = adb->update_wire_auditor_account_progress (adb->cls,
                                                       asession,
                                                       &master_pub,
@@ -825,7 +830,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   GNUNET_CONTAINER_multihashmap_iterate (reserve_closures,
                                          &check_pending_rc,
                                          NULL);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx)
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx_gwap)
     qs = adb->update_wire_auditor_progress (adb->cls,
                                             asession,
                                             &master_pub,
@@ -1965,7 +1970,6 @@ reserve_closed_cb (void *cls,
 static void
 begin_transaction ()
 {
-  enum GNUNET_DB_QueryStatus qsx;
   int ret;
 
   ret = adb->start (adb->cls,
@@ -1993,14 +1997,14 @@ begin_transaction ()
        NULL != wa;
        wa = wa->next)
   {
-    qsx = adb->get_wire_auditor_account_progress (adb->cls,
-                                                  asession,
-                                                  &master_pub,
-                                                  wa->section_name,
-                                                  &wa->pp,
-                                                  &wa->in_wire_off,
-                                                  &wa->out_wire_off);
-    if (0 > qsx)
+    wa->qsx = adb->get_wire_auditor_account_progress (adb->cls,
+                                                      asession,
+                                                      &master_pub,
+                                                      wa->section_name,
+                                                      &wa->pp,
+                                                      &wa->in_wire_off,
+                                                      &wa->out_wire_off);
+    if (0 > wa->qsx)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
       global_ret = 1;
@@ -2009,18 +2013,18 @@ begin_transaction ()
     }
     wa->start_pp = wa->pp;
   }
-  qsx = adb->get_wire_auditor_progress (adb->cls,
-                                        asession,
-                                        &master_pub,
-                                        &pp);
-  if (0 > qsx)
+  qsx_gwap = adb->get_wire_auditor_progress (adb->cls,
+                                             asession,
+                                             &master_pub,
+                                             &pp);
+  if (0 > qsx_gwap)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx_gwap);
     global_ret = 1;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx_gwap)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 _ (
@@ -2034,18 +2038,23 @@ begin_transaction ()
                 GNUNET_STRINGS_absolute_time_to_string (pp.last_timestamp),
                 (unsigned long long) pp.last_reserve_close_uuid);
   }
-  qsx = edb->select_reserve_closed_above_serial_id (edb->cls,
-                                                    esession,
-                                                    pp.
-                                                    last_reserve_close_uuid,
-                                                    &reserve_closed_cb,
-                                                    NULL);
-  if (0 > qsx)
+
   {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qsx);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = edb->select_reserve_closed_above_serial_id (edb->cls,
+                                                     esession,
+                                                     pp.
+                                                     last_reserve_close_uuid,
+                                                     &reserve_closed_cb,
+                                                     NULL);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+      global_ret = 1;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
   }
   begin_credit_audit ();
 }
