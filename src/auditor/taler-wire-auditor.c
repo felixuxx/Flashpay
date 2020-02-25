@@ -2006,7 +2006,7 @@ begin_transaction ()
                                                       &wa->out_wire_off);
     if (0 > wa->qsx)
     {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wa->qsx);
       global_ret = 1;
       GNUNET_SCHEDULER_shutdown ();
       return;
