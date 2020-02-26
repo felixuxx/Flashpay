@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -659,8 +659,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_EXCHANGE_ReserveStatusHandle *rsh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
-  char *pub_str;
-  char *arg_str;
+  char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 16];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -668,13 +667,21 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-  pub_str = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
-                                                 sizeof (struct
-                                                         TALER_ReservePublicKeyP));
-  GNUNET_asprintf (&arg_str,
-                   "/reserve/status?reserve_pub=%s",
-                   pub_str);
-  GNUNET_free (pub_str);
+  {
+    char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (reserve_pub,
+                                         sizeof (struct
+                                                 TALER_ReservePublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/reserves/%s",
+                     pub_str);
+  }
   rsh = GNUNET_new (struct TALER_EXCHANGE_ReserveStatusHandle);
   rsh->exchange = exchange;
   rsh->cb = cb;
@@ -682,8 +689,6 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   rsh->reserve_pub = *reserve_pub;
   rsh->url = TEAH_path_to_url (exchange,
                                arg_str);
-  GNUNET_free (arg_str);
-
   eh = TEL_curl_easy_get (rsh->url);
   ctx = TEAH_handle_to_context (exchange);
   rsh->job = GNUNET_CURL_job_add (ctx,
@@ -1063,26 +1068,40 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   json_t *withdraw_obj;
   CURL *eh;
   struct GNUNET_HashCode h_denom_pub;
+  char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
 
+  {
+    char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (reserve_pub,
+                                         sizeof (struct
+                                                 TALER_ReservePublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/reserves/%s/withdraw",
+                     pub_str);
+  }
   wsh = GNUNET_new (struct TALER_EXCHANGE_ReserveWithdrawHandle);
   wsh->exchange = exchange;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
   wsh->pk = *pk;
-  wsh->pk.key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
-    pk->key.rsa_public_key);
+  wsh->pk.key.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_dup (pk->key.rsa_public_key);
   wsh->reserve_pub = *reserve_pub;
   wsh->c_hash = pd->c_hash;
   GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
                                      &h_denom_pub);
   withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub_hash and coin_ev */
-                            " s:o, s:o}",/* reserve_pub and reserve_sig */
+                            " s:o}",/* reserve_pub and reserve_sig */
                             "denom_pub_hash", GNUNET_JSON_from_data_auto (
                               &h_denom_pub),
                             "coin_ev", GNUNET_JSON_from_data (pd->coin_ev,
                                                               pd->coin_ev_size),
-                            "reserve_pub", GNUNET_JSON_from_data_auto (
-                              reserve_pub),
                             "reserve_sig", GNUNET_JSON_from_data_auto (
                               reserve_sig));
   if (NULL == withdraw_obj)
@@ -1095,9 +1114,9 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Attempting to withdraw from reserve %s\n",
               TALER_B2S (reserve_pub));
-
   wsh->ps = *ps;
-  wsh->url = TEAH_path_to_url (exchange, "/reserve/withdraw");
+  wsh->url = TEAH_path_to_url (exchange,
+                               arg_str);
   eh = TEL_curl_easy_get (wsh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&wsh->ctx,

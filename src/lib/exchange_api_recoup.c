@@ -328,6 +328,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_HashCode h_denom_pub;
   json_t *recoup_obj;
   CURL *eh;
+  char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
@@ -345,14 +346,12 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                                            &coin_sig.eddsa_signature));
 
   recoup_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
-                          " s:o, s:o,"  /* coin pub/sig */
+                          " s:o,"  /* sig */
                           " s:o, s:o}",  /* coin_bks */
                           "denom_pub_hash", GNUNET_JSON_from_data_auto (
                             &h_denom_pub),
                           "denom_sig", GNUNET_JSON_from_rsa_signature (
                             denom_sig->rsa_signature),
-                          "coin_pub", GNUNET_JSON_from_data_auto (
-                            &pr.coin_pub),
                           "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
                           "coin_blind_key_secret", GNUNET_JSON_from_data_auto (
                             &ps->blinding_key),
@@ -364,6 +363,22 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
 
+  {
+    char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (&pr.coin_pub,
+                                         sizeof (struct
+                                                 TALER_CoinSpendPublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/coins/%s/recoup",
+                     pub_str);
+  }
+
   ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
   ph->coin_pub = pr.coin_pub;
   ph->exchange = exchange;
@@ -371,7 +386,8 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   ph->pk.key.rsa_public_key = NULL; /* zero out, as lifetime cannot be warranted */
   ph->cb = recoup_cb;
   ph->cb_cls = recoup_cb_cls;
-  ph->url = TEAH_path_to_url (exchange, "/recoup");
+  ph->url = TEAH_path_to_url (exchange,
+                              arg_str);
   ph->was_refreshed = was_refreshed;
   eh = TEL_curl_easy_get (ph->url);
   if (GNUNET_OK !=

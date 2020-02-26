@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2017, 2019 Taler Systems SA
+  Copyright (C) 2015-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1165,6 +1165,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_CoinSpendSignatureP confirm_sig;
   struct TALER_RefreshMeltCoinAffirmationPS melt;
   struct GNUNET_HashCode h_denom_pub;
+  char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
@@ -1175,7 +1176,6 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-
   melt.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   melt.purpose.size = htonl (sizeof (struct
                                      TALER_RefreshMeltCoinAffirmationPS));
@@ -1212,6 +1212,22 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     free_melt_data (md);
     return NULL;
   }
+  {
+    char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (&melt.coin_pub,
+                                         sizeof (struct
+                                                 TALER_CoinSpendPublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/coins/%s/melt",
+                     pub_str);
+  }
+
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
                                              &md->melted_coin.pub_key);
@@ -1226,7 +1242,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   rmh->melt_cb_cls = melt_cb_cls;
   rmh->md = md;
   rmh->url = TEAH_path_to_url (exchange,
-                               "/refresh/melt");
+                               arg_str);
   eh = TEL_curl_easy_get (rmh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&rmh->ctx,
@@ -1555,6 +1571,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
   struct TALER_TransferPublicKeyP transfer_pub;
+  char arg_str[sizeof (struct TALER_RefreshCommitmentP) * 2 + 32];
 
   if (noreveal_index >= TALER_CNC_KAPPA)
   {
@@ -1661,9 +1678,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   /* build main JSON request */
-  reveal_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
-                          "rc",
-                          GNUNET_JSON_from_data_auto (&md->rc),
+  reveal_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                           "transfer_pub",
                           GNUNET_JSON_from_data_auto (&transfer_pub),
                           "transfer_privs",
@@ -1680,6 +1695,21 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
 
+  {
+    char pub_str[sizeof (struct TALER_RefreshCommitmentP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (&md->rc,
+                                         sizeof (struct
+                                                 TALER_RefreshCommitmentP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/refreshes/%s/reveal",
+                     pub_str);
+  }
   /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_EXCHANGE_RefreshRevealHandle);
   rrh->exchange = exchange;

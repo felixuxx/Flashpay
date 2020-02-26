@@ -334,9 +334,8 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
 {
   struct TALER_EXCHANGE_TrackTransferHandle *wdh;
   struct GNUNET_CURL_Context *ctx;
-  char *buf;
-  char *path;
   CURL *eh;
+  char arg_str[sizeof (struct TALER_WireTransferIdentifierRawP) * 2 + 32];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -350,17 +349,23 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   wdh->cb = cb;
   wdh->cb_cls = cb_cls;
 
-  buf = GNUNET_STRINGS_data_to_string_alloc (wtid,
-                                             sizeof (struct
-                                                     TALER_WireTransferIdentifierRawP));
-  GNUNET_asprintf (&path,
-                   "/track/transfer?wtid=%s",
-                   buf);
-  wdh->url = TEAH_path_to_url (wdh->exchange,
-                               path);
-  GNUNET_free (buf);
-  GNUNET_free (path);
+  {
+    char wtid_str[sizeof (struct TALER_WireTransferIdentifierRawP) * 2];
+    char *end;
 
+    end = GNUNET_STRINGS_data_to_string (wtid,
+                                         sizeof (struct
+                                                 TALER_WireTransferIdentifierRawP),
+                                         wtid_str,
+                                         sizeof (wtid_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/transfers/%s",
+                     wtid_str);
+  }
+  wdh->url = TEAH_path_to_url (wdh->exchange,
+                               arg_str);
   eh = TEL_curl_easy_get (wdh->url);
   ctx = TEAH_handle_to_context (exchange);
   wdh->job = GNUNET_CURL_job_add (ctx,

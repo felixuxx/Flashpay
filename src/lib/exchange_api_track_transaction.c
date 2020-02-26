@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -280,8 +280,12 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_MerchantSignatureP merchant_sig;
   struct TALER_EXCHANGE_TrackTransactionHandle *dwh;
   struct GNUNET_CURL_Context *ctx;
-  json_t *deposit_wtid_obj;
   CURL *eh;
+  char arg_str[(sizeof (struct TALER_CoinSpendPublicKeyP)
+                + sizeof (struct GNUNET_HashCode)
+                + sizeof (struct TALER_MerchantPublicKeyP)
+                + sizeof (struct GNUNET_HashCode)
+                + sizeof (struct TALER_MerchantSignatureP)) * 2 + 48];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -301,29 +305,61 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                                            &dtp.purpose,
                                            &merchant_sig.eddsa_sig));
-  deposit_wtid_obj = json_pack ("{s:o, s:o," /* h_wire, h_contract_terms */
-                                " s:o," /* coin_pub */
-                                " s:o, s:o}", /* merchant_pub, merchant_sig */
-                                "h_wire", GNUNET_JSON_from_data_auto (h_wire),
-                                "h_contract_terms", GNUNET_JSON_from_data_auto (
-                                  h_contract_terms),
-                                "coin_pub", GNUNET_JSON_from_data_auto (
-                                  coin_pub),
-                                "merchant_pub", GNUNET_JSON_from_data_auto (
-                                  &dtp.merchant),
-                                "merchant_sig", GNUNET_JSON_from_data_auto (
-                                  &merchant_sig));
-  if (NULL == deposit_wtid_obj)
   {
-    GNUNET_break (0);
-    return NULL;
+    char cpub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
+    char mpub_str[sizeof (struct TALER_MerchantPublicKeyP) * 2];
+    char msig_str[sizeof (struct TALER_MerchantSignatureP) * 2];
+    char chash_str[sizeof (struct GNUNET_HashCode) * 2];
+    char whash_str[sizeof (struct GNUNET_HashCode) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (h_wire,
+                                         sizeof (struct
+                                                 GNUNET_HashCode),
+                                         whash_str,
+                                         sizeof (whash_str));
+    *end = '\0';
+    end = GNUNET_STRINGS_data_to_string (&dtp.merchant,
+                                         sizeof (struct
+                                                 TALER_MerchantPublicKeyP),
+                                         mpub_str,
+                                         sizeof (mpub_str));
+    *end = '\0';
+    end = GNUNET_STRINGS_data_to_string (h_contract_terms,
+                                         sizeof (struct
+                                                 GNUNET_HashCode),
+                                         chash_str,
+                                         sizeof (chash_str));
+    *end = '\0';
+    end = GNUNET_STRINGS_data_to_string (coin_pub,
+                                         sizeof (struct
+                                                 TALER_CoinSpendPublicKeyP),
+                                         cpub_str,
+                                         sizeof (cpub_str));
+    *end = '\0';
+    end = GNUNET_STRINGS_data_to_string (&merchant_sig,
+                                         sizeof (struct
+                                                 TALER_MerchantSignatureP),
+                                         msig_str,
+                                         sizeof (msig_str));
+    *end = '\0';
+
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/deposits/%s/%s/%s/%s?merchant_sig=%s",
+                     whash_str,
+                     mpub_str,
+                     chash_str,
+                     cpub_str,
+                     msig_str);
   }
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_TrackTransactionHandle);
   dwh->exchange = exchange;
   dwh->cb = cb;
   dwh->cb_cls = cb_cls;
-  dwh->url = TEAH_path_to_url (exchange, "/track/transaction");
+  dwh->url = TEAH_path_to_url (exchange,
+                               arg_str);
   dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   dwh->depconf.h_wire = *h_wire;
@@ -331,25 +367,12 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->depconf.coin_pub = *coin_pub;
 
   eh = TEL_curl_easy_get (dwh->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&dwh->ctx,
-                            eh,
-                            deposit_wtid_obj))
-  {
-    GNUNET_break (0);
-    curl_easy_cleanup (eh);
-    json_decref (deposit_wtid_obj);
-    GNUNET_free (dwh->url);
-    GNUNET_free (dwh);
-    return NULL;
-  }
-  json_decref (deposit_wtid_obj);
   ctx = TEAH_handle_to_context (exchange);
-  dwh->job = GNUNET_CURL_job_add2 (ctx,
-                                   eh,
-                                   dwh->ctx.headers,
-                                   &handle_deposit_wtid_finished,
-                                   dwh);
+  dwh->job = GNUNET_CURL_job_add (ctx,
+                                  eh,
+                                  GNUNET_NO,
+                                  &handle_deposit_wtid_finished,
+                                  dwh);
   return dwh;
 }
 

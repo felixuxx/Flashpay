@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2018, 2019 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -513,7 +513,23 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_HashCode h_wire;
   struct GNUNET_HashCode denom_pub_hash;
   struct TALER_Amount amount_without_fee;
+  char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
+  {
+    char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (coin_pub,
+                                         sizeof (struct
+                                                 TALER_CoinSpendPublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/coins/%s/deposit",
+                     pub_str);
+  }
   (void) GNUNET_TIME_round_abs (&wire_deadline);
   (void) GNUNET_TIME_round_abs (&refund_deadline);
   GNUNET_assert (refund_deadline.abs_value_us <= wire_deadline.abs_value_us);
@@ -557,7 +573,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 
   deposit_obj = json_pack ("{s:o, s:O," /* f/wire */
                            " s:o, s:o," /* h_wire, h_contract_terms */
-                           " s:o, s:o," /* coin_pub, denom_pub */
+                           " s:o," /* denom_pub */
                            " s:o, s:o," /* ub_sig, timestamp */
                            " s:o," /* merchant_pub */
                            " s:o, s:o," /* refund_deadline, wire_deadline */
@@ -567,7 +583,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "h_wire", GNUNET_JSON_from_data_auto (&h_wire),
                            "h_contract_terms", GNUNET_JSON_from_data_auto (
                              h_contract_terms),
-                           "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                            "denom_pub_hash", GNUNET_JSON_from_data_auto (
                              &denom_pub_hash),
                            "ub_sig", GNUNET_JSON_from_rsa_signature (
@@ -592,7 +607,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->url = TEAH_path_to_url (exchange, "/deposit");
+  dh->url = TEAH_path_to_url (exchange,
+                              arg_str);
   dh->depconf.purpose.size = htonl (sizeof (struct
                                             TALER_DepositConfirmationPS));
   dh->depconf.purpose.purpose = htonl (

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -333,16 +333,31 @@ TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   json_t *refund_obj;
   CURL *eh;
+  char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
+  {
+    char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (coin_pub,
+                                         sizeof (struct
+                                                 TALER_CoinSpendPublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/coins/%s/refund",
+                     pub_str);
+  }
   refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
-                          " s:o, s:o," /* h_contract_terms, coin_pub */
+                          " s:o," /* h_contract_terms */
                           " s:I," /* rtransaction id */
                           " s:o, s:o}", /* merchant_pub, merchant_sig */
                           "refund_amount", TALER_JSON_from_amount (amount),
                           "refund_fee", TALER_JSON_from_amount (refund_fee),
                           "h_contract_terms", GNUNET_JSON_from_data_auto (
                             h_contract_terms),
-                          "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                           "rtransaction_id", (json_int_t) rtransaction_id,
                           "merchant_pub", GNUNET_JSON_from_data_auto (
                             merchant_pub),
@@ -359,7 +374,8 @@ TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
   rh->exchange = exchange;
   rh->cb = cb;
   rh->cb_cls = cb_cls;
-  rh->url = TEAH_path_to_url (exchange, "/refund");
+  rh->url = TEAH_path_to_url (exchange,
+                              arg_str);
   rh->depconf.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
   rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
   rh->depconf.h_contract_terms = *h_contract_terms;

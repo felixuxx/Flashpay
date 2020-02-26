@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016, 2019 Taler Systems SA
+  Copyright (C) 2015-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -423,8 +423,7 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  char *pub_str;
-  char *arg_str;
+  char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -435,23 +434,28 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
 
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
-  pub_str = GNUNET_STRINGS_data_to_string_alloc (&coin_pub,
-                                                 sizeof (struct
-                                                         TALER_CoinSpendPublicKeyP));
-  GNUNET_asprintf (&arg_str,
-                   "/refresh/link?coin_pub=%s",
-                   pub_str);
-  GNUNET_free (pub_str);
+  {
+    char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
+    char *end;
 
+    end = GNUNET_STRINGS_data_to_string (&coin_pub,
+                                         sizeof (struct
+                                                 TALER_CoinSpendPublicKeyP),
+                                         pub_str,
+                                         sizeof (pub_str));
+    *end = '\0';
+    GNUNET_snprintf (arg_str,
+                     sizeof (arg_str),
+                     "/coins/%s/link",
+                     pub_str);
+  }
   rlh = GNUNET_new (struct TALER_EXCHANGE_RefreshLinkHandle);
   rlh->exchange = exchange;
   rlh->link_cb = link_cb;
   rlh->link_cb_cls = link_cb_cls;
   rlh->coin_priv = *coin_priv;
-  rlh->url = TEAH_path_to_url (exchange, arg_str);
-  GNUNET_free (arg_str);
-
-
+  rlh->url = TEAH_path_to_url (exchange,
+                               arg_str);
   eh = TEL_curl_easy_get (rlh->url);
   ctx = TEAH_handle_to_context (exchange);
   rlh->job = GNUNET_CURL_job_add (ctx,
