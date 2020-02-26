@@ -358,6 +358,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
     if (rh->nargs > 0)
     {
       unsigned int i;
+      const char *fin;
 
       /* make a copy of 'url' because 'strtok()' will modify */
       memcpy (d,
@@ -372,13 +373,24 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
          that there is no excess data in 'd' afterwards */
       if ( (i != rh->nargs) ||
            (NULL == args[i - 1]) ||
-           (NULL != strtok (NULL, "/")) )
+           (NULL != (fin = strtok (NULL, "/"))) )
       {
+        char emsg[128 + 512];
+
+        GNUNET_snprintf (emsg,
+                         sizeof (emsg),
+                         "Got %u/%u segments for %s request ('%s')",
+                         (NULL == args[i - 1])
+                         ? i - 1
+                         : i + ((NULL != fin) ? 1 : 0),
+                         rh->nargs,
+                         rh->url,
+                         url);
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_WRONG_NUMBER_OF_SEGMENTS,
-                                           "Number of segments does not match");
+                                           emsg);
       }
     }
 
@@ -471,7 +483,7 @@ handle_mhd_request (void *cls,
     },
     /* Return key material and fundamental properties for this exchange */
     {
-      .url = "/keys",
+      .url = "keys",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_KS_handler_keys,
     },
@@ -590,10 +602,15 @@ handle_mhd_request (void *cls,
   if (NULL != ecls->rh)
   {
     int ret;
+    const char *start;
 
+    if ('\0' == url[0])
+      /* strange, should start with '/', treat as just "/" */
+      url = "/";
+    start = strchr (url + 1, '/');
     ret = proceed_with_handler (ecls->rh,
                                 connection,
-                                url,
+                                start,
                                 inner_cls,
                                 upload_data,
                                 upload_data_size);
@@ -619,7 +636,7 @@ handle_mhd_request (void *cls,
     rest = strchr (tok, '/');
     if (NULL == rest)
     {
-      tok_size = 0;
+      tok_size = strlen (tok);
     }
     else
     {
