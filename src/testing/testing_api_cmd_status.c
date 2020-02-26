@@ -93,6 +93,7 @@ reserve_status_cb (void *cls,
                 http_status,
                 __FILE__,
                 __LINE__);
+    json_dumpf (json, stderr, 0);
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
