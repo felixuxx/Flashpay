@@ -482,40 +482,37 @@ free_ctx (struct WtidTransactionContext *ctx)
 
 
 /**
- * Handle a "/track/transfer" request.
+ * Handle a GET "/transfers/$WTID" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (length: 1, just the wtid)
  * @return MHD result code
  */
 int
-TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transfer (const struct TEH_RequestHandler *rh,
                                      struct MHD_Connection *connection,
-                                     void **connection_cls,
-                                     const char *upload_data,
-                                     size_t *upload_data_size)
+                                     const char *const args[1])
 {
   struct WtidTransactionContext ctx;
-  int res;
   int mhd_ret;
 
   (void) rh;
-  (void) connection_cls;
-  (void) upload_data;
-  (void) upload_data_size;
-  memset (&ctx, 0, sizeof (ctx));
-  res = TALER_MHD_parse_request_arg_data (connection,
-                                          "wtid",
-                                          &ctx.wtid,
-                                          sizeof (struct
-                                                  TALER_WireTransferIdentifierRawP));
-  if (GNUNET_SYSERR == res)
-    return MHD_NO; /* internal error */
-  if (GNUNET_NO == res)
-    return MHD_YES; /* parse error */
+  memset (&ctx,
+          0,
+          sizeof (ctx));
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &ctx.wtid,
+                                     sizeof (ctx.wtid)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_TRANSFERS_INVALID_WTID,
+                                       "wire transfer identifier malformed");
+  }
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "run track transfer",

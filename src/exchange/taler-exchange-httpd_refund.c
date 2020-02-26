@@ -532,27 +532,21 @@ verify_and_execute_refund (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/refund" request.  Parses the JSON, and, if successful,
- * passes the JSON data to #verify_and_execute_refund() to
- * further check the details of the operation specified.  If
- * everything checks out, this will ultimately lead to the "/refund"
- * being executed, or rejected.
+ * Handle a "/coins/$COIN_PUB/refund" request.  Parses the JSON, and, if
+ * successful, passes the JSON data to #verify_and_execute_refund() to further
+ * check the details of the operation specified.  If everything checks out,
+ * this will ultimately lead to the refund being executed, or rejected.
  *
- * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
  * @return MHD result code
   */
 int
-TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
-                           struct MHD_Connection *connection,
-                           void **connection_cls,
-                           const char *upload_data,
-                           size_t *upload_data_size)
+TEH_REFUND_handler_refund (struct MHD_Connection *connection,
+                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           const json_t *root)
 {
-  json_t *json;
   int res;
   struct TALER_EXCHANGEDB_Refund refund;
   struct GNUNET_JSON_Specification spec[] = {
@@ -560,7 +554,6 @@ TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
     TALER_JSON_spec_amount ("refund_fee", &refund.details.refund_fee),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &refund.details.h_contract_terms),
-    GNUNET_JSON_spec_fixed_auto ("coin_pub", &refund.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &refund.details.merchant_pub),
     GNUNET_JSON_spec_uint64 ("rtransaction_id",
                              &refund.details.rtransaction_id),
@@ -568,20 +561,10 @@ TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  (void) rh;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &json);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == json) )
-    return MHD_YES;
+  refund.coin.coin_pub = *coin_pub;
   res = TALER_MHD_parse_json_data (connection,
-                                   json,
+                                   root,
                                    spec);
-  json_decref (json);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)

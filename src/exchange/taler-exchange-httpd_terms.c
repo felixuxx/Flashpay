@@ -43,22 +43,16 @@ static struct TALER_MHD_Legal *pp;
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 int
-TEH_handler_terms (struct TEH_RequestHandler *rh,
+TEH_handler_terms (const struct TEH_RequestHandler *rh,
                    struct MHD_Connection *connection,
-                   void **connection_cls,
-                   const char *upload_data,
-                   size_t *upload_data_size)
+                   const char *const args[])
 {
   (void) rh;
-  (void) upload_data;
-  (void) upload_data_size;
-  (void) connection_cls;
+  (void) args;
   return TALER_MHD_reply_legal (connection,
                                 tos);
 }
@@ -69,22 +63,16 @@ TEH_handler_terms (struct TEH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 int
-TEH_handler_privacy (struct TEH_RequestHandler *rh,
+TEH_handler_privacy (const struct TEH_RequestHandler *rh,
                      struct MHD_Connection *connection,
-                     void **connection_cls,
-                     const char *upload_data,
-                     size_t *upload_data_size)
+                     const char *const args[])
 {
   (void) rh;
-  (void) upload_data;
-  (void) upload_data_size;
-  (void) connection_cls;
+  (void) args;
   return TALER_MHD_reply_legal (connection,
                                 pp);
 }

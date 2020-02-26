@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_reserve_status.c
- * @brief Handle /reserve/status requests
+ * @brief Handle /reserves/$RESERVE_PUB GET requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -114,42 +114,37 @@ reserve_status_transaction (void *cls,
 
 
 /**
- * Handle a "/reserve/status" request.  Parses the
- * given "reserve_pub" argument (which should contain the
+ * Handle a GET "/reserves/" request.  Parses the
+ * given "reserve_pub" in @a args (which should contain the
  * EdDSA public key of a reserve) and then respond with the
  * status of the reserve.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (length: 1, just the reserve_pub)
  * @return MHD result code
  */
 int
-TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_status (const struct TEH_RequestHandler *rh,
                                     struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
+                                    const char *const args[1])
 {
   struct ReserveStatusContext rsc;
-  int res;
   int mhd_ret;
 
   (void) rh;
-  (void) connection_cls;
-  (void) upload_data;
-  (void) upload_data_size;
-  res = TALER_MHD_parse_request_arg_data (connection,
-                                          "reserve_pub",
-                                          &rsc.reserve_pub,
-                                          sizeof (struct
-                                                  TALER_ReservePublicKeyP));
-  if (GNUNET_SYSERR == res)
-    return MHD_NO; /* internal error */
-  if (GNUNET_NO == res)
-    return MHD_YES; /* parse error */
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &rsc.reserve_pub,
+                                     sizeof (rsc.reserve_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_RESERVES_INVALID_RESERVE_PUB,
+                                       "reserve public key malformed");
+  }
   rsc.rh = NULL;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,26 +28,24 @@
 
 
 /**
- * Handle a "/reserve/withdraw" request.  Parses the "reserve_pub"
- * EdDSA key of the reserve and the requested "denom_pub" which
- * specifies the key/value of the coin to be withdrawn, and checks
- * that the signature "reserve_sig" makes this a valid withdrawl
- * request from the specified reserve.  If so, the envelope
- * with the blinded coin "coin_ev" is passed down to execute the
- * withdrawl operation.
+ * Handle a "/reserves/$RESERVE_PUB/withdraw" request.  Parses the
+ * "reserve_pub" EdDSA key of the reserve and the requested "denom_pub" which
+ * specifies the key/value of the coin to be withdrawn, and checks that the
+ * signature "reserve_sig" makes this a valid withdrawl request from the
+ * specified reserve.  If so, the envelope with the blinded coin "coin_ev" is
+ * passed down to execute the withdrawl operation.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param root uploaded JSON data
+ * @param args array of additional options (first must be the
+ *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
   */
 int
-TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_withdraw (const struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
-                                      void **connection_cls,
-                                      const char *upload_data,
-                                      size_t *upload_data_size);
+                                      const json_t *root,
+                                      const char *const args[2]);
 
 #endif

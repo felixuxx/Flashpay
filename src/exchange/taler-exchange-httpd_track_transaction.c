@@ -336,62 +336,86 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/track/transaction" request.
+ * Handle a "/deposits/$H_WIRE/$MERCHANT_PUB/$H_CONTRACT_TERMS/$COIN_PUB"
+ * request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (length: 4, contains:
+ *      h_wire, merchant_pub, h_contract_terms and coin_pub)
  * @return MHD result code
- */
+  */
 int
-TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transaction (const struct TEH_RequestHandler *rh,
                                         struct MHD_Connection *connection,
-                                        void **connection_cls,
-                                        const char *upload_data,
-                                        size_t *upload_data_size)
+                                        const char *const args[4])
 {
   int res;
-  json_t *json;
   struct TALER_DepositTrackPS tps;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("h_wire", &tps.h_wire),
-    GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &tps.h_contract_terms),
-    GNUNET_JSON_spec_fixed_auto ("coin_pub", &tps.coin_pub),
-    GNUNET_JSON_spec_fixed_auto ("merchant_pub", &tps.merchant),
-    GNUNET_JSON_spec_fixed_auto ("merchant_sig", &merchant_sig),
-    GNUNET_JSON_spec_end ()
-  };
 
-  (void) rh;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &json);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == json) )
-    return MHD_YES;
-  res = TALER_MHD_parse_json_data (connection,
-                                   json,
-                                   spec);
-  if (GNUNET_OK != res)
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &tps.h_wire,
+                                     sizeof (tps.h_wire)))
   {
-    json_decref (json);
-    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSITS_INVALID_H_WIRE,
+                                       "wire hash malformed");
   }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[1],
+                                     strlen (args[1]),
+                                     &tps.merchant,
+                                     sizeof (tps.merchant)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSITS_INVALID_MERCHANT_PUB,
+                                       "merchant public key malformed");
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[2],
+                                     strlen (args[2]),
+                                     &tps.h_contract_terms,
+                                     sizeof (tps.h_contract_terms)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSITS_INVALID_H_CONTRACT_TERMS,
+                                       "contract terms hash malformed");
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[3],
+                                     strlen (args[3]),
+                                     &tps.coin_pub,
+                                     sizeof (tps.coin_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_DEPOSITS_INVALID_COIN_PUB,
+                                       "coin public key malformed");
+  }
+  res = TALER_MHD_parse_request_arg_data (connection,
+                                          "merchant_sig",
+                                          &merchant_sig,
+                                          sizeof (merchant_sig));
+  if (GNUNET_SYSERR == res)
+    return MHD_NO; /* internal error */
+  if (GNUNET_NO == res)
+    return MHD_YES; /* parse error */
   tps.purpose.size = htonl (sizeof (struct TALER_DepositTrackPS));
   tps.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
-  res = check_and_handle_track_transaction_request (connection,
-                                                    &tps,
-                                                    &tps.merchant,
-                                                    &merchant_sig);
-  GNUNET_JSON_parse_free (spec);
-  json_decref (json);
-  return res;
+  return check_and_handle_track_transaction_request (connection,
+                                                     &tps,
+                                                     &tps.merchant,
+                                                     &merchant_sig);
 }
 
 

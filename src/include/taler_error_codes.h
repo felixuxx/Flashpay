@@ -86,6 +86,32 @@ enum TALER_ErrorCode
   TALER_EC_METHOD_INVALID = 8,
 
   /**
+   * Operation specified invalid for this URL (resulting in a "NOT
+   * FOUND" for the overall response).
+   */
+  TALER_EC_OPERATION_INVALID = 9,
+
+  /**
+   * There is no endpoint defined for the URL provided by the client
+   * (returned together with a MHD_HTTP_NOT FOUND status code).
+   */
+  TALER_EC_ENDPOINT_UNKNOWN = 10,
+
+  /**
+   * The URI is longer than the longest URI the HTTP server is willing
+   * to parse. Returned together with an HTTP status code of
+   * MHD_HTTP_URI_TOO_LONG.
+   */
+  TALER_EC_URI_TOO_LONG = 11,
+
+  /**
+   * The number of segments included in the URI does not match the
+   * number of segments expected by the endpoint. (returned together
+   * with a MHD_HTTP_NOT FOUND status code).
+   */
+  TALER_EC_WRONG_NUMBER_OF_SEGMENTS = 12,
+
+  /**
    * The exchange failed to even just initialize its connection to the
    * database.  This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -180,6 +206,50 @@ enum TALER_ErrorCode
    * We failed to update the database of known coins.
    */
   TALER_EC_DB_COIN_HISTORY_STORE_ERROR = 1014,
+
+  /**
+   * The public key of given to a /coins/ handler was malformed.
+   */
+  TALER_EC_COINS_INVALID_COIN_PUB = 1050,
+
+  /**
+   * The public key of given to a /reserves/ handler was malformed.
+   */
+  TALER_EC_RESERVES_INVALID_RESERVE_PUB = 1051,
+
+  /**
+   * The public key of given to a /transfers/ handler was malformed.
+   */
+  TALER_EC_TRANSFERS_INVALID_WTID = 1052,
+
+  /**
+   * The hash of the wire details of given to a /deposits/ handler was
+   * malformed.
+   */
+  TALER_EC_DEPOSITS_INVALID_H_WIRE = 1053,
+
+  /**
+   * The merchant public key given to a /deposits/ handler was
+   * malformed.
+   */
+  TALER_EC_DEPOSITS_INVALID_MERCHANT_PUB = 1054,
+
+  /**
+   * The hash of the contract given to a /deposits/ handler was
+   * malformed.
+   */
+  TALER_EC_DEPOSITS_INVALID_H_CONTRACT_TERMS = 1055,
+
+  /**
+   * The coin public key given to a /deposits/ handler was malformed.
+   */
+  TALER_EC_DEPOSITS_INVALID_COIN_PUB = 1056,
+
+  /**
+   * The hash of the refresh commitment given to a /refreshes/ handler
+   * was malformed.
+   */
+  TALER_EC_REFRESHES_INVALID_RCH = 1057,
 
   /**
    * The given reserve does not have sufficient funds to admit the

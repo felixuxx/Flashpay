@@ -335,30 +335,27 @@ withdraw_transaction (void *cls,
 
 
 /**
- * Handle a "/reserve/withdraw" request.  Parses the "reserve_pub"
- * EdDSA key of the reserve and the requested "denom_pub" which
- * specifies the key/value of the coin to be withdrawn, and checks
- * that the signature "reserve_sig" makes this a valid withdrawal
- * request from the specified reserve.  If so, the envelope
- * with the blinded coin "coin_ev" is passed down to execute the
- * withdrawl operation.
+ * Handle a "/reserves/$RESERVE_PUB/withdraw" request.  Parses the
+ * "reserve_pub" EdDSA key of the reserve and the requested "denom_pub" which
+ * specifies the key/value of the coin to be withdrawn, and checks that the
+ * signature "reserve_sig" makes this a valid withdrawal request from the
+ * specified reserve.  If so, the envelope with the blinded coin "coin_ev" is
+ * passed down to execute the withdrawl operation.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param root uploaded JSON data
+ * @param args array of additional options (first must be the
+ *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
  */
 int
-TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_withdraw (const struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
-                                      void **connection_cls,
-                                      const char *upload_data,
-                                      size_t *upload_data_size)
+                                      const json_t *root,
+                                      const char *const args[2])
 {
   struct WithdrawContext wc;
-  json_t *root;
   int res;
   int mhd_ret;
   unsigned int hc;
@@ -369,8 +366,6 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_varsize ("coin_ev",
                               (void **) &wc.blinded_msg,
                               &wc.blinded_msg_len),
-    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                 &wc.wsrd.reserve_pub),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &wc.signature),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
@@ -379,19 +374,22 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &root);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == root) )
-    return MHD_YES;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &wc.wsrd.reserve_pub,
+                                     sizeof (wc.wsrd.reserve_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_RESERVES_INVALID_RESERVE_PUB,
+                                       "reserve public key malformed");
+  }
+
   res = TALER_MHD_parse_json_data (connection,
                                    root,
                                    spec);
-  json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   wc.key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());

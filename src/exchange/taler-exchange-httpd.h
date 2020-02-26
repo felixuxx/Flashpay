@@ -24,6 +24,8 @@
 #define TALER_EXCHANGE_HTTPD_H
 
 #include <microhttpd.h>
+#include "taler_json_lib.h"
+#include "taler_crypto_lib.h"
 
 
 /**
@@ -65,14 +67,57 @@ struct TEH_RequestHandler
 {
 
   /**
-   * URL the handler is for.
+   * URL the handler is for (first part only).
    */
   const char *url;
 
   /**
-   * Method the handler is for, NULL for "all".
+   * Method the handler is for.
    */
   const char *method;
+
+  /**
+   * Callbacks for handling of the request. Which one is used
+   * depends on @e method.
+   */
+  union
+  {
+    /**
+     * Function to call to handle a GET requests (and those
+     * with @e method NULL).
+     *
+     * @param rh this struct
+     * @param mime_type the @e mime_type for the reply (hint, can be NULL)
+     * @param connection the MHD connection to handle
+     * @param args array of arguments, needs to be of length @e args_expected
+     * @return MHD result code
+     */
+    int (*get)(const struct TEH_RequestHandler *rh,
+               struct MHD_Connection *connection,
+               const char *const args[]);
+
+
+    /**
+     * Function to call to handle a POST request.
+     *
+     * @param rh this struct
+     * @param mime_type the @e mime_type for the reply (hint, can be NULL)
+     * @param connection the MHD connection to handle
+     * @param json uploaded JSON data
+     * @param args array of arguments, needs to be of length @e args_expected
+     * @return MHD result code
+     */
+    int (*post)(const struct TEH_RequestHandler *rh,
+                struct MHD_Connection *connection,
+                const json_t *root,
+                const char *const args[]);
+
+  } handler;
+
+  /**
+   * Number of arguments this handler expects in the @a args array.
+   */
+  unsigned int nargs;
 
   /**
    * Mime type to use in reply (hint, can be NULL).
@@ -80,36 +125,19 @@ struct TEH_RequestHandler
   const char *mime_type;
 
   /**
-   * Raw data for the @e handler
+   * Raw data for the @e handler, can be NULL for none provided.
    */
   const void *data;
 
   /**
-   * Number of bytes in @e data, 0 for 0-terminated.
+   * Number of bytes in @e data, 0 for data is 0-terminated (!).
    */
   size_t data_size;
 
   /**
-   * Function to call to handle the request.
-   *
-   * @param rh this struct
-   * @param mime_type the @e mime_type for the reply (hint, can be NULL)
-   * @param connection the MHD connection to handle
-   * @param[in,out] connection_cls the connection's closure (can be updated)
-   * @param upload_data upload data
-   * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
-   * @return MHD result code
+   * Default response code. 0 for none provided.
    */
-  int (*handler)(struct TEH_RequestHandler *rh,
-                 struct MHD_Connection *connection,
-                 void **connection_cls,
-                 const char *upload_data,
-                 size_t *upload_data_size);
-
-  /**
-   * Default response code.
-   */
-  int response_code;
+  unsigned int response_code;
 };
 
 

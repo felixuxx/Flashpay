@@ -29,26 +29,25 @@
 
 
 /**
- * Handle a "/refresh/reveal" request. This time, the client reveals the
+ * Handle a "/refreshes/$RCH/reveal" request. This time, the client reveals the
  * private transfer keys except for the cut-and-choose value returned from
- * "/refresh/melt".  This function parses the revealed keys and secrets and
+ * "/coins/$COIN_PUB/melt".  This function parses the revealed keys and secrets and
  * ultimately passes everything to #resolve_refresh_reveal_denominations()
  * which will verify that the revealed information is valid then runs the
  * transaction in #refresh_reveal_transaction() and finally returns the signed
  * refreshed coins.
  *
  * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
+ * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code
-  */
+ */
 int
-TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size);
+TEH_REFRESH_handler_reveal (const struct TEH_RequestHandler *rh,
+                            struct MHD_Connection *connection,
+                            const json_t *root,
+                            const char *const args[2]);
+
 
 #endif

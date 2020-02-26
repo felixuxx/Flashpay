@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2019 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -148,6 +148,92 @@ static unsigned long long req_max;
 
 
 /**
+ * Handle a "/coins/$COIN_PUB/$OP" POST request.  Parses the "coin_pub"
+ * EdDSA key of the coin and demultiplexes based on $OP.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @param args array of additional options (first must be the
+ *         reserve public key, the second one should be "withdraw")
+ * @return MHD result code
+ */
+static int
+handle_post_coins (const struct TEH_RequestHandler *rh,
+                   struct MHD_Connection *connection,
+                   const json_t *root,
+                   const char *const args[2])
+{
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  static const struct
+  {
+    /**
+     * Name of the operation (args[1])
+     */
+    const char *op;
+
+    /**
+     * Function to call to perform the operation.
+     *
+     * @param connection the MHD connection to handle
+     * @param coin_pub the public key of the coin
+     * @param root uploaded JSON data
+     * @return MHD result code
+     *///
+    int
+    (*handler)(struct MHD_Connection *connection,
+               const struct TALER_CoinSpendPublicKeyP *coin_pub,
+               const json_t *root);
+  } h[] = {
+    {
+      .op = "deposit",
+      .handler = &TEH_DEPOSIT_handler_deposit
+    },
+    {
+      .op = "melt",
+      .handler = &TEH_REFRESH_handler_melt
+    },
+    {
+      .op = "recoup",
+      .handler = &TEH_RECOUP_handler_recoup
+    },
+    {
+      .op = "refund",
+      .handler = &TEH_REFUND_handler_refund
+    },
+    {
+      .op = NULL,
+      .handler = NULL
+    },
+  };
+
+  (void) rh;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &coin_pub,
+                                     sizeof (coin_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_COINS_INVALID_COIN_PUB,
+                                       "coin public key malformed");
+  }
+  for (unsigned int i = 0; NULL != h[i].op; i++)
+    if (0 == strcmp (h[i].op,
+                     args[1]))
+      return h[i].handler (connection,
+                           &coin_pub,
+                           root);
+  return TALER_MHD_reply_with_error (connection,
+                                     MHD_HTTP_NOT_FOUND,
+                                     TALER_EC_OPERATION_INVALID,
+                                     "requested operation on coin unknown");
+}
+
+
+/**
  * Function called whenever MHD is done with a request.  If the
  * request was a POST, we may have stored a `struct Buffer *` in the
  * @a con_cls that might still need to be cleaned up.  Call the
@@ -206,6 +292,120 @@ is_valid_correlation_id (const char *correlation_id)
 
 
 /**
+ * We found @a rh responsible for handling a request. Parse the
+ * @a upload_data (if applicable) and the @a url and call the
+ * handler.
+ *
+ * @param rh request handler to call
+ * @param connection connection being handled
+ * @param url rest of the URL to parse
+ * @param inner_cls closure for the handler, if needed
+ * @param upload_data upload data to parse (if available)
+ * @param upload_data_size[in,out] number of bytes in @a upload_data
+ * @return MHD result code
+ */
+static int
+proceed_with_handler (const struct TEH_RequestHandler *rh,
+                      struct MHD_Connection *connection,
+                      const char *url,
+                      void **inner_cls,
+                      const char *upload_data,
+                      size_t *upload_data_size)
+{
+  const char *args[rh->nargs + 1];
+  size_t ulen = strlen (url) + 1;
+  json_t *root;
+  int ret;
+
+  /* We do check for "ulen" here, because we'll later stack-allocate a buffer
+     of that size and don't want to enable malicious clients to cause us
+     huge stack allocations. */
+  if (ulen > 512)
+  {
+    /* 512 is simply "big enough", as it is bigger than "6 * 54",
+       which is the longest URL format we ever get (for
+       /deposits/).  The value should be adjusted if we ever define protocol
+       endpoints with plausibly longer inputs.  */
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_URI_TOO_LONG,
+                                       TALER_EC_URI_TOO_LONG,
+                                       "The URI given is too long");
+  }
+
+  /* All POST endpoints come with a body in JSON format. So we parse
+     the JSON here. */
+  if (0 == strcasecmp (rh->method,
+                       MHD_HTTP_METHOD_POST))
+  {
+    int res;
+
+    res = TALER_MHD_parse_post_json (connection,
+                                     inner_cls,
+                                     upload_data,
+                                     upload_data_size,
+                                     &root);
+    if (GNUNET_SYSERR == res)
+      return MHD_NO;
+    if ( (GNUNET_NO == res) || (NULL == root) )
+      return MHD_YES;
+  }
+
+  {
+    char d[ulen];
+
+    /* Parse command-line arguments, if applicable */
+    if (rh->nargs > 0)
+    {
+      unsigned int i;
+
+      /* make a copy of 'url' because 'strtok()' will modify */
+      memcpy (d,
+              url,
+              ulen);
+      i = 0;
+      args[i++] = strtok (d, "/");
+      while ( (NULL != args[i - 1]) &&
+              (i < rh->nargs) )
+        args[i++] = strtok (NULL, "/");
+      /* make sure above loop ran nicely until completion, and also
+         that there is no excess data in 'd' afterwards */
+      if ( (i != rh->nargs) ||
+           (NULL == args[i - 1]) ||
+           (NULL != strtok (NULL, "/")) )
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_WRONG_NUMBER_OF_SEGMENTS,
+                                           "Number of segments does not match");
+      }
+    }
+
+    /* just to be safe(r), we always terminate the array with a NULL
+       (which handlers should not read, but at least if they do, they'll
+       crash pretty reliably... */
+    args[rh->nargs] = NULL;
+
+    /* Above logic ensures that 'root' is exactly non-NULL for POST operations */
+    if (NULL != root)
+      ret = rh->handler.post (rh,
+                              connection,
+                              root,
+                              args);
+    else /* and we only have "POST" or "GET" in the API for at this point
+            (OPTIONS/HEAD are taken care of earlier) */
+      ret = rh->handler.get (rh,
+                             connection,
+                             args);
+  }
+  if (NULL != root)
+    json_decref (root);
+  return ret;
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
@@ -229,134 +429,111 @@ handle_mhd_request (void *cls,
                     void **con_cls)
 {
   static struct TEH_RequestHandler handlers[] = {
-    /* Landing page, tell humans to go away. */
-    { "/", MHD_HTTP_METHOD_GET, "text/plain",
-      "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n", 0,
-      &TEH_MHD_handler_static_response, MHD_HTTP_OK },
     /* /robots.txt: disallow everything */
-    { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
-      "User-agent: *\nDisallow: /\n", 0,
-      &TEH_MHD_handler_static_response, MHD_HTTP_OK },
+    {
+      .url = "robots.txt",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_MHD_handler_static_response,
+      .mime_type = "text/plain",
+      .data = "User-agent: *\nDisallow: /\n",
+      .response_code = MHD_HTTP_OK
+    },
+    /* Landing page, tell humans to go away. */
+    {
+      .url = "",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = TEH_MHD_handler_static_response,
+      .mime_type = "text/plain",
+      .data =
+        "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n",
+      .response_code = MHD_HTTP_OK
+    },
     /* AGPL licensing page, redirect to source. As per the AGPL-license,
        every deployment is required to offer the user a download of the
        source. We make this easy by including a redirect to the source
        here. */
-    { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
-      NULL, 0,
-      &TEH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
+    {
+      .url = "agpl",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_MHD_handler_agpl_redirect
+    },
     /* Terms of service */
-    { "/terms", MHD_HTTP_METHOD_GET, NULL,
-      NULL, 0,
-      &TEH_handler_terms, MHD_HTTP_OK },
+    {
+      .url = "terms",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_terms
+    },
     /* Privacy policy */
-    { "/privacy", MHD_HTTP_METHOD_GET, NULL,
-      NULL, 0,
-      &TEH_handler_privacy, MHD_HTTP_OK },
+    {
+      .url = "privacy",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_privacy
+    },
     /* Return key material and fundamental properties for this exchange */
-    { "/keys", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TEH_KS_handler_keys, MHD_HTTP_OK },
-    { "/keys", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
+    {
+      .url = "/keys",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_KS_handler_keys,
+    },
     /* Requests for wiring information */
-    { "/wire", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TEH_WIRE_handler_wire, MHD_HTTP_OK },
-    { "/wire", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
+    {
+      .url = "wire",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_WIRE_handler_wire
+    },
     /* Withdrawing coins / interaction with reserves */
-    { "/reserve/status", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TEH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
-    { "/reserve/status", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/reserve/withdraw", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
-    { "/reserve/withdraw", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    /* Depositing coins */
-    { "/deposit", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
-    { "/deposit", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    /* Refunding coins */
-    { "/refund", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_REFUND_handler_refund, MHD_HTTP_OK },
-    { "/refund", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    /* Dealing with change */
-    { "/refresh/melt", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
-    { "/refresh/melt", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
-    { "/refresh/reveal", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
-    { "/refresh/reveal", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/refresh/link", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TEH_REFRESH_handler_refresh_link, MHD_HTTP_OK },
-    { "/refresh/link", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/track/transfer", MHD_HTTP_METHOD_GET, "application/json",
-      NULL, 0,
-      &TEH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
-    { "/track/transfer", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-    { "/track/transaction", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_TRACKING_handler_track_transaction, MHD_HTTP_OK },
-    { "/track/transaction", NULL, "text/plain",
-      "Only POST is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { "/recoup", MHD_HTTP_METHOD_POST, "application/json",
-      NULL, 0,
-      &TEH_RECOUP_handler_recoup, MHD_HTTP_OK },
-    { "/refresh/link", NULL, "text/plain",
-      "Only GET is allowed", 0,
-      &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-    { NULL, NULL, NULL, NULL, 0, NULL, 0 }
-  };
-  static struct TEH_RequestHandler h404 = {
-    "", NULL, "text/html",
-    "<html><title>404: not found</title></html>", 0,
-    &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
+    {
+      .url = "reserves",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_RESERVE_handler_reserve_status,
+      .nargs = 1
+    },
+    {
+      .url = "reserves",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_RESERVE_handler_reserve_withdraw,
+      .nargs = 2
+    },
+    /* coins */
+    {
+      .url = "coins",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &handle_post_coins,
+      .nargs = 2
+    },
+    {
+      .url = "coins",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = TEH_REFRESH_handler_link,
+      .nargs = 2,
+    },
+    /* refreshing */
+    {
+      .url = "refreshes",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_REFRESH_handler_reveal,
+      .nargs = 2
+    },
+    /* tracking transfers */
+    {
+      .url = "transfers",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_TRACKING_handler_track_transfer,
+      .nargs = 1
+    },
+    /* tracking deposits */
+    {
+      .url = "deposits",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_TRACKING_handler_track_transaction,
+      .nargs = 4
+    },
+    /* mark end of list */
+    {
+      .url = NULL
+    }
   };
   struct ExchangeHttpRequestClosure *ecls = *con_cls;
-  int ret;
   void **inner_cls;
   struct GNUNET_AsyncScopeSave old_scope;
   const char *correlation_id = NULL;
@@ -367,7 +544,8 @@ handle_mhd_request (void *cls,
   {
     unsigned long long cnt;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Handling new request\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Handling new request\n");
     cnt = __sync_add_and_fetch (&req_count, 1LLU);
     if (req_max == cnt)
     {
@@ -395,7 +573,8 @@ handle_mhd_request (void *cls,
   }
 
   inner_cls = &ecls->opaque_post_parsing_context;
-  GNUNET_async_scope_enter (&ecls->async_scope_id, &old_scope);
+  GNUNET_async_scope_enter (&ecls->async_scope_id,
+                            &old_scope);
   if (NULL != correlation_id)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling request (%s) for URL '%s', correlation_id=%s\n",
@@ -410,55 +589,100 @@ handle_mhd_request (void *cls,
   /* on repeated requests, check our cache first */
   if (NULL != ecls->rh)
   {
-    ret = ecls->rh->handler (ecls->rh,
-                             connection,
-                             inner_cls,
-                             upload_data,
-                             upload_data_size);
+    int ret;
+
+    ret = proceed_with_handler (ecls->rh,
+                                connection,
+                                url,
+                                inner_cls,
+                                upload_data,
+                                upload_data_size);
     GNUNET_async_scope_restore (&old_scope);
     return ret;
   }
+
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
-    method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
-  for (unsigned int i = 0; NULL != handlers[i].url; i++)
+    method = MHD_HTTP_METHOD_GET;   /* treat HEAD as GET here, MHD will do the rest */
+
+  /* parse first part of URL */
   {
-    struct TEH_RequestHandler *rh = &handlers[i];
+    int found = GNUNET_NO;
+    size_t tok_size;
+    const char *tok;
+    const char *rest;
 
-    if (0 != strcmp (url, rh->url))
-      continue;
-
-    /* The URL is a match!  What we now do depends on the method. */
-    if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
+    if ('\0' == url[0])
+      /* strange, should start with '/', treat as just "/" */
+      url = "/";
+    tok = url + 1;
+    rest = strchr (tok, '/');
+    if (NULL == rest)
     {
-      GNUNET_async_scope_restore (&old_scope);
-      return TALER_MHD_reply_cors_preflight (connection);
+      tok_size = 0;
+    }
+    else
+    {
+      tok_size = rest - tok;
+      rest++; /* skip over '/' */
+    }
+    for (unsigned int i = 0; NULL != handlers[i].url; i++)
+    {
+      struct TEH_RequestHandler *rh = &handlers[i];
+
+      if (0 != strncmp (tok,
+                        rh->url,
+                        tok_size))
+        continue;
+      found = GNUNET_YES;
+      /* The URL is a match!  What we now do depends on the method. */
+      if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
+      {
+        GNUNET_async_scope_restore (&old_scope);
+        return TALER_MHD_reply_cors_preflight (connection);
+      }
+      GNUNET_assert (NULL != rh->method);
+      if (0 == strcasecmp (method,
+                           rh->method))
+      {
+        int ret;
+
+        /* cache to avoid the loop next time */
+        ecls->rh = rh;
+        /* run handler */
+        ret = proceed_with_handler (rh,
+                                    connection,
+                                    url,
+                                    inner_cls,
+                                    upload_data,
+                                    upload_data_size);
+        GNUNET_async_scope_restore (&old_scope);
+        return ret;
+      }
     }
 
-    if ( (NULL == rh->method) ||
-         (0 == strcasecmp (method,
-                           rh->method)) )
+    if (GNUNET_YES == found)
     {
-      /* cache to avoid the loop next time */
-      ecls->rh = rh;
-      /* run handler */
-      ret = rh->handler (rh,
-                         connection,
-                         inner_cls,
-                         upload_data,
-                         upload_data_size);
-      GNUNET_async_scope_restore (&old_scope);
-      return ret;
+      /* we found a matching address, but the method is wrong */
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_METHOD_NOT_ALLOWED,
+                                         TALER_EC_METHOD_INVALID,
+                                         "The HTTP method used is invalid for this URL");
     }
   }
+
   /* No handler matches, generate not found */
-  ret = TEH_MHD_handler_static_response (&h404,
-                                         connection,
-                                         inner_cls,
-                                         upload_data,
-                                         upload_data_size);
-  GNUNET_async_scope_restore (&old_scope);
-  return ret;
+  {
+    int ret;
+
+    ret = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_NOT_FOUND,
+                                      TALER_EC_ENDPOINT_UNKNOWN,
+                                      "No handler found for the given URL");
+    GNUNET_async_scope_restore (&old_scope);
+    return ret;
+  }
 }
 
 

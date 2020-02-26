@@ -29,25 +29,20 @@
 
 
 /**
- * Handle a "/refresh/melt" request after the first parsing has
- * happened.  We now need to validate the coins being melted and the
- * session signature and then hand things of to execute the melt
- * operation.  This function parses the JSON arrays and then passes
- * processing on to #refresh_melt_transaction().
- *
- * @param rh context of the handler
+ * Handle a "/coins/$COIN_PUB/melt" request.  Parses the request into the JSON
+ * components and then hands things of to #check_for_denomination_key() to
+ * validate the melted coins, the signature and execute the melt using
+ * handle_refresh_melt().
+
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
  * @return MHD result code
  */
 int
-TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size);
+TEH_REFRESH_handler_melt (struct MHD_Connection *connection,
+                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                          const json_t *root);
 
 
 #endif

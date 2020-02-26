@@ -381,27 +381,22 @@ check_timestamp_current (struct GNUNET_TIME_Absolute ts)
 
 
 /**
- * Handle a "/deposit" request.  Parses the JSON, and, if successful,
- * passes the JSON data to #verify_and_execute_deposit() to further
- * check the details of the operation specified.  If everything checks
+ * Handle a "/coins/$COIN_PUB/deposit" request.  Parses the JSON, and, if
+ * successful, passes the JSON data to #verify_and_execute_deposit() to
+ * further check the details of the operation specified.  If everything checks
  * out, this will ultimately lead to the "/deposit" being executed, or
  * rejected.
  *
- * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
  * @return MHD result code
   */
 int
-TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
-                             struct MHD_Connection *connection,
-                             void **connection_cls,
-                             const char *upload_data,
-                             size_t *upload_data_size)
+TEH_DEPOSIT_handler_deposit (struct MHD_Connection *connection,
+                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                             const json_t *root)
 {
-  json_t *json;
   int res;
   json_t *wire;
   enum TALER_ErrorCode ec;
@@ -415,7 +410,6 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &deposit.coin.denom_pub_hash),
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
-    GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &deposit.merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &deposit.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &deposit.h_wire),
@@ -428,27 +422,13 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  (void) rh;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &json);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-  if ( (GNUNET_NO == res) ||
-       (NULL == json) )
-    return MHD_YES;
   memset (&deposit,
           0,
           sizeof (deposit));
+  deposit.coin.coin_pub = *coin_pub;
   res = TALER_MHD_parse_json_data (connection,
-                                   json,
+                                   root,
                                    spec);
-  json_decref (json);
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);

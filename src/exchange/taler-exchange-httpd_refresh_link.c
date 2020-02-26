@@ -172,43 +172,37 @@ refresh_link_transaction (void *cls,
 
 
 /**
- * Handle a "/refresh/link" request.  Note that for "/refresh/link"
- * we do use a simple HTTP GET, and a HTTP POST!
+ * Handle a "/coins/$COIN_PUB/link" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (length: 2, first is the coin_pub, second must be "link")
  * @return MHD result code
   */
 int
-TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size)
+TEH_REFRESH_handler_link (const struct TEH_RequestHandler *rh,
+                          struct MHD_Connection *connection,
+                          const char *const args[2])
 {
-  int mhd_ret;
-  int res;
   struct HTD_Context ctx;
+  int mhd_ret;
 
   (void) rh;
-  (void) connection_cls;
-  (void) upload_data;
-  (void) upload_data_size;
   memset (&ctx,
           0,
           sizeof (ctx));
-  res = TALER_MHD_parse_request_arg_data (connection,
-                                          "coin_pub",
-                                          &ctx.coin_pub,
-                                          sizeof (struct
-                                                  TALER_CoinSpendPublicKeyP));
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if (GNUNET_OK != res)
-    return MHD_YES;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &ctx.coin_pub,
+                                     sizeof (ctx.coin_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_COINS_INVALID_COIN_PUB,
+                                       "coin public key malformed");
+  }
   ctx.mlist = json_array ();
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,

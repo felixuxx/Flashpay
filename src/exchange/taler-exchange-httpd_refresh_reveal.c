@@ -884,30 +884,27 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/refresh/reveal" request. This time, the client reveals the
+ * Handle a "/refreshes/$RCH/reveal" request. This time, the client reveals the
  * private transfer keys except for the cut-and-choose value returned from
- * "/refresh/melt".  This function parses the revealed keys and secrets and
+ * "/coins/$COIN_PUB/melt".  This function parses the revealed keys and secrets and
  * ultimately passes everything to #resolve_refresh_reveal_denominations()
  * which will verify that the revealed information is valid then runs the
  * transaction in #refresh_reveal_transaction() and finally returns the signed
  * refreshed coins.
  *
  * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
+ * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code
-  */
+ */
 int
-TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
+TEH_REFRESH_handler_reveal (const struct TEH_RequestHandler *rh,
+                            struct MHD_Connection *connection,
+                            const json_t *root,
+                            const char *const args[2])
 {
   int res;
-  json_t *root;
   json_t *coin_evs;
   json_t *transfer_privs;
   json_t *link_sigs;
@@ -924,24 +921,34 @@ TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
   };
 
   (void) rh;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &root);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) ||
-       (NULL == root) )
-    return MHD_YES;
-
   memset (&rctx,
           0,
           sizeof (rctx));
+
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &rctx.rc,
+                                     sizeof (rctx.rc)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_REFRESHES_INVALID_RCH,
+                                       "refresh commitment hash malformed");
+  }
+  if (0 != strcmp (args[1],
+                   "reveal"))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_OPERATION_INVALID,
+                                       "expected 'reveal' operation");
+  }
   res = TALER_MHD_parse_json_data (connection,
                                    root,
                                    spec);
-  json_decref (root);
   if (GNUNET_OK != res)
   {
     GNUNET_break_op (0);

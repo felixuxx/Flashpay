@@ -29,21 +29,17 @@
 
 
 /**
- * Handle a "/refresh/link" request
+ * Handle a "/coins/$COIN_PUB/link" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (length: 2, first is the coin_pub, second must be "link")
  * @return MHD result code
   */
 int
-TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size);
+TEH_REFRESH_handler_link (const struct TEH_RequestHandler *rh,
+                          struct MHD_Connection *connection,
+                          const char *const args[2]);
 
 
 #endif

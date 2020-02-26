@@ -2381,17 +2381,13 @@ krd_search_comparator (const void *key,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 int
-TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
+TEH_KS_handler_keys (const struct TEH_RequestHandler *rh,
                      struct MHD_Connection *connection,
-                     void **connection_cls,
-                     const char *upload_data,
-                     size_t *upload_data_size)
+                     const char *const args[])
 {
   int ret;
   const char *have_cherrypick;
@@ -2400,9 +2396,8 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   struct GNUNET_TIME_Absolute now;
   const struct KeysResponseData *krd;
 
-  (void) connection_cls;
-  (void) upload_data;
-  (void) upload_data_size;
+  (void) rh;
+  (void) args;
   have_cherrypick = MHD_lookup_connection_value (connection,
                                                  MHD_GET_ARGUMENT_KIND,
                                                  "last_issue_date");
@@ -2493,7 +2488,7 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                                          "no key response found");
     }
     ret = MHD_queue_response (connection,
-                              rh->response_code,
+                              MHD_HTTP_OK,
                               (MHD_YES == TALER_MHD_can_compress (connection))
                               ? krd->response_compressed
                               : krd->response_uncompressed);

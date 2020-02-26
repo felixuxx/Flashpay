@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -34,17 +34,13 @@
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 int
-TEH_MHD_handler_static_response (struct TEH_RequestHandler *rh,
+TEH_MHD_handler_static_response (const struct TEH_RequestHandler *rh,
                                  struct MHD_Connection *connection,
-                                 void **connection_cls,
-                                 const char *upload_data,
-                                 size_t *upload_data_size);
+                                 const char *const args[]);
 
 
 /**
@@ -53,40 +49,13 @@ TEH_MHD_handler_static_response (struct TEH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 int
-TEH_MHD_handler_agpl_redirect (struct TEH_RequestHandler *rh,
+TEH_MHD_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
                                struct MHD_Connection *connection,
-                               void **connection_cls,
-                               const char *upload_data,
-                               size_t *upload_data_size);
-
-
-/**
- * Function to call to handle the request by building a JSON
- * reply from varargs.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param response_code HTTP response code to use
- * @param do_cache can the response be cached? (0: no, 1: yes)
- * @param fmt format string for pack
- * @param ... varargs
- * @return MHD result code
- */
-int
-TEH_MHD_helper_send_json_pack (struct TEH_RequestHandler *rh,
-                               struct MHD_Connection *connection,
-                               void *connection_cls,
-                               int response_code,
-                               int do_cache,
-                               const char *fmt,
-                               ...);
+                               const char *const args[]);
 
 
 /**
@@ -95,17 +64,13 @@ TEH_MHD_helper_send_json_pack (struct TEH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 int
-TEH_MHD_handler_send_json_pack_error (struct TEH_RequestHandler *rh,
+TEH_MHD_handler_send_json_pack_error (const struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
-                                      void **connection_cls,
-                                      const char *upload_data,
-                                      size_t *upload_data_size);
+                                      const char *const args[]);
 
 
 #endif

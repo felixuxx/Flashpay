@@ -577,31 +577,24 @@ check_for_denomination_key (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/refresh/melt" request.  Parses the request into the JSON
- * components and then hands things of to #check_for_denomination_key()
- * to validate the melted coins, the signature and execute the melt
- * using handle_refresh_melt().
- *
- * @param rh context of the handler
+ * Handle a "/coins/$COIN_PUB/melt" request.  Parses the request into the JSON
+ * components and then hands things of to #check_for_denomination_key() to
+ * validate the melted coins, the signature and execute the melt using
+ * handle_refresh_melt().
+
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
  * @return MHD result code
  */
 int
-TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size)
+TEH_REFRESH_handler_melt (struct MHD_Connection *connection,
+                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                          const json_t *root)
 {
-  json_t *root;
   struct RefreshMeltContext rmc;
   int res;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                 &rmc.refresh_session.coin.coin_pub),
     TALER_JSON_spec_denomination_signature ("denom_sig",
                                             &rmc.refresh_session.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
@@ -615,25 +608,13 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  (void) rh;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &root);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) ||
-       (NULL == root) )
-    return MHD_YES;
-
   memset (&rmc,
           0,
           sizeof (rmc));
+  rmc.refresh_session.coin.coin_pub = *coin_pub;
   res = TALER_MHD_parse_json_data (connection,
                                    root,
                                    spec);
-  json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
 

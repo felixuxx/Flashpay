@@ -27,25 +27,20 @@
 
 
 /**
- * Handle a "/recoup" request.  Parses the JSON, and, if successful,
- * passes the JSON data to #verify_and_execute_recoup() to
- * further check the details of the operation specified.  If
- * everything checks out, this will ultimately lead to the "/refund"
- * being executed, or rejected.
+ * Handle a "/coins/$COIN_PUB/recoup" request.  Parses the JSON, and, if
+ * successful, passes the JSON data to #verify_and_execute_recoup() to further
+ * check the details of the operation specified.  If everything checks out,
+ * this will ultimately lead to the refund being executed, or rejected.
  *
- * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param coin_pub public key of the coin
+ * @param root uploaded JSON data
  * @return MHD result code
   */
 int
-TEH_RECOUP_handler_recoup (struct TEH_RequestHandler *rh,
-                           struct MHD_Connection *connection,
-                           void **connection_cls,
-                           const char *upload_data,
-                           size_t *upload_data_size);
+TEH_RECOUP_handler_recoup (struct MHD_Connection *connection,
+                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           const json_t *root);
 
 
 #endif

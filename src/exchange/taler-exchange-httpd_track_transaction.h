@@ -27,21 +27,19 @@
 
 
 /**
- * Handle a "/track/transaction" request.
+ * Handle a "/deposits/$H_WIRE/$MERCHANT_PUB/$H_CONTRACT_TERMS/$COIN_PUB"
+ * request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @param args array of additional options (length: 4, contains:
+ *      h_wire, merchant_pub, h_contract_terms and coin_pub)
  * @return MHD result code
   */
 int
-TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transaction (const struct TEH_RequestHandler *rh,
                                         struct MHD_Connection *connection,
-                                        void **connection_cls,
-                                        const char *upload_data,
-                                        size_t *upload_data_size);
+                                        const char *const args[4]);
 
 
 #endif
