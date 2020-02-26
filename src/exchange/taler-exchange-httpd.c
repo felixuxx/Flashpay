@@ -314,7 +314,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
 {
   const char *args[rh->nargs + 1];
   size_t ulen = strlen (url) + 1;
-  json_t *root;
+  json_t *root = NULL;
   int ret;
 
   /* We do check for "ulen" here, because we'll later stack-allocate a buffer
