@@ -1290,11 +1290,11 @@ TALER_EXCHANGE_refresh_melt_cancel (struct
 }
 
 
-/* ********************* /refresh/reveal ***************************** */
+/* ********************* /refreshes/$RCH/reveal ***************************** */
 
 
 /**
- * @brief A /refresh/reveal Handle
+ * @brief A /refreshes/$RCH/reveal Handle
  */
 struct TALER_EXCHANGE_RefreshRevealHandle
 {
@@ -1344,7 +1344,7 @@ struct TALER_EXCHANGE_RefreshRevealHandle
 
 
 /**
- * We got a 200 OK response for the /refresh/reveal operation.
+ * We got a 200 OK response for the /refreshes/$RCH/reveal operation.
  * Extract the coin signatures and return them to the caller.
  * The signatures we get from the exchange is for the blinded value.
  * Thus, we first must unblind them and then should verify their
@@ -1449,7 +1449,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
 
 /**
  * Function called when we're done processing the
- * HTTP /refresh/reveal request.
+ * HTTP /refreshes/$RCH/reveal request.
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshHandle`
  * @param response_code HTTP response code, 0 on error
@@ -1718,7 +1718,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   rrh->reveal_cb_cls = reveal_cb_cls;
   rrh->md = md;
   rrh->url = TEAH_path_to_url (rrh->exchange,
-                               "/refresh/reveal");
+                               arg_str);
 
   eh = TEL_curl_easy_get (rrh->url);
   if (GNUNET_OK !=

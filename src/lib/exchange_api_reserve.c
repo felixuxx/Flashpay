@@ -783,11 +783,10 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
 
 
 /**
- * We got a 200 OK response for the /reserve/withdraw operation.
- * Extract the coin's signature and return it to the caller.
- * The signature we get from the exchange is for the blinded value.
- * Thus, we first must unblind it and then should verify its
- * validity against our coin's hash.
+ * We got a 200 OK response for the /reserves/$RESERVE_PUB/withdraw operation.
+ * Extract the coin's signature and return it to the caller.  The signature we
+ * get from the exchange is for the blinded value.  Thus, we first must
+ * unblind it and then should verify its validity against our coin's hash.
  *
  * If everything checks out, we return the unblinded signature
  * to the application via the callback.
@@ -843,7 +842,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
 
 
 /**
- * We got a 409 CONFLICT response for the /reserve/withdraw operation.
+ * We got a 409 CONFLICT response for the /reserves/$RESERVE_PUB/withdraw operation.
  * Check the signatures on the withdraw transactions in the provided
  * history and that the balances add up.  We don't do anything directly
  * with the information, as the JSON will be returned to the application.
@@ -955,7 +954,7 @@ reserve_withdraw_payment_required (struct
 
 /**
  * Function called when we're done processing the
- * HTTP /reserve/withdraw request.
+ * HTTP /reserves/$RESERVE_PUB/withdraw request.
  *
  * @param cls the `struct TALER_EXCHANGE_ReserveWithdrawHandle`
  * @param response_code HTTP response code, 0 on error
