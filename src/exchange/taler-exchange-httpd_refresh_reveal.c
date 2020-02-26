@@ -911,7 +911,6 @@ TEH_REFRESH_handler_reveal (const struct TEH_RequestHandler *rh,
   json_t *new_denoms_h;
   struct RevealContext rctx;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("rc", &rctx.rc),
     GNUNET_JSON_spec_fixed_auto ("transfer_pub", &rctx.gamma_tp),
     GNUNET_JSON_spec_json ("transfer_privs", &transfer_privs),
     GNUNET_JSON_spec_json ("link_sigs", &link_sigs),
