@@ -669,7 +669,7 @@ handle_mhd_request (void *cls,
         /* run handler */
         ret = proceed_with_handler (rh,
                                     connection,
-                                    url,
+                                    url + tok_size + 1,
                                     inner_cls,
                                     upload_data,
                                     upload_data_size);
