@@ -693,6 +693,16 @@ do_abort (void *cls)
     TALER_EXCHANGE_disconnect (is->exchange);
     is->exchange = NULL;
   }
+  if (NULL != is->ctx)
+  {
+    GNUNET_CURL_fini (is->ctx);
+    is->ctx = NULL;
+  }
+  if (NULL != is->rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (is->rc);
+    is->rc = NULL;
+  }
 }
 
 
