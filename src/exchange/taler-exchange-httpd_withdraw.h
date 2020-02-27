@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_reserve_withdraw.h
+ * @file taler-exchange-httpd_withdraw.h
  * @brief Handle /reserve/withdraw requests
  * @author Florian Dold
  * @author Benedikt Mueller

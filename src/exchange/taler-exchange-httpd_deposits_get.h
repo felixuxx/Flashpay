@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_track_transaction.h
+ * @file taler-exchange-httpd_deposits_get.h
  * @brief Handle wire transfer tracking-related requests
  * @author Christian Grothoff
  */

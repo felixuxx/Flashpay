@@ -17,7 +17,7 @@
   see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_reserve_withdraw.c
+ * @file taler-exchange-httpd_withdraw.c
  * @brief Handle /reserve/withdraw requests
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -28,7 +28,7 @@
 #include <jansson.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_reserve_withdraw.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -506,4 +506,4 @@ TEH_RESERVE_handler_reserve_withdraw (const struct TEH_RequestHandler *rh,
 }
 
 
-/* end of taler-exchange-httpd_reserve_withdraw.c */
+/* end of taler-exchange-httpd_withdraw.c */

@@ -80,7 +80,7 @@ struct WithdrawState
   /**
    * Withdraw handle (while operation is running).
    */
-  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+  struct TALER_EXCHANGE_WithdrawHandle *wsh;
 
   /**
    * Task scheduled to try later.
@@ -280,12 +280,12 @@ withdraw_run (void *cls,
      * would free the old one. */
     ws->pk = TALER_EXCHANGE_copy_denomination_key (dpk);
   }
-  ws->wsh = TALER_EXCHANGE_reserve_withdraw (is->exchange,
-                                             ws->pk,
-                                             rp,
-                                             &ws->ps,
-                                             &reserve_withdraw_cb,
-                                             ws);
+  ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
+                                     ws->pk,
+                                     rp,
+                                     &ws->ps,
+                                     &reserve_withdraw_cb,
+                                     ws);
   if (NULL == ws->wsh)
   {
     GNUNET_break (0);
@@ -313,7 +313,7 @@ withdraw_cleanup (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Command %s did not complete\n",
                 cmd->label);
-    TALER_EXCHANGE_reserve_withdraw_cancel (ws->wsh);
+    TALER_EXCHANGE_withdraw_cancel (ws->wsh);
     ws->wsh = NULL;
   }
   if (NULL != ws->retry_task)

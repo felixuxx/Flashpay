@@ -227,8 +227,8 @@ deposit_confirmation_run (void *cls,
                                                        &exchange_sig));
   keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
   GNUNET_assert (NULL != keys);
-  spk = TALER_EXCHANGE_get_exchange_signing_key_info (keys,
-                                                      exchange_pub);
+  spk = TALER_EXCHANGE_get_signing_key_info (keys,
+                                             exchange_pub);
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_contract_terms (deposit_cmd,

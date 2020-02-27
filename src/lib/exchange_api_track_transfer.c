@@ -34,7 +34,7 @@
 /**
  * @brief A /track/transfer Handle
  */
-struct TALER_EXCHANGE_TrackTransferHandle
+struct TALER_EXCHANGE_TransfersGetHandle
 {
 
   /**
@@ -55,7 +55,7 @@ struct TALER_EXCHANGE_TrackTransferHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_TrackTransferCallback cb;
+  TALER_EXCHANGE_TransfersGetCallback cb;
 
   /**
    * Closure for @a cb.
@@ -81,7 +81,7 @@ struct TALER_EXCHANGE_TrackTransferHandle
  */
 static int
 check_track_transfer_response_ok (struct
-                                  TALER_EXCHANGE_TrackTransferHandle *wdh,
+                                  TALER_EXCHANGE_TransfersGetHandle *wdh,
                                   const json_t *json)
 {
   json_t *details_j;
@@ -241,7 +241,7 @@ check_track_transfer_response_ok (struct
              details);
   }
   GNUNET_JSON_parse_free (spec);
-  TALER_EXCHANGE_track_transfer_cancel (wdh);
+  TALER_EXCHANGE_transfers_get_cancel (wdh);
   return GNUNET_OK;
 }
 
@@ -250,7 +250,7 @@ check_track_transfer_response_ok (struct
  * Function called when we're done processing the
  * HTTP /track/transfer request.
  *
- * @param cls the `struct TALER_EXCHANGE_TrackTransferHandle`
+ * @param cls the `struct TALER_EXCHANGE_TransfersGetHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -259,7 +259,7 @@ handle_track_transfer_finished (void *cls,
                                 long response_code,
                                 const void *response)
 {
-  struct TALER_EXCHANGE_TrackTransferHandle *wdh = cls;
+  struct TALER_EXCHANGE_TransfersGetHandle *wdh = cls;
   const json_t *j = response;
 
   wdh->job = NULL;
@@ -311,7 +311,7 @@ handle_track_transfer_finished (void *cls,
            NULL,
            NULL,
            0, NULL);
-  TALER_EXCHANGE_track_transfer_cancel (wdh);
+  TALER_EXCHANGE_transfers_get_cancel (wdh);
 }
 
 
@@ -325,14 +325,14 @@ handle_track_transfer_finished (void *cls,
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation
  */
-struct TALER_EXCHANGE_TrackTransferHandle *
-TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
-                               const struct
-                               TALER_WireTransferIdentifierRawP *wtid,
-                               TALER_EXCHANGE_TrackTransferCallback cb,
-                               void *cb_cls)
+struct TALER_EXCHANGE_TransfersGetHandle *
+TALER_EXCHANGE_transfers_get (struct TALER_EXCHANGE_Handle *exchange,
+                              const struct
+                              TALER_WireTransferIdentifierRawP *wtid,
+                              TALER_EXCHANGE_TransfersGetCallback cb,
+                              void *cb_cls)
 {
-  struct TALER_EXCHANGE_TrackTransferHandle *wdh;
+  struct TALER_EXCHANGE_TransfersGetHandle *wdh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_WireTransferIdentifierRawP) * 2 + 32];
@@ -344,7 +344,7 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
 
-  wdh = GNUNET_new (struct TALER_EXCHANGE_TrackTransferHandle);
+  wdh = GNUNET_new (struct TALER_EXCHANGE_TransfersGetHandle);
   wdh->exchange = exchange;
   wdh->cb = cb;
   wdh->cb_cls = cb_cls;
@@ -384,8 +384,8 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
  * @param wdh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_track_transfer_cancel (struct
-                                      TALER_EXCHANGE_TrackTransferHandle *wdh)
+TALER_EXCHANGE_transfers_get_cancel (struct
+                                     TALER_EXCHANGE_TransfersGetHandle *wdh)
 {
   if (NULL != wdh->job)
   {

@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_reserve_status.c
+ * @file taler-exchange-httpd_reserves_get.c
  * @brief Handle /reserves/$RESERVE_PUB GET requests
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -25,7 +25,7 @@
 #include <jansson.h>
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
-#include "taler-exchange-httpd_reserve_status.h"
+#include "taler-exchange-httpd_reserves_get.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -172,4 +172,4 @@ TEH_RESERVE_handler_reserve_status (const struct TEH_RequestHandler *rh,
 }
 
 
-/* end of taler-exchange-httpd_reserve_status.c */
+/* end of taler-exchange-httpd_reserves_get.c */

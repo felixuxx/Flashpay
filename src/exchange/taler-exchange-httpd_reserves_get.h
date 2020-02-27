@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -14,30 +14,33 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_track_transfer.h
- * @brief Handle wire transfer tracking-related requests
+ * @file taler-exchange-httpd_reserves_get.h
+ * @brief Handle /reserves/$RESERVE_PUB GET requests
+ * @author Florian Dold
+ * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_TRACK_TRANSFER_H
-#define TALER_EXCHANGE_HTTPD_TRACK_TRANSFER_H
+#ifndef TALER_EXCHANGE_HTTPD_RESERVE_STATUS_H
+#define TALER_EXCHANGE_HTTPD_RESERVE_STATUS_H
 
-#include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"
 
 
 /**
- * Handle a GET "/transfers/$WTID" request.
+ * Handle a GET "/reserves/" request.  Parses the
+ * given "reserve_pub" in @a args (which should contain the
+ * EdDSA public key of a reserve) and then respond with the
+ * status of the reserve.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param args array of additional options (length: 1, just the wtid)
+ * @param args array of additional options (length: 1, just the reserve_pub)
  * @return MHD result code
  */
 int
-TEH_TRACKING_handler_track_transfer (const struct TEH_RequestHandler *rh,
-                                     struct MHD_Connection *connection,
-                                     const char *const args[1]);
-
+TEH_RESERVE_handler_reserve_status (const struct TEH_RequestHandler *rh,
+                                    struct MHD_Connection *connection,
+                                    const char *const args[1]);
 
 #endif

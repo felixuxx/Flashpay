@@ -62,7 +62,7 @@ struct TALER_EXCHANGE_RefundHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_RefundResultCallback cb;
+  TALER_EXCHANGE_RefundCallback cb;
 
   /**
    * Closure for @a cb.
@@ -250,7 +250,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        uint64_t rtransaction_id,
                        const struct TALER_MerchantPrivateKeyP *merchant_priv,
-                       TALER_EXCHANGE_RefundResultCallback cb,
+                       TALER_EXCHANGE_RefundCallback cb,
                        void *cb_cls)
 {
   struct TALER_RefundRequestPS rr;
@@ -326,7 +326,7 @@ TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
                         uint64_t rtransaction_id,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
                         const struct TALER_MerchantSignatureP *merchant_sig,
-                        TALER_EXCHANGE_RefundResultCallback cb,
+                        TALER_EXCHANGE_RefundCallback cb,
                         void *cb_cls)
 {
   struct TALER_EXCHANGE_RefundHandle *rh;

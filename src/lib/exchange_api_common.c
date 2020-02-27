@@ -382,17 +382,17 @@ TALER_EXCHANGE_verify_coin_history (const struct
  * @return NULL on error (@a exchange_pub not known)
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
-TALER_EXCHANGE_get_exchange_signing_key_info (const struct
-                                              TALER_EXCHANGE_Keys *keys,
-                                              const struct
-                                              TALER_ExchangePublicKeyP *
-                                              exchange_pub)
+TALER_EXCHANGE_get_signing_key_info (const struct
+                                     TALER_EXCHANGE_Keys *keys,
+                                     const struct
+                                     TALER_ExchangePublicKeyP *
+                                     exchange_pub)
 {
   for (unsigned int i = 0; i<keys->num_sign_keys; i++)
   {
-    const struct TALER_EXCHANGE_SigningPublicKey *spk;
+    const struct TALER_EXCHANGE_SigningPublicKey *spk
+      = &keys->sign_keys[i];
 
-    spk = &keys->sign_keys[i];
     if (0 == GNUNET_memcmp (exchange_pub,
                             &spk->key))
       return spk;

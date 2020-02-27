@@ -49,6 +49,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \
+  taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_keystate.c taler-exchange-httpd_keystate.h \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
   taler-exchange-httpd_recoup.c taler-exchange-httpd_recoup.h \
@@ -56,13 +57,12 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_refresh_melt.c taler-exchange-httpd_refresh_melt.h \
   taler-exchange-httpd_refresh_reveal.c taler-exchange-httpd_refresh_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
-  taler-exchange-httpd_reserve_status.c taler-exchange-httpd_reserve_status.h \
-  taler-exchange-httpd_reserve_withdraw.c taler-exchange-httpd_reserve_withdraw.h \
+  taler-exchange-httpd_reserves_get.c taler-exchange-httpd_reserves_get.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
-  taler-exchange-httpd_track_transaction.c taler-exchange-httpd_track_transaction.h \
-  taler-exchange-httpd_track_transfer.c taler-exchange-httpd_track_transfer.h \
+  taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
+  taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h \
   taler-exchange-httpd_validation.c taler-exchange-httpd_validation.h
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \

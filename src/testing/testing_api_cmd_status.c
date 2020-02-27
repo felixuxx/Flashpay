@@ -41,7 +41,7 @@ struct StatusState
   /**
    * Handle to the "reserve status" operation.
    */
-  struct TALER_EXCHANGE_ReserveStatusHandle *rsh;
+  struct TALER_EXCHANGE_ReservesGetHandle *rsh;
 
   /**
    * Expected reserve balance.
@@ -169,10 +169,10 @@ status_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  ss->rsh = TALER_EXCHANGE_reserve_status (is->exchange,
-                                           reserve_pubp,
-                                           &reserve_status_cb,
-                                           ss);
+  ss->rsh = TALER_EXCHANGE_reserves_get (is->exchange,
+                                         reserve_pubp,
+                                         &reserve_status_cb,
+                                         ss);
 }
 
 
@@ -195,7 +195,7 @@ status_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 ss->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_reserve_status_cancel (ss->rsh);
+    TALER_EXCHANGE_reserves_get_cancel (ss->rsh);
     ss->rsh = NULL;
   }
   GNUNET_free (ss);

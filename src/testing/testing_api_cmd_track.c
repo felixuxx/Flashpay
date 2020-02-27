@@ -64,7 +64,7 @@ struct TrackTransactionState
   /**
    * Handle to the "track transaction" pending operation.
    */
-  struct TALER_EXCHANGE_TrackTransactionHandle *tth;
+  struct TALER_EXCHANGE_DepositGetHandle *tth;
 
   /**
    * Interpreter state.
@@ -124,7 +124,7 @@ struct TrackTransferState
   /**
    * Handle to a pending "track transfer" operation.
    */
-  struct TALER_EXCHANGE_TrackTransferHandle *tth;
+  struct TALER_EXCHANGE_TransfersGetHandle *tth;
 
   /**
    * Interpreter state.
@@ -327,13 +327,13 @@ track_transaction_run (void *cls,
     return;
   }
 
-  tts->tth = TALER_EXCHANGE_track_transaction (is->exchange,
-                                               merchant_priv,
-                                               &h_wire_details,
-                                               &h_contract_terms,
-                                               &coin_pub,
-                                               &deposit_wtid_cb,
-                                               tts);
+  tts->tth = TALER_EXCHANGE_deposits_get (is->exchange,
+                                          merchant_priv,
+                                          &h_wire_details,
+                                          &h_contract_terms,
+                                          &coin_pub,
+                                          &deposit_wtid_cb,
+                                          tts);
   GNUNET_assert (NULL != tts->tth);
 }
 
@@ -357,7 +357,7 @@ track_transaction_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 tts->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_track_transaction_cancel (tts->tth);
+    TALER_EXCHANGE_deposits_get_cancel (tts->tth);
     tts->tth = NULL;
   }
   GNUNET_free (tts);
@@ -453,7 +453,7 @@ track_transfer_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 tts->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_track_transfer_cancel (tts->tth);
+    TALER_EXCHANGE_transfers_get_cancel (tts->tth);
     tts->tth = NULL;
   }
   GNUNET_free (tts);
@@ -709,10 +709,10 @@ track_transfer_run (void *cls,
     }
     GNUNET_assert (NULL != wtid_ptr);
   }
-  tts->tth = TALER_EXCHANGE_track_transfer (is->exchange,
-                                            wtid_ptr,
-                                            &track_transfer_cb,
-                                            tts);
+  tts->tth = TALER_EXCHANGE_transfers_get (is->exchange,
+                                           wtid_ptr,
+                                           &track_transfer_cb,
+                                           tts);
   GNUNET_assert (NULL != tts->tth);
 }
 

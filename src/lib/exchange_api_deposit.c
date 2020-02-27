@@ -146,8 +146,8 @@ auditor_cb (void *cls,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
-  spk = TALER_EXCHANGE_get_signing_key_details (key_state,
-                                                &dh->exchange_pub);
+  spk = TALER_EXCHANGE_get_signing_key_info (key_state,
+                                             &dh->exchange_pub);
   GNUNET_assert (NULL != spk);
   TALER_amount_ntoh (&amount_without_fee,
                      &dh->depconf.amount_without_fee);

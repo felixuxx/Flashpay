@@ -35,7 +35,7 @@
 /**
  * @brief A Deposit Wtid Handle
  */
-struct TALER_EXCHANGE_TrackTransactionHandle
+struct TALER_EXCHANGE_DepositGetHandle
 {
 
   /**
@@ -62,7 +62,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_TrackTransactionCallback cb;
+  TALER_EXCHANGE_DepositGetCallback cb;
 
   /**
    * Closure for @a cb.
@@ -89,7 +89,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle
  */
 static int
 verify_deposit_wtid_signature_ok (const struct
-                                  TALER_EXCHANGE_TrackTransactionHandle *dwh,
+                                  TALER_EXCHANGE_DepositGetHandle *dwh,
                                   const json_t *json,
                                   struct TALER_ExchangePublicKeyP *exchange_pub)
 {
@@ -134,7 +134,7 @@ verify_deposit_wtid_signature_ok (const struct
  * Function called when we're done processing the
  * HTTP /track/transaction request.
  *
- * @param cls the `struct TALER_EXCHANGE_TrackTransactionHandle`
+ * @param cls the `struct TALER_EXCHANGE_DepositGetHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -143,7 +143,7 @@ handle_deposit_wtid_finished (void *cls,
                               long response_code,
                               const void *response)
 {
-  struct TALER_EXCHANGE_TrackTransactionHandle *dwh = cls;
+  struct TALER_EXCHANGE_DepositGetHandle *dwh = cls;
   const struct TALER_WireTransferIdentifierRawP *wtid = NULL;
   struct GNUNET_TIME_Absolute execution_time = GNUNET_TIME_UNIT_FOREVER_ABS;
   const struct TALER_Amount *coin_contribution = NULL;
@@ -247,7 +247,7 @@ handle_deposit_wtid_finished (void *cls,
            wtid,
            execution_time,
            coin_contribution);
-  TALER_EXCHANGE_track_transaction_cancel (dwh);
+  TALER_EXCHANGE_deposits_get_cancel (dwh);
 }
 
 
@@ -264,21 +264,21 @@ handle_deposit_wtid_finished (void *cls,
  * @param cb_cls closure for @a cb
  * @return handle to abort request
  */
-struct TALER_EXCHANGE_TrackTransactionHandle *
-TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
-                                  const struct
-                                  TALER_MerchantPrivateKeyP *merchant_priv,
-                                  const struct GNUNET_HashCode *h_wire,
-                                  const struct
-                                  GNUNET_HashCode *h_contract_terms,
-                                  const struct
-                                  TALER_CoinSpendPublicKeyP *coin_pub,
-                                  TALER_EXCHANGE_TrackTransactionCallback cb,
-                                  void *cb_cls)
+struct TALER_EXCHANGE_DepositGetHandle *
+TALER_EXCHANGE_deposits_get (struct TALER_EXCHANGE_Handle *exchange,
+                             const struct
+                             TALER_MerchantPrivateKeyP *merchant_priv,
+                             const struct GNUNET_HashCode *h_wire,
+                             const struct
+                             GNUNET_HashCode *h_contract_terms,
+                             const struct
+                             TALER_CoinSpendPublicKeyP *coin_pub,
+                             TALER_EXCHANGE_DepositGetCallback cb,
+                             void *cb_cls)
 {
   struct TALER_DepositTrackPS dtp;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct TALER_EXCHANGE_TrackTransactionHandle *dwh;
+  struct TALER_EXCHANGE_DepositGetHandle *dwh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[(sizeof (struct TALER_CoinSpendPublicKeyP)
@@ -354,7 +354,7 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                      msig_str);
   }
 
-  dwh = GNUNET_new (struct TALER_EXCHANGE_TrackTransactionHandle);
+  dwh = GNUNET_new (struct TALER_EXCHANGE_DepositGetHandle);
   dwh->exchange = exchange;
   dwh->cb = cb;
   dwh->cb_cls = cb_cls;
@@ -384,9 +384,9 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
  * @param dwh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_track_transaction_cancel (struct
-                                         TALER_EXCHANGE_TrackTransactionHandle *
-                                         dwh)
+TALER_EXCHANGE_deposits_get_cancel (struct
+                                    TALER_EXCHANGE_DepositGetHandle *
+                                    dwh)
 {
   if (NULL != dwh->job)
   {

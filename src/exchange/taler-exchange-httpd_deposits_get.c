@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_track_transaction.c
+ * @file taler-exchange-httpd_deposits_get.c
  * @brief Handle wire transfer tracking-related requests
  * @author Christian Grothoff
  */
@@ -27,7 +27,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_keystate.h"
-#include "taler-exchange-httpd_track_transaction.h"
+#include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_responses.h"
 
 
@@ -419,4 +419,4 @@ TEH_TRACKING_handler_track_transaction (const struct TEH_RequestHandler *rh,
 }
 
 
-/* end of taler-exchange-httpd_track_transaction.c */
+/* end of taler-exchange-httpd_deposits_get.c */

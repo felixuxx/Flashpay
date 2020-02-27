@@ -55,7 +55,7 @@ struct TALER_EXCHANGE_WireHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_WireResultCallback cb;
+  TALER_EXCHANGE_WireCallback cb;
 
   /**
    * Closure for @a cb.
@@ -388,7 +388,7 @@ handle_wire_finished (void *cls,
  */
 struct TALER_EXCHANGE_WireHandle *
 TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
-                     TALER_EXCHANGE_WireResultCallback wire_cb,
+                     TALER_EXCHANGE_WireCallback wire_cb,
                      void *wire_cb_cls)
 {
   struct TALER_EXCHANGE_WireHandle *wh;

@@ -37,7 +37,7 @@
 /**
  * @brief A Withdraw Status Handle
  */
-struct TALER_EXCHANGE_ReserveStatusHandle
+struct TALER_EXCHANGE_ReservesGetHandle
 {
 
   /**
@@ -58,7 +58,7 @@ struct TALER_EXCHANGE_ReserveStatusHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_ReserveStatusResultCallback cb;
+  TALER_EXCHANGE_ReservesGetCallback cb;
 
   /**
    * Public key of the reserve we are querying.
@@ -495,7 +495,7 @@ free_rhistory (struct TALER_EXCHANGE_ReserveHistory *rhistory,
  * @return #GNUNET_OK on success
  */
 static int
-handle_reserve_status_ok (struct TALER_EXCHANGE_ReserveStatusHandle *rsh,
+handle_reserve_status_ok (struct TALER_EXCHANGE_ReservesGetHandle *rsh,
                           const json_t *j)
 {
   json_t *history;
@@ -575,7 +575,7 @@ handle_reserve_status_ok (struct TALER_EXCHANGE_ReserveStatusHandle *rsh,
  * Function called when we're done processing the
  * HTTP /reserve/status request.
  *
- * @param cls the `struct TALER_EXCHANGE_ReserveStatusHandle`
+ * @param cls the `struct TALER_EXCHANGE_ReservesGetHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -584,7 +584,7 @@ handle_reserve_status_finished (void *cls,
                                 long response_code,
                                 const void *response)
 {
-  struct TALER_EXCHANGE_ReserveStatusHandle *rsh = cls;
+  struct TALER_EXCHANGE_ReservesGetHandle *rsh = cls;
   const json_t *j = response;
 
   rsh->job = NULL;
@@ -629,7 +629,7 @@ handle_reserve_status_finished (void *cls,
              0, NULL);
     rsh->cb = NULL;
   }
-  TALER_EXCHANGE_reserve_status_cancel (rsh);
+  TALER_EXCHANGE_reserves_get_cancel (rsh);
 }
 
 
@@ -649,14 +649,14 @@ handle_reserve_status_finished (void *cls,
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
  *         signatures fail to verify).  In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_ReserveStatusHandle *
-TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
-                               const struct
-                               TALER_ReservePublicKeyP *reserve_pub,
-                               TALER_EXCHANGE_ReserveStatusResultCallback cb,
-                               void *cb_cls)
+struct TALER_EXCHANGE_ReservesGetHandle *
+TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
+                             const struct
+                             TALER_ReservePublicKeyP *reserve_pub,
+                             TALER_EXCHANGE_ReservesGetCallback cb,
+                             void *cb_cls)
 {
-  struct TALER_EXCHANGE_ReserveStatusHandle *rsh;
+  struct TALER_EXCHANGE_ReservesGetHandle *rsh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 16];
@@ -682,7 +682,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
                      "/reserves/%s",
                      pub_str);
   }
-  rsh = GNUNET_new (struct TALER_EXCHANGE_ReserveStatusHandle);
+  rsh = GNUNET_new (struct TALER_EXCHANGE_ReservesGetHandle);
   rsh->exchange = exchange;
   rsh->cb = cb;
   rsh->cb_cls = cb_cls;
@@ -707,8 +707,8 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
  * @param rsh the reserve status request handle
  */
 void
-TALER_EXCHANGE_reserve_status_cancel (struct
-                                      TALER_EXCHANGE_ReserveStatusHandle *rsh)
+TALER_EXCHANGE_reserves_get_cancel (struct
+                                    TALER_EXCHANGE_ReservesGetHandle *rsh)
 {
   if (NULL != rsh->job)
   {
@@ -725,7 +725,7 @@ TALER_EXCHANGE_reserve_status_cancel (struct
 /**
  * @brief A Withdraw Sign Handle
  */
-struct TALER_EXCHANGE_ReserveWithdrawHandle
+struct TALER_EXCHANGE_WithdrawHandle
 {
 
   /**
@@ -752,7 +752,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_ReserveWithdrawResultCallback cb;
+  TALER_EXCHANGE_WithdrawCallback cb;
 
   /**
    * Secrets of the planchet.
@@ -796,7 +796,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
-reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
+reserve_withdraw_ok (struct TALER_EXCHANGE_WithdrawHandle *wsh,
                      const json_t *json)
 {
   struct GNUNET_CRYPTO_RsaSignature *blind_sig;
@@ -855,7 +855,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
  */
 static int
 reserve_withdraw_payment_required (struct
-                                   TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
+                                   TALER_EXCHANGE_WithdrawHandle *wsh,
                                    const json_t *json)
 {
   struct TALER_Amount balance;
@@ -956,7 +956,7 @@ reserve_withdraw_payment_required (struct
  * Function called when we're done processing the
  * HTTP /reserves/$RESERVE_PUB/withdraw request.
  *
- * @param cls the `struct TALER_EXCHANGE_ReserveWithdrawHandle`
+ * @param cls the `struct TALER_EXCHANGE_WithdrawHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -965,7 +965,7 @@ handle_reserve_withdraw_finished (void *cls,
                                   long response_code,
                                   const void *response)
 {
-  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh = cls;
+  struct TALER_EXCHANGE_WithdrawHandle *wsh = cls;
   const json_t *j = response;
 
   wsh->job = NULL;
@@ -1031,13 +1031,13 @@ handle_reserve_withdraw_finished (void *cls,
              j);
     wsh->cb = NULL;
   }
-  TALER_EXCHANGE_reserve_withdraw_cancel (wsh);
+  TALER_EXCHANGE_withdraw_cancel (wsh);
 }
 
 
 /**
- * Helper function for #TALER_EXCHANGE_reserve_withdraw2() and
- * #TALER_EXCHANGE_reserve_withdraw().
+ * Helper function for #TALER_EXCHANGE_withdraw2() and
+ * #TALER_EXCHANGE_withdraw().
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to create
@@ -1052,17 +1052,17 @@ handle_reserve_withdraw_finished (void *cls,
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_ReserveWithdrawHandle *
+struct TALER_EXCHANGE_WithdrawHandle *
 reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
                            const struct TALER_EXCHANGE_DenomPublicKey *pk,
                            const struct TALER_ReserveSignatureP *reserve_sig,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_PlanchetSecretsP *ps,
                            const struct TALER_PlanchetDetail *pd,
-                           TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                           TALER_EXCHANGE_WithdrawCallback res_cb,
                            void *res_cb_cls)
 {
-  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+  struct TALER_EXCHANGE_WithdrawHandle *wsh;
   struct GNUNET_CURL_Context *ctx;
   json_t *withdraw_obj;
   CURL *eh;
@@ -1084,7 +1084,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
                      "/reserves/%s/withdraw",
                      pub_str);
   }
-  wsh = GNUNET_new (struct TALER_EXCHANGE_ReserveWithdrawHandle);
+  wsh = GNUNET_new (struct TALER_EXCHANGE_WithdrawHandle);
   wsh->exchange = exchange;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
@@ -1159,21 +1159,21 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_ReserveWithdrawHandle *
-TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                                 const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                                 const struct
-                                 TALER_ReservePrivateKeyP *reserve_priv,
-                                 const struct TALER_PlanchetSecretsP *ps,
-                                 TALER_EXCHANGE_ReserveWithdrawResultCallback
-                                 res_cb,
-                                 void *res_cb_cls)
+struct TALER_EXCHANGE_WithdrawHandle *
+TALER_EXCHANGE_withdraw (struct TALER_EXCHANGE_Handle *exchange,
+                         const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                         const struct
+                         TALER_ReservePrivateKeyP *reserve_priv,
+                         const struct TALER_PlanchetSecretsP *ps,
+                         TALER_EXCHANGE_WithdrawCallback
+                         res_cb,
+                         void *res_cb_cls)
 {
   struct TALER_Amount amount_with_fee;
   struct TALER_ReserveSignatureP reserve_sig;
   struct TALER_WithdrawRequestPS req;
   struct TALER_PlanchetDetail pd;
-  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+  struct TALER_EXCHANGE_WithdrawHandle *wsh;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &req.reserve_pub.eddsa_pub);
@@ -1243,20 +1243,20 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_ReserveWithdrawHandle *
-TALER_EXCHANGE_reserve_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
-                                  const struct
-                                  TALER_EXCHANGE_DenomPublicKey *pk,
-                                  const struct
-                                  TALER_ReserveSignatureP *reserve_sig,
-                                  const struct
-                                  TALER_ReservePublicKeyP *reserve_pub,
-                                  const struct TALER_PlanchetSecretsP *ps,
-                                  TALER_EXCHANGE_ReserveWithdrawResultCallback
-                                  res_cb,
-                                  void *res_cb_cls)
+struct TALER_EXCHANGE_WithdrawHandle *
+TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
+                          const struct
+                          TALER_EXCHANGE_DenomPublicKey *pk,
+                          const struct
+                          TALER_ReserveSignatureP *reserve_sig,
+                          const struct
+                          TALER_ReservePublicKeyP *reserve_pub,
+                          const struct TALER_PlanchetSecretsP *ps,
+                          TALER_EXCHANGE_WithdrawCallback
+                          res_cb,
+                          void *res_cb_cls)
 {
-  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+  struct TALER_EXCHANGE_WithdrawHandle *wsh;
   struct TALER_PlanchetDetail pd;
 
   if (GNUNET_OK !=
@@ -1287,9 +1287,9 @@ TALER_EXCHANGE_reserve_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
  * @param sign the withdraw sign request handle
  */
 void
-TALER_EXCHANGE_reserve_withdraw_cancel (struct
-                                        TALER_EXCHANGE_ReserveWithdrawHandle *
-                                        sign)
+TALER_EXCHANGE_withdraw_cancel (struct
+                                TALER_EXCHANGE_WithdrawHandle *
+                                sign)
 {
   if (NULL != sign->job)
   {

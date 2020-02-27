@@ -2038,30 +2038,6 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 
 
 /**
- * Lookup the given @a pub in @a keys.
- *
- * @param keys the exchange's key set
- * @param pub claimed current online signing key for the exchange
- * @return NULL if @a pub was not found
- */
-const struct TALER_EXCHANGE_SigningPublicKey *
-TALER_EXCHANGE_get_signing_key_details (const struct TALER_EXCHANGE_Keys *keys,
-                                        const struct
-                                        TALER_ExchangePublicKeyP *pub)
-{
-  for (unsigned int i = 0; i<keys->num_sign_keys; i++)
-  {
-    struct TALER_EXCHANGE_SigningPublicKey *spk = &keys->sign_keys[i];
-
-    if (0 == GNUNET_memcmp (pub,
-                            &spk->key))
-      return spk;
-  }
-  return NULL;
-}
-
-
-/**
  * Test if the given @a pub is a the current signing key from the exchange
  * according to @a keys.
  *
