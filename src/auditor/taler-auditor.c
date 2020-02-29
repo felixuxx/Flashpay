@@ -3763,7 +3763,7 @@ refresh_session_cb (void *cls,
                               NULL);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    report_row_inconsistency ("refresh_melt",
+    report_row_inconsistency ("melt",
                               rowid,
                               "denomination key not found");
     return GNUNET_OK;

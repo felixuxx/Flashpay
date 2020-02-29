@@ -140,7 +140,7 @@ run (void *cls,
     /**
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_refresh_melt
+    TALER_TESTING_cmd_melt
       ("refresh-melt",
       "refresh-withdraw-coin",
       MHD_HTTP_OK,

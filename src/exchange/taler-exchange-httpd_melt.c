@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_refresh_melt.c
+ * @file taler-exchange-httpd_melt.c
  * @brief Handle /refresh/melt requests
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -27,7 +27,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_mhd.h"
-#include "taler-exchange-httpd_refresh_melt.h"
+#include "taler-exchange-httpd_melt.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -48,14 +48,14 @@
  * @return a MHD result code
  */
 static int
-reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                       const struct
-                                       TALER_CoinSpendPublicKeyP *coin_pub,
-                                       const struct TALER_Amount *coin_value,
-                                       struct TALER_EXCHANGEDB_TransactionList *
-                                       tl,
-                                       const struct TALER_Amount *requested,
-                                       const struct TALER_Amount *residual)
+reply_melt_insufficient_funds (struct MHD_Connection *connection,
+                               const struct
+                               TALER_CoinSpendPublicKeyP *coin_pub,
+                               const struct TALER_Amount *coin_value,
+                               struct TALER_EXCHANGEDB_TransactionList *
+                               tl,
+                               const struct TALER_Amount *requested,
+                               const struct TALER_Amount *residual)
 {
   json_t *history;
 
@@ -96,9 +96,9 @@ reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
  * @return a MHD status code
  */
 static int
-reply_refresh_melt_success (struct MHD_Connection *connection,
-                            const struct TALER_RefreshCommitmentP *rc,
-                            uint32_t noreveal_index)
+reply_melt_success (struct MHD_Connection *connection,
+                    const struct TALER_RefreshCommitmentP *rc,
+                    uint32_t noreveal_index)
 {
   struct TALER_RefreshMeltConfirmationPS body;
   struct TALER_ExchangePublicKeyP pub;
@@ -139,7 +139,7 @@ struct RefreshMeltContext
 
   /**
    * noreveal_index is only initialized during
-   * #refresh_melt_transaction().
+   * #melt_transaction().
    */
   struct TALER_EXCHANGEDB_RefreshSession refresh_session;
 
@@ -253,14 +253,14 @@ refresh_check_melt (struct MHD_Connection *connection,
                    TALER_amount_subtract (&coin_residual,
                                           &spent,
                                           &rmc->refresh_session.amount_with_fee));
-    *mhd_ret = reply_refresh_melt_insufficient_funds (connection,
-                                                      &rmc->refresh_session.coin
-                                                      .coin_pub,
-                                                      &rmc->coin_value,
-                                                      tl,
-                                                      &rmc->refresh_session.
-                                                      amount_with_fee,
-                                                      &coin_residual);
+    *mhd_ret = reply_melt_insufficient_funds (connection,
+                                              &rmc->refresh_session.coin
+                                              .coin_pub,
+                                              &rmc->coin_value,
+                                              tl,
+                                              &rmc->refresh_session.
+                                              amount_with_fee,
+                                              &coin_residual);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -294,10 +294,10 @@ refresh_check_melt (struct MHD_Connection *connection,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-refresh_melt_transaction (void *cls,
-                          struct MHD_Connection *connection,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          int *mhd_ret)
+melt_transaction (void *cls,
+                  struct MHD_Connection *connection,
+                  struct TALER_EXCHANGEDB_Session *session,
+                  int *mhd_ret)
 {
   struct RefreshMeltContext *rmc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -311,9 +311,9 @@ refresh_melt_transaction (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     TALER_LOG_DEBUG ("Found already-melted coin\n");
-    *mhd_ret = reply_refresh_melt_success (connection,
-                                           &rmc->refresh_session.rc,
-                                           noreveal_index);
+    *mhd_ret = reply_melt_success (connection,
+                                   &rmc->refresh_session.rc,
+                                   noreveal_index);
     /* Note: we return "hard error" to ensure the wrapper
        does not retry the transaction, and to also not generate
        a "fresh" response (as we would on "success") */
@@ -366,15 +366,15 @@ refresh_melt_transaction (void *cls,
  * happened.  We now need to validate the coins being melted and the
  * session signature and then hand things of to execute the melt
  * operation.  This function parses the JSON arrays and then passes
- * processing on to #refresh_melt_transaction().
+ * processing on to #melt_transaction().
  *
  * @param connection the MHD connection to handle
  * @param[in,out] rmc details about the melt request
  * @return MHD result code
  */
 static int
-handle_refresh_melt (struct MHD_Connection *connection,
-                     struct RefreshMeltContext *rmc)
+handle_melt (struct MHD_Connection *connection,
+             struct RefreshMeltContext *rmc)
 {
 
   /* verify signature of coin for melt operation */
@@ -415,15 +415,15 @@ handle_refresh_melt (struct MHD_Connection *connection,
         TEH_DB_run_transaction (connection,
                                 "run melt",
                                 &mhd_ret,
-                                &refresh_melt_transaction,
+                                &melt_transaction,
                                 rmc))
       return mhd_ret;
   }
 
   /* generate ordinary response */
-  return reply_refresh_melt_success (connection,
-                                     &rmc->refresh_session.rc,
-                                     rmc->refresh_session.noreveal_index);
+  return reply_melt_success (connection,
+                             &rmc->refresh_session.rc,
+                             rmc->refresh_session.noreveal_index);
 }
 
 
@@ -571,8 +571,8 @@ check_for_denomination_key (struct MHD_Connection *connection,
                                        TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION,
                                        "melt amount smaller than melting fee");
   }
-  return handle_refresh_melt (connection,
-                              rmc);
+  return handle_melt (connection,
+                      rmc);
 }
 
 
@@ -580,7 +580,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
  * Handle a "/coins/$COIN_PUB/melt" request.  Parses the request into the JSON
  * components and then hands things of to #check_for_denomination_key() to
  * validate the melted coins, the signature and execute the melt using
- * handle_refresh_melt().
+ * handle_melt().
 
  * @param connection the MHD connection to handle
  * @param coin_pub public key of the coin
@@ -625,4 +625,4 @@ TEH_REFRESH_handler_melt (struct MHD_Connection *connection,
 }
 
 
-/* end of taler-exchange-httpd_refresh_melt.c */
+/* end of taler-exchange-httpd_melt.c */

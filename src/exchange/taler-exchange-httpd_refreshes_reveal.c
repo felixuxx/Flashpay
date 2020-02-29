@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_refresh_reveal.c
- * @brief Handle /refresh/reveal requests
+ * @file taler-exchange-httpd_refreshes_reveal.c
+ * @brief Handle /refreshes/$RCH/reveal requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -26,7 +26,7 @@
 #include <microhttpd.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_mhd.h"
-#include "taler-exchange-httpd_refresh_reveal.h"
+#include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -299,7 +299,7 @@ refresh_reveal_transaction (void *cls,
                             int *mhd_ret)
 {
   struct RevealContext *rctx = cls;
-  struct TALER_EXCHANGEDB_RefreshMelt refresh_melt;
+  struct TALER_EXCHANGEDB_RefreshMelt melt;
   enum GNUNET_DB_QueryStatus qs;
 
   /* Obtain basic information about the refresh operation and what
@@ -307,7 +307,7 @@ refresh_reveal_transaction (void *cls,
   qs = TEH_plugin->get_melt (TEH_plugin->cls,
                              session,
                              &rctx->rc,
-                             &refresh_melt);
+                             &melt);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -319,7 +319,7 @@ refresh_reveal_transaction (void *cls,
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     return qs;
   if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
-       (refresh_melt.session.noreveal_index >= TALER_CNC_KAPPA) )
+       (melt.session.noreveal_index >= TALER_CNC_KAPPA) )
   {
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -331,7 +331,7 @@ refresh_reveal_transaction (void *cls,
 
   /* Verify commitment */
   {
-    /* Note that the contents of rcs[refresh_melt.session.noreveal_index]
+    /* Note that the contents of rcs[melt.session.noreveal_index]
        will be aliased and are *not* allocated (or deallocated) in
        this function -- in contrast to the other offsets! */
     struct TALER_RefreshCommitmentEntry rcs[TALER_CNC_KAPPA];
@@ -343,7 +343,7 @@ refresh_reveal_transaction (void *cls,
     {
       struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
 
-      if (i == refresh_melt.session.noreveal_index)
+      if (i == melt.session.noreveal_index)
       {
         /* Take these coin envelopes from the client */
         rce->transfer_pub = rctx->gamma_tp;
@@ -360,7 +360,7 @@ refresh_reveal_transaction (void *cls,
         GNUNET_CRYPTO_ecdhe_key_get_public (&tpriv->ecdhe_priv,
                                             &rce->transfer_pub.ecdhe_pub);
         TALER_link_reveal_transfer_secret (tpriv,
-                                           &refresh_melt.session.coin.coin_pub,
+                                           &melt.session.coin.coin_pub,
                                            &ts);
         rce->new_coins = GNUNET_new_array (rctx->num_fresh_coins,
                                            struct TALER_RefreshCoinData);
@@ -387,15 +387,15 @@ refresh_reveal_transaction (void *cls,
                                   TALER_CNC_KAPPA,
                                   rctx->num_fresh_coins,
                                   rcs,
-                                  &refresh_melt.session.coin.coin_pub,
-                                  &refresh_melt.session.amount_with_fee);
+                                  &melt.session.coin.coin_pub,
+                                  &melt.session.amount_with_fee);
 
     /* Free resources allocated above */
     for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     {
       struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
 
-      if (i == refresh_melt.session.noreveal_index)
+      if (i == melt.session.noreveal_index)
         continue; /* This offset is special... */
       for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
       {
@@ -421,7 +421,7 @@ refresh_reveal_transaction (void *cls,
   {
     struct TALER_Amount refresh_cost;
 
-    refresh_cost = refresh_melt.melt_fee;
+    refresh_cost = melt.melt_fee;
     for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
     {
       struct TALER_Amount fee_withdraw;
@@ -450,7 +450,7 @@ refresh_reveal_transaction (void *cls,
       }
     }
     if (0 < TALER_amount_cmp (&refresh_cost,
-                              &refresh_melt.session.amount_with_fee))
+                              &melt.session.amount_with_fee))
     {
       GNUNET_break_op (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -542,7 +542,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
   struct GNUNET_HashCode dki_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
-  struct TALER_EXCHANGEDB_RefreshMelt refresh_melt;
+  struct TALER_EXCHANGEDB_RefreshMelt melt;
   int res;
 
   /* Parse denomination key hashes */
@@ -613,7 +613,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         (qs = TEH_plugin->get_melt (TEH_plugin->cls,
                                     NULL,
                                     &rctx->rc,
-                                    &refresh_melt)))
+                                    &melt)))
     {
       switch (qs)
       {
@@ -663,7 +663,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       ldp.purpose.size = htonl (sizeof (ldp));
       ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
       ldp.h_denom_pub = dki_h[i];
-      ldp.old_coin_pub = refresh_melt.session.coin.coin_pub;
+      ldp.old_coin_pub = melt.session.coin.coin_pub;
       ldp.transfer_pub = rctx->gamma_tp;
       GNUNET_CRYPTO_hash (rcds[i].coin_ev,
                           rcds[i].coin_ev_size,
@@ -672,7 +672,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
                                       &ldp.purpose,
                                       &link_sigs[i].eddsa_signature,
-                                      &refresh_melt.session.coin.coin_pub.
+                                      &melt.session.coin.coin_pub.
                                       eddsa_pub))
       {
         GNUNET_break_op (0);

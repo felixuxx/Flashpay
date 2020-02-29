@@ -1307,10 +1307,10 @@ TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt (const char *label,
-                                const char *coin_reference,
-                                unsigned int expected_response_code,
-                                ...);
+TALER_TESTING_cmd_melt (const char *label,
+                        const char *coin_reference,
+                        unsigned int expected_response_code,
+                        ...);
 
 
 /**
@@ -1326,10 +1326,10 @@ TALER_TESTING_cmd_refresh_melt (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt_double (const char *label,
-                                       const char *coin_reference,
-                                       unsigned int expected_response_code,
-                                       ...);
+TALER_TESTING_cmd_melt_double (const char *label,
+                               const char *coin_reference,
+                               unsigned int expected_response_code,
+                               ...);
 
 
 /**
@@ -1339,7 +1339,7 @@ TALER_TESTING_cmd_refresh_melt_double (const char *label,
  * @return modified command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd);
+TALER_TESTING_cmd_melt_with_retry (struct TALER_TESTING_Command cmd);
 
 
 /**

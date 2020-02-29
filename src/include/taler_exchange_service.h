@@ -697,7 +697,7 @@ void
 TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
 
 
-/* *********************  /deposit *********************** */
+/* *********************  /coins/$COIN_PUB/deposit *********************** */
 
 
 /**
@@ -799,7 +799,7 @@ void
 TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit);
 
 
-/* *********************  /refund *********************** */
+/* *********************  /coins/$COIN_PUB/refund *********************** */
 
 /**
  * @brief A Refund Handle
@@ -926,7 +926,7 @@ void
 TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund);
 
 
-/* ********************* /reserve/status *********************** */
+/* ********************* GET /reserves/$RESERVE_PUB *********************** */
 
 
 /**
@@ -1147,14 +1147,14 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
  */
 void
 TALER_EXCHANGE_reserves_get_cancel (struct
-                                    TALER_EXCHANGE_ReservesGetHandle *rsh);
+                                    TALER_EXCHANGE_ReservesGetHandle *rhh);
 
 
-/* ********************* /reserve/withdraw *********************** */
+/* ********************* POST /reserves/$RESERVE_PUB/withdraw *********************** */
 
 
 /**
- * @brief A /reserve/withdraw Handle
+ * @brief A /reserves/$RESERVE_PUB/withdraw Handle
  */
 struct TALER_EXCHANGE_WithdrawHandle;
 
@@ -1175,13 +1175,12 @@ typedef void
                                     unsigned int http_status,
                                     enum TALER_ErrorCode ec,
                                     const struct
-                                    TALER_DenominationSignature *
-                                    sig,
+                                    TALER_DenominationSignature *sig,
                                     const json_t *full_response);
 
 
 /**
- * Withdraw a coin from the exchange using a /reserve/withdraw
+ * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/withdraw
  * request.  This API is typically used by a wallet to withdraw from a
  * reserve.
  *
@@ -1213,7 +1212,7 @@ TALER_EXCHANGE_withdraw (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
- * Withdraw a coin from the exchange using a /reserve/withdraw
+ * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/withdraw
  * request.  This API is typically used by a wallet to withdraw a tip
  * where the reserve's signature was created by the merchant already.
  *
@@ -1252,12 +1251,10 @@ TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
  * Cancel a withdraw status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param sign the withdraw sign request handle
+ * @param wh the withdraw handle
  */
 void
-TALER_EXCHANGE_withdraw_cancel (struct
-                                TALER_EXCHANGE_WithdrawHandle *
-                                sign);
+TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */
@@ -1273,7 +1270,7 @@ TALER_EXCHANGE_withdraw_cancel (struct
  * no money is lost in case of hardware failures, is operation does
  * not actually initiate the request. Instead, it generates a buffer
  * which the caller must store before proceeding with the actual call
- * to #TALER_EXCHANGE_refresh_melt() that will generate the request.
+ * to #TALER_EXCHANGE_melt() that will generate the request.
  *
  * This function does verify that the given request data is internally
  * consistent.  However, the @a melts_sigs are NOT verified.
@@ -1298,7 +1295,7 @@ TALER_EXCHANGE_withdraw_cancel (struct
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         Otherwise, pointer to a buffer of @a res_size to store persistently
- *         before proceeding to #TALER_EXCHANGE_refresh_melt().
+ *         before proceeding to #TALER_EXCHANGE_melt().
  *         Non-null results should be freed using GNUNET_free().
  */
 char *
@@ -1315,18 +1312,19 @@ TALER_EXCHANGE_refresh_prepare (const struct
                                 size_t *res_size);
 
 
-/* ********************* /refresh/melt ***************************** */
+/* ********************* /coins/$COIN_PUB/melt ***************************** */
 
 /**
- * @brief A /refresh/melt Handle
+ * @brief A /coins/$COIN_PUB/melt Handle
  */
-struct TALER_EXCHANGE_RefreshMeltHandle;
+struct TALER_EXCHANGE_MeltHandle;
 
 
 /**
- * Callbacks of this type are used to notify the application about the
- * result of the /refresh/melt stage.  If successful, the @a noreveal_index
- * should be committed to disk prior to proceeding #TALER_EXCHANGE_refresh_reveal().
+ * Callbacks of this type are used to notify the application about the result
+ * of the /coins/$COIN_PUB/melt stage.  If successful, the @a noreveal_index
+ * should be committed to disk prior to proceeding
+ * #TALER_EXCHANGE_refreshes_reveal().
  *
  * @param cls closure
  * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
@@ -1338,17 +1336,16 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
-(*TALER_EXCHANGE_RefreshMeltCallback) (void *cls,
-                                       unsigned int http_status,
-                                       enum TALER_ErrorCode ec,
-                                       uint32_t noreveal_index,
-                                       const struct
-                                       TALER_ExchangePublicKeyP *sign_key,
-                                       const json_t *full_response);
+(*TALER_EXCHANGE_MeltCallback) (void *cls,
+                                unsigned int http_status,
+                                enum TALER_ErrorCode ec,
+                                uint32_t noreveal_index,
+                                const struct TALER_ExchangePublicKeyP *sign_key,
+                                const json_t *full_response);
 
 
 /**
- * Submit a refresh melt request to the exchange and get the exchange's
+ * Submit a melt request to the exchange and get the exchange's
  * response.
  *
  * This API is typically used by a wallet.  Note that to ensure that
@@ -1367,26 +1364,25 @@ typedef void
  * @return a handle for this request; NULL if the argument was invalid.
  *         In this case, neither callback will be called.
  */
-struct TALER_EXCHANGE_RefreshMeltHandle *
-TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
-                             size_t refresh_data_length,
-                             const char *refresh_data,
-                             TALER_EXCHANGE_RefreshMeltCallback melt_cb,
-                             void *melt_cb_cls);
+struct TALER_EXCHANGE_MeltHandle *
+TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
+                     size_t refresh_data_length,
+                     const char *refresh_data,
+                     TALER_EXCHANGE_MeltCallback melt_cb,
+                     void *melt_cb_cls);
 
 
 /**
- * Cancel a refresh melt request.  This function cannot be used
+ * Cancel a melt request.  This function cannot be used
  * on a request handle if the callback was already invoked.
  *
- * @param rmh the refresh handle
+ * @param mh the melt handle
  */
 void
-TALER_EXCHANGE_refresh_melt_cancel (struct
-                                    TALER_EXCHANGE_RefreshMeltHandle *rmh);
+TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh);
 
 
-/* ********************* /refresh/reveal ***************************** */
+/* ********************* /refreshes/$RCH/reveal ***************************** */
 
 
 /**
@@ -1407,25 +1403,25 @@ TALER_EXCHANGE_refresh_melt_cancel (struct
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
-(*TALER_EXCHANGE_RefreshRevealCallback) (void *cls,
-                                         unsigned int http_status,
-                                         enum TALER_ErrorCode ec,
-                                         unsigned int num_coins,
-                                         const struct
-                                         TALER_PlanchetSecretsP *coin_privs,
-                                         const struct
-                                         TALER_DenominationSignature *sigs,
-                                         const json_t *full_response);
+(*TALER_EXCHANGE_RefreshesRevealCallback)(void *cls,
+                                          unsigned int http_status,
+                                          enum TALER_ErrorCode ec,
+                                          unsigned int num_coins,
+                                          const struct
+                                          TALER_PlanchetSecretsP *coin_privs,
+                                          const struct
+                                          TALER_DenominationSignature *sigs,
+                                          const json_t *full_response);
 
 
 /**
- * @brief A /refresh/reveal Handle
+ * @brief A /refreshes/$RCH/reveal Handle
  */
-struct TALER_EXCHANGE_RefreshRevealHandle;
+struct TALER_EXCHANGE_RefreshesRevealHandle;
 
 
 /**
- * Submit a /refresh/reval request to the exchange and get the exchange's
+ * Submit a /refreshes/$RCH/reval request to the exchange and get the exchange's
  * response.
  *
  * This API is typically used by a wallet.  Note that to ensure that
@@ -1439,20 +1435,21 @@ struct TALER_EXCHANGE_RefreshRevealHandle;
  * @param refresh_data the refresh data as returned from
           #TALER_EXCHANGE_refresh_prepare())
  * @param noreveal_index response from the exchange to the
- *        #TALER_EXCHANGE_refresh_melt() invocation
+ *        #TALER_EXCHANGE_melt() invocation
  * @param reveal_cb the callback to call with the final result of the
  *        refresh operation
  * @param reveal_cb_cls closure for the above callback
  * @return a handle for this request; NULL if the argument was invalid.
  *         In this case, neither callback will be called.
  */
-struct TALER_EXCHANGE_RefreshRevealHandle *
-TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
-                               size_t refresh_data_length,
-                               const char *refresh_data,
-                               uint32_t noreveal_index,
-                               TALER_EXCHANGE_RefreshRevealCallback reveal_cb,
-                               void *reveal_cb_cls);
+struct TALER_EXCHANGE_RefreshesRevealHandle *
+TALER_EXCHANGE_refreshes_reveal (struct TALER_EXCHANGE_Handle *exchange,
+                                 size_t refresh_data_length,
+                                 const char *refresh_data,
+                                 uint32_t noreveal_index,
+                                 TALER_EXCHANGE_RefreshesRevealCallback
+                                 reveal_cb,
+                                 void *reveal_cb_cls);
 
 
 /**
@@ -1462,24 +1459,25 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
  * @param rrh the refresh reval handle
  */
 void
-TALER_EXCHANGE_refresh_reveal_cancel (struct
-                                      TALER_EXCHANGE_RefreshRevealHandle *rrh);
+TALER_EXCHANGE_refreshes_reveal_cancel (struct
+                                        TALER_EXCHANGE_RefreshesRevealHandle *
+                                        rrh);
 
 
-/* ********************* /refresh/link ***************************** */
+/* ********************* /coins/$COIN_PUB/link ***************************** */
 
 
 /**
- * @brief A /refresh/link Handle
+ * @brief A /coins/$COIN_PUB/link Handle
  */
-struct TALER_EXCHANGE_RefreshLinkHandle;
+struct TALER_EXCHANGE_LinkHandle;
 
 
 /**
- * Callbacks of this type are used to return the final result of
- * submitting a /refresh/link request to a exchange.  If the operation was
- * successful, this function returns the signatures over the coins
- * that were created when the original coin was melted.
+ * Callbacks of this type are used to return the final result of submitting a
+ * /coins/$COIN_PUB/link request to a exchange.  If the operation was
+ * successful, this function returns the signatures over the coins that were
+ * created when the original coin was melted.
  *
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -1492,26 +1490,24 @@ struct TALER_EXCHANGE_RefreshLinkHandle;
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
-(*TALER_EXCHANGE_RefreshLinkCallback) (void *cls,
-                                       unsigned int http_status,
-                                       enum TALER_ErrorCode ec,
-                                       unsigned int num_coins,
-                                       const struct
-                                       TALER_CoinSpendPrivateKeyP *coin_privs,
-                                       const struct
-                                       TALER_DenominationSignature *sigs,
-                                       const struct
-                                       TALER_DenominationPublicKey *pubs,
-                                       const json_t *full_response);
+(*TALER_EXCHANGE_LinkCallback) (void *cls,
+                                unsigned int http_status,
+                                enum TALER_ErrorCode ec,
+                                unsigned int num_coins,
+                                const struct
+                                TALER_CoinSpendPrivateKeyP *coin_privs,
+                                const struct
+                                TALER_DenominationSignature *sigs,
+                                const struct
+                                TALER_DenominationPublicKey *pubs,
+                                const json_t *full_response);
 
 
 /**
- * Submit a refresh link request to the exchange and get the
- * exchange's response.
+ * Submit a link request to the exchange and get the exchange's response.
  *
- * This API is typically not used by anyone, it is more a threat
- * against those trying to receive a funds transfer by abusing the
- * /refresh protocol.
+ * This API is typically not used by anyone, it is more a threat against those
+ * trying to receive a funds transfer by abusing the refresh protocol.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param coin_priv private key to request link data for
@@ -1520,22 +1516,21 @@ typedef void
  * @param link_cb_cls closure for @a link_cb
  * @return a handle for this request
  */
-struct TALER_EXCHANGE_RefreshLinkHandle *
-TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                             TALER_EXCHANGE_RefreshLinkCallback link_cb,
-                             void *link_cb_cls);
+struct TALER_EXCHANGE_LinkHandle *
+TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
+                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                     TALER_EXCHANGE_LinkCallback link_cb,
+                     void *link_cb_cls);
 
 
 /**
- * Cancel a refresh link request.  This function cannot be used
+ * Cancel a link request.  This function cannot be used
  * on a request handle if the callback was already invoked.
  *
- * @param rlh the refresh link handle
+ * @param lh the link handle
  */
 void
-TALER_EXCHANGE_refresh_link_cancel (struct
-                                    TALER_EXCHANGE_RefreshLinkHandle *rlh);
+TALER_EXCHANGE_link_cancel (struct TALER_EXCHANGE_LinkHandle *lh);
 
 
 /* ********************* /transfers/$WTID *********************** */
@@ -1707,6 +1702,46 @@ TALER_EXCHANGE_verify_coin_history (const struct
                                     TALER_CoinSpendPublicKeyP *coin_pub,
                                     json_t *history,
                                     struct TALER_Amount *total);
+
+
+/**
+ * Parse history given in JSON format and return it in binary
+ * format.
+ *
+ * @param exchange connection to the exchange we can use
+ * @param history JSON array with the history
+ * @param reserve_pub public key of the reserve to inspect
+ * @param currency currency we expect the balance to be in
+ * @param[out] balance final balance
+ * @param history_length number of entries in @a history
+ * @param[out] rhistory array of length @a history_length, set to the
+ *             parsed history entries
+ * @return #GNUNET_OK if history was valid and @a rhistory and @a balance
+ *         were set,
+ *         #GNUNET_SYSERR if there was a protocol violation in @a history
+ */
+int
+TALER_EXCHANGE_parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
+                                      const json_t *history,
+                                      const struct
+                                      TALER_ReservePublicKeyP *reserve_pub,
+                                      const char *currency,
+                                      struct TALER_Amount *balance,
+                                      unsigned int history_length,
+                                      struct TALER_EXCHANGE_ReserveHistory *
+                                      rhistory);
+
+
+/**
+ * Free memory (potentially) allocated by #TALER_EXCHANGE_parse_reserve_history().
+ *
+ * @param rhistory result to free
+ * @param len number of entries in @a rhistory
+ */
+void
+TALER_EXCHANGE_free_reserve_history (struct
+                                     TALER_EXCHANGE_ReserveHistory *rhistory,
+                                     unsigned int len);
 
 
 /* ********************* /recoup *********************** */

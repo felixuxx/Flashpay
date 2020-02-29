@@ -3389,8 +3389,8 @@ postgres_select_refunds_by_coin (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use, NULL if not run in any transaction
  * @param rc commitment hash to use to locate the operation
- * @param[out] refresh_melt where to store the result; note that
- *             refresh_melt->session.coin.denom_sig will be set to NULL
+ * @param[out] melt where to store the result; note that
+ *             melt->session.coin.denom_sig will be set to NULL
  *             and is not fetched by this routine (as it is not needed by the client)
  * @return transaction status
  */
@@ -3398,7 +3398,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_melt (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_RefreshCommitmentP *rc,
-                   struct TALER_EXCHANGEDB_RefreshMelt *refresh_melt)
+                   struct TALER_EXCHANGEDB_RefreshMelt *melt)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3407,30 +3407,30 @@ postgres_get_melt (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                          &refresh_melt->session.coin.
+                                          &melt->session.coin.
                                           denom_pub_hash),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
-                                 &refresh_melt->melt_fee),
+                                 &melt->melt_fee),
     GNUNET_PQ_result_spec_uint32 ("noreveal_index",
-                                  &refresh_melt->session.noreveal_index),
+                                  &melt->session.noreveal_index),
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
-                                          &refresh_melt->session.coin.coin_pub),
+                                          &melt->session.coin.coin_pub),
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
-                                          &refresh_melt->session.coin_sig),
+                                          &melt->session.coin_sig),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 &refresh_melt->session.amount_with_fee),
+                                 &melt->session.amount_with_fee),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  refresh_melt->session.coin.denom_sig.rsa_signature = NULL;
+  melt->session.coin.denom_sig.rsa_signature = NULL;
   if (NULL == session)
     session = postgres_get_session (pg);
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "get_melt",
                                                  params,
                                                  rs);
-  refresh_melt->session.rc = *rc;
+  melt->session.rc = *rc;
   return qs;
 }
 

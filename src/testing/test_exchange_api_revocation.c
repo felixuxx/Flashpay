@@ -98,10 +98,10 @@ run (void *cls,
     /**
      * Melt SOME of the rest of the coin's value
      * (EUR:3.17 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_refresh_melt ("refresh-melt-1",
-                                    "withdraw-revocation-coin-1",
-                                    MHD_HTTP_OK,
-                                    NULL),
+    TALER_TESTING_cmd_melt ("refresh-melt-1",
+                            "withdraw-revocation-coin-1",
+                            MHD_HTTP_OK,
+                            NULL),
     /**
      * Complete (successful) melt operation, and withdraw the coins
      */
@@ -133,11 +133,11 @@ run (void *cls,
     /* Melt original coin AGAIN, but only create one 0.1 EUR coin;
        This costs EUR:0.03 in refresh and EUR:01 in withdraw fees,
        leaving EUR:3.69. */
-    TALER_TESTING_cmd_refresh_melt ("refresh-melt-2",
-                                    "withdraw-revocation-coin-1",
-                                    MHD_HTTP_OK,
-                                    "EUR:0.1",
-                                    NULL),
+    TALER_TESTING_cmd_melt ("refresh-melt-2",
+                            "withdraw-revocation-coin-1",
+                            MHD_HTTP_OK,
+                            "EUR:0.1",
+                            NULL),
     /**
      * Complete (successful) melt operation, and withdraw the coins
      */

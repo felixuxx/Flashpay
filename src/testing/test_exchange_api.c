@@ -239,10 +239,10 @@ run (void *cls,
     /**
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_refresh_melt_double ("refresh-melt-1",
-                                           "refresh-withdraw-coin-1",
-                                           MHD_HTTP_OK,
-                                           NULL),
+    TALER_TESTING_cmd_melt_double ("refresh-melt-1",
+                                   "refresh-withdraw-coin-1",
+                                   MHD_HTTP_OK,
+                                   NULL),
     /**
      * Complete (successful) melt operation, and
      * withdraw the coins
@@ -286,16 +286,16 @@ run (void *cls,
                                MHD_HTTP_OK),
     /* Test running a failing melt operation (same operation
      * again must fail) */
-    TALER_TESTING_cmd_refresh_melt ("refresh-melt-failing",
-                                    "refresh-withdraw-coin-1",
-                                    MHD_HTTP_CONFLICT,
-                                    NULL),
+    TALER_TESTING_cmd_melt ("refresh-melt-failing",
+                            "refresh-withdraw-coin-1",
+                            MHD_HTTP_CONFLICT,
+                            NULL),
     /* Test running a failing melt operation (on a coin that
        was itself revealed and subsequently deposited) */
-    TALER_TESTING_cmd_refresh_melt ("refresh-melt-failing-2",
-                                    "refresh-reveal-1",
-                                    MHD_HTTP_CONFLICT,
-                                    NULL),
+    TALER_TESTING_cmd_melt ("refresh-melt-failing-2",
+                            "refresh-reveal-1",
+                            MHD_HTTP_CONFLICT,
+                            NULL),
 
     TALER_TESTING_cmd_end ()
   };

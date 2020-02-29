@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_refresh_link.c
- * @brief Implementation of the /refresh/link request of the exchange's HTTP API
+ * @file lib/exchange_api_link.c
+ * @brief Implementation of the /coins/$COIN_PUB/link request
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -31,9 +31,9 @@
 
 
 /**
- * @brief A /refresh/link Handle
+ * @brief A /coins/$COIN_PUB/link Handle
  */
-struct TALER_EXCHANGE_RefreshLinkHandle
+struct TALER_EXCHANGE_LinkHandle
 {
 
   /**
@@ -54,7 +54,7 @@ struct TALER_EXCHANGE_RefreshLinkHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_RefreshLinkCallback link_cb;
+  TALER_EXCHANGE_LinkCallback link_cb;
 
   /**
    * Closure for @e cb.
@@ -73,7 +73,7 @@ struct TALER_EXCHANGE_RefreshLinkHandle
  * Parse the provided linkage data from the "200 OK" response
  * for one of the coins.
  *
- * @param rlh refresh link handle
+ * @param lh link handle
  * @param json json reply with the data for one coin
  * @param coin_num number of the coin to decode
  * @param trans_pub our transfer public key
@@ -83,13 +83,13 @@ struct TALER_EXCHANGE_RefreshLinkHandle
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
-                         const json_t *json,
-                         unsigned int coin_num,
-                         const struct TALER_TransferPublicKeyP *trans_pub,
-                         struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                         struct TALER_DenominationSignature *sig,
-                         struct TALER_DenominationPublicKey *pub)
+parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
+                 const json_t *json,
+                 unsigned int coin_num,
+                 const struct TALER_TransferPublicKeyP *trans_pub,
+                 struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                 struct TALER_DenominationSignature *sig,
+                 struct TALER_DenominationPublicKey *pub)
 {
   struct GNUNET_CRYPTO_RsaSignature *bsig;
   struct GNUNET_CRYPTO_RsaPublicKey *rpub;
@@ -114,7 +114,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   }
 
   TALER_link_recover_transfer_secret (trans_pub,
-                                      &rlh->coin_priv,
+                                      &lh->coin_priv,
                                       &secret);
   TALER_planchet_setup_refresh (&secret,
                                 coin_num,
@@ -133,7 +133,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 
     ldp.purpose.size = htonl (sizeof (ldp));
     ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
-    GNUNET_CRYPTO_eddsa_key_get_public (&rlh->coin_priv.eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &ldp.old_coin_pub.eddsa_pub);
     ldp.transfer_pub = *trans_pub;
     pub->rsa_public_key = rpub;
@@ -175,13 +175,13 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
  * Parse the provided linkage data from the "200 OK" response
  * for one of the coins.
  *
- * @param[in,out] rlh refresh link handle (callback may be zero'ed out)
+ * @param[in,out] lh link handle (callback may be zero'ed out)
  * @param json json reply with the data for one coin
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
-                       const json_t *json)
+parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
+               const json_t *json)
 {
   unsigned int session;
   unsigned int num_coins;
@@ -277,14 +277,14 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       {
         GNUNET_assert (i + off_coin < num_coins);
         if (GNUNET_OK !=
-            parse_refresh_link_coin (rlh,
-                                     json_array_get (jsona,
-                                                     i),
-                                     i,
-                                     &trans_pub,
-                                     &coin_privs[i + off_coin],
-                                     &sigs[i + off_coin],
-                                     &pubs[i + off_coin]))
+            parse_link_coin (lh,
+                             json_array_get (jsona,
+                                             i),
+                             i,
+                             &trans_pub,
+                             &coin_privs[i + off_coin],
+                             &sigs[i + off_coin],
+                             &pubs[i + off_coin]))
         {
           GNUNET_break_op (0);
           break;
@@ -304,15 +304,15 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 
     if (off_coin == num_coins)
     {
-      rlh->link_cb (rlh->link_cb_cls,
-                    MHD_HTTP_OK,
-                    TALER_EC_NONE,
-                    num_coins,
-                    coin_privs,
-                    sigs,
-                    pubs,
-                    json);
-      rlh->link_cb = NULL;
+      lh->link_cb (lh->link_cb_cls,
+                   MHD_HTTP_OK,
+                   TALER_EC_NONE,
+                   num_coins,
+                   coin_privs,
+                   sigs,
+                   pubs,
+                   json);
+      lh->link_cb = NULL;
       ret = GNUNET_OK;
     }
     else
@@ -337,29 +337,29 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 
 /**
  * Function called when we're done processing the
- * HTTP /refresh/link request.
+ * HTTP /coins/$COIN_PUB/link request.
  *
- * @param cls the `struct TALER_EXCHANGE_RefreshLinkHandle`
+ * @param cls the `struct TALER_EXCHANGE_LinkHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_refresh_link_finished (void *cls,
-                              long response_code,
-                              const void *response)
+handle_link_finished (void *cls,
+                      long response_code,
+                      const void *response)
 {
-  struct TALER_EXCHANGE_RefreshLinkHandle *rlh = cls;
+  struct TALER_EXCHANGE_LinkHandle *lh = cls;
   const json_t *j = response;
 
-  rlh->job = NULL;
+  lh->job = NULL;
   switch (response_code)
   {
   case 0:
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        parse_refresh_link_ok (rlh,
-                               j))
+        parse_link_ok (lh,
+                       j))
     {
       GNUNET_break_op (0);
       response_code = 0;
@@ -386,25 +386,24 @@ handle_refresh_link_finished (void *cls,
     response_code = 0;
     break;
   }
-  if (NULL != rlh->link_cb)
-    rlh->link_cb (rlh->link_cb_cls,
-                  response_code,
-                  TALER_JSON_get_error_code (j),
-                  0,
-                  NULL,
-                  NULL,
-                  NULL,
-                  j);
-  TALER_EXCHANGE_refresh_link_cancel (rlh);
+  if (NULL != lh->link_cb)
+    lh->link_cb (lh->link_cb_cls,
+                 response_code,
+                 TALER_JSON_get_error_code (j),
+                 0,
+                 NULL,
+                 NULL,
+                 NULL,
+                 j);
+  TALER_EXCHANGE_link_cancel (lh);
 }
 
 
 /**
  * Submit a link request to the exchange and get the exchange's response.
  *
- * This API is typically not used by anyone, it is more a threat
- * against those trying to receive a funds transfer by abusing the
- * /refresh protocol.
+ * This API is typically not used by anyone, it is more a threat against those
+ * trying to receive a funds transfer by abusing the refresh protocol.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param coin_priv private key to request link data for
@@ -413,13 +412,13 @@ handle_refresh_link_finished (void *cls,
  * @param link_cb_cls closure for @a link_cb
  * @return a handle for this request
  */
-struct TALER_EXCHANGE_RefreshLinkHandle *
-TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                             TALER_EXCHANGE_RefreshLinkCallback link_cb,
-                             void *link_cb_cls)
+struct TALER_EXCHANGE_LinkHandle *
+TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
+                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                     TALER_EXCHANGE_LinkCallback link_cb,
+                     void *link_cb_cls)
 {
-  struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
+  struct TALER_EXCHANGE_LinkHandle *lh;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -449,42 +448,41 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
                      "/coins/%s/link",
                      pub_str);
   }
-  rlh = GNUNET_new (struct TALER_EXCHANGE_RefreshLinkHandle);
-  rlh->exchange = exchange;
-  rlh->link_cb = link_cb;
-  rlh->link_cb_cls = link_cb_cls;
-  rlh->coin_priv = *coin_priv;
-  rlh->url = TEAH_path_to_url (exchange,
-                               arg_str);
-  eh = TEL_curl_easy_get (rlh->url);
+  lh = GNUNET_new (struct TALER_EXCHANGE_LinkHandle);
+  lh->exchange = exchange;
+  lh->link_cb = link_cb;
+  lh->link_cb_cls = link_cb_cls;
+  lh->coin_priv = *coin_priv;
+  lh->url = TEAH_path_to_url (exchange,
+                              arg_str);
+  eh = TEL_curl_easy_get (lh->url);
   ctx = TEAH_handle_to_context (exchange);
-  rlh->job = GNUNET_CURL_job_add (ctx,
-                                  eh,
-                                  GNUNET_YES,
-                                  &handle_refresh_link_finished,
-                                  rlh);
-  return rlh;
+  lh->job = GNUNET_CURL_job_add (ctx,
+                                 eh,
+                                 GNUNET_YES,
+                                 &handle_link_finished,
+                                 lh);
+  return lh;
 }
 
 
 /**
- * Cancel a refresh link request.  This function cannot be used
+ * Cancel a link request.  This function cannot be used
  * on a request handle if the callback was already invoked.
  *
- * @param rlh the refresh link handle
+ * @param lh the link handle
  */
 void
-TALER_EXCHANGE_refresh_link_cancel (struct
-                                    TALER_EXCHANGE_RefreshLinkHandle *rlh)
+TALER_EXCHANGE_link_cancel (struct TALER_EXCHANGE_LinkHandle *lh)
 {
-  if (NULL != rlh->job)
+  if (NULL != lh->job)
   {
-    GNUNET_CURL_job_cancel (rlh->job);
-    rlh->job = NULL;
+    GNUNET_CURL_job_cancel (lh->job);
+    lh->job = NULL;
   }
-  GNUNET_free (rlh->url);
-  GNUNET_free (rlh);
+  GNUNET_free (lh->url);
+  GNUNET_free (lh);
 }
 
 
-/* end of exchange_api_refresh_link.c */
+/* end of exchange_api_link.c */

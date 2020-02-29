@@ -374,8 +374,8 @@ run (void *cls,
                          i,
                          j);
         unit[2] =
-          TALER_TESTING_cmd_refresh_melt_with_retry
-            (TALER_TESTING_cmd_refresh_melt
+          TALER_TESTING_cmd_melt_with_retry
+            (TALER_TESTING_cmd_melt
               (add_label (melt_label),
               withdraw_label,
               MHD_HTTP_OK,

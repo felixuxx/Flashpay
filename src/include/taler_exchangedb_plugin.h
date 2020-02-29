@@ -2087,8 +2087,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database handle to use
    * @param rc commitment to use for the lookup
-   * @param[out] refresh_melt where to store the result; note that
-   *             refresh_melt->session.coin.denom_sig will be set to NULL
+   * @param[out] melt where to store the result; note that
+   *             melt->session.coin.denom_sig will be set to NULL
    *             and is not fetched by this routine (as it is not needed by the client)
    * @return transaction status
    */
@@ -2096,7 +2096,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_melt)(void *cls,
               struct TALER_EXCHANGEDB_Session *session,
               const struct TALER_RefreshCommitmentP *rc,
-              struct TALER_EXCHANGEDB_RefreshMelt *refresh_melt);
+              struct TALER_EXCHANGEDB_RefreshMelt *melt);
 
 
   /**

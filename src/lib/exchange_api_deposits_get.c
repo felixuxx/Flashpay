@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_track_transaction.c
- * @brief Implementation of the /track/transaction request of the exchange's HTTP API
+ * @file lib/exchange_api_deposits_get.c
+ * @brief Implementation of the /deposits/ GET request
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -378,15 +378,13 @@ TALER_EXCHANGE_deposits_get (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
- * Cancel deposit wtid request.  This function cannot be used on a request
+ * Cancel /deposits/$WTID request.  This function cannot be used on a request
  * handle if a response is already served for it.
  *
  * @param dwh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_deposits_get_cancel (struct
-                                    TALER_EXCHANGE_DepositGetHandle *
-                                    dwh)
+TALER_EXCHANGE_deposits_get_cancel (struct TALER_EXCHANGE_DepositGetHandle *dwh)
 {
   if (NULL != dwh->job)
   {
@@ -399,4 +397,4 @@ TALER_EXCHANGE_deposits_get_cancel (struct
 }
 
 
-/* end of exchange_api_track_transaction.c */
+/* end of exchange_api_deposits_get.c */

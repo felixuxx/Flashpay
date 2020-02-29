@@ -87,7 +87,7 @@ struct RefreshMeltState
   /**
    * Melt handle while operation is running.
    */
-  struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
+  struct TALER_EXCHANGE_MeltHandle *rmh;
 
   /**
    * Interpreter state.
@@ -173,7 +173,7 @@ struct RefreshRevealState
   /**
    * Reveal handle while operation is running.
    */
-  struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
+  struct TALER_EXCHANGE_RefreshesRevealHandle *rrh;
 
   /**
    * Convenience struct to keep in one place all the
@@ -230,7 +230,7 @@ struct RefreshLinkState
   /**
    * Handle to the ongoing operation.
    */
-  struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
+  struct TALER_EXCHANGE_LinkHandle *rlh;
 
   /**
    * Interpreter state.
@@ -423,7 +423,7 @@ refresh_reveal_run (void *cls,
     return;
   }
   rms = melt_cmd->cls;
-  rrs->rrh = TALER_EXCHANGE_refresh_reveal
+  rrs->rrh = TALER_EXCHANGE_refreshes_reveal
                (is->exchange,
                rms->refresh_data_length,
                rms->refresh_data,
@@ -459,7 +459,7 @@ refresh_reveal_cleanup (void *cls,
                 rrs->is->ip,
                 cmd->label);
 
-    TALER_EXCHANGE_refresh_reveal_cancel (rrs->rrh);
+    TALER_EXCHANGE_refreshes_reveal_cancel (rrs->rrh);
     rrs->rrh = NULL;
   }
   if (NULL != rrs->retry_task)
@@ -730,7 +730,7 @@ refresh_link_run (void *cls,
   }
 
   /* finally, use private key from withdraw sign command */
-  rls->rlh = TALER_EXCHANGE_refresh_link
+  rls->rlh = TALER_EXCHANGE_link
                (is->exchange, coin_priv, &link_cb, rls);
 
   if (NULL == rls->rlh)
@@ -762,7 +762,7 @@ refresh_link_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 rls->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_refresh_link_cancel (rls->rlh);
+    TALER_EXCHANGE_link_cancel (rls->rlh);
     rls->rlh = NULL;
   }
   if (NULL != rls->retry_task)
@@ -782,13 +782,13 @@ refresh_link_cleanup (void *cls,
  * @param is the interpreter state.
  */
 static void
-refresh_melt_run (void *cls,
-                  const struct TALER_TESTING_Command *cmd,
-                  struct TALER_TESTING_Interpreter *is);
+melt_run (void *cls,
+          const struct TALER_TESTING_Command *cmd,
+          struct TALER_TESTING_Interpreter *is);
 
 
 /**
- * Task scheduled to re-try #refresh_melt_run.
+ * Task scheduled to re-try #melt_run.
  *
  * @param cls a `struct RefreshMeltState`
  */
@@ -798,9 +798,9 @@ do_melt_retry (void *cls)
   struct RefreshMeltState *rms = cls;
 
   rms->retry_task = NULL;
-  refresh_melt_run (rms,
-                    NULL,
-                    rms->is);
+  melt_run (rms,
+            NULL,
+            rms->is);
 }
 
 
@@ -870,7 +870,7 @@ melt_cb (void *cls,
   {
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
-    rms->rmh = TALER_EXCHANGE_refresh_melt
+    rms->rmh = TALER_EXCHANGE_melt
                  (rms->is->exchange, rms->refresh_data_length,
                  rms->refresh_data, &melt_cb, rms);
     rms->double_melt = GNUNET_NO;
@@ -888,9 +888,9 @@ melt_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
-refresh_melt_run (void *cls,
-                  const struct TALER_TESTING_Command *cmd,
-                  struct TALER_TESTING_Interpreter *is)
+melt_run (void *cls,
+          const struct TALER_TESTING_Command *cmd,
+          struct TALER_TESTING_Interpreter *is)
 {
   struct RefreshMeltState *rms = cls;
   unsigned int num_fresh_coins;
@@ -1006,11 +1006,11 @@ refresh_melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-    rms->rmh = TALER_EXCHANGE_refresh_melt (is->exchange,
-                                            rms->refresh_data_length,
-                                            rms->refresh_data,
-                                            &melt_cb,
-                                            rms);
+    rms->rmh = TALER_EXCHANGE_melt (is->exchange,
+                                    rms->refresh_data_length,
+                                    rms->refresh_data,
+                                    &melt_cb,
+                                    rms);
 
     if (NULL == rms->rmh)
     {
@@ -1030,8 +1030,8 @@ refresh_melt_run (void *cls,
  * @param cmd the command which is being cleaned up.
  */
 static void
-refresh_melt_cleanup (void *cls,
-                      const struct TALER_TESTING_Command *cmd)
+melt_cleanup (void *cls,
+              const struct TALER_TESTING_Command *cmd)
 {
   struct RefreshMeltState *rms = cls;
 
@@ -1040,7 +1040,7 @@ refresh_melt_cleanup (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Command %u (%s) did not complete\n",
                 rms->is->ip, rms->is->commands[rms->is->ip].label);
-    TALER_EXCHANGE_refresh_melt_cancel (rms->rmh);
+    TALER_EXCHANGE_melt_cancel (rms->rmh);
     rms->rmh = NULL;
   }
   if (NULL != rms->retry_task)
@@ -1073,10 +1073,10 @@ refresh_melt_cleanup (void *cls,
  * @return #GNUNET_OK on success.
  */
 static int
-refresh_melt_traits (void *cls,
-                     const void **ret,
-                     const char *trait,
-                     unsigned int index)
+melt_traits (void *cls,
+             const void **ret,
+             const char *trait,
+             unsigned int index)
 {
   struct RefreshMeltState *rms = cls;
 
@@ -1161,10 +1161,10 @@ parse_amounts (struct RefreshMeltState *rms,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt (const char *label,
-                                const char *coin_reference,
-                                unsigned int expected_response_code,
-                                ...)
+TALER_TESTING_cmd_melt (const char *label,
+                        const char *coin_reference,
+                        unsigned int expected_response_code,
+                        ...)
 {
   struct RefreshMeltState *rms;
   va_list ap;
@@ -1180,9 +1180,9 @@ TALER_TESTING_cmd_refresh_melt (const char *label,
     struct TALER_TESTING_Command cmd = {
       .label = label,
       .cls = rms,
-      .run = &refresh_melt_run,
-      .cleanup = &refresh_melt_cleanup,
-      .traits = &refresh_melt_traits
+      .run = &melt_run,
+      .cleanup = &melt_cleanup,
+      .traits = &melt_traits
     };
 
     return cmd;
@@ -1203,10 +1203,10 @@ TALER_TESTING_cmd_refresh_melt (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt_double (const char *label,
-                                       const char *coin_reference,
-                                       unsigned int expected_response_code,
-                                       ...)
+TALER_TESTING_cmd_melt_double (const char *label,
+                               const char *coin_reference,
+                               unsigned int expected_response_code,
+                               ...)
 {
   struct RefreshMeltState *rms;
   va_list ap;
@@ -1223,9 +1223,9 @@ TALER_TESTING_cmd_refresh_melt_double (const char *label,
     struct TALER_TESTING_Command cmd = {
       .label = label,
       .cls = rms,
-      .run = &refresh_melt_run,
-      .cleanup = &refresh_melt_cleanup,
-      .traits = &refresh_melt_traits
+      .run = &melt_run,
+      .cleanup = &melt_cleanup,
+      .traits = &melt_traits
     };
 
     return cmd;
@@ -1240,11 +1240,11 @@ TALER_TESTING_cmd_refresh_melt_double (const char *label,
  * @return modified command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refresh_melt_with_retry (struct TALER_TESTING_Command cmd)
+TALER_TESTING_cmd_melt_with_retry (struct TALER_TESTING_Command cmd)
 {
   struct RefreshMeltState *rms;
 
-  GNUNET_assert (&refresh_melt_run == cmd.run);
+  GNUNET_assert (&melt_run == cmd.run);
   rms = cmd.cls;
   rms->do_retry = GNUNET_YES;
   return cmd;

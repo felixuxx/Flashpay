@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_track_transfer.c
- * @brief Implementation of the /track/transfer request of the exchange's HTTP API
+ * @file lib/exchange_api_transfers_get.c
+ * @brief Implementation of the GET /transfers/ request
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -32,7 +32,7 @@
 
 
 /**
- * @brief A /track/transfer Handle
+ * @brief A /transfers/ GET Handle
  */
 struct TALER_EXCHANGE_TransfersGetHandle
 {
@@ -66,12 +66,12 @@ struct TALER_EXCHANGE_TransfersGetHandle
 
 
 /**
- * We got a #MHD_HTTP_OK response for the /track/transfer request.
+ * We got a #MHD_HTTP_OK response for the /transfers/ request.
  * Check that the response is well-formed and if it is, call the
  * callback.  If not, return an error code.
  *
  * This code is very similar to
- * merchant_api_track_transfer.c::check_track_transfer_response_ok.
+ * merchant_api_track_transfer.c::check_transfers_get_response_ok.
  * Any changes should likely be reflected there as well.
  *
  * @param wdh handle to the operation
@@ -80,9 +80,9 @@ struct TALER_EXCHANGE_TransfersGetHandle
  *         #GNUNET_SYSERR if the response was bogus
  */
 static int
-check_track_transfer_response_ok (struct
-                                  TALER_EXCHANGE_TransfersGetHandle *wdh,
-                                  const json_t *json)
+check_transfers_get_response_ok (struct
+                                 TALER_EXCHANGE_TransfersGetHandle *wdh,
+                                 const json_t *json)
 {
   json_t *details_j;
   struct GNUNET_HashCode h_wire;
@@ -248,16 +248,16 @@ check_track_transfer_response_ok (struct
 
 /**
  * Function called when we're done processing the
- * HTTP /track/transfer request.
+ * HTTP /transfers/ request.
  *
  * @param cls the `struct TALER_EXCHANGE_TransfersGetHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_track_transfer_finished (void *cls,
-                                long response_code,
-                                const void *response)
+handle_transfers_get_finished (void *cls,
+                               long response_code,
+                               const void *response)
 {
   struct TALER_EXCHANGE_TransfersGetHandle *wdh = cls;
   const json_t *j = response;
@@ -269,8 +269,8 @@ handle_track_transfer_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK ==
-        check_track_transfer_response_ok (wdh,
-                                          j))
+        check_transfers_get_response_ok (wdh,
+                                         j))
       return;
     GNUNET_break_op (0);
     response_code = 0;
@@ -371,7 +371,7 @@ TALER_EXCHANGE_transfers_get (struct TALER_EXCHANGE_Handle *exchange,
   wdh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   GNUNET_YES,
-                                  &handle_track_transfer_finished,
+                                  &handle_transfers_get_finished,
                                   wdh);
   return wdh;
 }

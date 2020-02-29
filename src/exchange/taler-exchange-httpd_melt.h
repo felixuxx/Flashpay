@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_refresh_melt.h
+ * @file taler-exchange-httpd_melt.h
  * @brief Handle /refresh/melt requests
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -32,7 +32,7 @@
  * Handle a "/coins/$COIN_PUB/melt" request.  Parses the request into the JSON
  * components and then hands things of to #check_for_denomination_key() to
  * validate the melted coins, the signature and execute the melt using
- * handle_refresh_melt().
+ * handle_melt().
 
  * @param connection the MHD connection to handle
  * @param coin_pub public key of the coin

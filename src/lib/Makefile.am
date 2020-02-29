@@ -25,13 +25,16 @@ libtalerexchange_la_SOURCES = \
   exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_deposit.c \
+  exchange_api_deposits_get.c \
+  exchange_api_link.c \
+  exchange_api_melt.c \
   exchange_api_recoup.c \
-  exchange_api_refresh.c \
-  exchange_api_refresh_link.c \
+  exchange_api_refresh_common.c exchange_api_refresh_common.h \
+  exchange_api_refreshes_reveal.c \
   exchange_api_refund.c \
-  exchange_api_reserve.c \
-  exchange_api_track_transaction.c \
-  exchange_api_track_transfer.c \
+  exchange_api_reserves_get.c \
+  exchange_api_transfers_get.c \
+  exchange_api_withdraw.c \
   exchange_api_wire.c
 libtalerexchange_la_LIBADD = \
   libtalerauditor.la \
