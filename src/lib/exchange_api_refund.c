@@ -387,7 +387,7 @@ TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
   TALER_amount_hton (&rh->depconf.refund_fee,
                      refund_fee);
 
-  eh = TEL_curl_easy_get (rh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (rh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&rh->ctx,
                             eh,

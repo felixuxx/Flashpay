@@ -461,7 +461,7 @@ TALER_EXCHANGE_refreshes_reveal (struct TALER_EXCHANGE_Handle *exchange,
   rrh->url = TEAH_path_to_url (rrh->exchange,
                                arg_str);
 
-  eh = TEL_curl_easy_get (rrh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (rrh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&rrh->ctx,
                             eh,

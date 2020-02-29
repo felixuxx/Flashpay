@@ -30,7 +30,7 @@
  * @param url URL to query
  */
 CURL *
-TEL_curl_easy_get (const char *url)
+TALER_EXCHANGE_curl_easy_get_ (const char *url)
 {
   CURL *eh;
 
@@ -43,6 +43,12 @@ TEL_curl_easy_get (const char *url)
                  curl_easy_setopt (eh,
                                    CURLOPT_FOLLOWLOCATION,
                                    1L));
+  /* limit MAXREDIRS to 5 as a simple security measure against
+     a potential infinite loop caused by a malicious target */
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_MAXREDIRS,
+                                   5L));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_TCP_FASTOPEN,

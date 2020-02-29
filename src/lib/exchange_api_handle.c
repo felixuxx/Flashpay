@@ -1953,7 +1953,7 @@ request_keys (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
               kr->url);
-  eh = TEL_curl_easy_get (kr->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (kr->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_VERBOSE,

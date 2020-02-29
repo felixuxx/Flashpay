@@ -426,7 +426,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wh->ps = *ps;
   wh->url = TEAH_path_to_url (exchange,
                               arg_str);
-  eh = TEL_curl_easy_get (wh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&wh->ctx,
                             eh,

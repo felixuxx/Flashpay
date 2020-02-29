@@ -456,7 +456,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->md = md;
   mh->url = TEAH_path_to_url (exchange,
                               arg_str);
-  eh = TEL_curl_easy_get (mh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (mh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&mh->ctx,
                             eh,

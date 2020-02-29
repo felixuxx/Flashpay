@@ -455,7 +455,7 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
   lh->coin_priv = *coin_priv;
   lh->url = TEAH_path_to_url (exchange,
                               arg_str);
-  eh = TEL_curl_easy_get (lh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (lh->url);
   ctx = TEAH_handle_to_context (exchange);
   lh->job = GNUNET_CURL_job_add (ctx,
                                  eh,

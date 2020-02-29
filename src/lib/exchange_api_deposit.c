@@ -626,7 +626,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->dki.key.rsa_public_key = NULL; /* lifetime not warranted, so better
                                         not copy the pointer */
 
-  eh = TEL_curl_easy_get (dh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (dh->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&dh->ctx,
                             eh,

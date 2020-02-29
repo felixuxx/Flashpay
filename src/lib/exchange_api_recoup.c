@@ -389,7 +389,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   ph->url = TEAH_path_to_url (exchange,
                               arg_str);
   ph->was_refreshed = was_refreshed;
-  eh = TEL_curl_easy_get (ph->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (ph->url);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ph->ctx,
                             eh,

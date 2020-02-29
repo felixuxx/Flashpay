@@ -407,7 +407,7 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->cb_cls = wire_cb_cls;
   wh->url = TEAH_path_to_url (exchange, "/wire");
 
-  eh = TEL_curl_easy_get (wh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
   ctx = TEAH_handle_to_context (exchange);
   wh->job = GNUNET_CURL_job_add (ctx,
                                  eh,

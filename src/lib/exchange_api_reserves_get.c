@@ -274,7 +274,7 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
   rgh->reserve_pub = *reserve_pub;
   rgh->url = TEAH_path_to_url (exchange,
                                arg_str);
-  eh = TEL_curl_easy_get (rgh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (rgh->url);
   ctx = TEAH_handle_to_context (exchange);
   rgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
