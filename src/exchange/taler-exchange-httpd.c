@@ -148,6 +148,20 @@ static unsigned long long req_max;
 
 
 /**
+ * Signature of functions that handle operations on coins.
+ *
+ * @param connection the MHD connection to handle
+ * @param coin_pub the public key of the coin
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+typedef int
+(*CoinOpHandler)(struct MHD_Connection *connection,
+                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                 const json_t *root);
+
+
+/**
  * Handle a "/coins/$COIN_PUB/$OP" POST request.  Parses the "coin_pub"
  * EdDSA key of the coin and demultiplexes based on $OP.
  *
@@ -174,16 +188,9 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
 
     /**
      * Function to call to perform the operation.
-     *
-     * @param connection the MHD connection to handle
-     * @param coin_pub the public key of the coin
-     * @param root uploaded JSON data
-     * @return MHD result code
-     *///
-    int
-    (*handler)(struct MHD_Connection *connection,
-               const struct TALER_CoinSpendPublicKeyP *coin_pub,
-               const json_t *root);
+     */
+    CoinOpHandler handler;
+
   } h[] = {
     {
       .op = "deposit",
@@ -301,7 +308,7 @@ is_valid_correlation_id (const char *correlation_id)
  * @param url rest of the URL to parse
  * @param inner_cls closure for the handler, if needed
  * @param upload_data upload data to parse (if available)
- * @param upload_data_size[in,out] number of bytes in @a upload_data
+ * @param[in,out] upload_data_size number of bytes in @a upload_data
  * @return MHD result code
  */
 static int

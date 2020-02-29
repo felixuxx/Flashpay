@@ -18,7 +18,7 @@
 */
 
 /**
- * @file include/testing_api_cmd_exec_client.h
+ * @file testing_api_cmd_twister_exec_client.c
  * @brief test commands aimed to call the CLI twister client
  *        to drive its behaviour.
  * @author Christian Grothoff <christian@grothoff.org>
@@ -189,7 +189,7 @@ hack_response_code_cleanup
  * to other commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -316,7 +316,7 @@ delete_object_cleanup
  * to other commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -404,7 +404,7 @@ modify_object_cleanup
  * to other commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -559,7 +559,7 @@ flip_object_cleanup
  * to other commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -742,7 +742,7 @@ malform_request_cleanup (void *cls,
  * to other commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
@@ -829,7 +829,7 @@ malform_response_cleanup
  * to other commands.
  *
  * @param cls closure
- * @param ret[out] result (could be anything)
+ * @param[out] ret result (could be anything)
  * @param trait name of the trait
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success

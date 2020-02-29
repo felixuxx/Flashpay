@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_refresh.c
- * @brief Implementation of the /refresh/melt+reveal requests of the exchange's HTTP API
+ * @file lib/exchange_api_refresh_common.h
+ * @brief shared (serialization) logic for refresh protocol
  * @author Christian Grothoff
  */
 #ifndef REFRESH_COMMON_H
@@ -202,18 +202,6 @@ struct MeltData
 
 
 /**
- * Serialize melt data.
- *
- * @param md data to serialize
- * @param[out] res_size size of buffer returned
- * @return serialized melt data
- */
-char *
-TALER_EXCHANGE_serialize_melt_data_ (const struct MeltData *md,
-                                     size_t *res_size);
-
-
-/**
  * Deserialize melt data.
  *
  * @param buf serialized data
@@ -229,7 +217,7 @@ TALER_EXCHANGE_deserialize_melt_data_ (const char *buf,
  * Free all information associated with a melting session.  Note
  * that we allow the melting session to be only partially initialized,
  * as we use this function also when freeing melt data that was not
- * fully initialized (i.e. due to failures in #deserialize_melt_data()).
+ * fully initialized (i.e. due to failures in #TALER_EXCHANGE_deserialize_melt_data_()).
  *
  * @param md melting data to release, the pointer itself is NOT
  *           freed (as it is typically not allocated by itself)

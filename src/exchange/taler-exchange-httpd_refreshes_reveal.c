@@ -893,7 +893,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
  * refreshed coins.
  *
  * @param rh context of the handler
- * @param coin_pub public key of the coin
+ * @param connection MHD request handle
  * @param root uploaded JSON data
  * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code

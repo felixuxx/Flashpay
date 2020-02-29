@@ -594,7 +594,7 @@ TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
  * Cancel a withdraw status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param sign the withdraw sign request handle
+ * @param wh the withdraw sign request handle
  */
 void
 TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)

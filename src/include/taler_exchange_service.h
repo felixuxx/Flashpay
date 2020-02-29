@@ -930,7 +930,7 @@ TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund);
 
 
 /**
- * @brief A /reserve/status Handle
+ * @brief A /reserves/ GET Handle
  */
 struct TALER_EXCHANGE_ReservesGetHandle;
 
@@ -1140,14 +1140,14 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
- * Cancel a reserve status request.  This function cannot be used
+ * Cancel a reserve GET request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param rsh the reserve status request handle
+ * @param rgh the reserve request handle
  */
 void
 TALER_EXCHANGE_reserves_get_cancel (struct
-                                    TALER_EXCHANGE_ReservesGetHandle *rhh);
+                                    TALER_EXCHANGE_ReservesGetHandle *rgh);
 
 
 /* ********************* POST /reserves/$RESERVE_PUB/withdraw *********************** */

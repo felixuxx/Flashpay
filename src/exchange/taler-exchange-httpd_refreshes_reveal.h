@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_refresh_reveal.h
- * @brief Handle /refresh/reveal requests
+ * @file taler-exchange-httpd_refreshes_reveal.h
+ * @brief Handle /refreshes/$RCH/reveal requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -38,7 +38,7 @@
  * refreshed coins.
  *
  * @param rh context of the handler
- * @param coin_pub public key of the coin
+ * @param connection MHD request handle
  * @param root uploaded JSON data
  * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code

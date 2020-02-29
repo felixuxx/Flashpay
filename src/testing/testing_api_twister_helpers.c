@@ -18,7 +18,7 @@
 */
 
 /**
- * @file twister/testing_api_helpers.c
+ * @file testing_api_twister_helpers.c
  * @brief helper functions for test library.
  * @author Christian Grothoff
  * @author Marcello Stanisci

@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_refresh_link.h
- * @brief Handle /refresh/link requests
+ * @file taler-exchange-httpd_link.h
+ * @brief Handle /coins/$COIN_PUB/link requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff

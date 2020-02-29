@@ -54,7 +54,7 @@ invalidate (struct TALER_Amount *a)
  */
 int
 TALER_string_to_amount (const char *str,
-                        struct TALER_Amount *denom)
+                        struct TALER_Amount *amount)
 {
   int n;
   uint32_t b;
@@ -68,7 +68,7 @@ TALER_string_to_amount (const char *str,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Null before currency\n");
-    invalidate (denom);
+    invalidate (amount);
     return GNUNET_SYSERR;
   }
 
@@ -80,16 +80,16 @@ TALER_string_to_amount (const char *str,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid currency specified before colon: `%s'\n",
                 str);
-    invalidate (denom);
+    invalidate (amount);
     return GNUNET_SYSERR;
   }
 
   GNUNET_assert (TALER_CURRENCY_LEN > (colon - str));
-  memcpy (denom->currency,
+  memcpy (amount->currency,
           str,
           colon - str);
   /* 0-terminate *and* normalize buffer by setting everything to '\0' */
-  memset (&denom->currency [colon - str],
+  memset (&amount->currency [colon - str],
           0,
           TALER_CURRENCY_LEN - (colon - str));
 
@@ -100,12 +100,12 @@ TALER_string_to_amount (const char *str,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Actual value missing in amount `%s'\n",
                 str);
-    invalidate (denom);
+    invalidate (amount);
     return GNUNET_SYSERR;
   }
 
-  denom->value = 0;
-  denom->fraction = 0;
+  amount->value = 0;
+  amount->fraction = 0;
 
   /* parse value */
   while ('.' != *value)
@@ -122,20 +122,20 @@ TALER_string_to_amount (const char *str,
                   "Invalid character `%c' in amount `%s'\n",
                   (int) *value,
                   str);
-      invalidate (denom);
+      invalidate (amount);
       return GNUNET_SYSERR;
     }
     n = *value - '0';
-    if ( (denom->value * 10 + n < denom->value) ||
-         (denom->value > MAX_AMOUNT_VALUE) )
+    if ( (amount->value * 10 + n < amount->value) ||
+         (amount->value > MAX_AMOUNT_VALUE) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Value specified in amount `%s' is too large\n",
                   str);
-      invalidate (denom);
+      invalidate (amount);
       return GNUNET_SYSERR;
     }
-    denom->value = (denom->value * 10) + n;
+    amount->value = (amount->value * 10) + n;
     value++;
   }
 
@@ -148,7 +148,7 @@ TALER_string_to_amount (const char *str,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Amount `%s' ends abruptly after `.'\n",
                 str);
-    invalidate (denom);
+    invalidate (amount);
     return GNUNET_SYSERR;
   }
   b = TALER_AMOUNT_FRAC_BASE / 10;
@@ -160,7 +160,7 @@ TALER_string_to_amount (const char *str,
                   "Fractional value too small (only %u digits supported) in amount `%s'\n",
                   (unsigned int) TALER_AMOUNT_FRAC_LEN,
                   str);
-      invalidate (denom);
+      invalidate (amount);
       return GNUNET_SYSERR;
     }
     if ( (*value < '0') ||
@@ -168,11 +168,11 @@ TALER_string_to_amount (const char *str,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Error after dot\n");
-      invalidate (denom);
+      invalidate (amount);
       return GNUNET_SYSERR;
     }
     n = *value - '0';
-    denom->fraction += n * b;
+    amount->fraction += n * b;
     b /= 10;
     value++;
   }
