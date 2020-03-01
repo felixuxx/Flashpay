@@ -27,15 +27,6 @@
 
 
 /**
- * Enable checking signatures before we hand them out
- * (even though we should have checked them before).
- * So technically these checks are redundant, but good
- * during testing.
- */
-#define SANITY_CHECKS_ON 1
-
-
-/**
  * Global options for response generation.
  */
 static enum TALER_MHD_GlobalOptions TM_go;

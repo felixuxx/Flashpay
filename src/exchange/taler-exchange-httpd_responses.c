@@ -30,14 +30,6 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_keystate.h"
 
-/**
- * Enable checking signatures before we hand them out
- * (even though we should have checked them before).
- * So technically these checks are redundant, but good
- * during testing.
- */
-#define SANITY_CHECKS_ON 1
-
 
 /**
  * Compile the transaction history of a coin into a JSON object.
@@ -85,7 +77,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
                            &deposit->deposit_fee);
         dr.merchant = deposit->merchant_pub;
         dr.coin_pub = *coin_pub;
-#if SANITY_CHECKS_ON
+#if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
@@ -148,7 +140,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
         ms.coin_pub = *coin_pub;
-#if SANITY_CHECKS_ON
+#if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
@@ -208,7 +200,7 @@ TEH_RESPONSE_compile_transaction_history (const struct
                            &refund->refund_amount);
         TALER_amount_hton (&rr.refund_fee,
                            &refund->refund_fee);
-#if SANITY_CHECKS_ON
+#if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
