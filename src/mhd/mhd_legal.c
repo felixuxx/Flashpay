@@ -403,7 +403,7 @@ load_terms (struct TALER_MHD_Legal *legal,
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                                 "fstat",
                                 fn);
-      (void) close (fd);
+      GNUENT_break (0 == close (fd));
       GNUNET_free (fn);
       return;
     }
@@ -412,7 +412,7 @@ load_terms (struct TALER_MHD_Legal *legal,
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                                 "fstat-size",
                                 fn);
-      (void) close (fd);
+      GNUNET_break (0 == close (fd));
       GNUNET_free (fn);
       return;
     }
@@ -427,7 +427,7 @@ load_terms (struct TALER_MHD_Legal *legal,
       {
         GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                              "malloc");
-        (void) close (fd);
+        GNUNET_break (0 == close (fd));
         GNUNET_free (fn);
         return;
       }
@@ -440,12 +440,12 @@ load_terms (struct TALER_MHD_Legal *legal,
         GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                                   "read",
                                   fn);
-        (void) close (fd);
+        GNUNET_break (0 == close (fd));
         GNUNET_free (buf);
         GNUNET_free (fn);
         return;
       }
-      (void) close (fd);
+      GNUNET_break (0 == close (fd));
       GNUNET_free (fn);
 
       /* append to global list of terms of service */
@@ -501,7 +501,7 @@ load_language (struct TALER_MHD_Legal *legal,
       continue;
     load_terms (legal, path, lang, fn);
   }
-  closedir (d);
+  GNUNET_break (0 == closedir (d));
   GNUNET_free (dname);
 }
 
@@ -577,7 +577,7 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
       continue;
     load_language (legal, path, lang);
   }
-  closedir (d);
+  GNUNET_break (0 == closedir (d));
   GNUNET_free (path);
   return legal;
 }

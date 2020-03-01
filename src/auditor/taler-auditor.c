@@ -772,7 +772,7 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                                       NULL);
   if (qs <= 0)
   {
-    if (0 == qs)
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Denomination %s not found\n",
                   TALER_B2S (dh));
@@ -3774,10 +3774,10 @@ refresh_session_cb (void *cls,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      check_known_coin (coin_pub,
-                        denom_pub,
-                        amount_with_fee))
+  qs = check_known_coin (coin_pub,
+                         denom_pub,
+                         amount_with_fee);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;
@@ -4152,10 +4152,10 @@ deposit_cb (void *cls,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      check_known_coin (coin_pub,
-                        denom_pub,
-                        amount_with_fee))
+  qs = check_known_coin (coin_pub,
+                         denom_pub,
+                         amount_with_fee);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     cc->qs = qs;

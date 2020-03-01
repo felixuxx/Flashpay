@@ -2338,7 +2338,7 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
     /* This *can* happen if the exchange's keys are
        not properly maintained. */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _ ("Cannot sign request, no valid keys available\n"));
+                "Cannot sign request, no valid keys available\n");
     return GNUNET_SYSERR;
   }
   *pub = key_state->current_sign_key_issue.issue.signkey_pub;

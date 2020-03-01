@@ -232,7 +232,7 @@ signal_loop (void)
     }
     if (EINTR == errno)
     {
-      ret = 2;
+      /* ignore, do the loop again */
       continue;
     }
     switch (c)

@@ -430,7 +430,6 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     GNUNET_CONFIGURATION_destroy (cfg);
     return GNUNET_SYSERR;
   }
-  bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
   {
     char *exchange_xtalerbank_account;
 

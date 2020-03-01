@@ -248,8 +248,6 @@ qconv_round_time (void *cls,
   GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
-  if (1 != param_length)
-    return -1;
   tmp = *at;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&tmp));
@@ -316,8 +314,6 @@ qconv_round_time_abs (void *cls,
   GNUNET_assert (1 == param_length);
   GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
   GNUNET_break (NULL == cls);
-  if (1 != param_length)
-    return -1;
   tmp = GNUNET_TIME_absolute_ntoh (*at);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&tmp));

@@ -615,6 +615,8 @@ handle_mhd_request (void *cls,
       /* strange, should start with '/', treat as just "/" */
       url = "/";
     start = strchr (url + 1, '/');
+    if (NULL == start)
+      start = "";
     ret = proceed_with_handler (ecls->rh,
                                 connection,
                                 start,

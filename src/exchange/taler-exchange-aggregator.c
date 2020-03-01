@@ -405,6 +405,7 @@ update_fees (struct WireAccount *wa,
                                      &p->master_sig);
     if (qs < 0)
     {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       TALER_EXCHANGEDB_fees_free (wa->af);
       wa->af = NULL;
       return NULL;
@@ -854,10 +855,9 @@ deposit_cb (void *cls,
                       au->session);
     if (NULL == af)
     {
-      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-        qs = GNUNET_DB_STATUS_HARD_ERROR;
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not get or persist wire fees. Aborting run.\n");
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     au->wire_fee = af->wire_fee;
   }

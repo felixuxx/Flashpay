@@ -434,7 +434,7 @@ track_transfer_transaction (void *cls,
   if (0 >= qs)
   {
     if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
-         (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS) )
+         (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) )
     {
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
