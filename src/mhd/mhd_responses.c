@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -60,6 +60,8 @@ TALER_MHD_add_global_headers (struct MHD_Response *response)
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_CONNECTION,
                                            "close"));
+  /* The wallet, operating from a background page, needs CORS to
+     be disabled otherwise browsers block access. */
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -155,7 +157,7 @@ TALER_MHD_body_compress (void **buf,
 struct MHD_Response *
 TALER_MHD_make_json (const json_t *json)
 {
-  struct MHD_Response *resp;
+  struct MHD_Response *response;
   char *json_str;
 
   json_str = json_dumps (json,
@@ -165,21 +167,21 @@ TALER_MHD_make_json (const json_t *json)
     GNUNET_break (0);
     return NULL;
   }
-  resp = MHD_create_response_from_buffer (strlen (json_str),
-                                          json_str,
-                                          MHD_RESPMEM_MUST_FREE);
-  if (NULL == resp)
+  response = MHD_create_response_from_buffer (strlen (json_str),
+                                              json_str,
+                                              MHD_RESPMEM_MUST_FREE);
+  if (NULL == response)
   {
     free (json_str);
     GNUNET_break (0);
     return NULL;
   }
-  TALER_MHD_add_global_headers (resp);
+  TALER_MHD_add_global_headers (response);
   GNUNET_break (MHD_YES ==
-                MHD_add_response_header (resp,
+                MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          "application/json"));
-  return resp;
+  return response;
 }
 
 
@@ -196,11 +198,10 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
                       const json_t *json,
                       unsigned int response_code)
 {
-  struct MHD_Response *resp;
+  struct MHD_Response *response;
   void *json_str;
   size_t json_len;
-  int ret;
-  int comp;
+  int is_compressed;
 
   json_str = json_dumps (json,
                          JSON_INDENT (2));
@@ -218,43 +219,48 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
   }
   json_len = strlen (json_str);
   /* try to compress the body */
-  comp = MHD_NO;
+  is_compressed = MHD_NO;
   if (MHD_YES ==
       TALER_MHD_can_compress (connection))
-    comp = TALER_MHD_body_compress (&json_str,
-                                    &json_len);
-  resp = MHD_create_response_from_buffer (json_len,
-                                          json_str,
-                                          MHD_RESPMEM_MUST_FREE);
-  if (NULL == resp)
+    is_compressed = TALER_MHD_body_compress (&json_str,
+                                             &json_len);
+  response = MHD_create_response_from_buffer (json_len,
+                                              json_str,
+                                              MHD_RESPMEM_MUST_FREE);
+  if (NULL == response)
   {
     free (json_str);
     GNUNET_break (0);
     return MHD_NO;
   }
-  TALER_MHD_add_global_headers (resp);
+  TALER_MHD_add_global_headers (response);
   GNUNET_break (MHD_YES ==
-                MHD_add_response_header (resp,
+                MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          "application/json"));
-  if (MHD_YES == comp)
+  if (MHD_YES == is_compressed)
   {
     /* Need to indicate to client that body is compressed */
     if (MHD_NO ==
-        MHD_add_response_header (resp,
+        MHD_add_response_header (response,
                                  MHD_HTTP_HEADER_CONTENT_ENCODING,
                                  "deflate"))
     {
       GNUNET_break (0);
-      MHD_destroy_response (resp);
+      MHD_destroy_response (response);
       return MHD_NO;
     }
   }
-  ret = MHD_queue_response (connection,
-                            response_code,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
+
+  {
+    int ret;
+
+    ret = MHD_queue_response (connection,
+                              response_code,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
 }
 
 
@@ -268,27 +274,31 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
 int
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
 {
-  struct MHD_Response *resp;
-  int ret;
+  struct MHD_Response *response;
 
-  resp = MHD_create_response_from_buffer (0,
-                                          NULL,
-                                          MHD_RESPMEM_PERSISTENT);
-  if (NULL == resp)
+  response = MHD_create_response_from_buffer (0,
+                                              NULL,
+                                              MHD_RESPMEM_PERSISTENT);
+  if (NULL == response)
     return MHD_NO;
   /* This adds the Access-Control-Allow-Origin header.
    * All endpoints of the exchange allow CORS. */
-  TALER_MHD_add_global_headers (resp);
+  TALER_MHD_add_global_headers (response);
   GNUNET_break (MHD_YES ==
-                MHD_add_response_header (resp,
+                MHD_add_response_header (response,
                                          /* Not available as MHD constant yet */
                                          "Access-Control-Allow-Headers",
                                          "*"));
-  ret = MHD_queue_response (connection,
-                            MHD_HTTP_NO_CONTENT,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
+
+  {
+    int ret;
+
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_NO_CONTENT,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
 }
 
 
@@ -309,13 +319,20 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
                            ...)
 {
   json_t *json;
-  va_list argp;
-  int ret;
   json_error_t jerror;
 
-  va_start (argp, fmt);
-  json = json_vpack_ex (&jerror, 0, fmt, argp);
-  va_end (argp);
+  {
+    va_list argp;
+
+    va_start (argp,
+              fmt);
+    json = json_vpack_ex (&jerror,
+                          0,
+                          fmt,
+                          argp);
+    va_end (argp);
+  }
+
   if (NULL == json)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -325,11 +342,16 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
     GNUNET_break (0);
     return MHD_NO;
   }
-  ret = TALER_MHD_reply_json (connection,
-                              json,
-                              response_code);
-  json_decref (json);
-  return ret;
+
+  {
+    int ret;
+
+    ret = TALER_MHD_reply_json (connection,
+                                json,
+                                response_code);
+    json_decref (json);
+    return ret;
+  }
 }
 
 
@@ -345,16 +367,19 @@ TALER_MHD_make_json_pack (const char *fmt,
                           ...)
 {
   json_t *json;
-  va_list argp;
-  struct MHD_Response *ret;
   json_error_t jerror;
 
-  va_start (argp, fmt);
-  json = json_vpack_ex (&jerror,
-                        0,
-                        fmt,
-                        argp);
-  va_end (argp);
+  {
+    va_list argp;
+
+    va_start (argp, fmt);
+    json = json_vpack_ex (&jerror,
+                          0,
+                          fmt,
+                          argp);
+    va_end (argp);
+  }
+
   if (NULL == json)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -364,9 +389,14 @@ TALER_MHD_make_json_pack (const char *fmt,
     GNUNET_break (0);
     return MHD_NO;
   }
-  ret = TALER_MHD_make_json (json);
-  json_decref (json);
-  return ret;
+
+  {
+    struct MHD_Response *response;
+
+    response = TALER_MHD_make_json (json);
+    json_decref (json);
+    return response;
+  }
 }
 
 
@@ -419,20 +449,24 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
 int
 TALER_MHD_reply_request_too_large (struct MHD_Connection *connection)
 {
-  struct MHD_Response *resp;
-  int ret;
+  struct MHD_Response *response;
 
-  resp = MHD_create_response_from_buffer (0,
-                                          NULL,
-                                          MHD_RESPMEM_PERSISTENT);
-  if (NULL == resp)
+  response = MHD_create_response_from_buffer (0,
+                                              NULL,
+                                              MHD_RESPMEM_PERSISTENT);
+  if (NULL == response)
     return MHD_NO;
-  TALER_MHD_add_global_headers (resp);
-  ret = MHD_queue_response (connection,
-                            MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
+  TALER_MHD_add_global_headers (response);
+
+  {
+    int ret;
+
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
 }
 
 
@@ -451,7 +485,6 @@ TALER_MHD_reply_agpl (struct MHD_Connection *connection,
   const char *agpl =
     "This server is licensed under the Affero GPL. You will now be redirected to the source code.";
   struct MHD_Response *response;
-  int ret;
 
   response = MHD_create_response_from_buffer (strlen (agpl),
                                               (void *) agpl,
@@ -475,11 +508,16 @@ TALER_MHD_reply_agpl (struct MHD_Connection *connection,
     MHD_destroy_response (response);
     return MHD_NO;
   }
-  ret = MHD_queue_response (connection,
-                            MHD_HTTP_FOUND,
-                            response);
-  MHD_destroy_response (response);
-  return ret;
+
+  {
+    int ret;
+
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_FOUND,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
 }
 
 
@@ -502,7 +540,6 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
                         size_t body_size)
 {
   struct MHD_Response *response;
-  int ret;
 
   response = MHD_create_response_from_buffer (body_size,
                                               (void *) body,
@@ -518,11 +555,15 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_CONTENT_TYPE,
                                            mime_type));
-  ret = MHD_queue_response (connection,
-                            http_status,
-                            response);
-  MHD_destroy_response (response);
-  return ret;
+  {
+    int ret;
+
+    ret = MHD_queue_response (connection,
+                              http_status,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
 }
 
 
