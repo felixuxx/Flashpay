@@ -200,7 +200,7 @@ static const struct CountryTableEntry country_table[] = {
  *
  * @param ptr1 pointer to a `struct table_entry`
  * @param ptr2 pointer to a `struct table_entry`
- * @return result of strncmp()'ing the 2-digit country codes of the entries
+ * @return result of memcmp()'ing the 2-digit country codes of the entries
  */
 static int
 cmp_country_code (const void *ptr1,
@@ -209,9 +209,9 @@ cmp_country_code (const void *ptr1,
   const struct CountryTableEntry *cc1 = ptr1;
   const struct CountryTableEntry *cc2 = ptr2;
 
-  return strncmp (cc1->code,
-                  cc2->code,
-                  2);
+  return memcmp (cc1->code,
+                 cc2->code,
+                 2);
 }
 
 
@@ -242,9 +242,9 @@ validate_iban (const char *iban)
                 "IBAN number too long to be valid\n");
     return GNUNET_NO;
   }
-  strncpy (cc, iban, 2);
-  strncpy (ibancpy, iban + 4, len - 4);
-  strncpy (ibancpy + len - 4, iban, 4);
+  memcpy (cc, iban, 2);
+  memcpy (ibancpy, iban + 4, len - 4);
+  memcpy (ibancpy + len - 4, iban, 4);
   ibancpy[len] = '\0';
   cc_entry.code = cc;
   cc_entry.english = NULL;
@@ -303,11 +303,14 @@ validate_iban (const char *iban)
     remainder = dividend % 97;
   }
   GNUNET_free (nbuf);
-  if (1 == remainder)
-    return GNUNET_YES;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "IBAN checksum wrong\n");
-  return GNUNET_NO;
+  if (1 != remainder)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "IBAN `%s' has the wrong checksum\n",
+                iban);
+    return GNUNET_NO;
+  }
+  return GNUNET_YES;
 }
 
 
