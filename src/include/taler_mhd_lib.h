@@ -54,8 +54,7 @@ enum TALER_MHD_GlobalOptions
 
 
 /**
- * Set global options for response generation
- * within libtalermhd.
+ * Set global options for response generation within libtalermhd.
  *
  * @param go global options to use
  */
@@ -64,9 +63,8 @@ TALER_MHD_setup (enum TALER_MHD_GlobalOptions go);
 
 
 /**
- * Add headers we want to return in every response.
- * Useful for testing, like if we want to always close
- * connections.
+ * Add headers we want to return in every response.  Useful for testing, like
+ * if we want to always close connections.
  *
  * @param response response to modify
  */
@@ -372,11 +370,10 @@ TALER_MHD_open_unix_path (const char *unix_path,
 
 
 /**
- * Bind a listen socket to the UNIX domain path
- * or the TCP port and IP address as specified
- * in @a cfg in section @a section.  IF only a
- * port was specified, set @a port and return -1.
- * Otherwise, return the bound file descriptor.
+ * Bind a listen socket to the UNIX domain path or the TCP port and IP address
+ * as specified in @a cfg in section @a section.  IF only a port was
+ * specified, set @a port and return -1.  Otherwise, return the bound file
+ * descriptor.
  *
  * @param cfg configuration to parse
  * @param section configuration section to use
@@ -398,10 +395,9 @@ struct TALER_MHD_Legal;
 
 
 /**
- * Load set of legal documents as specified in
- * @a cfg in section @a section where the Etag
- * is given under the @param tagoption and the
- * directory under the @a diroption.
+ * Load set of legal documents as specified in @a cfg in section @a section
+ * where the Etag is given under the @param tagoption and the directory under
+ * the @a diroption.
  *
  * @param cfg configuration to use
  * @param section section to load values from

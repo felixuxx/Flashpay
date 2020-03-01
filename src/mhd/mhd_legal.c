@@ -148,8 +148,8 @@ language_matches (const char *language_pattern,
 
 
 /**
- * Generate a response with a legal document in
- * the format and language of the user's choosing.
+ * Generate a response with a legal document in the format and language of the
+ * user's choosing.
  *
  * @param conn HTTP connection to handle
  * @param legal legal document to serve
@@ -507,10 +507,9 @@ load_language (struct TALER_MHD_Legal *legal,
 
 
 /**
- * Load set of legal documents as specified in
- * @a cfg in section @a section where the Etag
- * is given under the @param tagoption and the
- * directory under the @a diroption.
+ * Load set of legal documents as specified in @a cfg in section @a section
+ * where the Etag is given under the @param tagoption and the directory under
+ * the @a diroption.
  *
  * @param cfg configuration to use
  * @param section section to load values from

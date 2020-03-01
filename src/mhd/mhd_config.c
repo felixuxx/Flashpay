@@ -49,25 +49,30 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         char **unix_path,
                         mode_t *unix_mode)
 {
-  const char *choices[] = {"tcp", "unix"};
+  const char *choices[] = {
+    "tcp",
+    "unix",
+    NULL
+  };
   const char *serve_type;
   unsigned long long port;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_choice (cfg,
                                              section,
-                                             "serve",
+                                             "SERVE",
                                              choices,
                                              &serve_type))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
-                               "serve",
-                               "serve type required");
+                               "SERVE",
+                               "serve type (tcp or unix) required");
     return GNUNET_SYSERR;
   }
 
-  if (0 == strcasecmp (serve_type, "tcp"))
+  if (0 == strcasecmp (serve_type,
+                       "tcp"))
   {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
@@ -77,7 +82,7 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  section,
-                                 "port",
+                                 "PORT",
                                  "port number required");
       return GNUNET_SYSERR;
     }
@@ -87,15 +92,16 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  section,
-                                 "port",
-                                 "value not in [1,65535]");
+                                 "PORT",
+                                 "port number not in [1,65535]");
       return GNUNET_SYSERR;
     }
     *rport = (uint16_t) port;
     *unix_path = NULL;
     return GNUNET_OK;
   }
-  if (0 == strcmp (serve_type, "unix"))
+  if (0 == strcmp (serve_type,
+                   "unix"))
   {
     struct sockaddr_un s_un;
     char *modestring;
@@ -103,13 +109,13 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                  section,
-                                                 "unixpath",
+                                                 "UNIXPATH",
                                                  unix_path))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  section,
-                                 "unixpath",
-                                 "unixpath required");
+                                 "UNIXPATH",
+                                 "UNIXPATH value required");
       return GNUNET_SYSERR;
     }
     if (strlen (*unix_path) >= sizeof (s_un.sun_path))
@@ -291,11 +297,10 @@ TALER_MHD_open_unix_path (const char *unix_path,
 
 
 /**
- * Bind a listen socket to the UNIX domain path
- * or the TCP port and IP address as specified
- * in @a cfg in section @a section.  IF only a
- * port was specified, set @a port and return -1.
- * Otherwise, return the bound file descriptor.
+ * Bind a listen socket to the UNIX domain path or the TCP port and IP address
+ * as specified in @a cfg in section @a section.  IF only a port was
+ * specified, set @a port and return -1.  Otherwise, return the bound file
+ * descriptor.
  *
  * @param cfg configuration to parse
  * @param section configuration section to use
