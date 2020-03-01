@@ -44,7 +44,7 @@
  * #TALER_PROTOCOL_CURRENT and #TALER_PROTOCOL_AGE in
  * exchange_api_handle.c!
  */
-#define TALER_PROTOCOL_VERSION "6:0:0"
+#define TALER_PROTOCOL_VERSION "7:0:0"
 
 
 /**

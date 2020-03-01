@@ -39,7 +39,7 @@
  * Which revision of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define TALER_PROTOCOL_CURRENT 6
+#define TALER_PROTOCOL_CURRENT 7
 
 /**
  * How many revisions back are we compatible to?
