@@ -29,7 +29,9 @@
 
 
 /**
- * Obtain the payment method from a @a payto_uri
+ * Obtain the payment method from a @a payto_uri. The
+ * format of a payto URI is 'payto://$METHOD/$SOMETHING'.
+ * We return $METHOD.
  *
  * @param payto_uri the URL to parse
  * @return NULL on error (malformed @a payto_uri)
@@ -40,9 +42,9 @@ TALER_payto_get_method (const char *payto_uri)
   const char *start;
   const char *end;
 
-  if (0 != strncmp (payto_uri,
-                    PAYTO,
-                    strlen (PAYTO)))
+  if (0 != strncasecmp (payto_uri,
+                        PAYTO,
+                        strlen (PAYTO)))
     return NULL;
   start = &payto_uri[strlen (PAYTO)];
   end = strchr (start,
@@ -55,7 +57,10 @@ TALER_payto_get_method (const char *payto_uri)
 
 
 /**
- * Obtain the account name from a payto URL.
+ * Obtain the account name from a payto URL.  The format
+ * of the @a payto URL is 'payto://x-taler-bank/$HOSTNAME/$ACCOUNT[?PARAMS]'.
+ * We check the first part matches, skip over the $HOSTNAME
+ * and return the $ACCOUNT portion.
  *
  * @param payto an x-taler-bank payto URL
  * @return only the account name from the @a payto URL, NULL if not an x-taler-bank
@@ -68,18 +73,18 @@ TALER_xtalerbank_account_from_payto (const char *payto)
   const char *end;
 
   if (0 != strncasecmp (payto,
-                        "payto://x-taler-bank/",
-                        strlen ("payto://x-taler-bank/")))
+                        PAYTO "x-taler-bank/",
+                        strlen (PAYTO "x-taler-bank/")))
     return NULL;
-  beg = strchr (&payto[strlen ("payto://x-taler-bank/")],
+  beg = strchr (&payto[strlen (PAYTO "x-taler-bank/")],
                 '/');
   if (NULL == beg)
     return NULL;
-  beg++;
+  beg++; /* now points to $ACCOUNT */
   end = strchr (beg,
                 '?');
   if (NULL == end)
-    return GNUNET_strdup (beg);
+    return GNUNET_strdup (beg); /* optional part is missing */
   return GNUNET_strndup (beg,
                          end - beg);
 }

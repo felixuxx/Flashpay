@@ -281,7 +281,7 @@ static struct GNUNET_CURL_RescheduleContext *rc;
 /**
  * How long should we sleep when idle before trying to find more work?
  */
-static struct GNUNET_TIME_Relative aggreator_idle_sleep_interval;
+static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
 
 /**
  * Value to return from main(). #GNUNET_OK on success, #GNUNET_SYSERR

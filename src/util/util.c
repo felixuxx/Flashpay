@@ -25,9 +25,8 @@
 
 
 /**
- * Convert a buffer to an 8-character string
- * representative of the contents. This is used
- * for logging binary data when debugging.
+ * Convert a buffer to an 8-character string representative of the
+ * contents. This is used for logging binary data when debugging.
  *
  * @param buf buffer to log
  * @param buf_size number of bytes in @a buf

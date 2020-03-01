@@ -84,12 +84,14 @@ static void
 buffer_write_urlencode (struct GNUNET_Buffer *buf,
                         const char *s)
 {
-  GNUNET_buffer_ensure_remaining (buf, urlencode_len (s) + 1);
-
+  GNUNET_buffer_ensure_remaining (buf,
+                                  urlencode_len (s) + 1);
   for (size_t i = 0; i < strlen (s); i++)
   {
     if (GNUNET_YES == is_reserved (s[i]))
-      GNUNET_buffer_write_fstr (buf, "%%%02X", s[i]);
+      GNUNET_buffer_write_fstr (buf,
+                                "%%%02X",
+                                s[i]);
     else
       buf->mem[buf->position++] = s[i];
   }
@@ -107,8 +109,92 @@ TALER_urlencode (const char *s)
 {
   struct GNUNET_Buffer buf = { 0 };
 
-  buffer_write_urlencode (&buf, s);
+  buffer_write_urlencode (&buf,
+                          s);
   return GNUNET_buffer_reap_str (&buf);
+}
+
+
+/**
+ * Compute the total length of the @a args given. The args are a
+ * NULL-terminated list of key-value pairs, where the values
+ * must be URL-encoded.  When serializing, the pairs will be separated
+ * via '?' or '&' and an '=' between key and value. Hence each
+ * pair takes an extra 2 characters to encode.  This function computes
+ * how many bytes are needed.  It must match the #serialize_arguments()
+ * function.
+ *
+ * @param args NULL-terminated key-value pairs (char *) for query parameters
+ * @return number of bytes needed (excluding 0-terminator) for the string buffer
+ */
+static size_t
+calculate_argument_length (va_list args)
+{
+  size_t len = 0;
+  va_list ap;
+
+  va_copy (ap,
+           args);
+  while (1)
+  {
+    char *key;
+    char *value;
+
+    key = va_arg (ap,
+                  char *);
+    if (NULL == key)
+      break;
+    value = va_arg (ap,
+                    char *);
+    if (NULL == value)
+      continue;
+    len += urlencode_len (value) + strlen (key) + 2;
+  }
+  va_end (ap);
+  return len;
+}
+
+
+/**
+ * Take the key-value pairs in @a args and serialize them into
+ * @a buf, using URL encoding for the values.
+ *
+ * @param buf where to write the values
+ * @param args NULL-terminated key-value pairs (char *) for query parameters,
+ *        the value will be url-encoded
+ */
+static void
+serialize_arguments (struct GNUNET_Buffer *buf,
+                     va_list args)
+{
+  /* used to indicate if we are processing the initial
+     parameter which starts with '?' or subsequent
+     parameters which are separated with '&' */
+  unsigned int iparam = 0;
+
+  while (1)
+  {
+    char *key;
+    char *value;
+
+    key = va_arg (args,
+                  char *);
+    if (NULL == key)
+      break;
+    value = va_arg (args,
+                    char *);
+    if (NULL == value)
+      continue;
+    GNUNET_buffer_write_str (buf,
+                             (0 == iparam) ? "?" : "&");
+    iparam = 1;
+    GNUNET_buffer_write_str (buf,
+                             key);
+    GNUNET_buffer_write_str (buf,
+                             "=");
+    buffer_write_urlencode (buf,
+                            value);
+  }
 }
 
 
@@ -127,9 +213,8 @@ TALER_url_join (const char *base_url,
                 const char *path,
                 ...)
 {
-  unsigned int iparam = 0;
-  va_list args;
   struct GNUNET_Buffer buf = { 0 };
+  va_list args;
   size_t len;
 
   GNUNET_assert (NULL != base_url);
@@ -157,46 +242,20 @@ TALER_url_join (const char *base_url,
     return NULL;
   }
 
-  /* 1st pass: compute length */
+  va_start (args,
+            path);
+
   len = strlen (base_url) + strlen (path) + 1;
+  len += calculate_argument_length (args);
 
-  va_start (args, path);
-  while (1)
-  {
-    char *key;
-    char *value;
-    key = va_arg (args, char *);
-    if (NULL == key)
-      break;
-    value = va_arg (args, char *);
-    if (NULL == value)
-      continue;
-    len += urlencode_len (value) + strlen (key) + 2;
-  }
-  va_end (args);
-
-  GNUNET_buffer_prealloc (&buf, len);
-  GNUNET_buffer_write_str (&buf, base_url);
-  GNUNET_buffer_write_str (&buf, path);
-
-  va_start (args, path);
-  while (1)
-  {
-    char *key;
-    char *value;
-
-    key = va_arg (args, char *);
-    if (NULL == key)
-      break;
-    value = va_arg (args, char *);
-    if (NULL == value)
-      continue;
-    GNUNET_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
-    iparam++;
-    GNUNET_buffer_write_str (&buf, key);
-    GNUNET_buffer_write_str (&buf, "=");
-    buffer_write_urlencode (&buf, value);
-  }
+  GNUNET_buffer_prealloc (&buf,
+                          len);
+  GNUNET_buffer_write_str (&buf,
+                           base_url);
+  GNUNET_buffer_write_str (&buf,
+                           path);
+  serialize_arguments (&buf,
+                       args);
   va_end (args);
 
   return GNUNET_buffer_reap_str (&buf);
@@ -222,56 +281,26 @@ TALER_url_absolute_raw_va (const char *proto,
                            va_list args)
 {
   struct GNUNET_Buffer buf = { 0 };
-  unsigned int iparam = 0;
   size_t len = 0;
-  va_list args2;
 
   len += strlen (proto) + strlen ("://") + strlen (host);
   len += strlen (prefix) + strlen (path);
+  len += calculate_argument_length (args);
 
-  va_copy (args2, args);
-  while (1)
-  {
-    char *key;
-    char *value;
-    key = va_arg (args2, char *);
-    if (NULL == key)
-      break;
-    value = va_arg (args2, char *);
-    if (NULL == value)
-      continue;
-    len += urlencode_len (value) + strlen (key) + 2;
-  }
-  va_end (args2);
-
-  GNUNET_buffer_prealloc (&buf, len);
-
-  GNUNET_buffer_write_str (&buf, proto);
-  GNUNET_buffer_write_str (&buf, "://");
-  GNUNET_buffer_write_str (&buf, host);
-
-  GNUNET_buffer_write_path (&buf, prefix);
-  GNUNET_buffer_write_path (&buf, path);
-
-  va_copy (args2, args);
-  while (1)
-  {
-    char *key;
-    char *value;
-    key = va_arg (args, char *);
-    if (NULL == key)
-      break;
-    value = va_arg (args, char *);
-    if (NULL == value)
-      continue;
-    GNUNET_buffer_write_str (&buf, (0 == iparam) ? "?" : "&");
-    iparam++;
-    GNUNET_buffer_write_str (&buf, key);
-    GNUNET_buffer_write_str (&buf, "=");
-    buffer_write_urlencode (&buf, value);
-  }
-  va_end (args2);
-
+  GNUNET_buffer_prealloc (&buf,
+                          len);
+  GNUNET_buffer_write_str (&buf,
+                           proto);
+  GNUNET_buffer_write_str (&buf,
+                           "://");
+  GNUNET_buffer_write_str (&buf,
+                           host);
+  GNUNET_buffer_write_path (&buf,
+                            prefix);
+  GNUNET_buffer_write_path (&buf,
+                            path);
+  serialize_arguments (&buf,
+                       args);
   return GNUNET_buffer_reap_str (&buf);
 }
 
@@ -285,7 +314,7 @@ TALER_url_absolute_raw_va (const char *proto,
  * @param path path for the URL
  * @param ... NULL-terminated key-value pairs (char *) for query parameters,
  *        the value will be url-encoded
- * @returns the URL, must be freed with #GNUNET_free
+ * @return the URL, must be freed with #GNUNET_free
  */
 char *
 TALER_url_absolute_raw (const char *proto,
@@ -297,8 +326,13 @@ TALER_url_absolute_raw (const char *proto,
   char *result;
   va_list args;
 
-  va_start (args, path);
-  result = TALER_url_absolute_raw_va (proto, host, prefix, path, args);
+  va_start (args,
+            path);
+  result = TALER_url_absolute_raw_va (proto,
+                                      host,
+                                      prefix,
+                                      path,
+                                      args);
   va_end (args);
   return result;
 }
