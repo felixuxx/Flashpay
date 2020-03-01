@@ -279,6 +279,11 @@ static struct GNUNET_CURL_Context *ctx;
 static struct GNUNET_CURL_RescheduleContext *rc;
 
 /**
+ * How long should we sleep when idle before trying to find more work?
+ */
+static struct GNUNET_TIME_Relative aggreator_idle_sleep_interval;
+
+/**
  * Value to return from main(). #GNUNET_OK on success, #GNUNET_SYSERR
  * on serious errors.
  */
@@ -621,6 +626,17 @@ parse_wirewatch_config ()
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchange",
+                                           "AGGREGATOR_IDLE_SLEEP_INTERVAL",
+                                           &aggregator_idle_sleep_interval))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "AGGREGATOR_IDLE_SLEEP_INTERVAL");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -1424,10 +1440,9 @@ run_aggregation (void *cls)
       }
       else
       {
-        /* FIXME(dold): We might want to read the duration to sleep from the config */
         /* nothing to do, sleep for a minute and try again */
         GNUNET_assert (NULL == task);
-        task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
+        task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
                                              &run_aggregation,
                                              NULL);
       }
