@@ -77,7 +77,8 @@ sign_account_data (void *cls,
   if (NULL == wire)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not sign wire account `%s'. Is the URI well-formed?\n");
+                "Could not sign wire account `%s'. Is the URI well-formed?\n",
+                ai->payto_uri);
     global_ret = 1;
     return;
   }
