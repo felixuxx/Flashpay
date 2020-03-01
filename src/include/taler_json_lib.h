@@ -149,7 +149,8 @@ TALER_JSON_get_error_code2 (const void *data,
 
 /**
  * Compute the hash of the given wire details.   The resulting
- * hash is what is put into the contract.
+ * hash is what is put into the contract.  Also performs rudimentary
+ * checks on the account data *if* supported.
  *
  * @param wire_s wire details to hash
  * @param[out] hc set to the hash
@@ -161,7 +162,8 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
 
 
 /**
- * Check the signature in @a wire_s.
+ * Check the signature in @a wire_s.  Also performs rudimentary
+ * checks on the account data *if* supported.
  *
  * @param wire_s signed wire information of an exchange
  * @param master_pub master public key of the exchange
@@ -177,7 +179,8 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
  * Create a signed wire statement for the given account.
  *
  * @param payto_uri account specification
- * @param master_priv private key to sign with, NULL to not sign
+ * @param master_priv private key to sign with
+ * @return NULL if @a payto_uri is malformed
  */
 json_t *
 TALER_JSON_exchange_wire_signature_make (const char *payto_uri,

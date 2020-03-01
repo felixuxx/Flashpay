@@ -74,6 +74,13 @@ sign_account_data (void *cls,
 
   wire = TALER_JSON_exchange_wire_signature_make (ai->payto_uri,
                                                   &master_priv);
+  if (NULL == wire)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not sign wire account `%s'. Is the URI well-formed?\n");
+    global_ret = 1;
+    return;
+  }
   GNUNET_assert (NULL != wire);
   json_out = json_dumps (wire,
                          JSON_INDENT (2));
