@@ -55,6 +55,13 @@
    to "ancient" MHD releases. */
 #define MHD_NO_DEPRECATION 1
 
+/* Enable additional sanity checks that may result in a moderate
+   loss of performance but could be helpful to spot bugs. This
+   option should be enabled unless we are running benchmarks and/or
+   really need the last bit of performance. So even in production,
+   the default should be 'on' unless it was established that this
+   is needed for performance reasons. */
+#define ENABLE_SANITY_CHECKS 1
 
 #endif  /* PLATFORM_H_ */
 
