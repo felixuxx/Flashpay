@@ -270,7 +270,8 @@ TEH_RESPONSE_compile_transaction_history (const struct
            the denomination key's RSA signature over coin_pub, but as the
            wallet should really already have this information (and cannot
            check or do anything with it anyway if it doesn't), it seems
-           strictly unnecessary. */if (0 !=
+           strictly unnecessary. *///
+        if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                                               "type", "OLD-COIN-RECOUP",
@@ -373,7 +374,8 @@ TEH_RESPONSE_compile_transaction_history (const struct
            hash and the denomination key's RSA signature over coin_pub, but as
            the wallet should really already have this information (and cannot
            check or do anything with it anyway if it doesn't), it seems
-           strictly unnecessary. */if (0 !=
+           strictly unnecessary. *///
+        if (0 !=
             json_array_append_new (history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                                               "type", "RECOUP-REFRESH",
