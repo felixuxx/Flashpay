@@ -157,7 +157,10 @@ calculate_argument_length (va_list args)
 
 /**
  * Take the key-value pairs in @a args and serialize them into
- * @a buf, using URL encoding for the values.
+ * @a buf, using URL encoding for the values.  If a 'value' is
+ * given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL
+ * key signals the end of the list of arguments.
  *
  * @param buf where to write the values
  * @param args NULL-terminated key-value pairs (char *) for query parameters,
@@ -200,6 +203,10 @@ serialize_arguments (struct GNUNET_Buffer *buf,
 
 /**
  * Make an absolute URL with query parameters.
+ *
+ * If a 'value' is given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL key signals the
+ * end of the list of arguments.
  *
  * @param base_url absolute base URL to use
  * @param path path of the url
@@ -265,6 +272,10 @@ TALER_url_join (const char *base_url,
 /**
  * Make an absolute URL for the given parameters.
  *
+ * If a 'value' is given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL key signals the
+ * end of the list of arguments.
+ *
  * @param proto protocol for the URL (typically https)
  * @param host hostname for the URL
  * @param prefix prefix for the URL
@@ -307,6 +318,10 @@ TALER_url_absolute_raw_va (const char *proto,
 
 /**
  * Make an absolute URL for the given parameters.
+ *
+ * If a 'value' is given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL key signals the
+ * end of the list of arguments.
  *
  * @param proto protocol for the URL (typically https)
  * @param host hostname for the URL

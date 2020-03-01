@@ -62,7 +62,8 @@ TALER_gcrypt_init ()
              "libgcrypt version mismatch\n");
     abort ();
   }
-  /* Disable secure memory.  */
+  /* Disable secure memory (we should never run on a system that
+     even uses swap space for memory). */
   gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
   gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
 }
@@ -83,8 +84,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                        const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct GNUNET_HashCode c_hash;
-#if 1 /* sanity check of invariant, could probably be disabled in production
-         for slightly more performance */
+#if ENABLE_SANITY_CHECKS
   struct GNUNET_HashCode d_hash;
 
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,

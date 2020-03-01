@@ -171,6 +171,10 @@ TALER_mhd_is_https (struct MHD_Connection *connection);
 /**
  * Make an absolute URL with query parameters.
  *
+ * If a 'value' is given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL key signals the
+ * end of the list of arguments.
+ *
  * @param base_url absolute base URL to use
  * @param path path of the url
  * @param ... NULL-terminated key-value pairs (char *) for query parameters,
@@ -185,6 +189,10 @@ TALER_url_join (const char *base_url,
 
 /**
  * Make an absolute URL for the given parameters.
+ *
+ * If a 'value' is given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL key signals the
+ * end of the list of arguments.
  *
  * @param proto protocol for the URL (typically https)
  * @param host hostname for the URL
@@ -204,6 +212,10 @@ TALER_url_absolute_raw (const char *proto,
 
 /**
  * Make an absolute URL for the given parameters.
+ *
+ * If a 'value' is given as NULL, both the key and the value are skipped. Note
+ * that a NULL value does not terminate the list, only a NULL key signals the
+ * end of the list of arguments.
  *
  * @param proto protocol for the URL (typically https)
  * @param host hostname for the URL
