@@ -55,7 +55,6 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
     NULL
   };
   const char *serve_type;
-  unsigned long long port;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_choice (cfg,
@@ -74,6 +73,8 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
   if (0 == strcasecmp (serve_type,
                        "tcp"))
   {
+    unsigned long long port;
+
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
                                                section,
