@@ -434,7 +434,6 @@ TALER_EXCHANGE_free_reserve_history (struct
     case TALER_EXCHANGE_RTT_RECOUP:
       break;
     case TALER_EXCHANGE_RTT_CLOSE:
-      /* FIXME: should we free "receiver_account_details" ? */
       break;
     }
   }
