@@ -1924,7 +1924,8 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
   {
     os = internal_key_state;
     internal_key_state = make_fresh_key_state (now);
-    internal_key_state->refcnt = 1; /* alias from #internal_key_state */
+    if (NULL != internal_key_state)
+      internal_key_state->refcnt = 1; /* alias from #internal_key_state */
     if (NULL != os)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
