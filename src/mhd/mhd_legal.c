@@ -403,7 +403,7 @@ load_terms (struct TALER_MHD_Legal *legal,
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                                 "fstat",
                                 fn);
-      GNUENT_break (0 == close (fd));
+      GNUNET_break (0 == close (fd));
       GNUNET_free (fn);
       return;
     }
