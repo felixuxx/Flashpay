@@ -76,7 +76,7 @@ struct TransferState
   /**
    * Handle to the pending request at the fakebank.
    */
-  struct TALER_BANK_WireExecuteHandle *weh;
+  struct TALER_BANK_TransferHandle *weh;
 
   /**
    * Interpreter state.
@@ -233,15 +233,15 @@ transfer_run (void *cls,
               TALER_amount2s (&fts->amount),
               fts->account_debit_url,
               fts->payto_credit_account);
-  TALER_BANK_prepare_wire_transfer (fts->payto_credit_account,
-                                    &fts->amount,
-                                    fts->exchange_base_url,
-                                    &fts->wtid,
-                                    &buf,
-                                    &buf_size);
+  TALER_BANK_prepare_transfer (fts->payto_credit_account,
+                               &fts->amount,
+                               fts->exchange_base_url,
+                               &fts->wtid,
+                               &buf,
+                               &buf_size);
   fts->is = is;
   fts->weh
-    = TALER_BANK_execute_wire_transfer
+    = TALER_BANK_transfer
         (TALER_TESTING_interpreter_get_context (is),
         &fts->auth,
         buf,
@@ -276,7 +276,7 @@ transfer_cleanup (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Command %s did not complete\n",
                 cmd->label);
-    TALER_BANK_execute_wire_transfer_cancel (fts->weh);
+    TALER_BANK_transfer_cancel (fts->weh);
     fts->weh = NULL;
   }
   if (NULL != fts->retry_task)

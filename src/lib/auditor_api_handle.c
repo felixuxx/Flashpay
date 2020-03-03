@@ -367,7 +367,7 @@ version_completed_cb (void *cls,
  * @return ctx context to execute jobs in
  */
 struct GNUNET_CURL_Context *
-MAH_handle_to_context (struct TALER_AUDITOR_Handle *h)
+TALER_AUDITOR_handle_to_context_ (struct TALER_AUDITOR_Handle *h)
 {
   return h->ctx;
 }
@@ -380,7 +380,7 @@ MAH_handle_to_context (struct TALER_AUDITOR_Handle *h)
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
 int
-MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h)
+TALER_AUDITOR_handle_is_ready_ (struct TALER_AUDITOR_Handle *h)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking if auditor %p (%s) is now ready: %s\n",
@@ -399,8 +399,8 @@ MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h)
  * @return the full URL to use with cURL
  */
 char *
-MAH_path_to_url (struct TALER_AUDITOR_Handle *h,
-                 const char *path)
+TALER_AUDITOR_path_to_url_ (struct TALER_AUDITOR_Handle *h,
+                            const char *path)
 {
   char *ret;
   GNUNET_assert ('/' == path[0]);
@@ -473,16 +473,25 @@ request_version (void *cls)
   GNUNET_assert (NULL == auditor->vr);
   vr = GNUNET_new (struct VersionRequest);
   vr->auditor = auditor;
-  vr->url = MAH_path_to_url (auditor,
-                             "/version");
+  vr->url = TALER_AUDITOR_path_to_url_ (auditor,
+                                        "/version");
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting auditor version with URL `%s'.\n",
               vr->url);
-  eh = TAL_curl_easy_get (vr->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_TIMEOUT,
-                                   (long) 300));
+  eh = TALER_AUDITOR_curl_easy_get_ (vr->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    auditor->retry_delay = EXCHANGE_LIB_BACKOFF (auditor->retry_delay);
+    auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
+                                                        &request_version,
+                                                        auditor);
+    return;
+  }
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_TIMEOUT,
+                                  (long) 300));
   vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
                                  GNUNET_NO,

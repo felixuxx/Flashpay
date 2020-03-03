@@ -457,13 +457,15 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->url = TEAH_path_to_url (exchange,
                               arg_str);
   eh = TALER_EXCHANGE_curl_easy_get_ (mh->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&mh->ctx,
-                            eh,
-                            melt_obj))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&mh->ctx,
+                              eh,
+                              melt_obj)) )
   {
     GNUNET_break (0);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (melt_obj);
     GNUNET_free (mh->url);
     GNUNET_free (mh);

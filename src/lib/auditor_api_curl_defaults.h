@@ -14,16 +14,13 @@
   TALER; see the file COPYING.  If not, see
   <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file lib/auditor_api_curl_defaults.h
  * @brief curl easy handle defaults
  * @author Florian Dold
  */
-
 #ifndef _TALER_CURL_DEFAULTS_H
 #define _TALER_CURL_DEFAULTS_H
-
 
 #include "platform.h"
 #include <gnunet/gnunet_curl_lib.h>
@@ -36,6 +33,6 @@
  * @param url URL to query
  */
 CURL *
-TAL_curl_easy_get (const char *url);
+TALER_AUDITOR_curl_easy_get_ (const char *url);
 
 #endif /* _TALER_CURL_DEFAULTS_H */

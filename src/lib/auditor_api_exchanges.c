@@ -201,19 +201,26 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
   CURL *eh;
 
   GNUNET_assert (GNUNET_YES ==
-                 MAH_handle_is_ready (auditor));
+                 TALER_AUDITOR_handle_is_ready_ (auditor));
 
   leh = GNUNET_new (struct TALER_AUDITOR_ListExchangesHandle);
   leh->auditor = auditor;
   leh->cb = cb;
   leh->cb_cls = cb_cls;
-  leh->url = MAH_path_to_url (auditor, "/exchanges");
+  leh->url = TALER_AUDITOR_path_to_url_ (auditor, "/exchanges");
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for list-exchanges: `%s'\n",
               leh->url);
-  eh = TAL_curl_easy_get (leh->url);
-  ctx = MAH_handle_to_context (auditor);
+  eh = TALER_AUDITOR_curl_easy_get_ (leh->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    GNUNET_free (leh->url);
+    GNUNET_free (leh);
+    return NULL;
+  }
+  ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   leh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   GNUNET_NO,

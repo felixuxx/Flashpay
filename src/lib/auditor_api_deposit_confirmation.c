@@ -290,7 +290,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   (void) GNUNET_TIME_round_abs (&ep_expire);
   (void) GNUNET_TIME_round_abs (&ep_end);
   GNUNET_assert (GNUNET_YES ==
-                 MAH_handle_is_ready (auditor));
+                 TALER_AUDITOR_handle_is_ready_ (auditor));
   if (GNUNET_OK !=
       verify_signatures (h_wire,
                          h_contract_terms,
@@ -346,20 +346,23 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   dh->auditor = auditor;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->url = MAH_path_to_url (auditor, "/deposit-confirmation");
+  dh->url = TALER_AUDITOR_path_to_url_ (auditor,
+                                        "/deposit-confirmation");
+  eh = TALER_AUDITOR_curl_easy_get_ (dh->url);
 
-  eh = TAL_curl_easy_get (dh->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_CUSTOMREQUEST,
-                                   "PUT"));
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&dh->ctx,
-                            eh,
-                            deposit_confirmation_obj))
+  if ( (NULL == eh) ||
+       (CURLE_OK !=
+        curl_easy_setopt (eh,
+                          CURLOPT_CUSTOMREQUEST,
+                          "PUT")) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&dh->ctx,
+                              eh,
+                              deposit_confirmation_obj)) )
   {
     GNUNET_break (0);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (deposit_confirmation_obj);
     GNUNET_free (dh->url);
     GNUNET_free (dh);
@@ -369,7 +372,7 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit-confirmation: `%s'\n",
               dh->url);
-  ctx = MAH_handle_to_context (auditor);
+  ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   dh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   dh->ctx.headers,

@@ -456,6 +456,13 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
   lh->url = TEAH_path_to_url (exchange,
                               arg_str);
   eh = TALER_EXCHANGE_curl_easy_get_ (lh->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    GNUNET_free (lh->url);
+    GNUNET_free (lh);
+    return NULL;
+  }
   ctx = TEAH_handle_to_context (exchange);
   lh->job = GNUNET_CURL_job_add (ctx,
                                  eh,

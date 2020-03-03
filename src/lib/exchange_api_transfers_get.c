@@ -367,6 +367,13 @@ TALER_EXCHANGE_transfers_get (struct TALER_EXCHANGE_Handle *exchange,
   wdh->url = TEAH_path_to_url (wdh->exchange,
                                arg_str);
   eh = TALER_EXCHANGE_curl_easy_get_ (wdh->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    GNUNET_free (wdh->url);
+    GNUNET_free (wdh);
+    return NULL;
+  }
   ctx = TEAH_handle_to_context (exchange);
   wdh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

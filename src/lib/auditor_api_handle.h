@@ -31,7 +31,7 @@
  * @return ctx context to execute jobs in
  */
 struct GNUNET_CURL_Context *
-MAH_handle_to_context (struct TALER_AUDITOR_Handle *h);
+TALER_AUDITOR_handle_to_context_ (struct TALER_AUDITOR_Handle *h);
 
 
 /**
@@ -41,7 +41,7 @@ MAH_handle_to_context (struct TALER_AUDITOR_Handle *h);
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
 int
-MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h);
+TALER_AUDITOR_handle_is_ready_ (struct TALER_AUDITOR_Handle *h);
 
 
 /**
@@ -52,8 +52,8 @@ MAH_handle_is_ready (struct TALER_AUDITOR_Handle *h);
  * @return the full URL to use with cURL
  */
 char *
-MAH_path_to_url (struct TALER_AUDITOR_Handle *h,
-                 const char *path);
+TALER_AUDITOR_path_to_url_ (struct TALER_AUDITOR_Handle *h,
+                            const char *path);
 
 
 /* end of auditor_api_handle.h */

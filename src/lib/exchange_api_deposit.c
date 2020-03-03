@@ -627,13 +627,15 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                         not copy the pointer */
 
   eh = TALER_EXCHANGE_curl_easy_get_ (dh->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&dh->ctx,
-                            eh,
-                            deposit_obj))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&dh->ctx,
+                              eh,
+                              deposit_obj)) )
   {
     GNUNET_break (0);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (deposit_obj);
     GNUNET_free (dh->url);
     GNUNET_free (dh);

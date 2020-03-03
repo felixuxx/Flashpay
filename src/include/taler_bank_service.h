@@ -174,19 +174,19 @@ TALER_BANK_admin_add_incoming_cancel (struct
  * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
-TALER_BANK_prepare_wire_transfer (const char *destination_account_payto_uri,
-                                  const struct TALER_Amount *amount,
-                                  const char *exchange_base_url,
-                                  const struct
-                                  TALER_WireTransferIdentifierRawP *wtid,
-                                  void **buf,
-                                  size_t *buf_size);
+TALER_BANK_prepare_transfer (const char *destination_account_payto_uri,
+                             const struct TALER_Amount *amount,
+                             const char *exchange_base_url,
+                             const struct
+                             TALER_WireTransferIdentifierRawP *wtid,
+                             void **buf,
+                             size_t *buf_size);
 
 
 /**
  * Handle for active wire transfer.
  */
-struct TALER_BANK_WireExecuteHandle;
+struct TALER_BANK_TransferHandle;
 
 
 /**
@@ -199,11 +199,11 @@ struct TALER_BANK_WireExecuteHandle;
  * @param timestamp when did the transaction go into effect
  */
 typedef void
-(*TALER_BANK_ConfirmationCallback)(void *cls,
-                                   unsigned int response_code,
-                                   enum TALER_ErrorCode ec,
-                                   uint64_t row_id,
-                                   struct GNUNET_TIME_Absolute timestamp);
+(*TALER_BANK_TransferCallback)(void *cls,
+                               unsigned int response_code,
+                               enum TALER_ErrorCode ec,
+                               uint64_t row_id,
+                               struct GNUNET_TIME_Absolute timestamp);
 
 
 /**
@@ -217,30 +217,32 @@ typedef void
  * @param cc_cls closure for @a cc
  * @return NULL on error
  */
-struct TALER_BANK_WireExecuteHandle *
-TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
-                                  const struct
-                                  TALER_BANK_AuthenticationData *auth,
-                                  const void *buf,
-                                  size_t buf_size,
-                                  TALER_BANK_ConfirmationCallback cc,
-                                  void *cc_cls);
+struct TALER_BANK_TransferHandle *
+TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
+                     const struct TALER_BANK_AuthenticationData *auth,
+                     const void *buf,
+                     size_t buf_size,
+                     TALER_BANK_TransferCallback cc,
+                     void *cc_cls);
 
 
 /**
- * Abort execution of a wire transfer. For example, because we are
- * shutting down.  Note that if an execution is aborted, it may or
- * may not still succeed. The caller MUST run @e
- * execute_wire_transfer again for the same request as soon as
- * possilbe, to ensure that the request either ultimately succeeds
- * or ultimately fails. Until this has been done, the transaction is
- * in limbo (i.e. may or may not have been committed).
+ * Abort execution of a wire transfer. For example, because we are shutting
+ * down.  Note that if an execution is aborted, it may or may not still
+ * succeed.
  *
- * @param weh execution to cancel
+ * The caller MUST run #TALER_BANK_transfer() again for the same request as
+ * soon as possilbe, to ensure that the request either ultimately succeeds or
+ * ultimately fails. Until this has been done, the transaction is in limbo
+ * (i.e. may or may not have been committed).
+ *
+ * This function cannot be used on a request handle if a response is already
+ * served for it.
+ *
+ * @param th handle of the wire transfer request to cancel
  */
 void
-TALER_BANK_execute_wire_transfer_cancel (struct
-                                         TALER_BANK_WireExecuteHandle *weh);
+TALER_BANK_transfer_cancel (struct TALER_BANK_TransferHandle *th);
 
 
 /* ********************* /history/incoming *********************** */

@@ -82,7 +82,7 @@ struct WirePrepareData
   /**
    * Wire execution handle.
    */
-  struct TALER_BANK_WireExecuteHandle *eh;
+  struct TALER_BANK_TransferHandle *eh;
 
   /**
    * Wire account used for this preparation.
@@ -565,7 +565,7 @@ shutdown_task (void *cls)
   {
     if (NULL != wpd->eh)
     {
-      TALER_BANK_execute_wire_transfer_cancel (wpd->eh);
+      TALER_BANK_transfer_cancel (wpd->eh);
       wpd->eh = NULL;
     }
     db_plugin->rollback (db_plugin->cls,
@@ -1211,12 +1211,12 @@ expired_reserve_cb (void *cls,
   ctc->wa = wa;
   ctc->session = session;
   ctc->method = TALER_payto_get_method (account_payto_uri);
-  TALER_BANK_prepare_wire_transfer (account_payto_uri,
-                                    &amount_without_fee,
-                                    exchange_base_url,
-                                    &wtid,
-                                    &buf,
-                                    &buf_size);
+  TALER_BANK_prepare_transfer (account_payto_uri,
+                               &amount_without_fee,
+                               exchange_base_url,
+                               &wtid,
+                               &buf,
+                               &buf_size);
   /* Commit our intention to execute the wire transfer! */
   qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
                                             ctc->session,
@@ -1581,12 +1581,12 @@ run_aggregation (void *cls)
     char *url;
 
     url = TALER_JSON_wire_to_payto (au->wire);
-    TALER_BANK_prepare_wire_transfer (url,
-                                      &au->final_amount,
-                                      exchange_base_url,
-                                      &au->wtid,
-                                      &buf,
-                                      &buf_size);
+    TALER_BANK_prepare_transfer (url,
+                                 &au->final_amount,
+                                 exchange_base_url,
+                                 &au->wtid,
+                                 &buf,
+                                 &buf_size);
     GNUNET_free (url);
   }
   GNUNET_free_non_null (au->additional_rows);
@@ -1804,12 +1804,12 @@ wire_prepare_cb (void *cls,
     return;
   }
   wa = wpd->wa;
-  wpd->eh = TALER_BANK_execute_wire_transfer (ctx,
-                                              &wa->auth,
-                                              buf,
-                                              buf_size,
-                                              &wire_confirm_cb,
-                                              NULL);
+  wpd->eh = TALER_BANK_transfer (ctx,
+                                 &wa->auth,
+                                 buf,
+                                 buf_size,
+                                 &wire_confirm_cb,
+                                 NULL);
   if (NULL == wpd->eh)
   {
     GNUNET_break (0); /* Irrecoverable */

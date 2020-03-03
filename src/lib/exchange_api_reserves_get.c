@@ -275,6 +275,13 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
   rgh->url = TEAH_path_to_url (exchange,
                                arg_str);
   eh = TALER_EXCHANGE_curl_easy_get_ (rgh->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    GNUNET_free (rgh->url);
+    GNUNET_free (rgh);
+    return NULL;
+  }
   ctx = TEAH_handle_to_context (exchange);
   rgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

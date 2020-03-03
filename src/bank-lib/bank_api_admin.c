@@ -218,7 +218,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                             "Content-Type: application/json");
 
   eh = curl_easy_init ();
-  if ( (GNUNET_OK !=
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
         TALER_BANK_setup_auth_ (eh,
                                 auth)) ||
        (CURLE_OK !=
@@ -232,7 +233,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   {
     GNUNET_break (0);
     TALER_BANK_admin_add_incoming_cancel (aai);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (admin_obj);
     return NULL;
   }

@@ -427,13 +427,15 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wh->url = TEAH_path_to_url (exchange,
                               arg_str);
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&wh->ctx,
-                            eh,
-                            withdraw_obj))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&wh->ctx,
+                              eh,
+                              withdraw_obj)) )
   {
     GNUNET_break (0);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (withdraw_obj);
     GNUNET_free (wh->url);
     GNUNET_CRYPTO_rsa_public_key_free (wh->pk.key.rsa_public_key);

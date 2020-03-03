@@ -1954,14 +1954,22 @@ request_keys (void *cls)
               "Requesting keys with URL `%s'.\n",
               kr->url);
   eh = TALER_EXCHANGE_curl_easy_get_ (kr->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_VERBOSE,
-                                   0));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_TIMEOUT,
-                                   (long) 300));
+  if (NULL == eh)
+  {
+    exchange->retry_delay = EXCHANGE_LIB_BACKOFF (exchange->retry_delay);
+    exchange->retry_task = GNUNET_SCHEDULER_add_delayed (exchange->retry_delay,
+                                                         &request_keys,
+                                                         exchange);
+    return;
+  }
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_VERBOSE,
+                                  0));
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_TIMEOUT,
+                                  (long) 300));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERFUNCTION,

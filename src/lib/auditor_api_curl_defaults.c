@@ -19,7 +19,6 @@
  * @brief curl easy handle defaults
  * @author Florian Dold
  */
-
 #include "auditor_api_curl_defaults.h"
 
 
@@ -30,7 +29,7 @@
  * @param url URL to query
  */
 CURL *
-TAL_curl_easy_get (const char *url)
+TALER_AUDITOR_curl_easy_get_ (const char *url)
 {
   CURL *eh;
   struct GNUNET_AsyncScopeSave scope;
@@ -38,15 +37,25 @@ TAL_curl_easy_get (const char *url)
   GNUNET_async_scope_get (&scope);
 
   eh = curl_easy_init ();
-
+  if (NULL == eh)
+    return NULL;
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_FOLLOWLOCATION,
+                                   1L));
+  /* limit MAXREDIRS to 5 as a simple security measure against
+     a potential infinite loop caused by a malicious target */
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_MAXREDIRS,
+                                   5L));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_TCP_FASTOPEN,
                                    1L));
-
   return eh;
 }

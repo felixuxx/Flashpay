@@ -367,6 +367,13 @@ TALER_EXCHANGE_deposits_get (struct TALER_EXCHANGE_Handle *exchange,
   dwh->depconf.coin_pub = *coin_pub;
 
   eh = TALER_EXCHANGE_curl_easy_get_ (dwh->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    GNUNET_free (dwh->url);
+    GNUNET_free (dwh);
+    return NULL;
+  }
   ctx = TEAH_handle_to_context (exchange);
   dwh->job = GNUNET_CURL_job_add (ctx,
                                   eh,

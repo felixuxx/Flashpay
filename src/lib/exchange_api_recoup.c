@@ -390,13 +390,15 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                               arg_str);
   ph->was_refreshed = was_refreshed;
   eh = TALER_EXCHANGE_curl_easy_get_ (ph->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&ph->ctx,
-                            eh,
-                            recoup_obj))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&ph->ctx,
+                              eh,
+                              recoup_obj)) )
   {
     GNUNET_break (0);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (recoup_obj);
     GNUNET_free (ph->url);
     GNUNET_free (ph);

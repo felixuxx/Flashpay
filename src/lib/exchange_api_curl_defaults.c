@@ -24,8 +24,8 @@
 
 
 /**
- * Get a curl handle with the right defaults
- * for the exchange lib.  In the future, we might manage a pool of connections here.
+ * Get a curl handle with the right defaults for the exchange lib.  In the
+ * future, we might manage a pool of connections here.
  *
  * @param url URL to query
  */
@@ -35,6 +35,8 @@ TALER_EXCHANGE_curl_easy_get_ (const char *url)
   CURL *eh;
 
   eh = curl_easy_init ();
+  if (NULL == eh)
+    return NULL;
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,

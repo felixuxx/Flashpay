@@ -66,7 +66,8 @@ struct WirePackP
 GNUNET_NETWORK_STRUCT_END
 
 /**
- * Prepare for exeuction of a wire transfer.
+ * Prepare for execution of a wire transfer from the exchange to some
+ * merchant.
  *
  * @param destination_account_payto_uri payto:// URL identifying where to send the money
  * @param amount amount to transfer, already rounded
@@ -77,19 +78,27 @@ GNUNET_NETWORK_STRUCT_END
  * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
-TALER_BANK_prepare_wire_transfer (const char *destination_account_payto_uri,
-                                  const struct TALER_Amount *amount,
-                                  const char *exchange_base_url,
-                                  const struct
-                                  TALER_WireTransferIdentifierRawP *wtid,
-                                  void **buf,
-                                  size_t *buf_size)
+TALER_BANK_prepare_transfer (const char *destination_account_payto_uri,
+                             const struct TALER_Amount *amount,
+                             const char *exchange_base_url,
+                             const struct
+                             TALER_WireTransferIdentifierRawP *wtid,
+                             void **buf,
+                             size_t *buf_size)
 {
   struct WirePackP *wp;
   size_t d_len = strlen (destination_account_payto_uri) + 1;
   size_t u_len = strlen (exchange_base_url) + 1;
   char *end;
 
+  if ( (d_len > (size_t) UINT32_MAX) ||
+       (u_len > (size_t) UINT32_MAX) )
+  {
+    GNUNET_break (0); /* that's some long URL... */
+    *buf = NULL;
+    *buf_size = 0;
+    return;
+  }
   *buf_size = sizeof (*wp) + d_len + u_len;
   wp = GNUNET_malloc (*buf_size);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_NONCE,
@@ -111,9 +120,9 @@ TALER_BANK_prepare_wire_transfer (const char *destination_account_payto_uri,
 
 
 /**
- * @brief An transfer Handle
+ * @brief Handle for an active wire transfer.
  */
-struct TALER_BANK_WireExecuteHandle
+struct TALER_BANK_TransferHandle
 {
 
   /**
@@ -134,7 +143,7 @@ struct TALER_BANK_WireExecuteHandle
   /**
    * Function to call with the result.
    */
-  TALER_BANK_ConfirmationCallback cb;
+  TALER_BANK_TransferCallback cb;
 
   /**
    * Closure for @a cb.
@@ -148,7 +157,7 @@ struct TALER_BANK_WireExecuteHandle
  * Function called when we're done processing the
  * HTTP /transfer request.
  *
- * @param cls the `struct TALER_BANK_WireExecuteHandle`
+ * @param cls the `struct TALER_BANK_TransferHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -157,14 +166,13 @@ handle_transfer_finished (void *cls,
                           long response_code,
                           const void *response)
 {
-  struct TALER_BANK_WireExecuteHandle *weh = cls;
-  uint64_t row_id = UINT64_MAX;
-  struct GNUNET_TIME_Absolute timestamp;
-  enum TALER_ErrorCode ec;
+  struct TALER_BANK_TransferHandle *th = cls;
   const json_t *j = response;
+  uint64_t row_id = UINT64_MAX;
+  struct GNUNET_TIME_Absolute timestamp = GNUNET_TIME_UNIT_FOREVER_ABS;
+  enum TALER_ErrorCode ec;
 
-  weh->job = NULL;
-  timestamp = GNUNET_TIME_UNIT_FOREVER_ABS;
+  th->job = NULL;
   switch (response_code)
   {
   case 0:
@@ -198,19 +206,20 @@ handle_transfer_finished (void *cls,
        (or API version conflict); just pass JSON reply to the application */
     ec = TALER_JSON_get_error_code (j);
     break;
-  case MHD_HTTP_FORBIDDEN:
-    /* Access denied */
-    ec = TALER_JSON_get_error_code (j);
-    break;
   case MHD_HTTP_UNAUTHORIZED:
-    /* Nothing really to verify, bank says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
+    /* Nothing really to verify, bank says our credentials are
+       invalid. We should pass the JSON reply to the application. */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
+    /* Nothing really to verify, endpoint wrong -- could be user unknown */
+    ec = TALER_JSON_get_error_code (j);
+    break;
+  case MHD_HTTP_CONFLICT:
+    /* Nothing really to verify. Server says we used the same transfer request
+       UID before, but with different details.  Should not happen if the user
+       properly used #TALER_BANK_prepare_transfer() and our PRNG is not
+       broken... */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
@@ -228,12 +237,12 @@ handle_transfer_finished (void *cls,
     response_code = 0;
     break;
   }
-  weh->cb (weh->cb_cls,
-           response_code,
-           ec,
-           row_id,
-           timestamp);
-  TALER_BANK_execute_wire_transfer_cancel (weh);
+  th->cb (th->cb_cls,
+          response_code,
+          ec,
+          row_id,
+          timestamp);
+  TALER_BANK_transfer_cancel (th);
 }
 
 
@@ -248,16 +257,16 @@ handle_transfer_finished (void *cls,
  * @param cc_cls closure for @a cc
  * @return NULL on error
  */
-struct TALER_BANK_WireExecuteHandle *
-TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
-                                  const struct
-                                  TALER_BANK_AuthenticationData *auth,
-                                  const void *buf,
-                                  size_t buf_size,
-                                  TALER_BANK_ConfirmationCallback cc,
-                                  void *cc_cls)
+struct TALER_BANK_TransferHandle *
+TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
+                     const struct
+                     TALER_BANK_AuthenticationData *auth,
+                     const void *buf,
+                     size_t buf_size,
+                     TALER_BANK_TransferCallback cc,
+                     void *cc_cls)
 {
-  struct TALER_BANK_WireExecuteHandle *weh;
+  struct TALER_BANK_TransferHandle *th;
   json_t *transfer_obj;
   CURL *eh;
   const struct WirePackP *wp = buf;
@@ -281,6 +290,12 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   }
   destination_account_uri = (const char *) &wp[1];
   exchange_base_url = destination_account_uri + d_len;
+  if ( ('\0' != destination_account_uri[d_len - 1]) ||
+       ('\0' != exchange_base_url[u_len - 1]) )
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   if (NULL == auth->wire_gateway_url)
   {
     GNUNET_break (0);
@@ -288,15 +303,15 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
   }
   TALER_amount_ntoh (&amount,
                      &wp->amount);
-  weh = GNUNET_new (struct TALER_BANK_WireExecuteHandle);
-  weh->cb = cc;
-  weh->cb_cls = cc_cls;
-  weh->request_url = TALER_url_join (auth->wire_gateway_url,
-                                     "transfer",
-                                     NULL);
-  if (NULL == weh->request_url)
+  th = GNUNET_new (struct TALER_BANK_TransferHandle);
+  th->cb = cc;
+  th->cb_cls = cc_cls;
+  th->request_url = TALER_url_join (auth->wire_gateway_url,
+                                    "transfer",
+                                    NULL);
+  if (NULL == th->request_url)
   {
-    GNUNET_free (weh);
+    GNUNET_free (th);
     GNUNET_break (0);
     return NULL;
   }
@@ -312,58 +327,65 @@ TALER_BANK_execute_wire_transfer (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (0);
     return NULL;
   }
-  weh->post_ctx.headers = curl_slist_append
-                            (weh->post_ctx.headers,
-                            "Content-Type: application/json");
-
   eh = curl_easy_init ();
-  if ( (GNUNET_OK !=
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
         TALER_BANK_setup_auth_ (eh,
                                 auth)) ||
        (CURLE_OK !=
         curl_easy_setopt (eh,
                           CURLOPT_URL,
-                          weh->request_url)) ||
+                          th->request_url)) ||
        (GNUNET_OK !=
-        TALER_curl_easy_post (&weh->post_ctx,
+        TALER_curl_easy_post (&th->post_ctx,
                               eh,
                               transfer_obj)) )
   {
     GNUNET_break (0);
-    TALER_BANK_execute_wire_transfer_cancel (weh);
-    curl_easy_cleanup (eh);
+    TALER_BANK_transfer_cancel (th);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (transfer_obj);
     return NULL;
   }
   json_decref (transfer_obj);
 
-  weh->job = GNUNET_CURL_job_add2 (ctx,
-                                   eh,
-                                   weh->post_ctx.headers,
-                                   &handle_transfer_finished,
-                                   weh);
-  return weh;
+  th->job = GNUNET_CURL_job_add2 (ctx,
+                                  eh,
+                                  th->post_ctx.headers,
+                                  &handle_transfer_finished,
+                                  th);
+  return th;
 }
 
 
 /**
- * Cancel a wire transfer.  This function cannot be used on a request handle
- * if a response is already served for it.
+ * Abort execution of a wire transfer. For example, because we are shutting
+ * down.  Note that if an execution is aborted, it may or may not still
+ * succeed.
  *
- * @param weh the wire transfer request handle
+ * The caller MUST run #TALER_BANK_transfer() again for the same request as
+ * soon as possilbe, to ensure that the request either ultimately succeeds or
+ * ultimately fails. Until this has been done, the transaction is in limbo
+ * (i.e. may or may not have been committed).
+ *
+ * This function cannot be used on a request handle if a response is already
+ * served for it.
+ *
+ * @param th the wire transfer request handle
  */
 void
-TALER_BANK_execute_wire_transfer_cancel (struct
-                                         TALER_BANK_WireExecuteHandle *weh)
+TALER_BANK_transfer_cancel (struct
+                            TALER_BANK_TransferHandle *th)
 {
-  if (NULL != weh->job)
+  if (NULL != th->job)
   {
-    GNUNET_CURL_job_cancel (weh->job);
-    weh->job = NULL;
+    GNUNET_CURL_job_cancel (th->job);
+    th->job = NULL;
   }
-  TALER_curl_easy_post_finished (&weh->post_ctx);
-  GNUNET_free (weh->request_url);
-  GNUNET_free (weh);
+  TALER_curl_easy_post_finished (&th->post_ctx);
+  GNUNET_free (th->request_url);
+  GNUNET_free (th);
 }
 
 

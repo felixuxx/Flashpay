@@ -276,7 +276,8 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
               "Requesting credit history at `%s'\n",
               hh->request_url);
   eh = curl_easy_init ();
-  if ( (GNUNET_OK !=
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
         TALER_BANK_setup_auth_ (eh,
                                 auth)) ||
        (CURLE_OK !=
@@ -286,7 +287,8 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
   {
     GNUNET_break (0);
     TALER_BANK_credit_history_cancel (hh);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     return NULL;
   }
   hh->job = GNUNET_CURL_job_add2 (ctx,

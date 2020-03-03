@@ -70,7 +70,7 @@ static char *destination_account_url;
 /**
  * Handle for executing the wire transfer.
  */
-static struct TALER_BANK_WireExecuteHandle *eh;
+static struct TALER_BANK_TransferHandle *eh;
 
 /**
  * Handle to ongoing history operation.
@@ -189,18 +189,18 @@ execute_wire_transfer ()
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &wtid,
                               sizeof (wtid));
-  TALER_BANK_prepare_wire_transfer (destination_account_url,
-                                    &amount,
-                                    "http://exchange.example.com/",
-                                    &wtid,
-                                    &buf,
-                                    &buf_size);
-  eh = TALER_BANK_execute_wire_transfer (ctx,
-                                         &auth,
-                                         buf,
-                                         buf_size,
-                                         &confirmation_cb,
-                                         NULL);
+  TALER_BANK_prepare_transfer (destination_account_url,
+                               &amount,
+                               "http://exchange.example.com/",
+                               &wtid,
+                               &buf,
+                               &buf_size);
+  eh = TALER_BANK_transfer (ctx,
+                            &auth,
+                            buf,
+                            buf_size,
+                            &confirmation_cb,
+                            NULL);
   if (NULL == eh)
   {
     fprintf (stderr,
@@ -260,7 +260,7 @@ do_shutdown (void *cls)
   }
   if (NULL != eh)
   {
-    TALER_BANK_execute_wire_transfer_cancel (eh);
+    TALER_BANK_transfer_cancel (eh);
     eh = NULL;
   }
   TALER_BANK_auth_free (&auth);

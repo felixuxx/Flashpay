@@ -462,13 +462,15 @@ TALER_EXCHANGE_refreshes_reveal (struct TALER_EXCHANGE_Handle *exchange,
                                arg_str);
 
   eh = TALER_EXCHANGE_curl_easy_get_ (rrh->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&rrh->ctx,
-                            eh,
-                            reveal_obj))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&rrh->ctx,
+                              eh,
+                              reveal_obj)) )
   {
     GNUNET_break (0);
-    curl_easy_cleanup (eh);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (reveal_obj);
     GNUNET_free (rrh->url);
     GNUNET_free (rrh);
