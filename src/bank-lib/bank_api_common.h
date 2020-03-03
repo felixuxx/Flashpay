@@ -21,22 +21,12 @@
  */
 #ifndef BANK_API_COMMON_H
 #define BANK_API_COMMON_H
-#include <jansson.h>
+
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_bank_service.h"
 #include "taler_json_lib.h"
-
-
-/**
- * Build authentication header from @a auth.
- *
- * @param auth authentication data to use
- * @return NULL on error, otherwise curl headers to use
- */
-struct curl_slist *
-TALER_BANK_make_auth_header_ (const struct TALER_BANK_AuthenticationData *auth);
 
 
 /**
