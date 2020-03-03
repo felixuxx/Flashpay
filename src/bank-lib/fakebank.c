@@ -344,8 +344,8 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
  * @param exchange_base_url exchange URL
  * @param request_uid unique number to make the request unique, or NULL to create one
  * @param[out] ret_row_id pointer to store the row ID of this transaction
- * @return GNUNET_YES if the transfer was successful,
- *         GNUNET_SYSERR if the request_uid was reused for a different transfer
+ * @return #GNUNET_YES if the transfer was successful,
+ *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
  */
 int
 TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
@@ -638,6 +638,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     {
       GNUNET_break (0);
       json_decref (json);
+      /* We're fakebank, no need for nice error handling */
       return MHD_NO;
     }
     debit = TALER_xtalerbank_account_from_payto (debit_account);
@@ -662,8 +663,9 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                     "{s:I, s:o}",
                                     "row_id",
                                     (json_int_t) row_id,
-                                    "timestamp", GNUNET_JSON_from_time_abs (
-                                      GNUNET_TIME_UNIT_ZERO_ABS));                                       /*dummy tmp */
+                                    "timestamp",
+                                    GNUNET_JSON_from_time_abs (
+                                      GNUNET_TIME_UNIT_ZERO_ABS));
 }
 
 
@@ -740,6 +742,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
     {
       GNUNET_break (0);
       json_decref (json);
+      /* We are fakebank, no need for nice error handling */
       return MHD_NO;
     }
     {
@@ -864,7 +867,7 @@ struct HistoryArgs
  *
  * @param connection MHD connection.
  * @param[out] ha will contain the parsed values.
- * @return GNUNET_OK only if the parsing succeedes.
+ * @return #GNUNET_OK only if the parsing succeedes.
  */
 static int
 parse_history_common_args (struct MHD_Connection *connection,
