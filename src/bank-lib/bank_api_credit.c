@@ -41,11 +41,6 @@ struct TALER_BANK_CreditHistoryHandle
   char *request_url;
 
   /**
-   * The base URL of the bank.
-   */
-  char *bank_base_url;
-
-  /**
    * Handle for the request.
    */
   struct GNUNET_CURL_Job *job;
@@ -144,8 +139,8 @@ handle_credit_history_finished (void *cls,
                                 const void *response)
 {
   struct TALER_BANK_CreditHistoryHandle *hh = cls;
-  enum TALER_ErrorCode ec;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   hh->job = NULL;
   switch (response_code)
@@ -236,7 +231,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                            TALER_BANK_CreditHistoryCallback hres_cb,
                            void *hres_cb_cls)
 {
-  char *url;
+  char url[128];
   struct TALER_BANK_CreditHistoryHandle *hh;
   CURL *eh;
 
@@ -250,28 +245,28 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
          (0 > num_results) ) ||
        ( (0 == start_row) &&
          (0 < num_results) ) )
-    GNUNET_asprintf (&url,
+    GNUNET_snprintf (url,
+                     sizeof (url),
                      "history/incoming?delta=%lld",
                      (long long) num_results);
   else
-    GNUNET_asprintf (&url,
+    GNUNET_snprintf (url,
+                     sizeof (url),
                      "history/incoming?delta=%lld&start=%llu",
                      (long long) num_results,
-                     start_row);
+                     (unsigned long long) start_row);
   hh = GNUNET_new (struct TALER_BANK_CreditHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
   hh->request_url = TALER_url_join (auth->wire_gateway_url,
                                     url,
                                     NULL);
-  GNUNET_free (url);
   if (NULL == hh->request_url)
   {
     GNUNET_free (hh);
     GNUNET_break (0);
     return NULL;
   }
-  hh->bank_base_url = GNUNET_strdup (auth->wire_gateway_url);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting credit history at `%s'\n",
               hh->request_url);
@@ -316,7 +311,6 @@ TALER_BANK_credit_history_cancel (struct TALER_BANK_CreditHistoryHandle *hh)
     hh->job = NULL;
   }
   GNUNET_free (hh->request_url);
-  GNUNET_free (hh->bank_base_url);
   GNUNET_free (hh);
 }
 

@@ -141,8 +141,8 @@ handle_debit_history_finished (void *cls,
                                const void *response)
 {
   struct TALER_BANK_DebitHistoryHandle *hh = cls;
-  enum TALER_ErrorCode ec;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   hh->job = NULL;
   switch (response_code)
@@ -235,7 +235,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
                           TALER_BANK_DebitHistoryCallback hres_cb,
                           void *hres_cb_cls)
 {
-  char *url;
+  char url[128];
   struct TALER_BANK_DebitHistoryHandle *hh;
   CURL *eh;
 
@@ -249,21 +249,22 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
          (0 > num_results) ) ||
        ( (0 == start_row) &&
          (0 < num_results) ) )
-    GNUNET_asprintf (&url,
+    GNUNET_snprintf (url,
+                     sizeof (url),
                      "history/outgoing?delta=%lld",
                      (long long) num_results);
   else
-    GNUNET_asprintf (&url,
+    GNUNET_snprintf (url,
+                     sizeof (url),
                      "history/outgoing?delta=%lld&start=%llu",
                      (long long) num_results,
-                     start_row);
+                     (unsigned long long) start_row);
   hh = GNUNET_new (struct TALER_BANK_DebitHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
   hh->request_url = TALER_url_join (auth->wire_gateway_url,
                                     url,
                                     NULL);
-  GNUNET_free (url);
   if (NULL == hh->request_url)
   {
     GNUNET_free (hh);
@@ -271,7 +272,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
     return NULL;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Requesting history at `%s'\n",
+              "Requesting debit history at `%s'\n",
               hh->request_url);
   eh = curl_easy_init ();
   if ( (NULL == eh) ||

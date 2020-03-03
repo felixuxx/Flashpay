@@ -112,6 +112,7 @@ handle_admin_add_incoming_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
+    GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_FORBIDDEN:
