@@ -48,7 +48,7 @@ struct TALER_BANK_DebitHistoryHandle
   /**
    * Function to call with the result.
    */
-  TALER_BANK_DebitResultCallback hcb;
+  TALER_BANK_DebitHistoryCallback hcb;
 
   /**
    * Closure for @a cb.
@@ -232,7 +232,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
                           const struct TALER_BANK_AuthenticationData *auth,
                           uint64_t start_row,
                           int64_t num_results,
-                          TALER_BANK_DebitResultCallback hres_cb,
+                          TALER_BANK_DebitHistoryCallback hres_cb,
                           void *hres_cb_cls)
 {
   char *url;

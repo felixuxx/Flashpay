@@ -50,7 +50,7 @@ struct TALER_BANK_AdminAddIncomingHandle
   /**
    * Function to call with the result.
    */
-  TALER_BANK_AdminAddIncomingResultCallback cb;
+  TALER_BANK_AdminAddIncomingCallback cb;
 
   /**
    * Closure for @a cb.
@@ -119,14 +119,13 @@ handle_admin_add_incoming_finished (void *cls,
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_UNAUTHORIZED:
-    /* Nothing really to verify, bank says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
+    /* Nothing really to verify, bank says the password is invalid; we should
+       pass the JSON reply to the application */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
+    /* Nothing really to verify, maybe account really does not exist.
+       We should pass the JSON reply to the application */
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
@@ -155,20 +154,20 @@ handle_admin_add_incoming_finished (void *cls,
 
 
 /**
- * Notify the bank that we have received an incoming transaction
- * which fills a reserve.  Note that this API is an administrative
- * API and thus not accessible to typical bank clients, but only
- * to the operators of the bank.
+ * Perform a wire transfer from some account to the exchange to fill a
+ * reserve.  Note that this API is usually only used for testing (with
+ * fakebank and our Python bank) and thus may not be accessible in a
+ * production setting.
  *
  * @param ctx curl context for the event loop
  * @param auth authentication data to send to the bank
  * @param reserve_pub wire transfer subject for the transfer
- * @param amount amount that was deposited
+ * @param amount amount that was is to be deposited
  * @param debit_account account to deposit from (payto URI, but used as 'payfrom')
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
- *         if the inputs are invalid (i.e. invalid amount).
+ *         if the inputs are invalid (i.e. invalid amount) or internal errors.
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_AdminAddIncomingHandle *
@@ -178,7 +177,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
                                const char *debit_account,
-                               TALER_BANK_AdminAddIncomingResultCallback res_cb,
+                               TALER_BANK_AdminAddIncomingCallback res_cb,
                                void *res_cb_cls)
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai;
@@ -206,6 +205,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   if (NULL == aai->request_url)
   {
     GNUNET_free (aai);
+    json_decref (admin_obj);
     GNUNET_break (0);
     return NULL;
   }

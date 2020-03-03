@@ -53,7 +53,7 @@ struct TALER_BANK_CreditHistoryHandle
   /**
    * Function to call with the result.
    */
-  TALER_BANK_CreditResultCallback hcb;
+  TALER_BANK_CreditHistoryCallback hcb;
 
   /**
    * Closure for @a cb.
@@ -233,7 +233,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                            const struct TALER_BANK_AuthenticationData *auth,
                            uint64_t start_row,
                            int64_t num_results,
-                           TALER_BANK_CreditResultCallback hres_cb,
+                           TALER_BANK_CreditHistoryCallback hres_cb,
                            void *hres_cb_cls)
 {
   char *url;

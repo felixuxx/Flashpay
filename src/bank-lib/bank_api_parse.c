@@ -123,7 +123,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
- * Free memory inside of @a auth (but not auth itself).
+ * Free memory inside of @a auth (but not @a auth itself).
  * Dual to #TALER_BANK_auth_parse_cfg().
  *
  * @param[in] auth authentication data to free

@@ -90,18 +90,18 @@ struct TALER_BANK_AuthenticationData
 };
 
 
-/* ********************* /admin/add/incoming *********************** */
+/* ********************* /admin/add-incoming *********************** */
 
 
 /**
- * @brief A /admin/add/incoming Handle
+ * @brief A /admin/add-incoming Handle
  */
 struct TALER_BANK_AdminAddIncomingHandle;
 
 
 /**
- * Callbacks of this type are used to serve the result of submitting
- * information about an incoming transaction to a bank.
+ * Callbacks of this type are used to return the result of submitting
+ * a request to transfer funds to the exchange.
  *
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -112,30 +112,29 @@ struct TALER_BANK_AdminAddIncomingHandle;
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
-(*TALER_BANK_AdminAddIncomingResultCallback) (void *cls,
-                                              unsigned int http_status,
-                                              enum TALER_ErrorCode ec,
-                                              uint64_t serial_id,
-                                              struct GNUNET_TIME_Absolute
-                                              timestamp,
-                                              const json_t *json);
+(*TALER_BANK_AdminAddIncomingCallback) (void *cls,
+                                        unsigned int http_status,
+                                        enum TALER_ErrorCode ec,
+                                        uint64_t serial_id,
+                                        struct GNUNET_TIME_Absolute timestamp,
+                                        const json_t *json);
 
 
 /**
- * Notify the bank that we have received an incoming transaction
- * which fills a reserve.  Note that this API is an administrative
- * API and thus not accessible to typical bank clients, but only
- * to the operators of the bank.
+ * Perform a wire transfer from some account to the exchange to fill a
+ * reserve.  Note that this API is usually only used for testing (with
+ * fakebank and our Python bank) and thus may not be accessible in a
+ * production setting.
  *
  * @param ctx curl context for the event loop
  * @param auth authentication data to send to the bank
  * @param reserve_pub wire transfer subject for the transfer
- * @param amount amount that was deposited
+ * @param amount amount that is to be deposited
  * @param debit_account account to deposit from (payto URI, but used as 'payfrom')
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
- *         if the inputs are invalid (i.e. invalid amount).
+ *         if the inputs are invalid (i.e. invalid amount) or internal errors.
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_AdminAddIncomingHandle *
@@ -145,13 +144,13 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
                                const char *debit_account,
-                               TALER_BANK_AdminAddIncomingResultCallback res_cb,
+                               TALER_BANK_AdminAddIncomingCallback res_cb,
                                void *res_cb_cls);
 
 
 /**
- * Cancel an add incoming.  This function cannot be used on a request
- * handle if a response is already served for it.
+ * Cancel an add incoming operation.  This function cannot be used on a
+ * request handle if a response is already served for it.
  *
  * @param aai the admin add incoming request handle
  */
@@ -163,7 +162,8 @@ TALER_BANK_admin_add_incoming_cancel (struct
 /* ********************* /transfer *********************** */
 
 /**
- * Prepare for exeuction of a wire transfer.
+ * Prepare for execution of a wire transfer from the exchange to some
+ * merchant.
  *
  * @param destination_account_payto_uri payto:// URL identifying where to send the money
  * @param amount amount to transfer, already rounded
@@ -207,7 +207,7 @@ typedef void
 
 
 /**
- * Execute a wire transfer.
+ * Execute a wire transfer from the exchange to some merchant.
  *
  * @param ctx context for HTTP interaction
  * @param auth authentication data to authenticate with the bank
@@ -303,13 +303,13 @@ struct TALER_BANK_CreditDetails
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 typedef int
-(*TALER_BANK_CreditResultCallback) (void *cls,
-                                    unsigned int http_status,
-                                    enum TALER_ErrorCode ec,
-                                    uint64_t serial_id,
-                                    const struct
-                                    TALER_BANK_CreditDetails *details,
-                                    const json_t *json);
+(*TALER_BANK_CreditHistoryCallback) (void *cls,
+                                     unsigned int http_status,
+                                     enum TALER_ErrorCode ec,
+                                     uint64_t serial_id,
+                                     const struct
+                                     TALER_BANK_CreditDetails *details,
+                                     const json_t *json);
 
 
 /**
@@ -332,7 +332,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                            const struct TALER_BANK_AuthenticationData *auth,
                            uint64_t start_row,
                            int64_t num_results,
-                           TALER_BANK_CreditResultCallback hres_cb,
+                           TALER_BANK_CreditHistoryCallback hres_cb,
                            void *hres_cb_cls);
 
 
@@ -413,13 +413,13 @@ struct TALER_BANK_DebitDetails
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 typedef int
-(*TALER_BANK_DebitResultCallback) (void *cls,
-                                   unsigned int http_status,
-                                   enum TALER_ErrorCode ec,
-                                   uint64_t serial_id,
-                                   const struct
-                                   TALER_BANK_DebitDetails *details,
-                                   const json_t *json);
+(*TALER_BANK_DebitHistoryCallback) (void *cls,
+                                    unsigned int http_status,
+                                    enum TALER_ErrorCode ec,
+                                    uint64_t serial_id,
+                                    const struct
+                                    TALER_BANK_DebitDetails *details,
+                                    const json_t *json);
 
 
 /**
@@ -442,7 +442,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
                           const struct TALER_BANK_AuthenticationData *auth,
                           uint64_t start_row,
                           int64_t num_results,
-                          TALER_BANK_DebitResultCallback hres_cb,
+                          TALER_BANK_DebitHistoryCallback hres_cb,
                           void *hres_cb_cls);
 
 
@@ -476,7 +476,7 @@ TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
- * Free memory inside of @a auth (but not auth itself).
+ * Free memory inside of @a auth (but not @a auth itself).
  * Dual to #TALER_BANK_auth_parse_cfg().
  *
  * @param auth authentication data to free
