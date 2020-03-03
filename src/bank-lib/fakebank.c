@@ -27,24 +27,6 @@
 #include "taler_mhd_lib.h"
 
 /**
- * Taler protocol version in the format CURRENT:REVISION:AGE
- * as used by GNU libtool.  See
- * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
- *
- * Please be very careful when updating and follow
- * https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html#Updating-version-info
- * precisely.  Note that this version has NOTHING to do with the
- * release version, and the format is NOT the same that semantic
- * versioning uses either.
- *
- * When changing this version, you likely want to also update
- * #BANK_PROTOCOL_CURRENT and #BANK_PROTOCOL_AGE in
- * bank_api_config.c!
- */
-#define BANK_PROTOCOL_VERSION "0:0:0"
-
-
-/**
  * Maximum POST request size (for /admin/add-incoming)
  */
 #define REQUEST_BUFFER_MAX (4 * 1024)
@@ -267,6 +249,8 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
                             const char *exchange_base_url,
                             struct TALER_WireTransferIdentifierRawP *wtid)
 {
+  GNUNET_assert (0 == strcasecmp (want_amount->currency,
+                                  h->currency));
   for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
   {
     if ( (0 == strcasecmp (want_debit,
@@ -317,6 +301,8 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
                              const char *want_credit,
                              const struct TALER_ReservePublicKeyP *reserve_pub)
 {
+  GNUNET_assert (0 == strcasecmp (want_amount->currency,
+                                  h->currency));
   for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
   {
     if ( (0 == strcasecmp (want_debit,
@@ -374,6 +360,8 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
 {
   struct Transaction *t;
 
+  GNUNET_assert (0 == strcasecmp (amount->currency,
+                                  h->currency));
   GNUNET_break (0 != strncasecmp ("payto://",
                                   debit_account,
                                   strlen ("payto://")));
@@ -454,6 +442,8 @@ TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
 {
   struct Transaction *t;
 
+  GNUNET_assert (0 == strcasecmp (amount->currency,
+                                  h->currency));
   GNUNET_assert (NULL != debit_account);
   GNUNET_assert (NULL != credit_account);
   GNUNET_break (0 != strncasecmp ("payto://",
@@ -829,29 +819,6 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
 
   MHD_destroy_response (resp);
   return ret;
-}
-
-
-/**
- * Handle incoming HTTP request for /config
- *
- * @param h the fakebank handle
- * @param connection the connection
- * @param con_cls place to store state, not used
- * @return MHD result code
- */
-static int
-handle_config (struct TALER_FAKEBANK_Handle *h,
-               struct MHD_Connection *connection,
-               void **con_cls)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:s, s:s}",
-                                    "currency",
-                                    h->currency,
-                                    "version"
-                                    BANK_PROTOCOL_VERSION);
 }
 
 
@@ -1250,13 +1217,6 @@ serve (struct TALER_FAKEBANK_Handle *h,
                              connection,
                              con_cls);
   if ( (0 == strcmp (url,
-                     "/config")) &&
-       (0 == strcasecmp (method,
-                         MHD_HTTP_METHOD_GET)) )
-    return handle_config (h,
-                          connection,
-                          con_cls);
-  if ( (0 == strcmp (url,
                      "/admin/add-incoming")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_POST)) )
@@ -1515,8 +1475,8 @@ TALER_FAKEBANK_start (uint16_t port,
                                   &handle_mhd_request, h,
                                   MHD_OPTION_NOTIFY_COMPLETED,
                                   &handle_mhd_completion_callback, h,
-                                  MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned
-                                                                   int) 1024,
+                                  MHD_OPTION_LISTEN_BACKLOG_SIZE,
+                                  (unsigned int) 1024,
                                   MHD_OPTION_END);
   if (NULL == h->mhd_bank)
   {
