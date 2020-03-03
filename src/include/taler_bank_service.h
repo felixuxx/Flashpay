@@ -15,8 +15,8 @@
 */
 /**
  * @file include/taler_bank_service.h
- * @brief C interface of libtalerbank, a C library to use the Taler bank's HTTP API
- *        This is currently ONLY used to provide the "test" wire transfer protocol.
+ * @brief C interface of libtalerbank, a C library to use the Taler Wire gateway HTTP API
+ *        See https://docs.taler.net/core/api-wire.html
  * @author Christian Grothoff
  */
 #ifndef _TALER_BANK_SERVICE_H
@@ -88,73 +88,6 @@ struct TALER_BANK_AuthenticationData
   } details;
 
 };
-
-/* ********************* /config *********************** */
-
-/**
- * @brief A /config Handle
- */
-struct TALER_BANK_ConfigHandle;
-
-/**
- * Configuration data provided by the bank.
- */
-struct TALER_BANK_Configuration
-{
-  /**
-   * Current protocol version. Libtool style.
-   */
-  const char *version;
-
-  /**
-   * Currency used by the bank.
-   */
-  const char *currency;
-};
-
-
-/**
- * Function called with configuration details from the bank.
- *
- * @param cls closure
- * @param http status code
- * @param ec taler error code
- * @param config the configuration, NULL on error
- */
-typedef void
-(*TALER_BANK_ConfigCallback)(void *cls,
-                             unsigned int http_status,
-                             enum TALER_ErrorCode ec,
-                             const struct TALER_BANK_Configuration *config);
-
-/**
- * Request the configuration of the bank.
- *
- * @param ctx curl context for the event loop
- * @param auth authentication data to use
- * @param hres_cb the callback to call with the
- *        configuration
- * @param hres_cb_cls closure for the above callback
- * @return NULL if the inputs are invalid (i.e. zero value for
- *         @e num_results). In this case, the callback is not
- *         called.
- */
-struct TALER_BANK_ConfigHandle *
-TALER_BANK_configuration (struct GNUNET_CURL_Context *ctx,
-                          const struct TALER_BANK_AuthenticationData *auth,
-                          TALER_BANK_ConfigCallback hres_cb,
-                          void *hres_cb_cls);
-
-
-/**
- * Cancel a configuration request.  This function cannot be
- * used on a request handle if a response is already
- * served for it.
- *
- * @param ch the configuration request handle
- */
-void
-TALER_BANK_configuration_cancel (struct TALER_BANK_ConfigHandle *ch);
 
 
 /* ********************* /admin/add/incoming *********************** */
