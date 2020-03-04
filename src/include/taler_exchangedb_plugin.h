@@ -275,7 +275,7 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
 
 
 /**
- * Information the exchange records about a /recoup request
+ * Information the exchange records about a recoup request
  * in a reserve history.
  */
 struct TALER_EXCHANGEDB_Recoup
@@ -309,7 +309,7 @@ struct TALER_EXCHANGEDB_Recoup
   struct TALER_Amount value;
 
   /**
-   * When did the /recoup operation happen?
+   * When did the recoup operation happen?
    */
   struct GNUNET_TIME_Absolute timestamp;
 
@@ -317,7 +317,7 @@ struct TALER_EXCHANGEDB_Recoup
 
 
 /**
- * Information the exchange records about a /recoup request
+ * Information the exchange records about a recoup request
  * in a coin history.
  */
 struct TALER_EXCHANGEDB_RecoupListEntry
@@ -354,7 +354,7 @@ struct TALER_EXCHANGEDB_RecoupListEntry
 
 
 /**
- * Information the exchange records about a /recoup-refresh request in
+ * Information the exchange records about a recoup-refresh request in
  * a coin transaction history.
  */
 struct TALER_EXCHANGEDB_RecoupRefreshListEntry
@@ -389,7 +389,7 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
   struct TALER_Amount value;
 
   /**
-   * When did the /recoup operation happen?
+   * When did the recoup operation happen?
    */
   struct GNUNET_TIME_Absolute timestamp;
 
@@ -479,7 +479,7 @@ struct TALER_EXCHANGEDB_ReserveHistory
 
 
 /**
- * @brief Specification for a /deposit operation.  The combination of
+ * @brief Data from a deposit operation.  The combination of
  * the coin's public key, the merchant's public key and the
  * transaction ID must be unique.  While a coin can (theoretically) be
  * deposited at the same merchant twice (with partial spending), the
@@ -806,7 +806,7 @@ struct TALER_EXCHANGEDB_MeltListEntry
 
 
 /**
- * Information about a /refresh/melt operation.
+ * Information about a melt operation.
  */
 struct TALER_EXCHANGEDB_RefreshMelt
 {
