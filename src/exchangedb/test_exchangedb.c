@@ -2067,7 +2067,7 @@ run (void *cls)
       }
 #if 0
     /* this coin pub was actually never melted... */
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+    case TALER_EXCHANGEDB_TT_MELT:
       FAILIF (0 != memcmp (&melt,
                            &tlp->details.melt,
                            sizeof (struct TALER_EXCHANGEDB_RefreshMelt)));

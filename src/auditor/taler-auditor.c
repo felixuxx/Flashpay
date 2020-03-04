@@ -2297,7 +2297,7 @@ check_transaction_history_for_deposit (const struct
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+    case TALER_EXCHANGEDB_TT_MELT:
       amount_with_fee = &tl->details.melt->amount_with_fee;
       fee = &tl->details.melt->melt_fee;
       fee_dki = &issue->fee_refresh;

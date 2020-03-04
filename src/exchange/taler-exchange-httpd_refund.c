@@ -202,7 +202,7 @@ refund_transaction (void *cls,
         }
       }
       break;
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+    case TALER_EXCHANGEDB_TT_MELT:
       /* Melts cannot be refunded, ignore here */
       break;
     case TALER_EXCHANGEDB_TT_REFUND:

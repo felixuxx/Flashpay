@@ -125,10 +125,10 @@ TEH_RESPONSE_compile_transaction_history (const struct
         }
         break;
       }
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+    case TALER_EXCHANGEDB_TT_MELT:
       {
         struct TALER_RefreshMeltCoinAffirmationPS ms;
-        const struct TALER_EXCHANGEDB_RefreshMeltListEntry *melt =
+        const struct TALER_EXCHANGEDB_MeltListEntry *melt =
           pos->details.melt;
 
         ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);

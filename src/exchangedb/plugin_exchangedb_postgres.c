@@ -4085,11 +4085,11 @@ add_coin_melt (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_EXCHANGEDB_RefreshMeltListEntry *melt;
+    struct TALER_EXCHANGEDB_MeltListEntry *melt;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    melt = GNUNET_new (struct TALER_EXCHANGEDB_RefreshMeltListEntry);
+    melt = GNUNET_new (struct TALER_EXCHANGEDB_MeltListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("rc",
@@ -4119,7 +4119,7 @@ add_coin_melt (void *cls,
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;
-    tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
+    tl->type = TALER_EXCHANGEDB_TT_MELT;
     tl->details.melt = melt;
     tl->serial_id = serial_id;
     chc->head = tl;
@@ -4426,7 +4426,7 @@ postgres_get_coin_transactions (void *cls,
     /** #TALER_EXCHANGEDB_TT_DEPOSIT */
     { "get_deposit_with_coin_pub",
       &add_coin_deposit },
-    /** #TALER_EXCHANGEDB_TT_REFRESH_MELT */
+    /** #TALER_EXCHANGEDB_TT_MELT */
     { "get_refresh_session_by_coin",
       &add_coin_melt },
     /** #TALER_EXCHANGEDB_TT_REFUND */
@@ -4438,7 +4438,7 @@ postgres_get_coin_transactions (void *cls,
     /** #TALER_EXCHANGEDB_TT_DEPOSIT */
     { "get_deposit_with_coin_pub",
       &add_coin_deposit },
-    /** #TALER_EXCHANGEDB_TT_REFRESH_MELT */
+    /** #TALER_EXCHANGEDB_TT_MELT */
     { "get_refresh_session_by_coin",
       &add_coin_melt },
     /** #TALER_EXCHANGEDB_TT_REFUND */

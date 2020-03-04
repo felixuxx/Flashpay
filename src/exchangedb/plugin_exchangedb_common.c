@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016 Taler Systems SA
+  Copyright (C) 2015, 2016, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -30,42 +30,56 @@ static void
 common_free_reserve_history (void *cls,
                              struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
-  struct TALER_EXCHANGEDB_BankTransfer *bt;
-  struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
-  struct TALER_EXCHANGEDB_Recoup *recoup;
-  struct TALER_EXCHANGEDB_ReserveHistory *backref;
-  struct TALER_EXCHANGEDB_ClosingTransfer *closing;
-
   (void) cls;
   while (NULL != rh)
   {
     switch (rh->type)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
-      bt = rh->details.bank;
-      GNUNET_free_non_null (bt->sender_account_details);
-      GNUNET_free_non_null (bt->wire_reference);
-      GNUNET_free (bt);
-      break;
+      {
+        struct TALER_EXCHANGEDB_BankTransfer *bt;
+
+        bt = rh->details.bank;
+        GNUNET_free_non_null (bt->sender_account_details);
+        GNUNET_free_non_null (bt->wire_reference);
+        GNUNET_free (bt);
+        break;
+      }
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
-      cbc = rh->details.withdraw;
-      GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
-      GNUNET_free (cbc);
-      break;
+      {
+        struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
+
+        cbc = rh->details.withdraw;
+        GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
+        GNUNET_free (cbc);
+        break;
+      }
     case TALER_EXCHANGEDB_RO_RECOUP_COIN:
-      recoup = rh->details.recoup;
-      GNUNET_CRYPTO_rsa_signature_free (recoup->coin.denom_sig.rsa_signature);
-      GNUNET_free (recoup);
-      break;
+      {
+        struct TALER_EXCHANGEDB_Recoup *recoup;
+
+        recoup = rh->details.recoup;
+        GNUNET_CRYPTO_rsa_signature_free (recoup->coin.denom_sig.rsa_signature);
+        GNUNET_free (recoup);
+        break;
+      }
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
-      closing = rh->details.closing;
-      GNUNET_free_non_null (closing->receiver_account_details);
-      GNUNET_free (closing);
-      break;
+      {
+        struct TALER_EXCHANGEDB_ClosingTransfer *closing;
+
+        closing = rh->details.closing;
+        GNUNET_free_non_null (closing->receiver_account_details);
+        GNUNET_free (closing);
+        break;
+      }
     }
-    backref = rh;
-    rh = rh->next;
-    GNUNET_free (backref);
+    {
+      struct TALER_EXCHANGEDB_ReserveHistory *next;
+
+      next = rh->next;
+      GNUNET_free (rh);
+      rh = next;
+    }
   }
 }
 
@@ -74,50 +88,64 @@ common_free_reserve_history (void *cls,
  * Free linked list of transactions.
  *
  * @param cls the @e cls of this struct with the plugin-specific state (unused)
- * @param list list to free
+ * @param tl list to free
  */
 static void
 common_free_coin_transaction_list (void *cls,
-                                   struct TALER_EXCHANGEDB_TransactionList *list)
+                                   struct TALER_EXCHANGEDB_TransactionList *tl)
 {
-  struct TALER_EXCHANGEDB_TransactionList *next;
-
   (void) cls;
-  while (NULL != list)
+  while (NULL != tl)
   {
-    next = list->next;
-
-    switch (list->type)
+    switch (tl->type)
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
-      if (NULL != list->details.deposit->receiver_wire_account)
-        json_decref (list->details.deposit->receiver_wire_account);
-      GNUNET_free (list->details.deposit);
-      break;
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-      GNUNET_free (list->details.melt);
+      {
+        struct TALER_EXCHANGEDB_DepositListEntry *deposit;
+
+        deposit = tl->details.deposit;
+        if (NULL != deposit->receiver_wire_account)
+          json_decref (deposit->receiver_wire_account);
+        GNUNET_free (deposit);
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_MELT:
+      GNUNET_free (tl->details.melt);
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
-      if (NULL != list->details.recoup_refresh->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (
-          list->details.recoup_refresh->coin.denom_sig.rsa_signature);
-      GNUNET_free (list->details.old_coin_recoup);
-      break;
+      {
+        struct TALER_EXCHANGEDB_RecoupRefreshListEntry *rr;
+
+        rr = tl->details.old_coin_recoup;
+        if (NULL != rr->coin.denom_sig.rsa_signature)
+          GNUNET_CRYPTO_rsa_signature_free (rr->coin.denom_sig.rsa_signature);
+        GNUNET_free (rr);
+        break;
+      }
     case TALER_EXCHANGEDB_TT_REFUND:
-      GNUNET_free (list->details.refund);
+      GNUNET_free (tl->details.refund);
       break;
     case TALER_EXCHANGEDB_TT_RECOUP:
-      GNUNET_free (list->details.recoup);
+      GNUNET_free (tl->details.recoup);
       break;
     case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
-      if (NULL != list->details.recoup_refresh->coin.denom_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (
-          list->details.recoup_refresh->coin.denom_sig.rsa_signature);
-      GNUNET_free (list->details.recoup_refresh);
-      break;
+      {
+        struct TALER_EXCHANGEDB_RecoupRefreshListEntry *rr;
+
+        rr = tl->recoup_refresh;
+        if (NULL != rr->coin.denom_sig.rsa_signature)
+          GNUNET_CRYPTO_rsa_signature_free (rr->coin.denom_sig.rsa_signature);
+        GNUNET_free (rr);
+        break;
+      }
     }
-    GNUNET_free (list);
-    list = next;
+    {
+      struct TALER_EXCHANGEDB_TransactionList *next;
+
+      next = tl->next;
+      GNUNET_free (list);
+      tl = next;
+    }
   }
 }
 

@@ -766,9 +766,9 @@ struct TALER_EXCHANGEDB_RefreshSession
 
 
 /**
- * Information about a /refresh/melt operation in a coin transaction history.
+ * Information about a /coins/$COIN_PUB/melt operation in a coin transaction history.
  */
-struct TALER_EXCHANGEDB_RefreshMeltListEntry
+struct TALER_EXCHANGEDB_MeltListEntry
 {
 
   /**
@@ -867,7 +867,7 @@ enum TALER_EXCHANGEDB_TransactionType
   /**
    * /refresh/melt operation.
    */
-  TALER_EXCHANGEDB_TT_REFRESH_MELT = 1,
+  TALER_EXCHANGEDB_TT_MELT = 1,
 
   /**
    * /refund operation.
@@ -927,9 +927,9 @@ struct TALER_EXCHANGEDB_TransactionList
 
     /**
      * Details if transaction was a /refresh/melt operation.
-     * (#TALER_EXCHANGEDB_TT_REFRESH_MELT)
+     * (#TALER_EXCHANGEDB_TT_MELT)
      */
-    struct TALER_EXCHANGEDB_RefreshMeltListEntry *melt;
+    struct TALER_EXCHANGEDB_MeltListEntry *melt;
 
     /**
      * Details if transaction was a /refund operation.

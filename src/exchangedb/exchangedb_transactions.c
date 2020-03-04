@@ -63,7 +63,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (struct
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+    case TALER_EXCHANGEDB_TT_MELT:
       /* spent += pos->amount_with_fee */
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
