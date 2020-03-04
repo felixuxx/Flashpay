@@ -107,7 +107,7 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
 int
 TALER_EXCHANGEDB_denomination_key_read (const char *filename,
                                         struct
-                                        TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                        TALER_EXCHANGEDB_DenominationKey
                                         *dki)
 {
   uint64_t size;
@@ -186,7 +186,7 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
 int
 TALER_EXCHANGEDB_denomination_key_write (const char *filename,
                                          const struct
-                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         TALER_EXCHANGEDB_DenominationKey
                                          *dki)
 {
   char *priv_enc;
@@ -276,7 +276,7 @@ denomkeys_iterate_keydir_iter (void *cls,
                                const char *filename)
 {
   struct DenomkeysIterateContext *dic = cls;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation issue;
+  struct TALER_EXCHANGEDB_DenominationKey issue;
   int ret;
 
   memset (&issue, 0, sizeof (issue));

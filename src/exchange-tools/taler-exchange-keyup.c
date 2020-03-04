@@ -762,7 +762,7 @@ get_cointype_params (const char *ct,
  */
 static void
 create_denomkey_issue (const struct CoinTypeParams *params,
-                       struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
+                       struct TALER_EXCHANGEDB_DenominationKey *
                        dki)
 {
   dki->denom_priv.rsa_private_key
@@ -820,7 +820,7 @@ exchange_keys_update_cointype (void *cls,
   int *ret = cls;
   struct CoinTypeParams p;
   const char *dkf;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation denomkey_issue;
+  struct TALER_EXCHANGEDB_DenominationKey denomkey_issue;
 
   if (0 != strncasecmp (coin_alias,
                         "coin_",

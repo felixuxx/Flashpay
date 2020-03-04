@@ -132,7 +132,7 @@ common_free_coin_transaction_list (void *cls,
       {
         struct TALER_EXCHANGEDB_RecoupRefreshListEntry *rr;
 
-        rr = tl->recoup_refresh;
+        rr = tl->details.recoup_refresh;
         if (NULL != rr->coin.denom_sig.rsa_signature)
           GNUNET_CRYPTO_rsa_signature_free (rr->coin.denom_sig.rsa_signature);
         GNUNET_free (rr);
@@ -143,7 +143,7 @@ common_free_coin_transaction_list (void *cls,
       struct TALER_EXCHANGEDB_TransactionList *next;
 
       next = tl->next;
-      GNUNET_free (list);
+      GNUNET_free (tl);
       tl = next;
     }
   }

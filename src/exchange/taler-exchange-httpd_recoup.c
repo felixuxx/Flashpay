@@ -420,7 +420,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                            int refreshed)
 {
   struct RecoupContext pc;
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  const struct TALER_EXCHANGEDB_DenominationKey *dki;
   struct TALER_RecoupRequestPS pr;
   struct GNUNET_HashCode c_hash;
   char *coin_ev;

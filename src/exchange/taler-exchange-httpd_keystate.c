@@ -92,7 +92,7 @@ struct DenominationKeyEntry
    * Reference to the public key.
    * (Must also be in the `denomkey_map`).
    */
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  const struct TALER_EXCHANGEDB_DenominationKey *dki;
 
   /**
    * Head of DLL of signatures for this @e dki.
@@ -424,7 +424,7 @@ free_denom_key (void *cls,
                 const struct GNUNET_HashCode *key,
                 void *value)
 {
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
+  struct TALER_EXCHANGEDB_DenominationKey *dki = value;
 
   (void) cls;
   (void) key;
@@ -590,9 +590,9 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
 static int
 store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
               const struct
-              TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+              TALER_EXCHANGEDB_DenominationKey *dki)
 {
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *d2;
+  struct TALER_EXCHANGEDB_DenominationKey *d2;
   int res;
 
   {
@@ -620,7 +620,7 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
     }
   }
 
-  d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation);
+  d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKey);
   d2->issue = dki->issue;
   if (NULL != dki->denom_priv.rsa_private_key)
     d2->denom_priv.rsa_private_key
@@ -654,7 +654,7 @@ struct AddRevocationContext
   /**
    * Denomination key that is revoked.
    */
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  const struct TALER_EXCHANGEDB_DenominationKey *dki;
 
   /**
    * Signature affirming the revocation.
@@ -733,7 +733,7 @@ add_revocations_transaction (void *cls,
 /**
  * Execute transaction to add a denomination to the DB.
  *
- * @param cls closure with the `const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *`
+ * @param cls closure with the `const struct TALER_EXCHANGEDB_DenominationKey *`
  * @param connection NULL
  * @param session database session to use
  * @param[out] mhd_ret not used
@@ -745,7 +745,7 @@ add_denomination_transaction (void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
                               int *mhd_ret)
 {
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = cls;
+  const struct TALER_EXCHANGEDB_DenominationKey *dki = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue_exists;
 
@@ -780,7 +780,7 @@ static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
                         const struct
-                        TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                        TALER_EXCHANGEDB_DenominationKey *dki)
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
@@ -869,7 +869,7 @@ revocations_iter (void *cls,
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
   struct AddRevocationContext arc;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  struct TALER_EXCHANGEDB_DenominationKey *dki;
 
   dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
                                            denom_hash);
@@ -1129,7 +1129,7 @@ reload_auditor_iter (void *cls,
  *
  * @param cls a `struct ResponseFactoryContext`
  * @param denom_hash hash of a denomination key
- * @param value a `struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *`
+ * @param value a `struct TALER_EXCHANGEDB_DenominationKey *`
  * @return #GNUNET_OK
  */
 static int
@@ -1138,7 +1138,7 @@ initialize_denomkey_array (void *cls,
                            void *value)
 {
   struct ResponseFactoryContext *rfc = cls;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki = value;
+  struct TALER_EXCHANGEDB_DenominationKey *dki = value;
 
   rfc->denomkey_array[rfc->denomkey_array_length].denom_key_hash = *denom_hash;
   rfc->denomkey_array[rfc->denomkey_array_length++].dki = dki;
@@ -1597,7 +1597,7 @@ reload_public_denoms_cb (void *cls,
                          TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct ResponseFactoryContext *rfc = cls;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
+  struct TALER_EXCHANGEDB_DenominationKey dki;
   int ret;
 
   if (rfc->now.abs_value_us > GNUNET_TIME_absolute_ntoh
@@ -1970,7 +1970,7 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
-struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
+struct TALER_EXCHANGEDB_DenominationKey *
 TEH_KS_denomination_key_lookup_by_hash (const struct
                                         TEH_KS_StateHandle *key_state,
                                         const struct
@@ -1979,7 +1979,7 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
                                         enum TALER_ErrorCode *ec,
                                         unsigned int *hc)
 {
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  struct TALER_EXCHANGEDB_DenominationKey *dki;
   struct GNUNET_TIME_Absolute now;
   const struct GNUNET_CONTAINER_MultiHashMap *map;
 

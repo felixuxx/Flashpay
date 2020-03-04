@@ -454,7 +454,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
   {
     /* Baseline: check if deposits/refreshs are generally
        simply still allowed for this denomination */
-    struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+    struct TALER_EXCHANGEDB_DenominationKey *dki;
     unsigned int hc;
     enum TALER_ErrorCode ec;
 

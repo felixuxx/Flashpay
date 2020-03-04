@@ -132,7 +132,7 @@ static int
 denomkeys_iter (void *cls,
                 const char *alias,
                 const struct
-                TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                TALER_EXCHANGEDB_DenominationKey *dki)
 {
   struct GNUNET_HashCode hc;
 

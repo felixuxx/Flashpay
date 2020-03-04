@@ -80,7 +80,7 @@ GNUNET_NETWORK_STRUCT_END
  * @brief All information about a denomination key (which is used to
  * sign coins into existence).
  */
-struct TALER_EXCHANGEDB_DenominationKeyIssueInformation
+struct TALER_EXCHANGEDB_DenominationKey
 {
   /**
    * The private key of the denomination.  Will be NULL if the private

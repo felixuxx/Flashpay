@@ -105,7 +105,7 @@ typedef int
 (*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
                                             const char *alias,
                                             const struct
-                                            TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                            TALER_EXCHANGEDB_DenominationKey
                                             *dki);
 
 
@@ -194,7 +194,7 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
 int
 TALER_EXCHANGEDB_denomination_key_write (const char *filename,
                                          const struct
-                                         TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                         TALER_EXCHANGEDB_DenominationKey
                                          *dki);
 
 
@@ -208,7 +208,7 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
 int
 TALER_EXCHANGEDB_denomination_key_read (const char *filename,
                                         struct
-                                        TALER_EXCHANGEDB_DenominationKeyIssueInformation
+                                        TALER_EXCHANGEDB_DenominationKey
                                         *dki);
 
 

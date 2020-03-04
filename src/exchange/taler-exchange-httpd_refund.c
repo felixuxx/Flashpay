@@ -484,7 +484,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     }
     /* Obtain information about the coin's denomination! */
     {
-      struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+      struct TALER_EXCHANGEDB_DenominationKey *dki;
       unsigned int hc;
       enum TALER_ErrorCode ec;
 

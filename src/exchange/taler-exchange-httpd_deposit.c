@@ -256,7 +256,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   int mhd_ret;
   struct TALER_Amount amount_without_fee;
   struct DepositContext dc;
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  const struct TALER_EXCHANGEDB_DenominationKey *dki;
   enum TALER_ErrorCode ec;
   unsigned int hc;
 
@@ -402,7 +402,7 @@ TEH_DEPOSIT_handler_deposit (struct MHD_Connection *connection,
   enum TALER_ErrorCode ec;
   unsigned int hc;
   struct TALER_EXCHANGEDB_Deposit deposit;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  struct TALER_EXCHANGEDB_DenominationKey *dki;
   struct GNUNET_HashCode my_h_wire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),

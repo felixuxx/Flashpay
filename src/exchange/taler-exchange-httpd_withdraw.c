@@ -149,7 +149,7 @@ struct WithdrawContext
   /**
    * Details about denomination we are about to withdraw.
    */
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  struct TALER_EXCHANGEDB_DenominationKey *dki;
 
   /**
    * Set to the resulting signed coin data to be returned to the client.

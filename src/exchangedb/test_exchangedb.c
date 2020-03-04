@@ -220,7 +220,7 @@ create_denom_key_pair (unsigned int size,
                        const struct TALER_Amount *fee_refund)
 {
   struct DenomKeyPair *dkp;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
+  struct TALER_EXCHANGEDB_DenominationKey dki;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
 
   dkp = GNUNET_new (struct DenomKeyPair);
@@ -233,7 +233,7 @@ create_denom_key_pair (unsigned int size,
      are not properly initialized for this test. */
   memset (&dki,
           0,
-          sizeof (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation));
+          sizeof (struct TALER_EXCHANGEDB_DenominationKey));
   dki.denom_pub = dkp->pub;
   GNUNET_TIME_round_abs (&now);
   dki.issue.properties.start = GNUNET_TIME_absolute_hton (now);

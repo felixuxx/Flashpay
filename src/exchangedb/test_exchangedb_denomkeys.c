@@ -45,9 +45,9 @@
 static int
 dki_iter (void *cls,
           const char *alias,
-          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+          const struct TALER_EXCHANGEDB_DenominationKey *dki)
 {
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
+  const struct TALER_EXCHANGEDB_DenominationKey *exp = cls;
 
   if (0 != GNUNET_memcmp (&exp->issue,
                           &dki->issue))
@@ -88,7 +88,7 @@ dki_iter_revoked (void *cls,
                   const struct GNUNET_HashCode *denom_hash,
                   const struct TALER_MasterSignatureP *revocation_master_sig)
 {
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
+  const struct TALER_EXCHANGEDB_DenominationKey *exp = cls;
 
   if (NULL == revocation_master_sig)
   {
@@ -109,10 +109,10 @@ int
 main (int argc,
       const char *const argv[])
 {
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
+  struct TALER_EXCHANGEDB_DenominationKey dki;
   char *enc;
   size_t enc_size;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki_read;
+  struct TALER_EXCHANGEDB_DenominationKey dki_read;
   struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
   struct TALER_MasterPrivateKeyP master_priv;
   struct TALER_MasterPublicKeyP master_pub;

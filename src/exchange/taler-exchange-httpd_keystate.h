@@ -145,7 +145,7 @@ enum TEH_KS_DenominationKeyUse
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
-struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
+struct TALER_EXCHANGEDB_DenominationKey *
 TEH_KS_denomination_key_lookup_by_hash (const struct
                                         TEH_KS_StateHandle *key_state,
                                         const struct

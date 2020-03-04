@@ -141,7 +141,7 @@ struct RevealContext
   /**
    * Denominations being requested.
    */
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation **dkis;
+  const struct TALER_EXCHANGEDB_DenominationKey **dkis;
 
   /**
    * Envelopes to be signed.
@@ -538,7 +538,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   const struct
-  TALER_EXCHANGEDB_DenominationKeyIssueInformation *dkis[num_fresh_coins];
+  TALER_EXCHANGEDB_DenominationKey *dkis[num_fresh_coins];
   struct GNUNET_HashCode dki_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
