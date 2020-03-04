@@ -3398,7 +3398,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_melt (void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_RefreshCommitmentP *rc,
-                   struct TALER_EXCHANGEDB_RefreshMelt *melt)
+                   struct TALER_EXCHANGEDB_Melt *melt)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3483,7 +3483,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_melt (void *cls,
                       struct TALER_EXCHANGEDB_Session *session,
                       const struct
-                      TALER_EXCHANGEDB_RefreshSession *refresh_session)
+                      TALER_EXCHANGEDB_Refresh *refresh_session)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->rc),
@@ -3787,7 +3787,7 @@ struct LinkDataContext
   /**
    * Function to call on each result.
    */
-  TALER_EXCHANGEDB_LinkDataCallback ldc;
+  TALER_EXCHANGEDB_LinkCallback ldc;
 
   /**
    * Closure for @e ldc.
@@ -3803,7 +3803,7 @@ struct LinkDataContext
   /**
    * Link data for @e transfer_pub
    */
-  struct TALER_EXCHANGEDB_LinkDataList *last;
+  struct TALER_EXCHANGEDB_LinkList *last;
 
   /**
    * Status, set to #GNUNET_SYSERR on errors,
@@ -3820,9 +3820,9 @@ struct LinkDataContext
  */
 static void
 free_link_data_list (void *cls,
-                     struct TALER_EXCHANGEDB_LinkDataList *ldl)
+                     struct TALER_EXCHANGEDB_LinkList *ldl)
 {
-  struct TALER_EXCHANGEDB_LinkDataList *next;
+  struct TALER_EXCHANGEDB_LinkList *next;
 
   (void) cls;
   while (NULL != ldl)
@@ -3855,10 +3855,10 @@ add_ldl (void *cls,
 
   for (int i = num_results - 1; i >= 0; i--)
   {
-    struct TALER_EXCHANGEDB_LinkDataList *pos;
+    struct TALER_EXCHANGEDB_LinkList *pos;
     struct TALER_TransferPublicKeyP transfer_pub;
 
-    pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkDataList);
+    pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkList);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
@@ -3921,7 +3921,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_link_data (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        TALER_EXCHANGEDB_LinkDataCallback ldc,
+                        TALER_EXCHANGEDB_LinkCallback ldc,
                         void *ldc_cls)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5559,7 +5559,7 @@ struct RefreshsSerialContext
   /**
    * Callback to call.
    */
-  TALER_EXCHANGEDB_RefreshSessionCallback cb;
+  TALER_EXCHANGEDB_RefreshesCallback cb;
 
   /**
    * Closure for @e cb.
@@ -5662,7 +5662,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
                                           struct TALER_EXCHANGEDB_Session *
                                           session,
                                           uint64_t serial_id,
-                                          TALER_EXCHANGEDB_RefreshSessionCallback
+                                          TALER_EXCHANGEDB_RefreshesCallback
                                           cb,
                                           void *cb_cls)
 {

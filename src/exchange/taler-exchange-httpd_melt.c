@@ -141,7 +141,7 @@ struct RefreshMeltContext
    * noreveal_index is only initialized during
    * #melt_transaction().
    */
-  struct TALER_EXCHANGEDB_RefreshSession refresh_session;
+  struct TALER_EXCHANGEDB_Refresh refresh_session;
 
   /**
    * Information about the @e coin's value.

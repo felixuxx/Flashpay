@@ -729,7 +729,7 @@ struct TALER_EXCHANGEDB_Refund
 /**
  * @brief Specification for coin in a /refresh/melt operation.
  */
-struct TALER_EXCHANGEDB_RefreshSession
+struct TALER_EXCHANGEDB_Refresh
 {
   /**
    * Information about the coin that is being melted.
@@ -808,13 +808,13 @@ struct TALER_EXCHANGEDB_MeltListEntry
 /**
  * Information about a melt operation.
  */
-struct TALER_EXCHANGEDB_RefreshMelt
+struct TALER_EXCHANGEDB_Melt
 {
 
   /**
    * Overall session data.
    */
-  struct TALER_EXCHANGEDB_RefreshSession session;
+  struct TALER_EXCHANGEDB_Refresh session;
 
   /**
    * Melt fee the exchange charged.
@@ -827,12 +827,12 @@ struct TALER_EXCHANGEDB_RefreshMelt
 /**
  * @brief Linked list of refresh information linked to a coin.
  */
-struct TALER_EXCHANGEDB_LinkDataList
+struct TALER_EXCHANGEDB_LinkList
 {
   /**
    * Information is stored in a NULL-terminated linked list.
    */
-  struct TALER_EXCHANGEDB_LinkDataList *next;
+  struct TALER_EXCHANGEDB_LinkList *next;
 
   /**
    * Denomination public key, determines the value of the coin.
@@ -920,38 +920,38 @@ struct TALER_EXCHANGEDB_TransactionList
   {
 
     /**
-     * Details if transaction was a /deposit operation.
+     * Details if transaction was a deposit operation.
      * (#TALER_EXCHANGEDB_TT_DEPOSIT)
      */
     struct TALER_EXCHANGEDB_DepositListEntry *deposit;
 
     /**
-     * Details if transaction was a /refresh/melt operation.
+     * Details if transaction was a melt operation.
      * (#TALER_EXCHANGEDB_TT_MELT)
      */
     struct TALER_EXCHANGEDB_MeltListEntry *melt;
 
     /**
-     * Details if transaction was a /refund operation.
+     * Details if transaction was a refund operation.
      * (#TALER_EXCHANGEDB_TT_REFUND)
      */
     struct TALER_EXCHANGEDB_RefundListEntry *refund;
 
     /**
-     * Details if transaction was a /recoup-refund operation where
+     * Details if transaction was a recoup-refund operation where
      * this coin was the OLD coin.
      * (#TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP).
      */
     struct TALER_EXCHANGEDB_RecoupRefreshListEntry *old_coin_recoup;
 
     /**
-     * Details if transaction was a /recoup operation.
+     * Details if transaction was a recoup operation.
      * (#TALER_EXCHANGEDB_TT_RECOUP)
      */
     struct TALER_EXCHANGEDB_RecoupListEntry *recoup;
 
     /**
-     * Details if transaction was a /recoup-refund operation where
+     * Details if transaction was a recoup-refund operation where
      * this coin was the REFRESHED coin.
      * (#TALER_EXCHANGEDB_TT_RECOUP_REFRESH)
      */
@@ -1076,20 +1076,20 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_RefreshSessionCallback)(void *cls,
-                                           uint64_t rowid,
-                                           const struct
-                                           TALER_DenominationPublicKey *
-                                           denom_pub,
-                                           const struct
-                                           TALER_CoinSpendPublicKeyP *coin_pub,
-                                           const struct
-                                           TALER_CoinSpendSignatureP *coin_sig,
-                                           const struct
-                                           TALER_Amount *amount_with_fee,
-                                           uint32_t noreveal_index,
-                                           const struct
-                                           TALER_RefreshCommitmentP *rc);
+(*TALER_EXCHANGEDB_RefreshesCallback)(void *cls,
+                                      uint64_t rowid,
+                                      const struct
+                                      TALER_DenominationPublicKey *
+                                      denom_pub,
+                                      const struct
+                                      TALER_CoinSpendPublicKeyP *coin_pub,
+                                      const struct
+                                      TALER_CoinSpendSignatureP *coin_sig,
+                                      const struct
+                                      TALER_Amount *amount_with_fee,
+                                      uint32_t noreveal_index,
+                                      const struct
+                                      TALER_RefreshCommitmentP *rc);
 
 
 /**
@@ -1108,7 +1108,7 @@ typedef int
 
 /**
  * Information about a coin that was revealed to the exchange
- * during /refresh/reveal.
+ * during reveal.
  */
 struct TALER_EXCHANGEDB_RefreshRevealedCoin
 {
@@ -1255,17 +1255,16 @@ typedef int
  * @param ldl link data for @a transfer_pub
  */
 typedef void
-(*TALER_EXCHANGEDB_LinkDataCallback)(void *cls,
-                                     const struct
-                                     TALER_TransferPublicKeyP *transfer_pub,
-                                     const struct
-                                     TALER_EXCHANGEDB_LinkDataList *ldl);
+(*TALER_EXCHANGEDB_LinkCallback)(void *cls,
+                                 const struct
+                                 TALER_TransferPublicKeyP *transfer_pub,
+                                 const struct TALER_EXCHANGEDB_LinkList *ldl);
 
 
 /**
- * Function called with the results of the lookup of the
- * wire transfer identifier information.  Only called if
- * we are at least aware of the transaction existing.
+ * Function called with the results of the lookup of the wire transfer
+ * identifier information.  Only called if we are at least aware of the
+ * transaction existing.
  *
  * @param cls closure
  * @param wtid wire transfer identifier, NULL
@@ -2078,7 +2077,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_melt)(void *cls,
                  struct TALER_EXCHANGEDB_Session *session,
-                 const struct TALER_EXCHANGEDB_RefreshSession *refresh_session);
+                 const struct TALER_EXCHANGEDB_Refresh *refresh_session);
 
 
   /**
@@ -2096,7 +2095,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_melt)(void *cls,
               struct TALER_EXCHANGEDB_Session *session,
               const struct TALER_RefreshCommitmentP *rc,
-              struct TALER_EXCHANGEDB_RefreshMelt *melt);
+              struct TALER_EXCHANGEDB_Melt *melt);
 
 
   /**
@@ -2181,7 +2180,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_link_data)(void *cls,
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                   TALER_EXCHANGEDB_LinkDataCallback ldc,
+                   TALER_EXCHANGEDB_LinkCallback ldc,
                    void *tdc_cls);
 
 
@@ -2504,7 +2503,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*select_refreshs_above_serial_id)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t serial_id,
-                                     TALER_EXCHANGEDB_RefreshSessionCallback cb,
+                                     TALER_EXCHANGEDB_RefreshesCallback cb,
                                      void *cb_cls);
 
 

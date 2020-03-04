@@ -66,7 +66,7 @@ struct HTD_Context
 static void
 handle_link_data (void *cls,
                   const struct TALER_TransferPublicKeyP *transfer_pub,
-                  const struct TALER_EXCHANGEDB_LinkDataList *ldl)
+                  const struct TALER_EXCHANGEDB_LinkList *ldl)
 {
   struct HTD_Context *ctx = cls;
   json_t *list;
@@ -77,7 +77,7 @@ handle_link_data (void *cls,
   if (NULL == (list = json_array ()))
     goto fail;
 
-  for (const struct TALER_EXCHANGEDB_LinkDataList *pos = ldl;
+  for (const struct TALER_EXCHANGEDB_LinkList *pos = ldl;
        NULL != pos;
        pos = pos->next)
   {

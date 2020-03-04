@@ -299,7 +299,7 @@ refresh_reveal_transaction (void *cls,
                             int *mhd_ret)
 {
   struct RevealContext *rctx = cls;
-  struct TALER_EXCHANGEDB_RefreshMelt melt;
+  struct TALER_EXCHANGEDB_Melt melt;
   enum GNUNET_DB_QueryStatus qs;
 
   /* Obtain basic information about the refresh operation and what
@@ -542,7 +542,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
   struct GNUNET_HashCode dki_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
-  struct TALER_EXCHANGEDB_RefreshMelt melt;
+  struct TALER_EXCHANGEDB_Melt melt;
   int res;
 
   /* Parse denomination key hashes */

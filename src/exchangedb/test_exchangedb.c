@@ -448,9 +448,9 @@ static struct DenomKeyPair **new_dkp;
 static void
 handle_link_data_cb (void *cls,
                      const struct TALER_TransferPublicKeyP *transfer_pub,
-                     const struct TALER_EXCHANGEDB_LinkDataList *ldl)
+                     const struct TALER_EXCHANGEDB_LinkList *ldl)
 {
-  for (const struct TALER_EXCHANGEDB_LinkDataList *ldlp = ldl;
+  for (const struct TALER_EXCHANGEDB_LinkList *ldlp = ldl;
        NULL != ldlp;
        ldlp = ldlp->next)
   {
@@ -488,8 +488,8 @@ handle_link_data_cb (void *cls,
 static int
 test_melting (struct TALER_EXCHANGEDB_Session *session)
 {
-  struct TALER_EXCHANGEDB_RefreshSession refresh_session;
-  struct TALER_EXCHANGEDB_RefreshMelt ret_refresh_session;
+  struct TALER_EXCHANGEDB_Refresh refresh_session;
+  struct TALER_EXCHANGEDB_Melt ret_refresh_session;
   struct DenomKeyPair *dkp;
   struct TALER_DenominationPublicKey *new_denom_pubs;
   int ret;
@@ -2070,7 +2070,7 @@ run (void *cls)
     case TALER_EXCHANGEDB_TT_MELT:
       FAILIF (0 != memcmp (&melt,
                            &tlp->details.melt,
-                           sizeof (struct TALER_EXCHANGEDB_RefreshMelt)));
+                           sizeof (struct TALER_EXCHANGEDB_Melt)));
       matched |= 2;
       break;
 #endif
