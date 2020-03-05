@@ -330,15 +330,15 @@ static struct TALER_TransferPublicKeyP tpub;
  *
  * @param cls closure
  * @param rowid unique serial ID for the row in our database
- * @param num_newcoins size of the @a rrcs array
- * @param rrcs array of @a num_newcoins information about coins to be created
+ * @param num_freshcoins size of the @a rrcs array
+ * @param rrcs array of @a num_freshcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
  * @param tprivs array of @e num_tprivs transfer private keys
  * @param tp transfer public key information
  */
 static void
 never_called_cb (void *cls,
-                 uint32_t num_newcoins,
+                 uint32_t num_freshcoins,
                  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
                  unsigned int num_tprivs,
                  const struct TALER_TransferPrivateKeyP *tprivs,
@@ -354,15 +354,15 @@ never_called_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the row in our database
- * @param num_newcoins size of the @a rrcs array
- * @param rrcs array of @a num_newcoins information about coins to be created
+ * @param num_freshcoins size of the @a rrcs array
+ * @param rrcs array of @a num_freshcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
  * @param tprivsr array of @e num_tprivs transfer private keys
  * @param tpr transfer public key information
  */
 static void
 check_refresh_reveal_cb (void *cls,
-                         uint32_t num_newcoins,
+                         uint32_t num_freshcoins,
                          const struct
                          TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
                          unsigned int num_tprivs,
@@ -370,7 +370,7 @@ check_refresh_reveal_cb (void *cls,
                          const struct TALER_TransferPublicKeyP *tpr)
 {
   /* compare the refresh commit coin arrays */
-  for (unsigned int cnt = 0; cnt < num_newcoins; cnt++)
+  for (unsigned int cnt = 0; cnt < num_freshcoins; cnt++)
   {
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *acoin =
       &revealed_coins[cnt];
@@ -411,7 +411,7 @@ static unsigned int auditor_row_cnt;
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
- * @param num_newcoins how many coins were issued
+ * @param num_freshcoins how many coins were issued
  * @param noreveal_index which index was picked by the exchange in cut-and-choose
  * @param rc what is the session hash
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -1235,14 +1235,14 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
 
     h_contract_terms_wt2.bits[0]++;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-            plugin->wire_lookup_deposit_wtid (plugin->cls,
-                                              session,
-                                              &h_contract_terms_wt2,
-                                              &h_wire_wt,
-                                              &coin_pub_wt,
-                                              &merchant_pub_wt,
-                                              &cb_wtid_never,
-                                              NULL));
+            plugin->lookup_transfer_by_deposit (plugin->cls,
+                                                session,
+                                                &h_contract_terms_wt2,
+                                                &h_wire_wt,
+                                                &coin_pub_wt,
+                                                &merchant_pub_wt,
+                                                &cb_wtid_never,
+                                                NULL));
   }
   /* insert WT data */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1286,14 +1286,14 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                         &cb_wt_check,
                                         &cb_wt_never));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->wire_lookup_deposit_wtid (plugin->cls,
-                                            session,
-                                            &h_contract_terms_wt,
-                                            &h_wire_wt,
-                                            &coin_pub_wt,
-                                            &merchant_pub_wt,
-                                            &cb_wtid_check,
-                                            &cb_wtid_never));
+          plugin->lookup_transfer_by_deposit (plugin->cls,
+                                              session,
+                                              &h_contract_terms_wt,
+                                              &h_wire_wt,
+                                              &coin_pub_wt,
+                                              &merchant_pub_wt,
+                                              &cb_wtid_check,
+                                              &cb_wtid_never));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_wire_out_above_serial_id (plugin->cls,
                                                    session,

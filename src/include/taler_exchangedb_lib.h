@@ -169,7 +169,7 @@ TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
 
 /**
  * Mark the given denomination key as revoked and request the wallets
- * to initiate /recoup.
+ * to initiate recoup.
  *
  * @param revocation_dir where to write the revocation certificate
  * @param denom_hash hash of the denomination key to revoke

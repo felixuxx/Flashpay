@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1145,15 +1145,15 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
  *
  * @param cls closure
  * @param rowid unique serial ID for the row in our database
- * @param num_newcoins size of the @a rrcs array
- * @param rrcs array of @a num_newcoins information about coins to be created
+ * @param num_freshcoins size of the @a rrcs array
+ * @param rrcs array of @a num_freshcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
  * @param tprivs array of @e num_tprivs transfer private keys
  * @param tp transfer public key information
  */
 typedef void
 (*TALER_EXCHANGEDB_RefreshCallback)(void *cls,
-                                    uint32_t num_newcoins,
+                                    uint32_t num_freshcoins,
                                     const struct
                                     TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
                                     unsigned int num_tprivs,
@@ -2147,7 +2147,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Lookup in the database for the @a num_newcoins coins that we
+   * Lookup in the database for the @a num_freshcoins coins that we
    * created in the given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -2251,15 +2251,16 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*wire_lookup_deposit_wtid)(void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
-                              const struct GNUNET_HashCode *h_contract_terms,
-                              const struct GNUNET_HashCode *h_wire,
-                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                              const struct
-                              TALER_MerchantPublicKeyP *merchant_pub,
-                              TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
-                              void *cb_cls);
+  (*lookup_transfer_by_deposit)(void *cls,
+                                struct TALER_EXCHANGEDB_Session *session,
+                                const struct GNUNET_HashCode *h_contract_terms,
+                                const struct GNUNET_HashCode *h_wire,
+                                const struct
+                                TALER_CoinSpendPublicKeyP *coin_pub,
+                                const struct
+                                TALER_MerchantPublicKeyP *merchant_pub,
+                                TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
+                                void *cb_cls);
 
 
   /**
@@ -2546,6 +2547,7 @@ struct TALER_EXCHANGEDB_Plugin
                                         TALER_EXCHANGEDB_ReserveInCallback cb,
                                         void *cb_cls);
 
+
   /**
    * Select inbound wire transfers into reserves_in above @a serial_id
    * in monotonically increasing order by @a account_name.
@@ -2569,6 +2571,7 @@ struct TALER_EXCHANGEDB_Plugin
                                                    cb,
                                                    void *cb_cls);
 
+
   /**
    * Select withdraw operations from reserves_out above @a serial_id
    * in monotonically increasing order.
@@ -2588,6 +2591,7 @@ struct TALER_EXCHANGEDB_Plugin
                                         uint64_t serial_id,
                                         TALER_EXCHANGEDB_WithdrawCallback cb,
                                         void *cb_cls);
+
 
   /**
    * Function called to select outgoing wire transfers the exchange

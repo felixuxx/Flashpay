@@ -48,22 +48,22 @@
  * Send a response for "/refresh/reveal".
  *
  * @param connection the connection to send the response to
- * @param num_newcoins number of new coins for which we reveal data
- * @param sigs array of @a num_newcoins signatures revealed
+ * @param num_freshcoins number of new coins for which we reveal data
+ * @param sigs array of @a num_freshcoins signatures revealed
  * @return a MHD result code
  */
 static int
 reply_refresh_reveal_success (struct MHD_Connection *connection,
-                              unsigned int num_newcoins,
+                              unsigned int num_freshcoins,
                               const struct TALER_DenominationSignature *sigs)
 {
   json_t *list;
   int ret;
 
   list = json_array ();
-  for (unsigned int newcoin_index = 0;
-       newcoin_index < num_newcoins;
-       newcoin_index++)
+  for (unsigned int freshcoin_index = 0;
+       freshcoin_index < num_freshcoins;
+       freshcoin_index++)
   {
     json_t *obj;
 
@@ -71,7 +71,7 @@ reply_refresh_reveal_success (struct MHD_Connection *connection,
     json_object_set_new (obj,
                          "ev_sig",
                          GNUNET_JSON_from_rsa_signature (
-                           sigs[newcoin_index].rsa_signature));
+                           sigs[freshcoin_index].rsa_signature));
     GNUNET_assert (0 ==
                    json_array_append_new (list,
                                           obj));
@@ -181,15 +181,15 @@ struct RevealContext
  * again.
  *
  * @param cls closure with a `struct RevealContext`
- * @param num_newcoins size of the @a rrcs array
- * @param rrcs array of @a num_newcoins information about coins to be created
+ * @param num_freshcoins size of the @a rrcs array
+ * @param rrcs array of @a num_freshcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
  * @param tprivs array of @e num_tprivs transfer private keys
  * @param tp transfer public key information
  */
 static void
 check_exists_cb (void *cls,
-                 uint32_t num_newcoins,
+                 uint32_t num_freshcoins,
                  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
                  unsigned int num_tprivs,
                  const struct TALER_TransferPrivateKeyP *tprivs,
@@ -197,7 +197,7 @@ check_exists_cb (void *cls,
 {
   struct RevealContext *rctx = cls;
 
-  if (0 == num_newcoins)
+  if (0 == num_freshcoins)
   {
     GNUNET_break (0);
     return;
@@ -215,9 +215,9 @@ check_exists_cb (void *cls,
      we do find the operation in the database, we could use this: */
   if (NULL == rctx->ev_sigs)
   {
-    rctx->ev_sigs = GNUNET_new_array (num_newcoins,
+    rctx->ev_sigs = GNUNET_new_array (num_freshcoins,
                                       struct TALER_DenominationSignature);
-    for (unsigned int i = 0; i<num_newcoins; i++)
+    for (unsigned int i = 0; i<num_freshcoins; i++)
       rctx->ev_sigs[i].rsa_signature
         = GNUNET_CRYPTO_rsa_signature_dup (rrcs[i].coin_sig.rsa_signature);
   }

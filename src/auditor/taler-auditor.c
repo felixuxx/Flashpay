@@ -3630,7 +3630,7 @@ struct RevealContext
   /**
    * Size of the @a new_dp and @a new_dps arrays.
    */
-  unsigned int num_newcoins;
+  unsigned int num_freshcoins;
 };
 
 
@@ -3638,15 +3638,15 @@ struct RevealContext
  * Function called with information about a refresh order.
  *
  * @param cls closure
- * @param num_newcoins size of the @a rrcs array
- * @param rrcs array of @a num_newcoins information about coins to be created
+ * @param num_freshcoins size of the @a rrcs array
+ * @param rrcs array of @a num_freshcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
  * @param tprivs array of @e num_tprivs transfer private keys
  * @param tp transfer public key information
  */
 static void
 reveal_data_cb (void *cls,
-                uint32_t num_newcoins,
+                uint32_t num_freshcoins,
                 const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
                 unsigned int num_tprivs,
                 const struct TALER_TransferPrivateKeyP *tprivs,
@@ -3657,10 +3657,10 @@ reveal_data_cb (void *cls,
   (void) num_tprivs;
   (void) tprivs;
   (void) tp;
-  rctx->num_newcoins = num_newcoins;
-  rctx->new_dps = GNUNET_new_array (num_newcoins,
+  rctx->num_freshcoins = num_freshcoins;
+  rctx->new_dps = GNUNET_new_array (num_freshcoins,
                                     struct TALER_DenominationPublicKey);
-  for (unsigned int i = 0; i<num_newcoins; i++)
+  for (unsigned int i = 0; i<num_freshcoins; i++)
     rctx->new_dps[i].rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_dup (rrcs[i].denom_pub.rsa_public_key);
 }
@@ -3839,7 +3839,7 @@ refresh_session_cb (void *cls,
       return GNUNET_SYSERR;
     }
     if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
-         (0 == reveal_ctx.num_newcoins) )
+         (0 == reveal_ctx.num_freshcoins) )
     {
       /* This can happen if /refresh/reveal was not yet called or only
          with invalid data, even if the exchange is correctly
@@ -3858,12 +3858,12 @@ refresh_session_cb (void *cls,
 
     {
       const struct TALER_DenominationKeyValidityPS *new_issues[reveal_ctx.
-                                                               num_newcoins];
+                                                               num_freshcoins];
 
       /* Update outstanding amounts for all new coin's denominations, and check
          that the resulting amounts are consistent with the value being refreshed. */
       err = GNUNET_OK;
-      for (unsigned int i = 0; i<reveal_ctx.num_newcoins; i++)
+      for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
       {
         /* lookup new coin denomination key */
         qs = get_denomination_info (&reveal_ctx.new_dps[i],
@@ -3893,7 +3893,7 @@ refresh_session_cb (void *cls,
         return (GNUNET_SYSERR == err) ? GNUNET_SYSERR : GNUNET_OK;
 
       /* calculate total refresh cost */
-      for (unsigned int i = 0; i<reveal_ctx.num_newcoins; i++)
+      for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
       {
         /* update cost of refresh */
         struct TALER_Amount fee;
@@ -3949,7 +3949,7 @@ refresh_session_cb (void *cls,
       }
 
       /* update outstanding denomination amounts */
-      for (unsigned int i = 0; i<reveal_ctx.num_newcoins; i++)
+      for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
       {
         struct DenominationSummary *dsi;
         struct TALER_Amount value;

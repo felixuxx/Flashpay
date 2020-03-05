@@ -670,7 +670,7 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("insert_refresh_revealed_coin",
                               "INSERT INTO refresh_revealed_coins "
                               "(rc "
-                              ",newcoin_index "
+                              ",freshcoin_index "
                               ",link_sig "
                               ",denom_pub_hash "
                               ",coin_ev"
@@ -683,7 +683,7 @@ postgres_get_session (void *cls)
          operation, used in #postgres_get_refresh_reveal() */
       GNUNET_PQ_make_prepare ("get_refresh_revealed_coins",
                               "SELECT "
-                              " newcoin_index"
+                              " freshcoin_index"
                               ",denom.denom_pub"
                               ",link_sig"
                               ",coin_ev"
@@ -692,7 +692,7 @@ postgres_get_session (void *cls)
                               "    JOIN denominations denom "
                               "      USING (denom_pub_hash)"
                               " WHERE rc=$1"
-                              "   ORDER BY newcoin_index ASC"
+                              "   ORDER BY freshcoin_index ASC"
                               " FOR UPDATE;",
                               1),
 
@@ -843,7 +843,7 @@ postgres_get_session (void *cls)
                               " ORDER BY deposit_serial_id ASC;",
                               1),
       /* Fetch an existing deposit request.
-         Used in #postgres_wire_lookup_deposit_wtid(). */
+         Used in #postgres_lookup_transfer_by_deposit(). */
       GNUNET_PQ_make_prepare ("get_deposit_for_wtid",
                               "SELECT"
                               " amount_with_fee_val"
@@ -999,7 +999,7 @@ postgres_get_session (void *cls)
                               "      USING (wtid_raw)"
                               " WHERE wtid_raw=$1;",
                               1),
-      /* Used in #postgres_wire_lookup_deposit_wtid */
+      /* Used in #postgres_lookup_transfer_by_deposit */
       GNUNET_PQ_make_prepare ("lookup_deposit_wtid",
                               "SELECT"
                               " aggregation_tracking.wtid_raw"
@@ -3629,7 +3629,7 @@ add_revealed_coins (void *cls,
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &grctx->rrcs[i];
     uint32_t off;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint32 ("newcoin_index",
+      GNUNET_PQ_result_spec_uint32 ("freshcoin_index",
                                     &off),
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                             &rrc->denom_pub.rsa_public_key),
@@ -4656,18 +4656,18 @@ postgres_lookup_wire_transfer (void *cls,
  * @return transaction status code
  - */
 static enum GNUNET_DB_QueryStatus
-postgres_wire_lookup_deposit_wtid (void *cls,
-                                   struct TALER_EXCHANGEDB_Session *session,
-                                   const struct
-                                   GNUNET_HashCode *h_contract_terms,
-                                   const struct GNUNET_HashCode *h_wire,
-                                   const struct
-                                   TALER_CoinSpendPublicKeyP *coin_pub,
-                                   const struct
-                                   TALER_MerchantPublicKeyP *merchant_pub,
-                                   TALER_EXCHANGEDB_WireTransferByCoinCallback
-                                   cb,
-                                   void *cb_cls)
+postgres_lookup_transfer_by_deposit (void *cls,
+                                     struct TALER_EXCHANGEDB_Session *session,
+                                     const struct
+                                     GNUNET_HashCode *h_contract_terms,
+                                     const struct GNUNET_HashCode *h_wire,
+                                     const struct
+                                     TALER_CoinSpendPublicKeyP *coin_pub,
+                                     const struct
+                                     TALER_MerchantPublicKeyP *merchant_pub,
+                                     TALER_EXCHANGEDB_WireTransferByCoinCallback
+                                     cb,
+                                     void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -7313,7 +7313,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
   plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
-  plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
+  plugin->lookup_transfer_by_deposit = &postgres_lookup_transfer_by_deposit;
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   plugin->insert_wire_fee = &postgres_insert_wire_fee;
   plugin->get_wire_fee = &postgres_get_wire_fee;

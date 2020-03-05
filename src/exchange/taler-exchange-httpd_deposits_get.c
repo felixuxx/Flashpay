@@ -238,14 +238,14 @@ track_transaction_transaction (void *cls,
   struct DepositWtidContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = TEH_plugin->wire_lookup_deposit_wtid (TEH_plugin->cls,
-                                             session,
-                                             &ctx->tps->h_contract_terms,
-                                             &ctx->tps->h_wire,
-                                             &ctx->tps->coin_pub,
-                                             ctx->merchant_pub,
-                                             &handle_wtid_data,
-                                             ctx);
+  qs = TEH_plugin->lookup_transfer_by_deposit (TEH_plugin->cls,
+                                               session,
+                                               &ctx->tps->h_contract_terms,
+                                               &ctx->tps->h_wire,
+                                               &ctx->tps->coin_pub,
+                                               ctx->merchant_pub,
+                                               &handle_wtid_data,
+                                               ctx);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)

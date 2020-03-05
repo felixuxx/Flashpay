@@ -21,7 +21,6 @@ BEGIN;
 SELECT _v.register_patch('exchange-0001', NULL, NULL);
 
 
--- Main denominations table. All the coins the exchange knows about.
 CREATE TABLE IF NOT EXISTS denominations
   (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_pub BYTEA NOT NULL
@@ -42,20 +41,23 @@ CREATE TABLE IF NOT EXISTS denominations
   ,fee_refund_val INT8 NOT NULL
   ,fee_refund_frac INT4 NOT NULL
   );
+COMMENT ON TABLE denominations
+  IS 'Main denominations table. All the coins the exchange knows about.';
+
 CREATE INDEX IF NOT EXISTS denominations_expire_legal_index
   ON denominations
   (expire_legal);
 
--- denomination_revocations table is for remembering which denomination keys have been revoked
+
 CREATE TABLE IF NOT EXISTS denomination_revocations
   (denom_revocations_serial_id BIGSERIAL UNIQUE
   ,denom_pub_hash BYTEA PRIMARY KEY REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   );
--- reserves table is for summarization of a reserve.  It is updated when new
--- funds are added and existing funds are withdrawn.  The 'expiration_date'
--- can be used to eventually get rid of reserves that have not been used
--- for a very long time (usually by refunding the owner)
+COMMENT ON TABLE denomination_revocations
+  IS 'remembering which denomination keys have been revoked';
+
+
 CREATE TABLE IF NOT EXISTS reserves
   (reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)
   ,account_details TEXT NOT NULL
@@ -64,24 +66,30 @@ CREATE TABLE IF NOT EXISTS reserves
   ,expiration_date INT8 NOT NULL
   ,gc_date INT8 NOT NULL
   );
--- index on reserves table (TODO: useless due to primary key!?)
-CREATE INDEX IF NOT EXISTS reserves_reserve_pub_index
-  ON reserves
-  (reserve_pub);
--- index for get_expired_reserves
+COMMENT ON TABLE reserves
+  IS 'Summarizes the balance of a reserve. Updated when new funds are added or withdrawn.';
+COMMENT ON COLUMN reserves.expiration_date
+  IS 'Used to trigger closing of reserves that have not been drained after some time';
+COMMENT ON COLUMN reserves.gc_date
+  IS 'Used to forget all information about a reserve during garbage collection';
+
+
 CREATE INDEX IF NOT EXISTS reserves_expiration_index
   ON reserves
   (expiration_date
   ,current_balance_val
   ,current_balance_frac
   );
--- index for reserve GC operations
+COMMENT ON INDEX reserves_expiration_index
+  IS 'used in get_expired_reserves';
+
 CREATE INDEX IF NOT EXISTS reserves_gc_index
   ON reserves
   (gc_date);
--- reserves_in table collects the transactions which transfer funds
--- into the reserve.  The rows of this table correspond to each
--- incoming transaction.
+COMMENT ON INDEX reserves_gc_index
+  IS 'for reserve garbage collection';
+
+
 CREATE TABLE IF NOT EXISTS reserves_in
   (reserve_in_serial_id BIGSERIAL UNIQUE
   ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
@@ -93,7 +101,9 @@ CREATE TABLE IF NOT EXISTS reserves_in
   ,execution_date INT8 NOT NULL
   ,PRIMARY KEY (reserve_pub, wire_reference)
   );
--- Create indices on reserves_in
+COMMENT ON TABLE reserves_in
+  IS 'list of transfers of funds into the reserves, one per incoming wire transfer';
+
 CREATE INDEX IF NOT EXISTS reserves_in_execution_index
   ON reserves_in
   (exchange_account_section
@@ -104,8 +114,8 @@ CREATE INDEX IF NOT EXISTS reserves_in_exchange_account_serial
   (exchange_account_section,
   reserve_in_serial_id DESC
   );
--- This table contains the data for wire transfers the exchange has
--- executed to close a reserve.
+
+
 CREATE TABLE IF NOT EXISTS reserves_close
   (close_uuid BIGSERIAL PRIMARY KEY
   ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
@@ -116,15 +126,14 @@ CREATE TABLE IF NOT EXISTS reserves_close
   ,amount_frac INT4 NOT NULL
   ,closing_fee_val INT8 NOT NULL
   ,closing_fee_frac INT4 NOT NULL);
+COMMENT ON TABLE reserves_close
+  IS 'wire transfers executed by the reserve to close reserves';
+
 CREATE INDEX IF NOT EXISTS reserves_close_by_reserve
   ON reserves_close
   (reserve_pub);
--- Table with the withdraw operations that have been performed on a reserve.
---  The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
--- key, as (broken) clients that use a non-random coin and blinding factor
--- should fail to even withdraw, as otherwise the coins will fail to deposit
--- (as they really must be unique).
--- For the denom_pub, we do NOT CASCADE on DELETE, we may keep the denomination key alive!
+
+
 CREATE TABLE IF NOT EXISTS reserves_out
   (reserve_out_serial_id BIGSERIAL UNIQUE
   ,h_blind_ev BYTEA PRIMARY KEY CHECK (LENGTH(h_blind_ev)=64)
@@ -136,10 +145,18 @@ CREATE TABLE IF NOT EXISTS reserves_out
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
   );
--- Index blindcoins(reserve_pub) for get_reserves_out statement
+COMMENT ON TABLE reserves_out
+  IS 'Withdraw operations performed on reserves.';
+COMMENT ON COLUMN reserves_out.h_blind_ev
+  IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
+COMMENT ON COLUMN reserves_out.denom_pub_hash
+  IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
+
 CREATE INDEX IF NOT EXISTS reserves_out_reserve_pub_index
   ON reserves_out
   (reserve_pub);
+COMMENT ON INDEX reserves_out_reserve_pub_index
+  IS 'for get_reserves_out';
 CREATE INDEX IF NOT EXISTS reserves_out_execution_date
   ON reserves_out
   (execution_date);
@@ -148,17 +165,21 @@ CREATE INDEX IF NOT EXISTS reserves_out_for_get_withdraw_info
   (denom_pub_hash
   ,h_blind_ev
   );
--- Table with coins that have been (partially) spent, used to track
--- coin information only once.
+
+
 CREATE TABLE IF NOT EXISTS known_coins
   (coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,denom_sig BYTEA NOT NULL
   );
+COMMENT ON TABLE known_coins
+  IS 'information about coins and their signatures, so we do not have to store the signatures more than once if a coin is involved in multiple operations';
+
 CREATE INDEX IF NOT EXISTS known_coins_by_denomination
   ON known_coins
   (denom_pub_hash);
--- Table with the commitments made when melting a coin. */
+
+
 CREATE TABLE IF NOT EXISTS refresh_commitments
   (melt_serial_id BIGSERIAL UNIQUE
   ,rc BYTEA PRIMARY KEY CHECK (LENGTH(rc)=64)
@@ -168,48 +189,66 @@ CREATE TABLE IF NOT EXISTS refresh_commitments
   ,amount_with_fee_frac INT4 NOT NULL
   ,noreveal_index INT4 NOT NULL
   );
+COMMENT ON TABLE refresh_commitments
+  IS 'Commitments made when melting coins and the gamma value chosen by the exchange.';
+
 CREATE INDEX IF NOT EXISTS refresh_commitments_old_coin_pub_index
   ON refresh_commitments
   (old_coin_pub);
--- Table with the revelations about the new coins that are to be created
--- during a melting session.  Includes the session, the cut-and-choose
--- index and the index of the new coin, and the envelope of the new
--- coin to be signed, as well as the encrypted information about the
--- private key and the blinding factor for the coin (for verification
--- in case this newcoin_index is chosen to be revealed)
+
+
 CREATE TABLE IF NOT EXISTS refresh_revealed_coins
   (rc BYTEA NOT NULL REFERENCES refresh_commitments (rc) ON DELETE CASCADE
-  ,newcoin_index INT4 NOT NULL
+  ,freshcoin_index INT4 NOT NULL
   ,link_sig BYTEA NOT NULL CHECK(LENGTH(link_sig)=64)
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,coin_ev BYTEA UNIQUE NOT NULL
   ,h_coin_ev BYTEA NOT NULL CHECK(LENGTH(h_coin_ev)=64)
   ,ev_sig BYTEA NOT NULL
-  ,PRIMARY KEY (rc, newcoin_index)
+  ,PRIMARY KEY (rc, freshcoin_index)
   ,UNIQUE (h_coin_ev)
   );
+COMMENT ON TABLE refresh_revealed_coins
+  IS 'Revelations about the new coins that are to be created during a melting session.';
+COMMENT ON COLUMN refresh_revealed_coins.rc
+  IS 'refresh commitment identifying the melt operation';
+COMMENT ON COLUMN refresh_revealed_coins.freshcoin_index
+  IS 'index of the fresh coin being created (one melt operation may result in multiple fresh coins)';
+COMMENT ON COLUMN refresh_revealed_coins.coin_ev
+  IS 'envelope of the new coin to be signed';
+COMMENT ON COLUMN refresh_revealed_coins.h_coin_ev
+  IS 'hash of the envelope of the new coin to be signed (for lookups)';
+COMMENT ON COLUMN refresh_revealed_coins.ev_sig
+  IS 'exchange signature over the envelope';
+
 CREATE INDEX IF NOT EXISTS refresh_revealed_coins_coin_pub_index
   ON refresh_revealed_coins
   (denom_pub_hash);
--- Table with the transfer keys of a refresh operation; includes
--- the rc for which this is the link information, the
--- transfer public key (for gamma) and the revealed transfer private
--- keys (array of TALER_CNC_KAPPA - 1 entries, with gamma being skipped) */
+
+
 CREATE TABLE IF NOT EXISTS refresh_transfer_keys
   (rc BYTEA NOT NULL PRIMARY KEY REFERENCES refresh_commitments (rc) ON DELETE CASCADE
   ,transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)
   ,transfer_privs BYTEA NOT NULL
   );
--- for get_link (not sure if this helps, as there should be very few
--- transfer_pubs per rc, but at least in theory this helps the ORDER BY
--- clause.
+COMMENT ON TABLE refresh_transfer_keys
+  IS 'Transfer keys of a refresh operation (the data revealed to the exchange).';
+COMMENT ON COLUMN refresh_transfer_keys.rc
+  IS 'refresh commitment identifying the melt operation';
+COMMENT ON COLUMN refresh_transfer_keys.transfer_pub
+  IS 'transfer public key for the gamma index';
+COMMENT ON COLUMN refresh_transfer_keys.transfer_privs
+  IS 'array of TALER_CNC_KAPPA - 1 transfer private keys that have been revealed, with the gamma entry being skipped';
+
 CREATE INDEX IF NOT EXISTS refresh_transfer_keys_coin_tpub
   ON refresh_transfer_keys
   (rc
   ,transfer_pub
   );
--- This table contains the wire transfers the exchange is supposed to
--- execute to transmit funds to the merchants (and manage refunds).
+COMMENT ON INDEX refresh_transfer_keys_coin_tpub
+  IS 'for get_link (unsure if this helps or hurts for performance as there should be very few transfer public keys per rc, but at least in theory this helps the ORDER BY clause)';
+
+
 CREATE TABLE IF NOT EXISTS deposits
   (deposit_serial_id BIGSERIAL PRIMARY KEY
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
@@ -227,14 +266,21 @@ CREATE TABLE IF NOT EXISTS deposits
   ,done BOOLEAN NOT NULL DEFAULT FALSE
   ,UNIQUE (coin_pub, merchant_pub, h_contract_terms)
   );
--- Index for get_deposit_for_wtid and get_deposit_statement */
+COMMENT ON TABLE deposits
+  IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
+COMMENT ON COLUMN deposits.done
+  IS 'Set to TRUE once we have included this deposit in some aggregate wire transfer to the merchant';
+COMMENT ON COLUMN deposits.tiny
+  IS 'Set to TRUE if we decided that the amount is too small to ever trigger a wire transfer by itself (requires real aggregation)';
+
 CREATE INDEX IF NOT EXISTS deposits_coin_pub_merchant_contract_index
   ON deposits
   (coin_pub
   ,merchant_pub
   ,h_contract_terms
   );
--- Index for deposits_get_ready
+COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
+  IS 'for get_deposit_for_wtid and test_deposit_done';
 CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ON deposits
   (tiny
@@ -242,18 +288,19 @@ CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ,wire_deadline
   ,refund_deadline
   );
--- Index for deposits_iterate_matching
-CREATE INDEX IF NOT EXISTS deposits_iterate_matching
+COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
+  IS 'for deposits_get_ready';
+CREATE INDEX IF NOT EXISTS deposits_iterate_matching_index
   ON deposits
   (merchant_pub
   ,h_wire
   ,done
   ,wire_deadline
   );
--- Table with information about coins that have been refunded. (Technically
--- one of the deposit operations that a coin was involved with is refunded.)
--- The combo of coin_pub, merchant_pub, h_contract_terms and rtransaction_id
--- MUST be unique, and we usually select by coin_pub so that one goes first. */
+COMMENT ON INDEX deposits_iterate_matching_index
+  IS 'for deposits_iterate_matching';
+
+
 CREATE TABLE IF NOT EXISTS refunds
   (refund_serial_id BIGSERIAL UNIQUE
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
@@ -265,11 +312,16 @@ CREATE TABLE IF NOT EXISTS refunds
   ,amount_with_fee_frac INT4 NOT NULL
   ,PRIMARY KEY (coin_pub, merchant_pub, h_contract_terms, rtransaction_id)
   );
+COMMENT ON TABLE refunds
+  IS 'Data on coins that were refunded. Technically, refunds always apply against specific deposit operations involving a coin. The combination of coin_pub, merchant_pub, h_contract_terms and rtransaction_id MUST be unique, and we usually select by coin_pub so that one goes first.';
+COMMENT ON COLUMN refunds.rtransaction_id
+  IS 'used by the merchant to make refunds unique in case the same coin for the same deposit gets a subsequent (higher) refund';
+
 CREATE INDEX IF NOT EXISTS refunds_coin_pub_index
   ON refunds
   (coin_pub);
--- This table contains the data for
--- wire transfers the exchange has executed.
+
+
 CREATE TABLE IF NOT EXISTS wire_out
   (wireout_uuid BIGSERIAL PRIMARY KEY
   ,execution_date INT8 NOT NULL
@@ -279,18 +331,25 @@ CREATE TABLE IF NOT EXISTS wire_out
   ,amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL
   );
--- Table for the tracking API, mapping from wire transfer identifier
--- to transactions and back
+COMMENT ON TABLE wire_out
+  IS 'wire transfers the exchange has executed';
+
+
 CREATE TABLE IF NOT EXISTS aggregation_tracking
   (aggregation_serial_id BIGSERIAL UNIQUE
   ,deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE
   ,wtid_raw BYTEA  CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE
   );
--- Index for lookup_transactions statement on wtid
+COMMENT ON TABLE aggregation_tracking
+  IS 'mapping from wire transfer identifiers (WTID) to deposits (and back)';
+
 CREATE INDEX IF NOT EXISTS aggregation_tracking_wtid_index
   ON aggregation_tracking
   (wtid_raw);
--- Table for the wire fees.
+COMMENT ON INDEX aggregation_tracking_wtid_index
+  IS 'for lookup_transactions';
+
+
 CREATE TABLE IF NOT EXISTS wire_fee
   (wire_method VARCHAR NOT NULL
   ,start_date INT8 NOT NULL
@@ -302,11 +361,14 @@ CREATE TABLE IF NOT EXISTS wire_fee
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,PRIMARY KEY (wire_method, start_date)
   );
+COMMENT ON TABLE wire_fee
+  IS 'list of the wire fees of this exchange, by date';
+
 CREATE INDEX IF NOT EXISTS wire_fee_gc_index
   ON wire_fee
   (end_date);
--- Table for /recoup information
--- Do not cascade on the coin_pub, as we may keep the coin alive! */
+
+
 CREATE TABLE IF NOT EXISTS recoup
   (recoup_uuid BIGSERIAL UNIQUE
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)
@@ -317,6 +379,11 @@ CREATE TABLE IF NOT EXISTS recoup
   ,timestamp INT8 NOT NULL
   ,h_blind_ev BYTEA NOT NULL REFERENCES reserves_out (h_blind_ev) ON DELETE CASCADE
   );
+COMMENT ON TABLE recoup
+  IS 'Information about recoups that were executed';
+COMMENT ON COLUMN recoup.coin_pub
+  IS 'Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
+
 CREATE INDEX IF NOT EXISTS recoup_by_coin_index
   ON recoup
   (coin_pub);
@@ -328,8 +395,8 @@ CREATE INDEX IF NOT EXISTS recoup_for_by_reserve
   (coin_pub
   ,h_blind_ev
   );
--- Table for /recoup-refresh information
--- Do not cascade on the coin_pub, as we may keep the coin alive! */
+
+
 CREATE TABLE IF NOT EXISTS recoup_refresh
   (recoup_refresh_uuid BIGSERIAL UNIQUE
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)
@@ -340,6 +407,9 @@ CREATE TABLE IF NOT EXISTS recoup_refresh
   ,timestamp INT8 NOT NULL
   ,h_blind_ev BYTEA NOT NULL REFERENCES refresh_revealed_coins (h_coin_ev) ON DELETE CASCADE
   );
+COMMENT ON COLUMN recoup_refresh.coin_pub
+  IS 'Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
+
 CREATE INDEX IF NOT EXISTS recoup_refresh_by_coin_index
   ON recoup_refresh
   (coin_pub);
@@ -351,18 +421,23 @@ CREATE INDEX IF NOT EXISTS recoup_refresh_for_by_reserve
   (coin_pub
   ,h_blind_ev
   );
--- This table contains the pre-commit data for
--- wire transfers the exchange is about to execute.
+
+
 CREATE TABLE IF NOT EXISTS prewire
   (prewire_uuid BIGSERIAL PRIMARY KEY
   ,type TEXT NOT NULL
   ,finished BOOLEAN NOT NULL DEFAULT false
   ,buf BYTEA NOT NULL
   );
--- Index for wire_prepare_data_get and gc_prewire statement
+COMMENT ON TABLE prewire
+  IS 'pre-commit data for wire transfers we are about to execute';
+
 CREATE INDEX IF NOT EXISTS prepare_iteration_index
   ON prewire
   (finished);
+COMMENT ON INDEX prepare_iteration_index
+  IS 'for wire_prepare_data_get and gc_prewire';
+
 
 -- Complete transaction
 COMMIT;
