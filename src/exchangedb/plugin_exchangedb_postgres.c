@@ -4507,7 +4507,7 @@ struct WireTransferResultContext
   /**
    * Function to call on each result.
    */
-  TALER_EXCHANGEDB_WireTransferDataCallback cb;
+  TALER_EXCHANGEDB_AggregationDataCallback cb;
 
   /**
    * Closure for @e cb.
@@ -4612,7 +4612,7 @@ postgres_lookup_wire_transfer (void *cls,
                                struct TALER_EXCHANGEDB_Session *session,
                                const struct
                                TALER_WireTransferIdentifierRawP *wtid,
-                               TALER_EXCHANGEDB_WireTransferDataCallback cb,
+                               TALER_EXCHANGEDB_AggregationDataCallback cb,
                                void *cb_cls)
 {
   struct PostgresClosure *pg = cls;

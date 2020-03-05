@@ -574,7 +574,7 @@ struct TALER_EXCHANGEDB_Deposit
 
 
 /**
- * @brief Specification for a /deposit operation in the
+ * @brief Specification for a deposit operation in the
  * `struct TALER_EXCHANGEDB_TransactionList`.
  */
 struct TALER_EXCHANGEDB_DepositListEntry
@@ -659,7 +659,7 @@ struct TALER_EXCHANGEDB_DepositListEntry
 
 
 /**
- * @brief Specification for a /refund operation in a coin's transaction list.
+ * @brief Specification for a refund operation in a coin's transaction list.
  */
 struct TALER_EXCHANGEDB_RefundListEntry
 {
@@ -701,7 +701,7 @@ struct TALER_EXCHANGEDB_RefundListEntry
 
 
 /**
- * @brief Specification for a /refund operation.  The combination of
+ * @brief Specification for a refund operation.  The combination of
  * the coin's public key, the merchant's public key and the
  * transaction ID must be unique.  While a coin can (theoretically) be
  * deposited at the same merchant twice (with partial spending), the
@@ -727,7 +727,7 @@ struct TALER_EXCHANGEDB_Refund
 
 
 /**
- * @brief Specification for coin in a /refresh/melt operation.
+ * @brief Specification for coin in a melt operation.
  */
 struct TALER_EXCHANGEDB_Refresh
 {
@@ -860,32 +860,32 @@ enum TALER_EXCHANGEDB_TransactionType
 {
 
   /**
-   * /deposit operation.
+   * Deposit operation.
    */
   TALER_EXCHANGEDB_TT_DEPOSIT = 0,
 
   /**
-   * /refresh/melt operation.
+   * Melt operation.
    */
   TALER_EXCHANGEDB_TT_MELT = 1,
 
   /**
-   * /refund operation.
+   * Refund operation.
    */
   TALER_EXCHANGEDB_TT_REFUND = 2,
 
   /**
-   * /recoup-refresh operation (on the old coin, adding to the old coin's value)
+   * Recoup-refresh operation (on the old coin, adding to the old coin's value)
    */
   TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP = 3,
 
   /**
-   * /recoup operation.
+   * Recoup operation.
    */
   TALER_EXCHANGEDB_TT_RECOUP = 4,
 
   /**
-   * /recoup-refresh operation (on the new coin, eliminating its value)
+   * Recoup-refresh operation (on the new coin, eliminating its value)
    */
   TALER_EXCHANGEDB_TT_RECOUP_REFRESH = 5
 
@@ -1305,27 +1305,27 @@ typedef void
  * @param coin_fee applicable fee for this coin
  */
 typedef void
-(*TALER_EXCHANGEDB_WireTransferDataCallback)(void *cls,
-                                             uint64_t rowid,
-                                             const struct
-                                             TALER_MerchantPublicKeyP *
-                                             merchant_pub,
-                                             const struct
-                                             GNUNET_HashCode *h_wire,
-                                             const json_t *account_details,
-                                             struct GNUNET_TIME_Absolute
-                                             exec_time,
-                                             const struct
-                                             GNUNET_HashCode *h_contract_terms,
-                                             const struct
-                                             TALER_DenominationPublicKey *
-                                             denom_pub,
-                                             const struct
-                                             TALER_CoinSpendPublicKeyP *coin_pub,
-                                             const struct
-                                             TALER_Amount *coin_value,
-                                             const struct
-                                             TALER_Amount *coin_fee);
+(*TALER_EXCHANGEDB_AggregationDataCallback)(void *cls,
+                                            uint64_t rowid,
+                                            const struct
+                                            TALER_MerchantPublicKeyP *
+                                            merchant_pub,
+                                            const struct
+                                            GNUNET_HashCode *h_wire,
+                                            const json_t *account_details,
+                                            struct GNUNET_TIME_Absolute
+                                            exec_time,
+                                            const struct
+                                            GNUNET_HashCode *h_contract_terms,
+                                            const struct
+                                            TALER_DenominationPublicKey *
+                                            denom_pub,
+                                            const struct
+                                            TALER_CoinSpendPublicKeyP *coin_pub,
+                                            const struct
+                                            TALER_Amount *coin_value,
+                                            const struct
+                                            TALER_Amount *coin_fee);
 
 
 /**
@@ -2120,7 +2120,7 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Store in the database which coin(s) the wallet wanted to create
    * in a given refresh operation and all of the other information
-   * we learned or created in the /refresh/reveal step.
+   * we learned or created in the reveal step.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
@@ -2186,7 +2186,7 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Compile a list of all (historic) transactions performed
-   * with the given coin (/refresh/melt and /deposit operations).
+   * with the given coin (melt, refund, recoup and deposit operations).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
@@ -2229,7 +2229,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*lookup_wire_transfer)(void *cls,
                           struct TALER_EXCHANGEDB_Session *session,
                           const struct TALER_WireTransferIdentifierRawP *wtid,
-                          TALER_EXCHANGEDB_WireTransferDataCallback cb,
+                          TALER_EXCHANGEDB_AggregationDataCallback cb,
                           void *cb_cls);
 
 
