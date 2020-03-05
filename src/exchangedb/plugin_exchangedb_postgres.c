@@ -341,8 +341,8 @@ postgres_get_session (void *cls)
                               " FROM denomination_revocations"
                               " WHERE denom_pub_hash=$1;",
                               1),
-      /* Used in #postgres_reserve_get() */
-      GNUNET_PQ_make_prepare ("reserve_get",
+      /* Used in #postgres_reserves_get() */
+      GNUNET_PQ_make_prepare ("reserves_get",
                               "SELECT"
                               " current_balance_val"
                               ",current_balance_frac"
@@ -525,7 +525,7 @@ postgres_get_session (void *cls)
                               " WHERE reserve_pub=$1"
                               " FOR UPDATE",
                               1),
-      /* Used in #postgres_select_reserves_out_above_serial_id() */
+      /* Used in #postgres_select_withdrawals_above_serial_id() */
       GNUNET_PQ_make_prepare ("audit_get_reserves_out_incr",
                               "SELECT"
                               " h_blind_ev"
@@ -628,7 +628,7 @@ postgres_get_session (void *cls)
                               " FROM refresh_commitments"
                               " WHERE rc=$1;",
                               1),
-      /* Used in #postgres_select_refreshs_above_serial_id() to fetch
+      /* Used in #postgres_select_refreshes_above_serial_id() to fetch
          refresh session with id '\geq' the given parameter */
       GNUNET_PQ_make_prepare ("audit_get_refresh_commitments_incr",
                               "SELECT"
@@ -906,7 +906,8 @@ postgres_get_session (void *cls)
                               "     done=FALSE"
                               " ORDER BY wire_deadline ASC"
                               " LIMIT "
-                              TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT_STR ";",
+                              TALER_QUOTE (
+                                TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
                               2),
       /* Used in #postgres_mark_deposit_tiny() */
       GNUNET_PQ_make_prepare ("mark_deposit_tiny",
@@ -1687,7 +1688,7 @@ struct DenomIteratorContext
   /**
    * Function to call with the results.
    */
-  TALER_EXCHANGEDB_DenominationInfoIterator cb;
+  TALER_EXCHANGEDB_DenominationCallback cb;
 
   /**
    * Closure to pass to @e cb
@@ -1781,7 +1782,7 @@ domination_cb_helper (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_denomination_info (void *cls,
-                                    TALER_EXCHANGEDB_DenominationInfoIterator cb,
+                                    TALER_EXCHANGEDB_DenominationCallback cb,
                                     void *cb_cls)
 {
   struct PostgresClosure *pc = cls;
@@ -1813,9 +1814,9 @@ postgres_iterate_denomination_info (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_reserve_get (void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
-                      struct TALER_EXCHANGEDB_Reserve *reserve)
+postgres_reserves_get (void *cls,
+                       struct TALER_EXCHANGEDB_Session *session,
+                       struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -1830,7 +1831,7 @@ postgres_reserve_get (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-                                                   "reserve_get",
+                                                   "reserves_get",
                                                    params,
                                                    rs);
 }
@@ -1897,9 +1898,9 @@ postgres_reserves_in_insert (void *cls,
   struct GNUNET_TIME_Absolute expiry;
 
   reserve.pub = *reserve_pub;
-  reserve_exists = postgres_reserve_get (cls,
-                                         session,
-                                         &reserve);
+  reserve_exists = postgres_reserves_get (cls,
+                                          session,
+                                          &reserve);
   if (0 > reserve_exists)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == reserve_exists);
@@ -2141,9 +2142,9 @@ postgres_insert_withdraw_info (void *cls,
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = postgres_reserve_get (cls,
-                                  session,
-                                  &reserve)))
+      (qs = postgres_reserves_get (cls,
+                                   session,
+                                   &reserve)))
   {
     /* Should have been checked before we got here... */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4664,7 +4665,8 @@ postgres_wire_lookup_deposit_wtid (void *cls,
                                    TALER_CoinSpendPublicKeyP *coin_pub,
                                    const struct
                                    TALER_MerchantPublicKeyP *merchant_pub,
-                                   TALER_EXCHANGEDB_TrackTransactionCallback cb,
+                                   TALER_EXCHANGEDB_WireTransferByCoinCallback
+                                   cb,
                                    void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
@@ -5086,9 +5088,9 @@ postgres_insert_reserve_closed (void *cls,
   /* update reserve balance */
   reserve.pub = *reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = postgres_reserve_get (cls,
-                                  session,
-                                  &reserve)))
+      (qs = postgres_reserves_get (cls,
+                                   session,
+                                   &reserve)))
   {
     /* Existence should have been checked before we got here... */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -5658,13 +5660,13 @@ refreshs_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_refreshs_above_serial_id (void *cls,
-                                          struct TALER_EXCHANGEDB_Session *
-                                          session,
-                                          uint64_t serial_id,
-                                          TALER_EXCHANGEDB_RefreshesCallback
-                                          cb,
-                                          void *cb_cls)
+postgres_select_refreshes_above_serial_id (void *cls,
+                                           struct TALER_EXCHANGEDB_Session *
+                                           session,
+                                           uint64_t serial_id,
+                                           TALER_EXCHANGEDB_RefreshesCallback
+                                           cb,
+                                           void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6120,13 +6122,13 @@ reserves_out_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_reserves_out_above_serial_id (void *cls,
-                                              struct TALER_EXCHANGEDB_Session *
-                                              session,
-                                              uint64_t serial_id,
-                                              TALER_EXCHANGEDB_WithdrawCallback
-                                              cb,
-                                              void *cb_cls)
+postgres_select_withdrawals_above_serial_id (void *cls,
+                                             struct TALER_EXCHANGEDB_Session *
+                                             session,
+                                             uint64_t serial_id,
+                                             TALER_EXCHANGEDB_WithdrawCallback
+                                             cb,
+                                             void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6830,9 +6832,9 @@ postgres_insert_recoup_request (void *cls,
 
   /* Update reserve balance */
   reserve.pub = *reserve_pub;
-  qs = postgres_reserve_get (cls,
-                             session,
-                             &reserve);
+  qs = postgres_reserves_get (cls,
+                              session,
+                              &reserve);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -7281,7 +7283,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_denomination_info = &postgres_insert_denomination_info;
   plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->iterate_denomination_info = &postgres_iterate_denomination_info;
-  plugin->reserve_get = &postgres_reserve_get;
+  plugin->reserves_get = &postgres_reserves_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_latest_reserve_in_reference =
     &postgres_get_latest_reserve_in_reference;
@@ -7326,16 +7328,16 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->gc = &postgres_gc;
   plugin->select_deposits_above_serial_id
     = &postgres_select_deposits_above_serial_id;
-  plugin->select_refreshs_above_serial_id
-    = &postgres_select_refreshs_above_serial_id;
+  plugin->select_refreshes_above_serial_id
+    = &postgres_select_refreshes_above_serial_id;
   plugin->select_refunds_above_serial_id
     = &postgres_select_refunds_above_serial_id;
   plugin->select_reserves_in_above_serial_id
     = &postgres_select_reserves_in_above_serial_id;
   plugin->select_reserves_in_above_serial_id_by_account
     = &postgres_select_reserves_in_above_serial_id_by_account;
-  plugin->select_reserves_out_above_serial_id
-    = &postgres_select_reserves_out_above_serial_id;
+  plugin->select_withdrawals_above_serial_id
+    = &postgres_select_withdrawals_above_serial_id;
   plugin->select_wire_out_above_serial_id
     = &postgres_select_wire_out_above_serial_id;
   plugin->select_wire_out_above_serial_id_by_account

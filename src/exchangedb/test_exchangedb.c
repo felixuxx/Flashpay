@@ -163,9 +163,9 @@ check_reserve (struct TALER_EXCHANGEDB_Session *session,
 
   reserve.pub = *pub;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->reserve_get (plugin->cls,
-                               session,
-                               &reserve));
+          plugin->reserves_get (plugin->cls,
+                                session,
+                                &reserve));
   FAILIF (value != reserve.balance.value);
   FAILIF (fraction != reserve.balance.fraction);
   FAILIF (0 != strcmp (currency, reserve.balance.currency));
@@ -572,14 +572,14 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
           GNUNET_memcmp (&refresh_session.coin.denom_pub_hash,
                          &ret_refresh_session.session.coin.denom_pub_hash));
 
-  /* test 'select_refreshs_above_serial_id' */
+  /* test 'select_refreshes_above_serial_id' */
   auditor_row_cnt = 0;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->select_refreshs_above_serial_id (plugin->cls,
-                                                   session,
-                                                   0,
-                                                   &audit_refresh_session_cb,
-                                                   NULL));
+          plugin->select_refreshes_above_serial_id (plugin->cls,
+                                                    session,
+                                                    0,
+                                                    &audit_refresh_session_cb,
+                                                    NULL));
   FAILIF (1 != auditor_row_cnt);
 
   new_dkp = GNUNET_new_array (MELT_NEW_COINS,
@@ -1776,11 +1776,11 @@ run (void *cls)
                                                       &audit_reserve_in_cb,
                                                       NULL));
   FAILIF (0 >=
-          plugin->select_reserves_out_above_serial_id (plugin->cls,
-                                                       session,
-                                                       0,
-                                                       &audit_reserve_out_cb,
-                                                       NULL));
+          plugin->select_withdrawals_above_serial_id (plugin->cls,
+                                                      session,
+                                                      0,
+                                                      &audit_reserve_out_cb,
+                                                      NULL));
   FAILIF (3 != auditor_row_cnt);
 
   /* Tests for deposits */

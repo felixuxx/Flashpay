@@ -1641,9 +1641,9 @@ verify_reserve_balance (void *cls,
 
   ret = GNUNET_OK;
   reserve.pub = rs->reserve_pub;
-  qs = edb->reserve_get (edb->cls,
-                         esession,
-                         &reserve);
+  qs = edb->reserves_get (edb->cls,
+                          esession,
+                          &reserve);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     char *diag;
@@ -1956,11 +1956,11 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = edb->select_reserves_out_above_serial_id (edb->cls,
-                                                 esession,
-                                                 ppr.last_reserve_out_serial_id,
-                                                 &handle_reserve_out,
-                                                 &rc);
+  qs = edb->select_withdrawals_above_serial_id (edb->cls,
+                                                esession,
+                                                ppr.last_reserve_out_serial_id,
+                                                &handle_reserve_out,
+                                                &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -4712,12 +4712,12 @@ analyze_coins (void *cls)
 
   /* process withdrawals */
   if (0 >
-      (qs = edb->select_reserves_out_above_serial_id (edb->cls,
-                                                      esession,
-                                                      ppc.
-                                                      last_withdraw_serial_id,
-                                                      &withdraw_cb,
-                                                      &cc)) )
+      (qs = edb->select_withdrawals_above_serial_id (edb->cls,
+                                                     esession,
+                                                     ppc.
+                                                     last_withdraw_serial_id,
+                                                     &withdraw_cb,
+                                                     &cc)) )
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -4741,11 +4741,11 @@ analyze_coins (void *cls)
 
   /* process refreshs */
   if (0 >
-      (qs = edb->select_refreshs_above_serial_id (edb->cls,
-                                                  esession,
-                                                  ppc.last_melt_serial_id,
-                                                  &refresh_session_cb,
-                                                  &cc)))
+      (qs = edb->select_refreshes_above_serial_id (edb->cls,
+                                                   esession,
+                                                   ppc.last_melt_serial_id,
+                                                   &refresh_session_cb,
+                                                   &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;

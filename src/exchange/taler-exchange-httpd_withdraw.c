@@ -234,9 +234,9 @@ withdraw_transaction (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to withdraw from reserve: %s\n",
               TALER_B2S (&r.pub));
-  qs = TEH_plugin->reserve_get (TEH_plugin->cls,
-                                session,
-                                &r);
+  qs = TEH_plugin->reserves_get (TEH_plugin->cls,
+                                 session,
+                                 &r);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)

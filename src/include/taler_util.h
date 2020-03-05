@@ -26,6 +26,22 @@
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
 
+/**
+ * Stringify operator.
+ *
+ * @param a some expression to stringify. Must NOT be a macro.
+ * @return same expression as a constant string.
+ */
+#define TALER_S(a) #a
+
+/**
+ * Stringify operator.
+ *
+ * @param a some expression to stringify. Can be a macro.
+ * @return macro-expanded expression as a constant string.
+ */
+#define TALER_QUOTE(a) TALER_S (a)
+
 
 /* Define logging functions */
 #define TALER_LOG_DEBUG(...)                                  \

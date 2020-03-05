@@ -379,7 +379,7 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
   struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
-   * Public key of the old coin that the refresh'ed coin was paid back to.
+   * Public key of the old coin that the refreshed coin was paid back to.
    */
   struct TALER_CoinSpendPublicKeyP old_coin_pub;
 
@@ -1276,16 +1276,17 @@ typedef void
  *         when we expect it to be done (if @a wtid was NULL)
  */
 typedef void
-(*TALER_EXCHANGEDB_TrackTransactionCallback)(void *cls,
-                                             const struct
-                                             TALER_WireTransferIdentifierRawP *
-                                             wtid,
-                                             const struct
-                                             TALER_Amount *coin_contribution,
-                                             const struct
-                                             TALER_Amount *coin_fee,
-                                             struct GNUNET_TIME_Absolute
-                                             execution_time);
+(*TALER_EXCHANGEDB_WireTransferByCoinCallback)(void *cls,
+                                               const struct
+                                               TALER_WireTransferIdentifierRawP
+                                               *
+                                               wtid,
+                                               const struct
+                                               TALER_Amount *coin_contribution,
+                                               const struct
+                                               TALER_Amount *coin_fee,
+                                               struct GNUNET_TIME_Absolute
+                                               execution_time);
 
 
 /**
@@ -1547,13 +1548,12 @@ typedef void
  * @param issue detailed information about the denomination (value, expiration times, fees)
  */
 typedef void
-(*TALER_EXCHANGEDB_DenominationInfoIterator)(void *cls,
-                                             const struct
-                                             TALER_DenominationPublicKey *
-                                             denom_pub,
-                                             const struct
-                                             TALER_EXCHANGEDB_DenominationKeyInformationP
-                                             *issue);
+(*TALER_EXCHANGEDB_DenominationCallback)(void *cls,
+                                         const struct
+                                         TALER_DenominationPublicKey *denom_pub,
+                                         const struct
+                                         TALER_EXCHANGEDB_DenominationKeyInformationP
+                                         *issue);
 
 
 /**
@@ -1575,7 +1575,7 @@ struct TALER_EXCHANGEDB_Plugin
   char *library_name;
 
   /**
-   * Get the thread-local database-handle.
+   * Get the thread-local (!) database-handle.
    * Connect to the db if the connection does not exist yet.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -1705,7 +1705,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*iterate_denomination_info)(void *cls,
-                               TALER_EXCHANGEDB_DenominationInfoIterator cb,
+                               TALER_EXCHANGEDB_DenominationCallback cb,
                                void *cb_cls);
 
   /**
@@ -1719,9 +1719,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
-  (*reserve_get)(void *cls,
-                 struct TALER_EXCHANGEDB_Session *session,
-                 struct TALER_EXCHANGEDB_Reserve *reserve);
+  (*reserves_get)(void *cls,
+                  struct TALER_EXCHANGEDB_Session *session,
+                  struct TALER_EXCHANGEDB_Reserve *reserve);
 
 
   /**
@@ -1750,6 +1750,7 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Obtain the most recent @a wire_reference that was inserted via @e reserves_in_insert.
+   * Used by the wirewatch process when resuming.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session the database connection handle
@@ -1766,8 +1767,9 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Locate the response for a /withdraw request under the
-   * key of the hash of the blinded message.
+   * Locate the response for a withdraw request under the
+   * key of the hash of the blinded message.  Used to ensure
+   * idempotency of the request.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
@@ -1785,8 +1787,8 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Store collectable bit coin under the corresponding
-   * hash of the blinded message.
+   * Store collectable coin under the corresponding hash of the blinded
+   * message.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
@@ -1933,6 +1935,7 @@ struct TALER_EXCHANGEDB_Plugin
                    struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_EXCHANGEDB_Refund *refund);
 
+
   /**
    * Select refunds by @a coin_pub, @a merchant_pub and @a h_contract.
    *
@@ -1956,9 +1959,9 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Mark a deposit as tiny, thereby declaring that it cannot be
-   * executed by itself and should no longer be returned by
-   * @e iterate_ready_deposits()
+   * Mark a deposit as tiny, thereby declaring that it cannot be executed by
+   * itself (only included in a larger aggregation) and should no longer be
+   * returned by @e iterate_ready_deposits()
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
@@ -2037,7 +2040,6 @@ struct TALER_EXCHANGEDB_Plugin
  * "tiny" threshold beyond which we never trigger a wire transaction!
  */
 #define TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT 10000
-#define TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT_STR "10000"
 
   /**
    * Obtain information about other pending deposits for the same
@@ -2067,7 +2069,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Store new refresh melt commitment data.
+   * Store new melt commitment data.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database handle to use
@@ -2081,7 +2083,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Lookup refresh melt commitment data under the given @a rc.
+   * Lookup melt commitment data under the given @a rc.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database handle to use
@@ -2256,7 +2258,7 @@ struct TALER_EXCHANGEDB_Plugin
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct
                               TALER_MerchantPublicKeyP *merchant_pub,
-                              TALER_EXCHANGEDB_TrackTransactionCallback cb,
+                              TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
                               void *cb_cls);
 
 
@@ -2500,11 +2502,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_refreshs_above_serial_id)(void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
-                                     uint64_t serial_id,
-                                     TALER_EXCHANGEDB_RefreshesCallback cb,
-                                     void *cb_cls);
+  (*select_refreshes_above_serial_id)(void *cls,
+                                      struct TALER_EXCHANGEDB_Session *session,
+                                      uint64_t serial_id,
+                                      TALER_EXCHANGEDB_RefreshesCallback cb,
+                                      void *cb_cls);
 
 
   /**
@@ -2580,12 +2582,12 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_reserves_out_above_serial_id)(void *cls,
-                                         struct TALER_EXCHANGEDB_Session *
-                                         session,
-                                         uint64_t serial_id,
-                                         TALER_EXCHANGEDB_WithdrawCallback cb,
-                                         void *cb_cls);
+  (*select_withdrawals_above_serial_id)(void *cls,
+                                        struct TALER_EXCHANGEDB_Session *
+                                        session,
+                                        uint64_t serial_id,
+                                        TALER_EXCHANGEDB_WithdrawCallback cb,
+                                        void *cb_cls);
 
   /**
    * Function called to select outgoing wire transfers the exchange
