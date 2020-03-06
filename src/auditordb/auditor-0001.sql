@@ -25,7 +25,10 @@ CREATE TABLE IF NOT EXISTS auditor_exchanges
   (master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)
   ,exchange_url VARCHAR NOT NULL
   );
--- Table with list of signing keys of exchanges we are auditing
+COMMENT ON TABLE auditor_exchanges
+  IS 'list of the exchanges we are auditing';
+
+
 CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,ep_start INT8 NOT NULL
@@ -34,8 +37,10 @@ CREATE TABLE IF NOT EXISTS auditor_exchange_signkeys
   ,exchange_pub BYTEA NOT NULL CHECK (LENGTH(exchange_pub)=32)
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   );
--- Table with all of the denomination keys that the auditor
--- is aware of.
+COMMENT ON TABLE auditor_exchange_signkeys
+  IS 'list of the online signing keys of exchanges we are auditing';
+
+
 CREATE TABLE IF NOT EXISTS auditor_denominations
   (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
@@ -54,13 +59,10 @@ CREATE TABLE IF NOT EXISTS auditor_denominations
   ,fee_refund_val INT8 NOT NULL
   ,fee_refund_frac INT4 NOT NULL
   );
--- Table indicating up to which transactions the auditor has
--- processed the exchange database.  Used for SELECTing the
--- statements to process.  The indices below include the last
--- serial ID from the respective tables that we have
--- processed. Thus, we need to select those table entries that are
--- strictly larger (and process in monotonically increasing
--- order).
+COMMENT ON TABLE auditor_denominations
+  IS 'denomination keys the auditor is aware of';
+
+
 CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0
@@ -69,16 +71,31 @@ CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   ,last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
+COMMENT ON TABLE auditor_progress_reserve
+  IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
+ statements to process.  The indices include the last serial ID from the respective tables that we have processed. Thus, we need to select those table entries that are strictly larger (and process in monotonically increasing order).';
+
+
 CREATE TABLE IF NOT EXISTS auditor_progress_aggregation
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_wire_out_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
+COMMENT ON TABLE auditor_progress_aggregation
+  IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
+ statements to process.  The indices include the last serial ID from the respective tables that we have processed. Thus, we need to select those table entries that are strictly larger (and process in monotonically increasing order).';
+
+
 CREATE TABLE IF NOT EXISTS auditor_progress_deposit_confirmation
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_deposit_confirmation_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
+COMMENT ON TABLE auditor_progress_deposit_confirmation
+  IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
+ statements to process.  The indices include the last serial ID from the respective tables that we have processed. Thus, we need to select those table entries that are strictly larger (and process in monotonically increasing order).';
+
+
 CREATE TABLE IF NOT EXISTS auditor_progress_coin
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_withdraw_serial_id INT8 NOT NULL DEFAULT 0
@@ -89,6 +106,11 @@ CREATE TABLE IF NOT EXISTS auditor_progress_coin
   ,last_recoup_refresh_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
+COMMENT ON TABLE auditor_progress_coin
+  IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
+ statements to process.  The indices include the last serial ID from the respective tables that we have processed. Thus, we need to select those table entries that are strictly larger (and process in monotonically increasing order).';
+
+
 CREATE TABLE IF NOT EXISTS wire_auditor_account_progress
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,account_name TEXT NOT NULL
@@ -98,18 +120,19 @@ CREATE TABLE IF NOT EXISTS wire_auditor_account_progress
   ,wire_out_off INT8
   ,PRIMARY KEY (master_pub,account_name)
   );
+COMMENT ON TABLE wire_auditor_account_progress
+  IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
+ statements to process.  The indices include the last serial ID from the respective tables that we have processed. Thus, we need to select those table entries that are strictly larger (and process in monotonically increasing order).';
+
+
 CREATE TABLE IF NOT EXISTS wire_auditor_progress
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_timestamp INT8 NOT NULL
   ,last_reserve_close_uuid INT8 NOT NULL
   ,PRIMARY KEY (master_pub)
   );
--- Table with all of the customer reserves and their respective
--- balances that the auditor is aware of.
--- last_reserve_out_serial_id marks the last withdrawal from
--- reserves_out about this reserve that the auditor is aware of,
--- and last_reserve_in_serial_id is the last reserve_in
--- operation about this reserve that the auditor is aware of.
+
+
 CREATE TABLE IF NOT EXISTS auditor_reserves
   (reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)
   ,master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
@@ -121,11 +144,14 @@ CREATE TABLE IF NOT EXISTS auditor_reserves
   ,auditor_reserves_rowid BIGSERIAL UNIQUE
   ,origin_account TEXT
   );
+COMMENT ON TABLE auditor_reserves
+  IS 'all of the customer reserves and their respective balances that the auditor is aware of';
+
 CREATE INDEX IF NOT EXISTS auditor_reserves_by_reserve_pub
   ON auditor_reserves
   (reserve_pub);
--- Table with the sum of the balances of all customer reserves
--- (by exchange's master public key)
+
+
 CREATE TABLE IF NOT EXISTS auditor_reserve_balance
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,reserve_balance_val INT8 NOT NULL
@@ -133,19 +159,19 @@ CREATE TABLE IF NOT EXISTS auditor_reserve_balance
   ,withdraw_fee_balance_val INT8 NOT NULL
   ,withdraw_fee_balance_frac INT4 NOT NULL
   );
--- Table with the sum of the balances of all wire fees
--- (by exchange's master public key)
+COMMENT ON TABLE auditor_reserve_balance
+  IS 'sum of the balances of all customer reserves (by exchange master public key)';
+
+
 CREATE TABLE IF NOT EXISTS auditor_wire_fee_balance
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,wire_fee_balance_val INT8 NOT NULL
   ,wire_fee_balance_frac INT4 NOT NULL
   );
--- Table with all of the outstanding denomination coins that the
--- exchange is aware of and what the respective balances are
--- (outstanding as well as issued overall which implies the
--- maximum value at risk).  We also count the number of coins
--- issued (withdraw, refresh-reveal) and the number of coins seen
--- at the exchange (refresh-commit, deposit), not just the amounts. */GNUNET_PQ_make_execute (
+COMMENT ON TABLE auditor_wire_fee_balance
+  IS 'sum of the balances of all wire fees (by exchange master public key)';
+
+
 CREATE TABLE IF NOT EXISTS auditor_denomination_pending
   (denom_pub_hash BYTEA PRIMARY KEY REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE
   ,denom_balance_val INT8 NOT NULL
@@ -158,12 +184,16 @@ CREATE TABLE IF NOT EXISTS auditor_denomination_pending
   ,recoup_loss_val INT8 NOT NULL
   ,recoup_loss_frac INT4 NOT NULL
   );
--- Table with the sum of the outstanding coins from
--- auditor_denomination_pending (denom_pubs must belong to the
--- respective's exchange's master public key); it represents the
--- auditor_balance_summary of the exchange at this point (modulo
--- unexpected historic_loss-style events where denomination keys are
--- compromised)
+COMMENT ON TABLE auditor_denomination_pending
+  IS 'outstanding denomination coins that the exchange is aware of and what the respective balances are (outstanding as well as issued overall which implies the maximum value at risk).';
+COMMENT ON COLUMN auditor_denomination_pending.num_issued
+  IS 'counts the number of coins issued (withdraw, refresh) of this denomination';
+COMMENT ON COLUMN auditor_denomination_pending.denom_risk_val
+  IS 'amount that could theoretically be lost in the future due to recoup operations';
+COMMENT ON COLUMN auditor_denomination_pending.recoup_loss_val
+  IS 'amount actually lost due to recoup operations past revocation';
+
+
 CREATE TABLE IF NOT EXISTS auditor_balance_summary
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,denom_balance_val INT8 NOT NULL
@@ -181,15 +211,10 @@ CREATE TABLE IF NOT EXISTS auditor_balance_summary
   ,irregular_recoup_val INT8 NOT NULL
   ,irregular_recoup_frac INT4 NOT NULL
   );
--- Table with historic profits; basically, when a denom_pub has
--- expired and everything associated with it is garbage collected,
--- the final profits end up in here; note that the denom_pub here
--- is not a foreign key, we just keep it as a reference point.
--- revenue_balance is the sum of all of the profits we made on the
--- coin except for withdraw fees (which are in
--- historic_reserve_revenue); the deposit, melt and refund fees are given
--- individually; the delta to the revenue_balance is from coins that
--- were withdrawn but never deposited prior to expiration.
+COMMENT ON TABLE auditor_balance_summary
+  IS 'the sum of the outstanding coins from auditor_denomination_pending (denom_pubs must belong to the respectives exchange master public key); it represents the auditor_balance_summary of the exchange at this point (modulo unexpected historic_loss-style events where denomination keys are compromised)';
+
+
 CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
@@ -199,9 +224,12 @@ CREATE TABLE IF NOT EXISTS auditor_historic_denomination_revenue
   ,loss_balance_val INT8 NOT NULL
   ,loss_balance_frac INT4 NOT NULL
   );
--- Table with historic profits from reserves; we eventually
--- GC auditor_historic_reserve_revenue, and then store the totals
--- in here (by time intervals).
+COMMENT ON TABLE auditor_historic_denomination_revenue
+  IS 'Table with historic profits; basically, when a denom_pub has expired and everything associated with it is garbage collected, the final profits end up in here; note that the denom_pub here is not a foreign key, we just keep it as a reference point.';
+COMMENT ON COLUMN auditor_historic_denomination_revenue.revenue_balance_val
+  IS 'the sum of all of the profits we made on the coin except for withdraw fees (which are in historic_reserve_revenue); so this includes the deposit, melt and refund fees';
+
+
 CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,start_date INT8 NOT NULL
@@ -209,12 +237,15 @@ CREATE TABLE IF NOT EXISTS auditor_historic_reserve_summary
   ,reserve_profits_val INT8 NOT NULL
   ,reserve_profits_frac INT4 NOT NULL
   );
+COMMENT ON TABLE auditor_historic_reserve_summary
+  IS 'historic profits from reserves; we eventually GC auditor_historic_reserve_revenue, and then store the totals in here (by time intervals).';
+
 CREATE INDEX IF NOT EXISTS auditor_historic_reserve_summary_by_master_pub_start_date
   ON auditor_historic_reserve_summary
   (master_pub
   ,start_date);
--- Table with deposit confirmation sent to us by merchants;
--- we must check that the exchange reported these properly.
+
+
 CREATE TABLE IF NOT EXISTS deposit_confirmations
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,serial_id BIGSERIAL UNIQUE
@@ -231,15 +262,18 @@ CREATE TABLE IF NOT EXISTS deposit_confirmations
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
   ,PRIMARY KEY (h_contract_terms,h_wire,coin_pub,merchant_pub,exchange_sig,exchange_pub,master_sig)
   );
--- Table with the sum of the ledger, auditor_historic_revenue and
--- the auditor_reserve_balance.  This is the
--- final amount that the exchange should have in its bank account
--- right now.
+COMMENT ON TABLE deposit_confirmations
+  IS 'deposit confirmation sent to us by merchants; we must check that the exchange reported these properly.';
+
+
 CREATE TABLE IF NOT EXISTS auditor_predicted_result
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,balance_val INT8 NOT NULL
   ,balance_frac INT4 NOT NULL
   );
+COMMENT ON TABLE auditor_predicted_result
+  IS 'Table with the sum of the ledger, auditor_historic_revenue and the auditor_reserve_balance.  This is the final amount that the exchange should have in its bank account right now.';
+
 
 -- Finally, commit everything
 COMMIT;
