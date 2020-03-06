@@ -139,11 +139,10 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
-                                    struct GNUNET_TIME_Absolute start,
-                                    const struct
-                                    TALER_EXCHANGEDB_PrivateSigningKeyInformationP
-                                    *ski)
+TALER_EXCHANGEDB_signing_key_write (
+  const char *exchange_base_dir,
+  struct GNUNET_TIME_Absolute start,
+  const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
 {
   char *skf;
   ssize_t nwrite;

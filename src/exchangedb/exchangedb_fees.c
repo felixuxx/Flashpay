@@ -92,7 +92,12 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                                "exchangedb",
                                                "WIREFEE_BASE_DIR",
                                                &wirefee_base_dir))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchangedb",
+                               "WIREFEE_BASE_DIR");
     return NULL;
+  }
   GNUNET_asprintf (&fn,
                    "%s/%s.fee",
                    wirefee_base_dir,
@@ -101,19 +106,48 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
   fh = GNUNET_DISK_file_open (fn,
                               GNUNET_DISK_OPEN_READ,
                               GNUNET_DISK_PERM_NONE);
-  GNUNET_free (fn);
   if (NULL == fh)
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "open",
+                              fn);
+    GNUNET_free (fn);
     return NULL;
+  }
 
   af = NULL;
   endp = NULL;
-  while (sizeof (wd) ==
-         GNUNET_DISK_file_read (fh,
-                                &wd,
-                                sizeof (wd)))
+  while (1)
   {
     struct TALER_EXCHANGEDB_AggregateFees *n;
-
+    ssize_t in = GNUNET_DISK_file_read (fh,
+                                        &wd,
+                                        sizeof (wd));
+    if (-1 == in)
+    {
+      /* Unexpected I/O error */
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                "read",
+                                fn);
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_DISK_file_close (fh));
+      GNUNET_free (fn);
+      TALER_EXCHANGEDB_fees_free (af);
+      return NULL;
+    }
+    if (0 == in)
+      break; /* EOF, terminate normally */
+    if (sizeof (wd) != in)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "File `%s' has wrong size for fee structure\n",
+                  fn);
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_DISK_file_close (fh));
+      GNUNET_free (fn);
+      TALER_EXCHANGEDB_fees_free (af);
+      return NULL;
+    }
     n = wd2af (&wd);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Loaded wire fees starting at %s from file\n",
@@ -131,15 +165,19 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
     }
     else
     {
-      /* We expect file to be in chronological order! */
-      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "File `%s' does not have wire fees in chronological order\n",
+                  fn);
       GNUNET_DISK_file_close (fh);
       GNUNET_free (n);
+      GNUNET_free (fn);
       TALER_EXCHANGEDB_fees_free (af);
       return NULL;
     }
   }
-  GNUNET_DISK_file_close (fh);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_DISK_file_close (fh));
+  GNUNET_free (fn);
   return af;
 }
 
@@ -191,7 +229,16 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
 
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create_for_file (filename))
+  {
+    int eno;
+
+    eno = errno;
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "mkdir (for file)",
+                              filename);
+    errno = eno;
     return GNUNET_SYSERR;
+  }
 
   fh = GNUNET_DISK_file_open (filename,
                               GNUNET_DISK_OPEN_WRITE
@@ -200,7 +247,16 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
                               GNUNET_DISK_PERM_USER_READ
                               | GNUNET_DISK_PERM_USER_WRITE);
   if (NULL == fh)
+  {
+    int eno;
+
+    eno = errno;
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "open",
+                              filename);
+    errno = eno;
     return GNUNET_SYSERR;
+  }
 
   last = NULL;
   while (NULL != af)
@@ -213,6 +269,12 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
       GNUNET_break (0);
       GNUNET_assert (GNUNET_OK ==
                      GNUNET_DISK_file_close (fh));
+      /* try to remove the file, as it would be malformed */
+      if (0 != unlink (filename))
+        GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                  "unlink",
+                                  filename);
+      errno = EINVAL; /* invalid inputs */
       return GNUNET_SYSERR;
     }
     TALER_EXCHANGEDB_fees_2_wf (wireplugin,
@@ -226,8 +288,16 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
                                 &wd,
                                 sizeof (wd)))
     {
-      GNUNET_assert (GNUNET_OK ==
-                     GNUNET_DISK_file_close (fh));
+      int eno = errno;
+
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_DISK_file_close (fh));
+      /* try to remove the file, as it must be malformed */
+      if (0 != unlink (filename))
+        GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                  "unlink",
+                                  filename);
+      errno = eno;
       return GNUNET_SYSERR;
     }
   }
@@ -245,10 +315,10 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
 void
 TALER_EXCHANGEDB_fees_free (struct TALER_EXCHANGEDB_AggregateFees *af)
 {
-  struct TALER_EXCHANGEDB_AggregateFees *next;
-
   while (NULL != af)
   {
+    struct TALER_EXCHANGEDB_AggregateFees *next;
+
     next = af->next;
     GNUNET_free (af);
     af = next;
