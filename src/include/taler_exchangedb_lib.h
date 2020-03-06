@@ -50,11 +50,10 @@
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 typedef int
-(*TALER_EXCHANGEDB_SigningKeyIterator)(void *cls,
-                                       const char *filename,
-                                       const struct
-                                       TALER_EXCHANGEDB_PrivateSigningKeyInformationP
-                                       *ski);
+(*TALER_EXCHANGEDB_SigningKeyIterator)(
+  void *cls,
+  const char *filename,
+  const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
 
 
 /**
@@ -84,11 +83,10 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
-                                    struct GNUNET_TIME_Absolute start,
-                                    const struct
-                                    TALER_EXCHANGEDB_PrivateSigningKeyInformationP
-                                    *ski);
+TALER_EXCHANGEDB_signing_key_write (
+  const char *exchange_base_dir,
+  struct GNUNET_TIME_Absolute start,
+  const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
 
 
 /**
@@ -102,11 +100,10 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 typedef int
-(*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
-                                            const char *alias,
-                                            const struct
-                                            TALER_EXCHANGEDB_DenominationKey
-                                            *dki);
+(*TALER_EXCHANGEDB_DenominationKeyIterator)(
+  void *cls,
+  const char *alias,
+  const struct TALER_EXCHANGEDB_DenominationKey *dki);
 
 
 /**
@@ -120,11 +117,10 @@ typedef int
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 typedef int
-(*TALER_EXCHANGEDB_RevocationIterator)(void *cls,
-                                       const struct GNUNET_HashCode *denom_hash,
-                                       const struct
-                                       TALER_MasterSignatureP *
-                                       revocation_master_sig);
+(*TALER_EXCHANGEDB_RevocationIterator)(
+  void *cls,
+  const struct GNUNET_HashCode *denom_hash,
+  const struct TALER_MasterSignatureP *revocation_master_sig);
 
 
 /**
@@ -141,10 +137,10 @@ typedef int
  *         as maybe none of the files were well-formed)
  */
 int
-TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
-                                            TALER_EXCHANGEDB_DenominationKeyIterator
-                                            it,
-                                            void *it_cls);
+TALER_EXCHANGEDB_denomination_keys_iterate (
+  const char *exchange_base_dir,
+  TALER_EXCHANGEDB_DenominationKeyIterator it,
+  void *it_cls);
 
 
 /**
@@ -160,11 +156,11 @@ TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
  *         as maybe none of the files were well-formed)
  */
 int
-TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
-                                      const struct
-                                      TALER_MasterPublicKeyP *master_pub,
-                                      TALER_EXCHANGEDB_RevocationIterator it,
-                                      void *it_cls);
+TALER_EXCHANGEDB_revocations_iterate (
+  const char *revocation_dir,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  TALER_EXCHANGEDB_RevocationIterator it,
+  void *it_cls);
 
 
 /**
@@ -177,11 +173,10 @@ TALER_EXCHANGEDB_revocations_iterate (const char *revocation_dir,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
-                                          const struct
-                                          GNUNET_HashCode *denom_hash,
-                                          const struct
-                                          TALER_MasterPrivateKeyP *mpriv);
+TALER_EXCHANGEDB_denomination_key_revoke (
+  const char *revocation_dir,
+  const struct GNUNET_HashCode *denom_hash,
+  const struct TALER_MasterPrivateKeyP *mpriv);
 
 
 /**
@@ -192,10 +187,9 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *revocation_dir,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_denomination_key_write (const char *filename,
-                                         const struct
-                                         TALER_EXCHANGEDB_DenominationKey
-                                         *dki);
+TALER_EXCHANGEDB_denomination_key_write (
+  const char *filename,
+  const struct TALER_EXCHANGEDB_DenominationKey *dki);
 
 
 /**
@@ -206,10 +200,9 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
-TALER_EXCHANGEDB_denomination_key_read (const char *filename,
-                                        struct
-                                        TALER_EXCHANGEDB_DenominationKey
-                                        *dki);
+TALER_EXCHANGEDB_denomination_key_read (
+  const char *filename,
+  struct TALER_EXCHANGEDB_DenominationKey *dki);
 
 
 /**
@@ -227,14 +220,14 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 typedef int
-(*TALER_EXCHANGEDB_AuditorIterator)(void *cls,
-                                    const struct TALER_AuditorPublicKeyP *apub,
-                                    const char *auditor_url,
-                                    const struct TALER_MasterPublicKeyP *mpub,
-                                    unsigned int dki_len,
-                                    const struct TALER_AuditorSignatureP *asigs,
-                                    const struct
-                                    TALER_DenominationKeyValidityPS *dki);
+(*TALER_EXCHANGEDB_AuditorIterator)(
+  void *cls,
+  const struct TALER_AuditorPublicKeyP *apub,
+  const char *auditor_url,
+  const struct TALER_MasterPublicKeyP *mpub,
+  unsigned int dki_len,
+  const struct TALER_AuditorSignatureP *asigs,
+  const struct TALER_DenominationKeyValidityPS *dki);
 
 
 /**
@@ -268,14 +261,14 @@ TALER_EXCHANGEDB_auditor_iterate (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_auditor_write (const char *filename,
-                                const struct TALER_AuditorPublicKeyP *apub,
-                                const char *auditor_url,
-                                const struct TALER_AuditorSignatureP *asigs,
-                                const struct TALER_MasterPublicKeyP *mpub,
-                                unsigned int dki_len,
-                                const struct
-                                TALER_DenominationKeyValidityPS *dki);
+TALER_EXCHANGEDB_auditor_write (
+  const char *filename,
+  const struct TALER_AuditorPublicKeyP *apub,
+  const char *auditor_url,
+  const struct TALER_AuditorSignatureP *asigs,
+  const struct TALER_MasterPublicKeyP *mpub,
+  uint32_t dki_len,
+  const struct TALER_DenominationKeyValidityPS *dki);
 
 
 /**
@@ -433,9 +426,9 @@ struct TALER_EXCHANGEDB_AccountInfo
  * @param ai account information
  */
 typedef void
-(*TALER_EXCHANGEDB_AccountCallback)(void *cls,
-                                    const struct
-                                    TALER_EXCHANGEDB_AccountInfo *ai);
+(*TALER_EXCHANGEDB_AccountCallback)(
+  void *cls,
+  const struct TALER_EXCHANGEDB_AccountInfo *ai);
 
 /**
  * Parse the configuration to find account information.
@@ -461,12 +454,10 @@ TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 int
-TALER_EXCHANGEDB_calculate_transaction_list_totals (struct
-                                                    TALER_EXCHANGEDB_TransactionList
-                                                    *tl,
-                                                    const struct
-                                                    TALER_Amount *off,
-                                                    struct TALER_Amount *ret);
+TALER_EXCHANGEDB_calculate_transaction_list_totals (
+  struct TALER_EXCHANGEDB_TransactionList *tl,
+  const struct TALER_Amount *off,
+  struct TALER_Amount *ret);
 
 
 #endif

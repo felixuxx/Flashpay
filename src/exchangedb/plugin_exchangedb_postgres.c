@@ -1570,13 +1570,11 @@ postgres_preflight (void *cls,
  * @return status of the query
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_denomination_info (void *cls,
-                                   struct TALER_EXCHANGEDB_Session *session,
-                                   const struct
-                                   TALER_DenominationPublicKey *denom_pub,
-                                   const struct
-                                   TALER_EXCHANGEDB_DenominationKeyInformationP
-                                   *issue)
+postgres_insert_denomination_info (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
@@ -1626,12 +1624,11 @@ postgres_insert_denomination_info (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_denomination_info (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct GNUNET_HashCode *denom_pub_hash,
-                                struct
-                                TALER_EXCHANGEDB_DenominationKeyInformationP *
-                                issue)
+postgres_get_denomination_info (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *denom_pub_hash,
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -2015,11 +2012,11 @@ postgres_reserves_in_insert (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_latest_reserve_in_reference (void *cls,
-                                          struct TALER_EXCHANGEDB_Session *
-                                          session,
-                                          const char *exchange_account_name,
-                                          uint64_t *wire_reference)
+postgres_get_latest_reserve_in_reference (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const char *exchange_account_name,
+  uint64_t *wire_reference)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (exchange_account_name),
@@ -2052,11 +2049,11 @@ postgres_get_latest_reserve_in_reference (void *cls,
  * @return statement execution status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_withdraw_info (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
-                            const struct GNUNET_HashCode *h_blind,
-                            struct TALER_EXCHANGEDB_CollectableBlindcoin *
-                            collectable)
+postgres_get_withdraw_info (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_blind,
+  struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam no_params[] = {
@@ -2106,11 +2103,10 @@ postgres_get_withdraw_info (void *cls,
  * @return query execution status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_withdraw_info (void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               const struct
-                               TALER_EXCHANGEDB_CollectableBlindcoin *
-                               collectable)
+postgres_insert_withdraw_info (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
   struct TALER_EXCHANGEDB_Reserve reserve;
@@ -2949,14 +2945,14 @@ match_deposit_cb (void *cls,
  *         number of rows processed, 0 if none exist
  */
 static enum GNUNET_DB_QueryStatus
-postgres_iterate_matching_deposits (void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
-                                    const struct GNUNET_HashCode *h_wire,
-                                    const struct
-                                    TALER_MerchantPublicKeyP *merchant_pub,
-                                    TALER_EXCHANGEDB_DepositIterator deposit_cb,
-                                    void *deposit_cb_cls,
-                                    uint32_t limit)
+postgres_iterate_matching_deposits (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_wire,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  TALER_EXCHANGEDB_DepositIterator deposit_cb,
+  void *deposit_cb_cls,
+  uint32_t limit)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3040,11 +3036,11 @@ postgres_get_known_coin (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_coin_denomination (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct
-                                TALER_CoinSpendPublicKeyP *coin_pub,
-                                struct GNUNET_HashCode *denom_hash)
+postgres_get_coin_denomination (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_HashCode *denom_hash)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3347,16 +3343,14 @@ get_refunds_cb (void *cls,
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_refunds_by_coin (void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
-                                 const struct
-                                 TALER_CoinSpendPublicKeyP *coin_pub,
-                                 const struct
-                                 TALER_MerchantPublicKeyP *merchant_pub,
-                                 const struct GNUNET_HashCode *h_contract,
-                                 TALER_EXCHANGEDB_RefundCoinCallback
-                                 cb,
-                                 void *cb_cls)
+postgres_select_refunds_by_coin (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct GNUNET_HashCode *h_contract,
+  TALER_EXCHANGEDB_RefundCoinCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -3481,10 +3475,10 @@ postgres_get_melt_index (void *cls,
  * @return query status for the transaction
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_melt (void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
-                      const struct
-                      TALER_EXCHANGEDB_Refresh *refresh_session)
+postgres_insert_melt (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_EXCHANGEDB_Refresh *refresh_session)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->rc),
@@ -3518,15 +3512,15 @@ postgres_insert_melt (void *cls,
  * @return query status for the transaction
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_refresh_reveal (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct TALER_RefreshCommitmentP *rc,
-                                uint32_t num_rrcs,
-                                const struct
-                                TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-                                unsigned int num_tprivs,
-                                const struct TALER_TransferPrivateKeyP *tprivs,
-                                const struct TALER_TransferPublicKeyP *tp)
+postgres_insert_refresh_reveal (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_RefreshCommitmentP *rc,
+  uint32_t num_rrcs,
+  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
+  unsigned int num_tprivs,
+  const struct TALER_TransferPrivateKeyP *tprivs,
+  const struct TALER_TransferPublicKeyP *tp)
 {
   (void) cls;
   if (TALER_CNC_KAPPA != num_tprivs + 1)
@@ -4415,12 +4409,12 @@ struct Work
  * @return database transaction status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_coin_transactions (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct
-                                TALER_CoinSpendPublicKeyP *coin_pub,
-                                int include_recoup,
-                                struct TALER_EXCHANGEDB_TransactionList **tlp)
+postgres_get_coin_transactions (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  int include_recoup,
+  struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
   struct PostgresClosure *pg = cls;
   static const struct Work work_op[] = {
@@ -4609,12 +4603,12 @@ handle_wt_result (void *cls,
  * @return query status of the transaction
  */
 static enum GNUNET_DB_QueryStatus
-postgres_lookup_wire_transfer (void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               const struct
-                               TALER_WireTransferIdentifierRawP *wtid,
-                               TALER_EXCHANGEDB_AggregationDataCallback cb,
-                               void *cb_cls)
+postgres_lookup_wire_transfer (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  TALER_EXCHANGEDB_AggregationDataCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -4656,18 +4650,15 @@ postgres_lookup_wire_transfer (void *cls,
  * @return transaction status code
  - */
 static enum GNUNET_DB_QueryStatus
-postgres_lookup_transfer_by_deposit (void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
-                                     const struct
-                                     GNUNET_HashCode *h_contract_terms,
-                                     const struct GNUNET_HashCode *h_wire,
-                                     const struct
-                                     TALER_CoinSpendPublicKeyP *coin_pub,
-                                     const struct
-                                     TALER_MerchantPublicKeyP *merchant_pub,
-                                     TALER_EXCHANGEDB_WireTransferByCoinCallback
-                                     cb,
-                                     void *cb_cls)
+postgres_lookup_transfer_by_deposit (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct GNUNET_HashCode *h_wire,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -4761,11 +4752,11 @@ postgres_lookup_transfer_by_deposit (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_aggregation_tracking (void *cls,
-                                      struct TALER_EXCHANGEDB_Session *session,
-                                      const struct
-                                      TALER_WireTransferIdentifierRawP *wtid,
-                                      unsigned long long deposit_serial_id)
+postgres_insert_aggregation_tracking (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  unsigned long long deposit_serial_id)
 {
   uint64_t rid = deposit_serial_id;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5055,16 +5046,15 @@ postgres_get_expired_reserves (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_reserve_closed (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct
-                                TALER_ReservePublicKeyP *reserve_pub,
-                                struct GNUNET_TIME_Absolute execution_date,
-                                const char *receiver_account,
-                                const struct
-                                TALER_WireTransferIdentifierRawP *wtid,
-                                const struct TALER_Amount *amount_with_fee,
-                                const struct TALER_Amount *closing_fee)
+postgres_insert_reserve_closed (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Absolute execution_date,
+  const char *receiver_account,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *closing_fee)
 {
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5280,14 +5270,14 @@ postgres_start_deferred_wire_out (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_store_wire_transfer_out (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
-                                  struct GNUNET_TIME_Absolute date,
-                                  const struct
-                                  TALER_WireTransferIdentifierRawP *wtid,
-                                  const json_t *wire_account,
-                                  const char *exchange_account_section,
-                                  const struct TALER_Amount *amount)
+postgres_store_wire_transfer_out (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  struct GNUNET_TIME_Absolute date,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const json_t *wire_account,
+  const char *exchange_account_section,
+  const struct TALER_Amount *amount)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&date),
@@ -5521,12 +5511,12 @@ deposit_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_deposits_above_serial_id (void *cls,
-                                          struct TALER_EXCHANGEDB_Session *
-                                          session,
-                                          uint64_t serial_id,
-                                          TALER_EXCHANGEDB_DepositCallback cb,
-                                          void *cb_cls)
+postgres_select_deposits_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_DepositCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5660,13 +5650,12 @@ refreshs_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_refreshes_above_serial_id (void *cls,
-                                           struct TALER_EXCHANGEDB_Session *
-                                           session,
-                                           uint64_t serial_id,
-                                           TALER_EXCHANGEDB_RefreshesCallback
-                                           cb,
-                                           void *cb_cls)
+postgres_select_refreshes_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_RefreshesCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5799,12 +5788,12 @@ refunds_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_refunds_above_serial_id (void *cls,
-                                         struct TALER_EXCHANGEDB_Session *
-                                         session,
-                                         uint64_t serial_id,
-                                         TALER_EXCHANGEDB_RefundCallback cb,
-                                         void *cb_cls)
+postgres_select_refunds_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_RefundCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5934,13 +5923,12 @@ reserves_in_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_reserves_in_above_serial_id (void *cls,
-                                             struct TALER_EXCHANGEDB_Session *
-                                             session,
-                                             uint64_t serial_id,
-                                             TALER_EXCHANGEDB_ReserveInCallback
-                                             cb,
-                                             void *cb_cls)
+postgres_select_reserves_in_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_ReserveInCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5979,15 +5967,13 @@ postgres_select_reserves_in_above_serial_id (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_reserves_in_above_serial_id_by_account (void *cls,
-                                                        struct
-                                                        TALER_EXCHANGEDB_Session
-                                                        *session,
-                                                        const char *account_name,
-                                                        uint64_t serial_id,
-                                                        TALER_EXCHANGEDB_ReserveInCallback
-                                                        cb,
-                                                        void *cb_cls)
+postgres_select_reserves_in_above_serial_id_by_account (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const char *account_name,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_ReserveInCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6122,13 +6108,12 @@ reserves_out_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_withdrawals_above_serial_id (void *cls,
-                                             struct TALER_EXCHANGEDB_Session *
-                                             session,
-                                             uint64_t serial_id,
-                                             TALER_EXCHANGEDB_WithdrawCallback
-                                             cb,
-                                             void *cb_cls)
+postgres_select_withdrawals_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_WithdrawCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6254,13 +6239,12 @@ wire_out_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_wire_out_above_serial_id (void *cls,
-                                          struct TALER_EXCHANGEDB_Session *
-                                          session,
-                                          uint64_t serial_id,
-                                          TALER_EXCHANGEDB_WireTransferOutCallback
-                                          cb,
-                                          void *cb_cls)
+postgres_select_wire_out_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_WireTransferOutCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6299,15 +6283,13 @@ postgres_select_wire_out_above_serial_id (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_wire_out_above_serial_id_by_account (void *cls,
-                                                     struct
-                                                     TALER_EXCHANGEDB_Session *
-                                                     session,
-                                                     const char *account_name,
-                                                     uint64_t serial_id,
-                                                     TALER_EXCHANGEDB_WireTransferOutCallback
-                                                     cb,
-                                                     void *cb_cls)
+postgres_select_wire_out_above_serial_id_by_account (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const char *account_name,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_WireTransferOutCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6453,12 +6435,12 @@ recoup_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_recoup_above_serial_id (void *cls,
-                                        struct TALER_EXCHANGEDB_Session *
-                                        session,
-                                        uint64_t serial_id,
-                                        TALER_EXCHANGEDB_RecoupCallback cb,
-                                        void *cb_cls)
+postgres_select_recoup_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_RecoupCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6603,13 +6585,12 @@ recoup_refresh_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_recoup_refresh_above_serial_id (void *cls,
-                                                struct TALER_EXCHANGEDB_Session
-                                                *session,
-                                                uint64_t serial_id,
-                                                TALER_EXCHANGEDB_RecoupRefreshCallback
-                                                cb,
-                                                void *cb_cls)
+postgres_select_recoup_refresh_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_RecoupRefreshCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6743,13 +6724,12 @@ reserve_closed_serial_helper_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_reserve_closed_above_serial_id (void *cls,
-                                                struct TALER_EXCHANGEDB_Session
-                                                *session,
-                                                uint64_t serial_id,
-                                                TALER_EXCHANGEDB_ReserveClosedCallback
-                                                cb,
-                                                void *cb_cls)
+postgres_select_reserve_closed_above_serial_id (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_ReserveClosedCallback cb,
+  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -6793,18 +6773,16 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
  * @return transaction result status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_recoup_request (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct
-                                TALER_ReservePublicKeyP *reserve_pub,
-                                const struct TALER_CoinPublicInfo *coin,
-                                const struct
-                                TALER_CoinSpendSignatureP *coin_sig,
-                                const struct
-                                TALER_DenominationBlindingKeyP *coin_blind,
-                                const struct TALER_Amount *amount,
-                                const struct GNUNET_HashCode *h_blind_ev,
-                                struct GNUNET_TIME_Absolute timestamp)
+postgres_insert_recoup_request (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_DenominationBlindingKeyP *coin_blind,
+  const struct TALER_Amount *amount,
+  const struct GNUNET_HashCode *h_blind_ev,
+  struct GNUNET_TIME_Absolute timestamp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute expiry;
@@ -6888,20 +6866,15 @@ postgres_insert_recoup_request (void *cls,
  * @return transaction result status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_recoup_refresh_request (void *cls,
-                                        struct TALER_EXCHANGEDB_Session *
-                                        session,
-                                        const struct
-                                        TALER_CoinPublicInfo *coin,
-                                        const struct
-                                        TALER_CoinSpendSignatureP *coin_sig,
-                                        const struct
-                                        TALER_DenominationBlindingKeyP *
-                                        coin_blind,
-                                        const struct TALER_Amount *amount,
-                                        const struct
-                                        GNUNET_HashCode *h_blind_ev,
-                                        struct GNUNET_TIME_Absolute timestamp)
+postgres_insert_recoup_refresh_request (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_DenominationBlindingKeyP *coin_blind,
+  const struct TALER_Amount *amount,
+  const struct GNUNET_HashCode *h_blind_ev,
+  struct GNUNET_TIME_Absolute timestamp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
@@ -7007,13 +6980,11 @@ postgres_get_old_coin_by_h_blind (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_denomination_revocation (void *cls,
-                                         struct TALER_EXCHANGEDB_Session *
-                                         session,
-                                         const struct
-                                         GNUNET_HashCode *denom_pub_hash,
-                                         const struct
-                                         TALER_MasterSignatureP *master_sig)
+postgres_insert_denomination_revocation (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_MasterSignatureP *master_sig)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -7040,12 +7011,12 @@ postgres_insert_denomination_revocation (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_denomination_revocation (void *cls,
-                                      struct TALER_EXCHANGEDB_Session *session,
-                                      const struct
-                                      GNUNET_HashCode *denom_pub_hash,
-                                      struct TALER_MasterSignatureP *master_sig,
-                                      uint64_t *rowid)
+postgres_get_denomination_revocation (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *denom_pub_hash,
+  struct TALER_MasterSignatureP *master_sig,
+  uint64_t *rowid)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),

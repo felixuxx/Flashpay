@@ -121,11 +121,10 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * @param[out] ts computed transfer secret
  */
 void
-TALER_link_derive_transfer_secret (const struct
-                                   TALER_CoinSpendPrivateKeyP *coin_priv,
-                                   const struct
-                                   TALER_TransferPrivateKeyP *trans_priv,
-                                   struct TALER_TransferSecretP *ts)
+TALER_link_derive_transfer_secret (
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_TransferPrivateKeyP *trans_priv,
+  struct TALER_TransferSecretP *ts)
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -148,11 +147,10 @@ TALER_link_derive_transfer_secret (const struct
  * @param[out] transfer_secret set to the shared secret
  */
 void
-TALER_link_reveal_transfer_secret (const struct
-                                   TALER_TransferPrivateKeyP *trans_priv,
-                                   const struct
-                                   TALER_CoinSpendPublicKeyP *coin_pub,
-                                   struct TALER_TransferSecretP *transfer_secret)
+TALER_link_reveal_transfer_secret (
+  const struct TALER_TransferPrivateKeyP *trans_priv,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct TALER_TransferSecretP *transfer_secret)
 {
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_ecdh_eddsa (&trans_priv->ecdhe_priv,
@@ -170,12 +168,10 @@ TALER_link_reveal_transfer_secret (const struct
  * @param[out] transfer_secret set to the shared secret
  */
 void
-TALER_link_recover_transfer_secret (const struct
-                                    TALER_TransferPublicKeyP *trans_pub,
-                                    const struct
-                                    TALER_CoinSpendPrivateKeyP *coin_priv,
-                                    struct TALER_TransferSecretP *
-                                    transfer_secret)
+TALER_link_recover_transfer_secret (
+  const struct TALER_TransferPublicKeyP *trans_pub,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_TransferSecretP *transfer_secret)
 {
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_ecdh (&coin_priv->eddsa_priv,

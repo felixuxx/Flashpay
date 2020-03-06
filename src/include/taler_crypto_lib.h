@@ -633,11 +633,10 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
  * @param[out] ts computed transfer secret
  */
 void
-TALER_link_derive_transfer_secret (const struct
-                                   TALER_CoinSpendPrivateKeyP *coin_priv,
-                                   const struct
-                                   TALER_TransferPrivateKeyP *trans_priv,
-                                   struct TALER_TransferSecretP *ts);
+TALER_link_derive_transfer_secret (
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_TransferPrivateKeyP *trans_priv,
+  struct TALER_TransferSecretP *ts);
 
 
 /**
@@ -649,11 +648,10 @@ TALER_link_derive_transfer_secret (const struct
  * @param[out] transfer_secret set to the shared secret
  */
 void
-TALER_link_reveal_transfer_secret (const struct
-                                   TALER_TransferPrivateKeyP *trans_priv,
-                                   const struct
-                                   TALER_CoinSpendPublicKeyP *coin_pub,
-                                   struct TALER_TransferSecretP *transfer_secret);
+TALER_link_reveal_transfer_secret (
+  const struct TALER_TransferPrivateKeyP *trans_priv,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct TALER_TransferSecretP *transfer_secret);
 
 
 /**
@@ -665,12 +663,10 @@ TALER_link_reveal_transfer_secret (const struct
  * @param[out] transfer_secret set to the shared secret
  */
 void
-TALER_link_recover_transfer_secret (const struct
-                                    TALER_TransferPublicKeyP *trans_pub,
-                                    const struct
-                                    TALER_CoinSpendPrivateKeyP *coin_priv,
-                                    struct TALER_TransferSecretP *
-                                    transfer_secret);
+TALER_link_recover_transfer_secret (
+  const struct TALER_TransferPublicKeyP *trans_pub,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_TransferSecretP *transfer_secret);
 
 
 /**
@@ -758,11 +754,10 @@ TALER_exchange_wire_signature_hash (const char *payto_uri,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_exchange_wire_signature_check (const char *payto_uri,
-                                     const struct
-                                     TALER_MasterPublicKeyP *master_pub,
-                                     const struct
-                                     TALER_MasterSignatureP *master_sig);
+TALER_exchange_wire_signature_check (
+  const char *payto_uri,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
 
 
 /**
@@ -773,10 +768,10 @@ TALER_exchange_wire_signature_check (const char *payto_uri,
  * @param[out] master_sig where to write the signature
  */
 void
-TALER_exchange_wire_signature_make (const char *payto_uri,
-                                    const struct
-                                    TALER_MasterPrivateKeyP *master_priv,
-                                    struct TALER_MasterSignatureP *master_sig);
+TALER_exchange_wire_signature_make (
+  const char *payto_uri,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
 
 
 /**
@@ -804,12 +799,11 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_merchant_wire_signature_check (const char *payto_uri,
-                                     const char *salt,
-                                     const struct
-                                     TALER_MerchantPublicKeyP *merch_pub,
-                                     const struct
-                                     TALER_MerchantSignatureP *merch_sig);
+TALER_merchant_wire_signature_check (
+  const char *payto_uri,
+  const char *salt,
+  const struct TALER_MerchantPublicKeyP *merch_pub,
+  const struct TALER_MerchantSignatureP *merch_sig);
 
 
 /**
@@ -821,11 +815,11 @@ TALER_merchant_wire_signature_check (const char *payto_uri,
  * @param[out] merch_sig where to write the signature
  */
 void
-TALER_merchant_wire_signature_make (const char *payto_uri,
-                                    const char *salt,
-                                    const struct
-                                    TALER_MerchantPrivateKeyP *merch_priv,
-                                    struct TALER_MerchantSignatureP *merch_sig);
+TALER_merchant_wire_signature_make (
+  const char *payto_uri,
+  const char *salt,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct TALER_MerchantSignatureP *merch_sig);
 
 
 #endif

@@ -348,15 +348,15 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
  *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
  */
 int
-TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
-                              const char *debit_account,
-                              const char *credit_account,
-                              const struct TALER_Amount *amount,
-                              const struct
-                              TALER_WireTransferIdentifierRawP *subject,
-                              const char *exchange_base_url,
-                              const struct GNUNET_HashCode *request_uid,
-                              uint64_t *ret_row_id)
+TALER_FAKEBANK_make_transfer (
+  struct TALER_FAKEBANK_Handle *h,
+  const char *debit_account,
+  const char *credit_account,
+  const struct TALER_Amount *amount,
+  const struct TALER_WireTransferIdentifierRawP *subject,
+  const char *exchange_base_url,
+  const struct GNUNET_HashCode *request_uid,
+  uint64_t *ret_row_id)
 {
   struct Transaction *t;
 
@@ -433,12 +433,12 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
  * @return serial_id of the transfer
  */
 uint64_t
-TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
-                                    const char *debit_account,
-                                    const char *credit_account,
-                                    const struct TALER_Amount *amount,
-                                    const struct
-                                    TALER_ReservePublicKeyP *reserve_pub)
+TALER_FAKEBANK_make_admin_transfer (
+  struct TALER_FAKEBANK_Handle *h,
+  const char *debit_account,
+  const char *credit_account,
+  const struct TALER_Amount *amount,
+  const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct Transaction *t;
 

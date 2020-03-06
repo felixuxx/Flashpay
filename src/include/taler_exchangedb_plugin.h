@@ -987,18 +987,16 @@ struct TALER_EXCHANGEDB_Session;
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 typedef enum GNUNET_DB_QueryStatus
-(*TALER_EXCHANGEDB_DepositIterator)(void *cls,
-                                    uint64_t rowid,
-                                    const struct
-                                    TALER_MerchantPublicKeyP *merchant_pub,
-                                    const struct
-                                    TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct TALER_Amount *amount_with_fee,
-                                    const struct TALER_Amount *deposit_fee,
-                                    const struct
-                                    GNUNET_HashCode *h_contract_terms,
-                                    struct GNUNET_TIME_Absolute wire_deadline,
-                                    const json_t *receiver_wire_account);
+(*TALER_EXCHANGEDB_DepositIterator)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *deposit_fee,
+  const struct GNUNET_HashCode *h_contract_terms,
+  struct GNUNET_TIME_Absolute wire_deadline,
+  const json_t *receiver_wire_account);
 
 
 /**
@@ -1041,24 +1039,20 @@ typedef void
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_DepositCallback)(void *cls,
-                                    uint64_t rowid,
-                                    struct GNUNET_TIME_Absolute timestamp,
-                                    const struct
-                                    TALER_MerchantPublicKeyP *merchant_pub,
-                                    const struct
-                                    TALER_DenominationPublicKey *denom_pub,
-                                    const struct
-                                    TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct
-                                    TALER_CoinSpendSignatureP *coin_sig,
-                                    const struct TALER_Amount *amount_with_fee,
-                                    const struct
-                                    GNUNET_HashCode *h_contract_terms,
-                                    struct GNUNET_TIME_Absolute refund_deadline,
-                                    struct GNUNET_TIME_Absolute wire_deadline,
-                                    const json_t *receiver_wire_account,
-                                    int done);
+(*TALER_EXCHANGEDB_DepositCallback)(
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_Amount *amount_with_fee,
+  const struct GNUNET_HashCode *h_contract_terms,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Absolute wire_deadline,
+  const json_t *receiver_wire_account,
+  int done);
 
 
 /**
@@ -1076,20 +1070,15 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_RefreshesCallback)(void *cls,
-                                      uint64_t rowid,
-                                      const struct
-                                      TALER_DenominationPublicKey *
-                                      denom_pub,
-                                      const struct
-                                      TALER_CoinSpendPublicKeyP *coin_pub,
-                                      const struct
-                                      TALER_CoinSpendSignatureP *coin_sig,
-                                      const struct
-                                      TALER_Amount *amount_with_fee,
-                                      uint32_t noreveal_index,
-                                      const struct
-                                      TALER_RefreshCommitmentP *rc);
+(*TALER_EXCHANGEDB_RefreshesCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_Amount *amount_with_fee,
+  uint32_t noreveal_index,
+  const struct TALER_RefreshCommitmentP *rc);
 
 
 /**
@@ -1101,9 +1090,9 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_RefundCoinCallback)(void *cls,
-                                       const struct
-                                       TALER_Amount *amount_with_fee);
+(*TALER_EXCHANGEDB_RefundCoinCallback)(
+  void *cls,
+  const struct TALER_Amount *amount_with_fee);
 
 
 /**
@@ -1152,14 +1141,13 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
  * @param tp transfer public key information
  */
 typedef void
-(*TALER_EXCHANGEDB_RefreshCallback)(void *cls,
-                                    uint32_t num_freshcoins,
-                                    const struct
-                                    TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-                                    unsigned int num_tprivs,
-                                    const struct
-                                    TALER_TransferPrivateKeyP *tprivs,
-                                    const struct TALER_TransferPublicKeyP *tp);
+(*TALER_EXCHANGEDB_RefreshCallback)(
+  void *cls,
+  uint32_t num_freshcoins,
+  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
+  unsigned int num_tprivs,
+  const struct TALER_TransferPrivateKeyP *tprivs,
+  const struct TALER_TransferPublicKeyP *tp);
 
 
 /**
@@ -1178,20 +1166,16 @@ typedef void
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_RefundCallback)(void *cls,
-                                   uint64_t rowid,
-                                   const struct
-                                   TALER_DenominationPublicKey *denom_pub,
-                                   const struct
-                                   TALER_CoinSpendPublicKeyP *coin_pub,
-                                   const struct
-                                   TALER_MerchantPublicKeyP *merchant_pub,
-                                   const struct
-                                   TALER_MerchantSignatureP *merchant_sig,
-                                   const struct
-                                   GNUNET_HashCode *h_contract_terms,
-                                   uint64_t rtransaction_id,
-                                   const struct TALER_Amount *amount_with_fee);
+(*TALER_EXCHANGEDB_RefundCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_MerchantSignatureP *merchant_sig,
+  const struct GNUNET_HashCode *h_contract_terms,
+  uint64_t rtransaction_id,
+  const struct TALER_Amount *amount_with_fee);
 
 
 /**
@@ -1207,15 +1191,14 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_ReserveInCallback)(void *cls,
-                                      uint64_t rowid,
-                                      const struct
-                                      TALER_ReservePublicKeyP *reserve_pub,
-                                      const struct TALER_Amount *credit,
-                                      const char *sender_account_details,
-                                      uint64_t wire_reference,
-                                      struct GNUNET_TIME_Absolute
-                                      execution_date);
+(*TALER_EXCHANGEDB_ReserveInCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *credit,
+  const char *sender_account_details,
+  uint64_t wire_reference,
+  struct GNUNET_TIME_Absolute execution_date);
 
 
 /**
@@ -1232,18 +1215,15 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_WithdrawCallback)(void *cls,
-                                     uint64_t rowid,
-                                     const struct GNUNET_HashCode *h_blind_ev,
-                                     const struct
-                                     TALER_DenominationPublicKey *denom_pub,
-                                     const struct
-                                     TALER_ReservePublicKeyP *reserve_pub,
-                                     const struct
-                                     TALER_ReserveSignatureP *reserve_sig,
-                                     struct GNUNET_TIME_Absolute execution_date,
-                                     const struct
-                                     TALER_Amount *amount_with_fee);
+(*TALER_EXCHANGEDB_WithdrawCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct GNUNET_HashCode *h_blind_ev,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig,
+  struct GNUNET_TIME_Absolute execution_date,
+  const struct TALER_Amount *amount_with_fee);
 
 
 /**
@@ -1255,10 +1235,10 @@ typedef int
  * @param ldl link data for @a transfer_pub
  */
 typedef void
-(*TALER_EXCHANGEDB_LinkCallback)(void *cls,
-                                 const struct
-                                 TALER_TransferPublicKeyP *transfer_pub,
-                                 const struct TALER_EXCHANGEDB_LinkList *ldl);
+(*TALER_EXCHANGEDB_LinkCallback)(
+  void *cls,
+  const struct TALER_TransferPublicKeyP *transfer_pub,
+  const struct TALER_EXCHANGEDB_LinkList *ldl);
 
 
 /**
@@ -1276,17 +1256,12 @@ typedef void
  *         when we expect it to be done (if @a wtid was NULL)
  */
 typedef void
-(*TALER_EXCHANGEDB_WireTransferByCoinCallback)(void *cls,
-                                               const struct
-                                               TALER_WireTransferIdentifierRawP
-                                               *
-                                               wtid,
-                                               const struct
-                                               TALER_Amount *coin_contribution,
-                                               const struct
-                                               TALER_Amount *coin_fee,
-                                               struct GNUNET_TIME_Absolute
-                                               execution_time);
+(*TALER_EXCHANGEDB_WireTransferByCoinCallback)(
+  void *cls,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_Amount *coin_fee,
+  struct GNUNET_TIME_Absolute execution_time);
 
 
 /**
@@ -1306,27 +1281,18 @@ typedef void
  * @param coin_fee applicable fee for this coin
  */
 typedef void
-(*TALER_EXCHANGEDB_AggregationDataCallback)(void *cls,
-                                            uint64_t rowid,
-                                            const struct
-                                            TALER_MerchantPublicKeyP *
-                                            merchant_pub,
-                                            const struct
-                                            GNUNET_HashCode *h_wire,
-                                            const json_t *account_details,
-                                            struct GNUNET_TIME_Absolute
-                                            exec_time,
-                                            const struct
-                                            GNUNET_HashCode *h_contract_terms,
-                                            const struct
-                                            TALER_DenominationPublicKey *
-                                            denom_pub,
-                                            const struct
-                                            TALER_CoinSpendPublicKeyP *coin_pub,
-                                            const struct
-                                            TALER_Amount *coin_value,
-                                            const struct
-                                            TALER_Amount *coin_fee);
+(*TALER_EXCHANGEDB_AggregationDataCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct GNUNET_HashCode *h_wire,
+  const json_t *account_details,
+  struct GNUNET_TIME_Absolute exec_time,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *coin_fee);
 
 
 /**
@@ -1342,14 +1308,13 @@ typedef void
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
 typedef int
-(*TALER_EXCHANGEDB_WireTransferOutCallback)(void *cls,
-                                            uint64_t rowid,
-                                            struct GNUNET_TIME_Absolute date,
-                                            const struct
-                                            TALER_WireTransferIdentifierRawP *
-                                            wtid,
-                                            const json_t *wire,
-                                            const struct TALER_Amount *amount);
+(*TALER_EXCHANGEDB_WireTransferOutCallback)(
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute date,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const json_t *wire,
+  const struct TALER_Amount *amount);
 
 
 /**
@@ -1386,19 +1351,16 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_RecoupCallback)(void *cls,
-                                   uint64_t rowid,
-                                   struct GNUNET_TIME_Absolute timestamp,
-                                   const struct TALER_Amount *amount,
-                                   const struct
-                                   TALER_ReservePublicKeyP *reserve_pub,
-                                   const struct TALER_CoinPublicInfo *coin,
-                                   const struct
-                                   TALER_DenominationPublicKey *denom_pub,
-                                   const struct
-                                   TALER_CoinSpendSignatureP *coin_sig,
-                                   const struct
-                                   TALER_DenominationBlindingKeyP *coin_blind);
+(*TALER_EXCHANGEDB_RecoupCallback)(
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute timestamp,
+  const struct TALER_Amount *amount,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_DenominationBlindingKeyP *coin_blind);
 
 
 /**
@@ -1416,24 +1378,16 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_RecoupRefreshCallback)(void *cls,
-                                          uint64_t rowid,
-                                          struct GNUNET_TIME_Absolute
-                                          timestamp,
-                                          const struct TALER_Amount *amount,
-                                          const struct
-                                          TALER_CoinSpendPublicKeyP *
-                                          old_coin_pub,
-                                          const struct
-                                          TALER_CoinPublicInfo *coin,
-                                          const struct
-                                          TALER_DenominationPublicKey *
-                                          denom_pub,
-                                          const struct
-                                          TALER_CoinSpendSignatureP *coin_sig,
-                                          const struct
-                                          TALER_DenominationBlindingKeyP *
-                                          coin_blind);
+(*TALER_EXCHANGEDB_RecoupRefreshCallback)(
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute timestamp,
+  const struct TALER_Amount *amount,
+  const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_DenominationBlindingKeyP *coin_blind);
 
 
 /**
@@ -1451,19 +1405,15 @@ typedef int
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
-(*TALER_EXCHANGEDB_ReserveClosedCallback)(void *cls,
-                                          uint64_t rowid,
-                                          struct GNUNET_TIME_Absolute
-                                          execution_date,
-                                          const struct
-                                          TALER_Amount *amount_with_fee,
-                                          const struct
-                                          TALER_Amount *closing_fee,
-                                          const struct
-                                          TALER_ReservePublicKeyP *reserve_pub,
-                                          const char *receiver_account,
-                                          const struct
-                                          TALER_WireTransferIdentifierRawP *wtid);
+(*TALER_EXCHANGEDB_ReserveClosedCallback)(
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute execution_date,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *closing_fee,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const char *receiver_account,
+  const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
@@ -1477,13 +1427,12 @@ typedef int
  * @return transaction status code to pass on
  */
 typedef enum GNUNET_DB_QueryStatus
-(*TALER_EXCHANGEDB_ReserveExpiredCallback)(void *cls,
-                                           const struct
-                                           TALER_ReservePublicKeyP *reserve_pub,
-                                           const struct TALER_Amount *left,
-                                           const char *account_details,
-                                           struct GNUNET_TIME_Absolute
-                                           expiration_date);
+(*TALER_EXCHANGEDB_ReserveExpiredCallback)(
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *left,
+  const char *account_details,
+  struct GNUNET_TIME_Absolute expiration_date);
 
 
 /**
@@ -1499,20 +1448,14 @@ typedef enum GNUNET_DB_QueryStatus
  * @param amount total amount to be paid back
  */
 typedef void
-(*TALER_EXCHANGEDB_RecoupJustificationCallback)(void *cls,
-                                                uint64_t rowid,
-                                                const struct
-                                                TALER_CoinPublicInfo *coin,
-                                                const struct
-                                                TALER_CoinSpendSignatureP *
-                                                coin_sig,
-                                                const struct
-                                                TALER_DenominationBlindingKeyP
-                                                *coin_blind,
-                                                const struct
-                                                GNUNET_HashCode *h_blinded_ev,
-                                                const struct
-                                                TALER_Amount *amount);
+(*TALER_EXCHANGEDB_RecoupJustificationCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_DenominationBlindingKeyP *coin_blind,
+  const struct GNUNET_HashCode *h_blinded_ev,
+  const struct TALER_Amount *amount);
 
 
 /**
@@ -1529,15 +1472,15 @@ typedef void
  * @param done did the exchange claim that it made a transfer?
  */
 typedef void
-(*TALER_EXCHANGEDB_WireMissingCallback)(void *cls,
-                                        uint64_t rowid,
-                                        const struct
-                                        TALER_CoinSpendPublicKeyP *coin_pub,
-                                        const struct TALER_Amount *amount,
-                                        const json_t *wire,
-                                        struct GNUNET_TIME_Absolute deadline,
-                                        /* bool? */ int tiny,
-                                        /* bool? */ int done);
+(*TALER_EXCHANGEDB_WireMissingCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *amount,
+  const json_t *wire,
+  struct GNUNET_TIME_Absolute deadline,
+  /* bool? */ int tiny,
+  /* bool? */ int done);
 
 
 /**
@@ -1548,12 +1491,11 @@ typedef void
  * @param issue detailed information about the denomination (value, expiration times, fees)
  */
 typedef void
-(*TALER_EXCHANGEDB_DenominationCallback)(void *cls,
-                                         const struct
-                                         TALER_DenominationPublicKey *denom_pub,
-                                         const struct
-                                         TALER_EXCHANGEDB_DenominationKeyInformationP
-                                         *issue);
+(*TALER_EXCHANGEDB_DenominationCallback)(
+  void *cls,
+  const struct
+  TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
 
 /**
@@ -1668,13 +1610,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return status of the query
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_denomination_info)(void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
-                              const struct
-                              TALER_DenominationPublicKey *denom_pub,
-                              const struct
-                              TALER_EXCHANGEDB_DenominationKeyInformationP *
-                              issue);
+  (*insert_denomination_info)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_DenominationPublicKey *denom_pub,
+    const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
 
   /**
@@ -1687,11 +1627,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_denomination_info)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
-                           const struct GNUNET_HashCode *denom_pub_hash,
-                           struct TALER_EXCHANGEDB_DenominationKeyInformationP *
-                           issue);
+  (*get_denomination_info)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *denom_pub_hash,
+    struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
 
   /**
@@ -2058,14 +1998,14 @@ struct TALER_EXCHANGEDB_Plugin
    *         transaction status code on error
    */
   enum GNUNET_DB_QueryStatus
-  (*iterate_matching_deposits)(void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               const struct GNUNET_HashCode *h_wire,
-                               const struct
-                               TALER_MerchantPublicKeyP *merchant_pub,
-                               TALER_EXCHANGEDB_DepositIterator deposit_cb,
-                               void *deposit_cb_cls,
-                               uint32_t limit);
+  (*iterate_matching_deposits)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_wire,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
+    TALER_EXCHANGEDB_DepositIterator deposit_cb,
+    void *deposit_cb_cls,
+    uint32_t limit);
 
 
   /**
@@ -2135,15 +2075,15 @@ struct TALER_EXCHANGEDB_Plugin
    * @return query status for the transaction
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_refresh_reveal)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
-                           const struct TALER_RefreshCommitmentP *rc,
-                           uint32_t num_rrcs,
-                           const struct
-                           TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-                           unsigned int num_tprivs,
-                           const struct TALER_TransferPrivateKeyP *tprivs,
-                           const struct TALER_TransferPublicKeyP *tp);
+  (*insert_refresh_reveal)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_RefreshCommitmentP *rc,
+    uint32_t num_rrcs,
+    const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
+    unsigned int num_tprivs,
+    const struct TALER_TransferPrivateKeyP *tprivs,
+    const struct TALER_TransferPublicKeyP *tp);
 
 
   /**
@@ -2251,16 +2191,15 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*lookup_transfer_by_deposit)(void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct GNUNET_HashCode *h_contract_terms,
-                                const struct GNUNET_HashCode *h_wire,
-                                const struct
-                                TALER_CoinSpendPublicKeyP *coin_pub,
-                                const struct
-                                TALER_MerchantPublicKeyP *merchant_pub,
-                                TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
-                                void *cb_cls);
+  (*lookup_transfer_by_deposit)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_contract_terms,
+    const struct GNUNET_HashCode *h_wire,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
+    TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -2273,11 +2212,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_aggregation_tracking)(void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
-                                 const struct
-                                 TALER_WireTransferIdentifierRawP *wtid,
-                                 unsigned long long deposit_serial_id);
+  (*insert_aggregation_tracking)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_WireTransferIdentifierRawP *wtid,
+    unsigned long long deposit_serial_id);
 
 
   /**
@@ -2451,14 +2390,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*store_wire_transfer_out)(void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
-                             struct GNUNET_TIME_Absolute date,
-                             const struct
-                             TALER_WireTransferIdentifierRawP *wtid,
-                             const json_t *wire_account,
-                             const char *exchange_account_section,
-                             const struct TALER_Amount *amount);
+  (*store_wire_transfer_out)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    struct GNUNET_TIME_Absolute date,
+    const struct TALER_WireTransferIdentifierRawP *wtid,
+    const json_t *wire_account,
+    const char *exchange_account_section,
+    const struct TALER_Amount *amount);
 
 
   /**
@@ -2561,15 +2500,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_reserves_in_above_serial_id_by_account)(void *cls,
-                                                   struct
-                                                   TALER_EXCHANGEDB_Session *
-                                                   session,
-                                                   const char *account_name,
-                                                   uint64_t serial_id,
-                                                   TALER_EXCHANGEDB_ReserveInCallback
-                                                   cb,
-                                                   void *cb_cls);
+  (*select_reserves_in_above_serial_id_by_account)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const char *account_name,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_ReserveInCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -2585,12 +2522,12 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_withdrawals_above_serial_id)(void *cls,
-                                        struct TALER_EXCHANGEDB_Session *
-                                        session,
-                                        uint64_t serial_id,
-                                        TALER_EXCHANGEDB_WithdrawCallback cb,
-                                        void *cb_cls);
+  (*select_withdrawals_above_serial_id)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_WithdrawCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -2624,14 +2561,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_wire_out_above_serial_id_by_account)(void *cls,
-                                                struct TALER_EXCHANGEDB_Session
-                                                *session,
-                                                const char *account_name,
-                                                uint64_t serial_id,
-                                                TALER_EXCHANGEDB_WireTransferOutCallback
-                                                cb,
-                                                void *cb_cls);
+  (*select_wire_out_above_serial_id_by_account)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const char *account_name,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_WireTransferOutCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -2665,13 +2601,12 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_recoup_refresh_above_serial_id)(void *cls,
-                                           struct TALER_EXCHANGEDB_Session *
-                                           session,
-                                           uint64_t serial_id,
-                                           TALER_EXCHANGEDB_RecoupRefreshCallback
-                                           cb,
-                                           void *cb_cls);
+  (*select_recoup_refresh_above_serial_id)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_RecoupRefreshCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -2686,13 +2621,12 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_reserve_closed_above_serial_id)(void *cls,
-                                           struct TALER_EXCHANGEDB_Session *
-                                           session,
-                                           uint64_t serial_id,
-                                           TALER_EXCHANGEDB_ReserveClosedCallback
-                                           cb,
-                                           void *cb_cls);
+  (*select_reserve_closed_above_serial_id)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_ReserveClosedCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -2712,16 +2646,16 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction result status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_recoup_request)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
-                           const struct TALER_ReservePublicKeyP *reserve_pub,
-                           const struct TALER_CoinPublicInfo *coin,
-                           const struct TALER_CoinSpendSignatureP *coin_sig,
-                           const struct
-                           TALER_DenominationBlindingKeyP *coin_blind,
-                           const struct TALER_Amount *amount,
-                           const struct GNUNET_HashCode *h_blind_ev,
-                           struct GNUNET_TIME_Absolute timestamp);
+  (*insert_recoup_request)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_CoinPublicInfo *coin,
+    const struct TALER_CoinSpendSignatureP *coin_sig,
+    const struct TALER_DenominationBlindingKeyP *coin_blind,
+    const struct TALER_Amount *amount,
+    const struct GNUNET_HashCode *h_blind_ev,
+    struct GNUNET_TIME_Absolute timestamp);
 
 
   /**
@@ -2740,16 +2674,15 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction result status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_recoup_refresh_request)(void *cls,
-                                   struct TALER_EXCHANGEDB_Session *session,
-                                   const struct TALER_CoinPublicInfo *coin,
-                                   const struct
-                                   TALER_CoinSpendSignatureP *coin_sig,
-                                   const struct
-                                   TALER_DenominationBlindingKeyP *coin_blind,
-                                   const struct TALER_Amount *amount,
-                                   const struct GNUNET_HashCode *h_blind_ev,
-                                   struct GNUNET_TIME_Absolute timestamp);
+  (*insert_recoup_refresh_request)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_CoinPublicInfo *coin,
+    const struct TALER_CoinSpendSignatureP *coin_sig,
+    const struct TALER_DenominationBlindingKeyP *coin_blind,
+    const struct TALER_Amount *amount,
+    const struct GNUNET_HashCode *h_blind_ev,
+    struct GNUNET_TIME_Absolute timestamp);
 
 
   /**
@@ -2797,12 +2730,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_denomination_revocation)(void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
-                                    const struct
-                                    GNUNET_HashCode *denom_pub_hash,
-                                    const struct
-                                    TALER_MasterSignatureP *master_sig);
+  (*insert_denomination_revocation)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *denom_pub_hash,
+    const struct TALER_MasterSignatureP *master_sig);
 
 
   /**

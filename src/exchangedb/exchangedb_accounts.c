@@ -45,12 +45,12 @@ struct FindAccountContext
 
 
 /**
- * Check if @a section begins with "exchange-wire-", and if
- * so if the "ENABLE" option is set to "YES".  If both are
- * true, call the callback from the context with the
- * rest of the section name.
+ * Check if @a section begins with "exchange-account-", and if so if the
+ * "PAYTO_URI" is given. If not, a warning is printed, otherwise we also check
+ * if "ENABLE_CREDIT" or "ENABLE_DEBIT" options are set to "YES" and then call
+ * the callback in @a cls with all of the information gathered.
  *
- * @param cls our `struct FindEnabledWireContext`
+ * @param cls our `struct FindAccountContext`
  * @param section name of a section in the configuration
  */
 static void

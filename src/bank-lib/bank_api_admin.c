@@ -172,14 +172,14 @@ handle_admin_add_incoming_finished (void *cls,
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_AdminAddIncomingHandle *
-TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const struct TALER_BANK_AuthenticationData *auth,
-                               const struct
-                               TALER_ReservePublicKeyP *reserve_pub,
-                               const struct TALER_Amount *amount,
-                               const char *debit_account,
-                               TALER_BANK_AdminAddIncomingCallback res_cb,
-                               void *res_cb_cls)
+TALER_BANK_admin_add_incoming (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *amount,
+  const char *debit_account,
+  TALER_BANK_AdminAddIncomingCallback res_cb,
+  void *res_cb_cls)
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai;
   json_t *admin_obj;
@@ -257,8 +257,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
  * @param aai the admin add incoming request handle
  */
 void
-TALER_BANK_admin_add_incoming_cancel (struct
-                                      TALER_BANK_AdminAddIncomingHandle *aai)
+TALER_BANK_admin_add_incoming_cancel (
+  struct TALER_BANK_AdminAddIncomingHandle *aai)
 {
   if (NULL != aai->job)
   {

@@ -54,11 +54,10 @@ TALER_exchange_wire_signature_hash (const char *payto_uri,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_exchange_wire_signature_check (const char *payto_uri,
-                                     const struct
-                                     TALER_MasterPublicKeyP *master_pub,
-                                     const struct
-                                     TALER_MasterSignatureP *master_sig)
+TALER_exchange_wire_signature_check (
+  const char *payto_uri,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
 
@@ -81,10 +80,10 @@ TALER_exchange_wire_signature_check (const char *payto_uri,
  * @param[out] master_sig where to write the signature
  */
 void
-TALER_exchange_wire_signature_make (const char *payto_uri,
-                                    const struct
-                                    TALER_MasterPrivateKeyP *master_priv,
-                                    struct TALER_MasterSignatureP *master_sig)
+TALER_exchange_wire_signature_make (
+  const char *payto_uri,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
 
@@ -144,12 +143,11 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_merchant_wire_signature_check (const char *payto_uri,
-                                     const char *salt,
-                                     const struct
-                                     TALER_MerchantPublicKeyP *merch_pub,
-                                     const struct
-                                     TALER_MerchantSignatureP *merch_sig)
+TALER_merchant_wire_signature_check (
+  const char *payto_uri,
+  const char *salt,
+  const struct TALER_MerchantPublicKeyP *merch_pub,
+  const struct TALER_MerchantSignatureP *merch_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
 
@@ -174,11 +172,11 @@ TALER_merchant_wire_signature_check (const char *payto_uri,
  * @param[out] merch_sig where to write the signature
  */
 void
-TALER_merchant_wire_signature_make (const char *payto_uri,
-                                    const char *salt,
-                                    const struct
-                                    TALER_MerchantPrivateKeyP *merch_priv,
-                                    struct TALER_MerchantSignatureP *merch_sig)
+TALER_merchant_wire_signature_make (
+  const char *payto_uri,
+  const char *salt,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct TALER_MerchantSignatureP *merch_sig)
 {
   struct TALER_MasterWireDetailsPS wd;
 

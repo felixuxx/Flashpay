@@ -170,9 +170,9 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
  * @return #GNUNET_OK if signature is valid
  */
 int
-TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
-                                          const struct
-                                          TALER_MasterPublicKeyP *master_pub);
+TALER_JSON_exchange_wire_signature_check (
+  const json_t *wire_s,
+  const struct TALER_MasterPublicKeyP *master_pub);
 
 
 /**
@@ -183,9 +183,9 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
  * @return NULL if @a payto_uri is malformed
  */
 json_t *
-TALER_JSON_exchange_wire_signature_make (const char *payto_uri,
-                                         const struct
-                                         TALER_MasterPrivateKeyP *master_priv);
+TALER_JSON_exchange_wire_signature_make (
+  const char *payto_uri,
+  const struct TALER_MasterPrivateKeyP *master_priv);
 
 
 /**

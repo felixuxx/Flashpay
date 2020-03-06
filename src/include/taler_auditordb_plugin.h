@@ -38,10 +38,10 @@
  * @param exchange_url base URL of the exchange's API
  */
 typedef void
-(*TALER_AUDITORDB_ExchangeCallback)(void *cls,
-                                    const struct
-                                    TALER_MasterPublicKeyP *master_pub,
-                                    const char *exchange_url);
+(*TALER_AUDITORDB_ExchangeCallback)(
+  void *cls,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const char *exchange_url);
 
 
 /**
@@ -56,10 +56,9 @@ typedef void
  *         #GNUNET_SYSERR or other values on error.
  */
 typedef int
-(*TALER_AUDITORDB_DenominationInfoDataCallback)(void *cls,
-                                                const struct
-                                                TALER_DenominationKeyValidityPS
-                                                *issue);
+(*TALER_AUDITORDB_DenominationInfoDataCallback)(
+  void *cls,
+  const struct TALER_DenominationKeyValidityPS *issue);
 
 
 /**
@@ -78,19 +77,12 @@ typedef int
  *         #GNUNET_SYSERR or other values on error.
  */
 typedef int
-(*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(void *cls,
-                                                           const struct
-                                                           GNUNET_HashCode *
-                                                           denom_pub_hash,
-                                                           struct
-                                                           GNUNET_TIME_Absolute
-                                                           revenue_timestamp,
-                                                           const struct
-                                                           TALER_Amount *
-                                                           revenue_balance,
-                                                           const struct
-                                                           TALER_Amount *
-                                                           loss_balance);
+(*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(
+  void *cls,
+  const struct GNUNET_HashCode *denom_pub_hash,
+  struct GNUNET_TIME_Absolute revenue_timestamp,
+  const struct TALER_Amount *revenue_balance,
+  const struct TALER_Amount *loss_balance);
 
 
 /**
@@ -107,16 +99,11 @@ typedef int
  *         #GNUNET_SYSERR or other values on error.
  */
 typedef int
-(*TALER_AUDITORDB_HistoricReserveRevenueDataCallback)(void *cls,
-                                                      struct
-                                                      GNUNET_TIME_Absolute
-                                                      start_time,
-                                                      struct
-                                                      GNUNET_TIME_Absolute
-                                                      end_time,
-                                                      const struct
-                                                      TALER_Amount *
-                                                      reserve_profits);
+(*TALER_AUDITORDB_HistoricReserveRevenueDataCallback)(
+  void *cls,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Absolute end_time,
+  const struct TALER_Amount *reserve_profits);
 
 
 /**
@@ -379,11 +366,10 @@ struct TALER_AUDITORDB_DepositConfirmation
  * @param dc the deposit confirmation itself
  */
 typedef void
-(*TALER_AUDITORDB_DepositConfirmationCallback)(void *cls,
-                                               uint64_t serial_id,
-                                               const struct
-                                               TALER_AUDITORDB_DepositConfirmation
-                                               *dc);
+(*TALER_AUDITORDB_DepositConfirmationCallback)(
+  void *cls,
+  uint64_t serial_id,
+  const struct TALER_AUDITORDB_DepositConfirmation *dc);
 
 
 /**
@@ -553,10 +539,10 @@ struct TALER_AUDITORDB_Plugin
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_exchange_signkey)(void *cls,
-                             struct TALER_AUDITORDB_Session *session,
-                             const struct
-                             TALER_AUDITORDB_ExchangeSigningKey *sk);
+  (*insert_exchange_signkey)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_AUDITORDB_ExchangeSigningKey *sk);
 
 
   /**
@@ -568,10 +554,10 @@ struct TALER_AUDITORDB_Plugin
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_deposit_confirmation)(void *cls,
-                                 struct TALER_AUDITORDB_Session *session,
-                                 const struct
-                                 TALER_AUDITORDB_DepositConfirmation *dc);
+  (*insert_deposit_confirmation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_AUDITORDB_DepositConfirmation *dc);
 
 
   /**
@@ -587,13 +573,13 @@ struct TALER_AUDITORDB_Plugin
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
-  (*get_deposit_confirmations)(void *cls,
-                               struct TALER_AUDITORDB_Session *session,
-                               const struct
-                               TALER_MasterPublicKeyP *master_public_key,
-                               uint64_t start_id,
-                               TALER_AUDITORDB_DepositConfirmationCallback cb,
-                               void *cb_cls);
+  (*get_deposit_confirmations)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_public_key,
+    uint64_t start_id,
+    TALER_AUDITORDB_DepositConfirmationCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -607,10 +593,10 @@ struct TALER_AUDITORDB_Plugin
    * @return status of database operation
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_denomination_info)(void *cls,
-                              struct TALER_AUDITORDB_Session *session,
-                              const struct
-                              TALER_DenominationKeyValidityPS *issue);
+  (*insert_denomination_info)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_DenominationKeyValidityPS *issue);
 
 
   /**
@@ -642,12 +628,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor_progress_coin)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct
-                                  TALER_MasterPublicKeyP *master_pub,
-                                  const struct
-                                  TALER_AUDITORDB_ProgressPointCoin *ppc);
+  (*insert_auditor_progress_coin)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointCoin *ppc);
 
 
   /**
@@ -661,12 +646,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_auditor_progress_coin)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct
-                                  TALER_MasterPublicKeyP *master_pub,
-                                  const struct
-                                  TALER_AUDITORDB_ProgressPointCoin *ppc);
+  (*update_auditor_progress_coin)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointCoin *ppc);
 
 
   /**
@@ -695,12 +679,11 @@ struct TALER_AUDITORDB_Plugin
  * @return transaction status code
  */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor_progress_reserve)(void *cls,
-                                     struct TALER_AUDITORDB_Session *session,
-                                     const struct
-                                     TALER_MasterPublicKeyP *master_pub,
-                                     const struct
-                                     TALER_AUDITORDB_ProgressPointReserve *ppr);
+  (*insert_auditor_progress_reserve)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointReserve *ppr);
 
 
   /**
@@ -714,12 +697,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_auditor_progress_reserve)(void *cls,
-                                     struct TALER_AUDITORDB_Session *session,
-                                     const struct
-                                     TALER_MasterPublicKeyP *master_pub,
-                                     const struct
-                                     TALER_AUDITORDB_ProgressPointReserve *ppr);
+  (*update_auditor_progress_reserve)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointReserve *ppr);
 
 
   /**
@@ -732,12 +714,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_auditor_progress_reserve)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct
-                                  TALER_MasterPublicKeyP *master_pub,
-                                  struct TALER_AUDITORDB_ProgressPointReserve *
-                                  ppr);
+  (*get_auditor_progress_reserve)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct TALER_AUDITORDB_ProgressPointReserve *ppr);
 
   /**
    * Insert information about the auditor's progress with an exchange's
@@ -750,15 +731,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor_progress_deposit_confirmation)(void *cls,
-                                                  struct TALER_AUDITORDB_Session
-                                                  *session,
-                                                  const struct
-                                                  TALER_MasterPublicKeyP *
-                                                  master_pub,
-                                                  const struct
-                                                  TALER_AUDITORDB_ProgressPointDepositConfirmation
-                                                  *ppdc);
+  (*insert_auditor_progress_deposit_confirmation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc);
 
 
   /**
@@ -772,15 +749,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_auditor_progress_deposit_confirmation)(void *cls,
-                                                  struct TALER_AUDITORDB_Session
-                                                  *session,
-                                                  const struct
-                                                  TALER_MasterPublicKeyP *
-                                                  master_pub,
-                                                  const struct
-                                                  TALER_AUDITORDB_ProgressPointDepositConfirmation
-                                                  *ppdc);
+  (*update_auditor_progress_deposit_confirmation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc);
 
 
   /**
@@ -793,15 +766,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_auditor_progress_deposit_confirmation)(void *cls,
-                                               struct TALER_AUDITORDB_Session *
-                                               session,
-                                               const struct
-                                               TALER_MasterPublicKeyP *
-                                               master_pub,
-                                               struct
-                                               TALER_AUDITORDB_ProgressPointDepositConfirmation
-                                               *ppdc);
+  (*get_auditor_progress_deposit_confirmation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc);
 
 
   /**
@@ -815,13 +784,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor_progress_aggregation)(void *cls,
-                                         struct TALER_AUDITORDB_Session *session,
-                                         const struct
-                                         TALER_MasterPublicKeyP *master_pub,
-                                         const struct
-                                         TALER_AUDITORDB_ProgressPointAggregation
-                                         *ppa);
+  (*insert_auditor_progress_aggregation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointAggregation *ppa);
 
 
   /**
@@ -835,13 +802,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_auditor_progress_aggregation)(void *cls,
-                                         struct TALER_AUDITORDB_Session *session,
-                                         const struct
-                                         TALER_MasterPublicKeyP *master_pub,
-                                         const struct
-                                         TALER_AUDITORDB_ProgressPointAggregation
-                                         *ppa);
+  (*update_auditor_progress_aggregation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointAggregation *ppa);
 
 
   /**
@@ -854,13 +819,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_auditor_progress_aggregation)(void *cls,
-                                      struct TALER_AUDITORDB_Session *session,
-                                      const struct
-                                      TALER_MasterPublicKeyP *master_pub,
-                                      struct
-                                      TALER_AUDITORDB_ProgressPointAggregation *
-                                      ppa);
+  (*get_auditor_progress_aggregation)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct TALER_AUDITORDB_ProgressPointAggregation *ppa);
 
 
   /**
@@ -877,17 +840,14 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_wire_auditor_account_progress)(void *cls,
-                                          struct TALER_AUDITORDB_Session *
-                                          session,
-                                          const struct
-                                          TALER_MasterPublicKeyP *master_pub,
-                                          const char *account_name,
-                                          const struct
-                                          TALER_AUDITORDB_WireAccountProgressPoint
-                                          *pp,
-                                          uint64_t in_wire_off,
-                                          uint64_t out_wire_off);
+  (*insert_wire_auditor_account_progress)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const char *account_name,
+    const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+    uint64_t in_wire_off,
+    uint64_t out_wire_off);
 
 
   /**
@@ -904,17 +864,14 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_wire_auditor_account_progress)(void *cls,
-                                          struct TALER_AUDITORDB_Session *
-                                          session,
-                                          const struct
-                                          TALER_MasterPublicKeyP *master_pub,
-                                          const char *account_name,
-                                          const struct
-                                          TALER_AUDITORDB_WireAccountProgressPoint
-                                          *pp,
-                                          uint64_t in_wire_off,
-                                          uint64_t out_wire_off);
+  (*update_wire_auditor_account_progress)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const char *account_name,
+    const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+    uint64_t in_wire_off,
+    uint64_t out_wire_off);
 
 
   /**
@@ -930,16 +887,14 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_wire_auditor_account_progress)(void *cls,
-                                       struct TALER_AUDITORDB_Session *session,
-                                       const struct
-                                       TALER_MasterPublicKeyP *master_pub,
-                                       const char *account_name,
-                                       struct
-                                       TALER_AUDITORDB_WireAccountProgressPoint
-                                       *pp,
-                                       uint64_t *in_wire_off,
-                                       uint64_t *out_wire_off);
+  (*get_wire_auditor_account_progress)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const char *account_name,
+    struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
+    uint64_t *in_wire_off,
+    uint64_t *out_wire_off);
 
 
   /**
@@ -954,12 +909,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_wire_auditor_progress)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct
-                                  TALER_MasterPublicKeyP *master_pub,
-                                  const struct
-                                  TALER_AUDITORDB_WireProgressPoint *pp);
+  (*insert_wire_auditor_progress)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_WireProgressPoint *pp);
 
 
   /**
@@ -974,12 +928,11 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_wire_auditor_progress)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct
-                                  TALER_MasterPublicKeyP *master_pub,
-                                  const struct
-                                  TALER_AUDITORDB_WireProgressPoint *pp);
+  (*update_wire_auditor_progress)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_WireProgressPoint *pp);
 
 
   /**
@@ -1394,16 +1347,14 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_historic_denom_revenue)(void *cls,
-                                   struct TALER_AUDITORDB_Session *session,
-                                   const struct
-                                   TALER_MasterPublicKeyP *master_pub,
-                                   const struct GNUNET_HashCode *denom_pub_hash,
-                                   struct GNUNET_TIME_Absolute
-                                   revenue_timestamp,
-                                   const struct TALER_Amount *revenue_balance,
-                                   const struct
-                                   TALER_Amount *recoup_loss_balance);
+  (*insert_historic_denom_revenue)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct GNUNET_HashCode *denom_pub_hash,
+    struct GNUNET_TIME_Absolute revenue_timestamp,
+    const struct TALER_Amount *revenue_balance,
+    const struct TALER_Amount *recoup_loss_balance);
 
 
   /**
@@ -1418,13 +1369,12 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_historic_denom_revenue)(void *cls,
-                                   struct TALER_AUDITORDB_Session *session,
-                                   const struct
-                                   TALER_MasterPublicKeyP *master_pub,
-                                   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback
-                                   cb,
-                                   void *cb_cls);
+  (*select_historic_denom_revenue)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
+    void *cb_cls);
 
 
   /**
@@ -1439,14 +1389,13 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_historic_reserve_revenue)(void *cls,
-                                     struct TALER_AUDITORDB_Session *session,
-                                     const struct
-                                     TALER_MasterPublicKeyP *master_pub,
-                                     struct GNUNET_TIME_Absolute start_time,
-                                     struct GNUNET_TIME_Absolute end_time,
-                                     const struct
-                                     TALER_Amount *reserve_profits);
+  (*insert_historic_reserve_revenue)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct GNUNET_TIME_Absolute start_time,
+    struct GNUNET_TIME_Absolute end_time,
+    const struct TALER_Amount *reserve_profits);
 
 
   /**
@@ -1460,13 +1409,12 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_historic_reserve_revenue)(void *cls,
-                                     struct TALER_AUDITORDB_Session *session,
-                                     const struct
-                                     TALER_MasterPublicKeyP *master_pub,
-                                     TALER_AUDITORDB_HistoricReserveRevenueDataCallback
-                                     cb,
-                                     void *cb_cls);
+  (*select_historic_reserve_revenue)(
+    void *cls,
+    struct TALER_AUDITORDB_Session *session,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
+    void *cb_cls);
 
 
   /**

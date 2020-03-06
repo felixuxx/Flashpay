@@ -97,24 +97,34 @@ auditor_iter (void *cls,
   const struct TALER_AuditorSignatureP *sigs;
   const struct TALER_DenominationKeyValidityPS *dki;
   const char *auditor_url;
-  unsigned int dki_len;
+  uint32_t dki_len;
   size_t url_len;
   int iret;
 
-  if (GNUNET_OK != GNUNET_DISK_file_size (filename,
-                                          &size,
-                                          GNUNET_YES,
-                                          GNUNET_YES))
+  if (GNUNET_OK !=
+      GNUNET_DISK_file_size (filename,
+                             &size,
+                             GNUNET_YES,
+                             GNUNET_YES))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Skipping inaccessable auditor information file `%s'\n",
                 filename);
     return GNUNET_OK;
   }
   if (size < sizeof (struct AuditorFileHeaderP))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Unrecognized size for file `%s', skipping\n",
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "File size (%llu bytes) too small for file `%s' to contain auditor data. Skipping it.\n",
+                (unsigned long long) size,
+                filename);
+    return GNUNET_OK;
+  }
+  if (size >= GNUNET_MAX_MALLOC_CHECKED)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "File size (%llu bytes) too large for file `%s' to contain auditor data. Skipping it.\n",
+                (unsigned long long) size,
                 filename);
     return GNUNET_OK;
   }
@@ -140,35 +150,33 @@ auditor_iter (void *cls,
     GNUNET_free (af);
     return GNUNET_OK;
   }
-  if ( (size - sizeof (struct AuditorFileHeaderP)) / dki_len <
+  size -= sizeof (struct AuditorFileHeaderP);
+  if ( (size / dki_len) <=
        (sizeof (struct TALER_DenominationKeyValidityPS)
         + sizeof (struct TALER_AuditorSignatureP)) )
   {
     GNUNET_break_op (0);
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Malformed key file %s\n",
-                filename);
+                "Malformed auditor data file %s (file too short for %u keys)\n",
+                filename,
+                (unsigned int) dki_len);
     GNUNET_free (af);
     return GNUNET_OK;
   }
-  url_len = size
-            - sizeof (struct AuditorFileHeaderP)
-            - dki_len * (sizeof (struct TALER_DenominationKeyValidityPS)
-                         + sizeof (struct TALER_AuditorSignatureP));
+  url_len = size - dki_len * (sizeof (struct TALER_DenominationKeyValidityPS)
+                              + sizeof (struct TALER_AuditorSignatureP));
   sigs = (const struct TALER_AuditorSignatureP *) &af[1];
   dki = (const struct TALER_DenominationKeyValidityPS *) &sigs[dki_len];
   auditor_url = (const char *) &dki[dki_len];
-  if ( (0 == url_len) ||
-       ('\0' != auditor_url[url_len - 1]) )
+  if ('\0' != auditor_url[url_len - 1])
   {
     GNUNET_break_op (0);
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Malformed key file %s\n",
+                "Malformed auditor data file %s (no 0-terminator)\n",
                 filename);
     GNUNET_free (af);
     return GNUNET_OK;
   }
-  /* Ignoring return value to not interrupt the iteration */
   if (GNUNET_OK !=
       (iret = aic->it (aic->it_cls,
                        &af->apub,
@@ -242,64 +250,93 @@ TALER_EXCHANGEDB_auditor_iterate (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_EXCHANGEDB_auditor_write (const char *filename,
-                                const struct TALER_AuditorPublicKeyP *apub,
-                                const char *auditor_url,
-                                const struct TALER_AuditorSignatureP *asigs,
-                                const struct TALER_MasterPublicKeyP *mpub,
-                                unsigned int dki_len,
-                                const struct
-                                TALER_DenominationKeyValidityPS *dki)
+TALER_EXCHANGEDB_auditor_write (
+  const char *filename,
+  const struct TALER_AuditorPublicKeyP *apub,
+  const char *auditor_url,
+  const struct TALER_AuditorSignatureP *asigs,
+  const struct TALER_MasterPublicKeyP *mpub,
+  uint32_t dki_len,
+  const struct TALER_DenominationKeyValidityPS *dki)
 {
-  struct AuditorFileHeaderP af;
   struct GNUNET_DISK_FileHandle *fh;
   ssize_t wrote;
   size_t wsize;
-  int ret;
   int eno;
 
-  af.apub = *apub;
-  af.mpub = *mpub;
-  af.dki_len = htonl ((uint32_t) dki_len);
-  ret = GNUNET_SYSERR;
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create_for_file (filename))
+  {
+    eno = errno;
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "mkdir (for file)",
+                              filename);
+    errno = eno;
+    return GNUNET_SYSERR;
+  }
   if (NULL == (fh = GNUNET_DISK_file_open
                       (filename,
                       GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE
                       | GNUNET_DISK_OPEN_TRUNCATE,
                       GNUNET_DISK_PERM_USER_READ
                       | GNUNET_DISK_PERM_USER_WRITE)))
-    goto cleanup;
-  wsize = sizeof (struct AuditorFileHeaderP);
-  if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
-                                                        &af,
-                                                        wsize)))
-    goto cleanup;
-  if (wrote != (ssize_t) wsize)
-    goto cleanup;
+  {
+    eno = errno;
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "open",
+                              filename);
+    errno = eno;
+    return GNUNET_SYSERR;
+  }
+  {
+    struct AuditorFileHeaderP af = {
+      .apub = *apub,
+      .mpub = *mpub,
+      .dki_len = htonl (dki_len)
+    };
+
+    wsize = sizeof (struct AuditorFileHeaderP);
+    if ( (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
+                                                            &af,
+                                                            wsize))) ||
+         (wrote != (ssize_t) wsize) )
+      goto cleanup;
+  }
   wsize = dki_len * sizeof (struct TALER_AuditorSignatureP);
-  if (((ssize_t) wsize) ==
+  if (((ssize_t) wsize) !=
       GNUNET_DISK_file_write (fh,
                               asigs,
                               wsize))
-    ret = GNUNET_OK;
+    goto cleanup;
   wsize = dki_len * sizeof (struct TALER_DenominationKeyValidityPS);
-  if (((ssize_t) wsize) ==
+  if (((ssize_t) wsize) !=
       GNUNET_DISK_file_write (fh,
                               dki,
                               wsize))
-    ret = GNUNET_OK;
+    goto cleanup;
   wsize = strlen (auditor_url) + 1;
-  if (((ssize_t) wsize) ==
+  if (((ssize_t) wsize) !=
       GNUNET_DISK_file_write (fh,
                               auditor_url,
                               wsize))
-    ret = GNUNET_OK;
+    goto cleanup;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_DISK_file_close (fh));
+  return GNUNET_OK;
 cleanup:
   eno = errno;
-  if (NULL != fh)
-    (void) GNUNET_DISK_file_close (fh);
+  GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                            "write",
+                            filename);
+  GNUNET_break (GNUNET_OK ==
+                GNUNET_DISK_file_close (fh));
+  /* try to remove the file, as it must be malformed */
+  if (0 != unlink (filename))
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "unlink",
+                              filename);
   errno = eno;
-  return ret;
+  return GNUNET_SYSERR;
 }
 
 

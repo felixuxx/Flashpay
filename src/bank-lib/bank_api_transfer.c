@@ -78,13 +78,13 @@ GNUNET_NETWORK_STRUCT_END
  * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
-TALER_BANK_prepare_transfer (const char *destination_account_payto_uri,
-                             const struct TALER_Amount *amount,
-                             const char *exchange_base_url,
-                             const struct
-                             TALER_WireTransferIdentifierRawP *wtid,
-                             void **buf,
-                             size_t *buf_size)
+TALER_BANK_prepare_transfer (
+  const char *destination_account_payto_uri,
+  const struct TALER_Amount *amount,
+  const char *exchange_base_url,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  void **buf,
+  size_t *buf_size)
 {
   struct WirePackP *wp;
   size_t d_len = strlen (destination_account_payto_uri) + 1;
@@ -259,13 +259,13 @@ handle_transfer_finished (void *cls,
  * @return NULL on error
  */
 struct TALER_BANK_TransferHandle *
-TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
-                     const struct
-                     TALER_BANK_AuthenticationData *auth,
-                     const void *buf,
-                     size_t buf_size,
-                     TALER_BANK_TransferCallback cc,
-                     void *cc_cls)
+TALER_BANK_transfer (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const void *buf,
+  size_t buf_size,
+  TALER_BANK_TransferCallback cc,
+  void *cc_cls)
 {
   struct TALER_BANK_TransferHandle *th;
   json_t *transfer_obj;
@@ -376,8 +376,7 @@ TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
  * @param th the wire transfer request handle
  */
 void
-TALER_BANK_transfer_cancel (struct
-                            TALER_BANK_TransferHandle *th)
+TALER_BANK_transfer_cancel (struct TALER_BANK_TransferHandle *th)
 {
   if (NULL != th->job)
   {

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -112,44 +112,21 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
                                        TALER_EXCHANGEDB_SigningKeyIterator it,
                                        void *it_cls)
 {
+  struct SignkeysIterateContext skc = {
+    .it = it,
+    .it_cls = it_cls
+  };
   char *signkey_dir;
-  struct SignkeysIterateContext skc;
   int ret;
 
   GNUNET_asprintf (&signkey_dir,
                    "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS,
                    exchange_base_dir);
-  skc.it = it;
-  skc.it_cls = it_cls;
   ret = GNUNET_DISK_directory_scan (signkey_dir,
                                     &signkeys_iterate_dir_iter,
                                     &skc);
   GNUNET_free (signkey_dir);
   return ret;
-}
-
-
-/**
- * Obtain the name of the directory we use to store signing
- * keys created at time @a start.
- *
- * @param exchange_directory base director where we store key material
- * @param start time at which we create the signing key
- * @return name of the directory we should use, basically "$EXCHANGEDIR/$TIME/";
- *         (valid until next call to this function)
- */
-static char *
-get_signkey_file (const char *exchange_directory,
-                  struct GNUNET_TIME_Absolute start)
-{
-  char *fn;
-
-  GNUNET_asprintf (&fn,
-                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS
-                   DIR_SEPARATOR_STR "%llu",
-                   exchange_directory,
-                   (unsigned long long) start.abs_value_us);
-  return fn;
 }
 
 
@@ -171,18 +148,31 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
   char *skf;
   ssize_t nwrite;
 
-  skf = get_signkey_file (exchange_base_dir,
-                          start);
+  GNUNET_asprintf (&skf,
+                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS
+                   DIR_SEPARATOR_STR "%llu",
+                   exchange_base_dir,
+                   (unsigned long long) start.abs_value_us);
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create_for_file (skf))
+  {
+    int eno;
+
+    eno = errno;
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "mkdir (for file)",
+                              skf);
+    errno = eno;
     return GNUNET_SYSERR;
+  }
   nwrite = GNUNET_DISK_fn_write (skf,
                                  ski,
                                  sizeof (struct
                                          TALER_EXCHANGEDB_PrivateSigningKeyInformationP),
                                  GNUNET_DISK_PERM_USER_WRITE
                                  | GNUNET_DISK_PERM_USER_READ);
-  if (sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP) != nwrite)
+  if (sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP) !=
+      (size_t) nwrite)
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                               "write",

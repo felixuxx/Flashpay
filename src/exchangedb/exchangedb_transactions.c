@@ -33,12 +33,10 @@
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 int
-TALER_EXCHANGEDB_calculate_transaction_list_totals (struct
-                                                    TALER_EXCHANGEDB_TransactionList
-                                                    *tl,
-                                                    const struct
-                                                    TALER_Amount *off,
-                                                    struct TALER_Amount *ret)
+TALER_EXCHANGEDB_calculate_transaction_list_totals (
+  struct TALER_EXCHANGEDB_TransactionList *tl,
+  const struct TALER_Amount *off,
+  struct TALER_Amount *ret)
 {
   struct TALER_Amount spent = *off;
   struct TALER_Amount refunded;

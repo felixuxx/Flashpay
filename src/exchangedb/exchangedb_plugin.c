@@ -48,9 +48,9 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                "db");
     return NULL;
   }
-  (void) GNUNET_asprintf (&lib_name,
-                          "libtaler_plugin_exchangedb_%s",
-                          plugin_name);
+  GNUNET_asprintf (&lib_name,
+                   "libtaler_plugin_exchangedb_%s",
+                   plugin_name);
   GNUNET_free (plugin_name);
   plugin = GNUNET_PLUGIN_load (lib_name,
                                (void *) cfg);

@@ -138,14 +138,14 @@ typedef void
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_AdminAddIncomingHandle *
-TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const struct TALER_BANK_AuthenticationData *auth,
-                               const struct
-                               TALER_ReservePublicKeyP *reserve_pub,
-                               const struct TALER_Amount *amount,
-                               const char *debit_account,
-                               TALER_BANK_AdminAddIncomingCallback res_cb,
-                               void *res_cb_cls);
+TALER_BANK_admin_add_incoming (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *amount,
+  const char *debit_account,
+  TALER_BANK_AdminAddIncomingCallback res_cb,
+  void *res_cb_cls);
 
 
 /**
@@ -155,8 +155,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
  * @param aai the admin add incoming request handle
  */
 void
-TALER_BANK_admin_add_incoming_cancel (struct
-                                      TALER_BANK_AdminAddIncomingHandle *aai);
+TALER_BANK_admin_add_incoming_cancel (
+  struct TALER_BANK_AdminAddIncomingHandle *aai);
 
 
 /* ********************* /transfer *********************** */
@@ -174,13 +174,13 @@ TALER_BANK_admin_add_incoming_cancel (struct
  * @param[out] buf_size set to number of bytes in @a buf, 0 on error
  */
 void
-TALER_BANK_prepare_transfer (const char *destination_account_payto_uri,
-                             const struct TALER_Amount *amount,
-                             const char *exchange_base_url,
-                             const struct
-                             TALER_WireTransferIdentifierRawP *wtid,
-                             void **buf,
-                             size_t *buf_size);
+TALER_BANK_prepare_transfer (
+  const char *destination_account_payto_uri,
+  const struct TALER_Amount *amount,
+  const char *exchange_base_url,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  void **buf,
+  size_t *buf_size);
 
 
 /**
@@ -305,13 +305,13 @@ struct TALER_BANK_CreditDetails
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 typedef int
-(*TALER_BANK_CreditHistoryCallback) (void *cls,
-                                     unsigned int http_status,
-                                     enum TALER_ErrorCode ec,
-                                     uint64_t serial_id,
-                                     const struct
-                                     TALER_BANK_CreditDetails *details,
-                                     const json_t *json);
+(*TALER_BANK_CreditHistoryCallback) (
+  void *cls,
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  uint64_t serial_id,
+  const struct TALER_BANK_CreditDetails *details,
+  const json_t *json);
 
 
 /**
@@ -415,13 +415,13 @@ struct TALER_BANK_DebitDetails
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
 typedef int
-(*TALER_BANK_DebitHistoryCallback) (void *cls,
-                                    unsigned int http_status,
-                                    enum TALER_ErrorCode ec,
-                                    uint64_t serial_id,
-                                    const struct
-                                    TALER_BANK_DebitDetails *details,
-                                    const json_t *json);
+(*TALER_BANK_DebitHistoryCallback) (
+  void *cls,
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  uint64_t serial_id,
+  const struct TALER_BANK_DebitDetails *details,
+  const json_t *json);
 
 
 /**

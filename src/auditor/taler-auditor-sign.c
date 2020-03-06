@@ -190,8 +190,8 @@ main (int argc,
   struct TALER_AuditorSignatureP *sigs;
   struct TALER_AuditorPublicKeyP apub;
   struct GNUNET_DISK_FileHandle *fh;
-  struct TALER_DenominationKeyValidityPS *dks;
-  unsigned int dks_len;
+  struct TALER_DenominationKeyValidityPS *dki;
+  unsigned int dki_len;
   struct TALER_ExchangeKeyValidityPS kv;
   off_t in_size;
 
@@ -287,8 +287,8 @@ main (int argc,
     GNUNET_free (eddsa_priv);
     return 1;
   }
-  dks_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
-  if (0 == dks_len)
+  dki_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
+  if (0 == dki_len)
   {
     fprintf (stderr,
              "Failed to produce auditor signature, denomination list is empty.\n");
@@ -312,13 +312,13 @@ main (int argc,
                       strlen (auditor_url) + 1,
                       &kv.auditor_url_hash);
   kv.master = master_public_key;
-  dks = GNUNET_new_array (dks_len,
+  dki = GNUNET_new_array (dki_len,
                           struct TALER_DenominationKeyValidityPS);
-  sigs = GNUNET_new_array (dks_len,
+  sigs = GNUNET_new_array (dki_len,
                            struct TALER_AuditorSignatureP);
   if (in_size !=
       GNUNET_DISK_file_read (fh,
-                             dks,
+                             dki,
                              in_size))
   {
     fprintf (stderr,
@@ -328,14 +328,14 @@ main (int argc,
     TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_DISK_file_close (fh);
     GNUNET_free (sigs);
-    GNUNET_free (dks);
+    GNUNET_free (dki);
     GNUNET_free (eddsa_priv);
     return 1;
   }
   GNUNET_DISK_file_close (fh);
-  for (unsigned int i = 0; i<dks_len; i++)
+  for (unsigned int i = 0; i<dki_len; i++)
   {
-    struct TALER_DenominationKeyValidityPS *dk = &dks[i];
+    struct TALER_DenominationKeyValidityPS *dk = &dki[i];
 
     if (verbose)
       print_dk (dk);
@@ -362,7 +362,7 @@ main (int argc,
     fprintf (stderr,
              "Output file not given\n");
     TALER_AUDITORDB_plugin_unload (adb);
-    GNUNET_free (dks);
+    GNUNET_free (dki);
     GNUNET_free (sigs);
     GNUNET_free (eddsa_priv);
     return 1;
@@ -375,7 +375,7 @@ main (int argc,
     fprintf (stderr,
              "Failed to create tables in auditor's database\n");
     TALER_AUDITORDB_plugin_unload (adb);
-    GNUNET_free (dks);
+    GNUNET_free (dki);
     GNUNET_free (sigs);
     GNUNET_free (eddsa_priv);
     return 3;
@@ -396,14 +396,14 @@ main (int argc,
       fprintf (stderr,
                "Failed to initialize database session\n");
       TALER_AUDITORDB_plugin_unload (adb);
-      GNUNET_free (dks);
+      GNUNET_free (dki);
       GNUNET_free (sigs);
       GNUNET_free (eddsa_priv);
       return 3;
     }
-    for (unsigned int i = 0; i<dks_len; i++)
+    for (unsigned int i = 0; i<dki_len; i++)
     {
-      const struct TALER_DenominationKeyValidityPS *dk = &dks[i];
+      const struct TALER_DenominationKeyValidityPS *dk = &dki[i];
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Adding denomination key %s to auditor database\n",
@@ -416,7 +416,7 @@ main (int argc,
         fprintf (stderr,
                  "Failed to store key in auditor DB (did you add the exchange using taler-auditor-exchange first?)\n");
         TALER_AUDITORDB_plugin_unload (adb);
-        GNUNET_free (dks);
+        GNUNET_free (dki);
         GNUNET_free (sigs);
         GNUNET_free (eddsa_priv);
         return 3;
@@ -432,19 +432,19 @@ main (int argc,
                                       auditor_url,
                                       sigs,
                                       &master_public_key,
-                                      dks_len,
-                                      dks))
+                                      dki_len,
+                                      dki))
   {
     fprintf (stderr,
              "Failed to write to file `%s': %s\n",
              output_file,
              strerror (errno));
     GNUNET_free (sigs);
-    GNUNET_free (dks);
+    GNUNET_free (dki);
     return 1;
   }
   GNUNET_free (sigs);
-  GNUNET_free (dks);
+  GNUNET_free (dki);
   GNUNET_free (eddsa_priv);
   return 0;
 }

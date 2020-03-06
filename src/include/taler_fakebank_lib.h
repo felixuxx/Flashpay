@@ -76,19 +76,19 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
  * @param exchange_base_url exchange URL
  * @param request_uid unique number to make the request unique, or NULL to create one
  * @param[out] ret_row_id pointer to store the row ID of this transaction
- * @return GNUNET_YES if the transfer was successful,
- *         GNUNET_SYSERR if the request_uid was reused for a different transfer
+ * @return #GNUNET_YES if the transfer was successful,
+ *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
  */
 int
-TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
-                              const char *debit_account,
-                              const char *credit_account,
-                              const struct TALER_Amount *amount,
-                              const struct
-                              TALER_WireTransferIdentifierRawP *subject,
-                              const char *exchange_base_url,
-                              const struct GNUNET_HashCode *request_uid,
-                              uint64_t *ret_row_id);
+TALER_FAKEBANK_make_transfer (
+  struct TALER_FAKEBANK_Handle *h,
+  const char *debit_account,
+  const char *credit_account,
+  const struct TALER_Amount *amount,
+  const struct TALER_WireTransferIdentifierRawP *subject,
+  const char *exchange_base_url,
+  const struct GNUNET_HashCode *request_uid,
+  uint64_t *ret_row_id);
 
 
 /**
@@ -102,12 +102,12 @@ TALER_FAKEBANK_make_transfer (struct TALER_FAKEBANK_Handle *h,
  * @return serial_id of the transfer
  */
 uint64_t
-TALER_FAKEBANK_make_admin_transfer (struct TALER_FAKEBANK_Handle *h,
-                                    const char *debit_account,
-                                    const char *credit_account,
-                                    const struct TALER_Amount *amount,
-                                    const struct
-                                    TALER_ReservePublicKeyP *reserve_pub);
+TALER_FAKEBANK_make_admin_transfer (
+  struct TALER_FAKEBANK_Handle *h,
+  const char *debit_account,
+  const char *credit_account,
+  const struct TALER_Amount *amount,
+  const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
 /**
