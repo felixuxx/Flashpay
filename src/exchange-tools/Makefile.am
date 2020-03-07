@@ -68,4 +68,5 @@ taler_exchange_dbinit_CPPFLAGS = \
 
 
 EXTRA_DIST = \
-  $(pkgcfg_DATA)
+  $(pkgcfg_DATA) \
+  key-helper.c

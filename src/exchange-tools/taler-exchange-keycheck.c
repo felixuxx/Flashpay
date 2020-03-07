@@ -95,8 +95,9 @@ signkeys_iter (void *cls,
              filename);
     return GNUNET_SYSERR;
   }
-  printf ("Signing key `%s' valid\n",
-          filename);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Signing key `%s' valid\n",
+              filename);
   return GNUNET_OK;
 }
 
@@ -182,10 +183,10 @@ denomkeys_iter (void *cls,
              alias);
     return GNUNET_SYSERR;
   }
-  printf ("Denomination key `%s' (%s) is valid\n",
-          alias,
-          GNUNET_h2s (&hc));
-
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Denomination key `%s' (%s) is valid\n",
+              alias,
+              GNUNET_h2s (&hc));
   return GNUNET_OK;
 }
 
@@ -212,7 +213,6 @@ exchange_denomkeys_check ()
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "master_public_key");
-    global_ret = 1;
     return GNUNET_NO;
   }
   if (0 > TALER_EXCHANGEDB_denomination_keys_iterate (exchange_directory,
@@ -271,12 +271,17 @@ run (void *cls,
  * @return 0 ok, 1 on error
  */
 int
-main (int argc, char *const *argv)
+main (int argc,
+      char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END
   };
 
+  /* force linker to link against libtalerutil; if we do
+    not do this, the linker may "optimize" libtalerutil
+    away and skip #TALER_OS_init(), which we do need */
+  (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-keycheck",
                                    "WARNING",

@@ -44,6 +44,9 @@ static struct TALER_MasterPrivateKeyP master_priv;
 static int global_ret;
 
 
+#include "key-helper.c"
+
+
 /**
  * Function called with information about a wire account.  Signs
  * the account's wire details and writes out the JSON file to disk.
@@ -55,7 +58,6 @@ static void
 sign_account_data (void *cls,
                    const struct TALER_EXCHANGEDB_AccountInfo *ai)
 {
-  json_t *wire;
   char *json_out;
   FILE *out;
   int ret;
@@ -72,20 +74,24 @@ sign_account_data (void *cls,
     return;
   }
 
-  wire = TALER_JSON_exchange_wire_signature_make (ai->payto_uri,
-                                                  &master_priv);
-  if (NULL == wire)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not sign wire account `%s'. Is the URI well-formed?\n",
-                ai->payto_uri);
-    global_ret = 1;
-    return;
+    json_t *wire;
+
+    wire = TALER_JSON_exchange_wire_signature_make (ai->payto_uri,
+                                                    &master_priv);
+    if (NULL == wire)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not sign wire account `%s'. Is the URI well-formed?\n",
+                  ai->payto_uri);
+      global_ret = 1;
+      return;
+    }
+    GNUNET_assert (NULL != wire);
+    json_out = json_dumps (wire,
+                           JSON_INDENT (2));
+    json_decref (wire);
   }
-  GNUNET_assert (NULL != wire);
-  json_out = json_dumps (wire,
-                         JSON_INDENT (2));
-  json_decref (wire);
   GNUNET_assert (NULL != json_out);
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create_for_file (ai->wire_response_filename))
@@ -99,11 +105,11 @@ sign_account_data (void *cls,
   }
 
   out = fopen (ai->wire_response_filename,
-               "w+");
+               "w+"); /* create, if exists, truncate */
   if (NULL == out)
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
-                              "fopen",
+                              "fopen(w+)",
                               ai->wire_response_filename);
     global_ret = 1;
     free (json_out);
@@ -112,16 +118,25 @@ sign_account_data (void *cls,
   ret = fprintf (out,
                  "%s",
                  json_out);
-  if ( (0 == fclose (out)) &&
-       (-1 != ret) )
-    fprintf (stdout,
-             "Created wire account file `%s'\n",
-             ai->wire_response_filename);
-  else
+  if ( (0 != fclose (out)) ||
+       (-1 == ret) )
+  {
     fprintf (stderr,
              "Failure creating wire account file `%s': %s\n",
              ai->wire_response_filename,
              strerror (errno));
+    /* attempt to remove malformed file */
+    if (0 != unlink (ai->wire_response_filename))
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "unlink",
+                                ai->wire_response_filename);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Created wire account file `%s'\n",
+                ai->wire_response_filename);
+  }
   free (json_out);
 }
 
@@ -140,86 +155,23 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
-  char *masters;
-  struct GNUNET_CRYPTO_EddsaPublicKey mpub;
-  struct GNUNET_CRYPTO_EddsaPublicKey mpub_cfg;
-
   (void) cls;
   (void) args;
   (void) cfgfile;
-  if ( (NULL == masterkeyfile) &&
-       (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                 "exchange",
-                                                 "MASTER_PRIV_FILE",
-                                                 &masterkeyfile)) )
-  {
-    fprintf (stderr,
-             "Master key file not given in neither configuration nor command-line\n");
-    global_ret = 1;
-    return;
-  }
-  if (GNUNET_YES !=
-      GNUNET_DISK_file_test (masterkeyfile))
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Exchange master private key `%s' does not exist yet, creating it!\n",
-                masterkeyfile);
-  eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
-  if (NULL == eddsa_priv)
-  {
-    fprintf (stderr,
-             "Failed to initialize master key from file `%s'\n",
-             masterkeyfile);
-    global_ret = 1;
-    return;
-  }
-  master_priv.eddsa_priv = *eddsa_priv;
+
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange",
-                                             "MASTER_PUBLIC_KEY",
-                                             &masters))
+      get_and_check_master_key (cfg,
+                                masterkeyfile,
+                                &master_priv))
   {
-    fprintf (stderr,
-             "Master public key option missing in configuration\n");
-    global_ret = 1;
-    return;
-  }
-  GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
-                                      &mpub);
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (masters,
-                                     strlen (masters),
-                                     &mpub_cfg,
-                                     sizeof (mpub_cfg)))
-  {
-    fprintf (stderr,
-             "Master public key `%s' in configuration is not a valid key\n",
-             masters);
-    GNUNET_free (masters);
-    global_ret = 1;
-    return;
-  }
-  if (0 != GNUNET_memcmp (&mpub,
-                          &mpub_cfg))
-  {
-    fprintf (stderr,
-             "Master public key `%s' in configuration does not match our master private key from `%s'!\n",
-             masters,
-             masterkeyfile);
-    GNUNET_free (masters);
     global_ret = 1;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Signing /wire response with private key matching public key `%s'\n",
-              masters);
-  GNUNET_free (masters);
+              "Signing /wire responses\n");
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &sign_account_data,
                                   NULL);
-  GNUNET_free (eddsa_priv);
 }
 
 

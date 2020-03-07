@@ -242,6 +242,8 @@ static struct GNUNET_HashCode revoke_dkh;
 static int global_ret;
 
 
+#include "key-helper.c"
+
 /**
  * Hash the data defining the coin type.  Exclude information that may
  * not be the same for all instances of the coin type (i.e. the
@@ -1166,7 +1168,6 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct GNUNET_TIME_Relative lookahead_sign;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
   (void) cls;
   (void) args;
@@ -1187,11 +1188,10 @@ run (void *cls,
   }
   if (now.abs_value_us != now_tmp.abs_value_us)
   {
-    /* The user gave "--now", use it */
+    /* The user gave "--now", use it! */
     now = now_tmp;
   }
-  /* The user _might_ have given "--now" but it matched
-   * exactly the normal now, so no change required.  */
+  GNUNET_TIME_round_abs (&now);
 
   if (NULL == feedir)
   {
@@ -1216,19 +1216,6 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  GNUNET_TIME_round_abs (&now);
-  if ( (NULL == masterkeyfile) &&
-       (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (kcfg,
-                                                 "exchange",
-                                                 "MASTER_PRIV_FILE",
-                                                 &masterkeyfile)) )
-  {
-    fprintf (stderr,
-             "Master key file not given in neither configuration nor command-line\n");
-    global_ret = 1;
-    return;
-  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
                                                "exchange",
@@ -1241,66 +1228,16 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (GNUNET_YES != GNUNET_DISK_file_test (masterkeyfile))
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Exchange master private key `%s' does not exist yet, creating it!\n",
-                masterkeyfile);
-  eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
-  if (NULL == eddsa_priv)
+
+  if (GNUNET_OK !=
+      get_and_check_master_key (kcfg,
+                                masterkeyfile,
+                                &master_priv))
   {
-    fprintf (stderr,
-             "Failed to initialize master key from file `%s'\n",
-             masterkeyfile);
     global_ret = 1;
     return;
   }
-  master_priv.eddsa_priv = *eddsa_priv;
-  GNUNET_free (eddsa_priv);
-  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
-                                      &master_public_key.eddsa_pub);
 
-  /* Check master public key in configuration matches our
-     master private key */
-  {
-    char *masters;
-    struct TALER_MasterPublicKeyP mpub_cfg;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchange",
-                                               "MASTER_PUBLIC_KEY",
-                                               &masters))
-    {
-      fprintf (stderr,
-               "Master public key option missing in configuration\n");
-      global_ret = 1;
-      return;
-    }
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (masters,
-                                       strlen (masters),
-                                       &mpub_cfg,
-                                       sizeof (mpub_cfg)))
-    {
-      fprintf (stderr,
-               "Master public key `%s' in configuration is not a valid key\n",
-               masters);
-      GNUNET_free (masters);
-      global_ret = 1;
-      return;
-    }
-    if (0 != GNUNET_memcmp (&master_public_key,
-                            &mpub_cfg))
-    {
-      fprintf (stderr,
-               "Master public key `%s' in configuration does not match our master private key!\n",
-               masters);
-      GNUNET_free (masters);
-      global_ret = 1;
-      return;
-    }
-    GNUNET_free (masters);
-  }
   if (NULL != auditorrequestfile)
   {
     auditor_output_file = fopen (auditorrequestfile,
@@ -1311,37 +1248,6 @@ run (void *cls,
                "Failed to open `%s' for writing: %s\n",
                auditorrequestfile,
                strerror (errno));
-      global_ret = 1;
-      return;
-    }
-  }
-
-  /* check if key from file matches the one from the configuration */
-  {
-    struct TALER_MasterPublicKeyP master_public_key_from_cfg;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_data (kcfg,
-                                       "exchange",
-                                       "master_public_key",
-                                       &master_public_key_from_cfg,
-                                       sizeof (struct
-                                               GNUNET_CRYPTO_EddsaPublicKey)))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
-                                 "master_public_key");
-      global_ret = 1;
-      return;
-    }
-    if (0 !=
-        GNUNET_memcmp (&master_public_key,
-                       &master_public_key_from_cfg))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
-                                 "master_public_key",
-                                 _ ("does not match with private key"));
       global_ret = 1;
       return;
     }
