@@ -66,7 +66,13 @@ run (void *cls,
     return;
   }
   if (reset_db)
-    (void) plugin->drop_tables (plugin->cls);
+  {
+    if (GNUNET_OK != plugin->drop_tables (plugin->cls))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Could not drop tables. Either database was not yet initialized, or permission denied. Consult the logs. Will still try to create new tables.\n");
+    }
+  }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -79,8 +85,10 @@ run (void *cls,
   if (gc_db)
   {
     if (GNUNET_SYSERR == plugin->gc (plugin->cls))
+    {
       fprintf (stderr,
                "Garbage collection failed!\n");
+    }
   }
   TALER_EXCHANGEDB_plugin_unload (plugin);
 }
