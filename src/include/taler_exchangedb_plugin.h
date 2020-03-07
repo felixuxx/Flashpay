@@ -244,8 +244,8 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
 
   /**
    * Withdrawl fee charged by the exchange.  This must match the Exchange's
-   * denomination key's withdrawl fee.  If the client puts in an
-   * invalid withdrawl fee (too high or too low) that does not match
+   * denomination key's withdrawal fee.  If the client puts in an
+   * invalid withdrawal fee (too high or too low) that does not match
    * the Exchange's denomination key, the withdraw operation is invalid
    * and will be rejected by the exchange.  The @e amount_with_fee minus
    * the @e withdraw_fee is must match the value of the generated
@@ -267,7 +267,7 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
   struct GNUNET_HashCode h_coin_envelope;
 
   /**
-   * Signature confirming the withdrawl, matching @e reserve_pub,
+   * Signature confirming the withdrawal, matching @e reserve_pub,
    * @e denom_pub and @e h_coin_envelope.
    */
   struct TALER_ReserveSignatureP reserve_sig;

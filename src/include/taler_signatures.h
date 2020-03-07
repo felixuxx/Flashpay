@@ -323,8 +323,8 @@ struct TALER_WithdrawRequestPS
 
   /**
    * Withdrawl fee charged by the exchange.  This must match the Exchange's
-   * denomination key's withdrawl fee.  If the client puts in an
-   * invalid withdrawl fee (too high or too low) that does not match
+   * denomination key's withdrawal fee.  If the client puts in an
+   * invalid withdrawal fee (too high or too low) that does not match
    * the Exchange's denomination key, the withdraw operation is invalid
    * and will be rejected by the exchange.  The @e amount_with_fee minus
    * the @e withdraw_fee is must match the value of the generated

@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-keyup.c
- * @brief Update the exchange's keys for coins and signatures,
+ * @file taler-exchange-gyp.c
+ * @brief Update the exchange's keys for coins and online signing keys,
  *        using the exchange's offline master key.
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -26,12 +26,11 @@
 
 
 /**
- * When generating filenames from a cryptographic hash, we do not use
- * all 512 bits but cut off after this number of characters (in
- * base32-encoding).  Base32 is 5 bit per character, and given that we
- * have very few coin types we hash, at 100 bits the chance of
- * collision (by accident over tiny set -- birthday paradox does not
- * apply here!) is negligible.
+ * When generating filenames from a cryptographic hash, we do not use all 512
+ * bits but cut off after this number of characters (in base32-encoding).
+ * Base32 is 5 bit per character, and given that we have very few coin types,
+ * at 100 bits the chance of collision (by accident over such a tiny set) is
+ * negligible. (Also, some file-systems do not support very long file names.)
  */
 #define HASH_CUTOFF 20
 
@@ -39,10 +38,10 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Struct with all of the key information for a kind of coin.  Hashed
+ * Struct with all of the meta data about a denomination.  Hashed
  * to generate a unique directory name per coin type.
  */
-struct CoinTypeNBOP
+struct DenominationNBOP
 {
   /**
    * How long are the signatures legally valid?
@@ -50,22 +49,22 @@ struct CoinTypeNBOP
   struct GNUNET_TIME_RelativeNBO duration_legal;
 
   /**
-   * How long can the coin be spend?
+   * How long can the coins be spend?
    */
   struct GNUNET_TIME_RelativeNBO duration_spend;
 
   /**
-   * How long can the coin be withdrawn (generated)?
+   * How long can coins be withdrawn (generated)?
    */
   struct GNUNET_TIME_RelativeNBO duration_withdraw;
 
   /**
-   * What is the value of the coin?
+   * What is the value of each coin?
    */
   struct TALER_AmountNBO value;
 
   /**
-   * What is the fee charged for withdrawl?
+   * What is the fee charged for withdrawal?
    */
   struct TALER_AmountNBO fee_withdraw;
 
@@ -85,7 +84,7 @@ struct CoinTypeNBOP
   struct TALER_AmountNBO fee_refund;
 
   /**
-   * Key size in NBO.
+   * Key size (in NBO).
    */
   uint32_t rsa_keysize;
 };
@@ -93,9 +92,9 @@ struct CoinTypeNBOP
 GNUNET_NETWORK_STRUCT_END
 
 /**
- * Set of all of the parameters that chracterize a coin.
+ * Set of all of the parameters that characterize a denomination.
  */
-struct CoinTypeParams
+struct DenominationParameters
 {
 
   /**
@@ -104,15 +103,14 @@ struct CoinTypeParams
    */
   struct GNUNET_TIME_Relative duration_legal;
 
-
   /**
-   * How long can the coin be spend?  Should be significantly
+   * How long can the coins be spend?  Should be significantly
    * larger than @e duration_withdraw (i.e. years).
    */
   struct GNUNET_TIME_Relative duration_spend;
 
   /**
-   * How long can the coin be withdrawn (generated)?  Should be small
+   * How long can coins be withdrawn (generated)?  Should be small
    * enough to limit how many coins will be signed into existence with
    * the same key, but large enough to still provide a reasonable
    * anonymity set.
@@ -120,19 +118,19 @@ struct CoinTypeParams
   struct GNUNET_TIME_Relative duration_withdraw;
 
   /**
-   * How much should coin creation (@e duration_withdraw) duration
-   * overlap with the next coin?  Basically, the starting time of two
-   * coins is always @e duration_withdraw - @e duration_overlap apart.
+   * How much should coin creation (@e duration_withdraw) duration overlap
+   * with the next denomination?  Basically, the starting time of two
+   * denominations is always @e duration_withdraw - @e duration_overlap apart.
    */
   struct GNUNET_TIME_Relative duration_overlap;
 
   /**
-   * What is the value of the coin?
+   * What is the value of each coin?
    */
   struct TALER_Amount value;
 
   /**
-   * What is the fee charged for withdrawl?
+   * What is the fee charged for withdrawal?
    */
   struct TALER_Amount fee_withdraw;
 
@@ -157,7 +155,7 @@ struct CoinTypeParams
   struct GNUNET_TIME_Absolute anchor;
 
   /**
-   * Length of the RSA key in bits.
+   * Length of the RSA key (in bits).
    */
   uint32_t rsa_keysize;
 };
@@ -245,22 +243,22 @@ static int global_ret;
 #include "key-helper.c"
 
 /**
- * Hash the data defining the coin type.  Exclude information that may
- * not be the same for all instances of the coin type (i.e. the
+ * Hash the data defining a denomination type.  Exclude information that may
+ * not be the same for all instances of the denomination's type (i.e. the
  * anchor, overlap).
  *
- * @param p coin parameters to convert to a hash
+ * @param p denomination parameters to convert to a hash
  * @param[out] hash set to the hash matching @a p
  */
 static void
-hash_coin_type (const struct CoinTypeParams *p,
-                struct GNUNET_HashCode *hash)
+hash_denomination_parameters (const struct DenominationParameters *p,
+                              struct GNUNET_HashCode *hash)
 {
-  struct CoinTypeNBOP p_nbo;
+  struct DenominationNBOP p_nbo;
 
   memset (&p_nbo,
           0,
-          sizeof (struct CoinTypeNBOP));
+          sizeof (struct DenominationNBOP));
   p_nbo.duration_spend = GNUNET_TIME_relative_hton (p->duration_spend);
   p_nbo.duration_legal = GNUNET_TIME_relative_hton (p->duration_legal);
   p_nbo.duration_withdraw = GNUNET_TIME_relative_hton (p->duration_withdraw);
@@ -276,33 +274,34 @@ hash_coin_type (const struct CoinTypeParams *p,
                      &p->fee_refund);
   p_nbo.rsa_keysize = htonl (p->rsa_keysize);
   GNUNET_CRYPTO_hash (&p_nbo,
-                      sizeof (struct CoinTypeNBOP),
+                      sizeof (struct DenominationNBOP),
                       hash);
 }
 
 
 /**
- * Obtain the name of the directory we should use to store coins of
+ * Obtain the name of the directory we should use to store denominations of
  * the given type.  The directory name has the format
  * "$EXCHANGEDIR/$VALUE/$HASH/" where "$VALUE" represents the value of the
- * coin and "$HASH" encodes all of the coin's parameters, generating a
- * unique string for each type of coin.  Note that the "$HASH"
+ * coins and "$HASH" encodes all of the denomination's parameters, generating
+ * a unique string for each type of denomination.  Note that the "$HASH"
  * includes neither the absolute creation time nor the key of the
- * coin, thus the files in the subdirectory really just refer to the
- * same type of coins, not the same coin.
+ * denomination, thus the files in the subdirectory really just refer to the
+ * same type of denominations, not the same denomination.
  *
- * @param p coin parameters to convert to a directory name
+ * @param p denomination parameters to convert to a directory name
  * @return directory name (valid until next call to this function)
  */
 static const char *
-get_cointype_dir (const struct CoinTypeParams *p)
+get_denomination_dir (const struct DenominationParameters *p)
 {
   static char dir[4096];
   struct GNUNET_HashCode hash;
   char *hash_str;
   char *val_str;
 
-  hash_coin_type (p, &hash);
+  hash_denomination_parameters (p,
+                                &hash);
   hash_str = GNUNET_STRINGS_data_to_string_alloc (&hash,
                                                   sizeof (struct
                                                           GNUNET_HashCode));
@@ -332,22 +331,22 @@ get_cointype_dir (const struct CoinTypeParams *p)
 
 /**
  * Obtain the name of the file we would use to store the key
- * information for a coin of the given type @a p and validity
+ * information for a denomination of the given type @a p and validity
  * start time @a start
  *
- * @param p parameters for the coin
- * @param start when would the coin begin to be issued
- * @return name of the file to use for this coin
+ * @param p parameters for the denomination
+ * @param start when would the denomination begin to be issued
+ * @return name of the file to use for this denomination
  *         (valid until next call to this function)
  */
 static const char *
-get_cointype_file (const struct CoinTypeParams *p,
-                   struct GNUNET_TIME_Absolute start)
+get_denomination_type_file (const struct DenominationParameters *p,
+                            struct GNUNET_TIME_Absolute start)
 {
   static char filename[4096];
   const char *dir;
 
-  dir = get_cointype_dir (p);
+  dir = get_denomination_dir (p);
   GNUNET_snprintf (filename,
                    sizeof (filename),
                    "%s" DIR_SEPARATOR_STR "%llu",
@@ -361,7 +360,7 @@ get_cointype_file (const struct CoinTypeParams *p,
  * Get the latest key file from a past run of the key generation
  * tool.  Used to calculate the starting time for the keys we
  * generate during this invocation.  This function is used to
- * handle both signing keys and coin keys, as in both cases
+ * handle both signing keys and denomination keys, as in both cases
  * the filenames correspond to the timestamps we need.
  *
  * @param cls closure, a `struct GNUNET_TIME_Absolute *`, updated
@@ -459,8 +458,9 @@ get_anchor (const char *dir,
 
 
 /**
- * Create a exchange signing key (for signing exchange messages, not for coins)
- * and assert its correctness by signing it with the master key.
+ * Create a exchange signing key (for signing exchange messages, not for
+ * signing coins) and assert its correctness by signing it with the master
+ * key.
  *
  * @param start start time of the validity period for the key
  * @param duration how long should the key be valid
@@ -468,11 +468,11 @@ get_anchor (const char *dir,
  * @param[out] pi set to the signing key information
  */
 static void
-create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
-                           struct GNUNET_TIME_Relative duration,
-                           struct GNUNET_TIME_Absolute end,
-                           struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP
-                           *pi)
+create_signkey_issue_priv (
+  struct GNUNET_TIME_Absolute start,
+  struct GNUNET_TIME_Relative duration,
+  struct GNUNET_TIME_Absolute end,
+  struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *pi)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
   struct TALER_ExchangeSigningKeyValidityPS *issue = &pi->issue;
@@ -504,7 +504,7 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-exchange_keys_update_signkeys ()
+exchange_keys_update_signkeys (void)
 {
   struct GNUNET_TIME_Relative signkey_duration;
   struct GNUNET_TIME_Relative legal_duration;
@@ -514,23 +514,23 @@ exchange_keys_update_signkeys ()
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            "exchange",
-                                           "signkey_duration",
+                                           "SIGNKEY_DURATION",
                                            &signkey_duration))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "signkey_duration");
+                               "SIGNKEY_DURATION");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            "exchange",
-                                           "legal_duration",
+                                           "LEGAL_DURATION",
                                            &legal_duration))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "legal_duration",
+                               "LEGAL_DURATION",
                                "fails to specify valid timeframe");
     return GNUNET_SYSERR;
   }
@@ -538,8 +538,8 @@ exchange_keys_update_signkeys ()
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "legal_duration",
-                               "must be longer than signkey_duration");
+                               "LEGAL_DURATION",
+                               "Value given for LEGAL_DURATION must be longer than value for SIGNKEY_DURATION");
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&signkey_duration);
@@ -589,16 +589,16 @@ exchange_keys_update_signkeys ()
 
 
 /**
- * Parse configuration for coin type parameters.  Also determines
- * our anchor by looking at the existing coins of the same type.
+ * Parse configuration for denomination type parameters.  Also determines
+ * our anchor by looking at the existing denominations of the same type.
  *
- * @param ct section in the configuration file giving the coin type parameters
- * @param[out] params set to the coin parameters from the configuration
+ * @param ct section in the configuration file giving the denomination type parameters
+ * @param[out] params set to the denomination parameters from the configuration
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if the configuration is invalid
  */
 static int
-get_cointype_params (const char *ct,
-                     struct CoinTypeParams *params)
+get_denomination_type_params (const char *ct,
+                              struct DenominationParameters *params)
 {
   const char *dir;
   unsigned long long rsa_keysize;
@@ -606,24 +606,24 @@ get_cointype_params (const char *ct,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
-                                           "duration_withdraw",
+                                           "DURATION_WIDHTRAW",
                                            &params->duration_withdraw))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "duration_withdraw");
+                               "DURATION_WITHDRAW");
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_withdraw);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
-                                           "duration_spend",
+                                           "DURATION_SPEND",
                                            &params->duration_spend))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "duration_spend");
+                               "DURATION_SPEND");
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_spend);
@@ -632,24 +632,24 @@ get_cointype_params (const char *ct,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
-                                           "duration_legal",
+                                           "DURATION_LEGAL",
                                            &params->duration_legal))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "duration_legal");
+                               "DURATION_LEGAL");
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_legal);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
-                                           "duration_overlap",
+                                           "DURATION_OVERLAP",
                                            &params->duration_overlap))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "exchange_denom_duration_overlap");
+                               "DURATION_OVERLAP");
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_overlap);
@@ -658,8 +658,8 @@ get_cointype_params (const char *ct,
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "duration_overlap",
-                               "duration_overlap must be smaller than duration_withdraw!");
+                               "DURATION_OVERLAP",
+                               "Value given for DURATION_OVERLAP must be smaller than value for DURATION_WITHDRAW!");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -685,45 +685,45 @@ get_cointype_params (const char *ct,
   if (GNUNET_OK !=
       TALER_config_get_amount (kcfg,
                                ct,
-                               "value",
+                               "VALUE",
                                &params->value))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "value");
+                               "VALUE");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (kcfg,
                                ct,
-                               "fee_withdraw",
+                               "FEE_WITHDRAW",
                                &params->fee_withdraw))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "fee_withdraw");
+                               "FEE_WITHDRAW");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (kcfg,
                                ct,
-                               "fee_deposit",
+                               "FEE_DEPOSIT",
                                &params->fee_deposit))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "fee_deposit");
+                               "FEE_DEPOSIT");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (kcfg,
                                ct,
-                               "fee_refresh",
+                               "FEE_REFRESH",
                                &params->fee_refresh))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "fee_refresh");
+                               "FEE_REFRESH");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -734,11 +734,11 @@ get_cointype_params (const char *ct,
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "fee_refund");
+                               "FEE_REFUND");
     return GNUNET_SYSERR;
   }
 
-  dir = get_cointype_dir (params);
+  dir = get_denomination_dir (params);
   get_anchor (dir,
               params->duration_withdraw,
               params->duration_overlap,
@@ -746,7 +746,7 @@ get_cointype_params (const char *ct,
 
   /**
    * The "anchor" is merely the latest denom key filename
-   * converted to a GNUnet absolute date.
+   * converted to a GNUnet absolute time.
    */
 
   return GNUNET_OK;
@@ -756,16 +756,16 @@ get_cointype_params (const char *ct,
 /**
  * Initialize the private and public key information structure for
  * signing coins into existence.  Generates the private signing key
- * and signes it together with the coin's meta data using the master
+ * and signes it together with the denomination's meta data using the master
  * signing key.
  *
  * @param params parameters used to initialize the @a dki
  * @param[out] dki initialized according to @a params
  */
 static void
-create_denomkey_issue (const struct CoinTypeParams *params,
-                       struct TALER_EXCHANGEDB_DenominationKey *
-                       dki)
+create_denomkey_issue (
+  const struct DenominationParameters *params,
+  struct TALER_EXCHANGEDB_DenominationKey *dki)
 {
   dki->denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize);
@@ -809,35 +809,35 @@ create_denomkey_issue (const struct CoinTypeParams *params,
 
 
 /**
- * Generate new coin signing keys for the coin type of the given @a
- * coin_alias.
+ * Generate new denomination signing keys for the denomination type of the given @a
+ * denomination_alias.
  *
  * @param cls a `int *`, to be set to #GNUNET_SYSERR on failure
- * @param coin_alias name of the coin's section in the configuration
+ * @param denomination_alias name of the denomination's section in the configuration
  */
 static void
-exchange_keys_update_cointype (void *cls,
-                               const char *coin_alias)
+exchange_keys_update_denominationtype (void *cls,
+                                       const char *denomination_alias)
 {
   int *ret = cls;
-  struct CoinTypeParams p;
+  struct DenominationParameters p;
   const char *dkf;
   struct TALER_EXCHANGEDB_DenominationKey denomkey_issue;
 
-  if (0 != strncasecmp (coin_alias,
+  if (0 != strncasecmp (denomination_alias,
                         "coin_",
                         strlen ("coin_")))
-    return; /* not a coin definition */
+    return; /* not a denomination type definition */
   if (GNUNET_OK !=
-      get_cointype_params (coin_alias,
-                           &p))
+      get_denomination_type_params (denomination_alias,
+                                    &p))
   {
     *ret = GNUNET_SYSERR;
     return;
   }
   /* p has the right anchor now = latest denom filename converted to time.  */
   if (GNUNET_OK !=
-      GNUNET_DISK_directory_create (get_cointype_dir (&p)))
+      GNUNET_DISK_directory_create (get_denomination_dir (&p)))
   {
     *ret = GNUNET_SYSERR;
     return;
@@ -847,19 +847,19 @@ exchange_keys_update_cointype (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Future time not covered yet for type `%s': %s\n",
-                coin_alias,
+                denomination_alias,
                 GNUNET_STRINGS_relative_time_to_string
                   (GNUNET_TIME_absolute_get_difference (p.anchor,
                                                         lookahead_sign_stamp),
                   GNUNET_NO));
-    dkf = get_cointype_file (&p,
-                             p.anchor);
+    dkf = get_denomination_type_file (&p,
+                                      p.anchor);
     GNUNET_break (GNUNET_YES !=
                   GNUNET_DISK_file_test (dkf));
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Generating denomination key for type `%s', start %s at %s\n",
-                coin_alias,
+                denomination_alias,
                 GNUNET_STRINGS_absolute_time_to_string (p.anchor),
                 dkf);
 
@@ -914,13 +914,13 @@ exchange_keys_update_cointype (void *cls,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-exchange_keys_update_denomkeys ()
+exchange_keys_update_denomkeys (void)
 {
   int ok;
 
   ok = GNUNET_OK;
   GNUNET_CONFIGURATION_iterate_sections (kcfg,
-                                         &exchange_keys_update_cointype,
+                                         &exchange_keys_update_denominationtype,
                                          &ok);
   return ok;
 }
@@ -1102,7 +1102,7 @@ create_wire_fee_by_account (void *cls,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-create_wire_fees ()
+create_wire_fees (void)
 {
   int ret;
 
@@ -1173,7 +1173,6 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
   kcfg = cfg;
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -1202,7 +1201,7 @@ run (void *cls,
                                                  &feedir))
     {
       fprintf (stderr,
-               "Wire fee directory not given in neither configuration nor command-line\n");
+               "Wire fee directory given neither in configuration nor on command-line\n");
       global_ret = 1;
       return;
     }
@@ -1244,10 +1243,9 @@ run (void *cls,
                                  "w");
     if (NULL == auditor_output_file)
     {
-      fprintf (stderr,
-               "Failed to open `%s' for writing: %s\n",
-               auditorrequestfile,
-               strerror (errno));
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                "open (w)",
+                                auditorrequestfile);
       global_ret = 1;
       return;
     }
@@ -1256,12 +1254,12 @@ run (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            "exchange",
-                                           "lookahead_sign",
+                                           "LOOKAHEAD_SIGN",
                                            &lookahead_sign))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "lookahead_sign");
+                               "LOOKAHEAD_SIGN");
     global_ret = 1;
     return;
   }
@@ -1269,7 +1267,7 @@ run (void *cls,
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "lookahead_sign",
+                               "LOOKAHEAD_SIGN",
                                _ ("must not be zero"));
     global_ret = 1;
     return;
@@ -1280,6 +1278,22 @@ run (void *cls,
 
 
   /* finally, do actual work */
+  if (0 != GNUNET_is_zero (&revoke_dkh))
+  {
+    if (GNUNET_OK != revoke_denomination (&revoke_dkh))
+    {
+      global_ret = 1;
+      return;
+    }
+    /* if we were invoked to revoke a key, let's not also generate
+       new keys, as that might not be desired. */
+    return;
+  }
+
+  if (NULL == auditor_output_file)
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Option `-o' missing. Hence, you will NOT be able to use an auditor with the generated keys!\n");
+
   if (GNUNET_OK != exchange_keys_update_signkeys ())
   {
     global_ret = 1;
@@ -1295,24 +1309,16 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if ( (0 != GNUNET_is_zero (&revoke_dkh)) &&
-       (GNUNET_OK !=
-        revoke_denomination (&revoke_dkh)) )
-  {
-    global_ret = 1;
-    return;
-  }
 }
 
 
 /**
- * The main function of the taler-exchange-keyup tool.  This tool is used
- * to create the signing and denomination keys for the exchange.  It uses
- * the long-term offline private key and writes the (additional) key
- * files to the respective exchange directory (from where they can then be
- * copied to the online server).  Note that we need (at least) the
- * most recent generated previous keys so as to align the validity
- * periods.
+ * The main function of the taler-exchange-keyup tool.  This tool is used to
+ * create the signing and denomination keys for the exchange.  It uses the
+ * long-term offline private key and writes the (additional) key files to the
+ * respective exchange directory (from where they can then be copied to the
+ * online server).  Note that we need (at least) the most recent generated
+ * previous keys to align the validity periods.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
@@ -1341,7 +1347,7 @@ main (int argc,
     GNUNET_GETOPT_option_base32_auto ('r',
                                       "revoke",
                                       "DKH",
-                                      "revoke denomination key hash (DKH) and request wallets to initiate /recoup",
+                                      "revoke denomination key hash (DKH) and request wallets to initiate recoup",
                                       &revoke_dkh),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
@@ -1353,6 +1359,10 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
+  /* force linker to link against libtalerutil; if we do
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
+  (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-keyup",
                                    "WARNING",
@@ -1367,7 +1377,7 @@ main (int argc,
     return 1;
   if (NULL != auditor_output_file)
   {
-    fclose (auditor_output_file);
+    GNUNET_assert (0 == fclose (auditor_output_file));
     auditor_output_file = NULL;
   }
   return global_ret;
