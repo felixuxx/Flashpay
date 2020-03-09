@@ -116,11 +116,6 @@ static unsigned int connection_timeout = 30;
 static struct MHD_Daemon *mhd;
 
 /**
- * Initialize the database by creating tables and indices.
- */
-static int init_db;
-
-/**
  * Port to run the daemon on.
  */
 static uint16_t serve_port;
@@ -835,12 +830,6 @@ exchange_serve_process_config ()
     TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
-  if (0 != init_db)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Ensuring that tables and indices are created!\n");
-    TEH_plugin->create_tables (TEH_plugin->cls);
-  }
 
   if (GNUNET_OK !=
       TALER_MHD_parse_config (cfg,
@@ -1240,10 +1229,6 @@ main (int argc,
                                "force HTTP connections to be closed after each request",
                                &connection_close),
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
-    GNUNET_GETOPT_option_flag ('i',
-                               "init-db",
-                               "create database tables and indicies if necessary",
-                               &init_db),
     GNUNET_GETOPT_option_uint ('t',
                                "timeout",
                                "SECONDS",

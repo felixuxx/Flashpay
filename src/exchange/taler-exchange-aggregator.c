@@ -682,15 +682,6 @@ parse_wirewatch_config ()
              "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      db_plugin->create_tables (db_plugin->cls))
-  {
-    fprintf (stderr,
-             "Failed to initialize DB tables\n");
-    TALER_EXCHANGEDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
-    return GNUNET_SYSERR;
-  }
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &add_account_cb,
                                   NULL);
