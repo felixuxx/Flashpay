@@ -151,11 +151,13 @@ handle_deposit_wtid_finished (void *cls,
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangePublicKeyP *ep = NULL;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   dwh->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -173,6 +175,7 @@ handle_deposit_wtid_finished (void *cls,
       {
         GNUNET_break_op (0);
         response_code = 0;
+        ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
       }
       wtid = &dwh->depconf.wtid;
@@ -187,10 +190,12 @@ handle_deposit_wtid_finished (void *cls,
       {
         GNUNET_break_op (0);
         response_code = 0;
+        ec = TALER_EC_DEPOSITS_INVALID_SIGNATURE_BY_EXCHANGE;
       }
       else
       {
         ep = &exchange_pub;
+        ec = TALER_EC_NONE;
       }
     }
     break;
@@ -209,24 +214,30 @@ handle_deposit_wtid_finished (void *cls,
       {
         GNUNET_break_op (0);
         response_code = 0;
+        ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
       }
+      ec = TALER_EC_NONE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
+    ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
+    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
+    ec = TALER_JSON_get_error_code (j);
     /* Exchange does not know about transaction;
        we should pass the reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
@@ -236,12 +247,13 @@ handle_deposit_wtid_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
+    ec = TALER_JSON_get_error_code (j);
     response_code = 0;
     break;
   }
   dwh->cb (dwh->cb_cls,
            response_code,
-           TALER_JSON_get_error_code (j),
+           ec,
            ep,
            j,
            wtid,

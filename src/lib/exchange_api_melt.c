@@ -267,11 +267,13 @@ handle_melt_finished (void *cls,
   uint32_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   struct TALER_ExchangePublicKeyP exchange_pub;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   mh->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -282,19 +284,27 @@ handle_melt_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+    }
+    else
+    {
+      ec = TALER_EC_NONE;
     }
     if (NULL != mh->melt_cb)
     {
       mh->melt_cb (mh->melt_cb_cls,
                    response_code,
-                   TALER_JSON_get_error_code (j),
+                   ec,
                    noreveal_index,
-                   (0 == response_code) ? NULL : &exchange_pub,
+                   (0 == response_code)
+                   ? NULL
+                   : &exchange_pub,
                    j);
       mh->melt_cb = NULL;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
+    ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
@@ -306,26 +316,34 @@ handle_melt_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
+    else
+      ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_FORBIDDEN:
+    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; assuming we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
+    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
+    ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                ec);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -333,7 +351,7 @@ handle_melt_finished (void *cls,
   if (NULL != mh->melt_cb)
     mh->melt_cb (mh->melt_cb_cls,
                  response_code,
-                 TALER_JSON_get_error_code (j),
+                 ec,
                  UINT32_MAX,
                  NULL,
                  j);

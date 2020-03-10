@@ -301,11 +301,13 @@ handle_deposit_finished (void *cls,
   struct TALER_ExchangeSignatureP *es = NULL;
   struct TALER_ExchangePublicKeyP *ep = NULL;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   dh->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -316,52 +318,62 @@ handle_deposit_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     else
     {
       es = &exchange_sig;
       ep = &exchange_pub;
+      ec = TALER_EC_NONE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
+    ec = TALER_JSON_get_error_code (j);
     if (GNUNET_OK !=
         verify_deposit_signature_forbidden (dh,
                                             j))
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     break;
   case MHD_HTTP_FORBIDDEN:
+    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
+    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
+    ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                ec);
     GNUNET_break (0);
     response_code = 0;
     break;
   }
   dh->cb (dh->cb_cls,
           response_code,
-          TALER_JSON_get_error_code (j),
+          ec,
           es,
           ep,
           j);

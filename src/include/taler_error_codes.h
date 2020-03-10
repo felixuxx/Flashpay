@@ -213,7 +213,7 @@ enum TALER_ErrorCode
   TALER_EC_COINS_INVALID_COIN_PUB = 1050,
 
   /**
-   * The public key of given to a /reserves/ handler was malformed.
+   * The reserve key of given to a /reserves/ handler was malformed.
    */
   TALER_EC_RESERVES_INVALID_RESERVE_PUB = 1051,
 
@@ -223,33 +223,37 @@ enum TALER_ErrorCode
   TALER_EC_TRANSFERS_INVALID_WTID = 1052,
 
   /**
-   * The hash of the wire details of given to a /deposits/ handler was
-   * malformed.
+   * The wire hash of given to a /deposits/ handler was malformed.
    */
   TALER_EC_DEPOSITS_INVALID_H_WIRE = 1053,
 
   /**
-   * The merchant public key given to a /deposits/ handler was
-   * malformed.
+   * The merchant key of given to a /deposits/ handler was malformed.
    */
   TALER_EC_DEPOSITS_INVALID_MERCHANT_PUB = 1054,
 
   /**
-   * The hash of the contract given to a /deposits/ handler was
+   * The hash of the contract terms given to a /deposits/ handler was
    * malformed.
    */
   TALER_EC_DEPOSITS_INVALID_H_CONTRACT_TERMS = 1055,
 
   /**
-   * The coin public key given to a /deposits/ handler was malformed.
+   * The coin public key of given to a /deposits/ handler was malformed.
    */
-  TALER_EC_DEPOSITS_INVALID_COIN_PUB = 1056,
+  TALER_EC_DEPOSTIS_INVALID_COIN_PUB = 1056,
 
   /**
-   * The hash of the refresh commitment given to a /refreshes/ handler
-   * was malformed.
+   * The body returned by the exchange for a /deposits/ request was
+   * malformed. Error created client-side.
    */
-  TALER_EC_REFRESHES_INVALID_RCH = 1057,
+  TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE = 1057,
+
+  /**
+   * The signature returned by the exchange in a /deposits/ request was
+   * malformed. Error created client-side.
+   */
+  TALER_EC_DEPOSITS_INVALID_SIGNATURE_BY_EXCHANGE = 1058,
 
   /**
    * The given reserve does not have sufficient funds to admit the
@@ -512,6 +516,12 @@ enum TALER_ErrorCode
   TALER_EC_DEPOSIT_DENOMINATION_EXPIRED = 1220,
 
   /**
+   * The signature provided by the exchange is not valid. Error created
+   * client-side.
+   */
+  TALER_EC_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE = 1221,
+
+  /**
    * The respective coin did not have sufficient residual value for the
    * /refresh/melt operation.  The "history" in this response provdes
    * the "residual_value" of the coin, which may be less than its
@@ -583,6 +593,12 @@ enum TALER_ErrorCode
    * fresh coin being subjected to recoup).
    */
   TALER_EC_REFRESH_MELT_COIN_EXPIRED_NO_ZOMBIE = 1309,
+
+  /**
+   * The signature returned by the exchange in a melt request was
+   * malformed. Error created client-side.
+   */
+  TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE = 1310,
 
   /**
    * The exchange is unaware of the denomination key that was used to
@@ -710,6 +726,12 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_REVEAL_KEYS_MISSING = 1383,
 
   /**
+   * The refresh session hash given to a /refreshes/ handler was
+   * malformed.
+   */
+  TALER_EC_REFRESHES_INVALID_RCH = 1384,
+
+  /**
    * The coin specified in the link request is unknown to the exchange.
    * This response is provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
@@ -820,6 +842,12 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_REFUND_MERCHANT_SIGNING_FAILED = 1514,
+
+  /**
+   * The signature returned by the exchange in a refund request was
+   * malformed. Error created client-side.
+   */
+  TALER_EC_REFUND_INVALID_SIGNATURE_BY_EXCHANGE = 1515,
 
   /**
    * The wire format specified in the "sender_account_details" is not

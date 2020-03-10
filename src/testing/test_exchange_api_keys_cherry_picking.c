@@ -3,7 +3,8 @@
   Copyright (C) 2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
-  under the terms of the GNU General Public License as published
+  under the terms of the GNU General Public License as pub
+lished
   by the Free Software Foundation; either version 3, or (at your
   option) any later version.
 
@@ -53,7 +54,7 @@
   "test_exchange_api_keys_cherry_picking_extended_2.conf"
 
 
-#define NDKS_RIGHT_BEFORE_SERIALIZATION 46
+#define NDKS_RIGHT_BEFORE_SERIALIZATION 40
 
 /**
  * Add seconds.
@@ -187,20 +188,21 @@ run (void *cls,
     /**
      * Expected number of DK:
      *
-     * 3500 (the lookahead_sign time frame, in seconds)
-     * - 69 (how many seconds are covered by the latest DK)
+     * 3000 (the lookahead_sign time frame, in seconds)
+     * - 69 (how many seconds are covered by the latest DK, 79s - 10s already past)
      * ----
-     * 3431
-     * / 79 (how many seconds each DK will cover)
+     * 2931
+     * / 79 (how many seconds each DK will cover, 80-1)
      * ----
-     *   44 (rounded up)
+     *   38 (rounded up)
      *  + 2 (old DKs already stored locally: 1 from the
      *       very initial setup, and 1 from the 'keyup-1' CMD)
      * ----
-     *   46
-     */TALER_TESTING_cmd_check_keys_with_now
+     *   40
+     *///
+    TALER_TESTING_cmd_check_keys_with_now
       ("check-keys-3",
-      3,
+      3 /* generation */,
       NDKS_RIGHT_BEFORE_SERIALIZATION,
       TTH_parse_time (JAN2030)),
 
