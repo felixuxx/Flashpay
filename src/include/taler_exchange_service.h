@@ -153,6 +153,12 @@ struct TALER_EXCHANGE_DenomPublicKey
    * The applicable fee to refund a coin of this denomination
    */
   struct TALER_Amount fee_refund;
+
+  /**
+   * Set to #GNUNET_YES if this denomination key has been
+   * revoked by the exchange.
+   */
+  int revoked;
 };
 
 

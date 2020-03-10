@@ -909,10 +909,18 @@ revocations_iter (void *cls,
     handle_signal (SIGTERM);
     return GNUNET_SYSERR;
   }
-  GNUNET_assert (0 ==
-                 json_array_append_new (rfc->recoup_array,
-                                        GNUNET_JSON_from_data_auto (
-                                          denom_hash)));
+
+  {
+    json_t *obj;
+
+    obj = json_pack ("{s:o}",
+                     "h_denom_pub",
+                     GNUNET_JSON_from_data_auto (denom_hash));
+    GNUNET_assert (NULL != obj);
+    GNUNET_assert (0 ==
+                   json_array_append_new (rfc->recoup_array,
+                                          obj));
+  }
   return GNUNET_OK;
 }
 

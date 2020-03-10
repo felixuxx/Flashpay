@@ -216,7 +216,7 @@ struct TALER_EXCHANGE_Handle
   enum ExchangeHandleState state;
 
   /**
-   * If GNUNET_YES, use fake now given by the user, in
+   * If #GNUNET_YES, use fake now given by the user, in
    * request of "/keys".
    */
   int with_now;
@@ -977,6 +977,7 @@ decode_keys_json (const json_t *resp_obj,
                                     dk.valid_from);
     };
   }
+
   /* parse the auditor information */
   {
     json_t *auditors_array;
@@ -1035,6 +1036,43 @@ decode_keys_json (const json_t *resp_obj,
                            key_data->auditors_size * 2 + 2);
       GNUNET_assert (NULL != ai.auditor_url);
       key_data->auditors[key_data->num_auditors++] = ai;
+    };
+  }
+
+  /* parse the revocation/recoup information */
+  {
+    json_t *recoup_array;
+    json_t *recoup_info;
+    unsigned int index;
+
+    EXITIF (NULL == (recoup_array =
+                       json_object_get (resp_obj,
+                                        "recoup")));
+    EXITIF (JSON_ARRAY != json_typeof (recoup_array));
+
+    json_array_foreach (recoup_array, index, recoup_info) {
+      struct GNUNET_HashCode h_denom_pub;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &h_denom_pub),
+        GNUNET_JSON_spec_end ()
+      };
+
+      EXITIF (GNUNET_OK !=
+              GNUNET_JSON_parse (recoup_info,
+                                 spec,
+                                 NULL, NULL));
+      for (unsigned int j = 0;
+           j<key_data->num_denom_keys;
+           j++)
+      {
+        if (0 == GNUNET_memcmp (&h_denom_pub,
+                                &key_data->denom_keys[j].h_key))
+        {
+          key_data->denom_keys[j].revoked = GNUNET_YES;
+          break;
+        }
+      }
     };
   }
 
@@ -1259,7 +1297,7 @@ keys_completed_cb (void *cls,
     for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
       kd.denom_keys[i].key.rsa_public_key
         = GNUNET_CRYPTO_rsa_public_key_dup (
-            kd_old.denom_keys[i].key.rsa_public_key);
+        kd_old.denom_keys[i].key.rsa_public_key);
 
     kd.num_auditors = kd_old.num_auditors;
     kd.auditors = GNUNET_new_array (kd.num_auditors,
