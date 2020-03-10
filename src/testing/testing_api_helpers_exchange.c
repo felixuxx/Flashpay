@@ -763,7 +763,6 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
                                        "-c", setup_ctx->config_filename,
-                                       "-i",
                                        NULL);
 
   if (GNUNET_OK !=
