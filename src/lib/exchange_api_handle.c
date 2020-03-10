@@ -1151,16 +1151,6 @@ request_keys (void *cls);
 
 
 /**
- * Put the handle back to the init state.  Might
- * be useful to force-download all /keys.
- *
- * @param h exchange handle.
- */
-void
-TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h);
-
-
-/**
  * Set the fake now to be used when requesting "/keys".
  *
  * @param exchange exchange handle.
@@ -1208,7 +1198,7 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
  *
  * @param exchange exchange to check keys for
  * @param force_download #GNUNET_YES to force download even if /keys is still valid
- * @param pull_all_keys if GNUNET_YES, then the exchange state is reset to 'init',
+ * @param pull_all_keys if #GNUNET_YES, then the exchange state is reset to #MHS_INIT,
  *        and all denoms will be redownloaded.
  * @return until when the response is current, 0 if we are re-downloading
  */
@@ -1222,8 +1212,10 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
 
   if (GNUNET_YES == pull_all_keys)
   {
-    GNUNET_assert (GNUNET_YES == force_download);
-    TEAH_handle_reset (exchange);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Forcing re-download of all keys\n");
+    GNUNET_break (GNUNET_YES == force_download);
+    exchange->state = MHS_INIT;
   }
   if ( (GNUNET_NO == force_download) &&
        (0 < GNUNET_TIME_absolute_get_remaining (
@@ -1373,6 +1365,8 @@ keys_completed_cb (void *cls,
     exchange->kr = NULL;
     free_keys_request (kr);
     exchange->state = MHS_FAILED;
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "/keys download failed\n");
     if (NULL != exchange->key_data_raw)
     {
       json_decref (exchange->key_data_raw);
@@ -1412,19 +1406,6 @@ struct GNUNET_CURL_Context *
 TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
 {
   return h->ctx;
-}
-
-
-/**
- * Put the handle back to the init state.  Might
- * be useful to force-download all /keys.
- *
- * @param h exchange handle.
- */
-void
-TEAH_handle_reset (struct TALER_EXCHANGE_Handle *h)
-{
-  h->state = MHS_INIT;
 }
 
 

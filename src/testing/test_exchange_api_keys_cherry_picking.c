@@ -161,7 +161,8 @@ run (void *cls,
      * key set.  The new KS will have only one key, because the
      * current lookahead_sign == 60 seconds and the key's withdraw
      * duration is 80 seconds.
-     */TALER_TESTING_cmd_exec_keyup_with_now
+     *///
+    TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-1",
       CONFIG_FILE,
       TTH_parse_time (JAN2030)),
