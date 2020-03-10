@@ -1045,35 +1045,37 @@ decode_keys_json (const json_t *resp_obj,
     json_t *recoup_info;
     unsigned int index;
 
-    EXITIF (NULL == (recoup_array =
-                       json_object_get (resp_obj,
-                                        "recoup")));
-    EXITIF (JSON_ARRAY != json_typeof (recoup_array));
+    if (NULL != (recoup_array =
+                   json_object_get (resp_obj,
+                                    "recoup")))
+    {
+      EXITIF (JSON_ARRAY != json_typeof (recoup_array));
 
-    json_array_foreach (recoup_array, index, recoup_info) {
-      struct GNUNET_HashCode h_denom_pub;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &h_denom_pub),
-        GNUNET_JSON_spec_end ()
-      };
+      json_array_foreach (recoup_array, index, recoup_info) {
+        struct GNUNET_HashCode h_denom_pub;
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                       &h_denom_pub),
+          GNUNET_JSON_spec_end ()
+        };
 
-      EXITIF (GNUNET_OK !=
-              GNUNET_JSON_parse (recoup_info,
-                                 spec,
-                                 NULL, NULL));
-      for (unsigned int j = 0;
-           j<key_data->num_denom_keys;
-           j++)
-      {
-        if (0 == GNUNET_memcmp (&h_denom_pub,
-                                &key_data->denom_keys[j].h_key))
+        EXITIF (GNUNET_OK !=
+                GNUNET_JSON_parse (recoup_info,
+                                   spec,
+                                   NULL, NULL));
+        for (unsigned int j = 0;
+             j<key_data->num_denom_keys;
+             j++)
         {
-          key_data->denom_keys[j].revoked = GNUNET_YES;
-          break;
+          if (0 == GNUNET_memcmp (&h_denom_pub,
+                                  &key_data->denom_keys[j].h_key))
+          {
+            key_data->denom_keys[j].revoked = GNUNET_YES;
+            break;
+          }
         }
-      }
-    };
+      };
+    }
   }
 
   if (check_sig)
