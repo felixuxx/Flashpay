@@ -241,7 +241,7 @@ enum TALER_ErrorCode
   /**
    * The coin public key of given to a /deposits/ handler was malformed.
    */
-  TALER_EC_DEPOSTIS_INVALID_COIN_PUB = 1056,
+  TALER_EC_DEPOSITS_INVALID_COIN_PUB = 1056,
 
   /**
    * The body returned by the exchange for a /deposits/ request was
