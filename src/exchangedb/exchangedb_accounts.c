@@ -23,6 +23,17 @@
 
 
 /**
+ * Head of list of wire accounts of the exchange.
+ */
+static struct TALER_EXCHANGEDB_WireAccount *wa_head;
+
+/**
+ * Tail of list of wire accounts of the exchange.
+ */
+static struct TALER_EXCHANGEDB_WireAccount *wa_tail;
+
+
+/**
  * Closure of #check_for_account.
  */
 struct FindAccountContext
@@ -138,6 +149,156 @@ TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &check_for_account,
                                          &ctx);
+}
+
+
+/**
+ * Find the wire plugin for the given payto:// URL
+ *
+ * @param method wire method we need an account for
+ * @return NULL on error
+ */
+struct TALER_EXCHANGEDB_WireAccount *
+TALER_EXCHANGEDB_find_account_by_method (const char *method)
+{
+  for (struct TALER_EXCHANGEDB_WireAccount *wa = wa_head; NULL != wa; wa =
+         wa->next)
+    if (0 == strcmp (method,
+                     wa->method))
+      return wa;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "No wire account known for method `%s'\n",
+              method);
+  return NULL;
+}
+
+
+/**
+ * Find the wire plugin for the given payto:// URL
+ *
+ * @param url wire address we need an account for
+ * @return NULL on error
+ */
+struct TALER_EXCHANGEDB_WireAccount *
+TALER_EXCHANGEDB_find_account_by_payto_uri (const char *url)
+{
+  char *method;
+  struct TALER_EXCHANGEDB_WireAccount *wa;
+
+  method = TALER_payto_get_method (url);
+  if (NULL == method)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid payto:// URL `%s'\n",
+                url);
+    return NULL;
+  }
+  wa = TALER_EXCHANGEDB_find_account_by_method (method);
+  GNUNET_free (method);
+  return wa;
+}
+
+
+/**
+ * Function called with information about a wire account.  Adds
+ * the account to our list.
+ *
+ * @param cls closure, a `struct GNUNET_CONFIGURATION_Handle`
+ * @param ai account information
+ */
+static void
+add_account_cb (void *cls,
+                const struct TALER_EXCHANGEDB_AccountInfo *ai)
+{
+  const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
+  struct TALER_EXCHANGEDB_WireAccount *wa;
+  char *payto_uri;
+
+  (void) cls;
+  if (GNUNET_YES != ai->debit_enabled)
+    return; /* not enabled for us, skip */
+  wa = GNUNET_new (struct TALER_EXCHANGEDB_WireAccount);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             ai->section_name,
+                                             "PAYTO_URI",
+                                             &payto_uri))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ai->section_name,
+                               "PAYTO_URI");
+    GNUNET_free (wa);
+    return;
+  }
+  wa->method = TALER_payto_get_method (payto_uri);
+  if (NULL == wa->method)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               ai->section_name,
+                               "PAYTO_URI",
+                               "could not obtain wire method from URI");
+    GNUNET_free (wa);
+    return;
+  }
+  GNUNET_free (payto_uri);
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (cfg,
+                                 ai->section_name,
+                                 &wa->auth))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "Failed to load exchange account `%s'\n",
+                ai->section_name);
+    GNUNET_free (wa->method);
+    GNUNET_free (wa);
+    return;
+  }
+  wa->section_name = GNUNET_strdup (ai->section_name);
+  GNUNET_CONTAINER_DLL_insert (wa_head,
+                               wa_tail,
+                               wa);
+}
+
+
+/**
+ * Load account information opf the exchange from
+ * @a cfg.
+ *
+ * @param cfg configuration to load from
+ * @return #GNUNET_OK on success, #GNUNET_NO if no accounts are configured
+ */
+int
+TALER_EXCHANGEDB_load_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  TALER_EXCHANGEDB_find_accounts (cfg,
+                                  &add_account_cb,
+                                  (void *) cfg);
+  if (NULL == wa_head)
+    return GNUNET_NO;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Free resources allocated by
+ * #TALER_EXCHANGEDB_load_accounts().
+ */
+void
+TALER_EXCHANGEDB_unload_accounts (void)
+{
+  struct TALER_EXCHANGEDB_WireAccount *wa;
+
+  while (NULL != (wa = wa_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (wa_head,
+                                 wa_tail,
+                                 wa);
+    TALER_BANK_auth_free (&wa->auth);
+    TALER_EXCHANGEDB_fees_free (wa->af);
+    GNUNET_free (wa->section_name);
+    GNUNET_free (wa->method);
+    GNUNET_free (wa);
+  }
 }
 
 

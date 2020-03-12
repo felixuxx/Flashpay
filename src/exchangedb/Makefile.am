@@ -56,11 +56,10 @@ libtalerexchangedb_la_SOURCES = \
   exchangedb_plugin.c \
   exchangedb_signkeys.c \
   exchangedb_transactions.c
-
 libtalerexchangedb_la_LIBADD = \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil  $(XLIB)
-
 libtalerexchangedb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 1:0:0 \

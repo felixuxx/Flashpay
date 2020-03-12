@@ -25,6 +25,7 @@
 
 #include "taler_signatures.h"
 #include "taler_exchangedb_plugin.h"
+#include "taler_bank_service.h"
 
 /**
  * Subdirectroy under the exchange's base directory which contains
@@ -459,5 +460,105 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
   const struct TALER_Amount *off,
   struct TALER_Amount *ret);
 
+
+/* ***************** convenience functions ******** */
+
+/**
+ * Information we keep for each supported account of the exchange.
+ */
+struct TALER_EXCHANGEDB_WireAccount
+{
+  /**
+   * Accounts are kept in a DLL.
+   */
+  struct TALER_EXCHANGEDB_WireAccount *next;
+
+  /**
+   * Plugins are kept in a DLL.
+   */
+  struct TALER_EXCHANGEDB_WireAccount *prev;
+
+  /**
+   * Authentication data.
+   */
+  struct TALER_BANK_AuthenticationData auth;
+
+  /**
+   * Wire transfer fee structure.
+   */
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+
+  /**
+   * Name of the section that configures this account.
+   */
+  char *section_name;
+
+  /**
+   * Name of the wire method underlying the account.
+   */
+  char *method;
+
+};
+
+
+/**
+ * Update wire transfer fee data structure in @a wa.
+ *
+ * @param cfg configuration to use
+ * @param db_plugin database plugin to use
+ * @param wa wire account data structure to update
+ * @param now timestamp to update fees to
+ * @param session DB session to use
+ * @return fee valid at @a now, or NULL if unknown
+ */
+struct TALER_EXCHANGEDB_AggregateFees *
+TALER_EXCHANGEDB_update_fees (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                              struct TALER_EXCHANGEDB_Plugin *db_plugin,
+                              struct TALER_EXCHANGEDB_WireAccount *wa,
+                              struct GNUNET_TIME_Absolute now,
+                              struct TALER_EXCHANGEDB_Session *session);
+
+
+/**
+ * Find the wire plugin for the given payto:// URL.
+ * Only useful after the accounts have been loaded
+ * using #TALER_EXCHANGEDB_load_accounts().
+ *
+ * @param method wire method we need an account for
+ * @return NULL on error
+ */
+struct TALER_EXCHANGEDB_WireAccount *
+TALER_EXCHANGEDB_find_account_by_method (const char *method);
+
+
+/**
+ * Find the wire plugin for the given payto:// URL
+ * Only useful after the accounts have been loaded
+ * using #TALER_EXCHANGEDB_load_accounts().
+ *
+ * @param url wire address we need an account for
+ * @return NULL on error
+ */
+struct TALER_EXCHANGEDB_WireAccount *
+TALER_EXCHANGEDB_find_account_by_payto_uri (const char *url);
+
+
+/**
+ * Load account information opf the exchange from
+ * @a cfg.
+ *
+ * @param cfg configuration to load from
+ * @return #GNUNET_OK on success, #GNUNET_NO if no accounts are configured
+ */
+int
+TALER_EXCHANGEDB_load_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Free resources allocated by
+ * #TALER_EXCHANGEDB_load_accounts().
+ */
+void
+TALER_EXCHANGEDB_unload_accounts (void);
 
 #endif

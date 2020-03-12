@@ -326,4 +326,87 @@ TALER_EXCHANGEDB_fees_free (struct TALER_EXCHANGEDB_AggregateFees *af)
 }
 
 
+/**
+ * Find the record valid at time @a now in the fee structure.
+ *
+ * @param wa wire transfer fee data structure to update
+ * @param now timestamp to update fees to
+ * @return fee valid at @a now, or NULL if unknown
+ */
+static struct TALER_EXCHANGEDB_AggregateFees *
+advance_fees (struct TALER_EXCHANGEDB_WireAccount *wa,
+              struct GNUNET_TIME_Absolute now)
+{
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+
+  af = wa->af;
+  while ( (NULL != af) &&
+          (af->end_date.abs_value_us < now.abs_value_us) )
+    af = af->next;
+  return af;
+}
+
+
+/**
+ * Update wire transfer fee data structure in @a wa.
+ *
+ * @param cfg configuration to use
+ * @param db_plugin database plugin to use
+ * @param wa wire account data structure to update
+ * @param now timestamp to update fees to
+ * @param session DB session to use
+ * @return fee valid at @a now, or NULL if unknown
+ */
+struct TALER_EXCHANGEDB_AggregateFees *
+TALER_EXCHANGEDB_update_fees (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                              struct TALER_EXCHANGEDB_Plugin *db_plugin,
+                              struct TALER_EXCHANGEDB_WireAccount *wa,
+                              struct GNUNET_TIME_Absolute now,
+                              struct TALER_EXCHANGEDB_Session *session)
+{
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+
+  af = advance_fees (wa,
+                     now);
+  if (NULL != af)
+    return af;
+  /* Let's try to load it from disk... */
+  wa->af = TALER_EXCHANGEDB_fees_read (cfg,
+                                       wa->method);
+  for (struct TALER_EXCHANGEDB_AggregateFees *p = wa->af;
+       NULL != p;
+       p = p->next)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Persisting fees starting at %s in database\n",
+                GNUNET_STRINGS_absolute_time_to_string (p->start_date));
+    qs = db_plugin->insert_wire_fee (db_plugin->cls,
+                                     session,
+                                     wa->method,
+                                     p->start_date,
+                                     p->end_date,
+                                     &p->wire_fee,
+                                     &p->closing_fee,
+                                     &p->master_sig);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      TALER_EXCHANGEDB_fees_free (wa->af);
+      wa->af = NULL;
+      return NULL;
+    }
+  }
+  af = advance_fees (wa,
+                     now);
+  if (NULL != af)
+    return af;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Failed to find current wire transfer fees for `%s' at %s\n",
+              wa->method,
+              GNUNET_STRINGS_absolute_time_to_string (now));
+  return NULL;
+}
+
+
 /* end of exchangedb_fees.c */
