@@ -65,13 +65,16 @@ static struct TALER_TESTING_BankConfiguration bc;
   TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
 
 /**
- * Execute the taler-exchange-aggregator command with
+ * Execute the taler-exchange-aggregator, closer and transfer commands with
  * our configuration file.
  *
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", CONFIG_FILE), \
+  TALER_TESTING_cmd_exec_closer (label "-closer", CONFIG_FILE), \
+  TALER_TESTING_cmd_exec_transfer (label "-transfer", CONFIG_FILE)
+
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -547,7 +550,8 @@ run (void *cls,
      * Run transfers. This will do the transfer as refund deadline
      * was 0, except of course because the refund succeeded, the
      * transfer should no longer be done.
-     */CMD_EXEC_AGGREGATOR ("run-aggregator-3b"),
+     *///
+    CMD_EXEC_AGGREGATOR ("run-aggregator-3b"),
     /* check that aggregator didn't do anything, as expected */
     TALER_TESTING_cmd_check_bank_empty ("check-refund-fast-not-run"),
     TALER_TESTING_cmd_end ()
@@ -621,8 +625,10 @@ run (void *cls,
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
-    TALER_TESTING_cmd_exec_aggregator ("close-reserves",
-                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+    TALER_TESTING_cmd_exec_closer ("close-reserves",
+                                   CONFIG_FILE_EXPIRE_RESERVE_NOW),
+    TALER_TESTING_cmd_exec_transfer ("close-reserves-transfer",
+                                     CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
     TALER_TESTING_cmd_status ("short-lived-status",
                               "short-lived-reserve",
@@ -740,8 +746,8 @@ run (void *cls,
       = TALER_TESTING_cmd_exec_wirewatch ("reserve-open-close-wirewatch",
                                           CONFIG_FILE_EXPIRE_RESERVE_NOW);
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
-      = TALER_TESTING_cmd_exec_aggregator ("reserve-open-close-aggregation",
-                                           CONFIG_FILE_EXPIRE_RESERVE_NOW);
+      = TALER_TESTING_cmd_exec_closer ("reserve-open-close-aggregation",
+                                       CONFIG_FILE_EXPIRE_RESERVE_NOW);
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 3]
       = TALER_TESTING_cmd_status ("reserve-open-close-status",
                                   "reserve-open-close-key",

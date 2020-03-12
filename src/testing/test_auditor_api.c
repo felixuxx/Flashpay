@@ -64,13 +64,15 @@ static struct TALER_TESTING_BankConfiguration bc;
   TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
 
 /**
- * Execute the taler-exchange-aggregator command with
+ * Execute the taler-exchange-aggregator, closer and transfer commands with
  * our configuration file.
  *
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE), \
+  TALER_TESTING_cmd_exec_closer (label, CONFIG_FILE), \
+  TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
 
 /**
  * Run wire transfer of funds from some user's account to the

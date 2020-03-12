@@ -48,6 +48,19 @@ static struct TALER_TESTING_ExchangeConfiguration ec;
  */
 static char *config_filename;
 
+
+/**
+ * Execute the taler-exchange-aggregator, closer and transfer commands with
+ * our configuration file.
+ *
+ * @param label label to use for the command.
+ */
+#define CMD_EXEC_AGGREGATOR(label) \
+  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_filename), \
+  TALER_TESTING_cmd_exec_closer (label "-closer", config_filename),   \
+  TALER_TESTING_cmd_exec_transfer (label "-transfer", config_filename)
+
+
 static struct TALER_TESTING_Command
 transfer_to_exchange (const char *label,
                       const char *amount)
@@ -71,8 +84,7 @@ run (void *cls,
 {
   struct TALER_TESTING_Command all[] = {
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-on-start"),
-    TALER_TESTING_cmd_exec_aggregator ("run-aggregator-on-empty",
-                                       config_filename),
+    CMD_EXEC_AGGREGATOR ("run-aggregator-on-empty"),
     TALER_TESTING_cmd_exec_wirewatch ("run-wirewatch-on-empty",
                                       config_filename),
     TALER_TESTING_cmd_check_bank_empty ("expect-transfers-empty-after-dry-run"),
@@ -89,14 +101,12 @@ run (void *cls,
       bc.exchange_payto,                                            // credit
       "run-transfer-good-to-exchange"),
 
-    TALER_TESTING_cmd_exec_aggregator ("run-aggregator-non-expired-reserve",
-                                       config_filename),
+    CMD_EXEC_AGGREGATOR ("run-aggregator-non-expired-reserve"),
 
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-1"),
     TALER_TESTING_cmd_sleep ("wait (5s)",
                              5),
-    TALER_TESTING_cmd_exec_aggregator ("run-aggregator-on-expired-reserve",
-                                       config_filename),
+    CMD_EXEC_AGGREGATOR ("run-aggregator-on-expired-reserve"),
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-1",
                                            ec.exchange_url,
                                            "EUR:4.99",

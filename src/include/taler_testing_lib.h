@@ -1100,24 +1100,50 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
  * @param label command label.
  * @param config_filename configuration file for the
  *                        aggregator to use.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_aggregator (const char *label,
                                    const char *config_filename);
 
+
+/**
+ * Make a "closer" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration file for the
+ *                        closer to use.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_closer (const char *label,
+                               const char *config_filename);
+
+
+/**
+ * Make a "transfer" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration file for the
+ *                        transfer to use.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_transfer (const char *label,
+                                 const char *config_filename);
+
+
 /**
  * Make the "keyup" CMD.
  *
  * @param label command label.
  * @param config_filename configuration filename.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_keyup (const char *label,
                               const char *config_filename);
+
 
 /**
  * Make the "keyup" CMD, with "--timestamp" option.
@@ -1125,7 +1151,6 @@ TALER_TESTING_cmd_exec_keyup (const char *label,
  * @param label command label.
  * @param config_filename configuration filename.
  * @param now Unix timestamp representing the fake "now".
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1161,7 +1186,6 @@ TALER_TESTING_cmd_check_keys_with_now (const char *label,
  *
  * @param label command label
  * @param config_filename configuration filename
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1196,7 +1220,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  *        from; will provide reserve priv to sign the request.
  * @param dk denomination public key.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1228,7 +1251,6 @@ TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd);
  * @param expected_fee the fee the exchange should charge.
  * @param expected_response_code the HTTP response the exchange
  *        should return.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1239,13 +1261,12 @@ TALER_TESTING_cmd_wire (const char *label,
 
 
 /**
- * Create a "reserve status" command.
+ * Create a GET "reserves" command.
  *
  * @param label the command label.
  * @param reserve_reference reference to the reserve to check.
  * @param expected_balance expected balance for the reserve.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1271,7 +1292,6 @@ TALER_TESTING_cmd_status (const char *label,
  * @param refund_deadline refund deadline, zero means 'no refunds'.
  * @param amount how much is going to be deposited.
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
