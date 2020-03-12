@@ -8,3 +8,4 @@ taler-exchange-wirewatch
 test_taler_exchange_wirewatch-postgres
 test_taler_exchange_httpd_home/.config/taler/account-1.json
 taler-exchange-closer
+taler-exchange-transfer
