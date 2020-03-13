@@ -39,7 +39,7 @@ PREFIX=
 #PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf
-# Setup database (just to be sure)
+# Setup database
 taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
 # Only log hard errors, we expect lots of warnings...
 export GNUNET_FORCE_LOG=";;;;ERROR"

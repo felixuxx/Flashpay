@@ -447,9 +447,16 @@ run_transfers (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "No more pending wire transfers, going idle\n");
     GNUNET_assert (NULL == task);
-    task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
-                                         &run_transfers,
-                                         NULL);
+    if (GNUNET_YES == test_mode)
+    {
+      GNUNET_SCHEDULER_shutdown ();
+    }
+    else
+    {
+      task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
+                                           &run_transfers,
+                                           NULL);
+    }
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     /* should be impossible */
