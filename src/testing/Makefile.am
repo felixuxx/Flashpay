@@ -148,6 +148,7 @@ test_auditor_api_LDADD = \
 test_auditor_api_version_SOURCES = \
   test_auditor_api_version.c
 test_auditor_api_version_LDADD = \
+  libtalertesting.la \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \

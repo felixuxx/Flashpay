@@ -151,8 +151,16 @@ main (int argc,
                 " is your PATH correct?\n");
     return 77;
   }
-  GNUNET_SCHEDULER_run (&run,
-                        NULL);
+  if (0 != TALER_TESTING_wait_auditor_ready ("http://localhost:8083/"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to launch `taler-auditor-httpd`\n");
+  }
+  else
+  {
+    GNUNET_SCHEDULER_run (&run,
+                          NULL);
+  }
   GNUNET_OS_process_kill (proc, SIGTERM);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);

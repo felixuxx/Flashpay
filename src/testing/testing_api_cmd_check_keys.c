@@ -69,12 +69,12 @@ struct CheckKeysState
   /**
    * Value X to set as the URL parameter:
    * "/keys?last_denom_issue=X" is used only when `set_last_denom'
-   * equals GNUNET_YES.
+   * equals #GNUNET_YES.
    */
   struct GNUNET_TIME_Absolute last_denom_date;
 
   /**
-   * If GNUNET_YES, then we'll provide the "/keys" request.
+   * If #GNUNET_YES, then we'll provide the "/keys" request.
    * with the "now" argument.
    */
   int with_now;
@@ -160,11 +160,10 @@ check_keys_run (void *cls,
   {
     /* Did not get the expected number of denomination keys! */
     GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Got %u keys in step %s, expected %u\n",
-                is->keys->num_denom_keys,
-                cmd->label,
-                cks->num_denom_keys);
+    TALER_LOG_ERROR ("Got %u keys in step %s, expected %u\n",
+                     is->keys->num_denom_keys,
+                     cmd->label,
+                     cks->num_denom_keys);
     TALER_TESTING_interpreter_fail (is);
     return;
   }

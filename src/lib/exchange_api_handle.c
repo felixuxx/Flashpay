@@ -756,7 +756,7 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
 
 
 /**
- * Compare two denomination keys.
+ * Compare two denomination keys.  Ignores revocation data.
  *
  * @param denom1 first denomination key
  * @param denom2 second denomination key
@@ -769,6 +769,9 @@ denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
 {
   struct GNUNET_CRYPTO_RsaPublicKey *tmp1;
   struct GNUNET_CRYPTO_RsaPublicKey *tmp2;
+  int r1;
+  int r2;
+  int ret;
 
   /* First check if pub is the same.  */
   if (0 != GNUNET_CRYPTO_rsa_public_key_cmp
@@ -778,24 +781,19 @@ denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
 
   tmp1 = denom1->key.rsa_public_key;
   tmp2 = denom2->key.rsa_public_key;
+  r1 = denom1->revoked;
+  r2 = denom2->revoked;
 
   denom1->key.rsa_public_key = NULL;
   denom2->key.rsa_public_key = NULL;
-
   /* Then procede with the rest of the object.  */
-  if (0 != GNUNET_memcmp (denom1,
-                          denom2))
-  {
-    denom1->key.rsa_public_key = tmp1;
-    denom2->key.rsa_public_key = tmp2;
-
-    return 1;
-  }
-
+  ret = GNUNET_memcmp (denom1,
+                       denom2);
+  denom1->revoked = r1;
+  denom2->revoked = r2;
   denom1->key.rsa_public_key = tmp1;
   denom2->key.rsa_public_key = tmp2;
-
-  return 0;
+  return ret;
 }
 
 
@@ -935,6 +933,9 @@ decode_keys_json (const json_t *resp_obj,
       struct TALER_EXCHANGE_DenomPublicKey dk;
       int found = GNUNET_NO;
 
+      memset (&dk,
+              0,
+              sizeof (dk));
       EXITIF (GNUNET_SYSERR ==
               parse_json_denomkey (&dk,
                                    check_sig,
@@ -956,7 +957,7 @@ decode_keys_json (const json_t *resp_obj,
       if (GNUNET_YES == found)
       {
         /* 0:0:0 did not support /keys cherry picking */
-
+        TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
         /* Okay, but why breaking here? It could be that the
          * user redownloaded all the keys in a forced way. */
         GNUNET_break_op (0 == current);
@@ -970,7 +971,7 @@ decode_keys_json (const json_t *resp_obj,
       key_data->denom_keys[key_data->num_denom_keys++] = dk;
 
       /* Update "last_denom_issue_date" */
-      TALER_LOG_DEBUG ("Crawling DK 'valid_from': %s\n",
+      TALER_LOG_DEBUG ("Adding denomination key that is valid_from %s\n",
                        GNUNET_STRINGS_absolute_time_to_string (dk.valid_from));
       key_data->last_denom_issue_date
         = GNUNET_TIME_absolute_max (key_data->last_denom_issue_date,
@@ -1012,6 +1013,11 @@ decode_keys_json (const json_t *resp_obj,
           found = GNUNET_YES;
           /* Merge denomination key signatures of downloaded /keys into existing
              auditor information 'aix'. */
+          TALER_LOG_DEBUG (
+            "Merging %u new audited keys with %u known audited keys\n",
+            aix->num_denom_keys,
+            ai.num_denom_keys);
+
           GNUNET_array_grow (aix->denom_keys,
                              aix->num_denom_keys,
                              aix->num_denom_keys + ai.num_denom_keys);
@@ -1212,8 +1218,8 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
 
   if (GNUNET_YES == pull_all_keys)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Forcing re-download of all keys\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Forcing re-download of all exchange keys\n");
     GNUNET_break (GNUNET_YES == force_download);
     exchange->state = MHS_INIT;
   }
@@ -1291,7 +1297,7 @@ keys_completed_cb (void *cls,
     for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
       kd.denom_keys[i].key.rsa_public_key
         = GNUNET_CRYPTO_rsa_public_key_dup (
-        kd_old.denom_keys[i].key.rsa_public_key);
+            kd_old.denom_keys[i].key.rsa_public_key);
 
     kd.num_auditors = kd_old.num_auditors;
     kd.auditors = GNUNET_new_array (kd.num_auditors,
@@ -1365,8 +1371,8 @@ keys_completed_cb (void *cls,
     exchange->kr = NULL;
     free_keys_request (kr);
     exchange->state = MHS_FAILED;
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "/keys download failed\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Exchange keys download failed\n");
     if (NULL != exchange->key_data_raw)
     {
       json_decref (exchange->key_data_raw);
@@ -1384,6 +1390,8 @@ keys_completed_cb (void *cls,
   exchange->key_data_expiration = kr->expire;
   free_keys_request (kr);
   exchange->state = MHS_CERT;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Successfully downloaded exchange's keys\n");
   update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
@@ -1604,6 +1612,8 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   exchange->key_data = key_data;
   exchange->key_data_expiration = expire;
   exchange->state = MHS_CERT;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Successfully loaded exchange's keys via deserialization\n");
   update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,

@@ -318,7 +318,7 @@ version_completed_cb (void *cls,
       response_code = 0;
       break;
     }
-    auditor->retry_delay = GNUNET_TIME_UNIT_ZERO;
+    auditor->retry_delay = GNUNET_TIME_UNIT_ZERO; /* restart quickly */
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -443,6 +443,7 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
                 GNUNET_CURL_append_header (ctx,
                                            "Expect:"));
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
+  auditor->retry_delay = GNUNET_TIME_UNIT_SECONDS; /* start slowly */
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);
   auditor->version_cb = version_cb;
