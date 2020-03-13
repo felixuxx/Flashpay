@@ -29,12 +29,14 @@ PREFIX=
 # Uncomment this line to run with valgrind...
 # PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
+# Setup database
+taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
 # Setup wire accounts.
 taler-exchange-wire -c test_taler_exchange_httpd.conf > /dev/null || exit 1
 # Run Exchange HTTPD (in background)
-$PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf -i 2> test-exchange.log &
+$PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf 2> test-exchange.log &
 
 # Give HTTP time to start
 

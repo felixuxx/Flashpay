@@ -37,7 +37,8 @@
  * @param field name of the database field to fetch amount from
  * @param[out] amountp pointer to amount to set
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount ( \
+#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) \
+  TALER_PQ_result_spec_amount (                    \
     field,pg->currency,amountp)
 
 /**
@@ -62,6 +63,11 @@ struct TALER_AUDITORDB_Session
    */
   struct GNUNET_PQ_Context *conn;
 
+  /**
+   * Name of the ongoing transaction, used to debug cases where
+   * a transaction is not properly terminated via COMMIT or
+   * ROLLBACK.
+   */
   const char *transaction_name;
 };
 
