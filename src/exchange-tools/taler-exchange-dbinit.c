@@ -70,7 +70,7 @@ run (void *cls,
     if (GNUNET_OK != plugin->drop_tables (plugin->cls))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Could not drop tables. Either database was not yet initialized, or permission denied. Consult the logs. Will still try to create new tables.\n");
+                  "Could not drop tables as requested. Either database was not yet initialized, or permission denied. Consult the logs. Will still try to create new tables.\n");
     }
   }
   if (GNUNET_OK !=
