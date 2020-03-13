@@ -75,13 +75,13 @@ taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
 
 # setup exchange
 echo "Setting up exchange"
-taler-exchange-dbinit -r -c $CONF
+taler-exchange-dbinit -c $CONF
 taler-exchange-wire -c $CONF 2> taler-exchange-wire.log
 taler-exchange-keyup -L INFO -c $CONF -o e2a.dat 2> taler-exchange-keyup.log
 
 # setup auditor
 echo "Setting up auditor"
-taler-auditor-dbinit -r -c $CONF
+taler-auditor-dbinit -c $CONF
 taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
 taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a.dat -o a2e.dat -m $MASTER_PUB
 rm -f e2a.dat
