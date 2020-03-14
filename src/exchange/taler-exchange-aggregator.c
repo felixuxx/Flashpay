@@ -523,8 +523,9 @@ aggregate_cb (void *cls,
               const json_t *wire)
 {
   struct AggregationUnit *au = cls;
-  struct TALER_Amount delta;
+  struct TALER_Amount old;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_Amount delta;
 
   /* NOTE: potential optimization: use custom SQL API to not
      fetch these: */
@@ -541,12 +542,16 @@ aggregate_cb (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
 
-  /* compute contribution of this coin after fees */
   /* add to total */
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Adding transaction amount %s from row %llu to aggregation\n",
               TALER_amount2s (amount_with_fee),
               (unsigned long long) row_id);
+  /* save the existing total aggregate in 'old', for later */
+  old = au->total_amount;
+  /* we begin with the total contribution of the current coin */
+  au->total_amount = *amount_with_fee;
+  /* compute contribution of this coin (after fees) */
   au->have_refund = GNUNET_NO;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           au->session,
@@ -562,43 +567,45 @@ aggregate_cb (void *cls,
   }
   if (GNUNET_NO == au->have_refund)
   {
+    struct TALER_Amount tmp;
+
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Subtracting deposit fee %s for non-refunded coin\n",
                 TALER_amount2s (deposit_fee));
     if (GNUNET_SYSERR ==
-        TALER_amount_subtract (&delta,
-                               amount_with_fee,
+        TALER_amount_subtract (&tmp,
+                               &au->total_amount,
                                deposit_fee))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Fatally malformed record at %llu over amount %s (deposit fee exceeds deposited value)\n",
                   (unsigned long long) row_id,
                   TALER_amount2s (&au->total_amount));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_get_zero (old.currency,
+                                            &au->total_amount));
     }
     else
     {
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_get_zero (au->total_amount.currency,
-                                            &delta));
+      au->total_amount = tmp;
     }
   }
-  else
-  {
-    delta = *amount_with_fee;
-  }
 
+  /* now add the au->total_amount with the (remaining) contribution of
+     the current coin to the 'old' value with the current aggregate value */
   {
     struct TALER_Amount tmp;
 
     if (GNUNET_OK !=
         TALER_amount_add (&tmp,
                           &au->total_amount,
-                          &delta))
+                          &old))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Overflow or currency incompatibility during aggregation at %llu\n",
                   (unsigned long long) row_id);
       /* Skip this one, but keep going! */
+      au->total_amount = old;
       return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
     au->total_amount = tmp;
