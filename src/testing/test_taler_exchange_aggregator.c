@@ -72,6 +72,24 @@ static char *config_filename;
 
 
 /**
+ * Function run on shutdown to unload the DB plugin.
+ *
+ * @param cls NULL
+ */
+static void
+unload_db (void *cls)
+{
+  (void) cls;
+  if (NULL != dbc.plugin)
+  {
+    dbc.plugin->drop_tables (dbc.plugin->cls);
+    TALER_EXCHANGEDB_plugin_unload (dbc.plugin);
+    dbc.plugin = NULL;
+  }
+}
+
+
+/**
  * Collects all the tests.
  */
 static void
@@ -431,6 +449,8 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  GNUNET_SCHEDULER_add_shutdown (&unload_db,
+                                 NULL);
   TALER_TESTING_run_with_fakebank (is,
                                    all,
                                    bc.exchange_auth.wire_gateway_url);
@@ -473,8 +493,6 @@ prepare_database (void *cls,
                                 cfg,
                                 NULL, // no exchange process handle.
                                 GNUNET_NO); // do not try to connect to the exchange
-
-
   return GNUNET_OK;
 }
 
@@ -524,18 +542,16 @@ main (int argc,
     return 77;
   }
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_parse_and_run (config_filename,
-                                                       &prepare_database,
-                                                       NULL))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_parse_and_run (config_filename,
+                                          &prepare_database,
+                                          NULL))
   {
     TALER_LOG_WARNING ("Could not prepare database for tests.\n");
     return result;
   }
-
   GNUNET_free (config_filename);
   GNUNET_free (testname);
-  dbc.plugin->drop_tables (dbc.plugin->cls);
-  TALER_EXCHANGEDB_plugin_unload (dbc.plugin);
   return GNUNET_OK == result ? 0 : 1;
 }
 
