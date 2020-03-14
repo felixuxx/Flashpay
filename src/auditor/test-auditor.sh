@@ -66,6 +66,12 @@ function pre_audit () {
         echo -n "Running exchange aggregator ..."
         taler-exchange-aggregator -L INFO -t -c $CONF 2> aggregator.log || exit_fail "FAIL"
         echo " DONE"
+        echo -n "Running exchange closer ..."
+        taler-exchange-closer -L INFO -t -c $CONF 2> closer.log || exit_fail "FAIL"
+        echo " DONE"
+        echo -n "Running exchange transfer ..."
+        taler-exchange-transfer -L INFO -t -c $CONF 2> transfer.log || exit_fail "FAIL"
+        echo " DONE"
     fi
 }
 
@@ -1352,30 +1358,36 @@ function test_24() {
 
 echo "===========24: deposits missing ==========="
 # Modify denom_sig, so it is wrong
-echo "DELETE FROM deposits;" | psql -Aqt $DB
-echo "DELETE FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
-
-run_audit
-
-echo -n "Testing inconsistency detection... "
-
-jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
-
-AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit.json`
-if test x$AMOUNT = xTESTKUDOS:0
+CNT=`echo "SELECT COUNT(*) FROM deposit_confirmations;" | psql -Aqt $DB`
+if test x$CNT = x0
 then
-    exit_fail "Expected non-zero total missing deposit confirmation amount"
-fi
-COUNT=`jq -er .missing_deposit_confirmation_count < test-audit.json`
-if test x$AMOUNT = x0
-then
-    exit_fail "Expected non-zero total missing deposit confirmation count"
-fi
+    echo "Skipping deposits missing test: no deposit confirmations in database!"
+else
+    echo "DELETE FROM deposits;" | psql -Aqt $DB
+    echo "DELETE FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
-echo PASS
+    run_audit
 
-# cannot easily undo DELETE, hence full reload
-full_reload
+    echo -n "Testing inconsistency detection... "
+
+    jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
+
+    AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit.json`
+    if test x$AMOUNT = xTESTKUDOS:0
+    then
+        exit_fail "Expected non-zero total missing deposit confirmation amount"
+    fi
+    COUNT=`jq -er .missing_deposit_confirmation_count < test-audit.json`
+    if test x$AMOUNT = x0
+    then
+        exit_fail "Expected non-zero total missing deposit confirmation count"
+    fi
+
+    echo PASS
+
+    # cannot easily undo DELETE, hence full reload
+    full_reload
+fi
 }
 
 
