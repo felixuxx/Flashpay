@@ -830,7 +830,6 @@ main (int argc,
     GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
-  GNUNET_free (cfg_filename);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -841,6 +840,7 @@ main (int argc,
                                "taler",
                                "currency");
     GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
 
@@ -851,6 +851,7 @@ main (int argc,
                                "CURRENCY",
                                "Value is too long");
     GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
   if (howmany_clients > 10240)
@@ -861,6 +862,7 @@ main (int argc,
   if (0 == howmany_clients)
   {
     TALER_LOG_ERROR ("-p option value must not be zero\n");
+    GNUNET_free (cfg_filename);
     return BAD_CLI_ARG;
   }
   if (GNUNET_OK !=
@@ -872,6 +874,7 @@ main (int argc,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "benchmark",
                                "USER_PAYTO_URI");
+    GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
 
@@ -885,6 +888,7 @@ main (int argc,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Missing specification of bank account in configuration\n");
+      GNUNET_free (cfg_filename);
       return BAD_CONFIG_FILE;
     }
     if (GNUNET_OK !=
@@ -895,6 +899,7 @@ main (int argc,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Configuration fails to provide exchange bank details in section `%s'\n",
                   bank_details_section);
+      GNUNET_free (cfg_filename);
       return BAD_CONFIG_FILE;
     }
   }
@@ -914,7 +919,8 @@ main (int argc,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to run `taler-exchange-wire`, is your PATH correct?\n");
-      return GNUNET_NO;
+      GNUNET_free (cfg_filename);
+      return BAD_CONFIG_FILE;
     }
     GNUNET_OS_process_wait (compute_wire_response);
     GNUNET_OS_process_destroy (compute_wire_response);
@@ -935,6 +941,7 @@ main (int argc,
                                  "exchange",
                                  "base_url");
       GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (cfg_filename);
       return BAD_CONFIG_FILE;
     }
 
@@ -948,6 +955,7 @@ main (int argc,
                                  "benchmark-remote-exchange",
                                  "host");
       GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (cfg_filename);
       return BAD_CONFIG_FILE;
     }
 
@@ -961,6 +969,7 @@ main (int argc,
                                  "benchmark-remote-exchange",
                                  "dir");
       GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (cfg_filename);
       return BAD_CONFIG_FILE;
     }
   }
@@ -969,11 +978,13 @@ main (int argc,
                                NULL,
                                cfg_filename);
   GNUNET_CONFIGURATION_destroy (cfg);
+  GNUNET_free (cfg_filename);
 
   /* If we're the exchange worker, we're done now.  No need to print results */
   if (MODE_EXCHANGE == mode)
+  {
     return (GNUNET_OK == result) ? 0 : result;
-
+  }
   duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {
