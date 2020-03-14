@@ -389,15 +389,11 @@ run_transfers (void *cls)
 {
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_EXCHANGEDB_Session *session;
-  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   (void) cls;
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for pending wire transfers\n");
-  tc = GNUNET_SCHEDULER_get_task_context ();
-  if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
-    return;
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
