@@ -30,11 +30,6 @@
 
 
 /**
- * Which currency is used by this exchange?
- */
-static char *exchange_currency_string;
-
-/**
  * What is the smallest unit we support for wire transfers?
  * We will need to round down to a multiple of this amount.
  */
@@ -142,33 +137,11 @@ parse_wirewatch_config ()
                                "AGGREGATOR_IDLE_SLEEP_INTERVAL");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &exchange_currency_string))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY");
-    return GNUNET_SYSERR;
-  }
-  if (strlen (exchange_currency_string) >= TALER_CURRENCY_LEN)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Currency `%s' longer than the allowed limit of %u characters.",
-                exchange_currency_string,
-                (unsigned int) TALER_CURRENCY_LEN);
-    return GNUNET_SYSERR;
-  }
-
   if ( (GNUNET_OK !=
         TALER_config_get_amount (cfg,
                                  "taler",
                                  "CURRENCY_ROUND_UNIT",
                                  &currency_round_unit)) ||
-       (0 != strcasecmp (exchange_currency_string,
-                         currency_round_unit.currency)) ||
        ( (0 != currency_round_unit.fraction) &&
          (0 != currency_round_unit.value) ) )
   {
@@ -437,15 +410,11 @@ run_reserve_closures (void *cls)
 {
   struct TALER_EXCHANGEDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
-  const struct GNUNET_SCHEDULER_TaskContext *tc;
   struct ExpiredReserveContext erc;
   struct GNUNET_TIME_Absolute now;
 
   (void) cls;
   task = NULL;
-  tc = GNUNET_SCHEDULER_get_task_context ();
-  if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
-    return;
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -579,8 +548,9 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
-  if (GNUNET_OK != GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                                 &argc, &argv))
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_get_utf8_args (argc, argv,
+                                    &argc, &argv))
     return 2;
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
