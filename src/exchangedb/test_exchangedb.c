@@ -1656,16 +1656,39 @@ run (void *cls)
           plugin->ensure_coin_known (plugin->cls,
                                      session,
                                      &deposit.coin));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_recoup_request (plugin->cls,
-                                         session,
-                                         &reserve_pub,
-                                         &deposit.coin,
-                                         &coin_sig,
-                                         &coin_blind,
-                                         &value,
-                                         &cbc.h_coin_envelope,
-                                         deadline));
+  {
+    struct TALER_EXCHANGEDB_Reserve pre_reserve;
+    struct TALER_EXCHANGEDB_Reserve post_reserve;
+    struct TALER_Amount delta;
+
+    pre_reserve.pub = reserve_pub;
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->reserves_get (plugin->cls,
+                                  session,
+                                  &pre_reserve));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->insert_recoup_request (plugin->cls,
+                                           session,
+                                           &reserve_pub,
+                                           &deposit.coin,
+                                           &coin_sig,
+                                           &coin_blind,
+                                           &value,
+                                           &cbc.h_coin_envelope,
+                                           deadline));
+    post_reserve.pub = reserve_pub;
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->reserves_get (plugin->cls,
+                                  session,
+                                  &post_reserve));
+    FAILIF (GNUNET_OK !=
+            TALER_amount_subtract (&delta,
+                                   &post_reserve.balance,
+                                   &pre_reserve.balance));
+    FAILIF (0 !=
+            TALER_amount_cmp (&delta,
+                              &value));
+  }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_recoup_above_serial_id (plugin->cls,
                                                  session,

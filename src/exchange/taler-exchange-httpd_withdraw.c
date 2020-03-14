@@ -260,6 +260,7 @@ withdraw_transaction (void *cls,
     char *amount_required;
     char *r_balance;
     struct TALER_EXCHANGEDB_ReserveHistory *rh;
+
     /* The reserve does not have the required amount (actual
      * amount + withdraw fee) */
     GNUNET_break_op (0);
