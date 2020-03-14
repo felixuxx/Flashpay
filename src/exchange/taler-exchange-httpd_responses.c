@@ -433,10 +433,13 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
   history = TEH_RESPONSE_compile_transaction_history (coin_pub,
                                                       tl);
   if (NULL == history)
+  {
+    GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                        "failed to convert transaction history to JSON");
+  }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o}",
@@ -462,10 +465,17 @@ TEH_RESPONSE_compile_reserve_history (const struct
   struct TALER_Amount deposit_total;
   struct TALER_Amount withdraw_total;
   json_t *json_history;
-  int ret;
+  enum InitAmounts
+  {
+    /** Nothing initialized */
+    IA_NONE = 0,
+    /** deposit_total initialized */
+    IA_DEPOSIT = 1,
+    /** withdraw_total initialized */
+    IA_WITHDRAW = 2
+  } init = IA_NONE;
 
   json_history = json_array ();
-  ret = 0;
   for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh;
        NULL != pos;
        pos = pos->next)
@@ -473,8 +483,11 @@ TEH_RESPONSE_compile_reserve_history (const struct
     switch (pos->type)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
-      if (0 == (1 & ret))
+      if (0 == (IA_DEPOSIT & init))
+      {
         deposit_total = pos->details.bank->amount;
+        init |= IA_DEPOSIT;
+      }
       else if (GNUNET_OK !=
                TALER_amount_add (&deposit_total,
                                  &deposit_total,
@@ -484,7 +497,6 @@ TEH_RESPONSE_compile_reserve_history (const struct
         json_decref (json_history);
         return NULL;
       }
-      ret |= 1;
       if (0 !=
           json_array_append_new (json_history,
                                  json_pack ("{s:s, s:o, s:s, s:o, s:o}",
@@ -514,9 +526,10 @@ TEH_RESPONSE_compile_reserve_history (const struct
         struct TALER_Amount value;
 
         value = pos->details.withdraw->amount_with_fee;
-        if (0 == (2 & ret))
+        if (0 == (IA_WITHDRAW & init))
         {
           withdraw_total = value;
+          init |= IA_WITHDRAW;
         }
         else
         {
@@ -530,7 +543,6 @@ TEH_RESPONSE_compile_reserve_history (const struct
             return NULL;
           }
         }
-        ret |= 2;
         if (0 !=
             json_array_append_new (json_history,
                                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
@@ -568,8 +580,11 @@ TEH_RESPONSE_compile_reserve_history (const struct
         struct TALER_ExchangeSignatureP sig;
 
         recoup = pos->details.recoup;
-        if (0 == (1 & ret))
+        if (0 == (IA_DEPOSIT & init))
+        {
           deposit_total = recoup->value;
+          init |= IA_DEPOSIT;
+        }
         else if (GNUNET_OK !=
                  TALER_amount_add (&deposit_total,
                                    &deposit_total,
@@ -579,7 +594,6 @@ TEH_RESPONSE_compile_reserve_history (const struct
           json_decref (json_history);
           return NULL;
         }
-        ret |= 1;
         pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
         pc.purpose.size = htonl (sizeof (struct TALER_RecoupConfirmationPS));
         pc.timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp);
@@ -628,9 +642,10 @@ TEH_RESPONSE_compile_reserve_history (const struct
         struct TALER_Amount value;
 
         value = pos->details.closing->amount;
-        if (0 == (2 & ret))
+        if (0 == (IA_WITHDRAW & init))
         {
           withdraw_total = value;
+          init |= IA_WITHDRAW;
         }
         else
         {
@@ -644,7 +659,6 @@ TEH_RESPONSE_compile_reserve_history (const struct
             return NULL;
           }
         }
-        ret |= 2;
         rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);
         rcc.purpose.size = htonl (sizeof (struct
                                           TALER_ReserveCloseConfirmationPS));
@@ -703,15 +717,17 @@ TEH_RESPONSE_compile_reserve_history (const struct
     }
   }
 
-  if (0 == (1 & ret))
+  if (0 == (IA_DEPOSIT & init))
   {
+    /* We should not have gotten here, without deposits no reserve
+       should exist! */
     GNUNET_break (0);
     json_decref (json_history);
     return NULL;
   }
-  if (0 == (2 & ret))
+  if (0 == (IA_WITHDRAW & init))
   {
-    /* did not encounter any withdraw operations, set to zero */
+    /* did not encounter any withdraw operations, set withdraw_total to zero */
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (deposit_total.currency,
                                           &withdraw_total));

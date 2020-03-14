@@ -382,6 +382,13 @@ enum TALER_ErrorCode
   TALER_EC_DENOMINATION_KEY_LOST = 1116,
 
   /**
+   * The exchange's database entry with the reserve balance summary
+   * is inconsistent with its own history of the reserve.
+   * Returned with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_WITHDRAW_HISTORY_RESERVE_BALANCE_CORRUPT = 1117,
+
+  /**
    * The exchange failed to obtain the transaction history of the given
    * reserve from the database. This response is provided with HTTP
    * status code MHD_HTTP_INTERNAL_SERVER_ERROR.

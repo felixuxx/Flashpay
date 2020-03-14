@@ -44,33 +44,40 @@
 /**
  * Send reserve status information to client with the
  * message that we have insufficient funds for the
- * requested /reserve/withdraw operation.
+ * requested withdraw operation.
  *
  * @param connection connection to the client
+ * @param ebalance expected balance based on our database
  * @param rh reserve history to return
  * @return MHD result code
  */
 static int
 reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
+                                           const struct TALER_Amount *ebalance,
                                            const struct
                                            TALER_EXCHANGEDB_ReserveHistory *rh)
 {
-  json_t *json_balance;
   json_t *json_history;
   struct TALER_Amount balance;
 
   json_history = TEH_RESPONSE_compile_reserve_history (rh,
                                                        &balance);
-  if ((NULL == json_history)
-      /* Address the case where the ptr is not null, but
-       * it fails "internally" to dump as string (= corrupted).  */
-      || (0 == json_dumpb (json_history, NULL, 0, 0)))
+  if (NULL == json_history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                        "balance calculation failure");
-  json_balance = TALER_JSON_from_amount (&balance);
-
+  if (0 !=
+      TALER_amount_cmp (&balance,
+                        ebalance))
+  {
+    GNUNET_break (0);
+    json_decref (json_history);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_WITHDRAW_HISTORY_RESERVE_BALANCE_CORRUPT,
+                                       "internal balance inconsistency error");
+  }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o, s:o}",
@@ -78,7 +85,8 @@ reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
                                     "code",
                                     (json_int_t)
                                     TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
-                                    "balance", json_balance,
+                                    "balance", TALER_JSON_from_amount (
+                                      &balance),
                                     "history", json_history);
 }
 
@@ -285,6 +293,7 @@ withdraw_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret = reply_reserve_withdraw_insufficient_funds (connection,
+                                                          &r.balance,
                                                           rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
@@ -455,7 +464,7 @@ TEH_RESERVE_handler_reserve_withdraw (const struct TEH_RequestHandler *rh,
                                   &wc.wsrd.reserve_pub.eddsa_pub))
   {
     TALER_LOG_WARNING (
-      "Client supplied invalid signature for /reserve/withdraw request\n");
+      "Client supplied invalid signature for withdraw request\n");
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
     return TALER_MHD_reply_with_error (connection,
@@ -484,7 +493,7 @@ TEH_RESERVE_handler_reserve_withdraw (const struct TEH_RequestHandler *rh,
 
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
-                              "run reserve withdraw",
+                              "run withdraw",
                               &mhd_ret,
                               &withdraw_transaction,
                               &wc))
