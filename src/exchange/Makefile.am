@@ -99,6 +99,7 @@ taler_exchange_httpd_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lmicrohttpd \
+  -lgnunetcurl \
   -lgnunetutil \
   -lgnunetjson \
   -ljansson \
