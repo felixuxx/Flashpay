@@ -127,24 +127,9 @@ TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
   char *currency;
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (is->cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &currency))
+      TALER_config_get_currency (is->cfg,
+                                 &currency))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY");
-    is->result = GNUNET_SYSERR;
-    return;
-  }
-  if (strlen (currency) >= TALER_CURRENCY_LEN)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY",
-                               "Value is too long");
-    GNUNET_free (currency);
     is->result = GNUNET_SYSERR;
     return;
   }

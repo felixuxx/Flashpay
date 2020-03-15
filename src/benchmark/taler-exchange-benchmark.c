@@ -831,25 +831,9 @@ main (int argc,
     return BAD_CONFIG_FILE;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "currency",
-                                             &currency))
+      TALER_config_get_currency (cfg,
+                                 &currency))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "currency");
-    GNUNET_CONFIGURATION_destroy (cfg);
-    GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
-  }
-
-  if (strlen (currency) >= TALER_CURRENCY_LEN)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY",
-                               "Value is too long");
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;

@@ -772,7 +772,7 @@ create_denomkey_issue (
   GNUNET_assert (NULL != dki->denom_priv.rsa_private_key);
   dki->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_private_key_get_public (
-    dki->denom_priv.rsa_private_key);
+        dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &dki->issue.properties.denom_hash);
   dki->issue.properties.master = master_public_key;
@@ -1174,14 +1174,9 @@ run (void *cls,
   (void) cfgfile;
   kcfg = cfg;
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &currency))
+      TALER_config_get_currency (cfg,
+                                 &currency))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY");
     global_ret = 1;
     return;
   }

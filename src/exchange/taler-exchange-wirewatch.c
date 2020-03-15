@@ -101,11 +101,6 @@ static struct GNUNET_CURL_Context *ctx;
 static struct GNUNET_CURL_RescheduleContext *rc;
 
 /**
- * Which currency is used by this exchange?
- */
-static char *exchange_currency_string;
-
-/**
  * The exchange's configuration (global)
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -177,8 +172,6 @@ static struct TALER_BANK_CreditHistoryHandle *hh;
 static void
 shutdown_task (void *cls)
 {
-  struct WireAccount *wa;
-
   (void) cls;
   if (NULL != hh)
   {
@@ -202,14 +195,18 @@ shutdown_task (void *cls)
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   db_plugin = NULL;
-  while (NULL != (wa = wa_head))
   {
-    GNUNET_CONTAINER_DLL_remove (wa_head,
-                                 wa_tail,
-                                 wa);
-    TALER_BANK_auth_free (&wa->auth);
-    GNUNET_free (wa->section_name);
-    GNUNET_free (wa);
+    struct WireAccount *wa;
+
+    while (NULL != (wa = wa_head))
+    {
+      GNUNET_CONTAINER_DLL_remove (wa_head,
+                                   wa_tail,
+                                   wa);
+      TALER_BANK_auth_free (&wa->auth);
+      GNUNET_free (wa->section_name);
+      GNUNET_free (wa);
+    }
   }
   wa_pos = NULL;
   last_row_off = 0;
@@ -259,28 +256,8 @@ add_account_cb (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-exchange_serve_process_config ()
+exchange_serve_process_config (void)
 {
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &exchange_currency_string))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY");
-    return GNUNET_SYSERR;
-  }
-  if (strlen (exchange_currency_string) >= TALER_CURRENCY_LEN)
-  {
-    fprintf (stderr,
-             "Currency `%s' longer than the allowed limit of %u characters.",
-             exchange_currency_string,
-             (unsigned int) TALER_CURRENCY_LEN);
-    return GNUNET_SYSERR;
-  }
-
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {

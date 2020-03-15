@@ -48,26 +48,10 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
-  (void) cfg;
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &currency_string))
+      TALER_config_get_currency (cfg,
+                                 &currency_string))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY");
-    ret = 1;
-    return;
-  }
-  if (strlen (currency_string) >= TALER_CURRENCY_LEN)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY",
-                               "Value is too long");
-    GNUNET_free (currency_string);
     ret = 1;
     return;
   }

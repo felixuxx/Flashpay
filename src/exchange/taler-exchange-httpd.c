@@ -759,31 +759,6 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
   {
-    char *currency_string;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "taler",
-                                               "CURRENCY",
-                                               &currency_string))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "taler",
-                                 "CURRENCY");
-      return GNUNET_SYSERR;
-    }
-    if (strlen (currency_string) >= TALER_CURRENCY_LEN)
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "taler",
-                                 "CURRENCY",
-                                 "Value is too long");
-      GNUNET_free (currency_string);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_free (currency_string);
-  }
-  {
     char *master_public_key_str;
 
     if (GNUNET_OK !=

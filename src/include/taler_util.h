@@ -138,6 +138,19 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
+ * Load our currency from the @a cfg (in section [taler]
+ * the option "CURRENCY").
+ *
+ * @param cfg configuration to use
+ * @param[out] currency where to write the result
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+int
+TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           char **currency);
+
+
+/**
  * Allow user to specify an amount on the command line.
  *
  * @param shortName short name of the option

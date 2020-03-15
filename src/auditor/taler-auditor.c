@@ -5291,14 +5291,9 @@ run (void *cls,
               TALER_B2S (&master_pub));
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "taler",
-                                             "CURRENCY",
-                                             &currency))
+      TALER_config_get_currency (cfg,
+                                 &currency))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler",
-                               "CURRENCY");
     global_ret = 1;
     return;
   }

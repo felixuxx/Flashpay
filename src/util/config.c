@@ -55,3 +55,40 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
   GNUNET_free (str);
   return GNUNET_OK;
 }
+
+
+/**
+ * Load our currency from the @a cfg (in section [taler]
+ * the option "CURRENCY").
+ *
+ * @param cfg configuration to use
+ * @param[out] currency where to write the result
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+int
+TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           char **currency)
+{
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "taler",
+                                             "CURRENCY",
+                                             currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
+    return GNUNET_SYSERR;
+  }
+  if (strlen (*currency) >= TALER_CURRENCY_LEN)
+  {
+    fprintf (stderr,
+             "Currency `%s' longer than the allowed limit of %u characters.",
+             *currency,
+             (unsigned int) TALER_CURRENCY_LEN);
+    GNUNET_free (*currency);
+    *currency = NULL;
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
