@@ -31,15 +31,15 @@
 
 
 /**
- * Send reserve status information to client.
+ * Send reserve history to client.
  *
  * @param connection connection to the client
  * @param rh reserve history to return
  * @return MHD result code
  */
 static int
-reply_reserve_status_success (struct MHD_Connection *connection,
-                              const struct TALER_EXCHANGEDB_ReserveHistory *rh)
+reply_reserve_history_success (struct MHD_Connection *connection,
+                               const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -62,9 +62,9 @@ reply_reserve_status_success (struct MHD_Connection *connection,
 
 
 /**
- * Closure for #reserve_status_transaction.
+ * Closure for #reserve_history_transaction.
  */
-struct ReserveStatusContext
+struct ReserveHistoryContext
 {
   /**
    * Public key of the reserve the inquiry is about.
@@ -80,8 +80,8 @@ struct ReserveStatusContext
 
 
 /**
- * Function implementing /reserve/status transaction.
- * Execute a /reserve/status.  Given the public key of a reserve,
+ * Function implementing /reserves/ GET transaction.
+ * Execute a /reserves/ GET.  Given the public key of a reserve,
  * return the associated transaction history.  Runs the
  * transaction logic; IF it returns a non-error code, the transaction
  * logic MUST NOT queue a MHD response.  IF it returns an hard error,
@@ -89,7 +89,7 @@ struct ReserveStatusContext
  * IF it returns the soft error code, the function MAY be called again
  * to retry and MUST not queue a MHD response.
  *
- * @param cls a `struct ReserveStatusContext *`
+ * @param cls a `struct ReserveHistoryContext *`
  * @param connection MHD request which triggered the transaction
  * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
@@ -97,12 +97,12 @@ struct ReserveStatusContext
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-reserve_status_transaction (void *cls,
-                            struct MHD_Connection *connection,
-                            struct TALER_EXCHANGEDB_Session *session,
-                            int *mhd_ret)
+reserve_history_transaction (void *cls,
+                             struct MHD_Connection *connection,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             int *mhd_ret)
 {
-  struct ReserveStatusContext *rsc = cls;
+  struct ReserveHistoryContext *rsc = cls;
 
   (void) connection;
   (void) mhd_ret;
@@ -117,7 +117,7 @@ reserve_status_transaction (void *cls,
  * Handle a GET "/reserves/" request.  Parses the
  * given "reserve_pub" in @a args (which should contain the
  * EdDSA public key of a reserve) and then respond with the
- * status of the reserve.
+ * history of the reserve.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -129,7 +129,7 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
                           struct MHD_Connection *connection,
                           const char *const args[1])
 {
-  struct ReserveStatusContext rsc;
+  struct ReserveHistoryContext rsc;
   int mhd_ret;
 
   (void) rh;
@@ -148,9 +148,9 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
   rsc.rh = NULL;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
-                              "get reserve status",
+                              "get reserve history",
                               &mhd_ret,
-                              &reserve_status_transaction,
+                              &reserve_history_transaction,
                               &rsc))
     return mhd_ret;
 
@@ -164,8 +164,8 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
                                       "code",
                                       (json_int_t)
                                       TALER_EC_RESERVE_STATUS_UNKNOWN);
-  mhd_ret = reply_reserve_status_success (connection,
-                                          rsc.rh);
+  mhd_ret = reply_reserve_history_success (connection,
+                                           rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rsc.rh);
   return mhd_ret;
