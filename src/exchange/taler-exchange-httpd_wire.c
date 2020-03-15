@@ -47,11 +47,17 @@ fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
   json_t *a;
 
   a = json_array ();
+  if (NULL == a)
+  {
+    GNUNET_break (0); /* out of memory? */
+    return NULL;
+  }
   while (NULL != af)
   {
     if ( (GNUNET_NO == GNUNET_TIME_round_abs (&af->start_date)) ||
          (GNUNET_NO == GNUNET_TIME_round_abs (&af->end_date)) )
     {
+      GNUNET_break (0); /* bad timestamps, should not happen */
       json_decref (a);
       return NULL;
     }
@@ -72,7 +78,7 @@ fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
                                           "sig", GNUNET_JSON_from_data_auto (
                                             &af->master_sig))))
     {
-      GNUNET_break (0);
+      GNUNET_break (0); /* out of memory? */
       json_decref (a);
       return NULL;
     }
@@ -109,8 +115,9 @@ TEH_WIRE_get_fees (const char *method)
   if (NULL == af)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to find current wire transfer fees for `%s'\n",
-                method);
+                "Failed to find current wire transfer fees for `%s' at time %s\n",
+                method,
+                GNUNET_STRINGS_absolute_time_to_string (now));
     return NULL;
   }
   j = fees_to_json (af);
