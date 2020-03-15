@@ -56,10 +56,14 @@ load_fee (const char *method)
   if (NULL == fees)
     return GNUNET_SYSERR;
   /* Add fees to #wire_fee_object */
-  GNUNET_assert (-1 !=
-                 json_object_set_new (wire_fee_object,
-                                      method,
-                                      fees));
+  if (0 !=
+      json_object_set_new (wire_fee_object,
+                           method,
+                           fees))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -191,7 +195,17 @@ TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 
   ret = GNUNET_OK;
   wire_accounts_array = json_array ();
+  if (NULL == wire_accounts_array)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   wire_fee_object = json_object ();
+  if (NULL == wire_fee_object)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   TALER_EXCHANGEDB_find_accounts (cfg,
                                   &load_account,
                                   &ret);
