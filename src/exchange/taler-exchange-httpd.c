@@ -701,7 +701,7 @@ handle_mhd_request (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-exchange_serve_process_config ()
+exchange_serve_process_config (void)
 {
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
@@ -812,7 +812,7 @@ exchange_serve_process_config ()
  * stats if requested.
  */
 static void
-write_stats ()
+write_stats (void)
 {
   struct GNUNET_DISK_FileHandle *fh;
   pid_t pid = getpid ();

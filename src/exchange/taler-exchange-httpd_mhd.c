@@ -33,6 +33,7 @@
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_mhd.h"
 
+
 /**
  * Function to call to handle the request by sending
  * back static data from the @a rh.
@@ -48,7 +49,6 @@ TEH_handler_static_response (const struct TEH_RequestHandler *rh,
                              const char *const args[])
 {
   struct MHD_Response *response;
-  int ret;
   size_t dlen;
 
   (void) args;
@@ -68,11 +68,15 @@ TEH_handler_static_response (const struct TEH_RequestHandler *rh,
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,
                                     rh->mime_type);
-  ret = MHD_queue_response (connection,
-                            rh->response_code,
-                            response);
-  MHD_destroy_response (response);
-  return ret;
+  {
+    int ret;
+
+    ret = MHD_queue_response (connection,
+                              rh->response_code,
+                              response);
+    MHD_destroy_response (response);
+    return ret;
+  }
 }
 
 

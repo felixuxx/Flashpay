@@ -42,9 +42,9 @@
  * @return json representation of the @a rh, NULL on error
  */
 json_t *
-TEH_RESPONSE_compile_reserve_history (const struct
-                                      TALER_EXCHANGEDB_ReserveHistory *rh,
-                                      struct TALER_Amount *balance);
+TEH_RESPONSE_compile_reserve_history (
+  const struct TALER_EXCHANGEDB_ReserveHistory *rh,
+  struct TALER_Amount *balance);
 
 
 /**
@@ -60,12 +60,11 @@ TEH_RESPONSE_compile_reserve_history (const struct
  * @return MHD result code
  */
 int
-TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
-                                            enum TALER_ErrorCode ec,
-                                            const struct
-                                            TALER_CoinSpendPublicKeyP *coin_pub,
-                                            const struct
-                                            TALER_EXCHANGEDB_TransactionList *tl);
+TEH_RESPONSE_reply_coin_insufficient_funds (
+  struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
 /**
@@ -76,10 +75,9 @@ TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
  * @return json representation of the @a rh, NULL on error
  */
 json_t *
-TEH_RESPONSE_compile_transaction_history (const struct
-                                          TALER_CoinSpendPublicKeyP *coin_pub,
-                                          const struct
-                                          TALER_EXCHANGEDB_TransactionList *tl);
+TEH_RESPONSE_compile_transaction_history (
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
 #endif

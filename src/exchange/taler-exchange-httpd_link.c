@@ -32,13 +32,13 @@
 
 
 /**
- * Closure for #handle_transfer_data().
+ * Closure for #handle_link_data().
  */
 struct HTD_Context
 {
 
   /**
-   * Public key of the coin for which we are running /refresh/link.
+   * Public key of the coin for which we are running link.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -70,10 +70,9 @@ handle_link_data (void *cls,
 {
   struct HTD_Context *ctx = cls;
   json_t *list;
-  json_t *root;
 
   if (NULL == ctx->mlist)
-    return;
+    return; /* we failed earlier */
   if (NULL == (list = json_array ()))
     goto fail;
 
@@ -101,16 +100,20 @@ handle_link_data (void *cls,
       goto fail;
     }
   }
-  root = json_pack ("{s:o, s:o}",
-                    "new_coins",
-                    list,
-                    "transfer_pub",
-                    GNUNET_JSON_from_data_auto (transfer_pub));
-  if ( (NULL == root) ||
-       (0 !=
-        json_array_append_new (ctx->mlist,
-                               root)) )
-    goto fail;
+  {
+    json_t *root;
+
+    root = json_pack ("{s:o, s:o}",
+                      "new_coins",
+                      list,
+                      "transfer_pub",
+                      GNUNET_JSON_from_data_auto (transfer_pub));
+    if ( (NULL == root) ||
+         (0 !=
+          json_array_append_new (ctx->mlist,
+                                 root)) )
+      goto fail;
+  }
   return;
 fail:
   ctx->ec = TALER_EC_JSON_ALLOCATION_FAILURE;
@@ -120,15 +123,13 @@ fail:
 
 
 /**
- * Execute a "/refresh/link".  Returns the linkage information that
- * will allow the owner of a coin to follow the refresh trail to
- * the refreshed coin.
+ * Execute a link operation.  Returns the linkage information that will allow
+ * the owner of a coin to follow the trail to the refreshed coin.
  *
- * If it returns a non-error code, the transaction logic MUST
- * NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
- * it returns the soft error code, the function MAY be called again to
- * retry and MUST not queue a MHD response.
+ * If it returns a non-error code, the transaction logic MUST NOT queue a MHD
+ * response.  IF it returns an hard error, the transaction logic MUST queue a
+ * MHD response and set @a mhd_ret.  IF it returns the soft error code, the
+ * function MAY be called again to retry and MUST not queue a MHD response.
  *
  * @param cls closure
  * @param connection MHD request which triggered the transaction
@@ -138,10 +139,10 @@ fail:
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-refresh_link_transaction (void *cls,
-                          struct MHD_Connection *connection,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          int *mhd_ret)
+link_transaction (void *cls,
+                  struct MHD_Connection *connection,
+                  struct TALER_EXCHANGEDB_Session *session,
+                  int *mhd_ret)
 {
   struct HTD_Context *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -204,11 +205,19 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
                                        "coin public key malformed");
   }
   ctx.mlist = json_array ();
+  if (NULL == ctx.mlist)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       "json_array() call failed");
+  }
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "run link",
                               &mhd_ret,
-                              &refresh_link_transaction,
+                              &link_transaction,
                               &ctx))
   {
     if (NULL != ctx.mlist)
@@ -223,4 +232,4 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
 }
 
 
-/* end of taler-exchange-httpd_refresh_link.c */
+/* end of taler-exchange-httpd_link.c */
