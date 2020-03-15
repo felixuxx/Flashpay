@@ -709,6 +709,13 @@ int
 TALER_amount_round_down (struct TALER_Amount *amount,
                          const struct TALER_Amount *round_unit)
 {
+  if (GNUNET_OK !=
+      TALER_amount_cmp_currency (amount,
+                                 round_unit))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   if ( (0 != round_unit->fraction) &&
        (0 != round_unit->value) )
   {

@@ -13,7 +13,6 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-exchange-transfer.c
  * @brief Process that actually finalizes outgoing transfers with the wire gateway / bank
@@ -98,25 +97,28 @@ static struct GNUNET_CURL_RescheduleContext *rc;
 static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
 
 /**
- * Value to return from main(). #GNUNET_OK on success, #GNUNET_SYSERR
- * on serious errors.
+ * Value to return from main(). 0 on success, non-zero on errors.
  */
-static int global_ret;
+static enum
+{
+  GR_SUCCESS = 0,
+  GR_WIRE_TRANSFER_FAILED = 1,
+  GR_DATABASE_COMMIT_HARD_FAIL = 2,
+  GR_INVARIANT_FAILURE = 3,
+  GR_WIRE_ACCOUNT_NOT_CONFIGURED = 4,
+  GR_WIRE_TRANSFER_BEGIN_FAIL = 5,
+  GR_DATABASE_TRANSACTION_BEGIN_FAIL = 6,
+  GR_DATABASE_SESSION_START_FAIL = 7,
+  GR_CONFIGURATION_INVALID = 8,
+  GR_CMD_LINE_UTF8_ERROR = 9,
+  GR_CMD_LINE_OPTIONS_WRONG = 10,
+  GR_DATABASE_FETCH_FAILURE = 11,
+} global_ret;
 
 /**
  * #GNUNET_YES if we are in test mode and should exit when idle.
  */
 static int test_mode;
-
-
-/**
- * Execute the wire transfers that we have committed to
- * do.
- *
- * @param cls NULL
- */
-static void
-run_transfers (void *cls);
 
 
 /**
@@ -170,7 +172,7 @@ shutdown_task (void *cls)
  * @return #GNUNET_OK on success
  */
 static int
-parse_wirewatch_config ()
+parse_wirewatch_config (void)
 {
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
@@ -227,7 +229,20 @@ commit_or_warn (struct TALER_EXCHANGEDB_Session *session)
 
 
 /**
+ * Execute the wire transfers that we have committed to
+ * do.
+ *
+ * @param cls NULL
+ */
+static void
+run_transfers (void *cls);
+
+
+/**
  * Function called with the result from the execute step.
+ * On success, we mark the respective wire transfer as finished,
+ * and in general we afterwards continue to #run_transfers(),
+ * except for irrecoverable errors.
  *
  * @param cls NULL
  * @param http_status_code #MHD_HTTP_OK on success
@@ -257,7 +272,7 @@ wire_confirm_cb (void *cls,
                 ec);
     db_plugin->rollback (db_plugin->cls,
                          session);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_WIRE_TRANSFER_FAILED;
     GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
     wpd = NULL;
@@ -280,7 +295,7 @@ wire_confirm_cb (void *cls,
     }
     else
     {
-      global_ret = GNUNET_SYSERR;
+      global_ret = GR_DATABASE_COMMIT_HARD_FAIL;
       GNUNET_SCHEDULER_shutdown ();
     }
     GNUNET_free (wpd);
@@ -299,7 +314,7 @@ wire_confirm_cb (void *cls,
     return;
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_COMMIT_HARD_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
@@ -313,7 +328,7 @@ wire_confirm_cb (void *cls,
     return;
   default:
     GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_INVARIANT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -321,7 +336,8 @@ wire_confirm_cb (void *cls,
 
 
 /**
- * Callback with data about a prepared transaction.
+ * Callback with data about a prepared transaction.  Triggers the respective
+ * wire transfer using the prepared transaction data.
  *
  * @param cls NULL
  * @param rowid row identifier used to mark prepared transaction as done
@@ -339,6 +355,15 @@ wire_prepare_cb (void *cls,
   struct TALER_EXCHANGEDB_WireAccount *wa;
 
   (void) cls;
+  if ( (NULL == wire_method) ||
+       (NULL == buf) )
+  {
+    GNUNET_break (0);
+    db_plugin->rollback (db_plugin->cls,
+                         wpd->session);
+    global_ret = GR_DATABASE_FETCH_FAILURE;
+    goto cleanup;
+  }
   wpd->row_id = rowid;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting wire transfer %llu\n",
@@ -351,11 +376,8 @@ wire_prepare_cb (void *cls,
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    GNUNET_free (wpd);
-    wpd = NULL;
-    return;
+    global_ret = GR_WIRE_ACCOUNT_NOT_CONFIGURED;
+    goto cleanup;
   }
   wa = wpd->wa;
   wpd->eh = TALER_BANK_transfer (ctx,
@@ -369,12 +391,14 @@ wire_prepare_cb (void *cls,
     GNUNET_break (0); /* Irrecoverable */
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
-    global_ret = GNUNET_SYSERR;
-    GNUNET_SCHEDULER_shutdown ();
-    GNUNET_free (wpd);
-    wpd = NULL;
-    return;
+    global_ret = GR_WIRE_TRANSFER_BEGIN_FAIL;
+    goto cleanup;
   }
+  return;
+cleanup:
+  GNUNET_SCHEDULER_shutdown ();
+  GNUNET_free (wpd);
+  wpd = NULL;
 }
 
 
@@ -398,7 +422,7 @@ run_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_SESSION_START_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -409,7 +433,7 @@ run_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -429,7 +453,7 @@ run_transfers (void *cls)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_COMMIT_HARD_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -440,15 +464,17 @@ run_transfers (void *cls)
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     /* no more prepared wire transfers, go sleep a bit! */
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No more pending wire transfers, going idle\n");
     GNUNET_assert (NULL == task);
     if (GNUNET_YES == test_mode)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "No more pending wire transfers, shutting down (because we are in test mode)\n");
       GNUNET_SCHEDULER_shutdown ();
     }
     else
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "No more pending wire transfers, going idle\n");
       task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
                                            &run_transfers,
                                            NULL);
@@ -483,7 +509,7 @@ run (void *cls,
   if (GNUNET_OK != parse_wirewatch_config ())
   {
     cfg = NULL;
-    global_ret = 1;
+    global_ret = GR_CONFIGURATION_INVALID;
     return;
   }
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
@@ -525,19 +551,20 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
-  if (GNUNET_OK != GNUNET_STRINGS_get_utf8_args (argc, argv,
-                                                 &argc, &argv))
-    return 2;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_get_utf8_args (argc, argv,
+                                    &argc, &argv))
+    return GR_CMD_LINE_UTF8_ERROR;
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
-                          "taler-exchange-transfers",
+                          "taler-exchange-transfer",
                           gettext_noop (
                             "background process that executes outgoing wire transfers"),
                           options,
                           &run, NULL))
   {
     GNUNET_free ((void *) argv);
-    return 1;
+    return GR_CMD_LINE_OPTIONS_WRONG;
   }
   GNUNET_free ((void *) argv);
   return global_ret;

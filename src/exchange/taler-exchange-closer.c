@@ -63,10 +63,25 @@ static struct GNUNET_SCHEDULER_Task *task;
 static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
 
 /**
- * Value to return from main(). #GNUNET_OK on success, #GNUNET_SYSERR
+ * Value to return from main(). 0 on success, non-zero
  * on serious errors.
  */
-static int global_ret;
+static enum
+{
+  GR_SUCCESS = 0,
+  GR_WIRE_ACCOUNT_NOT_CONFIGURED = 1,
+  GR_WIRE_TRANSFER_FEES_NOT_CONFIGURED = 2,
+  GR_FAILURE_TO_ROUND_AMOUNT = 3,
+  GR_DATABASE_INSERT_HARD_FAIL = 4,
+  GR_DATABASE_SELECT_HARD_FAIL = 5,
+  GR_DATABASE_COMMIT_HARD_FAIL = 6,
+  GR_DATABASE_SESSION_START_FAIL = 7,
+  GR_DATABASE_TRANSACTION_BEGIN_FAIL = 8,
+  GR_CONFIGURATION_INVALID = 9,
+  GR_CMD_LINE_UTF8_ERROR = 10,
+  GR_CMD_LINE_OPTIONS_WRONG = 11,
+  GR_INVALID_PAYTO_ENCOUNTERED = 12,
+} global_ret;
 
 /**
  * #GNUNET_YES if we are in test mode and should exit when idle.
@@ -113,7 +128,7 @@ shutdown_task (void *cls)
  * @return #GNUNET_OK on success
  */
 static int
-parse_wirewatch_config ()
+parse_wirewatch_config (void)
 {
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -204,11 +219,6 @@ struct ExpiredReserveContext
    */
   struct TALER_EXCHANGEDB_Session *session;
 
-  /**
-   * Set to #GNUNET_YES if the transaction continues
-   * asynchronously.
-   */
-  int async_cont;
 };
 
 
@@ -258,7 +268,7 @@ expired_reserve_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire account configured to deal with target URI `%s'\n",
                 account_payto_uri);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_WIRE_ACCOUNT_NOT_CONFIGURED;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -275,7 +285,7 @@ expired_reserve_cb (void *cls,
                                        session);
     if (NULL == af)
     {
-      global_ret = GNUNET_SYSERR;
+      global_ret = GR_WIRE_TRANSFER_FEES_NOT_CONFIGURED;
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
@@ -302,7 +312,7 @@ expired_reserve_cb (void *cls,
                                &currency_round_unit))
   {
     GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_FAILURE_TO_ROUND_AMOUNT;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -341,7 +351,7 @@ expired_reserve_cb (void *cls,
        (GNUNET_DB_STATUS_HARD_ERROR == qs) )
   {
     GNUNET_break (0);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_INSERT_HARD_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -352,20 +362,14 @@ expired_reserve_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reserve was virtually empty, moving on\n");
     (void) commit_or_warn (session);
-    erc->async_cont = GNUNET_YES;
-    GNUNET_assert (NULL == task);
-    task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
-                                     NULL);
     return qs;
   }
 
   /* success, perform wire transfer */
   {
-    char *method;
     void *buf;
     size_t buf_size;
 
-    method = TALER_payto_get_method (account_payto_uri);
     TALER_BANK_prepare_transfer (account_payto_uri,
                                  &amount_without_fee,
                                  exchange_base_url,
@@ -375,15 +379,16 @@ expired_reserve_cb (void *cls,
     /* Commit our intention to execute the wire transfer! */
     qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
                                               session,
-                                              method,
+                                              wa->method,
                                               buf,
                                               buf_size);
     GNUNET_free (buf);
-    GNUNET_free (method);
   }
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
+    global_ret = GR_DATABASE_INSERT_HARD_FAIL;
+    GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -391,10 +396,6 @@ expired_reserve_cb (void *cls,
     /* start again */
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
-  erc->async_cont = GNUNET_YES;
-  GNUNET_assert (NULL == task);
-  task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
-                                   NULL);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -419,7 +420,7 @@ run_reserve_closures (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_SESSION_START_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -431,12 +432,11 @@ run_reserve_closures (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   erc.session = session;
-  erc.async_cont = GNUNET_NO;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -454,7 +454,7 @@ run_reserve_closures (void *cls)
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          session);
-    global_ret = GNUNET_SYSERR;
+    global_ret = GR_DATABASE_SELECT_HARD_FAIL;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -483,8 +483,6 @@ run_reserve_closures (void *cls)
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     (void) commit_or_warn (session);
-    if (GNUNET_YES == erc.async_cont)
-      break;
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
@@ -494,7 +492,9 @@ run_reserve_closures (void *cls)
 
 
 /**
- * First task.
+ * First task.  Parses the configuration and starts the
+ * main loop of #run_reserve_closures(). Also schedules
+ * the #shutdown_task() to clean up.
  *
  * @param cls closure, NULL
  * @param args remaining command-line arguments
@@ -515,7 +515,7 @@ run (void *cls,
   if (GNUNET_OK != parse_wirewatch_config ())
   {
     cfg = NULL;
-    global_ret = 1;
+    global_ret = GR_CONFIGURATION_INVALID;
     return;
   }
   GNUNET_assert (NULL == task);
@@ -531,7 +531,7 @@ run (void *cls,
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
- * @return 0 ok, 1 on error
+ * @return 0 ok, non-zero on error
  */
 int
 main (int argc,
@@ -551,7 +551,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 2;
+    return GR_CMD_LINE_UTF8_ERROR;
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-exchange-closer",
@@ -561,7 +561,7 @@ main (int argc,
                           &run, NULL))
   {
     GNUNET_free ((void *) argv);
-    return 1;
+    return GR_CMD_LINE_OPTIONS_WRONG;
   }
   GNUNET_free ((void *) argv);
   return global_ret;
