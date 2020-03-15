@@ -36,7 +36,7 @@ extern struct GNUNET_TIME_Relative TEH_max_keys_caching;
 /**
  * The exchange's configuration.
  */
-extern struct GNUNET_CONFIGURATION_Handle *cfg;
+extern struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
  * Main directory with exchange data.

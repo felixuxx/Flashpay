@@ -46,8 +46,7 @@
 
 
 /**
- * Backlog for listen operation on unix
- * domain sockets.
+ * Backlog for listen operation on unix domain sockets.
  */
 #define UNIX_BACKLOG 500
 
@@ -87,21 +86,21 @@ char *TEH_revocation_directory;
 /**
  * The exchange's configuration (global)
  */
-struct GNUNET_CONFIGURATION_Handle *cfg;
+struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
- * How long is caching /keys allowed at most?
+ * How long is caching /keys allowed at most? (global)
  */
 struct GNUNET_TIME_Relative TEH_max_keys_caching;
 
 /**
  * Master public key (according to the
- * configuration in the exchange directory).
+ * configuration in the exchange directory).  (global)
  */
 struct TALER_MasterPublicKeyP TEH_master_public_key;
 
 /**
- * Our DB plugin.
+ * Our DB plugin.  (global)
  */
 struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
@@ -138,6 +137,8 @@ static unsigned long long req_count;
 
 /**
  * Limit for the number of requests this HTTP may process before restarting.
+ * (This was added as one way of dealing with unavoidable memory fragmentation
+ * happening slowly over time.)
  */
 static unsigned long long req_max;
 
@@ -267,29 +268,12 @@ handle_mhd_completion_callback (void *cls,
   TALER_MHD_parse_post_cleanup_callback (ecls->opaque_post_parsing_context);
   GNUNET_free (ecls);
   *con_cls = NULL;
-  /* check that we didn't leave any transactions hanging */
-  /* NOTE: In high-performance production, we might want to
-     remove this. */
+  /* Sanity-check that we didn't leave any transactions hanging */
+  /* NOTE: In high-performance production, we could consider
+     removing this as it should not be needed and might be costly
+     (to be benchmarked). */
   TEH_plugin->preflight (TEH_plugin->cls,
                          TEH_plugin->get_session (TEH_plugin->cls));
-}
-
-
-/**
- * Return #GNUNET_YES if given a valid correlation ID and
- * #GNUNET_NO otherwise.
- *
- * @returns #GNUNET_YES iff given a valid correlation ID
- */
-static int
-is_valid_correlation_id (const char *correlation_id)
-{
-  if (strlen (correlation_id) >= 64)
-    return GNUNET_NO;
-  for (size_t i = 0; i < strlen (correlation_id); i++)
-    if (! (isalnum (correlation_id[i]) || (correlation_id[i] == '-')))
-      return GNUNET_NO;
-  return GNUNET_YES;
 }
 
 
@@ -348,9 +332,9 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
                                      upload_data_size,
                                      &root);
     if (GNUNET_SYSERR == res)
-      return MHD_NO;
+      return MHD_NO;  /* bad upload, could not even generate error */
     if ( (GNUNET_NO == res) || (NULL == root) )
-      return MHD_YES;
+      return MHD_YES; /* so far incomplete upload or parser error */
   }
 
   {
@@ -398,16 +382,17 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
 
     /* just to be safe(r), we always terminate the array with a NULL
        (which handlers should not read, but at least if they do, they'll
-       crash pretty reliably... */
+       crash pretty reliably...) */
     args[rh->nargs] = NULL;
 
-    /* Above logic ensures that 'root' is exactly non-NULL for POST operations */
+    /* Above logic ensures that 'root' is exactly non-NULL for POST operations,
+       so we test for 'root' to decide which handler to invoke. */
     if (NULL != root)
       ret = rh->handler.post (rh,
                               connection,
                               root,
                               args);
-    else /* and we only have "POST" or "GET" in the API for at this point
+    else /* We also only have "POST" or "GET" in the API for at this point
             (OPTIONS/HEAD are taken care of earlier) */
       ret = rh->handler.get (rh,
                              connection,
@@ -462,10 +447,10 @@ handle_mhd_request (void *cls,
         "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n",
       .response_code = MHD_HTTP_OK
     },
-    /* AGPL licensing page, redirect to source. As per the AGPL-license,
-       every deployment is required to offer the user a download of the
-       source. We make this easy by including a redirect to the source
-       here. */
+    /* AGPL licensing page, redirect to source. As per the AGPL-license, every
+       deployment is required to offer the user a download of the source of
+       the actual deployment. We make this easy by including a redirect to the
+       source here. */
     {
       .url = "agpl",
       .method = MHD_HTTP_METHOD_GET,
@@ -521,7 +506,7 @@ handle_mhd_request (void *cls,
       .handler.get = TEH_handler_link,
       .nargs = 2,
     },
-    /* refreshing */
+    /* refreshes/$RCH/reveal */
     {
       .url = "refreshes",
       .method = MHD_HTTP_METHOD_POST,
@@ -560,7 +545,9 @@ handle_mhd_request (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling new request\n");
-    cnt = __sync_add_and_fetch (&req_count, 1LLU);
+    /* Atomic operation, no need for a lock ;-) */
+    cnt = __sync_add_and_fetch (&req_count,
+                                1LLU);
     if (req_max == cnt)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -578,7 +565,7 @@ handle_mhd_request (void *cls,
                                                   MHD_HEADER_KIND,
                                                   "Taler-Correlation-Id");
     if ((NULL != correlation_id) &&
-        (GNUNET_YES != is_valid_correlation_id (correlation_id)))
+        (GNUNET_YES != GNUNET_CURL_is_valid_scope_id (correlation_id)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "illegal incoming correlation ID\n");
@@ -717,7 +704,7 @@ static int
 exchange_serve_process_config ()
 {
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
+      GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
                                              "exchange",
                                              "MAX_REQUESTS",
                                              &req_max))
@@ -725,7 +712,7 @@ exchange_serve_process_config ()
     req_max = ULONG_LONG_MAX;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchange",
                                            "MAX_KEYS_CACHING",
                                            &TEH_max_keys_caching))
@@ -737,7 +724,7 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
+      GNUNET_CONFIGURATION_get_value_filename (TEH_cfg,
                                                "exchange",
                                                "KEYDIR",
                                                &TEH_exchange_directory))
@@ -748,7 +735,7 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
+      GNUNET_CONFIGURATION_get_value_filename (TEH_cfg,
                                                "exchange",
                                                "REVOCATION_DIR",
                                                &TEH_revocation_directory))
@@ -762,7 +749,7 @@ exchange_serve_process_config ()
     char *master_public_key_str;
 
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
+        GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
                                                "exchange",
                                                "MASTER_PUBLIC_KEY",
                                                &master_public_key_str))
@@ -791,14 +778,14 @@ exchange_serve_process_config ()
               GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
 
   if ( (GNUNET_OK !=
-        TEH_VALIDATION_init (cfg)) ||
+        TEH_VALIDATION_init (TEH_cfg)) ||
        (GNUNET_OK !=
         TEH_WIRE_init ()) )
     return GNUNET_SYSERR;
 
 
   if (NULL ==
-      (TEH_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg)))
   {
     fprintf (stderr,
              "Failed to initialize DB subsystem\n");
@@ -807,7 +794,7 @@ exchange_serve_process_config ()
   }
 
   if (GNUNET_OK !=
-      TALER_MHD_parse_config (cfg,
+      TALER_MHD_parse_config (TEH_cfg,
                               "exchange",
                               &serve_port,
                               &serve_unixpath,
@@ -1246,9 +1233,10 @@ main (int argc,
                                    logfile));
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
-  cfg = GNUNET_CONFIGURATION_create ();
+  TEH_cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR ==
-      GNUNET_CONFIGURATION_load (cfg, cfgfile))
+      GNUNET_CONFIGURATION_load (TEH_cfg,
+                                 cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 _ ("Malformed configuration file `%s', exit ...\n"),
@@ -1260,7 +1248,7 @@ main (int argc,
   if (GNUNET_OK !=
       exchange_serve_process_config ())
     return 1;
-  TEH_load_terms (cfg);
+  TEH_load_terms (TEH_cfg);
 
   /* check for systemd-style FD passing */
   listen_pid = getenv ("LISTEN_PID");

@@ -675,7 +675,7 @@ TALER_EXCHANGE_conf_duration_provide ()
   struct GNUNET_TIME_Relative rel;
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchange",
                                            "LOOKAHEAD_PROVIDE",
                                            &rel))
@@ -1474,7 +1474,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                    &ks.purpose,
                    &sig.eddsa_signature));
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchangedb",
                                            "IDLE_RESERVE_EXPIRATION_TIME",
                                            &reserve_closing_delay))
@@ -1780,7 +1780,7 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
          &denomkey_array_sort_comparator);
 
   /* Complete `denomkey_array` by adding auditor signature data */
-  TALER_EXCHANGEDB_auditor_iterate (cfg,
+  TALER_EXCHANGEDB_auditor_iterate (TEH_cfg,
                                     &reload_auditor_iter,
                                     &rfc);
   /* Sanity check: do we have auditors for all denomination keys? */

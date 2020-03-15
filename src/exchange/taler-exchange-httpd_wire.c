@@ -95,7 +95,7 @@ TEH_WIRE_get_fees (const char *method)
   json_t *j;
   struct GNUNET_TIME_Absolute now;
 
-  af = TALER_EXCHANGEDB_fees_read (cfg,
+  af = TALER_EXCHANGEDB_fees_read (TEH_cfg,
                                    method);
   now = GNUNET_TIME_absolute_get ();
   while ( (NULL != af) &&
