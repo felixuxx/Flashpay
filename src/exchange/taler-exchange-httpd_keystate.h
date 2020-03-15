@@ -192,9 +192,9 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  * @return MHD result code
  */
 int
-TEH_KS_handler_keys (const struct TEH_RequestHandler *rh,
-                     struct MHD_Connection *connection,
-                     const char *const args[]);
+TEH_handler_keys (const struct TEH_RequestHandler *rh,
+                  struct MHD_Connection *connection,
+                  const char *const args[]);
 
 
 #endif

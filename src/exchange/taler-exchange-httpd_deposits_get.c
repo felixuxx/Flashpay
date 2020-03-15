@@ -346,9 +346,9 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
  * @return MHD result code
   */
 int
-TEH_TRACKING_handler_track_transaction (const struct TEH_RequestHandler *rh,
-                                        struct MHD_Connection *connection,
-                                        const char *const args[4])
+TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
+                          struct MHD_Connection *connection,
+                          const char *const args[4])
 {
   int res;
   struct TALER_DepositTrackPS tps;

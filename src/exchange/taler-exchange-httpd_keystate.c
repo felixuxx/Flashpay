@@ -2394,9 +2394,9 @@ krd_search_comparator (const void *key,
  * @return MHD result code
  */
 int
-TEH_KS_handler_keys (const struct TEH_RequestHandler *rh,
-                     struct MHD_Connection *connection,
-                     const char *const args[])
+TEH_handler_keys (const struct TEH_RequestHandler *rh,
+                  struct MHD_Connection *connection,
+                  const char *const args[])
 {
   int ret;
   const char *have_cherrypick;

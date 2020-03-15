@@ -55,9 +55,9 @@ TEH_WIRE_get_fees (const char *method);
  * @return MHD result code
  */
 int
-TEH_WIRE_handler_wire (const struct TEH_RequestHandler *rh,
-                       struct MHD_Connection *connection,
-                       const char *const args[]);
+TEH_handler_wire (const struct TEH_RequestHandler *rh,
+                  struct MHD_Connection *connection,
+                  const char *const args[]);
 
 
 #endif

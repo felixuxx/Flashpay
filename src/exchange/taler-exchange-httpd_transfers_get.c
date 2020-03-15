@@ -490,9 +490,9 @@ free_ctx (struct WtidTransactionContext *ctx)
  * @return MHD result code
  */
 int
-TEH_TRACKING_handler_track_transfer (const struct TEH_RequestHandler *rh,
-                                     struct MHD_Connection *connection,
-                                     const char *const args[1])
+TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
+                           struct MHD_Connection *connection,
+                           const char *const args[1])
 {
   struct WtidTransactionContext ctx;
   int mhd_ret;

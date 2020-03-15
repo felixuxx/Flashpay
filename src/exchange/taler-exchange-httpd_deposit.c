@@ -393,9 +393,9 @@ check_timestamp_current (struct GNUNET_TIME_Absolute ts)
  * @return MHD result code
   */
 int
-TEH_DEPOSIT_handler_deposit (struct MHD_Connection *connection,
-                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                             const json_t *root)
+TEH_handler_deposit (struct MHD_Connection *connection,
+                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     const json_t *root)
 {
   int res;
   json_t *wire;

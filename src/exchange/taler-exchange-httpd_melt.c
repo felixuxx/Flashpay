@@ -588,9 +588,9 @@ check_for_denomination_key (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TEH_REFRESH_handler_melt (struct MHD_Connection *connection,
-                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                          const json_t *root)
+TEH_handler_melt (struct MHD_Connection *connection,
+                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                  const json_t *root)
 {
   struct RefreshMeltContext rmc;
   int res;

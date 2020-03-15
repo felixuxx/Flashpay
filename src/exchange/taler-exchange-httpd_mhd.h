@@ -38,9 +38,9 @@
  * @return MHD result code
  */
 int
-TEH_MHD_handler_static_response (const struct TEH_RequestHandler *rh,
-                                 struct MHD_Connection *connection,
-                                 const char *const args[]);
+TEH_handler_static_response (const struct TEH_RequestHandler *rh,
+                             struct MHD_Connection *connection,
+                             const char *const args[]);
 
 
 /**
@@ -53,9 +53,9 @@ TEH_MHD_handler_static_response (const struct TEH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TEH_MHD_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
-                               struct MHD_Connection *connection,
-                               const char *const args[]);
+TEH_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
+                           struct MHD_Connection *connection,
+                           const char *const args[]);
 
 
 /**
@@ -68,9 +68,9 @@ TEH_MHD_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TEH_MHD_handler_send_json_pack_error (const struct TEH_RequestHandler *rh,
-                                      struct MHD_Connection *connection,
-                                      const char *const args[]);
+TEH_handler_send_json_pack_error (const struct TEH_RequestHandler *rh,
+                                  struct MHD_Connection *connection,
+                                  const char *const args[]);
 
 
 #endif

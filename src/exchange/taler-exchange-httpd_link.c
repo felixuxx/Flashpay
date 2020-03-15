@@ -180,9 +180,9 @@ refresh_link_transaction (void *cls,
  * @return MHD result code
   */
 int
-TEH_REFRESH_handler_link (const struct TEH_RequestHandler *rh,
-                          struct MHD_Connection *connection,
-                          const char *const args[2])
+TEH_handler_link (const struct TEH_RequestHandler *rh,
+                  struct MHD_Connection *connection,
+                  const char *const args[2])
 {
   struct HTD_Context ctx;
   int mhd_ret;

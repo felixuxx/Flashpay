@@ -125,9 +125,9 @@ reserve_status_transaction (void *cls,
  * @return MHD result code
  */
 int
-TEH_RESERVE_handler_reserve_status (const struct TEH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    const char *const args[1])
+TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
+                          struct MHD_Connection *connection,
+                          const char *const args[1])
 {
   struct ReserveStatusContext rsc;
   int mhd_ret;

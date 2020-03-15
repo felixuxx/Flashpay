@@ -573,9 +573,9 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
  * @return MHD result code
   */
 int
-TEH_RECOUP_handler_recoup (struct MHD_Connection *connection,
-                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           const json_t *root)
+TEH_handler_recoup (struct MHD_Connection *connection,
+                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                    const json_t *root)
 {
   int res;
   struct TALER_CoinPublicInfo coin;

@@ -899,10 +899,10 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TEH_REFRESH_handler_reveal (const struct TEH_RequestHandler *rh,
-                            struct MHD_Connection *connection,
-                            const json_t *root,
-                            const char *const args[2])
+TEH_handler_reveal (const struct TEH_RequestHandler *rh,
+                    struct MHD_Connection *connection,
+                    const json_t *root,
+                    const char *const args[2])
 {
   int res;
   json_t *coin_evs;

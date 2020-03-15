@@ -543,9 +543,9 @@ verify_and_execute_refund (struct MHD_Connection *connection,
  * @return MHD result code
   */
 int
-TEH_REFUND_handler_refund (struct MHD_Connection *connection,
-                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           const json_t *root)
+TEH_handler_refund (struct MHD_Connection *connection,
+                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                    const json_t *root)
 {
   int res;
   struct TALER_EXCHANGEDB_Refund refund;

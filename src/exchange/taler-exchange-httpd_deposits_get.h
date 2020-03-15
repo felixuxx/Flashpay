@@ -37,9 +37,9 @@
  * @return MHD result code
   */
 int
-TEH_TRACKING_handler_track_transaction (const struct TEH_RequestHandler *rh,
-                                        struct MHD_Connection *connection,
-                                        const char *const args[4]);
+TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
+                          struct MHD_Connection *connection,
+                          const char *const args[4]);
 
 
 #endif

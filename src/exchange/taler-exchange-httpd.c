@@ -189,19 +189,19 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
   } h[] = {
     {
       .op = "deposit",
-      .handler = &TEH_DEPOSIT_handler_deposit
+      .handler = &TEH_handler_deposit
     },
     {
       .op = "melt",
-      .handler = &TEH_REFRESH_handler_melt
+      .handler = &TEH_handler_melt
     },
     {
       .op = "recoup",
-      .handler = &TEH_RECOUP_handler_recoup
+      .handler = &TEH_handler_recoup
     },
     {
       .op = "refund",
-      .handler = &TEH_REFUND_handler_refund
+      .handler = &TEH_handler_refund
     },
     {
       .op = NULL,
@@ -276,8 +276,8 @@ handle_mhd_completion_callback (void *cls,
 
 
 /**
- * Return GNUNET_YES if given a valid correlation ID and
- * GNUNET_NO otherwise.
+ * Return #GNUNET_YES if given a valid correlation ID and
+ * #GNUNET_NO otherwise.
  *
  * @returns #GNUNET_YES iff given a valid correlation ID
  */
@@ -447,7 +447,7 @@ handle_mhd_request (void *cls,
     {
       .url = "robots.txt",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_MHD_handler_static_response,
+      .handler.get = &TEH_handler_static_response,
       .mime_type = "text/plain",
       .data = "User-agent: *\nDisallow: /\n",
       .response_code = MHD_HTTP_OK
@@ -456,7 +456,7 @@ handle_mhd_request (void *cls,
     {
       .url = "",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = TEH_MHD_handler_static_response,
+      .handler.get = TEH_handler_static_response,
       .mime_type = "text/plain",
       .data =
         "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n",
@@ -469,7 +469,7 @@ handle_mhd_request (void *cls,
     {
       .url = "agpl",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_MHD_handler_agpl_redirect
+      .handler.get = &TEH_handler_agpl_redirect
     },
     /* Terms of service */
     {
@@ -487,25 +487,25 @@ handle_mhd_request (void *cls,
     {
       .url = "keys",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_KS_handler_keys,
+      .handler.get = &TEH_handler_keys,
     },
     /* Requests for wiring information */
     {
       .url = "wire",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_WIRE_handler_wire
+      .handler.get = &TEH_handler_wire
     },
     /* Withdrawing coins / interaction with reserves */
     {
       .url = "reserves",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_RESERVE_handler_reserve_status,
+      .handler.get = &TEH_handler_reserves_get,
       .nargs = 1
     },
     {
       .url = "reserves",
       .method = MHD_HTTP_METHOD_POST,
-      .handler.post = &TEH_RESERVE_handler_reserve_withdraw,
+      .handler.post = &TEH_handler_withdraw,
       .nargs = 2
     },
     /* coins */
@@ -518,28 +518,28 @@ handle_mhd_request (void *cls,
     {
       .url = "coins",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = TEH_REFRESH_handler_link,
+      .handler.get = TEH_handler_link,
       .nargs = 2,
     },
     /* refreshing */
     {
       .url = "refreshes",
       .method = MHD_HTTP_METHOD_POST,
-      .handler.post = &TEH_REFRESH_handler_reveal,
+      .handler.post = &TEH_handler_reveal,
       .nargs = 2
     },
     /* tracking transfers */
     {
       .url = "transfers",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_TRACKING_handler_track_transfer,
+      .handler.get = &TEH_handler_transfers_get,
       .nargs = 1
     },
     /* tracking deposits */
     {
       .url = "deposits",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_TRACKING_handler_track_transaction,
+      .handler.get = &TEH_handler_deposits_get,
       .nargs = 4
     },
     /* mark end of list */
@@ -892,7 +892,7 @@ static int do_terminate;
  * @return child pid
  */
 static pid_t
-run_fake_client ()
+run_fake_client (void)
 {
   pid_t cld;
   char ports[6];
@@ -984,7 +984,7 @@ connection_done (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-run_single_request ()
+run_single_request (void)
 {
   pid_t cld;
   int status;

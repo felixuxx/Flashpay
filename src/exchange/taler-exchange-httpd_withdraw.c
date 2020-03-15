@@ -360,10 +360,10 @@ withdraw_transaction (void *cls,
  * @return MHD result code
  */
 int
-TEH_RESERVE_handler_reserve_withdraw (const struct TEH_RequestHandler *rh,
-                                      struct MHD_Connection *connection,
-                                      const json_t *root,
-                                      const char *const args[2])
+TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
+                      struct MHD_Connection *connection,
+                      const json_t *root,
+                      const char *const args[2])
 {
   struct WithdrawContext wc;
   int res;
