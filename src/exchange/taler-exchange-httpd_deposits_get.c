@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_deposits_get.c
- * @brief Handle wire transfer tracking-related requests
+ * @brief Handle wire deposit tracking-related requests
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -29,27 +29,6 @@
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_responses.h"
-
-
-/**
- * A merchant asked for details about a deposit, but
- * we did not execute the deposit yet. Generate a 202 reply.
- *
- * @param connection connection to the client
- * @param planned_exec_time planned execution time
- * @return MHD result code
- */
-static int
-reply_transfer_pending (struct MHD_Connection *connection,
-                        struct GNUNET_TIME_Absolute planned_exec_time)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_ACCEPTED,
-                                    "{s:o}",
-                                    "execution_time",
-                                    GNUNET_JSON_from_time_abs (
-                                      planned_exec_time));
-}
 
 
 /**
@@ -67,25 +46,26 @@ reply_transfer_pending (struct MHD_Connection *connection,
  * @return MHD result code
  */
 static int
-reply_track_transaction (struct MHD_Connection *connection,
-                         const struct GNUNET_HashCode *h_contract_terms,
-                         const struct GNUNET_HashCode *h_wire,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                         const struct TALER_Amount *coin_contribution,
-                         const struct TALER_WireTransferIdentifierRawP *wtid,
-                         struct GNUNET_TIME_Absolute exec_time)
+reply_deposit_details (struct MHD_Connection *connection,
+                       const struct GNUNET_HashCode *h_contract_terms,
+                       const struct GNUNET_HashCode *h_wire,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       const struct TALER_Amount *coin_contribution,
+                       const struct TALER_WireTransferIdentifierRawP *wtid,
+                       struct GNUNET_TIME_Absolute exec_time)
 {
-  struct TALER_ConfirmWirePS cw;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
+  struct TALER_ConfirmWirePS cw = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE),
+    .purpose.size = htonl (sizeof (cw)),
+    .h_wire = *h_wire,
+    .h_contract_terms = *h_contract_terms,
+    .wtid = *wtid,
+    .coin_pub = *coin_pub,
+    .execution_time = GNUNET_TIME_absolute_hton (exec_time)
+  };
 
-  cw.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
-  cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
-  cw.h_wire = *h_wire;
-  cw.h_contract_terms = *h_contract_terms;
-  cw.wtid = *wtid;
-  cw.coin_pub = *coin_pub;
-  cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
   TALER_amount_hton (&cw.coin_contribution,
                      coin_contribution);
   if (GNUNET_OK !=
@@ -170,7 +150,7 @@ struct DepositWtidContext
  * Function called with the results of the lookup of the
  * wire transfer identifier information.
  *
- * @param cls our context for transmission
+ * @param cls our context for transmission, a `struct DepositWtidContext *`
  * @param wtid raw wire transfer identifier, NULL
  *         if the transaction was not yet done
  * @param coin_contribution how much did the coin we asked about
@@ -213,14 +193,14 @@ handle_wtid_data (void *cls,
 
 
 /**
- * Execute a "/track/transaction".  Returns the transfer information
+ * Execute a "deposits" GET.  Returns the transfer information
  * associated with the given deposit.
  *
  * If it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
  * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
  * it returns the soft error code, the function MAY be called again to
- * retry and MUST not queue a MHD response.
+ * retry and MUST NOT queue a MHD response.
  *
  * @param cls closure of type `struct DepositWtidContext *`
  * @param connection MHD request which triggered the transaction
@@ -230,10 +210,10 @@ handle_wtid_data (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-track_transaction_transaction (void *cls,
-                               struct MHD_Connection *connection,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               int *mhd_ret)
+deposits_get_transaction (void *cls,
+                          struct MHD_Connection *connection,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          int *mhd_ret)
 {
   struct DepositWtidContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -271,67 +251,52 @@ track_transaction_transaction (void *cls,
 
 
 /**
- * Check the merchant signature, and if it is valid,
- * return the wire transfer identifier.
+ * Lookup and return the wire transfer identifier.
  *
  * @param connection the MHD connection to handle
  * @param tps signed request to execute
  * @param merchant_pub public key from the merchant
- * @param merchant_sig signature from the merchant (to be checked)
  * @return MHD result code
  */
 static int
-check_and_handle_track_transaction_request (struct MHD_Connection *connection,
-                                            const struct
-                                            TALER_DepositTrackPS *tps,
-                                            const struct
-                                            TALER_MerchantPublicKeyP *
-                                            merchant_pub,
-                                            const struct
-                                            TALER_MerchantSignatureP *
-                                            merchant_sig)
+handle_track_transaction_request (
+  struct MHD_Connection *connection,
+  const struct TALER_DepositTrackPS *tps,
+  const struct TALER_MerchantPublicKeyP *merchant_pub)
 {
-  struct DepositWtidContext ctx;
   int mhd_ret;
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
-                                  &tps->purpose,
-                                  &merchant_sig->eddsa_sig,
-                                  &merchant_pub->eddsa_pub))
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID,
-                                       "merchant_sig");
-  }
-  ctx.pending = GNUNET_NO;
-  ctx.tps = tps;
-  ctx.merchant_pub = merchant_pub;
+  struct DepositWtidContext ctx = {
+    .pending = GNUNET_NO,
+    .tps = tps,
+    .merchant_pub = merchant_pub
+  };
 
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
-                              "handle track transaction",
+                              "handle deposits GET",
                               &mhd_ret,
-                              &track_transaction_transaction,
+                              &deposits_get_transaction,
                               &ctx))
     return mhd_ret;
   if (GNUNET_YES == ctx.pending)
-    return reply_transfer_pending (connection,
-                                   ctx.execution_time);
+    return TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_ACCEPTED,
+                                      "{s:o}",
+                                      "execution_time",
+                                      GNUNET_JSON_from_time_abs (
+                                        ctx.execution_time));
   if (GNUNET_SYSERR == ctx.pending)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT,
                                        "fees are inconsistent");
-  return reply_track_transaction (connection,
-                                  &tps->h_contract_terms,
-                                  &tps->h_wire,
-                                  &tps->coin_pub,
-                                  &ctx.coin_delta,
-                                  &ctx.wtid,
-                                  ctx.execution_time);
+  return reply_deposit_details (connection,
+                                &tps->h_contract_terms,
+                                &tps->h_wire,
+                                &tps->coin_pub,
+                                &ctx.coin_delta,
+                                &ctx.wtid,
+                                ctx.execution_time);
 }
 
 
@@ -351,8 +316,11 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                           const char *const args[4])
 {
   int res;
-  struct TALER_DepositTrackPS tps;
   struct TALER_MerchantSignatureP merchant_sig;
+  struct TALER_DepositTrackPS tps = {
+    .purpose.size = htonl (sizeof (tps)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION)
+  };
 
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
@@ -410,12 +378,22 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  tps.purpose.size = htonl (sizeof (struct TALER_DepositTrackPS));
-  tps.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
-  return check_and_handle_track_transaction_request (connection,
-                                                     &tps,
-                                                     &tps.merchant,
-                                                     &merchant_sig);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
+                                  &tps.purpose,
+                                  &merchant_sig.eddsa_sig,
+                                  &tps.merchant.eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID,
+                                       "merchant_sig");
+  }
+
+  return handle_track_transaction_request (connection,
+                                           &tps,
+                                           &tps.merchant);
 }
 
 
