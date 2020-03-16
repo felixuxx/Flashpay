@@ -4450,24 +4450,25 @@ postgres_get_coin_transactions (
       &add_coin_recoup_refresh },
     { NULL, NULL }
   };
-  struct CoinHistoryContext chc;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
   const struct Work *work;
+  struct CoinHistoryContext chc = {
+    .head = NULL,
+    .status = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT,
+    .coin_pub = coin_pub,
+    .session = session,
+    .pg = pg,
+    .db_cls = cls
+  };
 
   work = (GNUNET_YES == include_recoup) ? work_wp : work_op;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting transactions for coin %s\n",
               TALER_B2S (coin_pub));
-  chc.head = NULL;
-  chc.status = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  chc.coin_pub = coin_pub;
-  chc.session = session;
-  chc.pg = pg;
-  chc.db_cls = cls;
   for (unsigned int i = 0; NULL != work[i].statement; i++)
   {
     qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,

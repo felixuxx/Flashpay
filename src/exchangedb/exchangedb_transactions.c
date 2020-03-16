@@ -29,7 +29,7 @@
  *
  * @param tl transaction list to process
  * @param off offset to use as the starting value
- * @param[out] ret where the resulting total is to be stored
+ * @param[out] ret where the resulting total is to be stored (may alias @a off)
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 int

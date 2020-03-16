@@ -63,20 +63,21 @@ reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_MerchantPublicKeyP *merchant,
                        const struct TALER_Amount *amount_without_fee)
 {
-  struct TALER_DepositConfirmationPS dc;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
+  struct TALER_DepositConfirmationPS dc = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT),
+    .purpose.size = htonl (sizeof (dc)),
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire,
+    .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .coin_pub = *coin_pub,
+    .merchant = *merchant
+  };
 
-  dc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
-  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
-  dc.h_contract_terms = *h_contract_terms;
-  dc.h_wire = *h_wire;
-  dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   TALER_amount_hton (&dc.amount_without_fee,
                      amount_without_fee);
-  dc.coin_pub = *coin_pub;
-  dc.merchant = *merchant;
   if (GNUNET_OK !=
       TEH_KS_sign (&dc.purpose,
                    &pub,
@@ -136,7 +137,6 @@ deposit_transaction (void *cls,
 {
   struct DepositContext *dc = cls;
   const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
-  struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
 
@@ -184,44 +184,48 @@ deposit_transaction (void *cls,
   /* add cost of all previous transactions; skip RECOUP as revoked
      denominations are not eligible for deposit, and if we are the old coin
      pub of a revoked coin (aka a zombie), then ONLY refresh is allowed. */
-  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          session,
-                                          &deposit->coin.coin_pub,
-                                          GNUNET_NO,
-                                          &tl);
-  if (0 > qs)
-    return qs;
-  if (GNUNET_OK !=
-      TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
-                                                          &spent,
-                                                          &spent))
   {
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+
+    qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                            session,
+                                            &deposit->coin.coin_pub,
+                                            GNUNET_NO,
+                                            &tl);
+    if (0 > qs)
+      return qs;
+    if (GNUNET_OK !=
+        TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
+                                                            &spent, /* starting offset */
+                                                            &spent /* result */))
+    {
+      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                              tl);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
+                                             "could not access coin history");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    /* Check that cost of all transactions is smaller than
+       the value of the coin. */
+    if (0 < TALER_amount_cmp (&spent,
+                              &dc->value))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Deposited coin has insufficient funds left!\n");
+      *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
+                                                             TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+                                                             &deposit->coin.
+                                                             coin_pub,
+                                                             tl);
+      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                              tl);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
-                                           "could not access coin history");
-    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  /* Check that cost of all transactions is smaller than
-     the value of the coin. */
-  if (0 < TALER_amount_cmp (&spent,
-                            &dc->value))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Deposited coin has insufficient funds left!\n");
-    *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-                                                           TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
-                                                           &deposit->coin.
-                                                           coin_pub,
-                                                           tl);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                          tl);
   qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
                                    session,
                                    deposit);
@@ -396,7 +400,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const json_t *root)
 {
-  int res;
   json_t *wire;
   enum TALER_ErrorCode ec;
   unsigned int hc;
@@ -425,18 +428,22 @@ TEH_handler_deposit (struct MHD_Connection *connection,
           0,
           sizeof (deposit));
   deposit.coin.coin_pub = *coin_pub;
-  res = TALER_MHD_parse_json_data (connection,
-                                   root,
-                                   spec);
-  if (GNUNET_SYSERR == res)
   {
-    GNUNET_break (0);
-    return MHD_NO; /* hard failure */
-  }
-  if (GNUNET_NO == res)
-  {
-    GNUNET_break_op (0);
-    return MHD_YES; /* failure */
+    int res;
+
+    res = TALER_MHD_parse_json_data (connection,
+                                     root,
+                                     spec);
+    if (GNUNET_SYSERR == res)
+    {
+      GNUNET_break (0);
+      return MHD_NO; /* hard failure */
+    }
+    if (GNUNET_NO == res)
+    {
+      GNUNET_break_op (0);
+      return MHD_YES; /* failure */
+    }
   }
   deposit.receiver_wire_account = wire;
   if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
@@ -543,24 +550,32 @@ TEH_handler_deposit (struct MHD_Connection *connection,
 
   /* make sure coin is 'known' in database */
   {
-    struct TEH_DB_KnowCoinContext kcc;
     int mhd_ret;
+    struct TEH_DB_KnowCoinContext kcc = {
+      .coin = &deposit.coin,
+      .connection = connection
+    };
 
-    kcc.coin = &deposit.coin;
-    kcc.connection = connection;
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "know coin for deposit",
                                 &mhd_ret,
                                 &TEH_DB_know_coin_transaction,
                                 &kcc))
+    {
+      GNUNET_JSON_parse_free (spec);
       return mhd_ret;
+    }
   }
 
-  res = verify_and_execute_deposit (connection,
-                                    &deposit);
-  GNUNET_JSON_parse_free (spec);
-  return res;
+  {
+    int res;
+
+    res = verify_and_execute_deposit (connection,
+                                      &deposit);
+    GNUNET_JSON_parse_free (spec);
+    return res;
+  }
 }
 
 
