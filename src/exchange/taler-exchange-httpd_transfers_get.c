@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_transfers_get.c
- * @brief Handle wire transfer /track/transfer requests
+ * @brief Handle wire transfer(s) GET requests
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -32,38 +32,39 @@
 
 
 /**
- * Detail for /wire/deposit response.
+ * Information about one of the transactions that was
+ * aggregated, to be returned in the /transfers response.
  */
-struct TEH_TrackTransferDetail
+struct AggregatedDepositDetail
 {
 
   /**
    * We keep deposit details in a DLL.
    */
-  struct TEH_TrackTransferDetail *next;
+  struct AggregatedDepositDetail *next;
 
   /**
    * We keep deposit details in a DLL.
    */
-  struct TEH_TrackTransferDetail *prev;
+  struct AggregatedDepositDetail *prev;
 
   /**
-   * Hash of the proposal data.
+   * Hash of the contract terms.
    */
   struct GNUNET_HashCode h_contract_terms;
 
   /**
-   * Coin's public key.
+   * Coin's public key of the deposited coin.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Total value of the coin.
+   * Total value of the coin in the deposit.
    */
   struct TALER_Amount deposit_value;
 
   /**
-   * Fees charged by the exchange for the deposit.
+   * Fees charged by the exchange for the deposit of this coin.
    */
   struct TALER_Amount deposit_fee;
 };
@@ -83,16 +84,14 @@ struct TEH_TrackTransferDetail
  * @return MHD result code
  */
 static int
-reply_track_transfer_details (struct MHD_Connection *connection,
-                              const struct TALER_Amount *total,
-                              const struct
-                              TALER_MerchantPublicKeyP *merchant_pub,
-                              const struct GNUNET_HashCode *h_wire,
-                              const struct TALER_Amount *wire_fee,
-                              struct GNUNET_TIME_Absolute exec_time,
-                              const struct TEH_TrackTransferDetail *wdd_head)
+reply_transfer_details (struct MHD_Connection *connection,
+                        const struct TALER_Amount *total,
+                        const struct TALER_MerchantPublicKeyP *merchant_pub,
+                        const struct GNUNET_HashCode *h_wire,
+                        const struct TALER_Amount *wire_fee,
+                        struct GNUNET_TIME_Absolute exec_time,
+                        const struct AggregatedDepositDetail *wdd_head)
 {
-  const struct TEH_TrackTransferDetail *wdd_pos;
   json_t *deposits;
   struct TALER_WireDepositDetailP dd;
   struct GNUNET_HashContext *hash_context;
@@ -102,8 +101,18 @@ reply_track_transfer_details (struct MHD_Connection *connection,
 
   GNUNET_TIME_round_abs (&exec_time);
   deposits = json_array ();
+  if (NULL == deposits)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       "json_array() failed");
+
+  }
   hash_context = GNUNET_CRYPTO_hash_context_start ();
-  for (wdd_pos = wdd_head; NULL != wdd_pos; wdd_pos = wdd_pos->next)
+  for (const struct AggregatedDepositDetail *wdd_pos = wdd_head;
+       NULL != wdd_pos;
+       wdd_pos = wdd_pos->next)
   {
     dd.h_contract_terms = wdd_pos->h_contract_terms;
     dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
@@ -115,22 +124,29 @@ reply_track_transfer_details (struct MHD_Connection *connection,
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &dd,
                                      sizeof (struct TALER_WireDepositDetailP));
-    GNUNET_assert (0 ==
-                   json_array_append_new (deposits,
-                                          json_pack ("{s:o, s:o, s:o, s:o}",
-                                                     "h_contract_terms",
-                                                     GNUNET_JSON_from_data_auto (
-                                                       &wdd_pos->
-                                                       h_contract_terms),
-                                                     "coin_pub",
-                                                     GNUNET_JSON_from_data_auto (
-                                                       &wdd_pos->coin_pub),
-                                                     "deposit_value",
-                                                     TALER_JSON_from_amount (
-                                                       &wdd_pos->deposit_value),
-                                                     "deposit_fee",
-                                                     TALER_JSON_from_amount (
-                                                       &wdd_pos->deposit_fee))));
+    if (0 !=
+        json_array_append_new (deposits,
+                               json_pack ("{s:o, s:o, s:o, s:o}",
+                                          "h_contract_terms",
+                                          GNUNET_JSON_from_data_auto (
+                                            &wdd_pos->h_contract_terms),
+                                          "coin_pub",
+                                          GNUNET_JSON_from_data_auto (
+                                            &wdd_pos->coin_pub),
+                                          "deposit_value",
+                                          TALER_JSON_from_amount (
+                                            &wdd_pos->deposit_value),
+                                          "deposit_fee",
+                                          TALER_JSON_from_amount (
+                                            &wdd_pos->deposit_fee))))
+    {
+      json_decref (deposits);
+      GNUNET_CRYPTO_hash_context_abort (hash_context);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_JSON_ALLOCATION_FAILURE,
+                                         "json_array_append_new() failed");
+    }
   }
   wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
   wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
@@ -224,12 +240,12 @@ struct WtidTransactionContext
   /**
    * Head of DLL with details for /wire/deposit response.
    */
-  struct TEH_TrackTransferDetail *wdd_head;
+  struct AggregatedDepositDetail *wdd_head;
 
   /**
    * Head of DLL with details for /wire/deposit response.
    */
-  struct TEH_TrackTransferDetail *wdd_tail;
+  struct AggregatedDepositDetail *wdd_tail;
 
   /**
    * JSON array with details about the individual deposits.
@@ -249,8 +265,8 @@ struct WtidTransactionContext
 
 
 /**
- * Function called with the results of the lookup of the
- * transaction data for the given wire transfer identifier.
+ * Function called with the results of the lookup of the individual deposits
+ * that were aggregated for the given wire transfer.
  *
  * @param cls our context for transmission
  * @param rowid which row in the DB is the information from (for diagnostics), ignored
@@ -265,21 +281,21 @@ struct WtidTransactionContext
  * @param deposit_fee deposit fee charged by exchange for this coin
  */
 static void
-handle_transaction_data (void *cls,
-                         uint64_t rowid,
-                         const struct TALER_MerchantPublicKeyP *merchant_pub,
-                         const struct GNUNET_HashCode *h_wire,
-                         const json_t *wire,
-                         struct GNUNET_TIME_Absolute exec_time,
-                         const struct GNUNET_HashCode *h_contract_terms,
-                         const struct TALER_DenominationPublicKey *denom_pub,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                         const struct TALER_Amount *deposit_value,
-                         const struct TALER_Amount *deposit_fee)
+handle_deposit_data (void *cls,
+                     uint64_t rowid,
+                     const struct TALER_MerchantPublicKeyP *merchant_pub,
+                     const struct GNUNET_HashCode *h_wire,
+                     const json_t *wire,
+                     struct GNUNET_TIME_Absolute exec_time,
+                     const struct GNUNET_HashCode *h_contract_terms,
+                     const struct TALER_DenominationPublicKey *denom_pub,
+                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     const struct TALER_Amount *deposit_value,
+                     const struct TALER_Amount *deposit_fee)
 {
   struct WtidTransactionContext *ctx = cls;
   struct TALER_Amount delta;
-  struct TEH_TrackTransferDetail *wdd;
+  struct AggregatedDepositDetail *wdd;
   char *wire_method;
 
   (void) rowid;
@@ -343,7 +359,7 @@ handle_transaction_data (void *cls,
       return;
     }
   }
-  wdd = GNUNET_new (struct TEH_TrackTransferDetail);
+  wdd = GNUNET_new (struct AggregatedDepositDetail);
   wdd->deposit_value = *deposit_value;
   wdd->deposit_fee = *deposit_fee;
   wdd->h_contract_terms = *h_contract_terms;
@@ -355,8 +371,30 @@ handle_transaction_data (void *cls,
 
 
 /**
- * Execute a "/track/transfer".  Returns the transaction information
- * associated with the given wire transfer identifier.
+ * Free data structure reachable from @a ctx, but not @a ctx itself.
+ *
+ * @param ctx context to free
+ */
+static void
+free_ctx (struct WtidTransactionContext *ctx)
+{
+  struct AggregatedDepositDetail *wdd;
+
+  while (NULL != (wdd = ctx->wdd_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (ctx->wdd_head,
+                                 ctx->wdd_tail,
+                                 wdd);
+    GNUNET_free (wdd);
+  }
+  GNUNET_free_non_null (ctx->wire_method);
+  ctx->wire_method = NULL;
+}
+
+
+/**
+ * Execute a "/transfers" GET operation.  Returns the deposit details of the
+ * deposits that were aggregated to create the given wire transfer.
  *
  * If it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
@@ -372,10 +410,10 @@ handle_transaction_data (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-track_transfer_transaction (void *cls,
-                            struct MHD_Connection *connection,
-                            struct TALER_EXCHANGEDB_Session *session,
-                            int *mhd_ret)
+get_transfer_deposits (void *cls,
+                       struct MHD_Connection *connection,
+                       struct TALER_EXCHANGEDB_Session *session,
+                       int *mhd_ret)
 {
   struct WtidTransactionContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -384,14 +422,13 @@ track_transfer_transaction (void *cls,
   struct TALER_MasterSignatureP wire_fee_master_sig;
   struct TALER_Amount closing_fee;
 
-  ctx->is_valid = GNUNET_NO;
-  ctx->wdd_head = NULL;
-  ctx->wdd_tail = NULL;
-  ctx->wire_method = NULL;
+  /* resetting to NULL/0 in case transaction was repeated after
+     serialization failure */
+  free_ctx (ctx);
   qs = TEH_plugin->lookup_wire_transfer (TEH_plugin->cls,
                                          session,
                                          &ctx->wtid,
-                                         &handle_transaction_data,
+                                         &handle_deposit_data,
                                          ctx);
   if (0 > qs)
   {
@@ -461,27 +498,6 @@ track_transfer_transaction (void *cls,
 
 
 /**
- * Free data structure reachable from @a ctx, but not @a ctx itself.
- *
- * @param ctx context to free
- */
-static void
-free_ctx (struct WtidTransactionContext *ctx)
-{
-  struct TEH_TrackTransferDetail *wdd;
-
-  while (NULL != (wdd = ctx->wdd_head))
-  {
-    GNUNET_CONTAINER_DLL_remove (ctx->wdd_head,
-                                 ctx->wdd_tail,
-                                 wdd);
-    GNUNET_free (wdd);
-  }
-  GNUNET_free_non_null (ctx->wire_method);
-}
-
-
-/**
  * Handle a GET "/transfers/$WTID" request.
  *
  * @param rh context of the handler
@@ -515,21 +531,21 @@ TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
   }
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
-                              "run track transfer",
+                              "run transfers GET",
                               &mhd_ret,
-                              &track_transfer_transaction,
+                              &get_transfer_deposits,
                               &ctx))
   {
     free_ctx (&ctx);
     return mhd_ret;
   }
-  mhd_ret = reply_track_transfer_details (connection,
-                                          &ctx.total,
-                                          &ctx.merchant_pub,
-                                          &ctx.h_wire,
-                                          &ctx.wire_fee,
-                                          ctx.exec_time,
-                                          ctx.wdd_head);
+  mhd_ret = reply_transfer_details (connection,
+                                    &ctx.total,
+                                    &ctx.merchant_pub,
+                                    &ctx.h_wire,
+                                    &ctx.wire_fee,
+                                    ctx.exec_time,
+                                    ctx.wdd_head);
   free_ctx (&ctx);
   return mhd_ret;
 }
