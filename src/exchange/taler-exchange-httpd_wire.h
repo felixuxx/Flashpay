@@ -45,16 +45,6 @@ TEH_WIRE_done (void);
 
 
 /**
- * Obtain fee structure for @a wire_plugin_name wire transfers.
- *
- * @param method method to load fees for
- * @return JSON object (to be freed by caller) with fee structure
- */
-json_t *
-TEH_WIRE_get_fees (const char *method);
-
-
-/**
  * Handle a "/wire" request.
  *
  * @param rh context of the handler

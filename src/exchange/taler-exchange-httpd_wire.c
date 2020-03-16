@@ -44,6 +44,101 @@ static json_t *wire_fee_object;
 
 
 /**
+ * Convert fee structure to JSON result to be returned
+ * as part of a /wire response.
+ *
+ * @param af fee structure to convert
+ * @return NULL on error, otherwise json data structure for /wire.
+ */
+static json_t *
+fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
+{
+  json_t *a;
+
+  a = json_array ();
+  if (NULL == a)
+  {
+    GNUNET_break (0); /* out of memory? */
+    return NULL;
+  }
+  while (NULL != af)
+  {
+    if ( (GNUNET_NO == GNUNET_TIME_round_abs (&af->start_date)) ||
+         (GNUNET_NO == GNUNET_TIME_round_abs (&af->end_date)) )
+    {
+      GNUNET_break (0); /* bad timestamps, should not happen */
+      json_decref (a);
+      return NULL;
+    }
+    if (0 !=
+        json_array_append_new (a,
+                               json_pack ("{s:o, s:o, s:o, s:o, s:o}",
+                                          "wire_fee", TALER_JSON_from_amount (
+                                            &af->wire_fee),
+                                          "closing_fee",
+                                          TALER_JSON_from_amount (
+                                            &af->closing_fee),
+                                          "start_date",
+                                          GNUNET_JSON_from_time_abs (
+                                            af->start_date),
+                                          "end_date",
+                                          GNUNET_JSON_from_time_abs (
+                                            af->end_date),
+                                          "sig", GNUNET_JSON_from_data_auto (
+                                            &af->master_sig))))
+    {
+      GNUNET_break (0); /* out of memory? */
+      json_decref (a);
+      return NULL;
+    }
+    af = af->next;
+  }
+  return a;
+}
+
+
+/**
+ * Obtain fee structure for @a method wire transfers.
+ *
+ * @param method method to load fees for
+ * @return JSON object (to be freed by caller) with fee structure
+ */
+static json_t *
+get_fees (const char *method)
+{
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+  struct GNUNET_TIME_Absolute now;
+
+  af = TALER_EXCHANGEDB_fees_read (TEH_cfg,
+                                   method);
+  now = GNUNET_TIME_absolute_get ();
+  while ( (NULL != af) &&
+          (af->end_date.abs_value_us < now.abs_value_us) )
+  {
+    struct TALER_EXCHANGEDB_AggregateFees *n = af->next;
+
+    GNUNET_free (af);
+    af = n;
+  }
+  if (NULL == af)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to find current wire transfer fees for `%s' at time %s\n",
+                method,
+                GNUNET_STRINGS_absolute_time_to_string (now));
+    return NULL;
+  }
+  {
+    json_t *j;
+
+    j = fees_to_json (af);
+    TALER_EXCHANGEDB_fees_free (af);
+    return j;
+  }
+}
+
+
+/**
  * Load wire fees for @a method.
  *
  * @param method wire method to load fee structure for
@@ -57,7 +152,7 @@ load_fee (const char *method)
   if (NULL != json_object_get (wire_fee_object,
                                method))
     return GNUNET_OK; /* already have them */
-  fees = TEH_WIRE_get_fees (method);
+  fees = get_fees (method);
   if (NULL == fees)
     return GNUNET_SYSERR;
   /* Add fees to #wire_fee_object */
@@ -184,101 +279,6 @@ load_account (void *cls,
       *ret = GNUNET_SYSERR;
       return;
     }
-  }
-}
-
-
-/**
- * Convert fee structure to JSON result to be returned
- * as part of a /wire response.
- *
- * @param af fee structure to convert
- * @return NULL on error, otherwise json data structure for /wire.
- */
-static json_t *
-fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
-{
-  json_t *a;
-
-  a = json_array ();
-  if (NULL == a)
-  {
-    GNUNET_break (0); /* out of memory? */
-    return NULL;
-  }
-  while (NULL != af)
-  {
-    if ( (GNUNET_NO == GNUNET_TIME_round_abs (&af->start_date)) ||
-         (GNUNET_NO == GNUNET_TIME_round_abs (&af->end_date)) )
-    {
-      GNUNET_break (0); /* bad timestamps, should not happen */
-      json_decref (a);
-      return NULL;
-    }
-    if (0 !=
-        json_array_append_new (a,
-                               json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-                                          "wire_fee", TALER_JSON_from_amount (
-                                            &af->wire_fee),
-                                          "closing_fee",
-                                          TALER_JSON_from_amount (
-                                            &af->closing_fee),
-                                          "start_date",
-                                          GNUNET_JSON_from_time_abs (
-                                            af->start_date),
-                                          "end_date",
-                                          GNUNET_JSON_from_time_abs (
-                                            af->end_date),
-                                          "sig", GNUNET_JSON_from_data_auto (
-                                            &af->master_sig))))
-    {
-      GNUNET_break (0); /* out of memory? */
-      json_decref (a);
-      return NULL;
-    }
-    af = af->next;
-  }
-  return a;
-}
-
-
-/**
- * Obtain fee structure for @a method wire transfers.
- *
- * @param method method to load fees for
- * @return JSON object (to be freed by caller) with fee structure
- */
-json_t *
-TEH_WIRE_get_fees (const char *method)
-{
-  struct TALER_EXCHANGEDB_AggregateFees *af;
-  struct GNUNET_TIME_Absolute now;
-
-  af = TALER_EXCHANGEDB_fees_read (TEH_cfg,
-                                   method);
-  now = GNUNET_TIME_absolute_get ();
-  while ( (NULL != af) &&
-          (af->end_date.abs_value_us < now.abs_value_us) )
-  {
-    struct TALER_EXCHANGEDB_AggregateFees *n = af->next;
-
-    GNUNET_free (af);
-    af = n;
-  }
-  if (NULL == af)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to find current wire transfer fees for `%s' at time %s\n",
-                method,
-                GNUNET_STRINGS_absolute_time_to_string (now));
-    return NULL;
-  }
-  {
-    json_t *j;
-
-    j = fees_to_json (af);
-    TALER_EXCHANGEDB_fees_free (af);
-    return j;
   }
 }
 
