@@ -33,7 +33,6 @@
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
-#include "taler-exchange-httpd_validation.h"
 
 
 /**

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2017 Taler Systems SA
+  Copyright (C) 2015-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -22,7 +22,6 @@
 #include <gnunet/gnunet_json_lib.h>
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_validation.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
@@ -32,6 +31,160 @@
  * Cached JSON for /wire response.
  */
 static json_t *wire_methods;
+
+/**
+ * Array of wire methods supported by this exchange.
+ */
+static json_t *wire_accounts_array;
+
+/**
+ * Object mapping wire methods to the respective fee structure.
+ */
+static json_t *wire_fee_object;
+
+
+/**
+ * Load wire fees for @a method.
+ *
+ * @param method wire method to load fee structure for
+ * @return #GNUNET_OK on success
+ */
+static int
+load_fee (const char *method)
+{
+  json_t *fees;
+
+  if (NULL != json_object_get (wire_fee_object,
+                               method))
+    return GNUNET_OK; /* already have them */
+  fees = TEH_WIRE_get_fees (method);
+  if (NULL == fees)
+    return GNUNET_SYSERR;
+  /* Add fees to #wire_fee_object */
+  if (0 !=
+      json_object_set_new (wire_fee_object,
+                           method,
+                           fees))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Initialize account; checks if @a ai has /wire information, and if so,
+ * adds the /wire information (if included) to our responses.
+ *
+ * @param cls pointer to `int` to set to #GNUNET_SYSERR on errors
+ * @param ai details about the account we should load the wire details for
+ */
+static void
+load_account (void *cls,
+              const struct TALER_EXCHANGEDB_AccountInfo *ai)
+{
+  int *ret = cls;
+
+  if ( (NULL != ai->wire_response_filename) &&
+       (GNUNET_YES == ai->credit_enabled) )
+  {
+    json_t *wire_s;
+    json_error_t error;
+    char *url;
+    char *method;
+
+    if (NULL == (wire_s = json_load_file (ai->wire_response_filename,
+                                          JSON_REJECT_DUPLICATES,
+                                          &error)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse `%s': %s at %d:%d (%d)\n",
+                  ai->wire_response_filename,
+                  error.text,
+                  error.line,
+                  error.column,
+                  error.position);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
+    if (NULL == (url = TALER_JSON_wire_to_payto (wire_s)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire response file `%s' lacks `url' entry\n",
+                  ai->wire_response_filename);
+      json_decref (wire_s);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
+    if (0 != strcasecmp (url,
+                         ai->payto_uri))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "URL in Wire response file `%s' does not match URL in configuration (%s vs %s)!\n",
+                  ai->wire_response_filename,
+                  url,
+                  ai->payto_uri);
+      json_decref (wire_s);
+      GNUNET_free (url);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
+    GNUNET_free (url);
+    /* Provide friendly error message if user forgot to sign wire response. */
+    if (NULL == json_object_get (wire_s, "master_sig"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire response file `%s' has not been signed."
+                  " Use taler-exchange-wire to sign it.\n",
+                  ai->wire_response_filename);
+      json_decref (wire_s);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_JSON_exchange_wire_signature_check (wire_s,
+                                                  &TEH_master_public_key))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid signature in `%s' for public key `%s'\n",
+                  ai->wire_response_filename,
+                  GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
+      json_decref (wire_s);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
+    method = TALER_payto_get_method (ai->payto_uri);
+    if (GNUNET_OK ==
+        load_fee (method))
+    {
+      GNUNET_assert (-1 !=
+                     json_array_append_new (wire_accounts_array,
+                                            wire_s));
+    }
+    else
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire fees not specified for `%s'\n",
+                  method);
+      *ret = GNUNET_SYSERR;
+    }
+    GNUNET_free (method);
+  }
+
+  if (GNUNET_YES == ai->debit_enabled)
+  {
+    if (GNUNET_OK !=
+        load_fee (ai->method))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire transfer fees for `%s' are not given correctly\n",
+                  ai->method);
+      *ret = GNUNET_SYSERR;
+      return;
+    }
+  }
+}
 
 
 /**
@@ -151,17 +304,56 @@ TEH_handler_wire (const struct TEH_RequestHandler *rh,
 /**
  * Initialize wire subsystem.
  *
+ * @param cfg configuration to use
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if we found no valid
  *         wire methods
  */
 int
-TEH_WIRE_init ()
+TEH_WIRE_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  wire_methods = TEH_VALIDATION_get_wire_response ();
+  wire_accounts_array = json_array ();
+  if (NULL == wire_accounts_array)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  wire_fee_object = json_object ();
+  if (NULL == wire_fee_object)
+  {
+    GNUNET_break (0);
+    TEH_WIRE_done ();
+    return GNUNET_SYSERR;
+  }
+  {
+    int ret;
+
+    ret = GNUNET_OK;
+    TALER_EXCHANGEDB_find_accounts (cfg,
+                                    &load_account,
+                                    &ret);
+    if (GNUNET_OK != ret)
+    {
+      TEH_WIRE_done ();
+      return GNUNET_SYSERR;
+    }
+  }
+  if ( (0 == json_array_size (wire_accounts_array)) ||
+       (0 == json_object_size (wire_fee_object)) )
+  {
+    TEH_WIRE_done ();
+    return GNUNET_SYSERR;
+  }
+  wire_methods = json_pack ("{s:O, s:O, s:o}",
+                            "accounts", wire_accounts_array,
+                            "fees", wire_fee_object,
+                            "master_public_key",
+                            GNUNET_JSON_from_data_auto (
+                              &TEH_master_public_key));
   if (NULL == wire_methods)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to find properly configured wire transfer method\n");
+    TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -171,13 +363,23 @@ TEH_WIRE_init ()
 /**
  * Clean up wire subsystem.
  */
-void __attribute__ ((destructor))
-TEH_wire_cleanup ()
+void
+TEH_WIRE_done ()
 {
   if (NULL != wire_methods)
   {
     json_decref (wire_methods);
     wire_methods = NULL;
+  }
+  if (NULL != wire_fee_object)
+  {
+    json_decref (wire_fee_object);
+    wire_fee_object = NULL;
+  }
+  if (NULL != wire_accounts_array)
+  {
+    json_decref (wire_accounts_array);
+    wire_accounts_array = NULL;
   }
 }
 

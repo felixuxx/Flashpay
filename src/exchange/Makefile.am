@@ -89,8 +89,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
-  taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h \
-  taler-exchange-httpd_validation.c taler-exchange-httpd_validation.h
+  taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerbank.la \

@@ -42,7 +42,6 @@
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_exchangedb_plugin.h"
-#include "taler-exchange-httpd_validation.h"
 
 
 /**
@@ -777,10 +776,8 @@ exchange_serve_process_config (void)
               "Launching exchange with public key `%s'...\n",
               GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
 
-  if ( (GNUNET_OK !=
-        TEH_VALIDATION_init (TEH_cfg)) ||
-       (GNUNET_OK !=
-        TEH_WIRE_init ()) )
+  if (GNUNET_OK !=
+      TEH_WIRE_init (TEH_cfg))
     return GNUNET_SYSERR;
 
 
@@ -789,7 +786,7 @@ exchange_serve_process_config (void)
   {
     fprintf (stderr,
              "Failed to initialize DB subsystem\n");
-    TEH_VALIDATION_done ();
+    TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
 
@@ -800,7 +797,7 @@ exchange_serve_process_config (void)
                               &serve_unixpath,
                               &unixpath_mode))
   {
-    TEH_VALIDATION_done ();
+    TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -1311,7 +1308,7 @@ main (int argc,
     TEH_KS_free ();
   }
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
-  TEH_VALIDATION_done ();
+  TEH_WIRE_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
 

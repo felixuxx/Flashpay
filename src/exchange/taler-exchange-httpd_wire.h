@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014--2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -29,11 +29,19 @@
 /**
  * Initialize wire subsystem.
  *
+ * @param cfg configuration to use
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if we found no valid
  *         wire methods
  */
 int
-TEH_WIRE_init (void);
+TEH_WIRE_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Clean up wire subsystem.
+ */
+void
+TEH_WIRE_done (void);
 
 
 /**
