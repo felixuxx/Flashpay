@@ -417,8 +417,8 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                                   &hc);
     if (NULL == dki)
     {
-      TEH_KS_release (key_state);
       TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
+      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          hc,
@@ -427,6 +427,18 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     }
     TALER_amount_ntoh (&deposit.deposit_fee,
                        &dki->issue.properties.fee_deposit);
+    if (GNUNET_YES !=
+        TALER_amount_cmp_currency (&deposit.amount_with_fee,
+                                   &deposit.deposit_fee) )
+    {
+      GNUNET_break_op (0);
+      TEH_KS_release (key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_DEPOSIT_CURRENCY_MISSMATCH,
+                                         "contribution");
+    }
     /* check coin signature */
     if (GNUNET_YES !=
         TALER_test_coin_valid (&deposit.coin,

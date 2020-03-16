@@ -382,11 +382,11 @@ enum TALER_ErrorCode
   TALER_EC_DENOMINATION_KEY_LOST = 1116,
 
   /**
-   * The exchange's database entry with the reserve balance summary
-   * is inconsistent with its own history of the reserve.
-   * Returned with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   * The exchange's database entry with the reserve balance summary is
+   * inconsistent with its own history of the reserve. Returned with an
+   * HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_WITHDRAW_HISTORY_RESERVE_BALANCE_CORRUPT = 1117,
+  TALER_EC_WITHDRAW_RESERVE_BALANCE_CORRUPT = 1117,
 
   /**
    * The exchange failed to obtain the transaction history of the given
@@ -529,6 +529,13 @@ enum TALER_ErrorCode
   TALER_EC_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE = 1221,
 
   /**
+   * The currency specified for the deposit is different from the
+   * currency of the coin.  This response is provided with HTTP status
+   * code MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_DEPOSIT_CURRENCY_MISSMATCH = 1222,
+
+  /**
    * The respective coin did not have sufficient residual value for the
    * /refresh/melt operation.  The "history" in this response provdes
    * the "residual_value" of the coin, which may be less than its
@@ -544,7 +551,7 @@ enum TALER_ErrorCode
    * "original_value".  This response is provided with HTTP status code
    * MHD_HTTP_CONFLICT.
    */
-  TALER_EC_TALER_EC_REFRESH_MELT_DENOMINATION_KEY_NOT_FOUND = 1301,
+  TALER_EC_REFRESH_MELT_DENOMINATION_KEY_NOT_FOUND = 1301,
 
   /**
    * The exchange had an internal error reconstructing the transaction
@@ -606,6 +613,13 @@ enum TALER_ErrorCode
    * malformed. Error created client-side.
    */
   TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE = 1310,
+
+  /**
+   * The currency specified for the melt amount is different from the
+   * currency of the coin.  This response is provided with HTTP status
+   * code MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_MELT_CURRENCY_MISSMATCH = 1311,
 
   /**
    * The exchange is unaware of the denomination key that was used to

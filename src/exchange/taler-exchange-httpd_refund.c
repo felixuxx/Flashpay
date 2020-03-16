@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_refund.c
- * @brief Handle /refund requests; parses the POST and JSON and
+ * @brief Handle refund requests; parses the POST and JSON and
  *        verifies the coin signature before handing things off
  *        to the database.
  * @author Florian Dold
@@ -48,16 +48,17 @@ reply_refund_success (struct MHD_Connection *connection,
                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                       const struct TALER_EXCHANGEDB_RefundListEntry *refund)
 {
-  struct TALER_RefundConfirmationPS rc;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
+  struct TALER_RefundConfirmationPS rc = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND),
+    .purpose.size = htonl (sizeof (rc)),
+    .h_contract_terms = refund->h_contract_terms,
+    .coin_pub = *coin_pub,
+    .merchant = refund->merchant_pub,
+    .rtransaction_id = GNUNET_htonll (refund->rtransaction_id)
+  };
 
-  rc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
-  rc.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
-  rc.h_contract_terms = refund->h_contract_terms;
-  rc.coin_pub = *coin_pub;
-  rc.merchant = refund->merchant_pub;
-  rc.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
   TALER_amount_hton (&rc.refund_amount,
                      &refund->refund_amount);
   TALER_amount_hton (&rc.refund_fee,
@@ -70,7 +71,7 @@ reply_refund_success (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                       "no keys");
+                                       "no online signing key");
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
@@ -79,51 +80,6 @@ reply_refund_success (struct MHD_Connection *connection,
                                     "sig", GNUNET_JSON_from_data_auto (&sig),
                                     "pub", GNUNET_JSON_from_data_auto (&pub));
 }
-
-
-/**
- * Generate refund conflict failure message. Returns the
- * transaction list @a tl with the details about the conflict.
- *
- * @param connection connection to the client
- * @param coin_pub public key this is about
- * @param tl transaction list showing the conflict
- * @return MHD result code
- */
-static int
-reply_refund_conflict (struct MHD_Connection *connection,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct TALER_EXCHANGEDB_TransactionList *tl)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_CONFLICT,
-                                    "{s:s, s:I, s:o}",
-                                    "hint", "conflicting refund",
-                                    "code",
-                                    (json_int_t) TALER_EC_REFUND_CONFLICT,
-                                    "history",
-                                    TEH_RESPONSE_compile_transaction_history (
-                                      coin_pub,
-                                      tl));
-}
-
-
-/**
- * Closure for the transaction.
- */
-struct TALER_EXCHANGEDB_RefundContext
-{
-  /**
-   * Information about the refund.
-   */
-  const struct TALER_EXCHANGEDB_Refund *refund;
-
-  /**
-   * Expected refund fee by the denomination of the coin.
-   */
-  struct TALER_Amount expect_fee;
-
-};
 
 
 /**
@@ -150,18 +106,14 @@ refund_transaction (void *cls,
                     struct TALER_EXCHANGEDB_Session *session,
                     int *mhd_ret)
 {
-  struct TALER_EXCHANGEDB_RefundContext *rc = cls;
-  const struct TALER_EXCHANGEDB_Refund *refund = rc->refund;
+  const struct TALER_EXCHANGEDB_Refund *refund = cls;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   const struct TALER_EXCHANGEDB_DepositListEntry *dep;
   const struct TALER_EXCHANGEDB_RefundListEntry *ref;
   enum GNUNET_DB_QueryStatus qs;
   int deposit_found;
   int refund_found;
-  int fee_cmp;
 
-  dep = NULL;
-  ref = NULL;
   tl = NULL;
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
@@ -177,6 +129,8 @@ refund_transaction (void *cls,
                                              "database transaction failure");
     return qs;
   }
+  dep = NULL;
+  ref = NULL;
   deposit_found = GNUNET_NO;
   refund_found = GNUNET_NO;
   for (struct TALER_EXCHANGEDB_TransactionList *tlp = tl;
@@ -267,9 +221,15 @@ refund_transaction (void *cls,
   /* handle if conflicting refund found */
   if (GNUNET_SYSERR == refund_found)
   {
-    *mhd_ret = reply_refund_conflict (connection,
-                                      &refund->coin.coin_pub,
-                                      tl);
+    *mhd_ret = TALER_MHD_reply_json_pack (
+      connection,
+      MHD_HTTP_CONFLICT,
+      "{s:s, s:I, s:o}",
+      "hint", "conflicting refund",
+      "code", (json_int_t) TALER_EC_REFUND_CONFLICT,
+      "history", TEH_RESPONSE_compile_transaction_history (
+        &refund->coin.coin_pub,
+        tl));
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -321,7 +281,7 @@ refund_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_REFUND_DB_INCONSISTENT,
-                                           "database inconsistent");
+                                           "database inconsistent (deposit data became inaccessible during transaction)");
     return qs;
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -351,24 +311,6 @@ refund_transaction (void *cls,
                                            TALER_EC_REFUND_INSUFFICIENT_FUNDS,
                                            "refund requested exceeds original value");
     return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  /* Check refund fee matches fee of denomination key! */
-  fee_cmp = TALER_amount_cmp (&refund->details.refund_fee,
-                              &rc->expect_fee);
-  if (-1 == fee_cmp)
-  {
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_REFUND_FEE_TOO_LOW,
-                                           "refund_fee");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (1 == fee_cmp)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Refund fee proposed by merchant is higher than necessary.\n");
   }
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
@@ -405,50 +347,35 @@ static int
 verify_and_execute_refund (struct MHD_Connection *connection,
                            const struct TALER_EXCHANGEDB_Refund *refund)
 {
-  struct TALER_EXCHANGEDB_RefundContext rc;
-  struct TALER_RefundRequestPS rr;
   struct GNUNET_HashCode denom_hash;
+  struct TALER_Amount expect_fee;
 
-  if (GNUNET_YES !=
-      TALER_amount_cmp_currency (&refund->details.refund_amount,
-                                 &refund->details.refund_fee) )
   {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
-                                       "refund_fee");
-  }
-  if (-1 == TALER_amount_cmp (&refund->details.refund_amount,
-                              &refund->details.refund_fee) )
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_ABOVE_AMOUNT,
-                                       "refund_amount");
-  }
-  rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
-  rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
-  rr.h_contract_terms = refund->details.h_contract_terms;
-  rr.coin_pub = refund->coin.coin_pub;
-  rr.merchant = refund->details.merchant_pub;
-  rr.rtransaction_id = GNUNET_htonll (refund->details.rtransaction_id);
-  TALER_amount_hton (&rr.refund_amount,
-                     &refund->details.refund_amount);
-  TALER_amount_hton (&rr.refund_fee,
-                     &refund->details.refund_fee);
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                  &rr.purpose,
-                                  &refund->details.merchant_sig.eddsa_sig,
-                                  &refund->details.merchant_pub.eddsa_pub))
-  {
-    TALER_LOG_WARNING ("Invalid signature on /refund request\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
-                                       "merchant_sig");
+    struct TALER_RefundRequestPS rr = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
+      .purpose.size = htonl (sizeof (rr)),
+      .h_contract_terms = refund->details.h_contract_terms,
+      .coin_pub = refund->coin.coin_pub,
+      .merchant = refund->details.merchant_pub,
+      .rtransaction_id = GNUNET_htonll (refund->details.rtransaction_id)
+    };
+
+    TALER_amount_hton (&rr.refund_amount,
+                       &refund->details.refund_amount);
+    TALER_amount_hton (&rr.refund_fee,
+                       &refund->details.refund_fee);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
+                                    &rr.purpose,
+                                    &refund->details.merchant_sig.eddsa_sig,
+                                    &refund->details.merchant_pub.eddsa_pub))
+    {
+      TALER_LOG_WARNING ("Invalid signature on refund request\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
+                                         "merchant_sig");
+    }
   }
 
   /* Fetch the coin's denomination (hash) */
@@ -503,23 +430,53 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                            ec,
                                            "denomination not found, but coin known");
       }
-      TALER_amount_ntoh (&rc.expect_fee,
+      TALER_amount_ntoh (&expect_fee,
                          &dki->issue.properties.fee_refund);
     }
     TEH_KS_release (key_state);
   }
 
+  /* Check refund fee matches fee of denomination key! */
+  if (GNUNET_YES !=
+      TALER_amount_cmp_currency (&expect_fee,
+                                 &refund->details.refund_fee) )
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
+                                       "refund_fee");
+  }
+  {
+    int fee_cmp;
+
+    fee_cmp = TALER_amount_cmp (&refund->details.refund_fee,
+                                &expect_fee);
+    if (-1 == fee_cmp)
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_REFUND_FEE_TOO_LOW,
+                                         "refund_fee");
+    }
+    if (1 == fee_cmp)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Refund fee proposed by merchant is higher than necessary.\n");
+    }
+  }
+
+
   /* Finally run the actual transaction logic */
   {
     int mhd_ret;
 
-    rc.refund = refund;
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run refund",
                                 &mhd_ret,
                                 &refund_transaction,
-                                &rc))
+                                (void *) refund))
     {
       return mhd_ret;
     }
@@ -546,7 +503,6 @@ TEH_handler_refund (struct MHD_Connection *connection,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     const json_t *root)
 {
-  int res;
   struct TALER_EXCHANGEDB_Refund refund;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("refund_amount", &refund.details.refund_amount),
@@ -561,17 +517,46 @@ TEH_handler_refund (struct MHD_Connection *connection,
   };
 
   refund.coin.coin_pub = *coin_pub;
-  res = TALER_MHD_parse_json_data (connection,
-                                   root,
-                                   spec);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO; /* hard failure */
-  if (GNUNET_NO == res)
-    return MHD_YES; /* failure */
-  res = verify_and_execute_refund (connection,
-                                   &refund);
-  GNUNET_JSON_parse_free (spec);
-  return res;
+  {
+    int res;
+
+    res = TALER_MHD_parse_json_data (connection,
+                                     root,
+                                     spec);
+    if (GNUNET_SYSERR == res)
+      return MHD_NO; /* hard failure */
+    if (GNUNET_NO == res)
+      return MHD_YES; /* failure */
+  }
+  if (GNUNET_YES !=
+      TALER_amount_cmp_currency (&refund.details.refund_amount,
+                                 &refund.details.refund_fee) )
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
+                                       "refund_amount or refund_fee");
+  }
+  if (-1 == TALER_amount_cmp (&refund.details.refund_amount,
+                              &refund.details.refund_fee) )
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_REFUND_FEE_ABOVE_AMOUNT,
+                                       "refund_amount");
+  }
+  {
+    int res;
+
+    res = verify_and_execute_refund (connection,
+                                     &refund);
+    GNUNET_JSON_parse_free (spec);
+    return res;
+  }
 }
 
 
