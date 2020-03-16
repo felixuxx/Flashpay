@@ -321,7 +321,7 @@ validate_iban (const char *iban)
  * @param account_url URL to parse
  * @return #GNUNET_YES if @a account_url is a valid payto://iban URI,
  *         #GNUNET_NO if @a account_url is a payto URI of a different type,
- *         #GNUNET_SYSERR if the IBAN (checksum) is incorrect
+ *         #GNUNET_SYSERR if the IBAN (checksum) is incorrect or this is not a payto://-URI
  */
 static int
 validate_payto_iban (const char *account_url)
@@ -330,13 +330,13 @@ validate_payto_iban (const char *account_url)
   const char *q;
   char *result;
 
-#define PREFIX "payto://iban/"
+#define IBAN_PREFIX "payto://iban/"
   if (0 != strncasecmp (account_url,
-                        PREFIX,
-                        strlen (PREFIX)))
+                        IBAN_PREFIX,
+                        strlen (IBAN_PREFIX)))
     return GNUNET_NO;
-  iban = &account_url[strlen (PREFIX)];
-#undef PREFIX
+  iban = &account_url[strlen (IBAN_PREFIX)];
+#undef IBAN_PREFIX
   q = strchr (iban,
               '?');
   if (NULL != q)
@@ -356,6 +356,33 @@ validate_payto_iban (const char *account_url)
   }
   GNUNET_free (result);
   return GNUNET_YES;
+}
+
+
+/**
+ * Validate payto:// account URL (only account information,
+ * wire subject and amount are ignored).
+ *
+ * @param account_url URL to parse
+ * @return #GNUNET_YES if @a account_url is a valid payto://iban URI
+ *         #GNUNET_NO if @a account_url  is a payto URI of an unsupported type (but may be valid)
+ *         #GNUNET_SYSERR if the account incorrect or this is not a payto://-URI at all
+ */
+static int
+validate_payto (const char *account_url)
+{
+  int ret;
+
+#define PAYTO_PREFIX "payto://"
+  if (0 != strncasecmp (account_url,
+                        PAYTO_PREFIX,
+                        strlen (PAYTO_PREFIX)))
+    return GNUNET_SYSERR; /* not payto */
+#undef PAYTO_PREFIX
+  if (GNUNET_NO != (ret = validate_payto_iban (account_url)))
+    return ret; /* got a definitive answer */
+  /* Insert other bank account validation methods here later! */
+  return GNUNET_NO;
 }
 
 
@@ -424,8 +451,7 @@ TALER_JSON_exchange_wire_signature_check (const json_t *wire_s,
     return GNUNET_SYSERR;
   }
 
-  /* Note: this check does nothing if this is not an IBAN */
-  if (GNUNET_SYSERR == validate_payto_iban (payto_uri))
+  if (GNUNET_SYSERR == validate_payto (payto_uri))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -451,8 +477,7 @@ TALER_JSON_exchange_wire_signature_make (const char *payto_uri,
 {
   struct TALER_MasterSignatureP master_sig;
 
-  /* Note: this check does nothing if this is not an IBAN */
-  if (GNUNET_SYSERR == validate_payto_iban (payto_uri))
+  if (GNUNET_SYSERR == validate_payto (payto_uri))
   {
     GNUNET_break_op (0);
     return NULL;
@@ -470,7 +495,7 @@ TALER_JSON_exchange_wire_signature_make (const char *payto_uri,
 /**
  * Obtain the wire method associated with the given
  * wire account details.  @a wire_s must contain a payto://-URL
- * under 'url'.
+ * under 'payto_uri'.
  *
  * @return NULL on error
  */
@@ -486,7 +511,14 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
        (NULL == (payto_str = json_string_value (payto_o))) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fatally malformed wire record encountered: lacks payto://-url\n");
+                "Malformed wire record encountered: lacks payto://-url\n");
+    return NULL;
+  }
+  if (GNUNET_SYSERR == validate_payto (payto_str))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Malformed wire record encountered: payto URI `%s' invalid\n",
+                payto_str);
     return NULL;
   }
   return GNUNET_strdup (payto_str);

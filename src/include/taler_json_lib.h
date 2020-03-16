@@ -202,7 +202,7 @@ TALER_JSON_wire_to_method (const json_t *wire_s);
 /**
  * Obtain the payto://-URL associated with the given
  * wire account details.  @a wire_s must contain a payto://-URL
- * under 'url'.
+ * under 'payto_uri'.
  *
  * @return NULL on error
  */

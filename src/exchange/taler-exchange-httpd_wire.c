@@ -111,7 +111,7 @@ load_account (void *cls,
     if (NULL == (url = TALER_JSON_wire_to_payto (wire_s)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Wire response file `%s' lacks `url' entry\n",
+                  "Wire response file `%s' lacks `payto_uri' entry\n",
                   ai->wire_response_filename);
       json_decref (wire_s);
       *ret = GNUNET_SYSERR;
