@@ -48,6 +48,12 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <name>MHD_HTTP_INTERNAL_SERVER_ERROR</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <name>MHD_OPTION_NOTIFY_COMPLETED</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>

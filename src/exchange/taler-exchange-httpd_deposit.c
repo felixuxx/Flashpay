@@ -291,7 +291,7 @@ check_timestamp_current (struct GNUNET_TIME_Absolute ts)
 
 /**
  * Handle a "/coins/$COIN_PUB/deposit" request.  Parses the JSON, and, if
- * successful, passes the JSON data to #verify_and_execute_deposit() to
+ * successful, passes the JSON data to #deposit_transaction() to
  * further check the details of the operation specified.  If everything checks
  * out, this will ultimately lead to the "/deposit" being executed, or
  * rejected.

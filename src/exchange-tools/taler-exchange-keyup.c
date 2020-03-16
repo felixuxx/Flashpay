@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-gyp.c
+ * @file taler-exchange-keyup.c
  * @brief Update the exchange's keys for coins and online signing keys,
  *        using the exchange's offline master key.
  * @author Florian Dold
