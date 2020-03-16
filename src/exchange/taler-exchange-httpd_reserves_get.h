@@ -20,8 +20,8 @@
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_RESERVE_STATUS_H
-#define TALER_EXCHANGE_HTTPD_RESERVE_STATUS_H
+#ifndef TALER_EXCHANGE_HTTPD_RESERVES_GET_H
+#define TALER_EXCHANGE_HTTPD_RESERVES_GET_H
 
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"

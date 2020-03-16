@@ -18,8 +18,8 @@
  * @brief Handle wire transfer tracking-related requests
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_TRACK_TRANSACTION_H
-#define TALER_EXCHANGE_HTTPD_TRACK_TRANSACTION_H
+#ifndef TALER_EXCHANGE_HTTPD_DEPOSITS_GET_H
+#define TALER_EXCHANGE_HTTPD_DEPOSITS_GET_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>

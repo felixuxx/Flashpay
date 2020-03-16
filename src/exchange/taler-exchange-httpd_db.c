@@ -30,6 +30,12 @@
 /**
  * How often should we retry a transaction before giving up
  * (for transactions resulting in serialization/dead locks only).
+ *
+ * The current value is likely too high for production. We might want to
+ * benchmark good values once we have a good database setup.  The code is
+ * expected to work correctly with any positive value, albeit inefficiently if
+ * we too aggressively force clients to retry the HTTP request merely because
+ * we have database serialization issues.
  */
 #define MAX_TRANSACTION_COMMIT_RETRIES 100
 
@@ -42,10 +48,10 @@
  * it returns the soft error code, the function MAY be called again to
  * retry and MUST not queue a MHD response.
  *
- * @param cls a `struct DepositContext`
- * @param connection MHD request context
+ * @param cls a `struct TEH_DB_KnowCoinContext`
+ * @param connection MHD request context, must not be NULL
  * @param session database session and transaction to use
- * @param[out] mhd_ret set to MHD status on error
+ * @param[out] mhd_ret set to MHD status on error, must not be NULL
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -57,6 +63,7 @@ TEH_DB_know_coin_transaction (void *cls,
   struct TEH_DB_KnowCoinContext *kcc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_assert (NULL != mhd_ret);
   qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
                                       session,
                                       kcc->coin);
@@ -80,9 +87,11 @@ TEH_DB_know_coin_transaction (void *cls,
  * retries @a cb a few times.  Upon hard or persistent soft
  * errors, generates an error message for @a connection.
  *
- * @param connection MHD connection to run @a cb for
+ * @param connection MHD connection to run @a cb for, can be NULL
  * @param name name of the transaction (for debugging)
- * @param[out] mhd_ret set to MHD response code, if transaction failed
+ * @param[out] mhd_ret set to MHD response code, if transaction failed;
+ *             NULL if we are not running with a @a connection and thus
+ *             must not queue MHD replies
  * @param cb callback implementing transaction logic
  * @param cb_cls closure for @a cb, must be read-only!
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
@@ -97,7 +106,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_Session *session;
 
   if (NULL != mhd_ret)
-    *mhd_ret = -1; /* invalid value */
+    *mhd_ret = -1; /* set to invalid value, to help detect bugs */
   if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
   {
     GNUNET_break (0);
@@ -108,7 +117,8 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                                              "could not establish database session");
     return GNUNET_SYSERR;
   }
-  for (unsigned int retries = 0; retries < MAX_TRANSACTION_COMMIT_RETRIES;
+  for (unsigned int retries = 0;
+       retries < MAX_TRANSACTION_COMMIT_RETRIES;
        retries++)
   {
     enum GNUNET_DB_QueryStatus qs;

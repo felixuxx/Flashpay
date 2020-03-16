@@ -15,13 +15,13 @@
 */
 /**
  * @file taler-exchange-httpd_melt.h
- * @brief Handle /refresh/melt requests
+ * @brief Handle /coins/$COIN_PUB/melt requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_REFRESH_MELT_H
-#define TALER_EXCHANGE_HTTPD_REFRESH_MELT_H
+#ifndef TALER_EXCHANGE_HTTPD_MELT_H
+#define TALER_EXCHANGE_HTTPD_MELT_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>

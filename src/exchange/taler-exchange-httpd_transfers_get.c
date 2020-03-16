@@ -217,11 +217,6 @@ struct WtidTransactionContext
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Which method was used to wire the funds?
-   */
-  char *wire_method;
-
-  /**
    * Hash of the wire details of the merchant (identical for all
    * deposits), only valid if @e is_valid is #GNUNET_YES.
    */
@@ -238,14 +233,19 @@ struct WtidTransactionContext
   struct GNUNET_TIME_Absolute exec_time;
 
   /**
-   * Head of DLL with details for /wire/deposit response.
+   * Head of DLL with deposit details for transfers GET response.
    */
   struct AggregatedDepositDetail *wdd_head;
 
   /**
-   * Head of DLL with details for /wire/deposit response.
+   * Tail of DLL with deposit details for transfers GET response.
    */
   struct AggregatedDepositDetail *wdd_tail;
+
+  /**
+   * Which method was used to wire the funds?
+   */
+  char *wire_method;
 
   /**
    * JSON array with details about the individual deposits.
@@ -294,8 +294,6 @@ handle_deposit_data (void *cls,
                      const struct TALER_Amount *deposit_fee)
 {
   struct WtidTransactionContext *ctx = cls;
-  struct TALER_Amount delta;
-  struct AggregatedDepositDetail *wdd;
   char *wire_method;
 
   (void) rowid;
@@ -310,10 +308,11 @@ handle_deposit_data (void *cls,
   }
   if (GNUNET_NO == ctx->is_valid)
   {
+    /* First one we encounter, setup general information in 'ctx' */
     ctx->merchant_pub = *merchant_pub;
     ctx->h_wire = *h_wire;
     ctx->exec_time = exec_time;
-    ctx->wire_method = wire_method;
+    ctx->wire_method = wire_method; /* captures the reference */
     ctx->is_valid = GNUNET_YES;
     if (GNUNET_OK !=
         TALER_amount_subtract (&ctx->total,
@@ -327,6 +326,10 @@ handle_deposit_data (void *cls,
   }
   else
   {
+    struct TALER_Amount delta;
+
+    /* Subsequent data, check general information matches that in 'ctx';
+       (it should, otherwise the deposits should not have been aggregated) */
     if ( (0 != GNUNET_memcmp (&ctx->merchant_pub,
                               merchant_pub)) ||
          (0 != strcmp (wire_method,
@@ -359,14 +362,19 @@ handle_deposit_data (void *cls,
       return;
     }
   }
-  wdd = GNUNET_new (struct AggregatedDepositDetail);
-  wdd->deposit_value = *deposit_value;
-  wdd->deposit_fee = *deposit_fee;
-  wdd->h_contract_terms = *h_contract_terms;
-  wdd->coin_pub = *coin_pub;
-  GNUNET_CONTAINER_DLL_insert (ctx->wdd_head,
-                               ctx->wdd_tail,
-                               wdd);
+
+  {
+    struct AggregatedDepositDetail *wdd;
+
+    wdd = GNUNET_new (struct AggregatedDepositDetail);
+    wdd->deposit_value = *deposit_value;
+    wdd->deposit_fee = *deposit_fee;
+    wdd->h_contract_terms = *h_contract_terms;
+    wdd->coin_pub = *coin_pub;
+    GNUNET_CONTAINER_DLL_insert (ctx->wdd_head,
+                                 ctx->wdd_tail,
+                                 wdd);
+  }
 }
 
 

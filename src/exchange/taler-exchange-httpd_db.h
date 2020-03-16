@@ -50,10 +50,10 @@ struct TEH_DB_KnowCoinContext
  * it returns the soft error code, the function MAY be called again to
  * retry and MUST not queue a MHD response.
  *
- * @param cls a `struct DepositContext`
- * @param connection MHD request context
+ * @param cls a `struct TEH_DB_KnowCoinContext`
+ * @param connection MHD request context, must not be NULL
  * @param session database session and transaction to use
- * @param[out] mhd_ret set to MHD status on error
+ * @param[out] mhd_ret set to MHD status on error, must not be NULL
  * @return transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -92,9 +92,11 @@ typedef enum GNUNET_DB_QueryStatus
  * retries @a cb a few times.  Upon hard or persistent soft
  * errors, generates an error message for @a connection.
  *
- * @param connection MHD connection to run @a cb for
+ * @param connection MHD connection to run @a cb for, can be NULL
  * @param name name of the transaction (for debugging)
- * @param[out] mhd_ret set to MHD response code, if transaction failed
+ * @param[out] mhd_ret set to MHD response code, if transaction failed;
+ *             NULL if we are not running with a @a connection and thus
+ *             must not queue MHD replies
  * @param cb callback implementing transaction logic
  * @param cb_cls closure for @a cb, must be read-only!
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure

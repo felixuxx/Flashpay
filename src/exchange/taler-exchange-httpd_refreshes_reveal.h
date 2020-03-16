@@ -20,8 +20,8 @@
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_REFRESH_REVEAL_H
-#define TALER_EXCHANGE_HTTPD_REFRESH_REVEAL_H
+#ifndef TALER_EXCHANGE_HTTPD_REFRESHES_REVEAL_H
+#define TALER_EXCHANGE_HTTPD_REFRESHES_REVEAL_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
