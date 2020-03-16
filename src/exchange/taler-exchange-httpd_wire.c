@@ -91,8 +91,6 @@ load_account (void *cls,
   {
     json_t *wire_s;
     json_error_t error;
-    char *url;
-    char *method;
 
     if (NULL == (wire_s = json_load_file (ai->wire_response_filename,
                                           JSON_REJECT_DUPLICATES,
@@ -108,31 +106,37 @@ load_account (void *cls,
       *ret = GNUNET_SYSERR;
       return;
     }
-    if (NULL == (url = TALER_JSON_wire_to_payto (wire_s)))
+
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Wire response file `%s' lacks `payto_uri' entry\n",
-                  ai->wire_response_filename);
-      json_decref (wire_s);
-      *ret = GNUNET_SYSERR;
-      return;
-    }
-    if (0 != strcasecmp (url,
-                         ai->payto_uri))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "URL in Wire response file `%s' does not match URL in configuration (%s vs %s)!\n",
-                  ai->wire_response_filename,
-                  url,
-                  ai->payto_uri);
-      json_decref (wire_s);
+      char *url;
+
+      if (NULL == (url = TALER_JSON_wire_to_payto (wire_s)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Wire response file `%s' malformed\n",
+                    ai->wire_response_filename);
+        json_decref (wire_s);
+        *ret = GNUNET_SYSERR;
+        return;
+      }
+      if (0 != strcasecmp (url,
+                           ai->payto_uri))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "URL in wire response file `%s' does not match URL in configuration (%s vs %s)!\n",
+                    ai->wire_response_filename,
+                    url,
+                    ai->payto_uri);
+        json_decref (wire_s);
+        GNUNET_free (url);
+        *ret = GNUNET_SYSERR;
+        return;
+      }
       GNUNET_free (url);
-      *ret = GNUNET_SYSERR;
-      return;
     }
-    GNUNET_free (url);
     /* Provide friendly error message if user forgot to sign wire response. */
-    if (NULL == json_object_get (wire_s, "master_sig"))
+    if (NULL == json_object_get (wire_s,
+                                 "master_sig"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Wire response file `%s' has not been signed."
@@ -154,9 +158,8 @@ load_account (void *cls,
       *ret = GNUNET_SYSERR;
       return;
     }
-    method = TALER_payto_get_method (ai->payto_uri);
     if (GNUNET_OK ==
-        load_fee (method))
+        load_fee (ai->method))
     {
       GNUNET_assert (-1 !=
                      json_array_append_new (wire_accounts_array,
@@ -166,13 +169,11 @@ load_account (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Wire fees not specified for `%s'\n",
-                  method);
+                  ai->method);
       *ret = GNUNET_SYSERR;
     }
-    GNUNET_free (method);
   }
-
-  if (GNUNET_YES == ai->debit_enabled)
+  else if (GNUNET_YES == ai->debit_enabled)
   {
     if (GNUNET_OK !=
         load_fee (ai->method))
@@ -251,7 +252,6 @@ json_t *
 TEH_WIRE_get_fees (const char *method)
 {
   struct TALER_EXCHANGEDB_AggregateFees *af;
-  json_t *j;
   struct GNUNET_TIME_Absolute now;
 
   af = TALER_EXCHANGEDB_fees_read (TEH_cfg,
@@ -273,9 +273,13 @@ TEH_WIRE_get_fees (const char *method)
                 GNUNET_STRINGS_absolute_time_to_string (now));
     return NULL;
   }
-  j = fees_to_json (af);
-  TALER_EXCHANGEDB_fees_free (af);
-  return j;
+  {
+    json_t *j;
+
+    j = fees_to_json (af);
+    TALER_EXCHANGEDB_fees_free (af);
+    return j;
+  }
 }
 
 
