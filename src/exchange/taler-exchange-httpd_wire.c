@@ -256,9 +256,13 @@ load_account (void *cls,
     if (GNUNET_OK ==
         load_fee (ai->method))
     {
-      GNUNET_assert (-1 !=
-                     json_array_append_new (wire_accounts_array,
-                                            wire_s));
+      if (0 !=
+          json_array_append_new (wire_accounts_array,
+                                 wire_s))
+      {
+        GNUNET_break (0);
+        *ret = GNUNET_SYSERR;
+      }
     }
     else
     {

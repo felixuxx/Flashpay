@@ -916,10 +916,18 @@ revocations_iter (void *cls,
     obj = json_pack ("{s:o}",
                      "h_denom_pub",
                      GNUNET_JSON_from_data_auto (denom_hash));
-    GNUNET_assert (NULL != obj);
-    GNUNET_assert (0 ==
-                   json_array_append_new (rfc->recoup_array,
-                                          obj));
+    if (NULL == obj)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    if (0 !=
+        json_array_append_new (rfc->recoup_array,
+                               obj))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -1016,11 +1024,14 @@ reload_keys_sign_iter (void *cls,
     /* We use the most recent one, if it is valid now (not just in the near future) */
     key_state->current_sign_key_issue = *ski;
   }
-  GNUNET_assert (0 ==
-                 json_array_append_new (rfc->sign_keys_array,
-                                        sign_key_issue_to_json (&ski->issue,
-                                                                &ski->master_sig)));
-
+  if (0 !=
+      json_array_append_new (rfc->sign_keys_array,
+                             sign_key_issue_to_json (&ski->issue,
+                                                     &ski->master_sig)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -1306,13 +1317,36 @@ struct AuditorEntry
 
 
 /**
+ * Free auditor entry from the hash map.
+ *
+ * @param cls NULL
+ * @param key unused
+ * @param value a `struct AuditorEntry` to free
+ * @return #GNUNET_OK (to continue to iterate)
+ */
+static int
+free_auditor_entry (void *cls,
+                    const struct GNUNET_HashCode *key,
+                    void *value)
+{
+  struct AuditorEntry *ae = value;
+
+  (void) cls;
+  (void) key;
+  json_decref (ae->ar);
+  GNUNET_free (ae);
+  return GNUNET_OK;
+}
+
+
+/**
  * Convert auditor entries from the hash map to entries
  * in the auditor array, free the auditor entry as well.
  *
  * @param cls a `struct ResponseBuilderContext *`
  * @param key unused
  * @param value a `struct AuditorEntry` to add to the `auditors_array`
- * @return #GNUNET_OK (to continue to iterate)
+ * @return #GNUNET_OK (to continue to iterate), #GNUNET_SYSERR to terminate with error
  */
 static int
 add_auditor_entry (void *cls,
@@ -1328,10 +1362,18 @@ add_auditor_entry (void *cls,
                   "denomination_keys", ae->ar,
                   "auditor_url", ae->auditor_url,
                   "auditor_pub", GNUNET_JSON_from_data_auto (ae->apub));
-  GNUNET_assert (NULL != ao);
-  GNUNET_assert (0 ==
-                 json_array_append_new (rbc->auditors_array,
-                                        ao));
+  if (NULL == ao)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 !=
+      json_array_append_new (rbc->auditors_array,
+                             ao))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_free (ae);
   return GNUNET_OK;
 }
@@ -1442,15 +1484,25 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                                                             ae,
                                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
         }
-        GNUNET_assert (0 ==
-                       json_array_append_new (ae->ar,
-                                              json_pack ("{s:o, s:o}",
-                                                         "denom_pub_h",
-                                                         GNUNET_JSON_from_data_auto (
-                                                           denom_key_hash),
-                                                         "auditor_sig",
-                                                         GNUNET_JSON_from_data_auto (
-                                                           &as->asig))));
+        if (0 !=
+            json_array_append_new (ae->ar,
+                                   json_pack ("{s:o, s:o}",
+                                              "denom_pub_h",
+                                              GNUNET_JSON_from_data_auto (
+                                                denom_key_hash),
+                                              "auditor_sig",
+                                              GNUNET_JSON_from_data_auto (
+                                                &as->asig))))
+        {
+          destroy_response_builder (&rbc);
+          GNUNET_break (0);
+          GNUNET_CONTAINER_multihashmap_iterate (auditors,
+                                                 &free_auditor_entry,
+                                                 NULL);
+          GNUNET_CONTAINER_multihashmap_destroy (auditors);
+          GNUNET_CRYPTO_hash_context_abort (rbc.hash_context);
+          return GNUNET_SYSERR;
+        }
       }
     }
 

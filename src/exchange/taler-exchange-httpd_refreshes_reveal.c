@@ -58,67 +58,58 @@ reply_refreshes_reveal_success (struct MHD_Connection *connection,
                                 const struct TALER_DenominationSignature *sigs)
 {
   json_t *list;
-  int ret;
 
   list = json_array ();
+  if (NULL == list)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       "json_array() call failed");
+  }
   for (unsigned int freshcoin_index = 0;
        freshcoin_index < num_freshcoins;
        freshcoin_index++)
   {
     json_t *obj;
 
-    obj = json_object ();
-    json_object_set_new (obj,
-                         "ev_sig",
-                         GNUNET_JSON_from_rsa_signature (
-                           sigs[freshcoin_index].rsa_signature));
-    GNUNET_assert (0 ==
-                   json_array_append_new (list,
-                                          obj));
+    obj = json_pack ("{s:o}",
+                     "ev_sig",
+                     GNUNET_JSON_from_rsa_signature (
+                       sigs[freshcoin_index].rsa_signature));
+    if (NULL == obj)
+    {
+      json_decref (list);
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_JSON_ALLOCATION_FAILURE,
+                                         "json_pack() failed");
+    }
+    if (0 !=
+        json_array_append_new (list,
+                               obj))
+    {
+      json_decref (list);
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_JSON_ALLOCATION_FAILURE,
+                                         "json_array_append_new() failed");
+    }
   }
 
-  {
-    json_t *root;
-
-    root = json_object ();
-    json_object_set_new (root,
-                         "ev_sigs",
-                         list);
-    ret = TALER_MHD_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
-    json_decref (root);
-  }
-  return ret;
-}
-
-
-/**
- * Send a response for a failed "/refresh/reveal", where the
- * revealed value(s) do not match the original commitment.
- *
- * @param connection the connection to send the response to
- * @param rc commitment computed by the exchange
- * @return a MHD result code
- */
-static int
-reply_refreshes_reveal_mismatch (struct MHD_Connection *connection,
-                                 const struct TALER_RefreshCommitmentP *rc)
-{
   return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_CONFLICT,
-                                    "{s:s, s:I, s:o}",
-                                    "hint", "commitment violation",
-                                    "code",
-                                    (json_int_t)
-                                    TALER_EC_REFRESH_REVEAL_COMMITMENT_VIOLATION,
-                                    "rc_expected",
-                                    GNUNET_JSON_from_data_auto (rc));
+                                    MHD_HTTP_OK,
+                                    "{s:o}",
+                                    "ev_sigs",
+                                    list);
 }
 
 
 /**
- * State for a /refresh/reveal operation.
+ * State for a /refreshes/$RCH/reveal operation.
  */
 struct RevealContext
 {
@@ -202,7 +193,12 @@ check_exists_cb (void *cls,
     GNUNET_break (0);
     return;
   }
+  /* This should be a database invariant for us */
   GNUNET_break (TALER_CNC_KAPPA - 1 == num_tprivs);
+  /* Given that the $RCH value matched, we don't actually need to check these
+     values (we checked before). However, if a client repeats a request with
+     invalid values the 2nd time, that's a protocol violation we should at least
+     log (but it's safe to ignore it). */
   GNUNET_break_op (0 ==
                    GNUNET_memcmp (tp,
                                   &rctx->gamma_tp));
@@ -225,8 +221,8 @@ check_exists_cb (void *cls,
 
 
 /**
- * Check if the "/refresh/reveal" was already successful before.
- * If so, just return the old result.
+ * Check if the "/refreshes/$RCH/reveal" request was already successful
+ * before.  If so, just return the old result.
  *
  * @param cls closure of type `struct RevealContext`
  * @param connection MHD request which triggered the transaction
@@ -275,7 +271,7 @@ refreshes_reveal_preflight (void *cls,
 
 
 /**
- * Execute a "/refresh/reveal".  The client is revealing to us the
+ * Execute a "/refreshes/$RCH/reveal".  The client is revealing to us the
  * transfer keys for @a #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins.
  *
@@ -353,8 +349,8 @@ refreshes_reveal_transaction (void *cls,
       else
       {
         /* Reconstruct coin envelopes from transfer private key */
-        struct TALER_TransferPrivateKeyP *tpriv = &rctx->transfer_privs[i
-                                                                        - off];
+        struct TALER_TransferPrivateKeyP *tpriv
+          = &rctx->transfer_privs[i - off];
         struct TALER_TransferSecretP ts;
 
         GNUNET_CRYPTO_ecdhe_key_get_public (&tpriv->ecdhe_priv,
@@ -396,7 +392,7 @@ refreshes_reveal_transaction (void *cls,
       struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
 
       if (i == melt.session.noreveal_index)
-        continue; /* This offset is special... */
+        continue; /* This offset is special: not allocated! */
       for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
       {
         struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
@@ -411,8 +407,16 @@ refreshes_reveal_transaction (void *cls,
                             &rc_expected))
     {
       GNUNET_break_op (0);
-      *mhd_ret = reply_refreshes_reveal_mismatch (connection,
-                                                  &rc_expected);
+      *mhd_ret = TALER_MHD_reply_json_pack (connection,
+                                            MHD_HTTP_CONFLICT,
+                                            "{s:s, s:I, s:o}",
+                                            "hint", "commitment violation",
+                                            "code",
+                                            (json_int_t)
+                                            TALER_EC_REFRESH_REVEAL_COMMITMENT_VIOLATION,
+                                            "rc_expected",
+                                            GNUNET_JSON_from_data_auto (
+                                              &rc_expected));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   } /* end of checking "rc_expected" */
@@ -465,7 +469,7 @@ refreshes_reveal_transaction (void *cls,
 
 
 /**
- * Persist result of a "/refresh/reveal".
+ * Persist result of a "/refreshes/$RCH/reveal" operation.
  *
  * @param cls closure of type `struct RevealContext`
  * @param connection MHD request which triggered the transaction
@@ -637,7 +641,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         res = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
                                           TALER_EC_INTERNAL_INVARIANT_FAILURE,
-                                          "assertion failed");
+                                          "assertion failed (unexpected database serialization error)");
         break;
       }
       goto cleanup;
@@ -660,13 +664,14 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     /* Check link_sigs[i] signature */
     {
-      struct TALER_LinkDataPS ldp;
+      struct TALER_LinkDataPS ldp = {
+        .purpose.size = htonl (sizeof (ldp)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
+        .h_denom_pub = dki_h[i],
+        .old_coin_pub = melt.session.coin.coin_pub,
+        .transfer_pub = rctx->gamma_tp
+      };
 
-      ldp.purpose.size = htonl (sizeof (ldp));
-      ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
-      ldp.h_denom_pub = dki_h[i];
-      ldp.old_coin_pub = melt.session.coin.coin_pub;
-      ldp.transfer_pub = rctx->gamma_tp;
       GNUNET_CRYPTO_hash (rcds[i].coin_ev,
                           rcds[i].coin_ev_size,
                           &ldp.coin_envelope_hash);
@@ -767,6 +772,9 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
                                             rctx->ev_sigs);
       break;
     }
+    /* If we get here, the final transaction failed, possibly
+       due to a conflict between the pre-flight and us persisting
+       the result, so we go again. */
   }   /* end for (retries...) */
 
 cleanup:

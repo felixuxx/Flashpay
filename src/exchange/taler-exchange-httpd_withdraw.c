@@ -92,33 +92,6 @@ reply_withdraw_insufficient_funds (
 
 
 /**
- * Send blind signature to client.
- *
- * @param connection connection to the client
- * @param collectable blinded coin to return
- * @return MHD result code
- */
-static int
-reply_withdraw_success (
-  struct MHD_Connection *connection,
-  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
-{
-  json_t *sig_json;
-
-  sig_json = GNUNET_JSON_from_rsa_signature (collectable->sig.rsa_signature);
-  if (NULL == sig_json)
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_JSON_ALLOCATION_FAILURE,
-                                       "GNUNET_JSON_from_rsa_signature() failed");
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "ev_sig", sig_json);
-}
-
-
-/**
  * Context for #withdraw_transaction.
  */
 struct WithdrawContext
@@ -540,8 +513,12 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   {
     int ret;
 
-    ret = reply_withdraw_success (connection,
-                                  &wc.collectable);
+    ret = TALER_MHD_reply_json_pack (
+      connection,
+      MHD_HTTP_OK,
+      "{s:o}",
+      "ev_sig", GNUNET_JSON_from_rsa_signature (
+        wc.collectable.sig.rsa_signature));
     GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
     return ret;
   }
