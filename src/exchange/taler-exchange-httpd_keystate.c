@@ -109,46 +109,6 @@ struct DenominationKeyEntry
    */
   struct GNUNET_HashCode denom_key_hash;
 
-#ifdef OPTIMIZE_5777_AUDITOR_BY_COUNT_REALTIME_DETECTION
-
-  /**
-   * Mutex that must be held before threads may access or update
-   * @e known_coin_counter or @e known_coin_counter_db.
-   */
-  pthread_mutex_t known_coin_counter_mutex;
-
-  /**
-   * Mutex that must be held before threads may access or update
-   * @e issued_coin_counter or @e issued_coin_counter_db.
-   */
-  pthread_mutex_t issued_coin_counter_mutex;
-
-  /**
-   * How many coins of this denomination have been redeemed so far (according
-   * to only this process)?
-   */
-  uint64_t known_coin_counter;
-
-  /**
-   * How many coins of this denomination have been redeemed so far (based on
-   * the last time we synchronized the value with our database).
-   */
-  uint64_t known_coin_counter_db;
-
-  /**
-   * How many coins of this denomination have been issued so far (according
-   * to only this process)?
-   */
-  uint64_t issued_coin_counter;
-
-  /**
-   * How many coins of this denomination have been issued so far (based on the
-   * last time we synchronized the value with our database)?
-   */
-  uint64_t issued_coin_counter_db;
-
-#endif
-
 };
 
 
